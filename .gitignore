@@ -1,0 +1,53 @@
+HELP.md
+.gradle/
+build/
+backend/.gradle/
+backend/build/
+*.log
+!backend/gradle/wrapper/gradle-wrapper.jar
+!backend/**/src/main/**/build/
+!backend/**/src/test/**/build/
+
+### Local project notes ###
+AGENTS.md
+.agents/
+docs/README.md
+docs/conception/
+docs/project/
+docs/study*.md
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!backend/**/src/main/**/bin/
+!backend/**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!backend/**/src/main/**/out/
+!backend/**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Frontend ###
+frontend/.next/
+frontend/node_modules/
+frontend/*.log
