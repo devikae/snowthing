@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: snowthing-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: snowthing
+      MYSQL_ROOT_PASSWORD: snowthing_root_2026!
+      MYSQL_USER: snowuser
+      MYSQL_PASSWORD: snowthing_pass_2026!
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    volumes:
+      # 컨테이너 최초 생성 시 database/ddl.sql 자동 실행
+      - ./database/ddl.sql:/docker-entrypoint-initdb.d/01-ddl.sql
+      # MySQL 물리 데이터 영속성 보존용 볼륨
+      - mysql-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+09:00
+
+volumes:
+  mysql-data:
+    driver: local

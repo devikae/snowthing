@@ -1,22 +1,28 @@
-HELP.md
+# Gradle & Build
 .gradle/
 build/
 backend/.gradle/
 backend/build/
 *.log
 !backend/gradle/wrapper/gradle-wrapper.jar
-!backend/**/src/main/**/build/
-!backend/**/src/test/**/build/
 
-### Local project notes ###
-AGENTS.md
-.agents/
-docs/README.md
-docs/conception/
-docs/project/
+# Sensitive Files & Passwords (민감 정보 & 보안 키)
+*.env
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+application-secret*.yml
+application-credentials*.yml
+*.pem
+*.key
+*.p12
+
+# Local Project & Study Notes (작업 이력 및 스터디 문서 커밋 제외)
 docs/study*.md
+docs/project/
 
-### STS ###
+# STS & Eclipse
 .apt_generated
 .classpath
 .factorypath
@@ -25,29 +31,23 @@ docs/study*.md
 .springBeans
 .sts4-cache
 bin/
-!backend/**/src/main/**/bin/
-!backend/**/src/test/**/bin/
 
-### IntelliJ IDEA ###
+# IntelliJ IDEA
 .idea
 *.iws
 *.iml
 *.ipr
 out/
-!backend/**/src/main/**/out/
-!backend/**/src/test/**/out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
+# VS Code
 .vscode/
 
-### Frontend ###
+# OS Temp Files
+.DS_Store
+Thumbs.db
+
+# Frontend
 frontend/.next/
 frontend/node_modules/
+frontend/out/
 frontend/*.log
