@@ -1,0 +1,22 @@
+backend:
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**'
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'frontend/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - 'README.md'
+          - 'AGENTS.md'
+
+database:
+  - changed-files:
+      - any-glob-to-any-file: 'database/**'
+
+ci-cd:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
