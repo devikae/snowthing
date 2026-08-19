@@ -2,12 +2,11 @@ name: Gemini PR Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
   pull-requests: write
-  issues: write
 
 jobs:
   review:
@@ -16,13 +15,33 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Gemini Code Review
-        uses: primaryfeather/gemini-pr-reviewer-action@main
-        with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          model: "gemini-1.5-flash"
-          language: "ko-KR"
-          prompt: |
-            당신은 시니어 개발자이자 코드 리뷰어입니다. 한국어로 친절하고 명확하게 코드 품질, 잠재적 버그, 리팩토링 제안을 리뷰해 주세요.
-            문제점이 있다면 다른 대안과 장단점, 트레이드오프를 설명하여 개발자의 성장을 돕는 리뷰를 남겨주세요.
+      - name: Get PR Diff
+        id: diff
+        run: |
+          diff_content=$(gh pr diff ${{ github.event.pull_request.number }})
+          # GitHub Actions 환경변수에 diff 저장
+          echo "DIFF<<EOF" >> $GITHUB_ENV
+          echo "$diff_content" | head -n 300 >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Request Gemini Review
+        id: gemini
+        run: |
+          prompt="당신은 시니어 백엔드(Java/Spring) 코드 리뷰어입니다. 아래 PR diff를 보고 한국어로 코드 품질, 잠재적 버그, 리팩토링 제안을 친절하고 구체적으로 리뷰해 주세요.\n\nDiff:\n${DIFF}"
+          
+          # JSON 페이로드 생성
+          payload=$(jq -n --arg p "$prompt" '{contents: [{parts: [{text: $p}]}]}')
+          
+          # Gemini API 호출
+          response=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{ secrets.GEMINI_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+          
+          review_text=$(echo "$response" | jq -r '.candidates[0].content.parts[0].text // "리뷰 생성 실패: API 응답을 확인하세요."')
+          
+          # PR에 댓글 등록
+          gh pr comment ${{ github.event.pull_request.number }} --body "$review_text"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
