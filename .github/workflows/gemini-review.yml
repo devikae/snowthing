@@ -1,71 +1,92 @@
 name: Gemini PR Code Review
+
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   review:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
-      - name: Fetch PR Diff
-        id: diff
-        run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD > pr_diff.txt
-      - name: Run Gemini PR Mentor Review
-        uses: actions/github-script@v7
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install google-genai requests
+
+      - name: Run Gemini Review
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        with:
-          script: |
-            const fs = require('fs');
-            const apiKey = process.env.GEMINI_API_KEY;
-            if (!apiKey) {
-              console.log("GEMINI_API_KEY가 설정되어 있지 않습니다.");
-              return;
-            }
-            let diffText = "";
-            try {
-              diffText = fs.readFileSync('pr_diff.txt', 'utf8').slice(0, 10000);
-            } catch (e) {
-              diffText = "코드 변경사항(Diff)을 읽을 수 없습니다.";
-            }
-            const prompt = `당신은 10년 차 이상의 시니어 소프트웨어 아키텍트이자 따뜻하고 정교한 코드 리뷰 멘토입니다.
-            주니어 개발자가 작성한 PR 코드 변경사항(Diff)을 분석하여, 상황에 맞는 기술을 주도적으로 선택할 수 있는 뛰어난 개발자로 성장시키는 것이 당신의 목표입니다.
-            다음 리뷰 원칙 5가지를 준수하여 한국어로 친절하고 정밀하게 리뷰 댓글을 작성해 주세요:
-            ### 📋 리뷰 구조 및 작성 규격:
-            1. 🔍 **[PR 핵심 요약]**:
-               - 이번 PR 변경 사항의 엔지니어링적 핵심을 2~3줄로 요약해 주세요.
-            2. 👏 **[Good Parts (모범 사례)]**:
-               - 잘 작성되었거나 객체지향/스프링 디자인 패턴 관점에서 모범이 되는 코드에 대해 칭찬해 주세요.
-            3. ⚠️ **[잠재적 버그 및 개선 포인트 (Core Issues)]**:
-               - 동시성(Race Condition), 1차 캐시 불일치, N+1 쿼리, 보안/세션 누수 등 잠재적 버그나 성능 저하 요소를 지적해 주세요.
-            4. 💡 **[대안 비교 & 딥다이브 멘토링 (Alternatives & Trade-offs)]**:
-               - 지적한 문제점에 대해 다른 대안 기술/패턴 2~3가지를 제시해 주세요.
-               - 각 대안의 물리적 원리, 장점, 치러야 하는 대가(Trade-off)를 명확히 파헤치고, 그 Trade-off를 서비스 및 아키텍처 레벨에서 어떻게 극복할 수 있는지 정확한 근거로 설명해 주세요.
-            5. 🛠️ **[개선된 코드 예시 (Before vs After)]**:
-               - 주니어 개발자가 바로 적용할 수 있도록 가독성이 뛰어난 diff 또는 자바/타입스크립트 코드 블록 예시를 제공해 주세요.
-            ---
-            [PR 코드 변경사항 (Diff)]:
-            ${diffText}`;
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-              })
-            });
-            const data = await response.json();
-            const reviewText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Gemini AI 코드 리뷰를 생성할 수 없습니다.";
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: reviewText
-            });
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          python - << 'EOF'
+          import os
+          import subprocess
+          import requests
+          from google import genai
+
+          pr_number = os.environ['PR_NUMBER']
+          repo = os.environ['REPO']
+          api_key = os.environ['GEMINI_API_KEY']
+          gh_token = os.environ['GITHUB_TOKEN']
+
+          # 1. PR Diff 추출 (토큰 한도 고려하여 상위 10000자 추출)
+          diff_cmd = subprocess.run(["gh", "pr", "diff", pr_number], capture_output=True, text=True)
+          diff_text = diff_cmd.stdout[:10000]
+
+          # 2. Gemini 클라이언트 호출
+          client = genai.Client(api_key=api_key)
+          
+          prompt = f"""당신은 10년 차 이상의 시니어 소프트웨어 아키텍트이자 따뜻하고 정교한 코드 리뷰 멘토입니다.
+          주니어 개발자가 작성한 PR 코드 변경사항(Diff)을 분석하여, 상황에 맞는 기술을 주도적으로 선택할 수 있는 뛰어난 개발자로 성장시키는 것이 당신의 목표입니다.
+          다음 리뷰 원칙 5가지를 준수하여 한국어로 친절하고 정밀하게 리뷰 댓글을 작성해 주세요:
+
+          ### 📋 리뷰 구조 및 작성 규격:
+          1. 🔍 **[PR 핵심 요약]**:
+             - 이번 PR 변경 사항의 엔지니어링적 핵심을 2~3줄로 요약해 주세요.
+          2. 👏 **[Good Parts (모범 사례)]**:
+             - 잘 작성되었거나 객체지향/스프링 디자인 패턴 관점에서 모범이 되는 코드에 대해 칭찬해 주세요.
+          3. ⚠️ **[잠재적 버그 및 개선 포인트 (Core Issues)]**:
+             - 동시성(Race Condition), 1차 캐시 불일치, N+1 쿼리, 보안/세션 누수 등 잠재적 버그나 성능 저하 요소를 지적해 주세요.
+          4. 💡 **[대안 비교 & 딥다이브 멘토링 (Alternatives & Trade-offs)]**:
+             - 지적한 문제점에 대해 **다른 대안 기술/패턴 2~3가지**를 제시해 주세요.
+             - 각 대안의 **물리적 원리, 장점, 치러야 하는 대가(Trade-off)**를 명확히 파헤치고, 그 Trade-off를 서비스 및 아키텍처 레벨에서 **어떻게 극복할 수 있는지** 정확한 근거로 설명해 주세요.
+          5. 🛠️ **[개선된 코드 예시 (Before vs After)]**:
+             - 주니어 개발자가 바로 적용할 수 있도록 가독성이 뛰어난 `diff` 또는 `java/typescript` 코드 블록 예시를 제공해 주세요.
+
+          ---
+          [PR 코드 변경사항(Diff)]:
+          {diff_text}
+          """
+
+          response = client.models.generate_content(
+              model='gemini-2.5-flash',
+              contents=prompt,
+          )
+
+          review_body = f"### 🤖 Gemini AI PR Code Review\n\n{response.text}"
+
+          # 3. GitHub PR 댓글 등록
+          headers = {
+              "Authorization": f"Bearer {gh_token}",
+              "Accept": "application/vnd.github+json"
+          }
+          url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
+          res = requests.post(url, headers=headers, json={"body": review_body})
+          
+          if res.status_code == 201:
+              print("Review comment posted successfully.")
+          else:
+              print(f"Failed to post comment: {res.text}")
+          EOF
