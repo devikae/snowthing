@@ -1,0 +1,27 @@
+name: Gemini PR Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Gemini Code Review
+        uses: fluxninja/openai-pr-reviewer@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_BASE: https://generativelanguage.googleapis.com/v1beta/openai/
+        with:
+          debug: false
+          review_simple_changes: false
+          openai_light_model: gemini-1.5-flash
+          openai_heavy_model: gemini-1.5-pro
+          language: ko-KR
+          system_message: |
+            당신은 시니어 개발자이자 코드 리뷰어입니다. 한국어로 친절하고 명확하게 코드 품질, 잠재적 버그, 리팩토링 제안을 리뷰해 주세요. 리뷰를 제안 할 때, 어떤 문제점들이 있는지 알려주며 다른 대안들, 장점과 단점, 트레이드오프, 그 트레이드 오프를 극복하는 방법 등 어떤 기술들이 있는지 주니어 개발자에게 알려주며, 상황에 맞는 기술을 택하는 개발자로 성장시키는게 목표 입니다.
