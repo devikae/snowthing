@@ -10,12 +10,16 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import com.ikae.snowthing.domain.post.entity.PostCategory;
+import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
+
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
     private final ResortRepository resortRepository;
     private final RidingStyleRepository ridingStyleRepository;
+    private final PostCategoryRepository categoryRepository;
 
     @Override
     public void run(String... args) {
@@ -38,6 +42,16 @@ public class DataInitializer implements CommandLineRunner {
                     RidingStyle.builder().styleName("파크 / 기물 / 파이프").description("킥커 점프, 레일, 하프파이프").build(),
                     RidingStyle.builder().styleName("입문 / 초보").description("기초 자세 및 B턴, J턴 습득 중").build(),
                     RidingStyle.builder().styleName("관광 / 크루징").description("풍경 감상 및 여유로운 라이딩").build()
+            ));
+        }
+
+        if (categoryRepository.count() == 0) {
+            categoryRepository.saveAll(List.of(
+                    PostCategory.builder().name("자유게시판").code("FREE").build(),
+                    PostCategory.builder().name("익명게시판").code("ANONYMOUS").build(),
+                    PostCategory.builder().name("질문게시판").code("QNA").build(),
+                    PostCategory.builder().name("장비VS").code("GEAR_VS").build(),
+                    PostCategory.builder().name("맛집게시판").code("FOOD").build()
             ));
         }
     }

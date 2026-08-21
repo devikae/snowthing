@@ -164,6 +164,9 @@ export default function HomePage() {
         <div>
           {profile ? (
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <Link href="/posts" className="btn-primary-green" style={{ textDecoration: "none", fontSize: "0.85rem", padding: "0.5rem 1rem" }}>
+                🏂 커뮤니티 게시판
+              </Link>
               <span style={{ fontSize: "0.9rem", color: "var(--text-sub)" }}>
                 <strong style={{ color: "#ffffff" }}>{profile.nickname}</strong> 님
               </span>
@@ -172,7 +175,10 @@ export default function HomePage() {
               </button>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: "0.75rem" }}>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+              <Link href="/posts" className="btn-primary-green" style={{ textDecoration: "none", fontSize: "0.9rem", padding: "0.6rem 1.2rem" }}>
+                🏂 커뮤니티 게시판
+              </Link>
               <Link href="/login" className="btn-secondary" style={{ textDecoration: "none", fontSize: "0.9rem", padding: "0.6rem 1.2rem" }}>
                 로그인
               </Link>

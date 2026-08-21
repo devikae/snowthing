@@ -1,7 +1,7 @@
 package com.ikae.snowthing.domain.member.controller;
 
-import com.ikae.snowthing.domain.member.entity.Resort;
-import com.ikae.snowthing.domain.member.entity.RidingStyle;
+import com.ikae.snowthing.domain.member.dto.ResortResponse;
+import com.ikae.snowthing.domain.member.dto.RidingStyleResponse;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
 import com.ikae.snowthing.domain.member.repository.RidingStyleRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +21,18 @@ public class MasterDataController {
     private final RidingStyleRepository ridingStyleRepository;
 
     @GetMapping("/resorts")
-    public ResponseEntity<List<Resort>> getResorts() {
-        return ResponseEntity.ok(resortRepository.findAll());
+    public ResponseEntity<List<ResortResponse>> getResorts() {
+        List<ResortResponse> response = resortRepository.findAll().stream()
+                .map(ResortResponse::from)
+                .toList();
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/riding-styles")
-    public ResponseEntity<List<RidingStyle>> getRidingStyles() {
-        return ResponseEntity.ok(ridingStyleRepository.findAll());
+    public ResponseEntity<List<RidingStyleResponse>> getRidingStyles() {
+        List<RidingStyleResponse> response = ridingStyleRepository.findAll().stream()
+                .map(RidingStyleResponse::from)
+                .toList();
+        return ResponseEntity.ok(response);
     }
 }

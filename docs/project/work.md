@@ -243,6 +243,75 @@
   - `main` 기준 `feature/sprint01-signup` 브랜치 생성 완료.
   - 기존 작업 중 변경사항은 유지한 상태로 브랜치만 전환함.
 
+## 2026-08-19
+
+### 완료
+
+- **백엔드 아키텍처 5대 시니어 코드 리뷰 지적 사항 100% 리팩토링 완료**:
+  1. **Service 계층 서블릿 API(HttpServletRequest/HttpSession) 의존성 100% 제거 (SRP 달성)**:
+     - `AuthService`는 순수 자바 객체 인증(`authenticate(email, password) -> Member`) 및 `getMyProfile(email)` 조회 비즈니스만 담당하도록 분리.
+     - 세션 고정 방어(`changeSessionId()`), SecurityContext 저장, Remember-Me 타임아웃 세팅은 `AuthController` (Web/Controller 계층)로 이관.
+  2. **`MasterDataController` JPA Entity Direct 반환 제거 및 Response DTO 적용**:
+     - `ResortResponse`, `RidingStyleResponse` 자바 `record` DTO를 정의하여 DB 스키마 유출 및 무한 순환 참조/LazyInitializationException 물리적 차단.
+  3. **인증 전용 커스텀 예외 계층 분리 (`CustomAuthException`)**:
+     - 로그인 실패 시 범용 `IllegalArgumentException` 대신 `CustomAuthException`을 던지고, `GlobalExceptionHandler`에서 401 Unauthorized JSON 응답 변환 처리.
+  4. **로그아웃 완전 보강 (`SecurityConfig.java`)**:
+     - `AntPathRequestMatcher("/api/auth/logout")` 적용으로 `invalidateHttpSession`, `clearAuthentication`, `deleteCookies("JSESSIONID")` 처리 보강 및 테스트 완료.
+  5. **`MemberRepository` JPQL Fetch Join 성능 최적화**:
+     - `MemberResort`, `MemberRidingStyle` N+1 지연 로딩 쿼리 발생을 단 1회의 SQL 조인으로 최적화.
+- **백엔드 통합 테스트 수트 검증**:
+  - `.\gradlew.bat test` 실행 결과 총 25개 테스트 100% PASS (`BUILD SUCCESSFUL in 13s`).
+- **SQL 실행 로그 실증 분석 및 N+1 / MultipleBagFetchException 노션 학습 문서 생성**:
+  - 생성 파일: `docs/study/studySqlLogNPlusOne260819.md`
+  - 7대 필수 서술 요소 체계(개념, Why, When, How, Pros, Alternatives, Trade-off) 준수 및 실제 Hibernate 3회 조인 SQL 쿼리 로그 캡처 기록.
+- **Snowthing 순수 백엔드 & MySQL 8.0 단 1개의 마스터 노션 가이드 생성 (Spring Boot 4.0.0 상향 지정 반영)**:
+  - 생성 파일: `docs/study/studySnowthingCompleteInterview260819.md`
+  - `backend/build.gradle` 및 스터디 가이드 버전 상향 반영: **Spring Boot `4.0.0`**, **Java `21`**, **Spring Security `7`**, **Spring Dependency Management `1.1.6`**.
+  - 과장되거나 모호한 숫자 표현(0.001ms, 0.001% 등)을 100% 삭제하고 정확한 컴퓨터 공학 및 DB 엔지니어링 용어로 정제.
+  - 프론트엔드 내용 100% 제거 / Pure Backend 스택 전용 정리.
+  - MySQL 8.0 Clustered Index, Secondary Index, Composite Index B-Tree 물리적 구조 & 걸려있는 이유 수록.
+  - Bean Validation `@Valid`, JPA, BCrypt, Dual PK, HikariCP, `@Transactional` 등 백엔드 10대 기술 7대 서술 체계 해설 수록.
+  - 9대 영역 총 50개 백엔드 기술 질문 & 꼬리 질문 1:1 명확한 대답 대본 100% 집대성.
+- **Spring Security 표준 인증 및 PR 리뷰 피드백 9대 개선사항 100% 리팩토링 & 검증 완료 (2026-08-20)**:
+  1. `MemberLoginResponse` DTO 내 `List.copyOf()` **방어적 복사 (Defensive Copying)** 적용으로 100% 불변성 보장.
+  2. `ErrorCode` Enum (`INVALID_CREDENTIALS`, `MEMBER_NOT_FOUND`, `DUPLICATE_EMAIL` 등) 및 `ErrorResponse` 정형화된 JSON 에러 응답 도입.
+  3. `AuthController` 내 매직 넘버 상수화 (`REMEMBER_ME_TIMEOUT_SECONDS = 30 * 24 * 60 * 60`) 및 `calculateSessionTimeoutSeconds()` 메서드 분리.
+  4. Spring Security 표준 인증 체계 (`CustomUserDetails`, `CustomUserDetailsService`, `AuthenticationManager`) 구축 및 수동 비밀번호 비교 로직 축출.
+  5. `SecurityContextRepository.saveContext()` 시큐리티 표준 세션 저장 적용.
+  6. `MemberController` 수동 SecurityContextHolder 파싱 코드를 `@AuthenticationPrincipal CustomUserDetails userDetails` 파라미터 바인딩으로 깔끔하게 개선.
+  7. 서비스의 수동 세션 로그아웃 코드를 무효화하고 SecurityConfig의 `logout()` 설정에 100% 위임.
+  8. `.\gradlew.bat test` 실행 결과 총 25개 단위/통합 테스트 **BUILD SUCCESSFUL 100% PASS** 검증 완료.
+- **Sprint 01 백엔드 전 과정 코드, 1줄 상세 주석, 설계 배경 & 5대 아키텍처 대안 마스터 가이드 생성 (2026-08-21)**:
+  - 생성 파일: [`docs/study/sprint01/studySprint01CompleteCodeMaster260821.md`](file:///c:/Users/ikaes/IdeaProjects/snowthing/docs/study/sprint01/studySprint01CompleteCodeMaster260821.md)
+  - Sprint 01 백엔드 전체 코드(Security 7, Global Exception, Auth, Member, Entity, Repository, 25개 테스트 수트)에 1줄 한 줄 물리적 해설 주석(Annotation) 추가.
+  - **[WHY] 왜 그렇게 만들어졌는가 (설계 결정 배경 & Rationale)** 전면 수록.
+  - 10대 핵심 기술 튜닝 파라미터/옵션 탐구 및 **"여기서는 이렇게 설계했어도 좋았을 것이다" 5대 아키텍처 대안 (RememberMeServices, Redis Distributed Session, JWT+RTR, DDD Composite PK, CQRS)** 완벽 집대성.
+- **Sprint 01 게시글(Post) 도메인 11개 단계 전 과정 개발 및 DB UNIQUE 제약 조건 중복 방지 구축 (2026-08-21)**:
+  - 엔티티 & 저장소: `Post`, `PostCategory`, `PostImage`, `PostReaction`, `PostStatus`, `ReactionType`
+  - DB 유니크 제약조건: `PostReaction` 내 `@UniqueConstraint(name = "uk_post_member", columnNames = {"post_id", "member_id"})` 설정으로 추천/비추천 연타 시 DB 레벨 원자적 차단 (`409 Conflict ALREADY_REACTED`)
+  - 비동기 처리: `@Async` `PostReactionEventListener`를 통한 역정규화 카운터(`like_count`, `dislike_count`) 갱신
+  - Soft Delete: `@SQLDelete`, `@SQLRestriction("is_deleted = false")`, `deleted_at DATETIME NULLABLE` 적용
+  - API & DTO: `PostController`, `PostService`, `PostCreateRequest`, `PostUpdateRequest`, `PostResponse`, `PostListResponse` (본문 제외), `PostDetailResponse`, `PostReactionRequest`
+  - 테스트 수트: `PostServiceTest`, `PostControllerTest` (작성/조회/수정/삭제/권한 10대 테스트 케이스 완료)
+- **Sprint 02 feature/sprint02-board Git 브랜치 생성 및 전환 완료 (2026-08-21)**:
+  - 실행 명령어: `git checkout -b feature/sprint02-board`
+  - 내용: Sprint 02 커뮤니티 게시판, 댓글/대댓글, 반응(추천/비추천) 및 프로필 다중 이미지 갤러리 슬라이더 개발을 위한 독립 형상관리 브랜치 체크아웃 완료.
+- **Sprint 02 게시글(Post) 도메인 전용 5대 아키텍처 결함 & 물리적 극복방안 스터디 가이드 생성 (2026-08-21)**:
+  - 생성 파일: [`docs/study/sprint02/studySprint02PostDomainIssues260821.md`](file:///c:/Users/ikaes/IdeaProjects/snowthing/docs/study/sprint02/studySprint02PostDomainIssues260821.md), [`docs/study/studySprint02PostDomainIssues260821.md`](file:///c:/Users/ikaes/IdeaProjects/snowthing/docs/study/studySprint02PostDomainIssues260821.md)
+  - 내용: ①[목록 조회 시 content 본문 포함 트래픽 폭증 ➔ JPQL Projections DB I/O 차단], ②[카테고리 페이징 Count(*) Full Scan ➔ Slice 페이징 & Covering Index], ③[수정/삭제 시 작성자 인가 누락 IDOR ➔ validatePostOwnerOrAdmin 403 차단], ④[회원글/익명글 카테고리 변경 시 작성자 정보 꼬임 ➔ changeCategory 400 차단], ⑤[PostReaction 추천/비추천 동시 연타 데드락 ➔ Debounce & Spring Retry] 5대 게시글 전용 결함 해설 수록 완료
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
