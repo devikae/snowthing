@@ -68,7 +68,7 @@ public class SecurityConfig {
                         .sessionFixation(sessionFixation -> sessionFixation.changeSessionId())
                 )
                 .logout(logout -> logout
-                        .logoutRequestMatcher(new AntPathRequestMatcher("/api/auth/logout", "POST"))
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/api/v1/auth/logout", "POST"))
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
                         .deleteCookies("JSESSIONID")
@@ -91,9 +91,14 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/members", "/api/auth/login", "/api/resorts", "/api/riding-styles").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/members/me").authenticated()
+                        .requestMatchers(
+                                "/api/members", "/api/v1/members",
+                                "/api/auth/login", "/api/v1/auth/login",
+                                "/api/resorts", "/api/v1/master/resorts",
+                                "/api/riding-styles", "/api/v1/master/riding-styles",
+                                "/api/posts/**", "/api/v1/posts/**"
+                        ).permitAll()
+                        .requestMatchers("/api/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 );
 

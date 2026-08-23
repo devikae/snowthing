@@ -15,7 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/members")
+@RequestMapping("/api/v1/members")
 @RequiredArgsConstructor
 public class MemberController {
 
@@ -30,7 +30,7 @@ public class MemberController {
 
     @GetMapping("/me")
     public ResponseEntity<MemberLoginResponse> getMyProfile(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        MemberLoginResponse profile = authService.getMyProfile(userDetails.getUsername());
+        MemberLoginResponse profile = authService.getMemberProfileByEmail(userDetails.getUsername());
         return ResponseEntity.ok(profile);
     }
 
@@ -41,7 +41,7 @@ public class MemberController {
     ) {
         String email = userDetails.getUsername();
         memberService.updateMyProfile(email, request);
-        MemberLoginResponse updatedProfile = authService.getMyProfile(email);
+        MemberLoginResponse updatedProfile = authService.getMemberProfileByEmail(email);
         return ResponseEntity.ok(updatedProfile);
     }
 }

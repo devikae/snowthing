@@ -11,7 +11,11 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ikae.snowthing.global.config.QuerydslConfig;
+import org.springframework.context.annotation.Import;
+
 @DataJpaTest
+@Import(QuerydslConfig.class)
 class MemberRepositoryTest {
 
     @Autowired

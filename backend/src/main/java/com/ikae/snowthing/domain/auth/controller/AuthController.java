@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -59,7 +59,7 @@ public class AuthController {
         int timeoutSeconds = calculateSessionTimeoutSeconds(loginRequest.isRememberMe());
         session.setMaxInactiveInterval(timeoutSeconds);
 
-        MemberLoginResponse response = authService.getMyProfile(loginRequest.getEmail());
+        MemberLoginResponse response = authService.getMemberProfileByEmail(loginRequest.getEmail());
         return ResponseEntity.ok(response);
     }
 

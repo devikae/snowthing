@@ -39,9 +39,9 @@ public class AuthService {
     }
 
     /**
-     * 내 프로필 정보 및 선호 스키장/라이딩 성향 Fetch Join 조회 (방어적 복사 적용)
+     * 프로필 정보 및 선호 스키장/라이딩 성향 Fetch Join 조회 (방어적 복사 적용)
      */
-    public MemberLoginResponse getMyProfile(String email) {
+    public MemberLoginResponse getMemberProfileByEmail(String email) {
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
 

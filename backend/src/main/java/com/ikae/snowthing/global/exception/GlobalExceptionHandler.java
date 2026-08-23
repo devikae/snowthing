@@ -27,15 +27,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
-        if ("INVALID_CREDENTIALS".equals(e.getMessage())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.from(ErrorCode.INVALID_CREDENTIALS));
-        }
-        if ("DUPLICATE_EMAIL".equals(e.getMessage())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.from(ErrorCode.DUPLICATE_EMAIL));
-        }
-        if ("DUPLICATE_NICKNAME".equals(e.getMessage())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.from(ErrorCode.DUPLICATE_NICKNAME));
-        }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, e.getMessage()));
     }

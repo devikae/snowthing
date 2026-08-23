@@ -12,9 +12,4 @@ public class CustomAuthException extends RuntimeException {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
     }
-
-    public CustomAuthException(String message) {
-        super(message);
-        this.errorCode = ErrorCode.INVALID_CREDENTIALS;
-    }
 }

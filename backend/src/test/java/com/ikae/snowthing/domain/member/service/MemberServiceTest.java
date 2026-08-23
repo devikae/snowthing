@@ -73,8 +73,9 @@ class MemberServiceTest {
 
         // when & then
         assertThatThrownBy(() -> memberService.signUp(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("DUPLICATE_EMAIL");
+                .isInstanceOf(com.ikae.snowthing.global.exception.CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_EMAIL);
     }
 
     @Test
@@ -92,7 +93,8 @@ class MemberServiceTest {
 
         // when & then
         assertThatThrownBy(() -> memberService.signUp(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("DUPLICATE_NICKNAME");
+                .isInstanceOf(com.ikae.snowthing.global.exception.CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
     }
 }

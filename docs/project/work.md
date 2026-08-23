@@ -293,12 +293,20 @@
   - Soft Delete: `@SQLDelete`, `@SQLRestriction("is_deleted = false")`, `deleted_at DATETIME NULLABLE` 적용
   - API & DTO: `PostController`, `PostService`, `PostCreateRequest`, `PostUpdateRequest`, `PostResponse`, `PostListResponse` (본문 제외), `PostDetailResponse`, `PostReactionRequest`
   - 테스트 수트: `PostServiceTest`, `PostControllerTest` (작성/조회/수정/삭제/권한 10대 테스트 케이스 완료)
-- **Sprint 02 feature/sprint02-board Git 브랜치 생성 및 전환 완료 (2026-08-21)**:
-  - 실행 명령어: `git checkout -b feature/sprint02-board`
-  - 내용: Sprint 02 커뮤니티 게시판, 댓글/대댓글, 반응(추천/비추천) 및 프로필 다중 이미지 갤러리 슬라이더 개발을 위한 독립 형상관리 브랜치 체크아웃 완료.
+- **Sprint 02 feature/sprint02-board Git 브랜치 생성, 커밋 및 GitHub 원격 푸시 완료 (2026-08-21)**:
+  - 실행 명령어: `git checkout -b feature/sprint02-board` ➔ `git commit -m "feat(post): 게시글 CRUD, 추천/비추천 기능 구축"` ➔ `git push origin feature/sprint02-board`
+  - 내용: GitHub 원격 저장소(`origin`)에 `feature/sprint02-board` 브랜치 푸시 완료 (PR 링크: https://github.com/devikae/snowthing/pull/new/feature/sprint02-board).
 - **Sprint 02 게시글(Post) 도메인 전용 5대 아키텍처 결함 & 물리적 극복방안 스터디 가이드 생성 (2026-08-21)**:
   - 생성 파일: [`docs/study/sprint02/studySprint02PostDomainIssues260821.md`](file:///c:/Users/ikaes/IdeaProjects/snowthing/docs/study/sprint02/studySprint02PostDomainIssues260821.md), [`docs/study/studySprint02PostDomainIssues260821.md`](file:///c:/Users/ikaes/IdeaProjects/snowthing/docs/study/studySprint02PostDomainIssues260821.md)
   - 내용: ①[목록 조회 시 content 본문 포함 트래픽 폭증 ➔ JPQL Projections DB I/O 차단], ②[카테고리 페이징 Count(*) Full Scan ➔ Slice 페이징 & Covering Index], ③[수정/삭제 시 작성자 인가 누락 IDOR ➔ validatePostOwnerOrAdmin 403 차단], ④[회원글/익명글 카테고리 변경 시 작성자 정보 꼬임 ➔ changeCategory 400 차단], ⑤[PostReaction 추천/비추천 동시 연타 데드락 ➔ Debounce & Spring Retry] 5대 게시글 전용 결함 해설 수록 완료
+- **Auth/Member/Master 11대 아키텍처 및 보안 결함 리팩토링 완료 (2026-08-23)**:
+  - DTO 방어적 복사: `MemberLoginResponse.from()` 생성자 불변 리스트 `List.copyOf()` 적용으로 가변성 오염 물리 차단.
+  - 예외 처리 표준화: `AuthService`, `MemberService` 내 `IllegalArgumentException("INVALID_CREDENTIALS" / "DUPLICATE_EMAIL")` 문자열 리터럴 예외를 `CustomAuthException(ErrorCode)`로 전면 교체. `GlobalExceptionHandler` 내 리터럴 문자열 대조 제거.
+  - 계층 분리 & 레이어드 아키텍처: `MasterDataService` [NEW] 레이어 도입으로 `MasterDataController` 내 레포지토리 직접 주입 제거 및 DTO 반환 보장. `AuthService` 내 서블릿/세션 결합 제거.
+  - 상수 추출 & API 버저닝: `REMEMBER_ME_TIMEOUT_SECONDS`, `DEFAULT_SESSION_TIMEOUT_SECONDS` 상수 추출. `@RequestMapping("/api/v1/master")`, `/api/v1/auth`, `/api/v1/members` API v1 버저닝 적용.
+  - 시큐리티 수동 검증 제거: `MemberController` 수동 `SecurityContextHolder` 검증을 삭제하고 `SecurityConfig` 및 `@AuthenticationPrincipal` 주입 표준화 적용.
+  - 중복 체크 검증 강화: `MemberService` 가입/수정 시 사전 `existsByEmail`, `existsByNickname` 비즈니스 예외 처리 및 DB Unique 제약조건 이중 방어선 세팅.
+  - 전체 단위/통합 테스트: 51개 전체 테스트 100% PASS (`BUILD SUCCESSFUL`).
 
 
 

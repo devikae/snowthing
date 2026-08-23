@@ -26,4 +26,8 @@
     ⑤ 장점은 무엇인지 (Pros / Advantages)
     ⑥ 다른 기술/대안은 무엇이 있는지 (Alternatives - 타 기술과의 비교)
     ⑦ 트레이드오프는 무엇인지 (Trade-off, 사이드이펙트 및 서비스/아키텍처 레벨의 극복 방안)
-
+22. DTO 불변성(Immutability) 보장 수칙: DTO 생성 시 컬렉션(`List`, `Set`, `Map`)을 인자로 받을 때는 `List.copyOf()` 또는 `new ArrayList<>()`로 방어적 복사(Defensive Copy)를 반드시 수행하여, 외부에서의 원본 데이터 변형 및 가변성(Mutability) 오염을 물리적으로 차단해야 한다.
+23. 문자열 리터럴 예외 처리 금지 수칙: `new IllegalArgumentException("INVALID_CREDENTIALS")`나 `if ("DUPLICATE_EMAIL".equals(e.getMessage()))`와 같이 문자열 리터럴을 직접 비교하거나 생성해 던지는 예외 처리를 엄격히 금지한다. 예외는 반드시 `ErrorCode` Enum과 정적 타입 기반의 비즈니스 커스텀 예외(`CustomException`)로 일원화해야 한다.
+24. 계층 분리(Layered Architecture) 및 웹 결합 차단 수칙: 
+    ① 서비스 레이어(Service) 내부에서 `HttpSession`, `SecurityContextHolder`, `changeSessionId()` 등 서블릿/웹 세션 조작 코드를 직접 호출하는 행위(웹-서비스 강결합)를 엄격히 금지한다. (웹 세션 처리는 컨트롤러 또는 시큐리티 레이어가 전담한다)
+    ② 컨트롤러가 `Repository`를 직접 주입받아 호출하거나, DTO 변환 없이 `Entity`를 클라이언트에 직접 반환하는 계층 스킵(Layer Skip) 행위를 엄격히 금지한다.

@@ -58,7 +58,7 @@ class MemberControllerTest {
         given(memberService.signUp(any(MemberSignUpRequest.class))).willReturn(response);
 
         // when & then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(post("/api/v1/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -78,7 +78,7 @@ class MemberControllerTest {
                 .build();
 
         // when & then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(post("/api/v1/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -95,7 +95,7 @@ class MemberControllerTest {
                 .build();
 
         // when & then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(post("/api/v1/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
