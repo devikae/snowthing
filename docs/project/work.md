@@ -1,3 +1,7 @@
+- **`QuerydslConfig.java` 패키지 오타 복구 및 CI 재트리거 완결 (`4cf2c8c`, 2026-08-24)**:
+  1. **CI 컴파일 에러 해결**: `QuerydslConfig.java` 첫 번째 줄의 `ackage` 패키지 키워드 오타를 `package`로 완벽 복구하여 `MemberRepositoryTest.java` 컴파일 시 `cannot find symbol` 클래스 미인식 에러를 완전히 해결.
+  2. **원격 푸시 조치**: `git push origin feature/sprint02-board` 완료하여 GitHub Actions CI 정상 렌더링 및 그린 라이트 재실행 완료.
+
 - **`application.yml` `spring:` 오타 복구 및 CI 액션 v5 업데이트 (`adf3f64`, 2026-08-24)**:
   1. **빌드 원인 해결**: `application.yml` 및 `application-test.yml` 설정 파일 첫 번째 줄의 `pring:` 오타(spring의 s 누락)로 인해 CI 서버에서 스프링 부트 설정 파싱 실패하던 원인을 `spring:`으로 정밀 복구.
   2. **CI 경고 제거**: `.github/workflows/gradle.yml`에서 `actions/setup-java@v4`를 `v5`로 업데이트하여 노드/Java 버전 경고 완벽 제거 및 원격 푸시 처리.
