@@ -1,3 +1,7 @@
+- **`feature/sprint01-signup` PR #9 코멘트 피드백 반영 커밋 및 원격 푸시 완결 (`9125d81`, 2026-08-24)**:
+  1. **피드백 브랜치 정상화**: `feature/sprint02-board`에 잘못 커밋되어 있던 `MemberLoginResponse` 방어적 복사(`List.copyOf()`), `MasterDataService` 계층 분리, `SecurityConfig` 표준화, `/api/v1` API 버저닝 등 30개 피드백 수정 파일들을 `feature/sprint01-signup` 브랜치로 정상 이동하여 전체 24개 테스트 100% PASS 검증 완료.
+  2. **원격 푸시 완료**: 커밋 메시지 `refactor: 코멘트 피드백 반영`으로 `origin/feature/sprint01-signup`에 푸시 완료하여 PR #9 갱신 완료.
+
 - **`CommentController` 의존성 서비스 및 DTO 깃허브 푸시 완결 (`1aeb940`, 2026-08-24)**:
   1. **CI 컴파일 원인 해결**: `CommentController.java`에서 참조하는 `CommentService`, `CommentResponse`, `CommentCreateRequest`, `PostCommentListResponse`, `CommentRepository` 등의 의존성 파일들이 로컬에만 존재하고 원격 깃허브에 누락되어 발생하던 CI 컴파일 에러를 완벽히 해결하기 위해 관련 8개 파일 원격 포함 완료.
   2. **원격 푸시 조치**: `git push origin feature/sprint02-board` 완료하여 GitHub Actions CI 컴파일 에러 완전 해결 및 그린 라이트 재실행 완결.
