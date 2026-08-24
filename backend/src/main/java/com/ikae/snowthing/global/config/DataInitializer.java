@@ -1,28 +1,56 @@
 package com.ikae.snowthing.global.config;
 
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.entity.RidingStyle;
+import com.ikae.snowthing.domain.member.entity.Role;
+import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
 import com.ikae.snowthing.domain.member.repository.RidingStyleRepository;
+import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostCategory;
+import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
+import com.ikae.snowthing.domain.post.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-import com.ikae.snowthing.domain.post.entity.PostCategory;
-import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
-
 @Component
+@Profile("!test")
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
+    private final MemberRepository memberRepository;
     private final ResortRepository resortRepository;
     private final RidingStyleRepository ridingStyleRepository;
     private final PostCategoryRepository categoryRepository;
+    private final PostRepository postRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
+        if (!memberRepository.existsByEmail("user@snowthing.com")) {
+            memberRepository.save(Member.builder()
+                    .email("user@snowthing.com")
+                    .password(passwordEncoder.encode("Password123!"))
+                    .nickname("스노보더1")
+                    .role(Role.ROLE_USER)
+                    .build());
+        }
+
+        if (!memberRepository.existsByEmail("admin@snowthing.com")) {
+            memberRepository.save(Member.builder()
+                    .email("admin@snowthing.com")
+                    .password(passwordEncoder.encode("Password123!"))
+                    .nickname("최고관리자")
+                    .role(Role.ROLE_ADMIN)
+                    .build());
+        }
+
         if (resortRepository.count() == 0) {
             resortRepository.saveAll(List.of(
                     Resort.builder().name("휘닉스파크").regionName("강원 평창").build(),
@@ -53,6 +81,39 @@ public class DataInitializer implements CommandLineRunner {
                     PostCategory.builder().name("장비VS").code("GEAR_VS").build(),
                     PostCategory.builder().name("맛집게시판").code("FOOD").build()
             ));
+        }
+
+        if (postRepository.count() == 0) {
+            PostCategory freeCat = categoryRepository.findByCode("FREE").orElse(null);
+            PostCategory anonCat = categoryRepository.findByCode("ANONYMOUS").orElse(null);
+
+            if (freeCat != null && anonCat != null) {
+                String encPass = passwordEncoder.encode("1234");
+                // 자유게시판 더미 15건
+                for (int i = 1; i <= 15; i++) {
+                    postRepository.save(Post.builder()
+                            .category(freeCat)
+                            .title("테스트 자유 게시글 " + i)
+                            .content("테스트 자유 게시글 본문 내용 " + i + "입니다. 슬로프 설질 및 장비 정보 공유!")
+                            .writerIp("127.0.0.1")
+                            .isAnonymous(true)
+                            .anonymousPassword(encPass)
+                            .hasImage(i % 2 == 0)
+                            .build());
+                }
+                // 익명게시판 더미 15건
+                for (int i = 1; i <= 15; i++) {
+                    postRepository.save(Post.builder()
+                            .category(anonCat)
+                            .title("익명 게시판 테스트 " + i)
+                            .content("익명 게시판 본문 내용 " + i + "입니다. 가감 없는 솔직한 생각 공유!")
+                            .writerIp("127.0.0.1")
+                            .isAnonymous(true)
+                            .anonymousPassword(encPass)
+                            .hasImage(i % 3 == 0)
+                            .build());
+                }
+            }
         }
     }
 }

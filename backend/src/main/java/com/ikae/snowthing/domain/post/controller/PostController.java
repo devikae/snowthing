@@ -3,7 +3,11 @@ package com.ikae.snowthing.domain.post.controller;
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.web.AnonymousVoterCookieManager;
+import com.ikae.snowthing.global.web.ClientIpResolver;
+import com.ikae.snowthing.global.web.ViewCountCookieManager;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,11 +19,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/posts")
+@RequestMapping({"/api/posts", "/api/v1/posts"})
 @RequiredArgsConstructor
 public class PostController {
 
+    private static final String DEFAULT_PAGE_SIZE_PARAM = "20";
+
     private final PostService postService;
+    private final ClientIpResolver clientIpResolver;
+    private final ViewCountCookieManager viewCountCookieManager;
+    private final AnonymousVoterCookieManager anonymousVoterCookieManager;
 
     @PostMapping
     public ResponseEntity<PostResponse> createPost(
@@ -27,7 +36,7 @@ public class PostController {
         @AuthenticationPrincipal CustomUserDetails userDetails,
         HttpServletRequest httpRequest
     ) {
-        String clientIp = getClientIp(httpRequest);
+        String clientIp = clientIpResolver.resolve(httpRequest);
         PostResponse response = postService.createPost(request, userDetails, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -35,20 +44,37 @@ public class PostController {
     @GetMapping("/{publicId}")
     public ResponseEntity<PostDetailResponse> getPostDetail(
         @PathVariable String publicId,
-        @AuthenticationPrincipal CustomUserDetails userDetails
+        @AuthenticationPrincipal CustomUserDetails userDetails,
+        HttpServletRequest request,
+        HttpServletResponse response
     ) {
-        PostDetailResponse response = postService.getPostDetail(publicId, userDetails);
-        return ResponseEntity.ok(response);
+        boolean shouldIncreaseViewCount = viewCountCookieManager.markIfFirstView(publicId, request, response);
+        PostDetailResponse postDetailResponse = postService.getPostDetail(publicId, userDetails, shouldIncreaseViewCount);
+        return ResponseEntity.ok(postDetailResponse);
     }
 
     @GetMapping
-    public ResponseEntity<Page<PostListResponse>> getPostList(
+    public ResponseEntity<com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>> searchPosts(
         @RequestParam(required = false) String categoryCode,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size
+        @RequestParam(required = false) Long resortId,
+        @RequestParam(required = false) SearchType searchType,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) SortType sortType,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) String cursor,
+        @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size
     ) {
-        Page<PostListResponse> response = postService.getPostList(categoryCode, page, size);
-        return ResponseEntity.ok(response);
+        PostSearchRequest request = new PostSearchRequest(
+            categoryCode, resortId, searchType, keyword, sortType, page, cursor, size
+        );
+
+        // cursor 파라미터 존재 시 -> 모바일 Cursor 쿼리 처리
+        if (org.springframework.util.StringUtils.hasText(cursor)) {
+            return ResponseEntity.ok(postService.searchPostsByCursor(request));
+        }
+
+        // cursor 없으면 -> 웹 Offset 쿼리 처리
+        return ResponseEntity.ok(postService.searchPostsByOffset(request));
     }
 
     @PutMapping("/{publicId}")
@@ -75,26 +101,19 @@ public class PostController {
     }
 
     @PostMapping("/{publicId}/reactions")
-    public ResponseEntity<Map<String, String>> reactToPost(
+    public ResponseEntity<com.ikae.snowthing.domain.post.dto.ReactionToggleResponse> reactToPost(
         @PathVariable String publicId,
         @Valid @RequestBody PostReactionRequest request,
-        @AuthenticationPrincipal CustomUserDetails userDetails
+        @AuthenticationPrincipal CustomUserDetails userDetails,
+        HttpServletRequest httpRequest,
+        HttpServletResponse httpResponse
     ) {
-        postService.reactToPost(publicId, request.type(), userDetails);
-        return ResponseEntity.ok(Map.of(
-            "message", "투표가 성공적으로 수신되었습니다.",
-            "type", request.type().name()
-        ));
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        return ip != null ? ip : "127.0.0.1";
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        String anonymousVoterId = userDetails == null
+            ? anonymousVoterCookieManager.getOrCreate(httpRequest, httpResponse)
+            : null;
+        com.ikae.snowthing.domain.post.dto.ReactionToggleResponse response =
+            postService.reactToPost(publicId, request.type(), userDetails, clientIp, anonymousVoterId);
+        return ResponseEntity.ok(response);
     }
 }

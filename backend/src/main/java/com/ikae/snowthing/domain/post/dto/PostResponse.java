@@ -29,7 +29,9 @@ public record PostResponse(
     }
 
     private static String maskIp(String ip) {
-        if (ip == null || ip.isBlank()) return "***.***.***.***";
+        if (ip == null || ip.isBlank() || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
+            return "127.0.***.***";
+        }
         String[] parts = ip.split("\\.");
         if (parts.length == 4) {
             return parts[0] + "." + parts[1] + ".***.***";

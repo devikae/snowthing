@@ -2,427 +2,170 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Footer, SideCategories, TopNav } from "./components/SiteChrome";
 
 interface MemberProfile {
   publicId: string;
   email: string;
   nickname: string;
   role: string;
-  resortNames: string[];
-  ridingStyleNames: string[];
 }
 
-interface ResortMaster {
-  id: number;
-  name: string;
-  regionName: string;
-}
+const trendingCards = [
+  {
+    label: "Gear Review",
+    title: "24/25 시즌 바인딩 세팅 팁",
+    image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=900&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Discussion",
+    title: "라이딩 자세가 무너질 때 체크할 것들",
+    image: "https://images.unsplash.com/photo-1605540436563-5bca919ae766?w=900&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Resort",
+    title: "주말 강원권 리조트 혼잡도 공유",
+    image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=900&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Question",
+    title: "첫 데크를 고를 때 플렉스 기준",
+    image: "https://images.unsplash.com/photo-1518602164578-cd0074062767?w=900&auto=format&fit=crop&q=80",
+  },
+];
 
-interface RidingStyleMaster {
-  id: number;
-  styleName: string;
-  description: string;
-}
+const topPosts = [
+  ["FREE", "웰리힐리 야간 타보신 분 있나요?", 45],
+  ["GEAR", "부츠 열성형 전후 차이가 큰가요?", 32],
+  ["QNA", "초보가 전향각 바로 가도 될까요?", 28],
+  ["FOOD", "용평 근처 아침 식사 추천", 19],
+  ["RESORT", "하이원 리프트 대기 공유", 15],
+];
 
 export default function HomePage() {
   const [profile, setProfile] = useState<MemberProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // 프로필 수정 모달/폼 state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editNickname, setEditNickname] = useState("");
-  const [editBio, setEditBio] = useState("");
-  const [editDepartureRegion, setEditDepartureRegion] = useState("");
-  const [selectedResortIds, setSelectedResortIds] = useState<number[]>([]);
-  const [selectedStyleIds, setSelectedStyleIds] = useState<number[]>([]);
-
-  // 마스터 데이터 state
-  const [resorts, setResorts] = useState<ResortMaster[]>([]);
-  const [ridingStyles, setRidingStyles] = useState<RidingStyleMaster[]>([]);
-  const [updateError, setUpdateError] = useState("");
-  const [updateLoading, setUpdateLoading] = useState(false);
-
-  const fetchMyProfile = async () => {
-    try {
-      const res = await fetch("http://localhost:8080/api/members/me", {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-        setEditNickname(data.nickname);
-      } else {
-        setProfile(null);
-      }
-    } catch (err) {
-      setProfile(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMasterData = async () => {
-    try {
-      const [resortRes, styleRes] = await Promise.all([
-        fetch("http://localhost:8080/api/resorts"),
-        fetch("http://localhost:8080/api/riding-styles"),
-      ]);
-      if (resortRes.ok && styleRes.ok) {
-        const resortData = await resortRes.json();
-        const styleData = await styleRes.json();
-        setResorts(resortData);
-        setRidingStyles(styleData);
-      }
-    } catch (err) {
-      console.error("마스터 데이터 로딩 실패", err);
-    }
-  };
 
   useEffect(() => {
-    fetchMyProfile();
-    fetchMasterData();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch("http://localhost:8080/api/v1/members/me", {
+            credentials: "include",
+          });
+          if (res.ok) {
+            const data: MemberProfile = await res.json();
+            setProfile(data);
+          }
+        } catch {
+          setProfile(null);
+        }
+      })();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await fetch("http://localhost:8080/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      alert("로그아웃 되었습니다.");
-      setProfile(null);
-      setIsEditing(false);
-    } catch (err) {
-      alert("로그아웃 처리 실패");
-    }
-  };
-
-  const handleResortToggle = (id: number) => {
-    setSelectedResortIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const handleStyleToggle = (id: number) => {
-    setSelectedStyleIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  // 프로필 수정 제출 (PUT /api/members/me)
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUpdateError("");
-    setUpdateLoading(true);
-
-    try {
-      const res = await fetch("http://localhost:8080/api/members/me", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          nickname: editNickname,
-          bio: editBio,
-          departureRegion: editDepartureRegion,
-          resortIds: selectedResortIds,
-          ridingStyleIds: selectedStyleIds,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || errorData.message || "프로필 수정 실패");
-      }
-
-      const updatedData = await res.json();
-      setProfile(updatedData);
-      alert("프로필 정보가 성공적으로 수정되었습니다!");
-      setIsEditing(false);
-    } catch (err: any) {
-      setUpdateError(err.message);
-    } finally {
-      setUpdateLoading(false);
-    }
-  };
-
   return (
-    <div className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
-      {/* 1. 상단 네비게이션 헤더 */}
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem", paddingBottom: "1.25rem", borderBottom: "1px solid var(--border-dark)" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.75rem", textDecoration: "none", color: "inherit" }}>
-          <div style={{ width: "36px", height: "36px", borderRadius: "8px", backgroundColor: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#171717", fontWeight: "900", fontSize: "1.2rem" }}>
-            S
-          </div>
-          <span style={{ fontSize: "1.35rem", fontWeight: "800", letterSpacing: "-0.5px" }}>Snowthing</span>
-          <span className="pill-green">v1.0 MVP</span>
-        </Link>
-
-        <div>
-          {profile ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <Link href="/posts" className="btn-primary-green" style={{ textDecoration: "none", fontSize: "0.85rem", padding: "0.5rem 1rem" }}>
-                🏂 커뮤니티 게시판
-              </Link>
-              <span style={{ fontSize: "0.9rem", color: "var(--text-sub)" }}>
-                <strong style={{ color: "#ffffff" }}>{profile.nickname}</strong> 님
-              </span>
-              <button onClick={handleLogout} className="btn-secondary" style={{ fontSize: "0.85rem", padding: "0.5rem 1rem" }}>
-                로그아웃
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-              <Link href="/posts" className="btn-primary-green" style={{ textDecoration: "none", fontSize: "0.9rem", padding: "0.6rem 1.2rem" }}>
-                🏂 커뮤니티 게시판
-              </Link>
-              <Link href="/login" className="btn-secondary" style={{ textDecoration: "none", fontSize: "0.9rem", padding: "0.6rem 1.2rem" }}>
-                로그인
-              </Link>
-              <Link href="/signup" className="btn-primary-green" style={{ textDecoration: "none", fontSize: "0.9rem", padding: "0.6rem 1.2rem" }}>
-                회원가입
-              </Link>
-            </div>
-          )}
+    <div className="min-h-screen bg-[var(--snow-background)] text-[var(--snow-ink)]">
+      <TopNav active="home" />
+      <div className="border-b border-[var(--snow-border)] bg-[var(--snow-surface-mid)] py-2">
+        <div className="snow-container overflow-hidden px-5 lg:px-8">
+          <p className="whitespace-nowrap font-mono text-xs uppercase tracking-[0.16em] text-[var(--snow-ink-soft)]">
+            Yongpyong: -5°C, fresh powder <span className="mx-5 text-[var(--snow-faint)]">|</span>
+            High1: -3°C, clear <span className="mx-5 text-[var(--snow-faint)]">|</span>
+            Welli Hilli: -4°C, snowing <span className="mx-5 text-[var(--snow-faint)]">|</span>
+            Phoenix: -2°C, overcast
+          </p>
         </div>
-      </header>
-
-      {/* 2. 메인 히어로 섹션 */}
-      <div style={{ textAlign: "center", maxWidth: "800px", margin: "0 auto 3.5rem auto" }}>
-        <span className="pill-green" style={{ marginBottom: "1rem", display: "inline-block", fontSize: "0.85rem", padding: "0.35rem 1rem" }}>
-          🏂 스노보더 전용 커뮤니티 플랫폼
-        </span>
-        <h1 style={{ fontSize: "3.25rem", fontWeight: "800", lineHeight: "1.15", letterSpacing: "-1.5px", marginBottom: "1.5rem" }}>
-          새로운 보딩의 시작 <br />
-          <span style={{ color: "var(--primary)" }}>Snowthing에 오신 것을 환영합니다</span>
-        </h1>
-        <p style={{ color: "var(--text-muted)", fontSize: "1.15rem", lineHeight: "1.6", marginBottom: "2.5rem" }}>
-          스프링 세션 고정 방어 보안 기반의 백엔드와 Next.js 15가 연결된 플랫폼입니다. <br />
-          지금 바로 회원가입 하시고 스노보더 커뮤니티를 체험해 보세요!
-        </p>
-
-        {!profile && !loading && (
-          <div style={{ display: "flex", justifyContent: "center", gap: "1.25rem", flexWrap: "wrap" }}>
-            <Link href="/signup" className="btn-primary-green" style={{ textDecoration: "none", fontSize: "1.1rem", padding: "0.9rem 2.25rem", borderRadius: "8px" }}>
-              ✨ 지금 무료 회원가입하기
-            </Link>
-            <Link href="/login" className="btn-secondary" style={{ textDecoration: "none", fontSize: "1.1rem", padding: "0.9rem 2.25rem", borderRadius: "8px" }}>
-              🔑 기존 계정 로그인
-            </Link>
-          </div>
-        )}
       </div>
 
-      {/* 3. 로그인 유저 프로필 카드 및 프로필 수정 모달 */}
-      <div style={{ maxWidth: "680px", margin: "0 auto" }}>
-        {loading ? (
-          <div className="card-supabase" style={{ textAlign: "center", padding: "3rem" }}>
-            <p style={{ color: "var(--text-muted)" }}>세션 인증 상태 확인 중...</p>
-          </div>
-        ) : profile ? (
-          <div className="card-supabase" style={{ borderLeft: "4px solid var(--primary)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
-              <div>
-                <span className="pill-green" style={{ marginBottom: "0.5rem", display: "inline-block" }}>
-                  보더 명함 프로필 (Session Active)
-                </span>
-                <h2 style={{ fontSize: "1.6rem", fontWeight: "700" }}>{profile.nickname} 님</h2>
+      <div className="snow-container snow-grid-shell bg-[var(--snow-background)]">
+        <SideCategories active="all" />
+        <main className="px-5 py-8 lg:px-8 lg:py-10">
+          <section className="snow-card relative min-h-[330px] overflow-hidden p-8 md:p-10">
+            <img
+              src="https://images.unsplash.com/photo-1482867996988-29ec3a0f1acd?w=1600&auto=format&fit=crop&q=80"
+              alt="눈 덮인 산맥"
+              className="absolute inset-0 h-full w-full object-cover opacity-20 grayscale"
+            />
+            <div className="relative z-10 flex min-h-[260px] flex-col justify-end gap-8 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-3xl">
+                <span className="snow-chip snow-chip-dark mb-6">Community Board</span>
+                <h1 className="snow-heading-xl">SHRED-TALK</h1>
+                <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--snow-ink-soft)]">
+                  장비 이야기, 리조트 상황, 익명 고민, 라이딩 질문을 한곳에서 나누는 스노보더 커뮤니티입니다.
+                </p>
               </div>
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <button
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="btn-primary-green"
-                  style={{ fontSize: "0.8rem", padding: "0.35rem 0.8rem" }}
-                >
-                  {isEditing ? "닫기" : "✏️ 프로필 수정"}
-                </button>
-                <span style={{ fontSize: "0.8rem", backgroundColor: "#262626", color: "#ffffff", padding: "0.3rem 0.7rem", borderRadius: "4px", fontWeight: "600" }}>
-                  {profile.role}
-                </span>
+              <Link href="/posts/create" className="snow-btn-primary shrink-0">
+                <span className="material-symbols-outlined text-[17px]">add_box</span>
+                Create Post
+              </Link>
+            </div>
+          </section>
+
+          <section className="mt-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_280px]">
+            <div>
+              <div className="mb-6 flex items-end justify-between border-b-2 border-black pb-3">
+                <h2 className="flex items-center gap-2 text-2xl font-extrabold text-black">
+                  <span className="material-symbols-outlined text-[22px] text-[var(--snow-error)]">local_fire_department</span>
+                  Trending Topics
+                </h2>
+                <Link href="/posts" className="snow-label text-black">
+                  View all
+                </Link>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {trendingCards.map((card) => (
+                  <Link key={card.title} href="/posts" className="snow-card snow-card-hover group relative min-h-[210px] overflow-hidden p-5">
+                    <img src={card.image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-[0.22] grayscale transition group-hover:opacity-[0.32]" />
+                    <div className="relative z-10 flex h-full min-h-[170px] flex-col justify-between">
+                      <span className="snow-chip bg-white">{card.label}</span>
+                      <h3 className="max-w-[85%] text-2xl font-extrabold leading-tight text-black">{card.title}</h3>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
 
-            {/* 프로필 수정 폼 (isEditing === true) */}
-            {isEditing ? (
-              <form onSubmit={handleUpdateProfile} style={{ backgroundColor: "#141414", padding: "1.5rem", borderRadius: "8px", border: "1px solid var(--primary)", marginBottom: "1.5rem" }}>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "1rem", color: "var(--primary)" }}>
-                  ✏️ 내 프로필 정보 수정
-                </h3>
-
-                {updateError && (
-                  <div style={{ backgroundColor: "rgba(255, 77, 79, 0.1)", border: "1px solid var(--error)", padding: "0.6rem", borderRadius: "6px", color: "var(--error)", fontSize: "0.85rem", marginBottom: "1rem" }}>
-                    🚨 {updateError}
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label className="form-label">활동 닉네임 *</label>
-                  <input
-                    type="text"
-                    className="input-supabase"
-                    value={editNickname}
-                    onChange={(e) => setEditNickname(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">자기소개</label>
-                  <input
-                    type="text"
-                    className="input-supabase"
-                    value={editBio}
-                    onChange={(e) => setEditBio(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">주 출발/거주 지역</label>
-                  <input
-                    type="text"
-                    className="input-supabase"
-                    value={editDepartureRegion}
-                    onChange={(e) => setEditDepartureRegion(e.target.value)}
-                  />
-                </div>
-
-                {/* 선호 스키장 선택 */}
-                <div className="form-group">
-                  <label className="form-label">선호 스키장 수정 (다중 선택)</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem" }}>
-                    {resorts.map((r) => (
-                      <label
-                        key={r.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          backgroundColor: selectedResortIds.includes(r.id) ? "rgba(62, 207, 142, 0.1)" : "#1c1c1c",
-                          border: `1px solid ${selectedResortIds.includes(r.id) ? "var(--primary)" : "#333333"}`,
-                          padding: "0.5rem",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontSize: "0.8rem",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedResortIds.includes(r.id)}
-                          onChange={() => handleResortToggle(r.id)}
-                        />
-                        <span>{r.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 라이딩 성향 선택 */}
-                <div className="form-group">
-                  <label className="form-label">라이딩 성향 수정 (다중 선택)</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem" }}>
-                    {ridingStyles.map((s) => (
-                      <label
-                        key={s.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          backgroundColor: selectedStyleIds.includes(s.id) ? "rgba(62, 207, 142, 0.1)" : "#1c1c1c",
-                          border: `1px solid ${selectedStyleIds.includes(s.id) ? "var(--primary)" : "#333333"}`,
-                          padding: "0.5rem",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontSize: "0.8rem",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedStyleIds.includes(s.id)}
-                          onChange={() => handleStyleToggle(s.id)}
-                        />
-                        <span>{s.styleName}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.25rem" }}>
-                  <button type="submit" className="btn-primary-green" style={{ flex: 1 }} disabled={updateLoading}>
-                    {updateLoading ? "저장 중..." : "수정 완료 (PUT)"}
-                  </button>
-                  <button type="button" onClick={() => setIsEditing(false)} className="btn-secondary">
-                    취소
-                  </button>
-                </div>
-              </form>
-            ) : (
-              /* 프로필 조회 카드 */
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", backgroundColor: "#141414", padding: "1.25rem", borderRadius: "8px", border: "1px solid #262626", fontSize: "0.95rem" }}>
-                <div>
-                  <span style={{ color: "var(--text-muted)", width: "120px", display: "inline-block" }}>이메일 계정:</span>
-                  <strong style={{ color: "#ffffff" }}>{profile.email}</strong>
-                </div>
-                <div>
-                  <span style={{ color: "var(--text-muted)", width: "120px", display: "inline-block" }}>외부 UUID ID:</span>
-                  <code style={{ color: "var(--primary)", fontFamily: "monospace", fontSize: "0.9rem" }}>{profile.publicId}</code>
-                </div>
-
-                <div>
-                  <span style={{ color: "var(--text-muted)", width: "120px", display: "inline-block", verticalAlign: "top", marginTop: "0.25rem" }}>선호 스키장:</span>
-                  <div style={{ display: "inline-flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                    {profile.resortNames && profile.resortNames.length > 0 ? (
-                      profile.resortNames.map((r, i) => (
-                        <span key={i} style={{ backgroundColor: "rgba(62, 207, 142, 0.15)", color: "var(--primary)", border: "1px solid rgba(62, 207, 142, 0.3)", padding: "0.2rem 0.6rem", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "600" }}>
-                          🏔️ {r}
-                        </span>
-                      ))
-                    ) : (
-                      <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>미선택</span>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <span style={{ color: "var(--text-muted)", width: "120px", display: "inline-block", verticalAlign: "top", marginTop: "0.25rem" }}>라이딩 성향:</span>
-                  <div style={{ display: "inline-flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                    {profile.ridingStyleNames && profile.ridingStyleNames.length > 0 ? (
-                      profile.ridingStyleNames.map((s, i) => (
-                        <span key={i} style={{ backgroundColor: "#262626", color: "#ffffff", border: "1px solid #333333", padding: "0.2rem 0.6rem", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "600" }}>
-                          🏂 {s}
-                        </span>
-                      ))
-                    ) : (
-                      <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>미선택</span>
-                    )}
-                  </div>
+            <aside className="space-y-6">
+              <div className="snow-card p-6">
+                <h3 className="text-2xl font-extrabold italic text-black">Quick Actions</h3>
+                <div className="mt-5 grid gap-3">
+                  <Link href="/posts" className="snow-btn-primary w-full">
+                    게시판 보기
+                  </Link>
+                  {profile ? (
+                    <Link href="/profile" className="snow-btn-secondary w-full">
+                      {profile.nickname} 프로필
+                    </Link>
+                  ) : (
+                    <Link href="/signup" className="snow-btn-secondary w-full">
+                      회원가입
+                    </Link>
+                  )}
                 </div>
               </div>
-            )}
 
-            <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                💡 PUT /api/members/me 프로필 수정 연동 완료
-              </p>
-              <button onClick={handleLogout} className="btn-secondary" style={{ fontSize: "0.85rem" }}>
-                로그아웃
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="card-supabase" style={{ textAlign: "center", padding: "2.5rem 2rem" }}>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem" }}>회원가입이 필요합니다</h3>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", marginBottom: "1.75rem" }}>
-              아래 버튼을 누르시면 즉시 회원가입 페이지로 이동합니다.
-            </p>
-            <Link href="/signup" className="btn-primary-green" style={{ textDecoration: "none", display: "inline-block", width: "100%", maxWidth: "320px" }}>
-              회원가입 페이지로 이동
-            </Link>
-          </div>
-        )}
+              <div className="snow-card p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-2xl font-extrabold text-black">Top Posts</h3>
+                  <span className="snow-label">Real-time</span>
+                </div>
+                <div className="divide-y divide-[var(--snow-border)]">
+                  {topPosts.map(([category, title, count]) => (
+                    <Link key={title} href="/posts" className="grid grid-cols-[56px_minmax(0,1fr)_42px] gap-3 py-3 text-sm">
+                      <span className="snow-label">{category}</span>
+                      <span className="truncate font-semibold text-black">{title}</span>
+                      <span className="font-mono text-xs text-[var(--snow-error)]">[{count}]</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          </section>
+        </main>
       </div>
+      <Footer />
     </div>
   );
 }

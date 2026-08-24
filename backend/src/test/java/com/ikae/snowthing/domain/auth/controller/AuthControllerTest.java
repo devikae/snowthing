@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -63,7 +64,7 @@ class AuthControllerTest {
                 .password("Password123!")
                 .build();
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
@@ -81,7 +82,7 @@ class AuthControllerTest {
                 .password("WrongPassword999!")
                 .build();
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
@@ -99,7 +100,7 @@ class AuthControllerTest {
                 .password("Password123!")
                 .build();
 
-        MvcResult mvcResult = mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult mvcResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .session(beforeSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -123,7 +124,7 @@ class AuthControllerTest {
                 .password("Password123!")
                 .build();
 
-        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .session(beforeSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -136,7 +137,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("sessionuser@snowthing.com"));
 
-        mockMvc.perform(post("/api/v1/auth/logout").session(session))
+        mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("LOGOUT_SUCCESS"));
 

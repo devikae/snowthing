@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Footer, TopNav } from "../components/SiteChrome";
+import { csrfFetch } from "../lib/csrfFetch";
 
 interface ResortMaster {
   id: number;
@@ -16,78 +18,78 @@ interface RidingStyleMaster {
   description: string;
 }
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+}
+
 export default function SignUpPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState(""); // 비밀번호 확인 입력 필드
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [nickname, setNickname] = useState("");
   const [bio, setBio] = useState("");
   const [departureRegion, setDepartureRegion] = useState("");
-
   const [resorts, setResorts] = useState<ResortMaster[]>([]);
   const [ridingStyles, setRidingStyles] = useState<RidingStyleMaster[]>([]);
-
   const [selectedResortIds, setSelectedResortIds] = useState<number[]>([]);
   const [selectedStyleIds, setSelectedStyleIds] = useState<number[]>([]);
-
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 이메일 및 비밀번호 정규식 패턴
-  const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-  const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
-
-  // 비밀번호 실시간 조건 판단
   const isLengthValid = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
   const isPasswordComplexityValid = PASSWORD_REGEX.test(password);
   const isPasswordMatch = password.length > 0 && password === passwordConfirm;
 
   useEffect(() => {
-    const fetchMasterData = async () => {
-      try {
-        const [resortRes, styleRes] = await Promise.all([
-          fetch("http://localhost:8080/api/resorts"),
-          fetch("http://localhost:8080/api/riding-styles"),
-        ]);
-        if (resortRes.ok && styleRes.ok) {
-          const resortData = await resortRes.json();
-          const styleData = await styleRes.json();
-          setResorts(resortData);
-          setRidingStyles(styleData);
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const [resortRes, styleRes] = await Promise.all([
+            fetch("http://localhost:8080/api/v1/master/resorts"),
+            fetch("http://localhost:8080/api/v1/master/riding-styles"),
+          ]);
+          if (resortRes.ok) {
+            const resortData: ResortMaster[] = await resortRes.json();
+            setResorts(resortData);
+          }
+          if (styleRes.ok) {
+            const styleData: RidingStyleMaster[] = await styleRes.json();
+            setRidingStyles(styleData);
+          }
+        } catch (error) {
+          console.error("마스터 데이터 로드 실패:", error);
         }
-      } catch (err) {
-        console.error("마스터 데이터 로딩 실패", err);
-      }
-    };
-    fetchMasterData();
+      })();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleResortToggle = (id: number) => {
-    setSelectedResortIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setSelectedResortIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
   const handleStyleToggle = (id: number) => {
-    setSelectedStyleIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setSelectedStyleIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setErrorMsg("");
 
     if (!EMAIL_REGEX.test(email)) {
-      setErrorMsg("올바른 이메일 형식(예: user@snowthing.com)이어야 합니다.");
+      setErrorMsg("올바른 이메일 형식으로 입력해주세요. 예: user@snowthing.com");
       return;
     }
 
-    if (!isPasswordComplexityValid) {
-      setErrorMsg("비밀번호는 최소 8자 이상, 영문 대문자 1개, 특수문자 1개를 포함해야 합니다.");
+    if (password.length < 4) {
+      setErrorMsg("비밀번호는 최소 4자 이상이어야 합니다.");
       return;
     }
 
@@ -97,13 +99,10 @@ export default function SignUpPage() {
     }
 
     setLoading(true);
-
     try {
-      const res = await fetch("http://localhost:8080/api/members", {
+      const res = await csrfFetch("http://localhost:8080/api/v1/members", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
           password,
@@ -117,224 +116,139 @@ export default function SignUpPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || errorData.message || "회원가입 실패");
+        throw new Error(errorData.message || errorData.error || "회원가입에 실패했습니다.");
       }
 
-      alert("회원가입이 완료되었습니다! 로그인해 주세요.");
-      router.push("/login");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+      // 회원가입 성공 즉시 자동 로그인 수행
+      const loginRes = await csrfFetch("http://localhost:8080/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, rememberMe: true }),
+      });
+
+      if (loginRes.ok) {
+        router.push("/");
+      } else {
+        router.push("/login");
+      }
+    } catch (error) {
+      setErrorMsg(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", padding: "2rem" }}>
-      <div className="card-supabase" style={{ width: "100%", maxWidth: "560px" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <span className="pill-green" style={{ marginBottom: "0.75rem", display: "inline-block" }}>
-            Snowthing Join
-          </span>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: "700" }}>회원가입</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "0.5rem" }}>
-            스노보더 커뮤니티 Snowthing의 회원이 되어보세요.
-          </p>
-        </div>
-
-        {errorMsg && (
-          <div style={{ backgroundColor: "rgba(255, 77, 79, 0.1)", border: "1px solid var(--error)", padding: "0.75rem", borderRadius: "6px", color: "var(--error)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
-            🚨 {errorMsg}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          {/* 이메일 계정 */}
-          <div className="form-group">
-            <label className="form-label">이메일 계정 *</label>
-            <input
-              type="email"
-              className="input-supabase"
-              placeholder="user@snowthing.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+    <div className="min-h-screen bg-[var(--snow-background)]">
+      <TopNav active="signup" />
+      <main className="snow-container px-5 py-10 lg:px-8">
+        <section className="mx-auto max-w-3xl">
+          <div className="mb-7 border-b-2 border-black pb-5 text-center">
+            <span className="snow-chip snow-chip-dark mb-4">Snowthing Join</span>
+            <h1 className="text-4xl font-extrabold italic text-black">회원가입</h1>
+            <p className="mt-3 text-[var(--snow-muted)]">라이딩 성향과 선호 리조트를 함께 등록합니다.</p>
           </div>
 
-          {/* 비밀번호 1차 입력 */}
-          <div className="form-group">
-            <label className="form-label">비밀번호 *</label>
-            <input
-              type="password"
-              className="input-supabase"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <form onSubmit={handleSubmit} className="snow-card grid gap-6 bg-white p-6 md:p-8">
+            {errorMsg && <div className="rounded border border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-semibold text-[#dc2626]">{errorMsg}</div>}
 
-            {/* 실시간 비밀번호 복잡도 조건 배지 표시 */}
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="grid gap-2 md:col-span-2">
+                <span className="snow-label">Email</span>
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@snowthing.com" className="snow-input" required />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="snow-label">Password</span>
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" className="snow-input" required />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="snow-label">Confirm</span>
+                <input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="비밀번호 확인" className="snow-input" required />
+              </label>
+            </div>
+
             {password.length > 0 && (
-              <div style={{ display: "flex", gap: "0.5rem", fontSize: "0.78rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
-                <span style={{ color: isLengthValid ? "#3ecf8e" : "#ff4d4f", backgroundColor: isLengthValid ? "rgba(62, 207, 142, 0.1)" : "rgba(255, 77, 79, 0.1)", padding: "0.15rem 0.5rem", borderRadius: "4px" }}>
-                  {isLengthValid ? "✓ 8자 이상" : "✗ 8자 이상 필요"}
-                </span>
-                <span style={{ color: hasUppercase ? "#3ecf8e" : "#ff4d4f", backgroundColor: hasUppercase ? "rgba(62, 207, 142, 0.1)" : "rgba(255, 77, 79, 0.1)", padding: "0.15rem 0.5rem", borderRadius: "4px" }}>
-                  {hasUppercase ? "✓ 대문자 1개 이상" : "✗ 대문자 필요"}
-                </span>
-                <span style={{ color: hasSpecialChar ? "#3ecf8e" : "#ff4d4f", backgroundColor: hasSpecialChar ? "rgba(62, 207, 142, 0.1)" : "rgba(255, 77, 79, 0.1)", padding: "0.15rem 0.5rem", borderRadius: "4px" }}>
-                  {hasSpecialChar ? "✓ 특수문자 1개 이상" : "✗ 특수문자 필요"}
-                </span>
+              <div className="flex flex-wrap gap-2">
+                <span className={`snow-chip ${isLengthValid ? "snow-chip-green" : ""}`}>8자 이상</span>
+                <span className={`snow-chip ${hasUppercase ? "snow-chip-green" : ""}`}>대문자 포함</span>
+                <span className={`snow-chip ${hasSpecialChar ? "snow-chip-green" : ""}`}>특수문자 포함</span>
+                <span className={`snow-chip ${isPasswordMatch ? "snow-chip-green" : ""}`}>비밀번호 일치</span>
               </div>
             )}
-          </div>
 
-          {/* 비밀번호 2차 확인 입력 */}
-          <div className="form-group">
-            <label className="form-label">비밀번호 확인 *</label>
-            <input
-              type="password"
-              className="input-supabase"
-              placeholder="비밀번호 다시 입력"
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              style={{
-                borderColor: passwordConfirm.length > 0 ? (isPasswordMatch ? "var(--primary)" : "var(--error)") : undefined,
-              }}
-              required
-            />
-
-            {/* 실시간 2중 입력 일치 여부 피드백 메시지 */}
-            {passwordConfirm.length > 0 && (
-              <div style={{ fontSize: "0.82rem", marginTop: "0.35rem", fontWeight: "600" }}>
-                {isPasswordMatch ? (
-                  <span style={{ color: "var(--primary)" }}>🟢 비밀번호가 안전하게 일치합니다.</span>
-                ) : (
-                  <span style={{ color: "var(--error)" }}>🔴 비밀번호가 일치하지 않습니다.</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 활동 닉네임 */}
-          <div className="form-group" style={{ marginTop: "1.25rem" }}>
-            <label className="form-label">활동 닉네임 * (2자~10자)</label>
-            <input
-              type="text"
-              className="input-supabase"
-              placeholder="휘팍카빙왕"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* 선호 스키장 다중 선택 체크박스 */}
-          <div className="form-group" style={{ marginTop: "1.5rem" }}>
-            <label className="form-label">주로 방문하는 선호 스키장 (다중 선택)</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", marginTop: "0.25rem" }}>
-              {resorts.map((r) => (
-                <label
-                  key={r.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    backgroundColor: selectedResortIds.includes(r.id) ? "rgba(62, 207, 142, 0.1)" : "#141414",
-                    border: `1px solid ${selectedResortIds.includes(r.id) ? "var(--primary)" : "var(--border-dark)"}`,
-                    padding: "0.6rem 0.8rem",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    color: selectedResortIds.includes(r.id) ? "var(--primary)" : "var(--text-main)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedResortIds.includes(r.id)}
-                    onChange={() => handleResortToggle(r.id)}
-                    style={{ accentColor: "var(--primary)" }}
-                  />
-                  <span>{r.name}</span>
-                </label>
-              ))}
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="snow-label">Nickname</span>
+                <input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="닉네임" className="snow-input" required />
+              </label>
+              <label className="grid gap-2">
+                <span className="snow-label">Departure Region</span>
+                <input value={departureRegion} onChange={(event) => setDepartureRegion(event.target.value)} placeholder="서울 송파구" className="snow-input" />
+              </label>
             </div>
-          </div>
 
-          {/* 라이딩 성향 다중 선택 체크박스 */}
-          <div className="form-group" style={{ marginTop: "1.25rem" }}>
-            <label className="form-label">라이딩 성향 (다중 선택)</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", marginTop: "0.25rem" }}>
-              {ridingStyles.map((s) => (
-                <label
-                  key={s.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    backgroundColor: selectedStyleIds.includes(s.id) ? "rgba(62, 207, 142, 0.1)" : "#141414",
-                    border: `1px solid ${selectedStyleIds.includes(s.id) ? "var(--primary)" : "var(--border-dark)"}`,
-                    padding: "0.6rem 0.8rem",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    color: selectedStyleIds.includes(s.id) ? "var(--primary)" : "var(--text-main)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedStyleIds.includes(s.id)}
-                    onChange={() => handleStyleToggle(s.id)}
-                    style={{ accentColor: "var(--primary)" }}
-                  />
-                  <span>{s.styleName}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+            <label className="grid gap-2">
+              <span className="snow-label">Bio</span>
+              <input value={bio} onChange={(event) => setBio(event.target.value)} placeholder="자기소개 한 줄" className="snow-input" />
+            </label>
 
-          <div className="form-group" style={{ marginTop: "1.25rem" }}>
-            <label className="form-label">자기소개 한마디</label>
-            <input
-              type="text"
-              className="input-supabase"
-              placeholder="입문 2년차 라이딩 보더입니다"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-            />
-          </div>
+            <SelectionGrid title="Base Resorts" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={handleResortToggle} />
+            <SelectionGrid title="Riding Styles" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={handleStyleToggle} />
 
-          <div className="form-group">
-            <label className="form-label">주 출발/거주 지역</label>
-            <input
-              type="text"
-              className="input-supabase"
-              placeholder="서울 송파구"
-              value={departureRegion}
-              onChange={(e) => setDepartureRegion(e.target.value)}
-            />
-          </div>
+            <button type="submit" className="snow-btn-primary w-full" disabled={loading || !isPasswordMatch}>
+              {loading ? "가입 처리 중" : "회원가입 완료"}
+            </button>
+          </form>
 
-          <button
-            type="submit"
-            className="btn-primary-green"
-            style={{ width: "100%", marginTop: "1.5rem" }}
-            disabled={loading || !isPasswordComplexityValid || !isPasswordMatch}
-          >
-            {loading ? "가입 처리 중..." : "회원가입 완료"}
-          </button>
-        </form>
-
-        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          이미 계정이 있으신가요?{" "}
-          <Link href="/login" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: "600" }}>
-            로그인하기
-          </Link>
-        </div>
-      </div>
+          <p className="mt-6 text-center text-sm text-[var(--snow-muted)]">
+            이미 계정이 있나요?{" "}
+            <Link href="/login" className="font-bold text-black underline">
+              로그인
+            </Link>
+          </p>
+        </section>
+      </main>
+      <Footer />
     </div>
+  );
+}
+
+function SelectionGrid({
+  title,
+  items,
+  selectedIds,
+  onToggle,
+}: {
+  title: string;
+  items: { id: number; label: string }[];
+  selectedIds: number[];
+  onToggle: (id: number) => void;
+}) {
+  return (
+    <fieldset className="grid gap-3">
+      <legend className="snow-label">{title}</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {items.length === 0 ? (
+          <p className="text-sm text-[var(--snow-muted)]">선택 항목을 불러오는 중입니다.</p>
+        ) : (
+          items.map((item) => {
+            const checked = selectedIds.includes(item.id);
+            return (
+              <label
+                key={item.id}
+                className={`flex items-center gap-2 rounded border px-3 py-3 text-sm font-semibold ${
+                  checked ? "border-black bg-[var(--snow-surface-low)] text-black" : "border-[var(--snow-border)] bg-white text-[var(--snow-ink-soft)]"
+                }`}
+              >
+                <input type="checkbox" checked={checked} onChange={() => onToggle(item.id)} />
+                {item.label}
+              </label>
+            );
+          })
+        )}
+      </div>
+    </fieldset>
   );
 }

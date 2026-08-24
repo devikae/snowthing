@@ -9,18 +9,19 @@ spring:
       - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
 
   datasource:
-    url: jdbc:h2:mem:snowdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:file:./data/snowdb;MODE=MySQL;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
 
   h2:
     console:
@@ -35,7 +36,7 @@ logging:
 server:
   servlet:
     session:
-      timeout: 60m # 유저 활동 슬라이딩 세션 타임아웃 1시간(60분) 설정!
+      timeout: 60m
       cookie:
         http-only: true
         same-site: lax

@@ -19,8 +19,8 @@ application-credentials*.yml
 *.p12
 
 # Local Project & Study Notes
-!docs/study/
-!docs/study/**
+docs/study/
+docs/study/**
 docs/project/*
 !docs/project/project.md
 !docs/project/work.md

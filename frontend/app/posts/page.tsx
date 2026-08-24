@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Footer, SideCategories, TopNav } from "../components/SiteChrome";
 
 interface PostItem {
   publicId: string;
@@ -10,194 +12,285 @@ interface PostItem {
   title: string;
   writerNickname: string;
   thumbnailImageUrl: string | null;
+  hasImage: boolean;
   viewCount: number;
   commentCount: number;
   likeCount: number;
   dislikeCount: number;
   status: string;
+  isDeleted: boolean;
   createdAt: string;
 }
 
 const CATEGORIES = [
-  { code: "", name: "전체게시판" },
-  { code: "FREE", name: "자유게시판" },
-  { code: "ANONYMOUS", name: "익명게시판" },
-  { code: "QNA", name: "질문게시판" },
-  { code: "FOOD", name: "맛집게시판" },
+  { code: "", name: "전체 게시판", key: "all" },
+  { code: "FREE", name: "자유게시판", key: "free" },
+  { code: "ANONYMOUS", name: "익명 게시판", key: "anonymous" },
+  { code: "QNA", name: "장비 Q&A", key: "qna" },
+  { code: "FOOD", name: "리조트 맛집", key: "food" },
 ];
 
-export default function PostListPage() {
+const featured = [
+  {
+    label: "Announcement",
+    title: "시즌권 공동구매와 양도 거래 주의사항",
+    body: "거래 게시글은 연락처 노출을 최소화하고, 현장 확인 전 선입금을 피해주세요.",
+    dark: false,
+  },
+  {
+    label: "Event",
+    title: "이번 주말 베스트 라이딩 클립 공유",
+    body: "짧은 영상 링크와 촬영 리조트를 함께 남기면 메인 피드에 소개됩니다.",
+    dark: true,
+  },
+];
+
+function PostListContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const categoryFromUrl = searchParams.get("category") || "";
+
   const [posts, setPosts] = useState<PostItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl);
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const fetchPosts = async () => {
+  // URL Query Parameter ?category= 변경 감지 및 자동 동기화
+  useEffect(() => {
+    setSelectedCategory(categoryFromUrl);
+    setPage(0);
+  }, [categoryFromUrl]);
+
+  const activeCategoryKey = useMemo(
+    () => CATEGORIES.find((category) => category.code === selectedCategory)?.key ?? "all",
+    [selectedCategory],
+  );
+
+  const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:8080/api/posts?page=${page}&size=10`;
+      let url = `http://localhost:8080/api/v1/posts?page=${page + 1}&size=10`;
       if (selectedCategory) {
         url += `&categoryCode=${selectedCategory}`;
       }
+      if (searchKeyword.trim()) {
+        url += `&keyword=${encodeURIComponent(searchKeyword.trim())}`;
+      }
+
       const res = await fetch(url, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        setPosts(data.content || []);
-        setTotalPages(data.totalPages || 1);
+        setPosts(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(data.pageInfo?.totalPages || 1);
       }
-    } catch (err) {
-      console.error("게시글 목록 로드 실패:", err);
+    } catch (error) {
+      console.error("게시글 목록 로드 실패:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, searchKeyword, selectedCategory]);
 
   useEffect(() => {
-    fetchPosts();
-  }, [selectedCategory, page]);
+    const timer = window.setTimeout(() => {
+      void fetchPosts();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchPosts]);
+
+  const handlePostClick = (event: React.MouseEvent, post: PostItem) => {
+    if (post.isDeleted || post.status === "DELETED") {
+      event.preventDefault();
+      alert("삭제된 게시글입니다.");
+      return;
+    }
+
+    if (post.status === "BLOCKED") {
+      event.preventDefault();
+      alert("관리자에 의해 차단된 게시글입니다.");
+    }
+  };
+
+  const handleSearch = () => {
+    setPage(0);
+    void fetchPosts();
+  };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-dark)", color: "var(--text-main)" }}>
-      {/* Header Navigation */}
-      <header style={{ borderBottom: "1px solid var(--border-dark)", background: "var(--bg-dark-soft)", padding: "1rem 2rem" }}>
-        <div className="container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Link href="/" style={{ fontSize: "1.5rem", fontWeight: "bold", color: "var(--primary)", textDecoration: "none" }}>
-            🏂 Snowthing Board
-          </Link>
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <Link href="/" style={{ color: "var(--text-sub)", textDecoration: "none" }}>마이페이지</Link>
-            <Link href="/posts" style={{ color: "var(--primary)", fontWeight: "bold", textDecoration: "none" }}>게시판</Link>
-            <Link href="/login" style={{ color: "var(--text-sub)", textDecoration: "none" }}>로그인</Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[var(--snow-background)]">
+      <TopNav active="posts" />
+      <div className="snow-container snow-grid-shell">
+        <SideCategories active={activeCategoryKey} />
+        <main className="px-5 py-8 lg:px-8 lg:py-10">
+          <header className="mb-8 border-b-2 border-black pb-5">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="snow-heading-lg uppercase">Free Board</h1>
+                <p className="mt-3 text-lg text-[var(--snow-muted)]">자유 게시판과 익명 게시판을 한곳에서 확인합니다.</p>
+              </div>
+              <Link href="/posts/create" className="snow-btn-primary">
+                <span className="material-symbols-outlined text-[17px]">edit</span>
+                Write
+              </Link>
+            </div>
+          </header>
 
-      <main className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
-        {/* Top Header & Write Button */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-          <h1 style={{ fontSize: "1.8rem", fontWeight: "bold" }}>🏂 스노우보드 커뮤니티</h1>
-          <Link
-            href={`/posts/create${selectedCategory ? `?category=${selectedCategory}` : ""}`}
-            className="btn-primary-green"
-            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.25rem", borderRadius: "8px", fontWeight: 600, boxShadow: "0 4px 12px rgba(62, 207, 142, 0.2)" }}
-          >
-            ✏️ 글쓰기
-          </Link>
-        </div>
+          <section className="mb-10 grid gap-6 md:grid-cols-2">
+            {featured.map((item) => (
+              <article
+                key={item.title}
+                className={`snow-card min-h-[190px] p-6 ${item.dark ? "bg-black text-white" : "bg-white text-black"}`}
+              >
+                <div className="flex h-full flex-col justify-between gap-8">
+                  <div className="flex items-start justify-between gap-4">
+                    <span className={`snow-chip ${item.dark ? "bg-white text-black" : "snow-chip-dark"}`}>{item.label}</span>
+                    <span className={`font-mono text-xs ${item.dark ? "text-white/70" : "text-[var(--snow-muted)]"}`}>Pinned</span>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-extrabold leading-tight">{item.title}</h2>
+                    <p className={`mt-3 leading-7 ${item.dark ? "text-white/80" : "text-[var(--snow-ink-soft)]"}`}>{item.body}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
 
-        {/* Category Tabs */}
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.code}
-              onClick={() => {
-                setSelectedCategory(cat.code);
-                setPage(0);
-              }}
-              style={{
-                padding: "0.5rem 1rem",
-                borderRadius: "20px",
-                border: "1px solid",
-                borderColor: selectedCategory === cat.code ? "var(--primary)" : "var(--border-dark)",
-                backgroundColor: selectedCategory === cat.code ? "var(--primary-deep)" : "var(--bg-dark-card)",
-                color: selectedCategory === cat.code ? "#ffffff" : "var(--text-sub)",
-                cursor: "pointer",
-                fontWeight: 500,
-                fontSize: "0.9rem",
-              }}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Post Table/List */}
-        <div className="card-supabase" style={{ padding: 0, overflow: "hidden" }}>
-          {loading ? (
-            <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>게시글 로딩 중...</div>
-          ) : posts.length === 0 ? (
-            <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>등록된 게시글이 없습니다.</div>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-              <thead>
-                <tr style={{ background: "var(--bg-dark-card)", borderBottom: "1px solid var(--border-dark)", color: "var(--text-sub)", fontSize: "0.85rem" }}>
-                  <th style={{ padding: "1rem" }}>카테고리</th>
-                  <th style={{ padding: "1rem" }}>제목</th>
-                  <th style={{ padding: "1rem" }}>작성자</th>
-                  <th style={{ padding: "1rem", textAlign: "center" }}>조회 / 반응</th>
-                  <th style={{ padding: "1rem", textAlign: "right" }}>작성일</th>
-                </tr>
-              </thead>
-              <tbody>
-                {posts.map((post) => (
-                  <tr key={post.publicId} style={{ borderBottom: "1px solid var(--border-dark)" }}>
-                    <td style={{ padding: "1rem", fontSize: "0.85rem", color: "var(--primary)" }}>
-                      [{post.categoryName}]
-                    </td>
-                    <td style={{ padding: "1rem" }}>
-                      <Link href={`/posts/${post.publicId}`} style={{ color: "var(--text-main)", textDecoration: "none", fontWeight: 600 }}>
-                        {post.title}
-                        {post.commentCount > 0 && (
-                          <span style={{ color: "var(--primary)", marginLeft: "0.5rem", fontSize: "0.85rem" }}>
-                            [{post.commentCount}]
-                          </span>
-                        )}
-                      </Link>
-                    </td>
-                    <td style={{ padding: "1rem", fontSize: "0.9rem", color: "var(--text-sub)" }}>
-                      {post.writerNickname}
-                    </td>
-                    <td style={{ padding: "1rem", textAlign: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                      👁️ {post.viewCount} | 👍 {post.likeCount} | 👎 {post.dislikeCount}
-                    </td>
-                    <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                      {new Date(post.createdAt).toLocaleDateString()}
-                    </td>
-                  </tr>
+          <section className="snow-card bg-white">
+            <div className="flex flex-col gap-4 border-b border-[var(--snow-border)] p-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-4">
+                {CATEGORIES.map((category) => (
+                  <button
+                    key={category.code}
+                    onClick={() => {
+                      setSelectedCategory(category.code);
+                      setPage(0);
+                    }}
+                    className={`font-mono text-xs font-bold uppercase tracking-[0.08em] ${
+                      selectedCategory === category.code
+                        ? "border-b-2 border-black pb-1 text-black"
+                        : "text-[var(--snow-muted)] hover:text-black"
+                    }`}
+                  >
+                    {category.name}
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+              </div>
 
-        {/* Pagination Controls */}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", marginTop: "2rem" }}>
-          <button
-            disabled={page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            style={{
-              padding: "0.5rem 1rem",
-              borderRadius: "6px",
-              border: "1px solid var(--border-dark)",
-              background: "var(--bg-dark-soft)",
-              color: "var(--text-main)",
-              cursor: page === 0 ? "not-allowed" : "pointer",
-              opacity: page === 0 ? 0.5 : 1,
-            }}
-          >
-            ◀ 이전
-          </button>
-          <span style={{ color: "var(--text-sub)", fontSize: "0.9rem" }}>
-            {page + 1} / {totalPages} 페이지
-          </span>
-          <button
-            disabled={page + 1 >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            style={{
-              padding: "0.5rem 1rem",
-              borderRadius: "6px",
-              border: "1px solid var(--border-dark)",
-              background: "var(--bg-dark-soft)",
-              color: "var(--text-main)",
-              cursor: page + 1 >= totalPages ? "not-allowed" : "pointer",
-              opacity: page + 1 >= totalPages ? 0.5 : 1,
-            }}
-          >
-            다음 ▶
-          </button>
-        </div>
-      </main>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <input
+                  type="text"
+                  placeholder="제목 또는 본문 검색"
+                  value={searchKeyword}
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && handleSearch()}
+                  className="snow-input min-w-0 sm:w-64"
+                />
+                <button onClick={handleSearch} className="snow-btn-secondary shrink-0">
+                  Search
+                </button>
+              </div>
+            </div>
+
+            <div className="divide-y divide-[var(--snow-border)]">
+              {loading ? (
+                <div className="p-12 text-center text-sm text-[var(--snow-muted)]">게시글 목록을 불러오는 중입니다.</div>
+              ) : posts.length === 0 ? (
+                <div className="p-12 text-center text-sm text-[var(--snow-muted)]">등록된 게시글이 없습니다. 첫 글을 작성해보세요.</div>
+              ) : (
+                posts.map((post) => {
+                  const isUnavailable = post.isDeleted || post.status === "DELETED" || post.status === "BLOCKED";
+                  const title =
+                    post.status === "BLOCKED"
+                      ? "[차단된 게시글입니다]"
+                      : post.isDeleted || post.status === "DELETED"
+                        ? "[삭제된 게시글입니다]"
+                        : post.title;
+
+                  return (
+                    <Link
+                      key={post.publicId}
+                      href={`/posts/${post.publicId}`}
+                      onClick={(event) => handlePostClick(event, post)}
+                      className="grid gap-4 p-5 transition hover:bg-[var(--snow-surface-low)] md:grid-cols-[minmax(0,1fr)_130px]"
+                    >
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <span className="snow-chip">{post.categoryName}</span>
+                          {post.hasImage && (
+                            <span className="snow-chip snow-chip-green">
+                              <span className="material-symbols-outlined text-[14px]">image</span>
+                              이미지
+                            </span>
+                          )}
+                          {post.commentCount > 0 && (
+                            <span className="snow-chip">
+                              <span className="material-symbols-outlined text-[14px]">chat_bubble</span>
+                              {post.commentCount}
+                            </span>
+                          )}
+                        </div>
+                        <h2 className={`truncate text-xl font-extrabold text-black ${isUnavailable ? "text-[var(--snow-faint)] line-through" : ""}`}>
+                          {title}
+                        </h2>
+                        <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-[var(--snow-muted)]">
+                          <span className="font-bold text-black">{post.writerNickname}</span>
+                          <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                          <span>조회 {post.viewCount}</span>
+                          <span>추천 {post.likeCount}</span>
+                        </div>
+                      </div>
+                      <div className="hidden items-center justify-end md:flex">
+                        {post.thumbnailImageUrl ? (
+                          <img
+                            src={post.thumbnailImageUrl}
+                            alt=""
+                            className="h-20 w-28 rounded border border-[var(--snow-border)] object-cover grayscale"
+                          />
+                        ) : (
+                          <div className="flex h-20 w-28 items-center justify-center rounded border border-[var(--snow-border)] bg-[var(--snow-background)]">
+                            <span className="material-symbols-outlined text-[24px] text-[var(--snow-faint)]">article</span>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          <div className="mt-8 flex items-center justify-center gap-3 font-mono text-sm">
+            <button
+              disabled={page === 0}
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+              className="snow-btn-secondary min-h-10 px-3"
+            >
+              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+            <span className="px-3 font-bold">
+              PAGE {page + 1} / {totalPages}
+            </span>
+            <button
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((current) => current + 1)}
+              className="snow-btn-secondary min-h-10 px-3"
+            >
+              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+          </div>
+        </main>
+      </div>
+      <Footer />
     </div>
+  );
+}
+
+export default function PostListPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-sm text-[var(--snow-muted)]">로딩 중입니다...</div>}>
+      <PostListContent />
+    </Suspense>
   );
 }

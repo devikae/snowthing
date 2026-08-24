@@ -14,11 +14,13 @@ public record PostListResponse(
     String title,
     String writerNickname,
     String thumbnailImageUrl,
+    boolean hasImage,
     int viewCount,
     int commentCount,
     int likeCount,
     int dislikeCount,
     PostStatus status,
+    boolean isDeleted,
     LocalDateTime createdAt
 ) {
     public static PostListResponse from(Post post) {
@@ -32,20 +34,24 @@ public record PostListResponse(
             .publicId(post.getPublicId())
             .categoryName(post.getCategory().getName())
             .categoryCode(post.getCategory().getCode())
-            .title(post.getTitle())
+            .title(post.isDeleted() ? "[삭제된 게시글입니다]" : post.getTitle())
             .writerNickname(writerNickname)
             .thumbnailImageUrl(thumbnailUrl)
+            .hasImage(post.isHasImage())
             .viewCount(post.getViewCount())
             .commentCount(post.getCommentCount())
             .likeCount(post.getLikeCount())
             .dislikeCount(post.getDislikeCount())
             .status(post.getStatus())
+            .isDeleted(post.isDeleted())
             .createdAt(post.getCreatedAt())
             .build();
     }
 
     private static String maskIp(String ip) {
-        if (ip == null || ip.isBlank()) return "***.***.***.***";
+        if (ip == null || ip.isBlank() || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
+            return "127.0.***.***";
+        }
         String[] parts = ip.split("\\.");
         if (parts.length == 4) {
             return parts[0] + "." + parts[1] + ".***.***";

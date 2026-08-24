@@ -14,8 +14,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 class MemberServiceSignUpVerificationTest {
@@ -24,6 +27,10 @@ class MemberServiceSignUpVerificationTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private MemberResortRepository memberResortRepository;
     @Autowired private MemberRidingStyleRepository memberRidingStyleRepository;
+
+    @Autowired private com.ikae.snowthing.domain.comment.repository.CommentRepository commentRepository;
+    @Autowired private com.ikae.snowthing.domain.post.repository.PostReactionRepository postReactionRepository;
+    @Autowired private com.ikae.snowthing.domain.post.repository.PostRepository postRepository;
 
     @BeforeEach
     void setUp() {
@@ -36,6 +43,9 @@ class MemberServiceSignUpVerificationTest {
     }
 
     private void cleanUp() {
+        commentRepository.deleteAll();
+        postReactionRepository.deleteAll();
+        postRepository.deleteAll();
         memberResortRepository.deleteAll();
         memberRidingStyleRepository.deleteAll();
         memberRepository.deleteAll();
@@ -78,5 +88,28 @@ class MemberServiceSignUpVerificationTest {
         }
         assertThat(hasInternalIdField).isFalse();
         assertThat(response.getPublicId()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("[검증 3] 회원가입 요청 DTO는 컬렉션 원본 변경과 getter 반환 리스트 변경을 차단해야 한다")
+    void signUpRequest_DefensivelyCopiesCollectionInputs() {
+        List<Long> resortIds = new ArrayList<>(List.of(1L, 2L));
+        List<Long> ridingStyleIds = new ArrayList<>(List.of(3L, 4L));
+
+        MemberSignUpRequest request = MemberSignUpRequest.builder()
+                .email("immutable@snowthing.com")
+                .password("Password123!")
+                .nickname("불변DTO")
+                .resortIds(resortIds)
+                .ridingStyleIds(ridingStyleIds)
+                .build();
+
+        resortIds.add(999L);
+        ridingStyleIds.add(999L);
+
+        assertThat(request.getResortIds()).containsExactly(1L, 2L);
+        assertThat(request.getRidingStyleIds()).containsExactly(3L, 4L);
+        assertThatThrownBy(() -> request.getResortIds().add(5L))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 }

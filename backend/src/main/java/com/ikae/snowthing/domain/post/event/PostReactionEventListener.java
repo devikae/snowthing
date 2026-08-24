@@ -21,17 +21,6 @@ public class PostReactionEventListener {
     @EventListener
     @Transactional
     public void handlePostReactionEvent(PostReactionEvent event) {
-        log.info("비동기 추천/비추천 수 카운트 갱신 처리 - postId: {}, type: {}", event.postId(), event.type());
-        Post post = postRepository.findById(event.postId()).orElse(null);
-        if (post == null) {
-            log.warn("해당 게시글을 찾을 수 없습니다. postId: {}", event.postId());
-            return;
-        }
-
-        if (event.type() == ReactionType.LIKE) {
-            post.increaseLikeCount();
-        } else if (event.type() == ReactionType.DISLIKE) {
-            post.increaseDislikeCount();
-        }
+        log.info("비동기 추천/비추천 이벤트 알림 기록 - postId: {}, type: {}", event.postId(), event.type());
     }
 }

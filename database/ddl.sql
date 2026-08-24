@@ -109,7 +109,8 @@ CREATE TABLE `post` (
     `comment_count` INT NOT NULL DEFAULT 0 COMMENT '댓글 수 역정규화',
     `like_count` INT NOT NULL DEFAULT 0 COMMENT '추천 수 역정규화',
     `dislike_count` INT NOT NULL DEFAULT 0 COMMENT '비추천 수 역정규화',
-    `status` VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '게시글 상태 (NORMAL, HIDDEN, DELETED, BLOCKED)',
+    `has_image` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '이미지 첨부 여부 역정규화 (목록 뱃지 아이콘 렌더링용)',
+    `status` VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '게시글 상태 (NORMAL, DELETED, BLOCKED, HIDDEN, DRAFT)',
     `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Soft Delete 여부',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
 

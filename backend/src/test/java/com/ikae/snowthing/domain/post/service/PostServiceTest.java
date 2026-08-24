@@ -6,6 +6,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.*;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
+import com.ikae.snowthing.domain.post.repository.PostImageRepository;
 import com.ikae.snowthing.domain.post.repository.PostReactionRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
@@ -46,6 +47,9 @@ class PostServiceTest {
     private PostReactionRepository reactionRepository;
 
     @Autowired
+    private PostImageRepository imageRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Member member1;
@@ -56,6 +60,8 @@ class PostServiceTest {
 
     @BeforeEach
     void setUp() {
+        postRepository.deleteAll();
+
         member1 = memberRepository.save(Member.builder()
             .email("user1@example.com")
             .password(passwordEncoder.encode("Password123!"))
@@ -98,6 +104,10 @@ class PostServiceTest {
             assertThat(response.title()).isEqualTo("오늘 설질 어떤가요?");
             assertThat(response.writerName()).isEqualTo("보더1호");
             assertThat(response.status()).isEqualTo(PostStatus.NORMAL);
+
+            Post savedPost = postRepository.findByPublicId(response.publicId()).orElseThrow();
+            assertThat(savedPost.isHasImage()).isTrue();
+            assertThat(savedPost.getImages()).hasSize(1);
         }
 
         @Test
@@ -150,7 +160,7 @@ class PostServiceTest {
 
             PostResponse created = postService.createPost(request, userDetails1, "127.0.0.1");
 
-            PostDetailResponse detail = postService.getPostDetail(created.publicId(), userDetails1);
+            PostDetailResponse detail = postService.getPostDetail(created.publicId(), userDetails1, true);
 
             assertThat(detail.title()).isEqualTo("조회수 테스트");
             assertThat(detail.viewCount()).isEqualTo(1);
@@ -159,7 +169,7 @@ class PostServiceTest {
         @Test
         @DisplayName("존재하지 않는 publicId 조회 시 404 예외가 터진다.")
         void getPostDetail_notFound() {
-            assertThatThrownBy(() -> postService.getPostDetail("non-existent-uuid", userDetails1))
+            assertThatThrownBy(() -> postService.getPostDetail("non-existent-uuid", userDetails1, true))
                 .isInstanceOf(CustomAuthException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.POST_NOT_FOUND);
@@ -224,6 +234,55 @@ class PostServiceTest {
         }
 
         @Test
+        @DisplayName("작성자 본인이 게시글 수정 시 이미지 목록을 최종 상태로 교체하고 hasImage를 동기화한다.")
+        void updatePost_replaceImages_success() {
+            PostUpdateRequest updateReq = PostUpdateRequest.builder()
+                .categoryCode("FREE")
+                .title("이미지 수정 제목")
+                .content("이미지 수정 본문")
+                .imageUrls(List.of("https://cdn.example.com/updated-1.jpg", "https://cdn.example.com/updated-2.jpg"))
+                .build();
+
+            postService.updatePost(createdPost.publicId(), updateReq, userDetails1);
+            postRepository.flush();
+
+            Post savedPost = postRepository.findByPublicId(createdPost.publicId()).orElseThrow();
+            List<PostImage> images = imageRepository.findByPostIdOrderBySortOrderAsc(savedPost.getId());
+
+            assertThat(savedPost.isHasImage()).isTrue();
+            assertThat(images).extracting(PostImage::getImageUrl)
+                .containsExactly("https://cdn.example.com/updated-1.jpg", "https://cdn.example.com/updated-2.jpg");
+        }
+
+        @Test
+        @DisplayName("작성자 본인이 게시글 수정 시 이미지 목록을 비우면 첨부 이미지를 제거하고 hasImage를 false로 동기화한다.")
+        void updatePost_removeImages_success() {
+            PostResponse postWithImage = postService.createPost(PostCreateRequest.builder()
+                .categoryCode("FREE")
+                .title("이미지 있는 글")
+                .content("본문")
+                .isAnonymous(false)
+                .imageUrls(List.of("https://cdn.example.com/original.jpg"))
+                .build(), userDetails1, "127.0.0.1");
+
+            PostUpdateRequest updateReq = PostUpdateRequest.builder()
+                .categoryCode("FREE")
+                .title("이미지 제거 제목")
+                .content("이미지 제거 본문")
+                .imageUrls(List.of())
+                .build();
+
+            postService.updatePost(postWithImage.publicId(), updateReq, userDetails1);
+            postRepository.flush();
+
+            Post savedPost = postRepository.findByPublicId(postWithImage.publicId()).orElseThrow();
+            List<PostImage> images = imageRepository.findByPostIdOrderBySortOrderAsc(savedPost.getId());
+
+            assertThat(savedPost.isHasImage()).isFalse();
+            assertThat(images).isEmpty();
+        }
+
+        @Test
         @DisplayName("타 회원이 수정 시도 시 403 Forbidden 예외가 터진다.")
         void updatePost_forbidden_otherUser() {
             PostUpdateRequest updateReq = PostUpdateRequest.builder()
@@ -266,8 +325,8 @@ class PostServiceTest {
     class ReactionTest {
 
         @Test
-        @DisplayName("동일 회원 중복 추천 시 DB UNIQUE 제약 조건에 걸려 ALREADY_REACTED 예외가 터진다.")
-        void reactToPost_duplicate_throwsAlreadyReacted() {
+        @DisplayName("추천/비추천 클릭 시 토글(ON/OFF) 동작하며 카운트가 +1, -1로 정상 갱신된다.")
+        void reactToPost_toggle_success() {
             PostResponse post = postService.createPost(PostCreateRequest.builder()
                 .categoryCode("FREE")
                 .title("추천 테스트 글")
@@ -275,12 +334,43 @@ class PostServiceTest {
                 .isAnonymous(false)
                 .build(), userDetails1, "127.0.0.1");
 
-            postService.reactToPost(post.publicId(), ReactionType.LIKE, userDetails1);
+            // 1회 클릭: Toggle ON (+1)
+            ReactionToggleResponse res1 = postService.reactToPost(post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
+            assertThat(res1.isToggledOn()).isTrue();
+            assertThat(res1.likeCount()).isEqualTo(1);
 
-            assertThatThrownBy(() -> postService.reactToPost(post.publicId(), ReactionType.LIKE, userDetails1))
-                .isInstanceOf(CustomAuthException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.ALREADY_REACTED);
+            // 2회 클릭: Toggle OFF (-1)
+            ReactionToggleResponse res2 = postService.reactToPost(post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
+            assertThat(res2.isToggledOn()).isFalse();
+            assertThat(res2.likeCount()).isEqualTo(0);
+
+            // 추천과 비추천은 독립 투표 가능 (비추천 1회 클릭 ON)
+            ReactionToggleResponse res3 = postService.reactToPost(post.publicId(), ReactionType.DISLIKE, userDetails1, "127.0.0.1", null);
+            assertThat(res3.isToggledOn()).isTrue();
+            assertThat(res3.dislikeCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("鍮꾨줈洹몄씤 ?듬챸 ?ъ슜?먮룄 anonymousVoterId 湲곕컲?쇰줈 異붿쿇/鍮꾩텛泥??좉?瑜??섑뻾?쒕떎.")
+        void reactToPost_anonymousVoter_success() {
+            PostResponse post = postService.createPost(PostCreateRequest.builder()
+                .categoryCode("FREE")
+                .title("?듬챸 異붿쿇 ?뚯뒪??湲")
+                .content("?댁슜")
+                .isAnonymous(false)
+                .build(), userDetails1, "127.0.0.1");
+
+            ReactionToggleResponse res1 = postService.reactToPost(
+                post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1"
+            );
+            assertThat(res1.isToggledOn()).isTrue();
+            assertThat(res1.likeCount()).isEqualTo(1);
+
+            ReactionToggleResponse res2 = postService.reactToPost(
+                post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1"
+            );
+            assertThat(res2.isToggledOn()).isFalse();
+            assertThat(res2.likeCount()).isEqualTo(0);
         }
     }
 }

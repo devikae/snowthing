@@ -67,6 +67,9 @@ public class Post extends BaseTimeEntity {
     @Column(name = "dislike_count", nullable = false)
     private int dislikeCount = 0;
 
+    @Column(name = "has_image", nullable = false)
+    private boolean hasImage = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PostStatus status = PostStatus.NORMAL;
@@ -82,7 +85,7 @@ public class Post extends BaseTimeEntity {
 
     @Builder
     public Post(Member member, PostCategory category, String title, String content,
-                String writerIp, boolean isAnonymous, String anonymousPassword) {
+                String writerIp, boolean isAnonymous, String anonymousPassword, boolean hasImage) {
         this.publicId = UUID.randomUUID().toString();
         this.member = member;
         this.category = category;
@@ -91,6 +94,7 @@ public class Post extends BaseTimeEntity {
         this.writerIp = writerIp;
         this.isAnonymous = isAnonymous;
         this.anonymousPassword = anonymousPassword;
+        this.hasImage = hasImage;
         this.status = PostStatus.NORMAL;
         this.isDeleted = false;
     }
@@ -99,6 +103,18 @@ public class Post extends BaseTimeEntity {
         this.title = title;
         this.content = content;
         this.category = category;
+    }
+
+    public void updateImageStatus(boolean hasImage) {
+        this.hasImage = hasImage;
+    }
+
+    public void replaceImages(List<PostImage> newImages) {
+        this.images.clear();
+        for (PostImage image : newImages) {
+            addImage(image);
+        }
+        updateImageStatus(!this.images.isEmpty());
     }
 
     public void softDelete() {
@@ -125,8 +141,20 @@ public class Post extends BaseTimeEntity {
         this.likeCount++;
     }
 
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
+
     public void increaseDislikeCount() {
         this.dislikeCount++;
+    }
+
+    public void decreaseDislikeCount() {
+        if (this.dislikeCount > 0) {
+            this.dislikeCount--;
+        }
     }
 
     public void addImage(PostImage image) {

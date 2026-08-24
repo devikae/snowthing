@@ -12,7 +12,8 @@ import lombok.NoArgsConstructor;
 @Table(
     name = "post_reaction",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_post_member_type", columnNames = {"post_id", "member_id", "type"})
+        @UniqueConstraint(name = "uk_post_member_type", columnNames = {"post_id", "member_id", "type"}),
+        @UniqueConstraint(name = "uk_post_anon_voter_type", columnNames = {"post_id", "anonymous_voter_id", "type"})
     }
 )
 @Getter
@@ -29,17 +30,25 @@ public class PostReaction extends BaseTimeEntity {
     private Post post;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
+    @JoinColumn(name = "member_id", nullable = true)
     private Member member;
+
+    @Column(name = "writer_ip", length = 45)
+    private String writerIp;
+
+    @Column(name = "anonymous_voter_id", length = 36)
+    private String anonymousVoterId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private ReactionType type;
 
     @Builder
-    public PostReaction(Post post, Member member, ReactionType type) {
+    public PostReaction(Post post, Member member, String writerIp, String anonymousVoterId, ReactionType type) {
         this.post = post;
         this.member = member;
+        this.writerIp = writerIp;
+        this.anonymousVoterId = anonymousVoterId;
         this.type = type;
     }
 }

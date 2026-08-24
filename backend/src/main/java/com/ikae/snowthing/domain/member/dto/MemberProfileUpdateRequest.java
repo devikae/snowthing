@@ -33,7 +33,15 @@ public class MemberProfileUpdateRequest {
         this.nickname = nickname;
         this.bio = bio;
         this.departureRegion = departureRegion;
-        this.resortIds = resortIds != null ? resortIds : new ArrayList<>();
-        this.ridingStyleIds = ridingStyleIds != null ? ridingStyleIds : new ArrayList<>();
+        this.resortIds = resortIds != null ? new ArrayList<>(resortIds) : new ArrayList<>();
+        this.ridingStyleIds = ridingStyleIds != null ? new ArrayList<>(ridingStyleIds) : new ArrayList<>();
+    }
+
+    public List<Long> getResortIds() {
+        return List.copyOf(resortIds);
+    }
+
+    public List<Long> getRidingStyleIds() {
+        return List.copyOf(ridingStyleIds);
     }
 }

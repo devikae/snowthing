@@ -90,7 +90,7 @@ class MemberControllerTest {
         // given
         MemberSignUpRequest request = MemberSignUpRequest.builder()
                 .email("valid@snowthing.com")
-                .password("short") // 8자 미만
+                .password("123") // 4자 미만 (3자)
                 .nickname("정상닉네임")
                 .build();
 

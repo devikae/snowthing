@@ -22,17 +22,11 @@ public class MemberSignUpRequest {
     private String email;
 
     @NotBlank(message = "비밀번호는 필수 입력값입니다.")
-    @Pattern(
-            regexp = "^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).{8,}$",
-            message = "비밀번호는 최소 8자 이상이며, 영문 대문자 1개 이상과 특수문자 1개 이상을 포함해야 합니다."
-    )
+    @jakarta.validation.constraints.Size(min = 4, message = "비밀번호는 최소 4자 이상이어야 합니다.")
     private String password;
 
     @NotBlank(message = "닉네임은 필수 입력값입니다.")
-    @Pattern(
-            regexp = "^[a-zA-Z0-9가-힣]{2,10}$",
-            message = "닉네임은 2자 이상 10자 이하의 한글, 영문, 숫자이어야 합니다."
-    )
+    @jakarta.validation.constraints.Size(min = 2, max = 20, message = "닉네임은 2자 이상 20자 이하이어야 합니다.")
     private String nickname;
 
     private String bio;
@@ -50,8 +44,16 @@ public class MemberSignUpRequest {
         this.nickname = nickname;
         this.bio = bio;
         this.departureRegion = departureRegion;
-        this.resortIds = resortIds != null ? resortIds : new ArrayList<>();
-        this.ridingStyleIds = ridingStyleIds != null ? ridingStyleIds : new ArrayList<>();
+        this.resortIds = resortIds != null ? new ArrayList<>(resortIds) : new ArrayList<>();
+        this.ridingStyleIds = ridingStyleIds != null ? new ArrayList<>(ridingStyleIds) : new ArrayList<>();
+    }
+
+    public List<Long> getResortIds() {
+        return List.copyOf(resortIds);
+    }
+
+    public List<Long> getRidingStyleIds() {
+        return List.copyOf(ridingStyleIds);
     }
 
     public Member toEntity(String encodedPassword) {

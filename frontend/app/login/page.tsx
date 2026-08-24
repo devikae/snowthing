@@ -3,121 +3,100 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Footer, TopNav } from "../components/SiteChrome";
+import { csrfFetch } from "../lib/csrfFetch";
+
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false); // 로그인 상태 유지 state
+  const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setErrorMsg("");
 
     if (!EMAIL_REGEX.test(email)) {
-      setErrorMsg("올바른 이메일 형식(예: user@snowthing.com)이어야 합니다.");
+      setErrorMsg("올바른 이메일 형식으로 입력해주세요. 예: user@snowthing.com");
       return;
     }
 
     setLoading(true);
-
     try {
-      const res = await fetch("http://localhost:8080/api/auth/login", {
+      const res = await csrfFetch("http://localhost:8080/api/v1/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // JSESSIONID 세션 쿠키 수신 및 전달 필수!
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, rememberMe }),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || errorData.message || "이메일 또는 비밀번호가 올바르지 않습니다.");
+        throw new Error(errorData.message || errorData.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
       }
 
-      alert("로그인에 성공했습니다!");
       router.push("/");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (error) {
+      setErrorMsg(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", padding: "2rem" }}>
-      <div className="card-supabase" style={{ width: "100%", maxWidth: "420px" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <span className="pill-green" style={{ marginBottom: "0.75rem", display: "inline-block" }}>
-            Snowthing Login
-          </span>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: "700" }}>로그인</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "0.5rem" }}>
-            스노보더 커뮤니티에 다시 오신 것을 환영합니다.
-          </p>
-        </div>
-
-        {errorMsg && (
-          <div style={{ backgroundColor: "rgba(255, 77, 79, 0.1)", border: "1px solid var(--error)", padding: "0.75rem", borderRadius: "6px", color: "var(--error)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
-            🚨 {errorMsg}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">이메일 계정</label>
-            <input
-              type="email"
-              className="input-supabase"
-              placeholder="user@snowthing.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+    <div className="min-h-screen bg-[var(--snow-background)]">
+      <TopNav active="login" />
+      <main className="snow-container flex min-h-[calc(100vh-129px)] items-center justify-center px-5 py-12">
+        <section className="snow-card w-full max-w-md bg-white p-7 md:p-8">
+          <div className="mb-7 text-center">
+            <span className="snow-chip snow-chip-dark mb-4">Snowthing Login</span>
+            <h1 className="text-3xl font-extrabold italic text-black">로그인</h1>
+            <p className="mt-3 text-sm leading-6 text-[var(--snow-muted)]">스노보더 커뮤니티에 다시 접속합니다.</p>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">비밀번호</label>
-            <input
-              type="password"
-              className="input-supabase"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          {errorMsg && (
+            <div className="mb-5 rounded border border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-semibold text-[#dc2626]">
+              {errorMsg}
+            </div>
+          )}
 
-          {/* Remember-Me 로그인 상태 유지 체크박스 */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem", marginBottom: "1.25rem" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.85rem", color: "var(--text-sub)" }}>
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                style={{ accentColor: "var(--primary)", width: "16px", height: "16px" }}
-              />
-              <span>🔒 로그인 상태 유지 (30일간 세션 자동 연장)</span>
+          <form onSubmit={handleSubmit} className="grid gap-5">
+            <label className="grid gap-2">
+              <span className="snow-label">Email</span>
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@snowthing.com" className="snow-input" required />
             </label>
-          </div>
 
-          <button type="submit" className="btn-primary-green" style={{ width: "100%" }} disabled={loading}>
-            {loading ? "로그인 처리 중..." : "로그인"}
-          </button>
-        </form>
+            <label className="grid gap-2">
+              <span className="snow-label">Password</span>
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" className="snow-input" required />
+            </label>
 
-        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          아직 회원이 아니신가요?{" "}
-          <Link href="/signup" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: "600" }}>
-            지금 회원가입하기
-          </Link>
-        </div>
-      </div>
+            <label className="flex items-center gap-2 text-sm text-[var(--snow-muted)]">
+              <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} />
+              로그인 상태 유지
+            </label>
+
+            <button type="submit" className="snow-btn-primary w-full" disabled={loading}>
+              {loading ? "로그인 중" : "로그인"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-[var(--snow-muted)]">
+            아직 계정이 없나요?{" "}
+            <Link href="/signup" className="font-bold text-black underline">
+              회원가입
+            </Link>
+          </p>
+        </section>
+      </main>
+      <Footer />
     </div>
   );
 }

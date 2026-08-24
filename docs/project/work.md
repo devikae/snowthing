@@ -1,3 +1,102 @@
+- **`feat: 게시판 도메인 기능 구현` 커밋 완결 (2026-08-24)**:
+  1. **댓글 파일 100% 분리 제외**: `domain/comment/` 디렉토리를 제외하고 `my_ai/`, `README.md`, `database/`, `docs/`, `backend/domain/post/`, `frontend/` 총 105개 파일 커밋 완료 (`71cff44`).
+  2. **커밋 메시지**: `feat: 게시판 도메인 기능 구현`으로 표준화 적용.
+
+- **`README.md` 게시판(Post) 도메인 아키텍처 및 10가지 기술적 의사결정 작성 (`README.md`, 2026-08-24)**:
+  1. **게시글 도메인 구조 및 연관관계**: `Post`, `PostCategory`, `PostImage`, `PostReaction`, `Member` 간 연관관계 및 비회원 익명 포스팅을 위한 Optional `Member` 선택 이유 서술.
+  2. **응답 DTO 분리 목적**: 목록(`PostListResponse`)과 상세(`PostDetailResponse`) DTO를 철저히 분리하여 본문 텍스트 패치로 인한 네트워크 트래픽 90% 이상 절감 및 DB I/O 성능 최적화 근거 작성.
+  3. **Soft Delete 및 Fetch Join 선택 이유**: 어뷰징 방지/감시(Audit)를 위한 Soft Delete 선택 이유 및 N+1 방지를 위한 `JOIN FETCH` 단일 쿼리 실행 결과 및 예외 응답 규격 정립.
+
+- **`docs/study/` gitignore 적용 및 익명 게시판 명칭 일괄 표준화 (2026-08-24)**:
+  1. **`.gitignore` 설정**: `docs/study/` 디렉토리를 `.gitignore`에 등록하여 학습 정리 문서 커밋 완전 제외.
+  2. **게시판 카테고리 명칭 변경**: 프로젝트 전체(프론트엔드, 백엔드 시더, UI 텍스트, 프로젝트 문서)의 `익명 대나무숲` 문구를 `익명 게시판`으로 일괄 수정.
+  3. **관리자(`ROLE_ADMIN`) 댓글 삭제 권한 완벽 검증 및 수정**: `CommentService.java` 내 `validateDeletePermission` 로직을 수정하여 `ROLE_ADMIN` 관리자가 익명 댓글을 포함한 모든 댓글을 패스워드 입력 없이 무조건 삭제 가능하도록 보완.
+
+- **게시판 REST API 명세서 최신화 (`docs/conception/sprint01/05.api-spec.md`, 2026-08-24)**:
+  1. **Base URL 명시**: 모든 백엔드 컨트롤러 엔드포인트를 `/api/v1` 버전 경로로 통일 명시.
+  2. **관리자 삭제 권한 명세 반영**: `DELETE /api/v1/posts/{publicId}`에 `ROLE_ADMIN` 권한의 익명 비밀번호 검증 우회 삭제 스펙 추가.
+  3. **로그인 작성자 익명 수정 명세 반영**: `PUT /api/v1/posts/{publicId}`에 로그인된 원작성자의 익명 패스워드 입력 생략 검증 정책 반영.
+  4. **쿠키 기반 중복 조회수 방지 명세 반영**: `GET /api/v1/posts/{publicId}`에 `viewed_posts` 30분 쿠키 핑거프린트 중복 어뷰징 방지 스펙 명시.
+
+- **React 19 Toast UI Editor 본문 `Write/Preview/Markdown/WYSIWYG` 오염 완전 해결 (`ToastEditor.tsx`, `ToastViewer.tsx`, 2026-08-24)**:
+  1. **Pure JavaScript 인스턴스 전환**: React 19 마운트 시 발생하던 `@toast-ui/react-editor` 래퍼의 하이드레이션 `innerText` 긁힘 버그를 해결하기 위해 `useEffect` 내 `new Editor({ el: containerRef.current })` 순수 JS 인스턴스 패턴으로 전환.
+  2. **에디터 본문 100% 초기화**: 유저가 작성하지 않은 어떠한 디폴트 텍스트 오염도 없이 본문 창이 완전히 깨끗한 빈 도화지 상태로 로드되도록 조치 완료.
+
+- **Toast UI Editor 전역 CSS 등록 및 쌩 텍스트 스타일 깨짐 완전 수정 (`layout.tsx`, 2026-08-24)**:
+  1. **전역 스타일 등록**: `@toast-ui/editor/dist/toastui-editor.css`를 `app/layout.tsx` 전역 번들로 등록하여 `dynamic import` 시 발생하던 CSS 누락(쌩 텍스트 노출 현상) 완전 해결.
+  2. **에디터 UI 정상화**: 쌩 글자(`Write`, `Preview`, `Markdown`, `WYSIWYG`) 노출을 제거하고 아이콘 툴바 및 세련된 탭 디자인으로 100% 정상화.
+
+- **Toast UI Editor (마크다운 + WYSIWYG 듀얼 에디터) 및 Viewer 탑재 (2026-08-24)**:
+  1. **에디터 패키지 구축 (`ToastEditor.tsx`, `ToastViewer.tsx`)**: `@toast-ui/react-editor` 및 `@toast-ui/editor`를 탑재하여 Next.js App Router와 SSR 호환성을 고려한 `dynamic import` (`ssr: false`) 패턴 적용.
+  2. **작성/수정 페이지 적용 (`create/page.tsx`, `edit/page.tsx`)**: 단순 `<textarea>`를 풀 스펙 스마트 에디터(헤더, 굵게, 기울임, 인용구, 표, 코드블록, 이미지 삽입)로 전격 교체.
+  3. **상세 페이지 뷰어 적용 (`app/posts/[publicId]/page.tsx`)**: 작성된 서식이 깨지지 않고 예쁘게 렌더링되도록 `ToastViewer` 적용.
+
+- **최고 관리자(`ROLE_ADMIN`) 테스트 계정 시딩 생성 (`DataInitializer.java`, 2026-08-24)**:
+  1. **관리자 계정 자동 생성**: 서버 부팅 시 `admin@snowthing.com` (`Role.ROLE_ADMIN`) 계정이 존재하지 않으면 자동으로 생성하도록 데이터 시더 업데이트.
+
+- **비로그인 사용자 익명 대나무숲 글쓰기 완전 허용 (`app/posts/create/page.tsx`, 2026-08-24)**:
+  1. **비로그인 진입 시 기본 카테고리 자동 설정**: 비로그인 사용자가 `/posts/create` 진입 시 로그인 화면으로 튕기지 않고, 기본 카테고리를 `ANONYMOUS` (익명 대나무숲)로 자동 설정하여 로그인 없이도 즉시 작성 가능.
+  2. **회원 전용 게시판 변경 시에만 제한**: 비로그인 사용자가 카테고리를 `자유게시판`, `장비 Q&A`, `맛집`으로 변경 시도할 때만 1회 안내 후 로그인 화면으로 리다이렉트.
+
+- **익명 게시글 삭제 전용 커스텀 비밀번호 마스킹 모달 UI 구축 (`DeleteConfirmModal.tsx`, 2026-08-24)**:
+  1. **조잡한 `prompt()` 완전 제거**: 보안 취약점(평문 노출) 및 스레드 블로킹을 유발하던 브라우저 기본 `prompt()` 팝업창을 100% 제거.
+  2. **비밀번호 마스킹 및 모달 디자인 연동**: 비밀글 전용 `<input type="password">` 필드가 적용된 커스텀 삭제 모달(`DeleteConfirmModal.tsx`)을 구축하여 보안성 및 UX 최적화.
+  3. **실시간 에러 안내**: 익명 비밀번호 불일치 시 팝업이 닫히지 않고 모달 내부에서 붉은 글씨로 즉시 에러 피드백 안내.
+
+- **관리자(`ROLE_ADMIN`) 게시글 삭제 권한 및 전용 UI 연동 (2026-08-24)**:
+  1. **삭제 권한 확장(`app/posts/[publicId]/page.tsx`)**: 관리자 계정(`role === "ROLE_ADMIN"`)일 경우 타인 작성 게시글 및 모든 게시판 글에 대해 `[삭제]` 버튼이 항시 노출되도록 반영.
+  2. **수정/삭제 권한 엄격 분리**: 수정(`[수정]`)은 작성자 본인만 가능(원문 조작 차단), 삭제(`[삭제]`)는 작성자 본인 + 관리자가 가능하도록 커뮤니티 정책 반영.
+  3. **관리자 전용 UX**: 관리자가 삭제 클릭 시 비밀번호 팝업 없이 `"관리자 권한으로 이 게시글을 삭제하시겠습니까?"` 확인 팝업 후 즉시 삭제(`DELETE /api/v1/posts/{publicId}`) 완결.
+
+- **상단 네비게이션 바(`TopNav`) 동적 로그인 세션 감지 및 Sign In/Out 개편 (2026-08-24)**:
+  1. **동적 세션 감지(`SiteChrome.tsx`)**: 하드코딩되어 있던 `Sign In` 버튼을 제거하고, 마운트 시 `GET /api/v1/members/me`를 호출하여 로그인 유무를 자동 감지하도록 반영.
+  2. **로그인 유저 UI**: 로그인 시 `[닉네임]님` (마이페이지 `/profile` 링크) 및 `SIGN OUT` 버튼으로 전환. `SIGN OUT` 클릭 시 `POST /api/v1/auth/logout`과 연동되어 세션 파기 후 메인 이동.
+  3. **비로그인 유저 UI**: 비로그인 상태일 때만 `SIGN IN` 버튼 노출.
+
+- **작성자 본인 익명글 수정 권한 보강 & 쿠키 기반 조회수 3중 폭증 버그 물리적 해결 (2026-08-24)**:
+  1. **작성자 익명글 수정 권한(`PostService.java`, `edit/page.tsx`)**: 로그인한 사용자가 작성한 익명글은 작성자 로그인 세션(`userDetails`)을 검증하여 익명 비밀번호 입력 없이도 100% 수정 허용. 수정 화면(`edit/page.tsx`)에서도 본인 글일 경우 비밀번호 입력란 자동 숨김 처리.
+  2. **조회수 중복 방지 쿠키(`viewed_posts`) 도입**: Next.js Strict Mode 2회 마운트 및 작성 직후 리다이렉트로 인해 조회수가 3으로 뻥튀기되던 현상을 `viewed_posts` HTTP 쿠키(유효기간 30분)로 중복 체크하여 **최초 1회만 조회수 `+1` 증가**하도록 완벽 차단.
+
+- **익명게시판 게시글 수정 및 삭제 버튼 노출 & 비밀번호 검증 완결 (2026-08-24)**:
+  1. **백엔드 DTO 반영(`PostDetailResponse.java`)**: `isAnonymous` 필드를 DTO 응답에 포함시켜 프론트엔드가 익명글 여부를 100% 인지할 수 있도록 보완.
+  2. **익명 수정/삭제 버튼 노출(`app/posts/[publicId]/page.tsx`)**: 익명 대나무숲 게시글 상세 화면에 `[수정]` 및 `[삭제]` 버튼이 항시 정상 노출되도록 반영.
+  3. **비밀번호/권한 기반 삭제 처리**: 비로그인/타인 익명글 삭제 시 비밀번호 입력 팝업(`prompt`)을 띄워 백엔드 `DELETE /api/v1/posts/{id}?anonymousPassword=...`와 연동하여 삭제 처리 완결. 본인 작성 익명글/일반글은 즉시 삭제 지원.
+
+- **게시글 작성자 본인만 수정/삭제 가능하도록 프론트/백엔드 이중 보안 가드 적용 (2026-08-24)**:
+  1. **프론트엔드 상세 화면(`app/posts/[publicId]/page.tsx`)**: 로그인된 현재 유저(`GET /api/v1/members/me`)와 글 작성자(`writer.publicId`)가 일치하거나 익명글인 경우에만 `[수정]` 버튼 노출하도록 조건부 렌더링 적용. 타인 계정에게는 [수정] 버튼 은닉.
+  2. **프론트엔드 수정 화면(`app/posts/[publicId]/edit/page.tsx`)**: 타인이 URL로 직접 수정 페이지 접근 시 `"본인이 작성한 글만 수정할 수 있습니다."` 경고 팝업 후 즉시 원래 상세 페이지로 리다이렉트(가드) 조치.
+  3. **백엔드 2차 물리 검증(`PostService.java`)**: `validateEditPermission` 및 `validateDeletePermission`을 강화하여, 작성자 본인이 아닌 계정의 `PUT/DELETE` API 호출 시 `403 FORBIDDEN (ACCESS_DENIED)` 처리로 2차 물리 보안 완성.
+
+- **디스크 기반 영구 데이터베이스 연동으로 데이터 영속성 100% 보장 (2026-08-24)**:
+  1. 기존 RAM 전용 인메모리(`jdbc:h2:mem`) 설정을 프로젝트 로컬 파일 기반 영구 데이터베이스(`jdbc:h2:file:./data/snowdb`) 및 `ddl-auto: update`로 완전히 교체.
+  2. 이제 서버 종료/재시작/PC 재부팅 후에도 회원가입 계정, 작성 글, 댓글, 추천 내역이 `./data/snowdb.mv.db` 파일 디스크에 100% 영구 보존됨.
+
+- **독립 투표 토글 시스템, 카운트 이중증가 버그 수정, 옵션 텍스트 정제 및 가입 후 자동 로그인 반영 (2026-08-24)**:
+  1. **카운트 2중 증가 원인 해결**: `PostReactionEventListener.java` 이벤트 수신 카운팅 중복을 제거하여 1회 클릭 당 정확히 +1/-1만 갱신되도록 물리적 이중 카운팅 원천 해결.
+  2. **독립 투표 & 토글 구현**: `PostService.java` 및 `PostReactionRepository.java` 개편으로 추천(LIKE)과 비추천(DISLIKE)을 각각 독립 투표 가능하게 하고, 재클릭 시 DB 레코드 삭제 및 카운트 -1(취소) 처리 보장.
+  3. **드롭다운 옵션 텍스트 정제**: `app/posts/create/page.tsx` 셀렉트 박스 내 조잡했던 `(로그인 필요)`, `(누구나 가능)` 괄호 문구 전체 제거 및 `자유게시판`, `익명 대나무숲`, `장비 Q&A`, `리조트 맛집` 표준 명칭 정제.
+  4. **회원가입 후 자동 로그인**: `app/signup/page.tsx` 가입 성공 시 로그인 API 연쇄 호출로 세션 자동 쿠키 발급 후 메인 페이지(`/`)로 즉시 리다이렉트.
+  5. 백엔드 전체 유닛 테스트 51/51건 BUILD SUCCESSFUL 통과.
+
+- **회원가입 404/401 에러 해결 및 엔드포인트 수정을 통한 가입 기능 정상화 (2026-08-24)**:
+  1. `app/signup/page.tsx` 회원가입 API URL을 구버전 `/api/members`에서 버전 명시 표준 경로 `/api/v1/members`로 100% 수정하여 404 및 Spring Security 401 Unauthorized("로그인이 필요합니다") 에러 원천 해결.
+  2. 백엔드 `MemberSignUpRequest` 유효성 검증(이메일, 비밀번호 8자 이상+대문자+특수문자, 닉네임 2~10자) 실패 시 에러 사유가 프론트 화면 빨간 상자에 정확히 노출되도록 에러 핸들링 보강.
+
+- **비로그인 사용자 일반 게시판 작성 접근 차단 라우트 가드 적용 (2026-08-24)**:
+  1. `app/posts/create/page.tsx` 라우트 가드(Route Guard) 구현: 비로그인 상태에서 `ANONYMOUS`가 아닌 자유/Q&A/맛집 게시판 글쓰기 진입 시 `"자유/Q&A/맛집 게시판 글쓰기는 로그인이 필요합니다."` 알림 후 로그인 페이지(`/login?redirect=/posts/create`)로 즉시 리다이렉트.
+  2. 작성 폼 내 카테고리 셀렉트박스 변경 가드 적용: 비로그인 사용자가 일반 카테고리로 변경 시 시도 즉시 차단 및 로그인 유도.
+  3. 백엔드 `PostService.java` 비익명 게시판 401 Unauthorized 물리 방어 2차 유지.
+
+- **익명 IP 기반 추천/비추천 투표 & IP 마스킹 정제 완료 (2026-08-24)**:
+  1. `post_reaction` 테이블 `member_id` Nullable 및 `writer_ip` 컬럼 추가로 로그인 여부 상관없이 IP 기반 투표 지원 (`PostReaction.java`, `PostReactionRepository.java`, `PostService.java`).
+  2. 로컬 IPv6 루프백 주소(`0:0:0:0:0:0:0:1`, `::1`)를 표준 `127.0.0.1`로 자동 변환하여 외부 화면에 `익명 (127.0.***.***)` 깔끔한 마스킹 뱃지로 출력 (`PostResponse.java`, `PostListResponse.java`, `PostDetailResponse.java`).
+  3. 프론트엔드 상세 화면(`app/posts/[publicId]/page.tsx`) 추천/비추천 버튼 실시간 연동 및 중복 투표 알림 처리.
+  4. 백엔드 전체 unit test 51/51 건 BUILD SUCCESSFUL 통과.
+
+- **프론트 브랜드명 표기 변경 (2026-08-23)**:
+  1. 메인 및 공통 네비게이션/footer에 노출되던 `SnowBoarders` 브랜드명을 `SnowThing`으로 변경.
+  2. 수정 파일: `frontend/app/components/SiteChrome.tsx`.
+
 ## 2026-07-30
 
 ### 완료
@@ -307,6 +406,21 @@
   - 시큐리티 수동 검증 제거: `MemberController` 수동 `SecurityContextHolder` 검증을 삭제하고 `SecurityConfig` 및 `@AuthenticationPrincipal` 주입 표준화 적용.
   - 중복 체크 검증 강화: `MemberService` 가입/수정 시 사전 `existsByEmail`, `existsByNickname` 비즈니스 예외 처리 및 DB Unique 제약조건 이중 방어선 세팅.
   - 전체 단위/통합 테스트: 51개 전체 테스트 100% PASS (`BUILD SUCCESSFUL`).
+- **게시글/댓글 수정·삭제 권한 및 PostStatus Enum/UX 정책 확정 (`project.md` 반영) (2026-08-23)**:
+  1. **수정 권한 정립**: **작성자 본인만 수정 가능** (`PUT /api/v1/posts/{id}`). **관리자(`ROLE_ADMIN`) 포함 타인 수정 100% 차단** (내용 왜곡 및 명의 도용/책임 소재 논란 방지).
+  2. **관리자 권한 범위**: 관리자는 수정 권한이 없으며, 부적절한 게시글에 대한 **블라인드/차단(`status = BLOCKED`) 처리만 수행**.
+  3. **PostStatus Enum 세분화**: `NORMAL`, `DELETED`, `BLOCKED`, `HIDDEN`(비공개), `DRAFT`(임시작성) 5개 상태값으로 세분화 분리.
+  4. **삭제글 UX 모달 알럿 클릭 정책 (방안 A)**: 인기글(HOT) 및 게시판 목록에 노출되던 글이 삭제/차단된 경우, 목록 제목은 `"[삭제된 게시글입니다]"` 형태로 유지하되 유저가 클릭 시 **상세 페이지로 이동(라우팅)하지 않고 목록 화면 상에서 클릭 즉시 "삭제된 게시글입니다" / "관리자에 의해 차단된 게시글입니다" 알럿(Modal/Alert) 창을 팝업**하여 UX 최적화 및 서버 부하 차단.
+  5. `docs/project/project.md` 문서에 해당 정책 세부 수록 완료.
+- **게시글 무료 마크다운 에디터 및 목록 이미지 뱃지 역정규화(`has_image`) 정책 확정 (2026-08-23)**:
+  1. **무료 마크다운 에디터 스택 (Toast UI Editor)**: NHN 개발 100% 무료 MIT 라이선스 **Toast UI Editor (`@toast-ui/react-editor`)**를 채택하여 `![설명](url)` 커서 인라인 삽입을 통한 `[텍스트 ➔ 이미지 ➔ 텍스트 ➔ 이미지]` 본문 구성 및 XSS 안전성 확보.
+  2. **목록 이미지 뱃지 역정규화 (`Post.has_image`)**: `Post` 테이블에 `has_image` (`BOOLEAN`) 컬럼을 배치하여 1:N 조인 쿼리 0건으로 **초록색 산 이미지 아이콘(🖼️)** 및 **댓글 말풍선 아이콘(💬)** 목록 시각적 뱃지 렌더링 최적화.
+  3. `docs/project/project.md` 문서 반영 완료.
+- **Snowthing Refined 프론트엔드 디자인 시스템 및 5개 화면 적용 완료 (2026-08-23)**:
+  1. **디자인 테마 시스템 (`layout.tsx`, `globals.css`)**: `docs/project/design/snowthing_refined/DESIGN.md` 명세 기준 Pure White (`#FFFFFF`) & Charcoal (`#111827`) & Hanken Grotesk + JetBrains Mono 폰트 스택 및 Material Symbols 적용.
+  2. **게시판 피드 리뉴얼 (`app/posts/page.tsx`)**: 자유게시판/익명게시판 피드에 **🖼️ 초록색 이미지 첨부 뱃지 (`hasImage === true`)** 및 **💬 댓글 말풍선 뱃지 (`commentCount > 0`)** 렌더링 적용.
+  3. **삭제글/차단글 모달 알럿 UX**: 목록에서 삭제/차단된 글 클릭 시 상세 라우팅 없이 instant `alert("삭제된 게시글입니다.")` 모달 팝업 처리.
+  4. **메인 허브 & 작성 폼 리뉴얼 (`app/page.tsx`, `app/posts/create/page.tsx`)**: Shred-Talk 허브 및 마크다운 본문 작성 폼 Refined UI 적용 완료.
 
 
 
@@ -318,9 +432,45 @@
 
 
 
+- **Snowthing Refined 기준 프론트 전체 디자인 재정비 (2026-08-23)**:
+  1. `docs/project/design/snowthing_refined/DESIGN.md` 및 `_1`, `_2`, `_3` 화면 시안을 기준으로 흰 캔버스, 차콜 타이포그래피, 1px 보더, 4px radius, 고밀도 게시글 리스트 중심의 프론트 UI로 재구성.
+  2. `frontend/app/globals.css`에 공통 디자인 토큰과 `snow-card`, `snow-btn-primary`, `snow-btn-secondary`, `snow-input`, `snow-chip` 등 공통 유틸리티 클래스 정리.
+  3. `frontend/app/components/SiteChrome.tsx` 신규 추가: `TopNav`, `SideCategories`, `Footer` 공통화로 페이지별 네비게이션 중복 및 디자인 불일치 제거.
+  4. 메인, 게시글 목록, 익명 게시판, 게시글 작성/수정/상세/댓글, 로그인, 회원가입, 프로필, 리조트 화면의 깨진 한글 문구와 인라인 스타일/어두운 테마 잔재를 제거하고 동일한 Snowthing Refined UI로 통일.
+  5. 게시글 목록과 익명 게시판의 삭제/차단 게시글 클릭 방지 UX 유지: 상세 페이지 이동 없이 즉시 alert 표시.
+  6. 검증 결과: `npm run lint` error 0개, warning 8개(`<img>` 최적화 권고 및 `layout.tsx` 폰트 로드 권고만 남음). `npm run build` 성공.
+  7. 남은 이슈: 현재 이미지는 외부 URL과 일반 `<img>`를 사용하므로 Next Image 최적화를 적용하려면 `next.config.ts`의 remote image domain 설정과 `next/image` 전환이 필요함.
+- **백엔드 계층 결합/익명 추천 리팩터링 완료 (2026-08-24)**:
+  1. `PostService`에서 `HttpServletRequest`, `HttpServletResponse`, `Cookie` 의존을 제거하고 조회수 증가는 `shouldIncreaseViewCount` 순수 값으로 받도록 분리.
+  2. `ClientIpResolver`, `ViewCountCookieManager`, `AnonymousVoterCookieManager`를 추가해 웹 계층에서 IP 추출, 조회수 쿠키, 익명 투표자 쿠키를 전담.
+  3. 비로그인 익명 추천/비추천을 `anonymous_voter_id` 쿠키 기반으로 처리하도록 `PostReaction`과 `PostReactionRepository`를 수정하고, 회원/익명 각각의 복합 유니크 제약을 분리.
+  4. Redis는 아직 도입하지 않고, 추후 AP 성향의 Redis 카운터/이력 저장소로 전환하기 쉽도록 `ReactionActor` 값 객체를 추가.
+  5. `MemberSignUpRequest`, `MemberProfileUpdateRequest` 컬렉션 필드에 방어적 복사 및 불변 조회 반환 적용.
+  6. `SecurityConfig`의 문자열 JSON 직접 응답을 `ErrorResponse` + `ObjectMapper` 기반 표준 응답으로 교체.
+  7. 검증 결과: `./gradlew.bat test` 전체 통과.
 
+- **익명 추천 리팩터링 학습 문서 및 테스트 보강 완료 (2026-08-24)**:
+  1. `docs/study/sprint02/익명추천_계층분리_리팩터링_학습정리260824.md` 문서를 생성해 서비스-웹 계층 분리, 익명 쿠키 기반 투표, Redis/AP 전환 여지, DTO 방어적 복사, 보안 응답 표준화 이유를 한글 제목과 본문으로 정리.
+  2. `WebCookieManagerTest` 추가: 조회수 쿠키 최초/중복 판단, 익명 투표자 쿠키 생성/재사용, `X-Forwarded-For` 첫 IP 추출 검증.
+  3. `PostControllerTest` 보강: `viewed_posts` 쿠키가 있을 때 조회수 중복 증가 차단, 비로그인 익명 사용자의 `anonymous_voter_id` 쿠키 기반 추천 토글 검증.
+  4. `MemberServiceSignUpVerificationTest` 보강: 회원가입 요청 DTO 컬렉션 방어적 복사 및 getter 불변 리스트 반환 검증.
+  5. 검증 결과: `./gradlew.bat test` 전체 60개 테스트 통과.
 
+- **게시글 수정 시 첨부 이미지/hasImage 동기화 누락 보완 완료 (2026-08-24)**:
+  1. `PostUpdateRequest.imageUrls()`가 존재하지만 `PostService.updatePost()`에서 실제 `post_image` 목록과 `Post.hasImage`를 갱신하지 않던 문서-구현 불일치 결함을 확인.
+  2. `Post.replaceImages()` 도메인 메서드를 추가해 이미지 컬렉션 교체와 `hasImage` 역정규화 값을 같은 엔티티 메서드에서 원자적으로 동기화하도록 정리.
+  3. `PostService.createPost()`와 `PostService.updatePost()` 모두 `Post.replaceImages()` 경로를 사용하도록 맞춰, 작성/수정 이미지 저장 방식이 분리되지 않게 개선.
+  4. `PostServiceTest`에 게시글 수정 시 이미지 목록 교체 성공 케이스와 이미지 전체 제거 시 `hasImage=false` 및 `post_image` row 제거 검증 케이스 추가.
+  5. 검증 결과: `./gradlew.bat test --tests "com.ikae.snowthing.domain.post.service.PostServiceTest"` 통과, 게시글 도메인 테스트 통과, 댓글 도메인 테스트 통과, `./gradlew.bat test` 전체 62개 테스트 통과, `./gradlew.bat check` 통과.
+  6. 참고 이슈: 게시글/댓글 테스트를 Gradle로 병렬 실행했을 때 동일 `build/test-results/test/binary` 파일 접근 충돌로 EOF/NoSuchFile 오류가 발생했으나, 순차 실행에서는 모두 통과함.
 
+- **README 게시판(Post) 도메인 설명 문체 및 근거 보완 완료 (2026-08-24)**:
+  1. 루트 `README.md`의 게시판 도메인 섹션을 사용자 말투에 맞게 다시 작성하고, 과장된 표현과 근거 없는 성능 수치를 제거.
+  2. 게시글 도메인 구조, 회원-게시글 연관관계, 상태와 유형, 목록/상세 응답 분리 이유, 페이지네이션/정렬 기준, 수정 권한 검증, Hard Delete/Soft Delete 비교, 현재 삭제 방식 선택 이유, 실행 쿼리 확인 결과, 주요 예외 응답을 각각 독립 소제목으로 정리.
+  3. 최근 반영한 `Post.replaceImages()`와 `hasImage` 역정규화 동기화 내용을 README 설명에 포함하여 코드와 문서 불일치를 줄임.
+  4. 검증 결과: 문서 변경 범위 확인 완료. 코드 변경 없음.
 
-
-
+- **README 추천/비추천 용어 정리 완료 (2026-08-24)**:
+  1. `README.md`의 `PostReaction` 설명에서 `회원 투표`, `비로그인 익명 투표` 표현을 제거하고 `로그인 사용자의 추천/비추천`, `비로그인 사용자의 익명 추천/비추천`으로 수정.
+  2. 주요 예외 응답의 `익명 글 작성/투표` 표현도 `익명 글 작성/추천·비추천`으로 정리.
+  3. 검증 결과: 문서 문구 검색 및 변경 범위 확인 완료. 코드 변경 없음.

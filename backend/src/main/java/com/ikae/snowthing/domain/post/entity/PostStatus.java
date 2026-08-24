@@ -2,7 +2,8 @@ package com.ikae.snowthing.domain.post.entity;
 
 public enum PostStatus {
     NORMAL,
-    HIDDEN,
     DELETED,
-    BLOCKED
+    BLOCKED,
+    HIDDEN,
+    DRAFT
 }

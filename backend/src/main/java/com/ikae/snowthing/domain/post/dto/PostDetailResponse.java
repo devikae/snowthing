@@ -16,6 +16,7 @@ public record PostDetailResponse(
     String title,
     String content,
     PostStatus status,
+    boolean isAnonymous,
     int viewCount,
     int commentCount,
     int likeCount,
@@ -64,6 +65,7 @@ public record PostDetailResponse(
             .title(post.getTitle())
             .content(post.getContent())
             .status(post.getStatus())
+            .isAnonymous(post.isAnonymous())
             .viewCount(post.getViewCount())
             .commentCount(post.getCommentCount())
             .likeCount(post.getLikeCount())
@@ -75,7 +77,9 @@ public record PostDetailResponse(
     }
 
     private static String maskIp(String ip) {
-        if (ip == null || ip.isBlank()) return "***.***.***.***";
+        if (ip == null || ip.isBlank() || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
+            return "127.0.***.***";
+        }
         String[] parts = ip.split("\\.");
         if (parts.length == 4) {
             return parts[0] + "." + parts[1] + ".***.***";
