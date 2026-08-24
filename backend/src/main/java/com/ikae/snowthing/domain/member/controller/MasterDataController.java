@@ -1,32 +1,29 @@
 package com.ikae.snowthing.domain.member.controller;
 
-import com.ikae.snowthing.domain.member.entity.Resort;
-import com.ikae.snowthing.domain.member.entity.RidingStyle;
-import com.ikae.snowthing.domain.member.repository.ResortRepository;
-import com.ikae.snowthing.domain.member.repository.RidingStyleRepository;
+import com.ikae.snowthing.domain.member.dto.ResortResponse;
+import com.ikae.snowthing.domain.member.dto.RidingStyleResponse;
+import com.ikae.snowthing.domain.member.service.MasterDataService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1/master")
 @RequiredArgsConstructor
 public class MasterDataController {
 
-    private final ResortRepository resortRepository;
-    private final RidingStyleRepository ridingStyleRepository;
+    private final MasterDataService masterDataService;
 
     @GetMapping("/resorts")
-    public ResponseEntity<List<Resort>> getResorts() {
-        return ResponseEntity.ok(resortRepository.findAll());
+    public ResponseEntity<List<ResortResponse>> getResorts() {
+        return ResponseEntity.ok(masterDataService.getAllResorts());
     }
 
     @GetMapping("/riding-styles")
-    public ResponseEntity<List<RidingStyle>> getRidingStyles() {
-        return ResponseEntity.ok(ridingStyleRepository.findAll());
+    public ResponseEntity<List<RidingStyleResponse>> getRidingStyles() {
+        return ResponseEntity.ok(masterDataService.getAllRidingStyles());
     }
 }

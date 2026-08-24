@@ -5,7 +5,6 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -24,8 +23,9 @@ public class MemberLoginResponse {
         this.email = email;
         this.nickname = nickname;
         this.role = role;
-        this.resortNames = resortNames != null ? resortNames : new ArrayList<>();
-        this.ridingStyleNames = ridingStyleNames != null ? ridingStyleNames : new ArrayList<>();
+        // 방어적 복사 (Defensive Copy) 적용으로 100% 불변 리스트 보장 및 외부 변형 차단
+        this.resortNames = resortNames != null ? List.copyOf(resortNames) : List.of();
+        this.ridingStyleNames = ridingStyleNames != null ? List.copyOf(ridingStyleNames) : List.of();
     }
 
     public static MemberLoginResponse from(Member member, List<String> resortNames, List<String> ridingStyleNames) {

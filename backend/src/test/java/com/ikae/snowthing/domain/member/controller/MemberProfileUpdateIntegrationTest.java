@@ -27,6 +27,8 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -98,7 +100,7 @@ class MemberProfileUpdateIntegrationTest {
                 .password("Password123!")
                 .build();
 
-        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .session(beforeSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -115,7 +117,7 @@ class MemberProfileUpdateIntegrationTest {
                 .ridingStyleIds(List.of(styleId1, styleId2))
                 .build();
 
-        mockMvc.perform(put("/api/members/me")
+        mockMvc.perform(put("/api/v1/members/me").with(csrf())
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
@@ -124,7 +126,7 @@ class MemberProfileUpdateIntegrationTest {
                 .andExpect(jsonPath("$.resortNames.length()").value(2))
                 .andExpect(jsonPath("$.ridingStyleNames.length()").value(2));
 
-        mockMvc.perform(get("/api/members/me").session(session))
+        mockMvc.perform(get("/api/v1/members/me").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nickname").value("수정후닉네임"))
                 .andExpect(jsonPath("$.resortNames", Matchers.hasItems("휘닉스파크", "하이원리조트")));

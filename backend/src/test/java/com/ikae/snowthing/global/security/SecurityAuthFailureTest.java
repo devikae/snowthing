@@ -19,6 +19,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -59,21 +60,21 @@ class SecurityAuthFailureTest {
     }
 
     @Test
-    @DisplayName("[인증 실패 검증 1] 세션 쿠키 없이 /api/members/me (GET) 접근 시 AuthenticationEntryPoint 가 동작하여 401 Unauthorized 를 반환해야 한다")
+    @DisplayName("[인증 실패 검증 1] 세션 쿠키 없이 /api/v1/members/me (GET) 접근 시 AuthenticationEntryPoint 가 동작하여 401 Unauthorized 를 반환해야 한다")
     void getMyProfile_WithoutSession_Returns401() throws Exception {
-        mockMvc.perform(get("/api/members/me"))
+        mockMvc.perform(get("/api/v1/members/me"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
     }
 
     @Test
-    @DisplayName("[인증 실패 검증 2] 세션 쿠키 없이 /api/members/me (PUT) 접근 시 401 Unauthorized 를 반환해야 한다")
+    @DisplayName("[인증 실패 검증 2] 세션 쿠키 없이 /api/v1/members/me (PUT) 접근 시 401 Unauthorized 를 반환해야 한다")
     void updateMyProfile_WithoutSession_Returns401() throws Exception {
-        mockMvc.perform(put("/api/members/me")
+        mockMvc.perform(put("/api/v1/members/me").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nickname\":\"새닉네임\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
     }
 
     @Test
@@ -82,13 +83,13 @@ class SecurityAuthFailureTest {
         MockHttpSession invalidSession = new MockHttpSession();
         invalidSession.invalidate(); // 세션 무효화
 
-        mockMvc.perform(get("/api/members/me").session(invalidSession))
+        mockMvc.perform(get("/api/v1/members/me").session(invalidSession))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
     }
 
     @Test
-    @DisplayName("[권한 실패 검증 4] 일반 회원(ROLE_USER)이 관리자 URL(/api/admin/**) 접근 시 AccessDeniedHandler 가 동작하여 403 Forbidden 을 반환해야 한다")
+    @DisplayName("[권한 실패 검증 4] 일반 회원(ROLE_USER)이 관리자 URL(/api/v1/admin/**) 접근 시 AccessDeniedHandler 가 동작하여 403 Forbidden 을 반환해야 한다")
     void userAccess_AdminUrl_Returns403() throws Exception {
         // 1. 일반 회원 세션 로그인
         MemberLoginRequest loginRequest = MemberLoginRequest.builder()
@@ -96,7 +97,7 @@ class SecurityAuthFailureTest {
                 .password("Password123!")
                 .build();
 
-        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
@@ -104,9 +105,9 @@ class SecurityAuthFailureTest {
 
         MockHttpSession userSession = (MockHttpSession) loginResult.getRequest().getSession(false);
 
-        // 2. 일반 회원 세션으로 /api/admin/dashboard 접근 ➔ 403 Forbidden 차단!
-        mockMvc.perform(get("/api/admin/dashboard").session(userSession))
+        // 2. 일반 회원 세션으로 /api/v1/admin/dashboard 접근 ➔ 403 Forbidden 차단!
+        mockMvc.perform(get("/api/v1/admin/dashboard").session(userSession))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("FORBIDDEN"));
+                .andExpect(jsonPath("$.error").value("ACCESS_DENIED"));
     }
 }

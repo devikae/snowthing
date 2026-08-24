@@ -28,10 +28,10 @@ public class MemberService {
     @Transactional
     public MemberSignUpResponse signUp(MemberSignUpRequest request) {
         if (memberRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("DUPLICATE_EMAIL");
+            throw new com.ikae.snowthing.global.exception.CustomAuthException(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_EMAIL);
         }
         if (memberRepository.existsByNickname(request.getNickname())) {
-            throw new IllegalArgumentException("DUPLICATE_NICKNAME");
+            throw new com.ikae.snowthing.global.exception.CustomAuthException(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
@@ -58,43 +58,50 @@ public class MemberService {
 
             return MemberSignUpResponse.from(savedMember);
         } catch (DataIntegrityViolationException e) {
-            throw new IllegalArgumentException("DUPLICATE_EMAIL");
+            throw new com.ikae.snowthing.global.exception.CustomAuthException(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_EMAIL);
         }
     }
 
     @Transactional
     public MemberSignUpResponse updateMyProfile(String email, MemberProfileUpdateRequest request) {
         Member member = memberRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("MEMBER_NOT_FOUND"));
+                .orElseThrow(() -> new com.ikae.snowthing.global.exception.CustomAuthException(com.ikae.snowthing.global.error.ErrorCode.MEMBER_NOT_FOUND));
 
-        // 닉네임 변경 시 기존 닉네임과 다르고 타 유저와 중복되는지 검사
+        // 닉네임 변경 시 기존 닉네임과 다르고 타 유저와 중복되는지 사전 검사
         if (!member.getNickname().equals(request.getNickname()) && memberRepository.existsByNickname(request.getNickname())) {
-            throw new IllegalArgumentException("DUPLICATE_NICKNAME");
+            throw new com.ikae.snowthing.global.exception.CustomAuthException(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
         }
 
-        // 1. 기본 프로필 정보 업데이트 (Dirty Checking)
-        member.updateProfile(request.getNickname(), request.getBio(), request.getDepartureRegion(), member.getProfileImageUrl());
+        try {
+            // 1. 기본 프로필 정보 업데이트 (Dirty Checking)
+            member.updateProfile(request.getNickname(), request.getBio(), request.getDepartureRegion(), member.getProfileImageUrl());
 
-        // 2. 기존 N:M 선호 스키장 삭제 후 재등록
-        memberResortRepository.deleteAllByMemberId(member.getId());
-        if (request.getResortIds() != null && !request.getResortIds().isEmpty()) {
-            List<Resort> resorts = resortRepository.findAllById(request.getResortIds());
-            List<MemberResort> newMemberResorts = resorts.stream()
-                    .map(resort -> MemberResort.builder().member(member).resort(resort).build())
-                    .toList();
-            memberResortRepository.saveAll(newMemberResorts);
+            // 2. 기존 N:M 선호 스키장 삭제 후 재등록
+            memberResortRepository.deleteAllByMemberId(member.getId());
+            if (request.getResortIds() != null && !request.getResortIds().isEmpty()) {
+                List<Resort> resorts = resortRepository.findAllById(request.getResortIds());
+                List<MemberResort> newMemberResorts = resorts.stream()
+                        .map(resort -> MemberResort.builder().member(member).resort(resort).build())
+                        .toList();
+                memberResortRepository.saveAll(newMemberResorts);
+            }
+
+            // 3. 기존 N:M 라이딩 성향 삭제 후 재등록
+            memberRidingStyleRepository.deleteAllByMemberId(member.getId());
+            if (request.getRidingStyleIds() != null && !request.getRidingStyleIds().isEmpty()) {
+                List<RidingStyle> ridingStyles = ridingStyleRepository.findAllById(request.getRidingStyleIds());
+                List<MemberRidingStyle> newMemberRidingStyles = ridingStyles.stream()
+                        .map(style -> MemberRidingStyle.builder().member(member).ridingStyle(style).build())
+                        .toList();
+                memberRidingStyleRepository.saveAll(newMemberRidingStyles);
+            }
+
+            // 동시성 닉네임 중복 충돌을 DB Unique Index 레벨에서 즉시 감지하기 위해 flush
+            memberRepository.flush();
+
+            return MemberSignUpResponse.from(member);
+        } catch (DataIntegrityViolationException e) {
+            throw new com.ikae.snowthing.global.exception.CustomAuthException(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
         }
-
-        // 3. 기존 N:M 라이딩 성향 삭제 후 재등록
-        memberRidingStyleRepository.deleteAllByMemberId(member.getId());
-        if (request.getRidingStyleIds() != null && !request.getRidingStyleIds().isEmpty()) {
-            List<RidingStyle> ridingStyles = ridingStyleRepository.findAllById(request.getRidingStyleIds());
-            List<MemberRidingStyle> newMemberRidingStyles = ridingStyles.stream()
-                    .map(style -> MemberRidingStyle.builder().member(member).ridingStyle(style).build())
-                    .toList();
-            memberRidingStyleRepository.saveAll(newMemberRidingStyles);
-        }
-
-        return MemberSignUpResponse.from(member);
     }
 }

@@ -6,16 +6,16 @@ import com.ikae.snowthing.domain.member.dto.MemberProfileUpdateRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.service.MemberService;
+import com.ikae.snowthing.global.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/members")
+@RequestMapping("/api/v1/members")
 @RequiredArgsConstructor
 public class MemberController {
 
@@ -29,25 +29,19 @@ public class MemberController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<MemberLoginResponse> getMyProfile() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        String email = (String) authentication.getPrincipal();
-        MemberLoginResponse profile = authService.getMyProfile(email);
+    public ResponseEntity<MemberLoginResponse> getMyProfile(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        MemberLoginResponse profile = authService.getMemberProfileByEmail(userDetails.getUsername());
         return ResponseEntity.ok(profile);
     }
 
     @PutMapping("/me")
-    public ResponseEntity<MemberLoginResponse> updateMyProfile(@Valid @RequestBody MemberProfileUpdateRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        String email = (String) authentication.getPrincipal();
+    public ResponseEntity<MemberLoginResponse> updateMyProfile(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody MemberProfileUpdateRequest request
+    ) {
+        String email = userDetails.getUsername();
         memberService.updateMyProfile(email, request);
-        MemberLoginResponse updatedProfile = authService.getMyProfile(email);
+        MemberLoginResponse updatedProfile = authService.getMemberProfileByEmail(email);
         return ResponseEntity.ok(updatedProfile);
     }
 }

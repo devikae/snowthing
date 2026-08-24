@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -39,9 +40,15 @@ class AuthControllerTest {
     @Autowired
     private MemberRepository memberRepository;
 
+    @Autowired
+    private com.ikae.snowthing.domain.member.repository.MemberResortRepository memberResortRepository;
+
+    @Autowired
+    private com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository memberRidingStyleRepository;
+
     @BeforeEach
     void setUp() {
-        memberRepository.deleteAll();
+        cleanUp();
         MemberSignUpRequest signUpRequest = MemberSignUpRequest.builder()
                 .email("sessionuser@snowthing.com")
                 .password("Password123!")
@@ -52,6 +59,12 @@ class AuthControllerTest {
 
     @AfterEach
     void tearDown() {
+        cleanUp();
+    }
+
+    private void cleanUp() {
+        memberResortRepository.deleteAll();
+        memberRidingStyleRepository.deleteAll();
         memberRepository.deleteAll();
     }
 
@@ -63,7 +76,7 @@ class AuthControllerTest {
                 .password("Password123!")
                 .build();
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
@@ -81,11 +94,11 @@ class AuthControllerTest {
                 .password("WrongPassword999!")
                 .build();
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
+                .andExpect(jsonPath("$.code").value("AUTH_001"));
     }
 
     @Test
@@ -99,7 +112,7 @@ class AuthControllerTest {
                 .password("Password123!")
                 .build();
 
-        MvcResult mvcResult = mockMvc.perform(post("/api/auth/login")
+        MvcResult mvcResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .session(beforeSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -114,7 +127,7 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("[검증 4] 로그인 후 /api/members/me 접근 성공 및 로그아웃 후 세션 무효화로 접근 차단(401) 실증")
+    @DisplayName("[검증 4] 로그인 후 /api/v1/members/me 접근 성공 및 로그아웃 후 세션 무효화로 접근 차단(401) 실증")
     void login_Me_And_Logout_SessionInvalidate_Success() throws Exception {
         MockHttpSession beforeSession = new MockHttpSession();
 
@@ -123,7 +136,7 @@ class AuthControllerTest {
                 .password("Password123!")
                 .build();
 
-        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
                         .session(beforeSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -132,16 +145,16 @@ class AuthControllerTest {
 
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession();
 
-        mockMvc.perform(get("/api/members/me").session(session))
+        mockMvc.perform(get("/api/v1/members/me").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("sessionuser@snowthing.com"));
 
-        mockMvc.perform(post("/api/auth/logout").session(session))
+        mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("LOGOUT_SUCCESS"));
 
         MockHttpSession emptySession = new MockHttpSession();
-        mockMvc.perform(get("/api/members/me").session(emptySession))
+        mockMvc.perform(get("/api/v1/members/me").session(emptySession))
                 .andExpect(status().isUnauthorized());
     }
 }

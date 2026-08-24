@@ -58,7 +58,7 @@ class MemberControllerTest {
         given(memberService.signUp(any(MemberSignUpRequest.class))).willReturn(response);
 
         // when & then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(post("/api/v1/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -78,7 +78,7 @@ class MemberControllerTest {
                 .build();
 
         // when & then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(post("/api/v1/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -90,12 +90,12 @@ class MemberControllerTest {
         // given
         MemberSignUpRequest request = MemberSignUpRequest.builder()
                 .email("valid@snowthing.com")
-                .password("short") // 8자 미만
+                .password("123") // 4자 미만 (3자)
                 .nickname("정상닉네임")
                 .build();
 
         // when & then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(post("/api/v1/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
