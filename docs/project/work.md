@@ -1,3 +1,7 @@
+- **`application.yml` `spring:` 오타 복구 및 CI 액션 v5 업데이트 (`adf3f64`, 2026-08-24)**:
+  1. **빌드 원인 해결**: `application.yml` 및 `application-test.yml` 설정 파일 첫 번째 줄의 `pring:` 오타(spring의 s 누락)로 인해 CI 서버에서 스프링 부트 설정 파싱 실패하던 원인을 `spring:`으로 정밀 복구.
+  2. **CI 경고 제거**: `.github/workflows/gradle.yml`에서 `actions/setup-java@v4`를 `v5`로 업데이트하여 노드/Java 버전 경고 완벽 제거 및 원격 푸시 처리.
+
 - **`feature/sprint02-board` 원격 브랜치 깃허브 푸시 완결 (`63b0cb3`, 2026-08-24)**:
   1. **CI 빌드 실패 원인 조치**: 깃허브 원격 서버의 이전 깨진 빌드를 대체하기 위해, 62개 백엔드 전체 테스트 100% 통과 패치가 완료된 커밋(`63b0cb3`)을 원격 브랜치로 force push하여 GitHub Actions CI 정상 재실행 조치 완료.
 
