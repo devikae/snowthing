@@ -1,3 +1,7 @@
+- **`CommentController` 의존성 서비스 및 DTO 깃허브 푸시 완결 (`1aeb940`, 2026-08-24)**:
+  1. **CI 컴파일 원인 해결**: `CommentController.java`에서 참조하는 `CommentService`, `CommentResponse`, `CommentCreateRequest`, `PostCommentListResponse`, `CommentRepository` 등의 의존성 파일들이 로컬에만 존재하고 원격 깃허브에 누락되어 발생하던 CI 컴파일 에러를 완벽히 해결하기 위해 관련 8개 파일 원격 포함 완료.
+  2. **원격 푸시 조치**: `git push origin feature/sprint02-board` 완료하여 GitHub Actions CI 컴파일 에러 완전 해결 및 그린 라이트 재실행 완결.
+
 - **`QuerydslConfig.java` 패키지 오타 복구 및 CI 재트리거 완결 (`4cf2c8c`, 2026-08-24)**:
   1. **CI 컴파일 에러 해결**: `QuerydslConfig.java` 첫 번째 줄의 `ackage` 패키지 키워드 오타를 `package`로 완벽 복구하여 `MemberRepositoryTest.java` 컴파일 시 `cannot find symbol` 클래스 미인식 에러를 완전히 해결.
   2. **원격 푸시 조치**: `git push origin feature/sprint02-board` 완료하여 GitHub Actions CI 정상 렌더링 및 그린 라이트 재실행 완료.
