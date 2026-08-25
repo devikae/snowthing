@@ -20,13 +20,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
-    private static final int REMEMBER_ME_TIMEOUT_SECONDS = 30 * 24 * 60 * 60; // 30일
-    private static final int DEFAULT_SESSION_TIMEOUT_SECONDS = 60 * 60;        // 1시간
+    private static final int REMEMBER_ME_TIMEOUT_SECONDS = (int) Duration.ofDays(30).toSeconds();
+    private static final int DEFAULT_SESSION_TIMEOUT_SECONDS = (int) Duration.ofHours(1).toSeconds();
 
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;

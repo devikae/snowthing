@@ -1,3 +1,11 @@
+- **Java 21 Virtual Threads 도입 및 인증/DB 아키텍처 리팩토링 완결 (2026-08-25)**:
+  1. **Java 21 가상 스레드 적용**: `spring.threads.virtual.enabled: true` 및 `AsyncConfig`의 `Executors.newVirtualThreadPerTaskExecutor()` 등록으로 `@Async` 비동기 작업 시 스레드 풀 고갈 및 Native OOM 원천 차단.
+  2. **세션 타임아웃 매직 넘버 제거**: `AuthController.java`의 `30 * 24 * 60 * 60`을 `Duration.ofDays(30).toSeconds()` 명시적 상수로 교체.
+  3. **인증 데드코드 제거**: `AuthService.java`의 미사용 `authenticate()` 메서드 및 의존성을 삭제하여 Spring Security `AuthenticationManager`로 책임 단일화.
+  4. **QueryDSL DTO 프로젝션 적용**: `MemberRepositoryCustomImpl`에 `findProfileByEmail()`을 구현하여 프로필 조회를 단일 조인 DTO 프로젝션으로 최적화하고 `MemberRepositoryCustomTest` 검증 완료.
+  5. **DTO 타입 일원화**: `MemberLoginRequest`의 생성자 매개변수를 원시 `boolean rememberMe`로 일원화.
+  6. **테스트 검증**: 백엔드 전체 63개 테스트 100% PASS (`BUILD SUCCESSFUL in 20s`).
+
 - **`feature/sprint01-signup` PR #9 코멘트 피드백 반영 커밋 및 원격 푸시 완결 (`9125d81`, 2026-08-24)**:
   1. **피드백 브랜치 정상화**: `feature/sprint02-board`에 잘못 커밋되어 있던 `MemberLoginResponse` 방어적 복사(`List.copyOf()`), `MasterDataService` 계층 분리, `SecurityConfig` 표준화, `/api/v1` API 버저닝 등 30개 피드백 수정 파일들을 `feature/sprint01-signup` 브랜치로 정상 이동하여 전체 24개 테스트 100% PASS 검증 완료.
   2. **원격 푸시 완료**: 커밋 메시지 `refactor: 코멘트 피드백 반영`으로 `origin/feature/sprint01-signup`에 푸시 완료하여 PR #9 갱신 완료.
