@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.post.entity;
 
 import jakarta.persistence.*;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;

@@ -1,14 +1,14 @@
 package com.ikae.snowthing.domain.post.event;
 
-import com.ikae.snowthing.domain.post.entity.Post;
-import com.ikae.snowthing.domain.post.entity.ReactionType;
-import com.ikae.snowthing.domain.post.repository.PostRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.ikae.snowthing.domain.post.repository.PostRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component

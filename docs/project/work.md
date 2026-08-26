@@ -1,3 +1,115 @@
+- **Spring Boot 4.1.0 판올림 & Spotless 린터(Google Java Format AOSP) 전면 도입 & GitHub Actions CI 연동 (2026-08-26)**:
+  1. **Spring Boot 4.1.0 호환성 전수 교정**:
+     - `backend/build.gradle` 버전을 `4.1.0` (Spring Framework 7.x, Spring Security 7.x, Jakarta EE)으로 적용.
+     - Spring Boot 4의 모듈화에 맞춰 `spring-boot-starter-jackson`, `jackson-databind`, `spring-boot-starter-webmvc-test` 명시적 의존성 추가.
+     - Spring Security 7.x 아키텍처 변경에 맞춰 `SecurityConfig`의 `logoutUrl("/api/v1/auth/logout")` 적용 및 `ObjectMapper` 빈 등록.
+     - MockMvc 테스트에서 `@AuthenticationPrincipal` 인증 주입을 위한 `SecurityMockMvcRequestPostProcessors.user()` 일괄 적용.
+  2. **Spotless Linter 구축 및 전체 소스코드 자동 서식 교정**:
+     - `Spotless 6.25.0` Gradle 플러그인 연동 및 Google Java Format 1.22.0 (AOSP 4-space indent) 표준 규칙 적용.
+     - `removeUnusedImports()`, `importOrder()`, `trimTrailingWhitespace()`, `endWithNewline()` 설정.
+     - `.\gradlew.bat spotlessApply`로 프로젝트 전체 Java 소스코드의 import 및 FQCN/들여쓰기 자동 정돈.
+  3. **GitHub Actions CI 파이프라인 연동**:
+     - `.github/workflows/gradle.yml`에 `Run Spotless Linter Check` 스텝을 추가하여 PR/Push 시 코드 서식 및 import 위반을 자동 검증하고 Fast-Fail 처리.
+  4. **전체 테스트 및 빌드 검증**:
+     - `.\gradlew.bat clean build` (spotlessCheck + compile + 92개 전체 단위/통합 테스트) **100% SUCCESS**.
+
+- **Response DTO `@Builder` 지양 및 표준 생성자/정적 팩토리 메서드 전환 (2026-08-26)**:
+  1. **빌더 제거 및 타입 안전성 확보**: `PostDetailResponse`, `CommentResponse`, `PostListResponse`, `PostResponse`에서 `@Builder`를 제거하고 Java `record` 표준 생성자 및 `from(Entity)` 정적 팩토리 메서드로 전환하여 필드 누락 컴파일 타임 방어.
+  2. **전체 테스트 검증**: 83개 전체 테스트 PASS.
+
+- **게시글 조회 엔드포인트 분리 (웹 Offset vs 모바일 Cursor) (2026-08-26)**:
+  1. **엔드포인트 분리**: `GET /api/v1/posts`(웹 번호 기반 Offset 페이징)와 `GET /api/v1/posts/scroll`(모바일 무한 스크롤 커서 페이징)로 책임을 완벽히 분리.
+  2. **스펙 및 검증 명확화**: 단일 엔드포인트 내의 불필요한 분기 로직을 제거하고 각 클라이언트 스펙에 맞게 정돈.
+  3. **통합 테스트 작성 및 검증**: 83개 전체 테스트 PASS.
+
+- **`DataIntegrityViolationException` 오분류 방지 및 2단계 방어선 예외 처리 아키텍처 (2026-08-26)**:
+  1. **1차 방어선 (Service)**: `existsByEmail()`, `existsByNickname()` 사전 비즈니스 검증에 집중하고 DB 인프라 예외 `try-catch` 완전 제거.
+  2. **최종 방어선 (GlobalExceptionHandler)**: 동시성 충돌 시의 `DataIntegrityViolationException`을 전역 어드바이스에서 일괄 감지하여 로깅 및 안전한 클라이언트 에러로 변환.
+  3. **전체 테스트 검증**: 전체 81개 테스트 PASS.
+
+- **DTO Non-null 보장 컬렉션에 대한 중복 null 체크 제거 (2026-08-26)**:
+  1. **중복 검사 제거**: `MemberService.signUp` 및 `updateMyProfile`에서 DTO가 이미 Non-null(방어적 복사 및 빈 리스트 초기화)을 보장하므로 `!= null` 검사를 제거하고 `!isEmpty()` 조건만 유지.
+  2. **전체 테스트 검증**: 전체 81개 테스트 PASS.
+
+- **`saveAndFlush()` 및 `flush()` 지양, 표준 `save()` 및 `GlobalExceptionHandler` 이관 (2026-08-26)**:
+  1. **명시적 flush 제거**: `MemberService.signUp` 및 `updateMyProfile`에서 `saveAndFlush()`와 `flush()`를 제거하고 표준 `save()`로 변경하여 JPA 쓰기 지연(Write-Behind) 최적화 복원.
+  2. **전역 예외 처리 일원화**: 동시성 제약조건 위반(`DataIntegrityViolationException`) 처리를 서비스 내 `try-catch`에서 `GlobalExceptionHandler`로 이관.
+  3. **전체 테스트 검증**: 전체 81개 테스트 PASS.
+
+- **댓글 2-Pass 계층 트리 조립 알고리즘 적용 및 Early Return 리팩토링 (2026-08-26)**:
+  1. **2-Pass 트리 조립 (Order-independent)**: `CommentService.getCommentsByPost`에서 [Pass 1] Map 선제 등록 ➔ [Pass 2] 부모-자식 트리 바인딩으로 분리하여 쿼리 정렬 순서에 따른 자식 댓글 누락(Silent Data Drop) 방어.
+  2. **Early Return 가드 절**: `validateDeletePermission`에서 중첩된 `if-else` 분기를 제거하고 조기 반환을 적용하여 인지 부하 감소 및 코드 평탄화.
+  3. **전체 테스트 검증**: 전체 81개 테스트 PASS.
+
+- **댓글 생성 트랜잭션 범위 최소화 및 `TransactionTemplate` 기반 암호화 격리 (2026-08-26)**:
+  1. **트랜잭션 외 암호화/검증 선제 처리**: `CommentService.createComment`에서 BCrypt 해싱(`passwordEncoder.encode`) 및 파라미터 null 검증을 트랜잭션 시작 전에 수행하여 DB 커넥션 점유 시간 최소화.
+  2. **`TransactionTemplate` 적용**: `Post`, `Member`, `Parent` 엔티티 조회, `Comment` 저장, `post.increaseCommentCount()` 원자적 상태 변경 구간만 `transactionTemplate.execute()` 내부로 국소화.
+  3. **전체 테스트 검증**: 전체 81개 테스트 PASS.
+
+- **`humanize-korean` (`im-not-ai`) 스킬 탑재 및 PR 답변 톤앤매너 적용 (2026-08-26)**:
+  1. **스킬 탑재 (`.agents/skills/humanize-korean/SKILL.md`)**: 번역투, 기계적 나열, AI 상투적 과장 표현을 배제하고 실제 현업 엔지니어가 작성한 듯한 자연스러운 한국어 톤앤매너로 변환하는 스킬 구축.
+  2. **피드백 답변문구 적용**: `docs/project/review_feedback_replies.md` 내 PR 코멘트 답변 텍스트를 자연스럽고 담백한 어조로 일괄 정제.
+
+- **작성자 표시명 포맷터 템플릿화, IP 마스킹 공통 유틸(`WriterDisplayFormatter`) 분리 및 IPv6/비정상 IP 원문 노출 방어 (2026-08-26)**:
+  1. **공통 유틸 신설**: `global.util.WriterDisplayFormatter`를 생성하여 `"익명 (%s)"` 템플릿 상수화 및 `maskIp()` 마스킹 단일 진입점 구현.
+  2. **IPv6 및 비정상 IP 원문 노출 방지**: IPv4 4개 옥텟 마스킹뿐 아니라 IPv6(콜론 구분 앞 2개 세그먼트) 마스킹을 구현하고, 비정상/파싱 불가 문자열의 경우 `return ip;` 대신 안전한 기본값(`"127.0.***.***"`)을 반환하도록 방어 로직 강화.
+  3. **DTO 4종 리팩토링**: `CommentResponse`, `PostDetailResponse`, `PostListResponse`, `PostResponse`에 산재된 중복 `maskIp()` 메서드 및 삼항연산자 포맷팅 로직을 제거하고 `WriterDisplayFormatter` 호출로 통일.
+  4. **단위 테스트 전수 검증**: `WriterDisplayFormatterTest.java`를 통해 정상 IPv4, IPv6, null/공백/루프백, 비정상 문자열 IP 엣지 케이스 검증 완료 (전체 81개 테스트 PASS).
+
+- **`caveman` 및 `ponytail` 스킬 탑재 완료 (2026-08-26)**:
+  1. **Caveman 스킬 (`.agents/skills/caveman/SKILL.md`)**: 토큰 절약형 초압축 커뮤니케이션 모드 (군더더기 배제, 핵심 기술 내용과 코드/명령어 보존).
+  2. **Ponytail 스킬 (`.agents/skills/ponytail/SKILL.md`)**: 가장 단순하고 불필요한 오버엔지니어링(YAGNI)을 배제하는 최소화/효율적 구현 사다리 원칙 스킬 탑재.
+
+- **가상 스레드(Virtual Thread) `AsyncConfigurer` 인터페이스 리팩토링 및 동시성 제어 전략 문서화 (2026-08-26)**:
+  1. **설정 범위 명확화 및 중복 정리**: `spring.threads.virtual.enabled=true`는 내장 톰캣 서블릿 실행기에 적용되며, `@Async` 작업은 `AsyncConfigurer` 구현체를 통해 명시적인 `async-vt-` 가상 스레드 네이밍 및 `AsyncUncaughtExceptionHandler` 로깅 핸들러를 일원화 적용.
+  2. **과장 표현 정정 및 물리적 한계 분석**: 가상 스레드가 OS 스레드 스택 비용을 절감하지만 HikariCP 커넥션 풀 및 JVM 힙 메모리 한계를 극복하지 못함을 명시.
+  3. **DB 커넥션 고갈 제어 전략**: 세마포어/벌크헤드 동시성 제한, `OSIV=false` 기반 트랜잭션 최소화, 순수 I/O 비동기 작업 격리 전략 수립 (전체 77개 테스트 PASS).
+
+- **`MemberRepositoryCustomImpl` QueryDSL 3-Step O(1) 쿼리 분리 아키텍처 및 Cartesian Product 방지 트레이드오프 문서화 (2026-08-26)**:
+  1. **설계 배경 정정**: Member의 2개 일대다 관계(`member_resorts`, `member_riding_styles`) 단일 조인 시 발생하는 `N × M` 카테시안 곱(Cartesian Product) 및 메모리 중복 오버헤드를 방지하기 위해 3단계 고정 쿼리(O(1))로 분리한 아키텍처 설계 근거를 Javadoc 및 리뷰 답변에 명문화.
+  2. **트레이드오프 분석**: DB RTT 3회 증가 대가 대비, 데이터량에 무관한 O(1) 고정 쿼리 실행 및 최소 페이로드 전송 이점을 비교 검증.
+  3. **다중 컬렉션 무결성 검증**: `MemberRepositoryCustomTest.java`에 다중 리조트/스타일 매핑 테스트 추가 완료 (전체 77개 테스트 PASS).
+
+- **비공개(HIDDEN, BLOCKED, DRAFT) 게시글 목록 노출 차단(`status = NORMAL`) 및 도메인 전반 상태 정책 통일 (2026-08-26)**:
+  1. **목록 쿼리 조건 강화**: `PostRepositoryCustomImpl.java`의 Offset/Cursor 쿼리 및 `PostRepository.java`에 `post.status.eq(PostStatus.NORMAL)` 조건을 필수 적용하여 비공개 게시글이 일반 목록에 노출되는 결함 해결.
+  2. **연관 도메인 상태 정책 통일**: `CommentService.java`(댓글 작성/조회) 및 `PostService.java`(게시글 추천/수정/상세조회) 전반에 `status != NORMAL` 검증(`POST_NOT_FOUND`)을 일관되게 적용.
+  3. **단위/통합 테스트 전수 검증**: `PostServiceTest.java` 내 `PostStatusPolicyTest`를 통해 Offset/Cursor 목록 제외 및 비공개 글에 대한 상세/추천/댓글 차단(404) 정책 검증 완료 (전체 76개 테스트 PASS).
+
+- **댓글 삭제 `@RequestParam` 완전 제거 및 `CommentDeleteRequest` DTO 보안 계약 일원화 (2026-08-26)**:
+  1. **계약 통일**: `CommentController.java`에서 잔여 `@RequestParam`을 완전히 제거하고 `@RequestBody(required = false) CommentDeleteRequest request` 전담으로 수정하여 게시글 삭제(`PostDeleteRequest`)와 동일한 보안 DTO 계약 확립.
+  2. **컨트롤러 테스트 전수 검증**: `CommentControllerTest.java`에서 로그인 작성자(200), 관리자(200), 타 회원 차단(403), 비회원 익명 비밀번호 일치(200)/불일치(403) 등 5종 시나리오 검증 완료 (전체 74개 테스트 PASS).
+
+- **게시글 삭제 Request Body DTO 보안 전송 및 권한 정책 7종 전수 검증 (2026-08-26)**:
+  1. **보안 계약 전환**: `PostDeleteRequest` DTO를 신설하고 `PostController.java`에서 `@RequestBody(required = false)`로 비밀번호를 수신하도록 개선하여 URL 쿼리 파라미터 민감정보 노출 원천 차단.
+  2. **프론트엔드 일치화**: `posts/[publicId]/page.tsx`의 `handleConfirmDelete`에서 `API_ENDPOINTS.posts.delete(publicId)` 호출 시 JSON body(`{ "anonymousPassword": "..." }`)로 전송.
+  3. **권한 정책 전수 검증**: `PostControllerTest.java`에서 로그인 본인(200), 관리자(200), 타인 일반글 차단(403), 비회원 익명 비밀번호 일치(200)/불일치(403), 제3자 로그인 사용자의 익명글 비밀번호 일치(200)/불일치(403) 등 7종 권한 시나리오 검증 완료 (전체 72개 테스트 PASS).
+
+- **댓글 삭제 API 경로(`/api/v1`) 일치화 및 Request Body DTO 기반 익명 비밀번호 보안 전송 (2026-08-26)**:
+  1. **보안 DTO 도입**: `CommentDeleteRequest` DTO를 신설하고 `CommentController.java`에서 `@RequestBody(required = false)`로 비밀번호를 바인딩하여 Nginx/서버/APM 로그에 평문 비밀번호가 노출되는 URL 쿼리 파라미터 취약점을 원천 차단.
+  2. **프론트엔드 연동 일치화**: `posts/[publicId]/page.tsx`의 `handleDeleteComment`에서 `API_ENDPOINTS.comments.delete(commentId)`(`/api/v1/comments/{id}`)로 JSON body 전송.
+  3. **컨트롤러 테스트 검증**: `CommentControllerTest.java`에서 올바른 비밀번호 200 OK, 비밀번호 불일치/누락 시 403 Forbidden(`POST_004`) 및 URL 쿼리 미포함 검증 3건 추가 완료.
+
+- **프론트엔드 API 엔드포인트 공통 모듈화(`api.ts`) 및 댓글/대댓글 API 경로(`/api/v1`) 일치화 (2026-08-26)**:
+  1. **공통 모듈 신설**: `frontend/app/lib/api.ts`를 신설하여 `API_BASE_URL`(`NEXT_PUBLIC_API_BASE_URL` 지원) 및 도메인별 전체 `API_ENDPOINTS` 상수를 중앙 집중식으로 정의.
+  2. **프론트엔드 URL 일원화**: `posts/[publicId]/page.tsx`의 `/api/posts/{publicId}/comments` 404 경로를 `/api/v1/posts/{publicId}/comments`로 수정하고, 프론트엔드 10개 전체 페이지/컴포넌트의 API 호출을 `API_ENDPOINTS` 참조로 전면 전환.
+  3. **빌드/테스트 검증**: Next.js 16 (Turbopack) 최적화 프로덕션 빌드(`npm run build`) 성공 및 백엔드 63개 테스트 100% PASS 검증 완료.
+
+- **MySQL DDL `post_reaction` 익명 추천 스키마 일치화 및 물리 검증 완결 (2026-08-26)**:
+  1. **DDL 스키마 일치화**: `database/ddl.sql`의 `post_reaction` 테이블에 `member_id` NULL 허용, `writer_ip VARCHAR(45) NULL`, `anonymous_voter_id VARCHAR(36) NULL` 컬럼을 추가하고, 회원 복합 유니크(`uk_post_member_type`) 및 비회원 익명 복합 유니크(`uk_post_anon_voter_type`) 제약조건을 `PostReaction.java` 엔티티 및 ERD와 100% 일치시킴.
+  2. **회원/익명 추천 물리 검증**: `PostServiceTest.java`에서 로그인 회원 추천뿐 아니라 비로그인 익명 사용자의 `anonymousVoterId` 기반 추천 생성, 취소(토글 OFF), DB 물리 레코드(`member_id IS NULL`, `anonymous_voter_id` 적재) 상태를 Native Query로 완벽 검증.
+  3. **테스트 검증**: 백엔드 전체 63개 테스트 100% PASS (`BUILD SUCCESSFUL in 19s`).
+
+- **MySQL DDL `deleted_at` 컬럼 누락 수정 및 Soft Delete 물리 검증 완결 (2026-08-26)**:
+  1. **DDL 스펙 일치화**: `database/ddl.sql`의 `post` 및 `comment` 테이블에 누락되어 있던 `deleted_at DATETIME NULL COMMENT '삭제 일시'` 컬럼을 추가하여 엔티티의 `@SQLDelete` (`deleted_at = NOW()`) 및 설계 문서 ERD와 100% 일치시킴.
+  2. **Soft Delete 물리 상태 검증**: `PostServiceTest.java` 및 `CommentServiceTest.java`에서 삭제 API 실행 시 DB 물리 레코드에 `is_deleted = true`, `status = 'DELETED'`, `deleted_at IS NOT NULL`로 정확히 기록되는지 Native Query 기반 검증 완료.
+  3. **테스트 검증**: 백엔드 전체 63개 테스트 100% PASS (`BUILD SUCCESSFUL in 18s`).
+
+- **H2/MySQL DataSource 프로필 분리 및 MySQL 8.0 기본 데이터소스 전환 완결 (2026-08-26)**:
+  1. **프로필 기반 분리**: `application.yml`에 `local`/`docker`/`prod` 환경의 기본 DataSource를 실제 **MySQL 8.0 (`jdbc:mysql://localhost:3306/snowthing` 및 `jdbc:mysql://mysql:3306/snowthing`, `org.hibernate.dialect.MySQLDialect`)**으로 전면 전환하고, `h2` 프로필을 완전 분리.
+  2. **의존성 런타임 격리**: `build.gradle`에서 `com.h2database:h2`를 `testRuntimeOnly`로 격리하여 메인 런타임에는 `mysql-connector-j`만 동작하도록 설정.
+  3. **H2 잔류 파일 삭제**: `backend/data/` 디렉터리 및 H2 파일(`snowdb.mv.db`, `snowdb.lock.db`) 완전 제거.
+  4. **테스트 검증**: `application-test.yml` 독립 테스트 프로필 기반 전체 63개 테스트 100% PASS 검증 완료.
+
 - **Java 21 Virtual Threads 도입 및 인증/DB 아키텍처 리팩토링 완결 (2026-08-25)**:
   1. **Java 21 가상 스레드 적용**: `spring.threads.virtual.enabled: true` 및 `AsyncConfig`의 `Executors.newVirtualThreadPerTaskExecutor()` 등록으로 `@Async` 비동기 작업 시 스레드 풀 고갈 및 Native OOM 원천 차단.
   2. **세션 타임아웃 매직 넘버 제거**: `AuthController.java`의 `30 * 24 * 60 * 60`을 `Duration.ofDays(30).toSeconds()` 명시적 상수로 교체.
@@ -501,3 +613,8 @@
   1. `README.md`의 `PostReaction` 설명에서 `회원 투표`, `비로그인 익명 투표` 표현을 제거하고 `로그인 사용자의 추천/비추천`, `비로그인 사용자의 익명 추천/비추천`으로 수정.
   2. 주요 예외 응답의 `익명 글 작성/투표` 표현도 `익명 글 작성/추천·비추천`으로 정리.
   3. 검증 결과: 문서 문구 검색 및 변경 범위 확인 완료. 코드 변경 없음.
+
+- **CI compileJava 실패 수정 (2026-08-26)**:
+  1. `CommentService.java` rebase 충돌 정리 과정에서 남은 깨진 한글 주석/인코딩 문자를 제거.
+  2. 기능 로직 변경 없이 주석만 정리하여 Java 소스 UTF-8 컴파일 오류를 해소.
+  3. 검증 결과: `./gradlew compileJava` 통과.

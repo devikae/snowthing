@@ -1,9 +1,10 @@
 package com.ikae.snowthing.domain.post.repository;
 
-import com.ikae.snowthing.domain.post.entity.PostReaction;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
+import com.ikae.snowthing.domain.post.entity.PostReaction;
 
 public interface PostReactionRepository extends JpaRepository<PostReaction, Long> {
 
@@ -11,9 +12,14 @@ public interface PostReactionRepository extends JpaRepository<PostReaction, Long
 
     boolean existsByPostIdAndAnonymousVoterId(Long postId, String anonymousVoterId);
 
-    boolean existsByPostIdAndMemberIdAndType(Long postId, Long memberId, com.ikae.snowthing.domain.post.entity.ReactionType type);
+    boolean existsByPostIdAndMemberIdAndType(
+            Long postId, Long memberId, com.ikae.snowthing.domain.post.entity.ReactionType type);
 
-    Optional<PostReaction> findByPostIdAndMemberIdAndType(Long postId, Long memberId, com.ikae.snowthing.domain.post.entity.ReactionType type);
+    Optional<PostReaction> findByPostIdAndMemberIdAndType(
+            Long postId, Long memberId, com.ikae.snowthing.domain.post.entity.ReactionType type);
 
-    Optional<PostReaction> findByPostIdAndAnonymousVoterIdAndType(Long postId, String anonymousVoterId, com.ikae.snowthing.domain.post.entity.ReactionType type);
+    Optional<PostReaction> findByPostIdAndAnonymousVoterIdAndType(
+            Long postId,
+            String anonymousVoterId,
+            com.ikae.snowthing.domain.post.entity.ReactionType type);
 }

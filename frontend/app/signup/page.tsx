@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { csrfFetch } from "../lib/csrfFetch";
+import { API_ENDPOINTS } from "../lib/api";
 
 interface ResortMaster {
   id: number;
@@ -51,8 +52,8 @@ export default function SignUpPage() {
       void (async () => {
         try {
           const [resortRes, styleRes] = await Promise.all([
-            fetch("http://localhost:8080/api/v1/master/resorts"),
-            fetch("http://localhost:8080/api/v1/master/riding-styles"),
+            fetch(API_ENDPOINTS.master.resorts),
+            fetch(API_ENDPOINTS.master.ridingStyles),
           ]);
           if (resortRes.ok) {
             const resortData: ResortMaster[] = await resortRes.json();
@@ -100,7 +101,7 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
-      const res = await csrfFetch("http://localhost:8080/api/v1/members", {
+      const res = await csrfFetch(API_ENDPOINTS.members.signup, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -120,7 +121,7 @@ export default function SignUpPage() {
       }
 
       // 회원가입 성공 즉시 자동 로그인 수행
-      const loginRes = await csrfFetch("http://localhost:8080/api/v1/auth/login", {
+      const loginRes = await csrfFetch(API_ENDPOINTS.auth.login, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, rememberMe: true }),

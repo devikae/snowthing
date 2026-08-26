@@ -1,8 +1,10 @@
 package com.ikae.snowthing.domain.post.entity;
 
+import jakarta.persistence.*;
+
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.common.BaseTimeEntity;
-import jakarta.persistence.*;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,12 +12,15 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
-    name = "post_reaction",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_post_member_type", columnNames = {"post_id", "member_id", "type"}),
-        @UniqueConstraint(name = "uk_post_anon_voter_type", columnNames = {"post_id", "anonymous_voter_id", "type"})
-    }
-)
+        name = "post_reaction",
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_post_member_type",
+                    columnNames = {"post_id", "member_id", "type"}),
+            @UniqueConstraint(
+                    name = "uk_post_anon_voter_type",
+                    columnNames = {"post_id", "anonymous_voter_id", "type"})
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PostReaction extends BaseTimeEntity {
@@ -44,7 +49,8 @@ public class PostReaction extends BaseTimeEntity {
     private ReactionType type;
 
     @Builder
-    public PostReaction(Post post, Member member, String writerIp, String anonymousVoterId, ReactionType type) {
+    public PostReaction(
+            Post post, Member member, String writerIp, String anonymousVoterId, ReactionType type) {
         this.post = post;
         this.member = member;
         this.writerIp = writerIp;

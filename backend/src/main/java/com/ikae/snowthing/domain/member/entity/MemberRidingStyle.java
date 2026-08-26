@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.member.entity;
 
 import jakarta.persistence.*;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -9,10 +10,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "member_riding_style",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"member_id", "riding_style_id"})
-        }
-)
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"member_id", "riding_style_id"})})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberRidingStyle {

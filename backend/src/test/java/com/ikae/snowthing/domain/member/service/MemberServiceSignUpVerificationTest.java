@@ -1,11 +1,12 @@
 package com.ikae.snowthing.domain.member.service;
 
-import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
-import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
-import com.ikae.snowthing.domain.member.entity.Member;
-import com.ikae.snowthing.domain.member.repository.MemberRepository;
-import com.ikae.snowthing.domain.member.repository.MemberResortRepository;
-import com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,12 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
+import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
+import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.member.repository.MemberResortRepository;
+import com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository;
 
 @SpringBootTest
 class MemberServiceSignUpVerificationTest {
@@ -28,8 +29,12 @@ class MemberServiceSignUpVerificationTest {
     @Autowired private MemberResortRepository memberResortRepository;
     @Autowired private MemberRidingStyleRepository memberRidingStyleRepository;
 
-    @Autowired private com.ikae.snowthing.domain.comment.repository.CommentRepository commentRepository;
-    @Autowired private com.ikae.snowthing.domain.post.repository.PostReactionRepository postReactionRepository;
+    @Autowired
+    private com.ikae.snowthing.domain.comment.repository.CommentRepository commentRepository;
+
+    @Autowired
+    private com.ikae.snowthing.domain.post.repository.PostReactionRepository postReactionRepository;
+
     @Autowired private com.ikae.snowthing.domain.post.repository.PostRepository postRepository;
 
     @BeforeEach
@@ -54,11 +59,12 @@ class MemberServiceSignUpVerificationTest {
     @Test
     @DisplayName("[검증 1] 저장된 비밀번호는 $2a$ 로 시작하는 해시 포맷이어야 한다 (raw 비번 아님)")
     void signUp_SavesHashedPassword() {
-        MemberSignUpRequest signUpRequest = MemberSignUpRequest.builder()
-                .email("verify1@snowthing.com")
-                .password("Password123!")
-                .nickname("해시테스터")
-                .build();
+        MemberSignUpRequest signUpRequest =
+                MemberSignUpRequest.builder()
+                        .email("verify1@snowthing.com")
+                        .password("Password123!")
+                        .nickname("해시테스터")
+                        .build();
 
         memberService.signUp(signUpRequest);
 
@@ -70,11 +76,12 @@ class MemberServiceSignUpVerificationTest {
     @Test
     @DisplayName("[검증 2] 회원가입 응답 DTO(MemberSignUpResponse) 에는 internal id 필드가 포함되지 않아야 한다")
     void signUp_ResponseDtoHasNoInternalId() {
-        MemberSignUpRequest signUpRequest = MemberSignUpRequest.builder()
-                .email("verify2@snowthing.com")
-                .password("Password123!")
-                .nickname("DTO테스터")
-                .build();
+        MemberSignUpRequest signUpRequest =
+                MemberSignUpRequest.builder()
+                        .email("verify2@snowthing.com")
+                        .password("Password123!")
+                        .nickname("DTO테스터")
+                        .build();
 
         MemberSignUpResponse response = memberService.signUp(signUpRequest);
 
@@ -96,13 +103,14 @@ class MemberServiceSignUpVerificationTest {
         List<Long> resortIds = new ArrayList<>(List.of(1L, 2L));
         List<Long> ridingStyleIds = new ArrayList<>(List.of(3L, 4L));
 
-        MemberSignUpRequest request = MemberSignUpRequest.builder()
-                .email("immutable@snowthing.com")
-                .password("Password123!")
-                .nickname("불변DTO")
-                .resortIds(resortIds)
-                .ridingStyleIds(ridingStyleIds)
-                .build();
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("immutable@snowthing.com")
+                        .password("Password123!")
+                        .nickname("불변DTO")
+                        .resortIds(resortIds)
+                        .ridingStyleIds(ridingStyleIds)
+                        .build();
 
         resortIds.add(999L);
         ridingStyleIds.add(999L);

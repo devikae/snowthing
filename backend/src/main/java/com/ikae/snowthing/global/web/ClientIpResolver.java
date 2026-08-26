@@ -1,6 +1,7 @@
 package com.ikae.snowthing.global.web;
 
 import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.stereotype.Component;
 
 @Component

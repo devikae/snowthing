@@ -1,13 +1,13 @@
 package com.ikae.snowthing.global.error;
 
+import org.springframework.http.HttpStatus;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
 public enum ErrorCode {
-
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_001", "이메일 또는 비밀번호가 일치하지 않습니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_002", "해당 작업을 수행할 권한이 없습니다."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
@@ -17,7 +17,10 @@ public enum ErrorCode {
     POST_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_002", "존재하지 않는 게시판 카테고리입니다."),
     ALREADY_REACTED(HttpStatus.CONFLICT, "POST_003", "이미 추천 또는 비추천 투표를 완료한 게시글입니다."),
     INVALID_ANON_PASSWORD(HttpStatus.FORBIDDEN, "POST_004", "비회원 익명 비밀번호가 일치하지 않습니다."),
-    INVALID_PAGE_LIMIT(HttpStatus.BAD_REQUEST, "POST_005", "게시판 조회의 최대 한계선은 100페이지(2,000개 글)까지입니다. 더 이전 글은 검색 기능을 이용해 주세요."),
+    INVALID_PAGE_LIMIT(
+            HttpStatus.BAD_REQUEST,
+            "POST_005",
+            "게시판 조회의 최대 한계선은 100페이지(2,000개 글)까지입니다. 더 이전 글은 검색 기능을 이용해 주세요."),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "존재하지 않거나 이미 삭제된 댓글입니다."),
     PARENT_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_002", "존재하지 않는 부모 댓글입니다."),
     INVALID_COMMENT_PARENT(HttpStatus.BAD_REQUEST, "COMMENT_003", "동일한 게시글의 댓글에만 대댓글을 달 수 있습니다."),

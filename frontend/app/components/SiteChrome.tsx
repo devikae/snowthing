@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { csrfFetch } from "../lib/csrfFetch";
+import { API_ENDPOINTS } from "../lib/api";
 
 export type ActiveNav = "home" | "posts" | "resort" | "profile" | "login" | "signup";
 
@@ -34,7 +35,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("http://localhost:8080/api/v1/members/me", {
+        const res = await fetch(API_ENDPOINTS.members.me, {
           credentials: "include",
         });
         if (res.ok) {
@@ -53,7 +54,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
 
   const handleLogout = async () => {
     try {
-      await csrfFetch("http://localhost:8080/api/v1/auth/logout", {
+      await csrfFetch(API_ENDPOINTS.auth.logout, {
         method: "POST",
       });
     } catch {

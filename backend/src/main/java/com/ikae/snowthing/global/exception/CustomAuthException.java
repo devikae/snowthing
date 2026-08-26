@@ -1,6 +1,7 @@
 package com.ikae.snowthing.global.exception;
 
 import com.ikae.snowthing.global.error.ErrorCode;
+
 import lombok.Getter;
 
 @Getter

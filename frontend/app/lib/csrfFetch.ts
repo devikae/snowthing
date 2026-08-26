@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://localhost:8080";
+import { API_ENDPOINTS } from "./api";
+
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
 
 let cachedCsrfToken: string | null = null;
@@ -12,7 +13,7 @@ async function getCsrfToken() {
     return cachedCsrfToken;
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/csrf`, {
+  const response = await fetch(API_ENDPOINTS.csrf, {
     credentials: "include",
   });
 

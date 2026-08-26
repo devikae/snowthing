@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

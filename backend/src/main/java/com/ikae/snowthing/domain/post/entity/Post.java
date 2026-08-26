@@ -1,25 +1,30 @@
 package com.ikae.snowthing.domain.post.entity;
 
-import com.ikae.snowthing.domain.member.entity.Member;
-import com.ikae.snowthing.global.common.BaseTimeEntity;
-import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.persistence.*;
+
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
+import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.global.common.BaseTimeEntity;
+
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 @Entity
 @Table(name = "post")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SQLDelete(sql = "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW() WHERE post_id = ?")
+@SQLDelete(
+        sql =
+                "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW() WHERE post_id = ?")
 @SQLRestriction("is_deleted = false")
 public class Post extends BaseTimeEntity {
 
@@ -84,8 +89,16 @@ public class Post extends BaseTimeEntity {
     private List<PostImage> images = new ArrayList<>();
 
     @Builder
-    public Post(Member member, PostCategory category, String title, String content,
-                String writerIp, boolean isAnonymous, String anonymousPassword, boolean hasImage) {
+    public Post(
+            Member member,
+            PostCategory category,
+            String title,
+            String content,
+            String writerIp,
+            boolean isAnonymous,
+            String anonymousPassword,
+            boolean hasImage,
+            PostStatus status) {
         this.publicId = UUID.randomUUID().toString();
         this.member = member;
         this.category = category;
@@ -95,8 +108,12 @@ public class Post extends BaseTimeEntity {
         this.isAnonymous = isAnonymous;
         this.anonymousPassword = anonymousPassword;
         this.hasImage = hasImage;
-        this.status = PostStatus.NORMAL;
+        this.status = status != null ? status : PostStatus.NORMAL;
         this.isDeleted = false;
+    }
+
+    public void changeStatus(PostStatus status) {
+        this.status = status;
     }
 
     public void update(String title, String content, PostCategory category) {

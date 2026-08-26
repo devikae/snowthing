@@ -3,6 +3,7 @@ package com.ikae.snowthing.global.web;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.stereotype.Component;
 
 @Component
@@ -12,7 +13,8 @@ public class ViewCountCookieManager {
     private static final int VIEW_COOKIE_MAX_AGE_SECONDS = 30 * 60;
     private static final String COOKIE_PATH = "/";
 
-    public boolean markIfFirstView(String postPublicId, HttpServletRequest request, HttpServletResponse response) {
+    public boolean markIfFirstView(
+            String postPublicId, HttpServletRequest request, HttpServletResponse response) {
         Cookie viewCookie = findCookie(request, VIEWED_POSTS_COOKIE_NAME);
         String marker = "[" + postPublicId + "]";
 

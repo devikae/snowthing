@@ -1,5 +1,20 @@
 package com.ikae.snowthing.domain.post.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -12,45 +27,26 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
 class PostServiceTest {
 
-    @Autowired
-    private PostService postService;
+    @Autowired private PostService postService;
 
-    @Autowired
-    private PostRepository postRepository;
+    @Autowired private PostRepository postRepository;
 
-    @Autowired
-    private PostCategoryRepository categoryRepository;
+    @Autowired private PostCategoryRepository categoryRepository;
 
-    @Autowired
-    private MemberRepository memberRepository;
+    @Autowired private MemberRepository memberRepository;
 
-    @Autowired
-    private PostReactionRepository reactionRepository;
+    @Autowired private PostReactionRepository reactionRepository;
 
-    @Autowired
-    private PostImageRepository imageRepository;
+    @Autowired private PostImageRepository imageRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    @Autowired private jakarta.persistence.EntityManager entityManager;
 
     private Member member1;
     private Member member2;
@@ -62,25 +58,37 @@ class PostServiceTest {
     void setUp() {
         postRepository.deleteAll();
 
-        member1 = memberRepository.save(Member.builder()
-            .email("user1@example.com")
-            .password(passwordEncoder.encode("Password123!"))
-            .nickname("보더1호")
-            .role(Role.ROLE_USER)
-            .build());
+        member1 =
+                memberRepository.save(
+                        Member.builder()
+                                .email("user1@example.com")
+                                .password(passwordEncoder.encode("Password123!"))
+                                .nickname("보더1호")
+                                .role(Role.ROLE_USER)
+                                .build());
 
-        member2 = memberRepository.save(Member.builder()
-            .email("user2@example.com")
-            .password(passwordEncoder.encode("Password123!"))
-            .nickname("보더2호")
-            .role(Role.ROLE_USER)
-            .build());
+        member2 =
+                memberRepository.save(
+                        Member.builder()
+                                .email("user2@example.com")
+                                .password(passwordEncoder.encode("Password123!"))
+                                .nickname("보더2호")
+                                .role(Role.ROLE_USER)
+                                .build());
 
         userDetails1 = new CustomUserDetails(member1);
         userDetails2 = new CustomUserDetails(member2);
 
-        freeCategory = categoryRepository.findByCode("FREE")
-            .orElseGet(() -> categoryRepository.save(PostCategory.builder().name("자유게시판").code("FREE").build()));
+        freeCategory =
+                categoryRepository
+                        .findByCode("FREE")
+                        .orElseGet(
+                                () ->
+                                        categoryRepository.save(
+                                                PostCategory.builder()
+                                                        .name("자유게시판")
+                                                        .code("FREE")
+                                                        .build()));
     }
 
     @Nested
@@ -90,13 +98,14 @@ class PostServiceTest {
         @Test
         @DisplayName("로그인 회원이 정상적으로 게시글을 작성한다.")
         void createPost_success_member() {
-            PostCreateRequest request = PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("오늘 설질 어떤가요?")
-                .content("휘팍 설질 최고입니다.")
-                .isAnonymous(false)
-                .imageUrls(List.of("https://cdn.example.com/1.jpg"))
-                .build();
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("오늘 설질 어떤가요?")
+                            .content("휘팍 설질 최고입니다.")
+                            .isAnonymous(false)
+                            .imageUrls(List.of("https://cdn.example.com/1.jpg"))
+                            .build();
 
             PostResponse response = postService.createPost(request, userDetails1, "127.0.0.1");
 
@@ -113,13 +122,14 @@ class PostServiceTest {
         @Test
         @DisplayName("비회원이 익명 게시글을 정상적으로 작성한다.")
         void createPost_success_anonymous() {
-            PostCreateRequest request = PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("익명 질문입니다.")
-                .content("입문용 데크 추천해 주세요.")
-                .isAnonymous(true)
-                .anonymousPassword("Anon1234!")
-                .build();
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("익명 질문입니다.")
+                            .content("입문용 데크 추천해 주세요.")
+                            .isAnonymous(true)
+                            .anonymousPassword("Anon1234!")
+                            .build();
 
             PostResponse response = postService.createPost(request, null, "192.168.1.100");
 
@@ -130,17 +140,18 @@ class PostServiceTest {
         @Test
         @DisplayName("비인증 유저가 회원 게시글(isAnonymous=false) 작성을 시도하면 예외가 터진다.")
         void createPost_unauthorized() {
-            PostCreateRequest request = PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("비인증 게시글")
-                .content("본문 내용")
-                .isAnonymous(false)
-                .build();
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("비인증 게시글")
+                            .content("본문 내용")
+                            .isAnonymous(false)
+                            .build();
 
             assertThatThrownBy(() -> postService.createPost(request, null, "127.0.0.1"))
-                .isInstanceOf(CustomAuthException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
         }
     }
 
@@ -151,16 +162,18 @@ class PostServiceTest {
         @Test
         @DisplayName("정상 게시글 상세 조회 시 조회수가 1 증가한다.")
         void getPostDetail_success() {
-            PostCreateRequest request = PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("조회수 테스트")
-                .content("상세 내용")
-                .isAnonymous(false)
-                .build();
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("조회수 테스트")
+                            .content("상세 내용")
+                            .isAnonymous(false)
+                            .build();
 
             PostResponse created = postService.createPost(request, userDetails1, "127.0.0.1");
 
-            PostDetailResponse detail = postService.getPostDetail(created.publicId(), userDetails1, true);
+            PostDetailResponse detail =
+                    postService.getPostDetail(created.publicId(), userDetails1, true);
 
             assertThat(detail.title()).isEqualTo("조회수 테스트");
             assertThat(detail.viewCount()).isEqualTo(1);
@@ -169,22 +182,28 @@ class PostServiceTest {
         @Test
         @DisplayName("존재하지 않는 publicId 조회 시 404 예외가 터진다.")
         void getPostDetail_notFound() {
-            assertThatThrownBy(() -> postService.getPostDetail("non-existent-uuid", userDetails1, true))
-                .isInstanceOf(CustomAuthException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_NOT_FOUND);
+            assertThatThrownBy(
+                            () ->
+                                    postService.getPostDetail(
+                                            "non-existent-uuid", userDetails1, true))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
         }
 
         @Test
         @DisplayName("목록 조회 시 본문(content)이 제외되고 최신순/id역순으로 페이징 조회된다.")
         void getPostList_success() {
             for (int i = 1; i <= 5; i++) {
-                postService.createPost(PostCreateRequest.builder()
-                    .categoryCode("FREE")
-                    .title("테스트 글 " + i)
-                    .content("본문 내용 " + i)
-                    .isAnonymous(false)
-                    .build(), userDetails1, "127.0.0.1");
+                postService.createPost(
+                        PostCreateRequest.builder()
+                                .categoryCode("FREE")
+                                .title("테스트 글 " + i)
+                                .content("본문 내용 " + i)
+                                .isAnonymous(false)
+                                .build(),
+                        userDetails1,
+                        "127.0.0.1");
             }
 
             Page<PostListResponse> page = postService.getPostList("FREE", 0, 10);
@@ -197,9 +216,9 @@ class PostServiceTest {
         @DisplayName("잘못된 페이지 크기(size=0 이하) 입력 시 예외가 터진다.")
         void getPostList_invalidPageSize() {
             assertThatThrownBy(() -> postService.getPostList("FREE", 0, 0))
-                .isInstanceOf(CustomAuthException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_PAGE_SIZE);
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INVALID_PAGE_SIZE);
         }
     }
 
@@ -211,24 +230,30 @@ class PostServiceTest {
 
         @BeforeEach
         void setUpPost() {
-            createdPost = postService.createPost(PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("수정전 제목")
-                .content("수정전 본문")
-                .isAnonymous(false)
-                .build(), userDetails1, "127.0.0.1");
+            createdPost =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("FREE")
+                                    .title("수정전 제목")
+                                    .content("수정전 본문")
+                                    .isAnonymous(false)
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
         }
 
         @Test
         @DisplayName("작성자 본인은 게시글을 정상 수정한다.")
         void updatePost_success_writer() {
-            PostUpdateRequest updateReq = PostUpdateRequest.builder()
-                .categoryCode("FREE")
-                .title("수정후 제목")
-                .content("수정후 본문")
-                .build();
+            PostUpdateRequest updateReq =
+                    PostUpdateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("수정후 제목")
+                            .content("수정후 본문")
+                            .build();
 
-            PostResponse updated = postService.updatePost(createdPost.publicId(), updateReq, userDetails1);
+            PostResponse updated =
+                    postService.updatePost(createdPost.publicId(), updateReq, userDetails1);
 
             assertThat(updated.title()).isEqualTo("수정후 제목");
         }
@@ -236,47 +261,61 @@ class PostServiceTest {
         @Test
         @DisplayName("작성자 본인이 게시글 수정 시 이미지 목록을 최종 상태로 교체하고 hasImage를 동기화한다.")
         void updatePost_replaceImages_success() {
-            PostUpdateRequest updateReq = PostUpdateRequest.builder()
-                .categoryCode("FREE")
-                .title("이미지 수정 제목")
-                .content("이미지 수정 본문")
-                .imageUrls(List.of("https://cdn.example.com/updated-1.jpg", "https://cdn.example.com/updated-2.jpg"))
-                .build();
+            PostUpdateRequest updateReq =
+                    PostUpdateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("이미지 수정 제목")
+                            .content("이미지 수정 본문")
+                            .imageUrls(
+                                    List.of(
+                                            "https://cdn.example.com/updated-1.jpg",
+                                            "https://cdn.example.com/updated-2.jpg"))
+                            .build();
 
             postService.updatePost(createdPost.publicId(), updateReq, userDetails1);
             postRepository.flush();
 
             Post savedPost = postRepository.findByPublicId(createdPost.publicId()).orElseThrow();
-            List<PostImage> images = imageRepository.findByPostIdOrderBySortOrderAsc(savedPost.getId());
+            List<PostImage> images =
+                    imageRepository.findByPostIdOrderBySortOrderAsc(savedPost.getId());
 
             assertThat(savedPost.isHasImage()).isTrue();
-            assertThat(images).extracting(PostImage::getImageUrl)
-                .containsExactly("https://cdn.example.com/updated-1.jpg", "https://cdn.example.com/updated-2.jpg");
+            assertThat(images)
+                    .extracting(PostImage::getImageUrl)
+                    .containsExactly(
+                            "https://cdn.example.com/updated-1.jpg",
+                            "https://cdn.example.com/updated-2.jpg");
         }
 
         @Test
         @DisplayName("작성자 본인이 게시글 수정 시 이미지 목록을 비우면 첨부 이미지를 제거하고 hasImage를 false로 동기화한다.")
         void updatePost_removeImages_success() {
-            PostResponse postWithImage = postService.createPost(PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("이미지 있는 글")
-                .content("본문")
-                .isAnonymous(false)
-                .imageUrls(List.of("https://cdn.example.com/original.jpg"))
-                .build(), userDetails1, "127.0.0.1");
+            PostResponse postWithImage =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("FREE")
+                                    .title("이미지 있는 글")
+                                    .content("본문")
+                                    .isAnonymous(false)
+                                    .imageUrls(List.of("https://cdn.example.com/original.jpg"))
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
 
-            PostUpdateRequest updateReq = PostUpdateRequest.builder()
-                .categoryCode("FREE")
-                .title("이미지 제거 제목")
-                .content("이미지 제거 본문")
-                .imageUrls(List.of())
-                .build();
+            PostUpdateRequest updateReq =
+                    PostUpdateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("이미지 제거 제목")
+                            .content("이미지 제거 본문")
+                            .imageUrls(List.of())
+                            .build();
 
             postService.updatePost(postWithImage.publicId(), updateReq, userDetails1);
             postRepository.flush();
 
             Post savedPost = postRepository.findByPublicId(postWithImage.publicId()).orElseThrow();
-            List<PostImage> images = imageRepository.findByPostIdOrderBySortOrderAsc(savedPost.getId());
+            List<PostImage> images =
+                    imageRepository.findByPostIdOrderBySortOrderAsc(savedPost.getId());
 
             assertThat(savedPost.isHasImage()).isFalse();
             assertThat(images).isEmpty();
@@ -285,27 +324,47 @@ class PostServiceTest {
         @Test
         @DisplayName("타 회원이 수정 시도 시 403 Forbidden 예외가 터진다.")
         void updatePost_forbidden_otherUser() {
-            PostUpdateRequest updateReq = PostUpdateRequest.builder()
-                .categoryCode("FREE")
-                .title("타인 해킹 시도")
-                .content("해킹 본문")
-                .build();
+            PostUpdateRequest updateReq =
+                    PostUpdateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("타인 해킹 시도")
+                            .content("해킹 본문")
+                            .build();
 
-            assertThatThrownBy(() -> postService.updatePost(createdPost.publicId(), updateReq, userDetails2))
-                .isInstanceOf(CustomAuthException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.ACCESS_DENIED);
+            assertThatThrownBy(
+                            () ->
+                                    postService.updatePost(
+                                            createdPost.publicId(), updateReq, userDetails2))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ACCESS_DENIED);
         }
 
         @Test
-        @DisplayName("작성자 본인은 Soft Delete로 게시글을 정상 삭제한다.")
+        @DisplayName(
+                "작성자 본인은 Soft Delete로 게시글을 정상 삭제하며 DB에 is_deleted=true, status=DELETED, deleted_at이 기록된다.")
         void deletePost_success_softDelete() {
             postService.deletePost(createdPost.publicId(), null, userDetails1);
 
-            assertThatThrownBy(() -> postService.getPostDetail(createdPost.publicId(), userDetails1))
-                .isInstanceOf(CustomAuthException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_NOT_FOUND);
+            // 1. 서비스 레벨 조회 시 404 예외 검증
+            assertThatThrownBy(
+                            () -> postService.getPostDetail(createdPost.publicId(), userDetails1))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
+
+            // 2. DB 물리 레코드 Soft Delete 상태 검증 (SQLRestriction 우회 Native Query)
+            Object[] rawPost =
+                    (Object[])
+                            entityManager
+                                    .createNativeQuery(
+                                            "SELECT is_deleted, status, deleted_at FROM post WHERE public_id = :publicId")
+                                    .setParameter("publicId", createdPost.publicId())
+                                    .getSingleResult();
+
+            assertThat(rawPost[0]).isEqualTo(true);
+            assertThat(rawPost[1]).isEqualTo("DELETED");
+            assertThat(rawPost[2]).isNotNull();
         }
 
         @Test
@@ -313,10 +372,13 @@ class PostServiceTest {
         void deletePost_alreadyDeleted() {
             postService.deletePost(createdPost.publicId(), null, userDetails1);
 
-            assertThatThrownBy(() -> postService.deletePost(createdPost.publicId(), null, userDetails1))
-                .isInstanceOf(CustomAuthException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_NOT_FOUND);
+            assertThatThrownBy(
+                            () ->
+                                    postService.deletePost(
+                                            createdPost.publicId(), null, userDetails1))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
         }
     }
 
@@ -327,50 +389,250 @@ class PostServiceTest {
         @Test
         @DisplayName("추천/비추천 클릭 시 토글(ON/OFF) 동작하며 카운트가 +1, -1로 정상 갱신된다.")
         void reactToPost_toggle_success() {
-            PostResponse post = postService.createPost(PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("추천 테스트 글")
-                .content("내용")
-                .isAnonymous(false)
-                .build(), userDetails1, "127.0.0.1");
+            PostResponse post =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("FREE")
+                                    .title("추천 테스트 글")
+                                    .content("내용")
+                                    .isAnonymous(false)
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
 
             // 1회 클릭: Toggle ON (+1)
-            ReactionToggleResponse res1 = postService.reactToPost(post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
+            ReactionToggleResponse res1 =
+                    postService.reactToPost(
+                            post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
             assertThat(res1.isToggledOn()).isTrue();
             assertThat(res1.likeCount()).isEqualTo(1);
 
             // 2회 클릭: Toggle OFF (-1)
-            ReactionToggleResponse res2 = postService.reactToPost(post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
+            ReactionToggleResponse res2 =
+                    postService.reactToPost(
+                            post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
             assertThat(res2.isToggledOn()).isFalse();
             assertThat(res2.likeCount()).isEqualTo(0);
 
             // 추천과 비추천은 독립 투표 가능 (비추천 1회 클릭 ON)
-            ReactionToggleResponse res3 = postService.reactToPost(post.publicId(), ReactionType.DISLIKE, userDetails1, "127.0.0.1", null);
+            ReactionToggleResponse res3 =
+                    postService.reactToPost(
+                            post.publicId(), ReactionType.DISLIKE, userDetails1, "127.0.0.1", null);
             assertThat(res3.isToggledOn()).isTrue();
             assertThat(res3.dislikeCount()).isEqualTo(1);
         }
 
         @Test
-        @DisplayName("鍮꾨줈洹몄씤 ?듬챸 ?ъ슜?먮룄 anonymousVoterId 湲곕컲?쇰줈 異붿쿇/鍮꾩텛泥??좉?瑜??섑뻾?쒕떎.")
+        @DisplayName("비로그인 익명 사용자도 anonymousVoterId 기반으로 추천/비추천 토글을 수행하며 DB에 정상 저장/삭제된다.")
         void reactToPost_anonymousVoter_success() {
-            PostResponse post = postService.createPost(PostCreateRequest.builder()
-                .categoryCode("FREE")
-                .title("?듬챸 異붿쿇 ?뚯뒪??湲")
-                .content("?댁슜")
-                .isAnonymous(false)
-                .build(), userDetails1, "127.0.0.1");
+            PostResponse post =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("FREE")
+                                    .title("익명 추천 테스트 글")
+                                    .content("내용")
+                                    .isAnonymous(false)
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
 
-            ReactionToggleResponse res1 = postService.reactToPost(
-                post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1"
-            );
+            // 1. 비로그인 익명 사용자 1회 추천 (Toggle ON)
+            ReactionToggleResponse res1 =
+                    postService.reactToPost(
+                            post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1");
             assertThat(res1.isToggledOn()).isTrue();
             assertThat(res1.likeCount()).isEqualTo(1);
 
-            ReactionToggleResponse res2 = postService.reactToPost(
-                post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1"
-            );
+            // DB 물리 저장 검증 (member_id IS NULL, anonymous_voter_id = 'anon-voter-1', writer_ip =
+            // '10.0.0.1')
+            Object[] rawReaction =
+                    (Object[])
+                            entityManager
+                                    .createNativeQuery(
+                                            "SELECT member_id, anonymous_voter_id, writer_ip, type FROM post_reaction WHERE anonymous_voter_id = :voterId")
+                                    .setParameter("voterId", "anon-voter-1")
+                                    .getSingleResult();
+
+            assertThat(rawReaction[0]).isNull();
+            assertThat(rawReaction[1]).isEqualTo("anon-voter-1");
+            assertThat(rawReaction[2]).isEqualTo("10.0.0.1");
+            assertThat(rawReaction[3]).isEqualTo("LIKE");
+
+            // 2. 비로그인 익명 사용자 재클릭 (Toggle OFF)
+            ReactionToggleResponse res2 =
+                    postService.reactToPost(
+                            post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1");
             assertThat(res2.isToggledOn()).isFalse();
             assertThat(res2.likeCount()).isEqualTo(0);
+
+            // DB 물리 삭제 검증
+            Number count =
+                    (Number)
+                            entityManager
+                                    .createNativeQuery(
+                                            "SELECT count(*) FROM post_reaction WHERE anonymous_voter_id = :voterId")
+                                    .setParameter("voterId", "anon-voter-1")
+                                    .getSingleResult();
+            assertThat(count.intValue()).isEqualTo(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("게시글 상태(NORMAL, HIDDEN, BLOCKED, DRAFT, DELETED)별 접근 정책 테스트")
+    class PostStatusPolicyTest {
+
+        @Autowired private com.ikae.snowthing.domain.comment.service.CommentService commentService;
+
+        @Test
+        @DisplayName(
+                "목록 조회(Offset, Cursor) 시 NORMAL 상태가 아닌 HIDDEN, BLOCKED, DRAFT, DELETED 글은 일반 목록에서 제외된다.")
+        void searchPosts_excludesNonNormalPosts() {
+            // 1. NORMAL 글 생성
+            Post normalPost =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(freeCategory)
+                                    .title("정상 공개 게시글")
+                                    .content("정상 내용")
+                                    .writerIp("127.0.0.1")
+                                    .status(PostStatus.NORMAL)
+                                    .build());
+
+            // 2. HIDDEN, BLOCKED, DRAFT 글 생성 (isDeleted=false)
+            Post hiddenPost =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(freeCategory)
+                                    .title("숨김 게시글")
+                                    .content("숨김 내용")
+                                    .writerIp("127.0.0.1")
+                                    .status(PostStatus.HIDDEN)
+                                    .build());
+
+            Post blockedPost =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(freeCategory)
+                                    .title("차단 게시글")
+                                    .content("차단 내용")
+                                    .writerIp("127.0.0.1")
+                                    .status(PostStatus.BLOCKED)
+                                    .build());
+
+            Post draftPost =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(freeCategory)
+                                    .title("임시저장 게시글")
+                                    .content("임시저장 내용")
+                                    .writerIp("127.0.0.1")
+                                    .status(PostStatus.DRAFT)
+                                    .build());
+
+            postRepository.flush();
+
+            // Offset 목록 조회 검증
+            PostSearchRequest offsetReq =
+                    new PostSearchRequest("FREE", null, null, null, SortType.LATEST, 1, null, 10);
+            var offsetResult = postService.searchPostsByOffset(offsetReq);
+            List<String> offsetTitles =
+                    offsetResult.content().stream()
+                            .map(com.ikae.snowthing.domain.post.dto.PostListResponse::title)
+                            .toList();
+
+            assertThat(offsetTitles).contains("정상 공개 게시글");
+            assertThat(offsetTitles).doesNotContain("숨김 게시글", "차단 게시글", "임시저장 게시글");
+
+            // Cursor 목록 조회 검증
+            PostSearchRequest cursorReq =
+                    new PostSearchRequest(
+                            "FREE", null, null, null, SortType.LATEST, null, null, 10);
+            var cursorResult = postService.searchPostsByCursor(cursorReq);
+            List<String> cursorTitles =
+                    cursorResult.content().stream()
+                            .map(com.ikae.snowthing.domain.post.dto.PostListResponse::title)
+                            .toList();
+
+            assertThat(cursorTitles).contains("정상 공개 게시글");
+            assertThat(cursorTitles).doesNotContain("숨김 게시글", "차단 게시글", "임시저장 게시글");
+        }
+
+        @Test
+        @DisplayName(
+                "HIDDEN, BLOCKED, DRAFT 게시글 상세 조회, 추천, 댓글 작성 및 조회 시 일반 사용자는 404 POST_NOT_FOUND 예외가 발생한다.")
+        void nonNormalPost_accessPolicy_throwsPostNotFound() {
+            Post hiddenPost =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(freeCategory)
+                                    .title("숨김 글")
+                                    .content("숨김 본문")
+                                    .writerIp("127.0.0.1")
+                                    .status(PostStatus.HIDDEN)
+                                    .build());
+
+            // 1. 일반 사용자 상세 조회 -> 404
+            assertThatThrownBy(
+                            () ->
+                                    postService.getPostDetail(
+                                            hiddenPost.getPublicId(), userDetails2, false))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
+
+            // 2. 관리자 상세 조회 -> 허용
+            Member admin =
+                    memberRepository.save(
+                            Member.builder()
+                                    .email("admin_status@snowthing.com")
+                                    .password(passwordEncoder.encode("Password123!"))
+                                    .nickname("상태관리자")
+                                    .role(Role.ROLE_ADMIN)
+                                    .build());
+            CustomUserDetails adminDetails = new CustomUserDetails(admin);
+            var adminDetail =
+                    postService.getPostDetail(hiddenPost.getPublicId(), adminDetails, false);
+            assertThat(adminDetail.title()).isEqualTo("숨김 글");
+
+            // 3. 추천 시도 -> 404
+            assertThatThrownBy(
+                            () ->
+                                    postService.reactToPost(
+                                            hiddenPost.getPublicId(),
+                                            ReactionType.LIKE,
+                                            userDetails2,
+                                            "127.0.0.1",
+                                            null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
+
+            // 4. 댓글 작성 시도 -> 404
+            assertThatThrownBy(
+                            () ->
+                                    commentService.createComment(
+                                            hiddenPost.getPublicId(),
+                                            com.ikae.snowthing.domain.comment.dto
+                                                    .CommentCreateRequest.builder()
+                                                    .content("숨김글에 댓글달기")
+                                                    .isAnonymous(false)
+                                                    .build(),
+                                            userDetails2,
+                                            "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
+
+            // 5. 댓글 목록 조회 시도 -> 404
+            assertThatThrownBy(() -> commentService.getCommentsByPost(hiddenPost.getPublicId()))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
         }
     }
 }

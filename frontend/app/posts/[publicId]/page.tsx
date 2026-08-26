@@ -7,6 +7,7 @@ import { Footer, TopNav } from "../../components/SiteChrome";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import dynamic from "next/dynamic";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
   ssr: false,
@@ -102,12 +103,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   };
 
   const handleConfirmDelete = async (password: string) => {
-    const url = password
-      ? `http://localhost:8080/api/v1/posts/${publicId}?anonymousPassword=${encodeURIComponent(password)}`
-      : `http://localhost:8080/api/v1/posts/${publicId}`;
-
-    const res = await csrfFetch(url, {
+    const res = await csrfFetch(API_ENDPOINTS.posts.delete(publicId), {
       method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        anonymousPassword: password || null,
+      }),
     });
 
     if (res.ok) {
@@ -122,7 +123,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const fetchComments = useCallback(async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/v1/posts/${publicId}/comments`, { credentials: "include" });
+      const res = await fetch(API_ENDPOINTS.posts.comments(publicId), { credentials: "include" });
       if (res.ok) {
         const data: CommentListResponse = await res.json();
         setComments(data.comments || []);
@@ -139,7 +140,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
         try {
           // 현재 로그인 유저 프로필 조회
           try {
-            const meRes = await fetch("http://localhost:8080/api/v1/members/me", { credentials: "include" });
+            const meRes = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
             if (meRes.ok) {
               const meData = await meRes.json();
               setCurrentUserPublicId(meData.publicId || null);
@@ -150,7 +151,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             setIsAdmin(false);
           }
 
-          const res = await fetch(`http://localhost:8080/api/v1/posts/${publicId}`, { credentials: "include" });
+          const res = await fetch(API_ENDPOINTS.posts.detail(publicId), { credentials: "include" });
           if (res.ok) {
             const data: PostDetail = await res.json();
             setPost(data);
@@ -171,7 +172,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
     try {
-      const res = await csrfFetch(`http://localhost:8080/api/v1/posts/${publicId}/reactions`, {
+      const res = await csrfFetch(API_ENDPOINTS.posts.reactions(publicId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type }),
@@ -207,7 +208,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
     setSubmittingComment(true);
     try {
-      const res = await csrfFetch(`http://localhost:8080/api/posts/${publicId}/comments`, {
+      const res = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -250,10 +251,13 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
 
     try {
-      let url = `http://localhost:8080/api/comments/${commentId}`;
-      if (anonymousPassword) url += `?anonymousPassword=${encodeURIComponent(anonymousPassword)}`;
-
-      const res = await csrfFetch(url, { method: "DELETE" });
+      const res = await csrfFetch(API_ENDPOINTS.comments.delete(commentId), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          anonymousPassword: anonymousPassword || null,
+        }),
+      });
       if (res.ok) {
         await fetchComments();
         setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));

@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { ToastEditorHandle } from "../../../components/ToastEditor";
 import { Footer, TopNav } from "../../../components/SiteChrome";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { API_ENDPOINTS } from "../../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
@@ -52,7 +53,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
           // 1. 현재 로그인한 유저 정보 확인
           let currentUserPublicId: string | null = null;
           try {
-            const meRes = await fetch("http://localhost:8080/api/v1/members/me", { credentials: "include" });
+            const meRes = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
             if (meRes.ok) {
               const meData = await meRes.json();
               currentUserPublicId = meData.publicId || null;
@@ -62,7 +63,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
           }
 
           // 2. 게시글 상세 정보 확인
-          const res = await fetch(`http://localhost:8080/api/v1/posts/${publicId}`, {
+          const res = await fetch(API_ENDPOINTS.posts.detail(publicId), {
             credentials: "include",
           });
           if (res.ok) {
@@ -115,7 +116,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
 
     setSubmitting(true);
     try {
-      const res = await csrfFetch(`http://localhost:8080/api/v1/posts/${publicId}`, {
+      const res = await csrfFetch(API_ENDPOINTS.posts.update(publicId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

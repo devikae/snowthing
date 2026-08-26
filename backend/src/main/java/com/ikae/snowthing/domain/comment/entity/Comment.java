@@ -1,16 +1,19 @@
 package com.ikae.snowthing.domain.comment.entity;
 
+import java.time.LocalDateTime;
+
+import jakarta.persistence.*;
+
+import org.hibernate.annotations.SQLDelete;
+
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.global.common.BaseTimeEntity;
-import jakarta.persistence.*;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.SQLDelete;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "comment")
@@ -55,8 +58,14 @@ public class Comment extends BaseTimeEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    public Comment(Post post, Member member, Comment parent, String content,
-                   String writerIp, boolean isAnonymous, String anonymousPassword) {
+    public Comment(
+            Post post,
+            Member member,
+            Comment parent,
+            String content,
+            String writerIp,
+            boolean isAnonymous,
+            String anonymousPassword) {
         this.post = post;
         this.member = member;
         this.parent = parent;

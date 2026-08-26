@@ -4,9 +4,4 @@ import lombok.Builder;
 
 @Builder
 public record ReactionToggleResponse(
-    boolean isToggledOn,
-    String type,
-    int likeCount,
-    int dislikeCount,
-    String message
-) {}
+        boolean isToggledOn, String type, int likeCount, int dislikeCount, String message) {}

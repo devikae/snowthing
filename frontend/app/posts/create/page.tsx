@@ -6,6 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
@@ -52,7 +53,7 @@ function PostCreateForm() {
     const checkLoginStatus = async () => {
       let loggedInMember: MemberProfile | null = null;
       try {
-        const res = await fetch("http://localhost:8080/api/v1/members/me", {
+        const res = await fetch(API_ENDPOINTS.members.me, {
           credentials: "include",
         });
         if (res.ok) {
@@ -127,7 +128,7 @@ function PostCreateForm() {
     setErrorMsg("");
 
     try {
-      const res = await csrfFetch("http://localhost:8080/api/v1/posts", {
+      const res = await csrfFetch(API_ENDPOINTS.posts.create, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

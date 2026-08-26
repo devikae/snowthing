@@ -1,5 +1,18 @@
 package com.ikae.snowthing.domain.post.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -12,19 +25,9 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -49,20 +52,28 @@ public class PostService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public PostResponse createPost(PostCreateRequest request, CustomUserDetails userDetails, String clientIp) {
-        PostCategory category = categoryRepository.findByCode(request.categoryCode())
-            .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+    public PostResponse createPost(
+            PostCreateRequest request, CustomUserDetails userDetails, String clientIp) {
+        PostCategory category =
+                categoryRepository
+                        .findByCode(request.categoryCode())
+                        .orElseThrow(
+                                () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
 
         Member member = null;
         String encodedPassword = null;
 
-        boolean isAnon = request.isAnonymous() || ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode());
+        boolean isAnon =
+                request.isAnonymous()
+                        || ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode());
 
         if (isAnon) {
             if (userDetails != null) {
                 member = memberRepository.findByPublicId(userDetails.getPublicId()).orElse(null);
             }
-            if (member == null && (request.anonymousPassword() == null || request.anonymousPassword().isBlank())) {
+            if (member == null
+                    && (request.anonymousPassword() == null
+                            || request.anonymousPassword().isBlank())) {
                 throw new CustomAuthException(ErrorCode.INVALID_INPUT);
             }
             if (request.anonymousPassword() != null && !request.anonymousPassword().isBlank()) {
@@ -72,20 +83,23 @@ public class PostService {
             if (userDetails == null) {
                 throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
             }
-            member = memberRepository.findByPublicId(userDetails.getPublicId())
-                .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
+            member =
+                    memberRepository
+                            .findByPublicId(userDetails.getPublicId())
+                            .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
-        Post post = Post.builder()
-            .member(member)
-            .category(category)
-            .title(request.title())
-            .content(request.content())
-            .writerIp(resolveWriterIp(clientIp))
-            .isAnonymous(isAnon)
-            .anonymousPassword(encodedPassword)
-            .hasImage(false)
-            .build();
+        Post post =
+                Post.builder()
+                        .member(member)
+                        .category(category)
+                        .title(request.title())
+                        .content(request.content())
+                        .writerIp(resolveWriterIp(clientIp))
+                        .isAnonymous(isAnon)
+                        .anonymousPassword(encodedPassword)
+                        .hasImage(false)
+                        .build();
         post.replaceImages(toPostImages(request.imageUrls()));
 
         return PostResponse.from(postRepository.save(post));
@@ -97,9 +111,12 @@ public class PostService {
     }
 
     @Transactional
-    public PostDetailResponse getPostDetail(String publicId, CustomUserDetails userDetails, boolean shouldIncreaseViewCount) {
-        Post post = postRepository.findWithMemberAndCategoryByPublicId(publicId)
-            .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+    public PostDetailResponse getPostDetail(
+            String publicId, CustomUserDetails userDetails, boolean shouldIncreaseViewCount) {
+        Post post =
+                postRepository
+                        .findWithMemberAndCategoryByPublicId(publicId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
         if (post.isDeleted()) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
@@ -125,11 +142,12 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
 
-        Pageable pageable = PageRequest.of(
-            page,
-            size,
-            Sort.by(Sort.Direction.DESC, SORT_CREATED_AT).and(Sort.by(Sort.Direction.DESC, SORT_ID))
-        );
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(Sort.Direction.DESC, SORT_CREATED_AT)
+                                .and(Sort.by(Sort.Direction.DESC, SORT_ID)));
 
         Page<Post> posts;
         if (categoryCode != null && !categoryCode.isBlank()) {
@@ -141,7 +159,8 @@ public class PostService {
         return posts.map(PostListResponse::from);
     }
 
-    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse> searchPostsByOffset(PostSearchRequest request) {
+    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
+            searchPostsByOffset(PostSearchRequest request) {
         if (request.page() != null && request.page() > MAX_OFFSET_PAGE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_LIMIT);
         }
@@ -151,7 +170,8 @@ public class PostService {
         return postRepository.findPostsByOffset(request);
     }
 
-    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse> searchPostsByCursor(PostSearchRequest request) {
+    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
+            searchPostsByCursor(PostSearchRequest request) {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
@@ -159,19 +179,25 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponse updatePost(String publicId, PostUpdateRequest request, CustomUserDetails userDetails) {
-        Post post = postRepository.findByPublicId(publicId)
-            .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+    public PostResponse updatePost(
+            String publicId, PostUpdateRequest request, CustomUserDetails userDetails) {
+        Post post =
+                postRepository
+                        .findByPublicId(publicId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        if (post.isDeleted()) {
+        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
 
         // 수정 권한: 작성자 본인만 수정 가능 (관리자 수정 불가)
         validateEditPermission(post, request.anonymousPassword(), userDetails);
 
-        PostCategory category = categoryRepository.findByCode(request.categoryCode())
-            .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+        PostCategory category =
+                categoryRepository
+                        .findByCode(request.categoryCode())
+                        .orElseThrow(
+                                () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
 
         post.update(request.title(), request.content(), category);
         post.replaceImages(toPostImages(request.imageUrls()));
@@ -179,9 +205,12 @@ public class PostService {
     }
 
     @Transactional
-    public void deletePost(String publicId, String anonymousPassword, CustomUserDetails userDetails) {
-        Post post = postRepository.findByPublicId(publicId)
-            .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+    public void deletePost(
+            String publicId, String anonymousPassword, CustomUserDetails userDetails) {
+        Post post =
+                postRepository
+                        .findByPublicId(publicId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
         if (post.isDeleted()) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
@@ -195,18 +224,28 @@ public class PostService {
     }
 
     @Transactional
-    public ReactionToggleResponse reactToPost(String publicId, ReactionType type, CustomUserDetails userDetails, String clientIp, String anonymousVoterId) {
-        Post post = postRepository.findByPublicId(publicId)
-            .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+    public ReactionToggleResponse reactToPost(
+            String publicId,
+            ReactionType type,
+            CustomUserDetails userDetails,
+            String clientIp,
+            String anonymousVoterId) {
+        Post post =
+                postRepository
+                        .findByPublicId(publicId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        if (post.isDeleted()) {
+        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
 
         Member member = resolveMember(userDetails);
-        ReactionActor actor = member != null
-            ? ReactionActor.member(member.getId(), resolveWriterIp(clientIp))
-            : ReactionActor.anonymous(resolveAnonymousVoterId(anonymousVoterId), resolveWriterIp(clientIp));
+        ReactionActor actor =
+                member != null
+                        ? ReactionActor.member(member.getId(), resolveWriterIp(clientIp))
+                        : ReactionActor.anonymous(
+                                resolveAnonymousVoterId(anonymousVoterId),
+                                resolveWriterIp(clientIp));
 
         Optional<PostReaction> existing = findExistingReaction(post.getId(), actor, type);
 
@@ -222,13 +261,14 @@ public class PostService {
             isToggledOn = false;
         } else {
             // TOGGLE ON -> 신규 투표 레코드 추가 및 해당 카운트 증가
-            PostReaction reaction = PostReaction.builder()
-                .post(post)
-                .member(member)
-                .writerIp(actor.writerIp())
-                .anonymousVoterId(actor.anonymousVoterId())
-                .type(type)
-                .build();
+            PostReaction reaction =
+                    PostReaction.builder()
+                            .post(post)
+                            .member(member)
+                            .writerIp(actor.writerIp())
+                            .anonymousVoterId(actor.anonymousVoterId())
+                            .type(type)
+                            .build();
             reactionRepository.save(reaction);
 
             increaseReactionCount(post, type);
@@ -237,27 +277,32 @@ public class PostService {
 
         eventPublisher.publishEvent(new PostReactionEvent(post.getId(), type));
 
-        String msg = isToggledOn
-            ? (type == ReactionType.LIKE ? "추천했습니다!" : "비추천했습니다!")
-            : (type == ReactionType.LIKE ? "추천을 취소했습니다." : "비추천을 취소했습니다.");
+        String msg =
+                isToggledOn
+                        ? (type == ReactionType.LIKE ? "추천했습니다!" : "비추천했습니다!")
+                        : (type == ReactionType.LIKE ? "추천을 취소했습니다." : "비추천을 취소했습니다.");
 
         return ReactionToggleResponse.builder()
-            .isToggledOn(isToggledOn)
-            .type(type.name())
-            .likeCount(post.getLikeCount())
-            .dislikeCount(post.getDislikeCount())
-            .message(msg)
-            .build();
+                .isToggledOn(isToggledOn)
+                .type(type.name())
+                .likeCount(post.getLikeCount())
+                .dislikeCount(post.getDislikeCount())
+                .message(msg)
+                .build();
     }
 
-    private void validateEditPermission(Post post, String anonymousPassword, CustomUserDetails userDetails) {
+    private void validateEditPermission(
+            Post post, String anonymousPassword, CustomUserDetails userDetails) {
         if (post.isAnonymous()) {
             // 로그인 유저 본인이 쓴 익명 글인 경우 수정 허용
-            if (userDetails != null && post.getMember() != null && post.getMember().getPublicId().equals(userDetails.getPublicId())) {
+            if (userDetails != null
+                    && post.getMember() != null
+                    && post.getMember().getPublicId().equals(userDetails.getPublicId())) {
                 return;
             }
             // 비밀번호 기반 익명글 수정 검증
-            if (post.getAnonymousPassword() == null || !org.springframework.util.StringUtils.hasText(anonymousPassword)
+            if (post.getAnonymousPassword() == null
+                    || !org.springframework.util.StringUtils.hasText(anonymousPassword)
                     || !passwordEncoder.matches(anonymousPassword, post.getAnonymousPassword())) {
                 throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
             }
@@ -265,19 +310,26 @@ public class PostService {
             if (userDetails == null) {
                 throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
             }
-            boolean isWriter = post.getMember() != null && post.getMember().getPublicId().equals(userDetails.getPublicId());
+            boolean isWriter =
+                    post.getMember() != null
+                            && post.getMember().getPublicId().equals(userDetails.getPublicId());
             if (!isWriter) {
                 throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
             }
         }
     }
 
-    private void validateDeletePermission(Post post, String anonymousPassword, CustomUserDetails userDetails, boolean isAdmin) {
+    private void validateDeletePermission(
+            Post post, String anonymousPassword, CustomUserDetails userDetails, boolean isAdmin) {
         if (post.isAnonymous()) {
-            if (isAdmin || (userDetails != null && post.getMember() != null && post.getMember().getPublicId().equals(userDetails.getPublicId()))) {
+            if (isAdmin
+                    || (userDetails != null
+                            && post.getMember() != null
+                            && post.getMember().getPublicId().equals(userDetails.getPublicId()))) {
                 return;
             }
-            if (post.getAnonymousPassword() == null || !org.springframework.util.StringUtils.hasText(anonymousPassword)
+            if (post.getAnonymousPassword() == null
+                    || !org.springframework.util.StringUtils.hasText(anonymousPassword)
                     || !passwordEncoder.matches(anonymousPassword, post.getAnonymousPassword())) {
                 throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
             }
@@ -285,7 +337,9 @@ public class PostService {
             if (userDetails == null) {
                 throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
             }
-            boolean isWriter = post.getMember() != null && post.getMember().getPublicId().equals(userDetails.getPublicId());
+            boolean isWriter =
+                    post.getMember() != null
+                            && post.getMember().getPublicId().equals(userDetails.getPublicId());
             if (!isAdmin && !isWriter) {
                 throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
             }
@@ -299,11 +353,14 @@ public class PostService {
         return memberRepository.findByPublicId(userDetails.getPublicId()).orElse(null);
     }
 
-    private Optional<PostReaction> findExistingReaction(Long postId, ReactionActor actor, ReactionType type) {
+    private Optional<PostReaction> findExistingReaction(
+            Long postId, ReactionActor actor, ReactionType type) {
         if (actor.isMember()) {
-            return reactionRepository.findByPostIdAndMemberIdAndType(postId, actor.memberId(), type);
+            return reactionRepository.findByPostIdAndMemberIdAndType(
+                    postId, actor.memberId(), type);
         }
-        return reactionRepository.findByPostIdAndAnonymousVoterIdAndType(postId, actor.anonymousVoterId(), type);
+        return reactionRepository.findByPostIdAndAnonymousVoterIdAndType(
+                postId, actor.anonymousVoterId(), type);
     }
 
     private String resolveAnonymousVoterId(String anonymousVoterId) {
@@ -318,18 +375,16 @@ public class PostService {
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {
-        return userDetails != null && userDetails.getAuthorities().stream()
-            .anyMatch(a -> a.getAuthority().equals(Role.ROLE_ADMIN.getKey()));
+        return userDetails != null
+                && userDetails.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals(Role.ROLE_ADMIN.getKey()));
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {
         List<PostImage> images = new ArrayList<>();
         int sortOrder = FIRST_IMAGE_SORT_ORDER;
         for (String imageUrl : imageUrls) {
-            images.add(PostImage.builder()
-                .imageUrl(imageUrl)
-                .sortOrder(sortOrder++)
-                .build());
+            images.add(PostImage.builder().imageUrl(imageUrl).sortOrder(sortOrder++).build());
         }
         return images;
     }

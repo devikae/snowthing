@@ -3,6 +3,7 @@ package com.ikae.snowthing.global.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.servlet.http.Cookie;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -61,13 +62,15 @@ class WebCookieManagerTest {
     void getOrCreate_withCookie_reusesAnonymousVoterCookie() {
         AnonymousVoterCookieManager manager = new AnonymousVoterCookieManager();
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setCookies(new Cookie(AnonymousVoterCookieManager.ANONYMOUS_VOTER_COOKIE_NAME, "anon-1"));
+        request.setCookies(
+                new Cookie(AnonymousVoterCookieManager.ANONYMOUS_VOTER_COOKIE_NAME, "anon-1"));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         String voterId = manager.getOrCreate(request, response);
 
         assertThat(voterId).isEqualTo("anon-1");
-        assertThat(response.getCookie(AnonymousVoterCookieManager.ANONYMOUS_VOTER_COOKIE_NAME)).isNull();
+        assertThat(response.getCookie(AnonymousVoterCookieManager.ANONYMOUS_VOTER_COOKIE_NAME))
+                .isNull();
     }
 
     @Test

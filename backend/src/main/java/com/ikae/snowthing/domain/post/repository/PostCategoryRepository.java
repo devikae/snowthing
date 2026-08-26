@@ -1,9 +1,10 @@
 package com.ikae.snowthing.domain.post.repository;
 
-import com.ikae.snowthing.domain.post.entity.PostCategory;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
+import com.ikae.snowthing.domain.post.entity.PostCategory;
 
 public interface PostCategoryRepository extends JpaRepository<PostCategory, Long> {
 

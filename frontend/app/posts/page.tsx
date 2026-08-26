@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer, SideCategories, TopNav } from "../components/SiteChrome";
+import { API_ENDPOINTS } from "../lib/api";
 
 interface PostItem {
   publicId: string;
@@ -71,7 +72,7 @@ function PostListContent() {
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:8080/api/v1/posts?page=${page + 1}&size=10`;
+      let url = `${API_ENDPOINTS.posts.list}?page=${page + 1}&size=10`;
       if (selectedCategory) {
         url += `&categoryCode=${selectedCategory}`;
       }

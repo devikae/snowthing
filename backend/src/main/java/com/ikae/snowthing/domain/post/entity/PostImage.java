@@ -1,7 +1,9 @@
 package com.ikae.snowthing.domain.post.entity;
 
-import com.ikae.snowthing.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
+
+import com.ikae.snowthing.global.common.BaseTimeEntity;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;

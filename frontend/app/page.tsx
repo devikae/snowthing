@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Footer, SideCategories, TopNav } from "./components/SiteChrome";
+import { API_ENDPOINTS } from "./lib/api";
 
 interface MemberProfile {
   publicId: string;
@@ -49,7 +50,7 @@ export default function HomePage() {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const res = await fetch("http://localhost:8080/api/v1/members/me", {
+          const res = await fetch(API_ENDPOINTS.members.me, {
             credentials: "include",
           });
           if (res.ok) {

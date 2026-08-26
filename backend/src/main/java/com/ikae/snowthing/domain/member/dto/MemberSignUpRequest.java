@@ -1,14 +1,16 @@
 package com.ikae.snowthing.domain.member.dto;
 
-import com.ikae.snowthing.domain.member.entity.Member;
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+
+import com.ikae.snowthing.domain.member.entity.Member;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -17,8 +19,7 @@ public class MemberSignUpRequest {
     @NotBlank(message = "이메일은 필수 입력값입니다.")
     @Pattern(
             regexp = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6}$",
-            message = "올바른 이메일 형식(예: user@domain.com)이어야 합니다."
-    )
+            message = "올바른 이메일 형식(예: user@domain.com)이어야 합니다.")
     private String email;
 
     @NotBlank(message = "비밀번호는 필수 입력값입니다.")
@@ -38,14 +39,22 @@ public class MemberSignUpRequest {
     private List<Long> ridingStyleIds = new ArrayList<>();
 
     @Builder
-    public MemberSignUpRequest(String email, String password, String nickname, String bio, String departureRegion, List<Long> resortIds, List<Long> ridingStyleIds) {
+    public MemberSignUpRequest(
+            String email,
+            String password,
+            String nickname,
+            String bio,
+            String departureRegion,
+            List<Long> resortIds,
+            List<Long> ridingStyleIds) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
         this.bio = bio;
         this.departureRegion = departureRegion;
         this.resortIds = resortIds != null ? new ArrayList<>(resortIds) : new ArrayList<>();
-        this.ridingStyleIds = ridingStyleIds != null ? new ArrayList<>(ridingStyleIds) : new ArrayList<>();
+        this.ridingStyleIds =
+                ridingStyleIds != null ? new ArrayList<>(ridingStyleIds) : new ArrayList<>();
     }
 
     public List<Long> getResortIds() {
