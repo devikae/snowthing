@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.3.4'
     id 'io.spring.dependency-management' version '1.1.6'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'com.ikae'
@@ -53,4 +54,17 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+spotless {
+    ratchetFrom 'origin/main'
+
+    java {
+        target 'src/*/java/**/*.java'
+        googleJavaFormat('1.22.0').aosp()
+        removeUnusedImports()
+        importOrder('java', 'jakarta', 'org', 'com', '')
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
