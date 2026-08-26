@@ -156,6 +156,19 @@
 
 
 
+## 2026-08-26
+
+### 완료
+
+- `main` 브랜치 GitHub Actions에 Spotless lint 검사를 추가.
+  - `backend/build.gradle`에 Spotless 6.25.0 설정 추가.
+  - 기존 main Java 소스 전체 재포맷을 피하기 위해 `ratchetFrom 'origin/main'` 적용.
+  - `.github/workflows/gradle.yml`에서 checkout `fetch-depth: 0` 설정 후 `spotlessCheck` 스텝 추가.
+  - 검증 결과: `./gradlew spotlessCheck`, `./gradlew build` 통과.
+- `main` 브랜치 Spring Boot 버전을 4.1.0으로 상향.
+  - Spring Dependency Management 플러그인을 1.1.7로 조정.
+  - Boot 4.1.0 컴파일을 위해 Jackson/WebMVC test 의존성과 Security logout 설정을 보정.
+  - 검증 결과: `./gradlew build` 통과.
 
 
 

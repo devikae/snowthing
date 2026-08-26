@@ -1,7 +1,8 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.3.4'
-    id 'io.spring.dependency-management' version '1.1.6'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'com.ikae'
@@ -28,6 +29,8 @@ dependencies {
     // Web & Validation
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-jackson'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     // JPA & DB
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -47,10 +50,24 @@ dependencies {
 
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+spotless {
+    ratchetFrom 'origin/main'
+
+    java {
+        target 'src/*/java/**/*.java'
+        googleJavaFormat('1.22.0').aosp()
+        removeUnusedImports()
+        importOrder('java', 'jakarta', 'org', 'com', '')
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }

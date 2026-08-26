@@ -1,22 +1,5 @@
 package com.ikae.snowthing.domain.auth.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
-import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
-import com.ikae.snowthing.domain.member.repository.MemberRepository;
-import com.ikae.snowthing.domain.member.service.MemberService;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,36 +7,53 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
+import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
+import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.member.service.MemberService;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
+
+    @Autowired private ObjectMapper objectMapper;
+
+    @Autowired private MemberService memberService;
+
+    @Autowired private MemberRepository memberRepository;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private com.ikae.snowthing.domain.member.repository.MemberResortRepository
+            memberResortRepository;
 
     @Autowired
-    private MemberService memberService;
-
-    @Autowired
-    private MemberRepository memberRepository;
-
-    @Autowired
-    private com.ikae.snowthing.domain.member.repository.MemberResortRepository memberResortRepository;
-
-    @Autowired
-    private com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository memberRidingStyleRepository;
+    private com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository
+            memberRidingStyleRepository;
 
     @BeforeEach
     void setUp() {
         cleanUp();
-        MemberSignUpRequest signUpRequest = MemberSignUpRequest.builder()
-                .email("sessionuser@snowthing.com")
-                .password("Password123!")
-                .nickname("세션보더")
-                .build();
+        MemberSignUpRequest signUpRequest =
+                MemberSignUpRequest.builder()
+                        .email("sessionuser@snowthing.com")
+                        .password("Password123!")
+                        .nickname("세션보더")
+                        .build();
         memberService.signUp(signUpRequest);
     }
 
@@ -71,14 +71,17 @@ class AuthControllerTest {
     @Test
     @DisplayName("[검증 1] 올바른 로그인 요청 시 200 OK와 함께 회원 프로필이 반환되어야 한다")
     void login_Success() throws Exception {
-        MemberLoginRequest loginRequest = MemberLoginRequest.builder()
-                .email("sessionuser@snowthing.com")
-                .password("Password123!")
-                .build();
+        MemberLoginRequest loginRequest =
+                MemberLoginRequest.builder()
+                        .email("sessionuser@snowthing.com")
+                        .password("Password123!")
+                        .build();
 
-        mockMvc.perform(post("/api/v1/auth/login").with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.publicId").exists())
                 .andExpect(jsonPath("$.email").value("sessionuser@snowthing.com"))
@@ -89,14 +92,17 @@ class AuthControllerTest {
     @Test
     @DisplayName("[검증 2] 비밀번호가 일치하지 않는 경우 401 Unauthorized 가 반환되어야 한다")
     void login_InvalidPassword_Returns401() throws Exception {
-        MemberLoginRequest loginRequest = MemberLoginRequest.builder()
-                .email("sessionuser@snowthing.com")
-                .password("WrongPassword999!")
-                .build();
+        MemberLoginRequest loginRequest =
+                MemberLoginRequest.builder()
+                        .email("sessionuser@snowthing.com")
+                        .password("WrongPassword999!")
+                        .build();
 
-        mockMvc.perform(post("/api/v1/auth/login").with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_001"));
     }
@@ -107,17 +113,21 @@ class AuthControllerTest {
         String oldSessionId = "BEFORE_LOGIN_SESSION_ID_9999";
         MockHttpSession beforeSession = new MockHttpSession(null, oldSessionId);
 
-        MemberLoginRequest loginRequest = MemberLoginRequest.builder()
-                .email("sessionuser@snowthing.com")
-                .password("Password123!")
-                .build();
+        MemberLoginRequest loginRequest =
+                MemberLoginRequest.builder()
+                        .email("sessionuser@snowthing.com")
+                        .password("Password123!")
+                        .build();
 
-        MvcResult mvcResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
-                        .session(beforeSession)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult mvcResult =
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .with(csrf())
+                                        .session(beforeSession)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .andExpect(status().isOk())
+                        .andReturn();
 
         MockHttpSession afterSession = (MockHttpSession) mvcResult.getRequest().getSession();
         assertThat(afterSession).isNotNull();
@@ -131,17 +141,21 @@ class AuthControllerTest {
     void login_Me_And_Logout_SessionInvalidate_Success() throws Exception {
         MockHttpSession beforeSession = new MockHttpSession();
 
-        MemberLoginRequest loginRequest = MemberLoginRequest.builder()
-                .email("sessionuser@snowthing.com")
-                .password("Password123!")
-                .build();
+        MemberLoginRequest loginRequest =
+                MemberLoginRequest.builder()
+                        .email("sessionuser@snowthing.com")
+                        .password("Password123!")
+                        .build();
 
-        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login").with(csrf())
-                        .session(beforeSession)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult loginResult =
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .with(csrf())
+                                        .session(beforeSession)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .andExpect(status().isOk())
+                        .andReturn();
 
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession();
 
