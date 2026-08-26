@@ -147,16 +147,18 @@ public class CommentService {
             if (anonymousPassword == null || !passwordEncoder.matches(anonymousPassword, comment.getAnonymousPassword())) {
                 throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
             }
-        } else {
-            if (userDetails == null) {
-                throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
-            }
+            return
+        } 
+        
+          if (userDetails == null) {
+              throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+          }
 
-            boolean isWriter = comment.getMember() != null && comment.getMember().getPublicId().equals(userDetails.getPublicId());
+          boolean isWriter = comment.getMember() != null && comment.getMember().getPublicId().equals(userDetails.getPublicId());
 
-            if (!isWriter) {
-                throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
-            }
-        }
+          if (!isWriter) {
+              throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+          }
+        
     }
 }
