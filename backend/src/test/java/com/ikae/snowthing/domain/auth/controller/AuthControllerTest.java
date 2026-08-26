@@ -40,9 +40,15 @@ class AuthControllerTest {
     @Autowired
     private MemberRepository memberRepository;
 
+    @Autowired
+    private com.ikae.snowthing.domain.member.repository.MemberResortRepository memberResortRepository;
+
+    @Autowired
+    private com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository memberRidingStyleRepository;
+
     @BeforeEach
     void setUp() {
-        memberRepository.deleteAll();
+        cleanUp();
         MemberSignUpRequest signUpRequest = MemberSignUpRequest.builder()
                 .email("sessionuser@snowthing.com")
                 .password("Password123!")
@@ -53,6 +59,12 @@ class AuthControllerTest {
 
     @AfterEach
     void tearDown() {
+        cleanUp();
+    }
+
+    private void cleanUp() {
+        memberResortRepository.deleteAll();
+        memberRidingStyleRepository.deleteAll();
         memberRepository.deleteAll();
     }
 
