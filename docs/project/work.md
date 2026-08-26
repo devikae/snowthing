@@ -394,6 +394,15 @@
 
 
 
+## 2026-08-26
+
+### 완료
+
+- `main` 브랜치 GitHub Actions에 Spotless lint 검사를 추가.
+  - `backend/build.gradle`에 Spotless 6.25.0 설정 추가.
+  - 기존 main Java 소스 전체 재포맷을 피하기 위해 `ratchetFrom 'origin/main'` 적용.
+  - `.github/workflows/gradle.yml`에서 checkout `fetch-depth: 0` 설정 후 `spotlessCheck` 스텝 추가.
+  - 검증 결과: `./gradlew spotlessCheck`, `./gradlew build` 통과.
 
 
 
