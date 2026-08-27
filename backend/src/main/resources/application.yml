@@ -30,7 +30,7 @@ server:
 
 ---
 # ==========================================
-# [Profile: local] 로컬 개발 환경 (Docker / Local MySQL 연동)
+# [Profile: local] 로컬 개발 환경 (Local / Docker MySQL 8.0 연동)
 # ==========================================
 spring:
   config:
@@ -74,31 +74,3 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-
----
-# ==========================================
-# [Profile: h2] H2 인메모리 테스트/임시 전용 프로필
-# ==========================================
-spring:
-  config:
-    activate:
-      on-profile: h2
-
-  datasource:
-    url: jdbc:h2:mem:snowdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console

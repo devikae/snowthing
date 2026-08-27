@@ -34,23 +34,38 @@ public class CommentService {
     private final PasswordEncoder passwordEncoder;
     private final TransactionTemplate transactionTemplate;
 
+    @Transactional
     public CommentResponse createComment(
             String postPublicId,
             CommentCreateRequest request,
             CustomUserDetails userDetails,
             String clientIp) {
+        Member member = null;
         String encodedPassword = null;
+
         if (request.isAnonymous()) {
-            if (request.anonymousPassword() == null || request.anonymousPassword().isBlank()) {
+            if (userDetails != null) {
+                member = memberRepository.findByPublicId(userDetails.getPublicId()).orElse(null);
+            }
+            if (member == null
+                    && (request.anonymousPassword() == null
+                            || request.anonymousPassword().isBlank())) {
                 throw new CustomAuthException(ErrorCode.INVALID_INPUT);
             }
-            encodedPassword = passwordEncoder.encode(request.anonymousPassword());
+            if (request.anonymousPassword() != null && !request.anonymousPassword().isBlank()) {
+                encodedPassword = passwordEncoder.encode(request.anonymousPassword());
+            }
         } else {
             if (userDetails == null) {
                 throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
             }
+            member =
+                    memberRepository
+                            .findByPublicId(userDetails.getPublicId())
+                            .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
+        final Member finalMember = member;
         final String finalEncodedPassword = encodedPassword;
 
         return transactionTemplate.execute(
@@ -83,21 +98,10 @@ public class CommentService {
                         }
                     }
 
-                    Member member = null;
-                    if (!request.isAnonymous()) {
-                        member =
-                                memberRepository
-                                        .findByPublicId(userDetails.getPublicId())
-                                        .orElseThrow(
-                                                () ->
-                                                        new CustomAuthException(
-                                                                ErrorCode.MEMBER_NOT_FOUND));
-                    }
-
                     Comment comment =
                             Comment.builder()
                                     .post(post)
-                                    .member(member)
+                                    .member(finalMember)
                                     .parent(parent)
                                     .content(request.content())
                                     .writerIp(clientIp != null ? clientIp : "127.0.0.1")
@@ -106,7 +110,7 @@ public class CommentService {
                                     .build();
 
                     Comment savedComment = commentRepository.save(comment);
-                    post.increaseCommentCount();
+                    postRepository.increaseCommentCount(post.getId());
 
                     return CommentResponse.from(savedComment);
                 });
@@ -163,7 +167,7 @@ public class CommentService {
         validateDeletePermission(comment, anonymousPassword, userDetails);
 
         comment.softDelete();
-        comment.getPost().decreaseCommentCount();
+        postRepository.decreaseCommentCount(comment.getPost().getId());
     }
 
     private void validateDeletePermission(

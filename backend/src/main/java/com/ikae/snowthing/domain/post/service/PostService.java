@@ -128,10 +128,13 @@ public class PostService {
             }
         }
 
+        List<String> imageUrls = post.getImages().stream().map(PostImage::getImageUrl).toList();
+        int viewCount = post.getViewCount();
         if (shouldIncreaseViewCount) {
-            post.increaseViewCount();
+            postRepository.increaseViewCount(post.getId());
+            viewCount++;
         }
-        return PostDetailResponse.from(post);
+        return PostDetailResponse.from(post, viewCount, imageUrls);
     }
 
     public Page<PostListResponse> getPostList(String categoryCode, int page, int size) {
@@ -250,13 +253,17 @@ public class PostService {
         Optional<PostReaction> existing = findExistingReaction(post.getId(), actor, type);
 
         boolean isToggledOn;
+        int likeCount = post.getLikeCount();
+        int dislikeCount = post.getDislikeCount();
         if (existing.isPresent()) {
             // TOGGLE OFF -> 기존 투표 레코드 삭제 및 해당 카운트 차감
             reactionRepository.delete(existing.get());
             if (type == ReactionType.LIKE) {
-                post.decreaseLikeCount();
+                postRepository.decreaseLikeCount(post.getId());
+                likeCount = Math.max(0, likeCount - 1);
             } else {
-                post.decreaseDislikeCount();
+                postRepository.decreaseDislikeCount(post.getId());
+                dislikeCount = Math.max(0, dislikeCount - 1);
             }
             isToggledOn = false;
         } else {
@@ -271,7 +278,13 @@ public class PostService {
                             .build();
             reactionRepository.save(reaction);
 
-            increaseReactionCount(post, type);
+            if (type == ReactionType.LIKE) {
+                postRepository.increaseLikeCount(post.getId());
+                likeCount++;
+            } else {
+                postRepository.increaseDislikeCount(post.getId());
+                dislikeCount++;
+            }
             isToggledOn = true;
         }
 
@@ -285,8 +298,8 @@ public class PostService {
         return ReactionToggleResponse.builder()
                 .isToggledOn(isToggledOn)
                 .type(type.name())
-                .likeCount(post.getLikeCount())
-                .dislikeCount(post.getDislikeCount())
+                .likeCount(likeCount)
+                .dislikeCount(dislikeCount)
                 .message(msg)
                 .build();
     }
@@ -387,13 +400,5 @@ public class PostService {
             images.add(PostImage.builder().imageUrl(imageUrl).sortOrder(sortOrder++).build());
         }
         return images;
-    }
-
-    private void increaseReactionCount(Post post, ReactionType type) {
-        if (type == ReactionType.LIKE) {
-            post.increaseLikeCount();
-        } else {
-            post.increaseDislikeCount();
-        }
     }
 }

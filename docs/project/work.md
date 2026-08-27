@@ -1,3 +1,30 @@
+- **게시글 삭제 API 민감정보 `@RequestParam` 완전 제거 및 Request Body DTO 단일 계약 전환 (2026-08-27)**:
+  1. **URL 파라미터 민감정보 노출 원천 차단**: `PostController.java`의 `deletePost` 메서드에서 잔여 레거시였던 `@RequestParam(required = false) String anonymousPassword`를 완전히 제거하고, 오직 `@RequestBody(required = false) PostDeleteRequest request`를 통해서만 비밀번호를 수신하도록 API 계약 단일화.
+  2. **삭제 권한 정책 6대 시나리오 전수 검증**: `PostControllerTest.java`를 통해 로그인 작성자(200 OK), 최고 관리자(200 OK), 비회원 익명 올바른 비밀번호(200 OK), 비회원 익명 틀린 비밀번호(403 Forbidden - `POST_004`), **관계없는 제3자 로그인 회원이 익명글 비밀번호를 알고 입력 시 삭제 허용(200 OK)** 및 틀린 비밀번호 시 거부(403 Forbidden) 정책을 100% 검증.
+  3. **전체 단위/통합 테스트 검증**: Spotless 포맷팅(`spotlessApply`) 및 전체 90개 백엔드 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL** 통과.
+
+- **댓글 생성 쓰기 트랜잭션(`@Transactional`) 선언 및 전역 500 에러 핸들러 보강 (2026-08-27)**:
+  1. **MySQL Read-Only 커넥션 쓰기 차단 원천 해결**: `CommentService.java`의 클래스 레벨 `@Transactional(readOnly = true)`로 인해 `createComment` 실행 시 MySQL JDBC 드라이버가 `Connection is read-only` 에러를 발생시키던 문제를 해결하기 위해, `createComment` 메서드 상단에 쓰기 전용 `@Transactional`을 명시하여 정상적인 INSERT 커넥션 획득 보장.
+  2. **Security 401 오분류 방지 전역 500 핸들러 신설**: `GlobalExceptionHandler.java`에 `@ExceptionHandler(Exception.class)`를 추가하여, 예기치 않은 인프라/시스템 예외가 서블릿 밖으로 흘러나가 Spring Security EntryPoint의 401(INVALID_CREDENTIALS)로 둔갑하던 결함을 차단하고 정확한 500 INTERNAL_SERVER_ERROR로 일원화.
+  3. **전체 단위/통합 테스트 검증**: Spotless 서식 교정(`spotlessApply`) 및 백엔드 90개 전체 단위/통합 테스트(`gradle test`) **100% PASS** 완료.
+
+- **익명/일반 게시판 댓글 도메인 정책 완결 (로그인 회원 비밀번호 생략 & 비로그인 비밀번호 필수) (2026-08-27)**:
+  1. **백엔드 `CommentService` 정책 일원화**: `createComment`에서 로그인 회원(`userDetails != null`)이 익명 댓글을 작성할 때 `anonymousPassword` 없이도 `member`를 정상 연관관계 매핑하여 즉시 작성되고, 작성자 본인 세션으로 비밀번호 없이 즉시 삭제 가능하도록 개선. 비로그인 사용자만 삭제용 비밀번호 필수로 일원화.
+  2. **프론트엔드 UI/UX 최적화**: `[publicId]/page.tsx`에서 익명 게시판 진입 시 로그인 회원에게는 불필요한 비밀번호 입력란을 완전히 숨기고, 비로그인 사용자에게만 비밀번호 입력을 유도하여 매끄러운 UX 확립.
+  3. **전체 단위/통합 테스트 및 빌드 검증**: 백엔드 전체 테스트 수트(`gradle test`) **100% BUILD SUCCESSFUL** 및 Next.js 16 최적화 프로덕션 빌드(`npm run build`) **100% SUCCESS** 통과 완료.
+
+- **조회수/추천수/댓글수 증감 시 `updated_at` 고스트 업데이트 방지 및 벌크 쿼리 분리 (2026-08-27)**:
+  1. **고스트 업데이트(Ghost Update) 원천 차단**: 조회수(`view_count`), 추천/비추천(`like_count`/`dislike_count`), 댓글수(`comment_count`) 증감 시 영속성 컨텍스트 더티 체킹으로 인해 `updated_at`이 갱신되던 문제를 해결하기 위해, `PostRepository`에 `@Modifying(flushAutomatically = true, clearAutomatically = true)` 벌크 쿼리 7종을 도입하여 엔티티 감사(Audit) 메타데이터 터치를 물리적으로 배제.
+  2. **DDL 및 감사 정책 일원화**: `database/ddl.sql`의 `post` 테이블에서 `ON UPDATE CURRENT_TIMESTAMP`를 제거하여, 사용자가 실제 본문/제목을 수정(`post.update(...)`)한 경우에만 JPA Auditing(`@LastModifiedDate`)이 `updated_at`을 최신 시점으로 갱신하도록 전담화.
+  3. **단위/통합 테스트 전수 검증**: `PostServiceTest.java` 내 `PostUpdatedAtGhostUpdatePolicyTest`를 신설하여 조회/추천/댓글 시 `updated_at` 불변 유지 및 본문 수정 시에만 갱신되는 동작 검증 완료 (전체 90개 테스트 100% PASS).
+
+- **H2/MySQL DataSource 프로필 분리 및 MySQL 8.0 전용 프로필 단일화 (2026-08-27)**:
+  1. **프로필 기반 분리 및 H2 완전 제거**: `application.yml`에서 메인 애플리케이션용 H2 프로필 및 H2 콘솔 설정을 전면 제거하고, 실제 **MySQL 8.0** 데이터베이스 전용 프로필(`local`, `docker`, `prod`)로 완전 단일화.
+     - `local` 프로필: `jdbc:mysql://localhost:3306/snowthing?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul` (`ddl-auto: update`)
+     - `docker`/`prod` 프로필: `jdbc:mysql://mysql:3306/snowthing?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul` (`ddl-auto: validate`)
+  2. **잉여 중복 파일 제거**: `backend/src/main/resources/application.yaml` 중복 파싱 파일 완전 제거.
+  3. **전체 단위/통합 테스트 검증**: 독립 테스트 프로필(`application-test.yml`) 및 백엔드 테스트 수트(`gradle test`) 100% PASS 검증 완료.
+
 - **Spring Boot 4.1.0 판올림 & Spotless 린터(Google Java Format AOSP) 전면 도입 & GitHub Actions CI 연동 (2026-08-26)**:
   1. **Spring Boot 4.1.0 호환성 전수 교정**:
      - `backend/build.gradle` 버전을 `4.1.0` (Spring Framework 7.x, Spring Security 7.x, Jakarta EE)으로 적용.

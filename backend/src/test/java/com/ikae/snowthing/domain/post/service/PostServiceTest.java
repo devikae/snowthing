@@ -635,4 +635,89 @@ class PostServiceTest {
                     .isEqualTo(ErrorCode.POST_NOT_FOUND);
         }
     }
+
+    @Nested
+    @DisplayName("수정일시(updated_at) 고스트 업데이트 방지 및 본문 수정 시 갱신 정책 테스트")
+    class PostUpdatedAtGhostUpdatePolicyTest {
+
+        @Test
+        @DisplayName("게시글 조회수(view_count) 및 추천수(like_count) 증감 시에는 updated_at이 절대 변경되지 않는다.")
+        void countUpdates_doNotChangeUpdatedAt() {
+            // 1. 게시글 생성
+            PostResponse created =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("FREE")
+                                    .title("고스트 업데이트 방지 테스트")
+                                    .content("원문 본문")
+                                    .isAnonymous(false)
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
+
+            entityManager.flush();
+            entityManager.clear();
+
+            Post initialPost = postRepository.findByPublicId(created.publicId()).orElseThrow();
+            java.time.LocalDateTime initialUpdatedAt = initialPost.getUpdatedAt();
+
+            // 2. 조회수 증가 발생
+            postService.getPostDetail(created.publicId(), userDetails1, true);
+
+            // 3. 추천수 증가 발생
+            postService.reactToPost(
+                    created.publicId(), ReactionType.LIKE, userDetails2, "127.0.0.1", null);
+
+            entityManager.flush();
+            entityManager.clear();
+
+            // 4. DB 검증: view_count, like_count는 올랐지만 updated_at은 생성 시점 그대로 유지
+            Post verified = postRepository.findByPublicId(created.publicId()).orElseThrow();
+            assertThat(verified.getViewCount()).isEqualTo(1);
+            assertThat(verified.getLikeCount()).isEqualTo(1);
+            assertThat(verified.getUpdatedAt()).isEqualTo(initialUpdatedAt);
+        }
+
+        @Test
+        @DisplayName("사용자가 실제 본문/제목을 수정(updatePost)한 경우에만 updated_at이 최신 시점으로 갱신된다.")
+        void updatePost_updatesUpdatedAtTimestamp() throws Exception {
+            // 1. 게시글 생성
+            PostResponse created =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("FREE")
+                                    .title("수정 전 제목")
+                                    .content("수정 전 본문")
+                                    .isAnonymous(false)
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
+
+            entityManager.flush();
+            entityManager.clear();
+
+            Post initialPost = postRepository.findByPublicId(created.publicId()).orElseThrow();
+            java.time.LocalDateTime initialUpdatedAt = initialPost.getUpdatedAt();
+
+            Thread.sleep(50); // 시간차 보장
+
+            // 2. 실제 본문 수정
+            postService.updatePost(
+                    created.publicId(),
+                    PostUpdateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("수정된 제목")
+                            .content("수정된 본문")
+                            .build(),
+                    userDetails1);
+
+            entityManager.flush();
+            entityManager.clear();
+
+            // 3. DB 검증: updated_at이 이전 시점보다 이후(after)로 갱신됨
+            Post updated = postRepository.findByPublicId(created.publicId()).orElseThrow();
+            assertThat(updated.getTitle()).isEqualTo("수정된 제목");
+            assertThat(updated.getUpdatedAt()).isAfter(initialUpdatedAt);
+        }
+    }
 }

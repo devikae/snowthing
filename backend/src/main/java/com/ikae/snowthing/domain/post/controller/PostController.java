@@ -100,12 +100,8 @@ public class PostController {
     public ResponseEntity<Map<String, Object>> deletePost(
             @PathVariable String publicId,
             @RequestBody(required = false) PostDeleteRequest request,
-            @RequestParam(required = false) String anonymousPassword,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        String password =
-                (request != null && request.anonymousPassword() != null)
-                        ? request.anonymousPassword()
-                        : anonymousPassword;
+        String password = request != null ? request.anonymousPassword() : null;
         postService.deletePost(publicId, password, userDetails);
         return ResponseEntity.ok(
                 Map.of("message", "게시글이 정상적으로 삭제(Soft Delete) 처리되었습니다.", "publicId", publicId));

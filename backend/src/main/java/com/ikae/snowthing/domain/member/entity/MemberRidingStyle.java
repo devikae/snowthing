@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "member_riding_style",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"member_id", "riding_style_id"})})
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"member_id", "style_id"})})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberRidingStyle {
@@ -24,7 +24,7 @@ public class MemberRidingStyle {
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "riding_style_id", nullable = false)
+    @JoinColumn(name = "style_id", nullable = false)
     private RidingStyle ridingStyle;
 
     @Builder

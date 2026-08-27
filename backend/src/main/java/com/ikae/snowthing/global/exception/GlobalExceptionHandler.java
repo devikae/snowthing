@@ -58,4 +58,11 @@ public class GlobalExceptionHandler {
                                         ? defaultMessage
                                         : ErrorCode.INVALID_INPUT.getMessage()));
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneralException(Exception e) {
+        log.error("서버 내부 미처리 예외 발생: ", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorResponse.from(ErrorCode.INTERNAL_SERVER_ERROR));
+    }
 }

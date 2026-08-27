@@ -33,7 +33,7 @@ public record PostDetailResponse(
         }
     }
 
-    public static PostDetailResponse from(Post post) {
+    public static PostDetailResponse from(Post post, int viewCount, List<String> imageUrls) {
         WriterInfo writerInfo =
                 post.isAnonymous()
                         ? WriterInfo.anonymous(
@@ -45,8 +45,6 @@ public record PostDetailResponse(
                                         post.getMember().getProfileImageUrl())
                                 : WriterInfo.anonymous("알 수 없음"));
 
-        List<String> imageUrls = post.getImages().stream().map(PostImage::getImageUrl).toList();
-
         return new PostDetailResponse(
                 post.getPublicId(),
                 post.getCategory().getName(),
@@ -55,12 +53,21 @@ public record PostDetailResponse(
                 post.getContent(),
                 post.getStatus(),
                 post.isAnonymous(),
-                post.getViewCount(),
+                viewCount,
                 post.getCommentCount(),
                 post.getLikeCount(),
                 post.getDislikeCount(),
                 writerInfo,
                 List.copyOf(imageUrls),
                 post.getCreatedAt());
+    }
+
+    public static PostDetailResponse from(Post post, int viewCount) {
+        List<String> imageUrls = post.getImages().stream().map(PostImage::getImageUrl).toList();
+        return from(post, viewCount, imageUrls);
+    }
+
+    public static PostDetailResponse from(Post post) {
+        return from(post, post.getViewCount());
     }
 }

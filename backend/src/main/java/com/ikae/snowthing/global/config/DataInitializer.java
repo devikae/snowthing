@@ -39,7 +39,7 @@ public class DataInitializer implements CommandLineRunner {
             memberRepository.save(
                     Member.builder()
                             .email("user@snowthing.com")
-                            .password(passwordEncoder.encode("Password123!"))
+                            .password(passwordEncoder.encode("123123"))
                             .nickname("스노보더1")
                             .role(Role.ROLE_USER)
                             .build());

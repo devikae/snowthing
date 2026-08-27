@@ -63,12 +63,10 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
   const [newCommentText, setNewCommentText] = useState("");
-  const [isCommentAnon, setIsCommentAnon] = useState(false);
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [activeReplyParentId, setActiveReplyParentId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
-  const [isReplyAnon, setIsReplyAnon] = useState(false);
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -199,12 +197,38 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
+  const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
+
   const handleCreateComment = async (parentId: number | null) => {
     const text = parentId ? replyText : newCommentText;
-    const isAnonymous = parentId ? isReplyAnon : isCommentAnon;
-    const anonymousPassword = parentId ? replyAnonPassword : commentAnonPassword;
+    if (!text.trim()) {
+      alert("댓글 내용을 입력해주세요.");
+      return;
+    }
 
-    if (!text.trim()) return;
+    let isAnonymous = false;
+    let anonymousPassword: string | null = null;
+
+    if (isAnonymousPost) {
+      isAnonymous = true;
+      if (!currentUserPublicId) {
+        const pwd = parentId ? replyAnonPassword : commentAnonPassword;
+        if (!pwd.trim()) {
+          alert("익명 댓글 삭제를 위한 비밀번호를 입력해주세요.");
+          return;
+        }
+        anonymousPassword = pwd.trim();
+      }
+    } else {
+      if (!currentUserPublicId) {
+        if (confirm("댓글을 작성하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
+          router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        }
+        return;
+      }
+      isAnonymous = false;
+      anonymousPassword = null;
+    }
 
     setSubmittingComment(true);
     try {
@@ -215,16 +239,18 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           parentId,
           content: text.trim(),
           isAnonymous,
-          anonymousPassword: isAnonymous ? anonymousPassword : null,
+          anonymousPassword,
         }),
       });
 
       if (res.ok) {
         if (parentId) {
           setReplyText("");
+          setReplyAnonPassword("");
           setActiveReplyParentId(null);
         } else {
           setNewCommentText("");
+          setCommentAnonPassword("");
         }
         await fetchComments();
         setPost((current) => (current ? { ...current, commentCount: current.commentCount + 1 } : current));
@@ -373,24 +399,33 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             <div className="mb-7 border-b border-[var(--snow-border)] pb-7">
               <textarea
                 rows={3}
-                placeholder="댓글을 작성해보세요."
+                placeholder={isAnonymousPost ? "익명으로 댓글을 작성해보세요." : currentUserPublicId ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
                 className="snow-textarea min-h-[110px]"
               />
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label className="flex items-center gap-2 text-sm text-[var(--snow-muted)]">
-                  <input type="checkbox" checked={isCommentAnon} onChange={(event) => setIsCommentAnon(event.target.checked)} />
-                  익명 작성
-                </label>
-                {isCommentAnon && (
-                  <input
-                    type="password"
-                    placeholder="익명 비밀번호"
-                    value={commentAnonPassword}
-                    onChange={(event) => setCommentAnonPassword(event.target.value)}
-                    className="snow-input sm:w-52"
-                  />
+                {isAnonymousPost ? (
+                  <div className="flex items-center gap-2">
+                    <span className="snow-chip snow-chip-dark text-xs">익명</span>
+                    {!currentUserPublicId && (
+                      <input
+                        type="password"
+                        placeholder="익명 비밀번호 입력"
+                        value={commentAnonPassword}
+                        onChange={(event) => setCommentAnonPassword(event.target.value)}
+                        className="snow-input sm:w-52"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    {!currentUserPublicId && (
+                      <span className="text-xs text-[var(--snow-muted)]">
+                        * 댓글 작성을 위해 로그인이 필요합니다.
+                      </span>
+                    )}
+                  </div>
                 )}
                 <button disabled={submittingComment} onClick={() => void handleCreateComment(null)} className="snow-btn-primary sm:ml-auto">
                   댓글 등록
@@ -406,12 +441,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                   <CommentRow
                     key={comment.commentId}
                     item={comment}
+                    isAnonymousPost={isAnonymousPost}
+                    currentUserPublicId={currentUserPublicId}
                     activeReplyParentId={activeReplyParentId}
                     setActiveReplyParentId={setActiveReplyParentId}
                     replyText={replyText}
                     setReplyText={setReplyText}
-                    isReplyAnon={isReplyAnon}
-                    setIsReplyAnon={setIsReplyAnon}
                     replyAnonPassword={replyAnonPassword}
                     setReplyAnonPassword={setReplyAnonPassword}
                     handleCreateComment={handleCreateComment}
@@ -440,12 +475,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 function CommentRow({
   item,
   depth = 0,
+  isAnonymousPost,
+  currentUserPublicId,
   activeReplyParentId,
   setActiveReplyParentId,
   replyText,
   setReplyText,
-  isReplyAnon,
-  setIsReplyAnon,
   replyAnonPassword,
   setReplyAnonPassword,
   handleCreateComment,
@@ -453,12 +488,12 @@ function CommentRow({
 }: {
   item: CommentItem;
   depth?: number;
+  isAnonymousPost: boolean;
+  currentUserPublicId: string | null;
   activeReplyParentId: number | null;
   setActiveReplyParentId: (id: number | null) => void;
   replyText: string;
   setReplyText: (text: string) => void;
-  isReplyAnon: boolean;
-  setIsReplyAnon: (value: boolean) => void;
   replyAnonPassword: string;
   setReplyAnonPassword: (value: string) => void;
   handleCreateComment: (parentId: number | null) => Promise<void>;
@@ -486,20 +521,35 @@ function CommentRow({
 
         {activeReplyParentId === item.commentId && (
           <div className="mt-4 rounded border border-[var(--snow-border)] bg-[var(--snow-background)] p-4">
-            <textarea rows={2} value={replyText} onChange={(event) => setReplyText(event.target.value)} placeholder="답글을 작성하세요." className="snow-textarea min-h-[90px]" />
+            <textarea
+              rows={2}
+              value={replyText}
+              onChange={(event) => setReplyText(event.target.value)}
+              placeholder={isAnonymousPost ? "익명으로 답글을 작성하세요." : currentUserPublicId ? "답글을 작성하세요." : "로그인 후 답글을 작성할 수 있습니다."}
+              className="snow-textarea min-h-[90px]"
+            />
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <label className="flex items-center gap-2 text-sm text-[var(--snow-muted)]">
-                <input type="checkbox" checked={isReplyAnon} onChange={(event) => setIsReplyAnon(event.target.checked)} />
-                익명
-              </label>
-              {isReplyAnon && (
-                <input
-                  type="password"
-                  placeholder="비밀번호"
-                  value={replyAnonPassword}
-                  onChange={(event) => setReplyAnonPassword(event.target.value)}
-                  className="snow-input sm:w-44"
-                />
+              {isAnonymousPost ? (
+                <div className="flex items-center gap-2">
+                  <span className="snow-chip snow-chip-dark text-xs">익명</span>
+                  {!currentUserPublicId && (
+                    <input
+                      type="password"
+                      placeholder="익명 비밀번호"
+                      value={replyAnonPassword}
+                      onChange={(event) => setReplyAnonPassword(event.target.value)}
+                      className="snow-input sm:w-44"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {!currentUserPublicId && (
+                    <span className="text-xs text-[var(--snow-muted)]">
+                      * 답글 작성을 위해 로그인이 필요합니다.
+                    </span>
+                  )}
+                </div>
               )}
               <button onClick={() => void handleCreateComment(item.commentId)} className="snow-btn-primary sm:ml-auto">
                 답글 등록
@@ -516,12 +566,12 @@ function CommentRow({
               key={child.commentId}
               item={child}
               depth={depth + 1}
+              isAnonymousPost={isAnonymousPost}
+              currentUserPublicId={currentUserPublicId}
               activeReplyParentId={activeReplyParentId}
               setActiveReplyParentId={setActiveReplyParentId}
               replyText={replyText}
               setReplyText={setReplyText}
-              isReplyAnon={isReplyAnon}
-              setIsReplyAnon={setIsReplyAnon}
               replyAnonPassword={replyAnonPassword}
               setReplyAnonPassword={setReplyAnonPassword}
               handleCreateComment={handleCreateComment}

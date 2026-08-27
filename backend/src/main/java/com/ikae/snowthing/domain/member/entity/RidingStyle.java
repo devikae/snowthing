@@ -15,10 +15,10 @@ public class RidingStyle {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "riding_style_id")
+    @Column(name = "style_id")
     private Long id;
 
-    @Column(name = "style_name", nullable = false, length = 100, unique = true)
+    @Column(name = "name", nullable = false, length = 50, unique = true)
     private String styleName;
 
     @Column(name = "description", length = 255)
