@@ -637,3 +637,10 @@
   6. `issue_comment` 이벤트에서도 실제 PR 브랜치 diff를 읽을 수 있도록 `gh pr checkout "$PR_NUMBER"` 후 base branch와 `backend/src/` diff를 비교하도록 수정.
   7. 검증 결과: `./gradlew.bat spotlessCheck` 통과, `./gradlew.bat test build -x spotlessCheck` 통과.
   8. 남은 이슈: 현재 Gemini 리뷰는 PR 전체 댓글 방식 유지. 라인별 코드 코멘트가 필요하면 Gemini 응답을 `path`, `line`, `body` JSON으로 구조화하고 GitHub Pull Request Review API를 사용하는 별도 개선이 필요.
+
+- **PR Checks에 Spotless 별도 표시되도록 CI Job 분리 (2026-08-27)**:
+  1. `.github/workflows/gradle.yml`의 단일 `build` job 안에서 step으로 실행되던 `spotlessCheck`를 별도 `spotless` job으로 분리.
+  2. GitHub PR checks 목록에 `Java CI with Gradle / Spotless Check`와 `Java CI with Gradle / Build and Test`가 각각 표시되도록 job name 지정.
+  3. `build` job에 `needs: spotless`를 추가하여 Spotless 검사 실패 시 빌드/테스트가 실행되지 않도록 Fast-Fail 흐름 유지.
+  4. 기존 깨진 한글 주석은 제거하고 ASCII 기반의 간결한 workflow로 정리.
+  5. 검증 결과: `git diff --check` 통과. 실제 GitHub Actions job 표시 여부는 push 후 PR checks 화면에서 확인 필요.
