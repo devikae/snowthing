@@ -67,30 +67,6 @@ tasks.named('test') {
 }
 
 spotless {
-    java {
-        target 'src/*/java/**/*.java'
-        googleJavaFormat('1.22.0').aosp()
-        removeUnusedImports()
-        importOrder('java', 'jakarta', 'org', 'com', '')
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-}
-
-spotless {
-    ratchetFrom 'origin/main'
-
-    java {
-        target 'src/*/java/**/*.java'
-        googleJavaFormat('1.22.0').aosp()
-        removeUnusedImports()
-        importOrder('java', 'jakarta', 'org', 'com', '')
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-}
-
-spotless {
     ratchetFrom 'origin/main'
 
     java {

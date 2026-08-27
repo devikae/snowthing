@@ -627,3 +627,13 @@
   1. `CommentService.java` rebase 충돌 정리 과정에서 남은 깨진 한글 주석/인코딩 문자를 제거.
   2. 기능 로직 변경 없이 주석만 정리하여 Java 소스 UTF-8 컴파일 오류를 해소.
   3. 검증 결과: `./gradlew compileJava` 통과.
+
+- **CI Spotless 중복 설정 및 Gemini 리뷰 수동 실행 전환 (2026-08-27)**:
+  1. `feature/sprint02-board` 브랜치를 원격 최신 `origin/feature/sprint02-board`로 fast-forward 반영한 뒤 작업 진행.
+  2. `backend/build.gradle`에 중복으로 3번 선언된 `spotless { java { googleJavaFormat(...) } }` 블록을 1개로 정리하여 `spotlessCheck`의 `Multiple steps with name 'google-java-format'` 오류 원인 제거.
+  3. 남긴 Spotless 설정에는 `ratchetFrom 'origin/main'`을 유지하여 기존 main 대비 변경 파일 중심으로 검사되도록 유지.
+  4. `.github/workflows/gemini-review.yml`의 트리거를 `pull_request` 자동 실행에서 `issue_comment` 기반 실행으로 변경.
+  5. PR 댓글에 `/gemini-review`가 포함된 경우에만 Gemini 리뷰가 실행되도록 하여 커밋 push마다 리뷰 댓글이 누적되는 문제를 방지.
+  6. `issue_comment` 이벤트에서도 실제 PR 브랜치 diff를 읽을 수 있도록 `gh pr checkout "$PR_NUMBER"` 후 base branch와 `backend/src/` diff를 비교하도록 수정.
+  7. 검증 결과: `./gradlew.bat spotlessCheck` 통과, `./gradlew.bat test build -x spotlessCheck` 통과.
+  8. 남은 이슈: 현재 Gemini 리뷰는 PR 전체 댓글 방식 유지. 라인별 코드 코멘트가 필요하면 Gemini 응답을 `path`, `line`, `body` JSON으로 구조화하고 GitHub Pull Request Review API를 사용하는 별도 개선이 필요.
