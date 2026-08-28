@@ -4,20 +4,19 @@ import java.util.concurrent.Executor;
 
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 비동기 실행 및 가상 스레드(Virtual Thread) 설정
+ * 비동기 실행을 위한 표준 플랫폼 스레드 풀(Platform Thread Pool) 설정
  *
- * <p>[적용 범위 및 아키텍처 동작 원리]: 1. spring.threads.virtual.enabled=true: - 내장 Tomcat 서블릿 컨테이너에 적용되어 모든
- * 인바운드 HTTP 요청마다 가상 스레드를 할당합니다. - Spring Boot 자동 구성(TaskExecutionAutoConfiguration)의 기본
- * applicationTaskExecutor가 가상 스레드를 활성화합니다. 2. AsyncConfigurer 커스텀 구현: - @Async 비동기 메서드
- * 실행기(Executor)에 명시적인 가상 스레드 네이밍 prefix("async-vt-")를 부여하여 APM/로그 추적성을 확보합니다. - void 반환 비동기 메서드에서
- * 발생하는 미처리 예외(Uncaught Exception)를 일원화하여 로깅하는 핸들러를 등록합니다.
+ * <p>[아키텍처 설계 배경]: 1. 가상 스레드 조기 최적화(Premature Optimization) 배제: - BCrypt 암호화 연산 병목, HikariCP 커넥션 풀
+ * 고갈 위험, Thread Pinning 방지 등을 고려하여 안정적인 고정 스레드 풀 모델 채택. 2. ThreadPoolTaskExecutor 구성: - Core Pool
+ * Size: 8 (CPU 코어 기반) - Max Pool Size: 16 - Queue Capacity: 100 - Thread Name Prefix:
+ * "async-worker-" 3. 예외 핸들링: - void 반환 비동기 메서드의 미처리 예외(Uncaught Exception) 로깅 일원화.
  */
 @Slf4j
 @Configuration
@@ -26,8 +25,12 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     public Executor getAsyncExecutor() {
-        SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("async-vt-");
-        executor.setVirtualThreads(true);
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(8);
+        executor.setMaxPoolSize(16);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("async-worker-");
+        executor.initialize();
         return executor;
     }
 

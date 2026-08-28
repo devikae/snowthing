@@ -5,9 +5,8 @@ spring:
   profiles:
     default: local
 
-  threads:
-    virtual:
-      enabled: true
+  jpa:
+    open-in-view: false
 
   autoconfigure:
     exclude:

@@ -1,3 +1,8 @@
+- **가상 스레드(Virtual Thread) 조기 최적화 제거 및 표준 플랫폼 스레드 풀 전환 (2026-08-28)**:
+  1. **가상 스레드 제거 및 표준화 (YAGNI)**: BCrypt 암호화 연산 병목, HikariCP 커넥션 풀 고갈 위험, Thread Pinning 등 조기 최적화로 인한 잠재적 결함을 방지하기 위해, `application.yml`에서 `spring.threads.virtual.enabled: true`를 완전 제거하고 `spring.jpa.open-in-view: false`를 명시하여 DB 커넥션 점유 최소화.
+  2. **표준 `ThreadPoolTaskExecutor` 적용**: `AsyncConfig.java`에서 가상 스레드 대신 예측 가능하고 검증된 고정 플랫폼 스레드 풀(Core 8, Max 16, Queue 100, Prefix `async-worker-`)로 전환.
+  3. **전체 단위/통합 테스트 검증**: Spotless 포맷팅(`spotlessApply`) 및 전체 90개 백엔드 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL** 통과.
+
 - **MemberService 인라인 패키지명(FQN) 정리 및 상단 import 최적화 (2026-08-28)**:
   1. **가독성 및 컨벤션 교정**: `MemberService.java` 내부에 인라인으로 산재하던 풀 패키지명(`com.ikae.snowthing.global.exception.CustomAuthException`, `com.ikae.snowthing.global.error.ErrorCode`)을 클래스 상단 `import`로 승격하여 코드 가독성 및 일관성 확보.
   2. **린터 및 단위/통합 테스트 검증**: Google Java Format AOSP 기반 `spotlessApply` 서식 교정 및 백엔드 90개 전체 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL** 통과.
