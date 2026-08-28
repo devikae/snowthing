@@ -1,3 +1,7 @@
+- **MemberService 인라인 패키지명(FQN) 정리 및 상단 import 최적화 (2026-08-28)**:
+  1. **가독성 및 컨벤션 교정**: `MemberService.java` 내부에 인라인으로 산재하던 풀 패키지명(`com.ikae.snowthing.global.exception.CustomAuthException`, `com.ikae.snowthing.global.error.ErrorCode`)을 클래스 상단 `import`로 승격하여 코드 가독성 및 일관성 확보.
+  2. **린터 및 단위/통합 테스트 검증**: Google Java Format AOSP 기반 `spotlessApply` 서식 교정 및 백엔드 90개 전체 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL** 통과.
+
 - **게시글 삭제 API 민감정보 `@RequestParam` 완전 제거 및 Request Body DTO 단일 계약 전환 (2026-08-27)**:
   1. **URL 파라미터 민감정보 노출 원천 차단**: `PostController.java`의 `deletePost` 메서드에서 잔여 레거시였던 `@RequestParam(required = false) String anonymousPassword`를 완전히 제거하고, 오직 `@RequestBody(required = false) PostDeleteRequest request`를 통해서만 비밀번호를 수신하도록 API 계약 단일화.
   2. **삭제 권한 정책 6대 시나리오 전수 검증**: `PostControllerTest.java`를 통해 로그인 작성자(200 OK), 최고 관리자(200 OK), 비회원 익명 올바른 비밀번호(200 OK), 비회원 익명 틀린 비밀번호(403 Forbidden - `POST_004`), **관계없는 제3자 로그인 회원이 익명글 비밀번호를 알고 입력 시 삭제 허용(200 OK)** 및 틀린 비밀번호 시 거부(403 Forbidden) 정책을 100% 검증.

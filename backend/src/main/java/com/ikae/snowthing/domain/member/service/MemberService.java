@@ -11,6 +11,8 @@ import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.entity.*;
 import com.ikae.snowthing.domain.member.repository.*;
+import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.CustomAuthException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,12 +31,10 @@ public class MemberService {
     @Transactional
     public MemberSignUpResponse signUp(MemberSignUpRequest request) {
         if (memberRepository.existsByEmail(request.getEmail())) {
-            throw new com.ikae.snowthing.global.exception.CustomAuthException(
-                    com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_EMAIL);
+            throw new CustomAuthException(ErrorCode.DUPLICATE_EMAIL);
         }
         if (memberRepository.existsByNickname(request.getNickname())) {
-            throw new com.ikae.snowthing.global.exception.CustomAuthException(
-                    com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
+            throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
@@ -79,17 +79,12 @@ public class MemberService {
         Member member =
                 memberRepository
                         .findByEmail(email)
-                        .orElseThrow(
-                                () ->
-                                        new com.ikae.snowthing.global.exception.CustomAuthException(
-                                                com.ikae.snowthing.global.error.ErrorCode
-                                                        .MEMBER_NOT_FOUND));
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
 
         // 닉네임 변경 시 기존 닉네임과 다르고 타 유저와 중복되는지 사전 검사
         if (!member.getNickname().equals(request.getNickname())
                 && memberRepository.existsByNickname(request.getNickname())) {
-            throw new com.ikae.snowthing.global.exception.CustomAuthException(
-                    com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
+            throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
         // 1. 기본 프로필 정보 업데이트 (Dirty Checking)
