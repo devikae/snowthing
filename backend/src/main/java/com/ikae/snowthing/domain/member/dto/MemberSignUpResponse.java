@@ -1,10 +1,11 @@
 package com.ikae.snowthing.domain.member.dto;
 
+import java.time.LocalDateTime;
+
 import com.ikae.snowthing.domain.member.entity.Member;
+
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 @Getter
 public class MemberSignUpResponse {
@@ -15,7 +16,8 @@ public class MemberSignUpResponse {
     private final LocalDateTime createdAt;
 
     @Builder
-    public MemberSignUpResponse(String publicId, String email, String nickname, LocalDateTime createdAt) {
+    public MemberSignUpResponse(
+            String publicId, String email, String nickname, LocalDateTime createdAt) {
         this.publicId = publicId;
         this.email = email;
         this.nickname = nickname;

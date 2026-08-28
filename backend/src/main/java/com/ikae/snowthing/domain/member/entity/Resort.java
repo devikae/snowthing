@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.member.entity;
 
 import jakarta.persistence.*;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,7 +21,7 @@ public class Resort {
     @Column(name = "name", nullable = false, length = 100, unique = true)
     private String name;
 
-    @Column(name = "region_name", length = 100)
+    @Column(name = "region", nullable = false, length = 50)
     private String regionName;
 
     @Builder

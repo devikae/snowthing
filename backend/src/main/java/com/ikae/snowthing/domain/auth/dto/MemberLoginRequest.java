@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,9 +19,9 @@ public class MemberLoginRequest {
     private boolean rememberMe = false; // 로그인 상태 유지 (30일 지속 세션 쿠키)
 
     @Builder
-    public MemberLoginRequest(String email, String password, Boolean rememberMe) {
+    public MemberLoginRequest(String email, String password, boolean rememberMe) {
         this.email = email;
         this.password = password;
-        this.rememberMe = rememberMe != null ? rememberMe : false;
+        this.rememberMe = rememberMe;
     }
 }

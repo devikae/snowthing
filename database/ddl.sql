@@ -109,11 +109,12 @@ CREATE TABLE `post` (
     `comment_count` INT NOT NULL DEFAULT 0 COMMENT '댓글 수 역정규화',
     `like_count` INT NOT NULL DEFAULT 0 COMMENT '추천 수 역정규화',
     `dislike_count` INT NOT NULL DEFAULT 0 COMMENT '비추천 수 역정규화',
-    `status` VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '게시글 상태 (NORMAL, HIDDEN, DELETED, BLOCKED)',
+    `has_image` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '이미지 첨부 여부 역정규화 (목록 뱃지 아이콘 렌더링용)',
+    `status` VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '게시글 상태 (NORMAL, DELETED, BLOCKED, HIDDEN, DRAFT)',
     `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Soft Delete 여부',
+    `deleted_at` DATETIME NULL COMMENT '삭제 일시',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
-
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '수정 일시',
     CONSTRAINT `fk_post_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE SET NULL,
     CONSTRAINT `fk_post_category` FOREIGN KEY (`category_id`) REFERENCES `post_category` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='게시글';
@@ -132,12 +133,16 @@ CREATE TABLE `post_image` (
 CREATE TABLE `post_reaction` (
     `reaction_id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '반응 식별자',
     `post_id` BIGINT NOT NULL COMMENT '게시글 ID',
-    `member_id` BIGINT NOT NULL COMMENT '회원 ID',
+    `member_id` BIGINT NULL COMMENT '회원 ID (비회원 투표 시 NULL)',
+    `writer_ip` VARCHAR(45) NULL COMMENT '투표자 IP 주소',
+    `anonymous_voter_id` VARCHAR(36) NULL COMMENT '비회원 익명 투표자 식별 쿠키 ID',
     `type` VARCHAR(10) NOT NULL COMMENT '반응 종류 (LIKE, DISLIKE)',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '투표 일시',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
     CONSTRAINT `fk_pr_post` FOREIGN KEY (`post_id`) REFERENCES `post` (`post_id`) ON DELETE CASCADE,
     CONSTRAINT `fk_pr_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE CASCADE,
-    CONSTRAINT `uk_post_member_reaction` UNIQUE (`post_id`, `member_id`)
+    CONSTRAINT `uk_post_member_type` UNIQUE (`post_id`, `member_id`, `type`),
+    CONSTRAINT `uk_post_anon_voter_type` UNIQUE (`post_id`, `anonymous_voter_id`, `type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='게시글 추천/비추천';
 
 -- 11. 댓글 및 계층형 대댓글 테이블
@@ -151,6 +156,7 @@ CREATE TABLE `comment` (
     `is_anonymous` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '익명 작성 여부',
     `anonymous_password` VARCHAR(255) NULL COMMENT '비회원 익명 수정/삭제용 비밀번호 (BCrypt)',
     `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Soft Delete 여부',
+    `deleted_at` DATETIME NULL COMMENT '삭제 일시',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
     CONSTRAINT `fk_comment_post` FOREIGN KEY (`post_id`) REFERENCES `post` (`post_id`) ON DELETE CASCADE,

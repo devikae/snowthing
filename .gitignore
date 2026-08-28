@@ -18,9 +18,9 @@ application-credentials*.yml
 *.key
 *.p12
 
-# Local Project & Study Notes (스터디 문서 전면 제외 & project.md, work.md만 허용)
+# Local Project & Study Notes
 docs/study/
-docs/study*.md
+docs/study/**
 docs/project/*
 !docs/project/project.md
 !docs/project/work.md

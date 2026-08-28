@@ -1,9 +1,12 @@
 package com.ikae.snowthing.domain.member.service;
 
-import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
-import com.ikae.snowthing.domain.member.repository.MemberRepository;
-import com.ikae.snowthing.domain.member.repository.MemberResortRepository;
-import com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,27 +14,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
+import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.member.repository.MemberResortRepository;
+import com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository;
 
 @SpringBootTest
 class MemberConcurrencyTest {
 
-    @Autowired
-    private MemberService memberService;
+    @Autowired private MemberService memberService;
 
-    @Autowired
-    private MemberRepository memberRepository;
+    @Autowired private MemberRepository memberRepository;
 
-    @Autowired
-    private MemberResortRepository memberResortRepository;
+    @Autowired private MemberResortRepository memberResortRepository;
 
-    @Autowired
-    private MemberRidingStyleRepository memberRidingStyleRepository;
+    @Autowired private MemberRidingStyleRepository memberRidingStyleRepository;
 
     @BeforeEach
     void setUp() {
@@ -61,26 +58,28 @@ class MemberConcurrencyTest {
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failCount = new AtomicInteger(0);
 
-        MemberSignUpRequest signUpRequest = MemberSignUpRequest.builder()
-                .email("concurrent@snowthing.com")
-                .password("Password123!")
-                .nickname("동시성보더")
-                .build();
+        MemberSignUpRequest signUpRequest =
+                MemberSignUpRequest.builder()
+                        .email("concurrent@snowthing.com")
+                        .password("Password123!")
+                        .nickname("동시성보더")
+                        .build();
 
         for (int i = 0; i < threadCount; i++) {
-            executorService.submit(() -> {
-                try {
-                    readyLatch.countDown();
-                    startLatch.await();
+            executorService.submit(
+                    () -> {
+                        try {
+                            readyLatch.countDown();
+                            startLatch.await();
 
-                    memberService.signUp(signUpRequest);
-                    successCount.incrementAndGet();
-                } catch (Exception e) {
-                    failCount.incrementAndGet();
-                } finally {
-                    doneLatch.countDown();
-                }
-            });
+                            memberService.signUp(signUpRequest);
+                            successCount.incrementAndGet();
+                        } catch (Exception e) {
+                            failCount.incrementAndGet();
+                        } finally {
+                            doneLatch.countDown();
+                        }
+                    });
         }
 
         readyLatch.await();

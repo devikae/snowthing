@@ -1,14 +1,17 @@
 package com.ikae.snowthing.domain.member.controller;
 
-import com.ikae.snowthing.domain.member.dto.ResortResponse;
-import com.ikae.snowthing.domain.member.dto.RidingStyleResponse;
-import com.ikae.snowthing.domain.member.service.MasterDataService;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.ikae.snowthing.domain.member.dto.ResortResponse;
+import com.ikae.snowthing.domain.member.dto.RidingStyleResponse;
+import com.ikae.snowthing.domain.member.service.MasterDataService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/master")

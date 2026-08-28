@@ -1,13 +1,15 @@
 package com.ikae.snowthing.domain.member.entity;
 
-import com.ikae.snowthing.global.common.BaseTimeEntity;
+import java.util.UUID;
+
 import jakarta.persistence.*;
+
+import com.ikae.snowthing.global.common.BaseTimeEntity;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.UUID;
 
 @Entity
 @Table(name = "member")
@@ -69,9 +71,18 @@ public class Member extends BaseTimeEntity {
     }
 
     @Builder
-    public Member(String publicId, String email, String password, String nickname,
-                  String profileImageUrl, String bio, String departureRegion,
-                  Long crewId, String crewRole, Role role, MemberStatus status) {
+    public Member(
+            String publicId,
+            String email,
+            String password,
+            String nickname,
+            String profileImageUrl,
+            String bio,
+            String departureRegion,
+            Long crewId,
+            String crewRole,
+            Role role,
+            MemberStatus status) {
         this.publicId = publicId;
         this.email = email;
         this.password = password;
@@ -85,7 +96,8 @@ public class Member extends BaseTimeEntity {
         this.status = status != null ? status : MemberStatus.ACTIVE;
     }
 
-    public void updateProfile(String nickname, String bio, String departureRegion, String profileImageUrl) {
+    public void updateProfile(
+            String nickname, String bio, String departureRegion, String profileImageUrl) {
         this.nickname = nickname;
         this.bio = bio;
         this.departureRegion = departureRegion;

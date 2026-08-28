@@ -1,13 +1,12 @@
 package com.ikae.snowthing.domain.auth.controller;
 
-import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
-import com.ikae.snowthing.domain.auth.dto.MemberLoginResponse;
-import com.ikae.snowthing.domain.auth.service.AuthService;
+import java.time.Duration;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,13 +19,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
+import com.ikae.snowthing.domain.auth.dto.MemberLoginResponse;
+import com.ikae.snowthing.domain.auth.service.AuthService;
+
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
-    private static final int REMEMBER_ME_TIMEOUT_SECONDS = 30 * 24 * 60 * 60; // 30일
-    private static final int DEFAULT_SESSION_TIMEOUT_SECONDS = 60 * 60;        // 1시간
+    private static final int REMEMBER_ME_TIMEOUT_SECONDS = (int) Duration.ofDays(30).toSeconds();
+    private static final int DEFAULT_SESSION_TIMEOUT_SECONDS =
+            (int) Duration.ofHours(1).toSeconds();
 
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
@@ -36,13 +42,11 @@ public class AuthController {
     public ResponseEntity<MemberLoginResponse> login(
             @Valid @RequestBody MemberLoginRequest loginRequest,
             HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse
-    ) {
+            HttpServletResponse httpResponse) {
         // 1. Spring Security 표준 AuthenticationManager 위임 인증 처리
-        Authentication authenticationToken = new UsernamePasswordAuthenticationToken(
-                loginRequest.getEmail(),
-                loginRequest.getPassword()
-        );
+        Authentication authenticationToken =
+                new UsernamePasswordAuthenticationToken(
+                        loginRequest.getEmail(), loginRequest.getPassword());
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
 
         // 2. SecurityContext 생성 및 ContextHolder 설정
@@ -63,9 +67,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Remember-Me 체크 여부에 따른 세션 타임아웃 계산 (초 단위)
-     */
+    /** Remember-Me 체크 여부에 따른 세션 타임아웃 계산 (초 단위) */
     private int calculateSessionTimeoutSeconds(boolean rememberMe) {
         return rememberMe ? REMEMBER_ME_TIMEOUT_SECONDS : DEFAULT_SESSION_TIMEOUT_SECONDS;
     }

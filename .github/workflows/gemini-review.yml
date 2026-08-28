@@ -1,8 +1,8 @@
 name: Gemini PR Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -11,7 +11,11 @@ permissions:
 
 jobs:
   review:
+    if: >
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/gemini-review')
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -22,45 +26,62 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+          PR_NUMBER: ${{ github.event.issue.number }}
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
-            echo "::error::GEMINI_API_KEY 시크릿이 비어있습니다."
+            echo "::error::GEMINI_API_KEY secret is empty."
             exit 1
           fi
 
-          # 1. PR 제목 및 본문 내용 실시간 동적 추출
-          PR_TITLE=$(gh pr view $PR_NUMBER --json title -q '.title')
-          PR_BODY=$(gh pr view $PR_NUMBER --json body -q '.body' | head -c 2500)
+          gh pr checkout "$PR_NUMBER"
 
-          # 2. AGENTS.md, .github, docs, frontend 제외하고 오직 backend/src 자바 소스코드만 100% 추출
-          git fetch origin $TARGET_BRANCH
-          PR_DIFF=$(git diff origin/$TARGET_BRANCH...HEAD -- 'backend/src/' | head -c 12000)
+          PR_TITLE=$(gh pr view "$PR_NUMBER" --json title -q '.title')
+          PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body' | head -c 2500)
+          TARGET_BRANCH=$(gh pr view "$PR_NUMBER" --json baseRefName -q '.baseRefName')
+
+          git fetch origin "$TARGET_BRANCH"
+          PR_DIFF=$(git diff "origin/$TARGET_BRANCH...HEAD" -- 'backend/src/' | head -c 12000)
 
           if [ -z "$PR_DIFF" ]; then
-            PR_DIFF="리뷰할 백엔드 비즈니스 소스코드 변경점이 없습니다."
+            PR_DIFF="No backend/src Java source changes to review."
           fi
 
-          # 3. [잠재적 위협 & 엣지 케이스 배움] 중심의 시니어 멘토링 프롬프트 주입
-          PROMPT="당신은 10년 차 이상의 시니어 자바/스프링 아키텍트이자 따뜻하고 정교한 코드 리뷰 멘토입니다. 주니어 개발자(멘티)가 미처 생각하지 못한 [잠재적 보안 위협, 동시성/성능 병목, 장애 위험 요소, 엣지 케이스]를 스스로 발견하고 상황에 맞는 적절한 기술을 주도적으로 판단해 극복할 수 있는 뛰어난 백엔드 개발자로 성장시키는 것이 당신의 최종 목표입니다.\n\n⛔ [엄격한 금지 지침]: 절대로 CI/CD 워크플로우 설정 파일(.github/), 라벨러, AGENTS.md 등에 대해서는 리뷰하거나 언급하지 마세요. 오직 백엔드 애플리케이션 비즈니스 소스코드, 데이터베이스, 보안, 아키텍처에 대해서만 리뷰하세요.\n\n📌 [PR 제목]: $PR_TITLE\n\n📌 [PR 작성 목적 및 개요]:\n$PR_BODY\n\n---\n\n### 📋 멘토링 코드 리뷰 구조:\n1. 🔍 **[PR 구현 목적 ↔ 실제 코드 대조 분석]**: [PR 제목]과 [PR 작성 목적]에 작성자가 명시한 비즈니스 기능이 실제 자바 소스코드에 정확히 부합하게 구현되었는지 1:1 대조 요약해 주세요.\n2. 🏛️ **[잠재적 위협 & 아키텍처 딥다이브 (Security & System Risks)]**: 주니어 개발자가 미처 인지하지 못했을 잠재적 보안 위협(세션/인증 누수, 취약점), 동시성 경합(Race Condition), 데이터 무결성 파손, 시스템 장애 위험 요소를 정밀하게 짚어주세요. 각 위험 요소를 극복하기 위한 대안 기술/패턴 2~3가지, 물리적 원리, 장단점, Trade-off 및 서비스/아키텍처 레벨 극복 방안을 서술해 주세요.\n3. 💻 **[소스코드 품질 & 엣지 케이스 리뷰 (Code Quality & Edge Cases)]**: 실제 자바 소스코드에서 놓치기 쉬운 예외 처리 누락, 엣지 케이스(Edge Case), 쿼리 N+1/성능 병목, 객체지향 설계(SOLID) 관점의 개선점을 코드 레벨에서 정밀 지적해 주세요.\n4. 🛠️ **[개선된 코드 예시 (Before vs After)]**: 멘티가 잠재적 위협을 극복하고 상황에 맞는 기술을 배울 수 있도록 가독성이 뛰어난 자바(Java / Spring Boot) diff 또는 소스코드 블록 예시를 제공해 주세요.\n\n---\n[실제 백엔드 Java 소스코드 Diff]:\n$PR_DIFF"
-          
+          PROMPT=$(cat <<EOF
+You are a senior Java and Spring Boot architect reviewing a pull request for a junior backend developer.
+
+Do not review CI/CD workflow files, labels, AGENTS.md, docs, or frontend files.
+Review only backend application source code, database behavior, security, and architecture.
+
+[PR title]
+$PR_TITLE
+
+[PR body]
+$PR_BODY
+
+[Review structure]
+1. Compare the PR goal with the actual code changes.
+2. Identify security, concurrency, data integrity, performance, and failure-mode risks.
+3. Point out code-quality issues and edge cases from the Java/Spring source diff.
+4. Provide concrete Java/Spring Boot improvement examples where useful.
+
+[Backend Java source diff]
+$PR_DIFF
+EOF
+)
+
           PAYLOAD=$(jq -n --arg prompt "$PROMPT" '{contents: [{parts: [{text: $prompt}]}]}')
 
-          # 4. Google AI REST API 호출 (gemini-3.6-flash 고정)
           RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
 
-          # 5. 리뷰 결과 파싱
           REVIEW_TEXT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
 
           if [ -z "$REVIEW_TEXT" ]; then
-            echo "::error::Gemini API 응답 실패: $RESPONSE"
+            echo "::error::Gemini API response failed: $RESPONSE"
             exit 1
           fi
 
-          # 6. GitHub CLI로 PR 댓글 등록
-          gh issue comment $PR_NUMBER --body "### 🤖 Gemini AI PR Code Review
+          gh issue comment "$PR_NUMBER" --body "### Gemini AI PR Code Review
 
           $REVIEW_TEXT"
