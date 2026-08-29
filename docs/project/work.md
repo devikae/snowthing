@@ -1,3 +1,8 @@
+- **댓글 조회 아키텍처 3대 후보 Spike 실험 공통 기반 및 측정 하네스 구축 (2026-08-29)**:
+  1. **실험 가이드 및 템플릿 작성**: `docs/study/sprint03/comment/spike_experiment_guide.md` (실험 목적, 2대 시나리오, 5대 측정 지표 정의) 및 `docs/study/sprint03/comment/spike_result_template.md` (표준 결과 보고서 템플릿) 문서화.
+  2. **공통 테스트 픽스처 및 하네스 개발**: `CommentSpikeDataInitializer.java` (분산 1,000건 & 핫스팟 500건 자동 주입기) 및 `CommentSpikeBenchmarkHarness.java` (실행 시간, JSON 직렬화 페이로드 바이트 크기, 쿼리 수 측정 러너) 구축.
+  3. **단위/통합 테스트 검증**: Spotless 포맷팅(`spotlessApply`) 및 전체 90개 백엔드 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL** 통과.
+
 - **가상 스레드(Virtual Thread) 조기 최적화 제거 및 표준 플랫폼 스레드 풀 전환 (2026-08-28)**:
   1. **가상 스레드 제거 및 표준화 (YAGNI)**: BCrypt 암호화 연산 병목, HikariCP 커넥션 풀 고갈 위험, Thread Pinning 등 조기 최적화로 인한 잠재적 결함을 방지하기 위해, `application.yml`에서 `spring.threads.virtual.enabled: true`를 완전 제거하고 `spring.jpa.open-in-view: false`를 명시하여 DB 커넥션 점유 최소화.
   2. **표준 `ThreadPoolTaskExecutor` 적용**: `AsyncConfig.java`에서 가상 스레드 대신 예측 가능하고 검증된 고정 플랫폼 스레드 풀(Core 8, Max 16, Queue 100, Prefix `async-worker-`)로 전환.
