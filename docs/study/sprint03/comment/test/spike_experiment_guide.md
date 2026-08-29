@@ -10,16 +10,25 @@
 - 현재의 "단일 쿼리 전체 메모리 조립" 방식은 댓글 수가 적을 때는 문제가 없으나, 인기 게시글이나 핫스팟 스레드에서 **응답 페이로드 폭증과 서버 OOM(Out of Memory) 위험**을 안고 있습니다.
 - "루트 커서 페이징 + 대댓글 Batch" 및 "하이브리드 프리뷰(루트 Batch + 대댓글 분리 API)"와의 **실제 쿼리 수, 읽은 행 수, 직렬화 바이트 크기, 실행 시간, 실행 계획(EXPLAIN)**을 수치로 직접 측정하여 가장 균형 잡힌 아키텍처를 선택하기 위함입니다.
 
-### 2) Spike 실험 규칙 (Timeboxing & Fairness)
-- **Timebox**: 후보 1개당 최대 3~4시간(반나절) 이내로 최소 실행 가능한 코드(PoC)만 작성합니다.
-- **공정성 보장 (Fairness)**: 3개 브랜치 모두 **동일한 데이터셋(분산 1,000건 / 집중 500건)**과 **동일한 측정 도구(`CommentSpikeBenchmarkHarness`)**를 사용합니다.
-- **격리 실행**: Git Worktree를 통해 3개의 독립된 브랜치(`spike/candidate-1-in-memory`, `spike/candidate-2-root-cursor-batch`, `spike/candidate-3-hybrid-preview`)에서 병렬로 진행합니다.
+### 2) Spike 6대 실험 규칙 (Engineering Rules)
+1. **실험군 선택 완료**: [1. 메모리 트리 조립], [2. 루트 커서 + 대댓글 Batch], [3. 루트 Batch + 대댓글 API (하이브리드)] 3가지 후보를 선정함.
+2. **반나절 타임박스(Timebox)**: 후보 1개당 최대 3~4시간(반나절) 이내로 최소 실행 가능한 PoC 코드만 작성하여 빠르게 측정함.
+3. **미완성 PoC 구현**: 예외 처리, 프론트 연동 등 불필요한 코드를 배제하고 오직 쿼리와 DTO 매핑 기능만 검증함.
+4. **동일 데이터 및 동일 측정 기준**: 실제 MySQL DB에 주입된 동일한 1,000건 데이터셋과 동일한 측정 하네스(`CommentSpikeBenchmarkHarness`)를 사용함.
+5. **5대 필수 지표 기록**: 실행 SQL, 쿼리 수, 읽은 Row 수, 응답 직렬화 바이트 크기, MySQL `EXPLAIN` 실행 계획을 반드시 남김.
+6. **실험 코드 격리 및 정리**: 실험 코드는 3개 독립 워크트리 브랜치에 유지하며, 최종 선택안만 메인 PR에 병합하고 나머지는 폐기함.
 
 ---
 
-## 2. 테스트 데이터셋 구성 (총 1,000건 Fixture)
+## 2. 테스트 데이터셋 구성 및 실제 DB 주입 방법
 
-`CommentSpikeDataInitializer`를 통해 다음 2가지 극단적 시나리오를 DB에 주입하여 측정합니다:
+실제 MySQL 8.0 DB(`snowthing`)에 1,000건의 데이터를 적재하여 실제 쿼리 실행 계획과 DB I/O를 측정합니다.
+
+### 1) DB 주입 방법 (2가지 중 택 1)
+- **방법 1 (SQL 직접 실행)**: `database/spike_seed_comments.sql`을 DBeaver, DataGrip 또는 MySQL CLI에서 직접 실행.
+- **방법 2 (테스트 러너 실행)**: `./gradlew.bat test --tests *CommentSpikeDataSeederTest*` 실행.
+
+### 2) 2대 데이터 시나리오 상세
 
 ### 📦 시나리오 A: [분산 데이터셋] 일반 커뮤니티 분포
 - **게시글**: 1개 (`post_id = 999`)
