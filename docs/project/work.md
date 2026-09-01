@@ -1,3 +1,28 @@
+- **Sprint 03 댓글 수정(PUT /api/v1/comments/{commentId}) 기능 및 테스트 전담 개발 완결 (2026-09-01)**:
+  1. **작업명**: 댓글 수정(Update) 기능 구현 및 권한/유효성 검증 테스트
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - `CommentUpdateRequest.java` DTO 신설 (`content` @NotBlank/@Size(max=1000), `anonymousPassword` 선택).
+     - `CommentUpdateResponse.java` DTO 신설 (`commentId`, `content`, `updatedAt`).
+     - `Comment.java` 엔티티 내 본문 갱신용 `updateContent(String newContent)` 더티 체킹 메서드 추가.
+     - `CommentService.java` 내 `updateComment` 및 `validateUpdatePermission` 구현 (수정 권한은 오직 작성자 본인만 가능하도록 관리자 우회 제외).
+     - `CommentController.java` 내 `PUT /api/v1/comments/{commentId}` 엔드포인트 연동.
+     - `CommentUpdateTest.java` 단위/통합 테스트 7건 작성 (성공 2건 + 실패 5건).
+  4. **남은 항목**: 없음 (Update 전담 완료)
+  5. **발견된 이슈 및 사용자 결정**:
+     - 이슈: 삭제(DELETE)와 달리 수정(PUT) 작업 시 관리자(`ROLE_ADMIN`)의 타인 댓글 본문 수정 허용 여부 정책 확인 필요.
+     - 사용자 결정: 수정은 오직 작성자 본인만 가능하도록 확정 (`validateUpdatePermission`에 관리자 우회 로직 배제).
+  6. **검증 결과**:
+     - `spotlessApply` 서식 포맷팅 완료.
+     - `gradle test --tests "*CommentUpdateTest*"` 총 7개 테스트 케이스 100% PASS (BUILD SUCCESSFUL in 18s).
+       - [성공 1] 일반 회원 본인 댓글 수정 성공
+       - [성공 2] 비회원 익명 댓글 올바른 비밀번호 입력 시 수정 성공
+       - [실패 1] 로그인 회원이 타인 댓글 수정 시도 시 ACCESS_DENIED (403)
+       - [실패 2] 비회원 익명 댓글에 잘못된 비밀번호 입력 시 INVALID_ANON_PASSWORD (403)
+       - [실패 3] 이미 Soft Delete된 댓글 수정 시도 시 COMMENT_NOT_FOUND (404)
+       - [실패 4] 존재하지 않는 댓글 ID로 수정 시도 시 COMMENT_NOT_FOUND (404)
+       - [실패 5] 비회원 익명 댓글에 비밀번호 누락 시 INVALID_ANON_PASSWORD (403)
+
 - **Sprint 03 댓글 도메인 공식 API 명세서(comment_api_spec.md) 작성 (2026-09-01)**:
   1. **5대 CRUD 엔드포인트 계약 명세화**: `docs/conception/sprint03/comment_api_spec.md`에 댓글 작성(`POST`), 루트 댓글 Batch+Top-5 프리뷰 조회(`GET`), 대댓글 분리 페이징 조회(`GET`), 댓글 수정(`PUT`), Soft Delete 삭제(`DELETE`)의 Request/Response DTO, Header, 에러 코드 매핑을 100% 명세화.
 

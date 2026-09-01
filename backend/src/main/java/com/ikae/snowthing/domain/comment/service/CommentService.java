@@ -213,6 +213,56 @@ public class CommentService {
     }
 
     @Transactional
+    public CommentUpdateResponse updateComment(
+            Long commentId, CommentUpdateRequest request, CustomUserDetails userDetails) {
+        Comment comment =
+                commentRepository
+                        .findById(commentId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+
+        if (comment.isDeleted()) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        validateUpdatePermission(comment, request.anonymousPassword(), userDetails);
+
+        comment.updateContent(request.content());
+
+        return new CommentUpdateResponse(
+                comment.getId(), comment.getContent(), comment.getUpdatedAt());
+    }
+
+    private void validateUpdatePermission(
+            Comment comment, String anonymousPassword, CustomUserDetails userDetails) {
+        if (comment.isAnonymous()) {
+            if (userDetails != null
+                    && comment.getMember() != null
+                    && comment.getMember().getPublicId().equals(userDetails.getPublicId())) {
+                return;
+            }
+
+            if (anonymousPassword == null
+                    || !passwordEncoder.matches(
+                            anonymousPassword, comment.getAnonymousPassword())) {
+                throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
+            }
+            return;
+        }
+
+        if (userDetails == null) {
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+
+        boolean isWriter =
+                comment.getMember() != null
+                        && comment.getMember().getPublicId().equals(userDetails.getPublicId());
+
+        if (!isWriter) {
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    @Transactional
     public void deleteComment(
             Long commentId, String anonymousPassword, CustomUserDetails userDetails) {
         Comment comment =
