@@ -1,3 +1,29 @@
+- **Sprint 03 댓글 삭제(DELETE /api/v1/comments/{commentId}) 및 4대 권한 매트릭스 전담 개발 완결 (2026-09-01)**:
+  1. **작업명**: 댓글 삭제(Soft Delete & 권한 매트릭스) 기능 보강 및 단위/통합 테스트
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - `CommentService.java` 내 `validateDeletePermission` 권한 매트릭스 리팩토링:
+       * 1) 최고 관리자(`ROLE_ADMIN`): 비밀번호 없이 즉시 삭제 권한 통과
+       * 2) 일반 회원 및 로그인 익명(`comment.getMember() != null`): 본인 세션(`publicId`) 일치 시 통과, 타인 접근 시 `AUTH_002` (403 Forbidden) 반환
+       * 3) 비회원 익명(`comment.getMember() == null`): 비밀번호 불일치/누락 시 `POST_004` (403 Forbidden) 반환, 일치 시 통과
+     - Soft Delete 및 활성 댓글 수 원자적 차감 유지: `comment.softDelete()`, `postRepository.decreaseCommentCount(...)`
+     - `CommentDeleteTest.java` 단위/통합 테스트 8건 신설 (성공 4건 + 실패 4건).
+  4. **남은 항목**: 없음 (Delete 전담 완료)
+  5. **발견된 이슈 및 해결**:
+     - 기존 `validateDeletePermission`에서 로그인 회원이 작성한 익명 댓글(`isAnonymous = true, member != null`)을 타인이 삭제 시도 시 비밀번호 검사로 넘어가 `POST_004`가 발생하던 결함 발견.
+     - `comment.getMember() != null` 조건으로 통합하여 로그인 익명 글도 본인 세션이 아니면 정확히 `AUTH_002`가 발생하도록 인가 로직 일원화 완료.
+  6. **검증 결과**:
+     - `spotlessApply` 서식 포맷팅 완료.
+     - `gradle test --tests "*CommentDeleteTest*"` 총 8개 테스트 케이스 100% PASS (BUILD SUCCESSFUL in 16s).
+       - [성공 1] 일반 회원 본인 댓글 삭제 성공 (`is_deleted = true`, `post.commentCount` 1 차감 확인)
+       - [성공 2] 비회원 익명 댓글 올바른 비밀번호 입력 시 삭제 성공
+       - [성공 3] 최고 관리자(`ROLE_ADMIN`)가 타인/익명 댓글을 비밀번호 없이 강제 삭제 성공
+       - [성공 4] 대댓글이 존재하는 부모 댓글 삭제 시 부모만 `is_deleted = true` 처리되고 하위 대댓글 정상 보존 확인
+       - [실패 1] 로그인 회원이 타인의 댓글 삭제 시도 시 `AUTH_002` (403 Forbidden) 검증
+       - [실패 2] 비회원 익명 댓글에 틀린 비밀번호 입력 시 `POST_004` (403 Forbidden) 검증
+       - [실패 3] 이미 Soft Delete된 댓글 재삭제 시도 시 `COMMENT_001` (404 Not Found) 검증
+       - [실패 4] 존재하지 않는 댓글 ID 삭제 시도 시 `COMMENT_001` (404 Not Found) 검증
+
 - **Sprint 03 댓글 도메인 공식 API 명세서(comment_api_spec.md) 작성 (2026-09-01)**:
   1. **5대 CRUD 엔드포인트 계약 명세화**: `docs/conception/sprint03/comment_api_spec.md`에 댓글 작성(`POST`), 루트 댓글 Batch+Top-5 프리뷰 조회(`GET`), 대댓글 분리 페이징 조회(`GET`), 댓글 수정(`PUT`), Soft Delete 삭제(`DELETE`)의 Request/Response DTO, Header, 에러 코드 매핑을 100% 명세화.
 
@@ -727,3 +753,38 @@
   6. 댓글·대댓글 응답 병합 시 `commentId` 중복을 방어하고, 삭제된 루트 placeholder 아래의 대댓글과 답글 작성 기능은 유지.
   7. 검증 결과: 변경 파일 대상 ESLint 오류 0건(기존 `<img>` 최적화 경고 1건), `npm run build` 및 TypeScript 검사 통과.
   8. 확인 이슈: 전체 `npm run lint`는 이번 변경과 무관한 기존 `ToastEditor.tsx`, `ToastViewer.tsx`, 게시글 작성·목록 페이지의 오류 6건 때문에 실패. 브라우저 수동 검증은 백엔드와 테스트 데이터가 실행된 환경에서 추가 확인 필요.
+
+## Sprint 03 댓글 수정·삭제 프론트엔드 UI
+
+- 상태: DONE
+- 시작일: 2026-09-01
+
+### 계획
+- 댓글과 대댓글에 한 번에 하나만 열리는 인라인 수정 폼을 적용한다.
+- 일반 회원은 `writer.publicId`가 현재 사용자와 같은 댓글에만 수정·삭제 버튼을 노출한다.
+- 익명 댓글은 현재 DTO에 소유권 필드가 없어 버튼을 노출한 뒤 세션 또는 비밀번호를 서버에서 최종 검증하는 방안 A를 적용한다.
+- 댓글 삭제의 `prompt`/`confirm`을 제거하고 기존 `DeleteConfirmModal`을 재사용한다.
+- 변경 파일 대상 ESLint와 `npm run build`로 검증한다.
+
+### 완료
+- 구현 전 설계 문서, 프론트엔드 스킬, 현재 댓글 UI와 공용 삭제 모달 대조 완료.
+- 루트 댓글과 대댓글에 공통 인라인 수정 폼을 적용하고 공백, 1,000자 제한, 변경 없음, 익명 비밀번호를 검증하도록 구현.
+- 수정 성공 시 전체 목록 재조회 없이 해당 `commentId`의 본문만 불변 업데이트하도록 구현.
+- 댓글 삭제의 브라우저 `prompt`/`confirm`을 제거하고 게시글 삭제와 분리된 `DeleteConfirmModal` 인스턴스로 연결.
+- 공용 모달에 동적 확인 문구, 제출 중 닫기 방지, dialog ARIA 속성, 입력 label 연결을 추가.
+- 삭제 성공 후 댓글 목록을 재조회하고 게시글의 `commentCount`를 1 차감하도록 구현.
+
+### 남은 작업
+- 백엔드 PUT 구현 완료 후 실제 수정·권한 실패 응답을 브라우저에서 통합 검증.
+- 모달의 완전한 focus trap과 Escape 닫기 동작은 후속 접근성 개선 대상으로 남김.
+
+### 이슈
+- 현재 프론트가 참조하는 백엔드 브랜치에는 PUT 엔드포인트가 아직 없으며 백엔드에서 병행 구현 중이다.
+- 익명 댓글 응답에 `canEdit`, `canDelete`, `requiresPassword`가 없어 버튼 노출 권한은 완전히 판별할 수 없다.
+
+### 결정 필요
+- 방안 A 적용을 사용자 승인받음. 서버를 최종 권한 검증 주체로 사용한다.
+
+### 검증
+- 변경 파일 대상 ESLint 오류 0건. 기존 게시글 이미지 `<img>` 최적화 경고 1건만 확인.
+- `npm run build` 성공 및 TypeScript 오류 0건 확인.

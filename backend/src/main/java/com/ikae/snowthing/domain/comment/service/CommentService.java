@@ -240,31 +240,19 @@ public class CommentService {
             return;
         }
 
-        if (comment.isAnonymous()) {
-            if (userDetails != null
-                    && comment.getMember() != null
-                    && comment.getMember().getPublicId().equals(userDetails.getPublicId())) {
-                return;
-            }
-
-            if (anonymousPassword == null
-                    || !passwordEncoder.matches(
-                            anonymousPassword, comment.getAnonymousPassword())) {
-                throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
+        if (comment.getMember() != null) {
+            boolean isWriter =
+                    userDetails != null
+                            && comment.getMember().getPublicId().equals(userDetails.getPublicId());
+            if (!isWriter) {
+                throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
             }
             return;
         }
 
-        if (userDetails == null) {
-            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
-        }
-
-        boolean isWriter =
-                comment.getMember() != null
-                        && comment.getMember().getPublicId().equals(userDetails.getPublicId());
-
-        if (!isWriter) {
-            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        if (anonymousPassword == null
+                || !passwordEncoder.matches(anonymousPassword, comment.getAnonymousPassword())) {
+            throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
         }
     }
 }
