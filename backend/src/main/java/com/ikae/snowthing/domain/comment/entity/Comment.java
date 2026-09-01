@@ -76,6 +76,21 @@ public class Comment extends BaseTimeEntity {
         this.isDeleted = false;
     }
 
+    public static Comment create(
+            Post post,
+            Member member,
+            Comment parent,
+            String content,
+            String writerIp,
+            boolean isAnonymous,
+            String anonymousPassword) {
+        return new Comment(post, member, parent, content, writerIp, isAnonymous, anonymousPassword);
+    }
+
+    public Comment rootParent() {
+        return parent != null ? parent : this;
+    }
+
     public void softDelete() {
         this.isDeleted = true;
         this.deletedAt = LocalDateTime.now();

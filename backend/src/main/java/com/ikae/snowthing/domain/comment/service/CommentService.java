@@ -28,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 public class CommentService {
 
+    private static final long MAX_REPLY_COUNT = 100L;
+
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
@@ -84,7 +86,7 @@ public class CommentService {
 
                     Comment parent = null;
                     if (request.parentId() != null) {
-                        parent =
+                        Comment requestedParent =
                                 commentRepository
                                         .findById(request.parentId())
                                         .orElseThrow(
@@ -93,21 +95,36 @@ public class CommentService {
                                                                 ErrorCode
                                                                         .PARENT_COMMENT_NOT_FOUND));
 
-                        if (!parent.getPost().getId().equals(post.getId())) {
+                        if (!requestedParent.getPost().getId().equals(post.getId())) {
                             throw new CustomAuthException(ErrorCode.INVALID_COMMENT_PARENT);
+                        }
+
+                        Long rootCommentId = requestedParent.rootParent().getId();
+                        parent =
+                                commentRepository
+                                        .findByIdForUpdate(rootCommentId)
+                                        .orElseThrow(
+                                                () ->
+                                                        new CustomAuthException(
+                                                                ErrorCode
+                                                                        .PARENT_COMMENT_NOT_FOUND));
+
+                        long activeReplyCount =
+                                commentRepository.countByParentIdAndIsDeletedFalse(rootCommentId);
+                        if (activeReplyCount >= MAX_REPLY_COUNT) {
+                            throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
                         }
                     }
 
                     Comment comment =
-                            Comment.builder()
-                                    .post(post)
-                                    .member(finalMember)
-                                    .parent(parent)
-                                    .content(request.content())
-                                    .writerIp(clientIp != null ? clientIp : "127.0.0.1")
-                                    .isAnonymous(request.isAnonymous())
-                                    .anonymousPassword(finalEncodedPassword)
-                                    .build();
+                            Comment.create(
+                                    post,
+                                    finalMember,
+                                    parent,
+                                    request.content(),
+                                    clientIp != null ? clientIp : "127.0.0.1",
+                                    request.isAnonymous(),
+                                    finalEncodedPassword);
 
                     Comment savedComment = commentRepository.save(comment);
                     postRepository.increaseCommentCount(post.getId());

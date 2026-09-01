@@ -1,3 +1,6 @@
+- **Sprint 03 댓글 도메인 공식 API 명세서(comment_api_spec.md) 작성 (2026-09-01)**:
+  1. **5대 CRUD 엔드포인트 계약 명세화**: `docs/conception/sprint03/comment_api_spec.md`에 댓글 작성(`POST`), 루트 댓글 Batch+Top-5 프리뷰 조회(`GET`), 대댓글 분리 페이징 조회(`GET`), 댓글 수정(`PUT`), Soft Delete 삭제(`DELETE`)의 Request/Response DTO, Header, 에러 코드 매핑을 100% 명세화.
+
 - **댓글 도메인 계층 모델 및 조회 아키텍처 공식 ADR-001 작성 및 확정 (2026-08-29)**:
   1. **실측 데이터 기반 아키텍처 의사결정**: 3개 독립 워크트리 브랜치에서 측정한 실측 벤치마크 지표(후보 1: 210KB 폭증 vs 후보 2: 핫스팟 103KB 비대화 vs 후보 3: 5.55KB 완벽 통제)를 근거로, **[후보 3: Adjacency List 기반 하이브리드 프리뷰(루트 20개 + 대댓글 5개) 및 대댓글 분리 페이징]을 최종 채택**.
   2. **ADR-001 9개 핵심 섹션 완결**: `docs/study/sprint03/comment/ADR-001-comment-hierarchy-and-retrieval-architecture.md`에 문제정의, 요구사항, 후보군, Spike 실측 매트릭스, 기각 근거, 기술 부채, 재검토 트리거 등 표준 아키텍처 의사결정 기록 공식 문서화.
@@ -689,3 +692,11 @@
   3. `build` job에 `needs: spotless`를 추가하여 Spotless 검사 실패 시 빌드/테스트가 실행되지 않도록 Fast-Fail 흐름 유지.
   4. 기존 깨진 한글 주석은 제거하고 ASCII 기반의 간결한 workflow로 정리.
   5. 검증 결과: `git diff --check` 통과. 실제 GitHub Actions job 표시 여부는 push 후 PR checks 화면에서 확인 필요.
+
+- **Sprint 03 댓글 생성(Create) 기능 구현 및 검증 완료 (2026-09-01)**:
+  1. 댓글 생성 경로에서 빌더 대신 `Comment.create()` 정적 팩토리를 사용하고, 대댓글에 작성한 답글의 부모를 최상위 루트로 평탄화하는 `rootParent()` 도메인 메서드를 추가.
+  2. 루트별 활성 대댓글 수를 최대 100개로 제한하고, 초과 시 `COMMENT_004` (`COMMENT_REPLY_LIMIT_EXCEEDED`, 400 Bad Request) 예외를 반환하도록 구현.
+  3. 동일 루트의 동시 생성 요청이 제한 검증을 함께 통과하지 않도록 루트 댓글에 비관적 쓰기 잠금을 적용하고, 삭제된 대댓글은 활성 개수 집계에서 제외.
+  4. 댓글 저장과 `post.comment_count + 1` 벌크 갱신을 동일 트랜잭션에서 처리하여 성공·실패 경계를 동기화.
+  5. 타 작업과의 충돌 방지를 위해 신규 `CommentCreateTest.java`에만 생성 테스트 4건을 작성했으며, `./gradlew.bat test --tests "*CommentCreateTest*"` 및 `./gradlew.bat spotlessCheck` 통과.
+  6. 남은 이슈: 애플리케이션의 비관적 잠금은 같은 루트에 대댓글 생성이 집중되면 해당 루트의 쓰기 요청을 직렬화하므로, 운영 환경에서는 잠금 대기 시간과 타임아웃 지표를 관찰해야 함.
