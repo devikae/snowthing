@@ -73,6 +73,11 @@ interface ReplyPagingState {
   loading: boolean;
 }
 
+interface CommentDeleteTarget {
+  commentId: number;
+  requiresPassword: boolean;
+}
+
 export default function PostDetailPage({ params }: { params: Promise<{ publicId: string }> }) {
   const router = useRouter();
   const { publicId } = use(params);
@@ -93,6 +98,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [replyMentionName, setReplyMentionName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
+  const [commentDeleteTarget, setCommentDeleteTarget] = useState<CommentDeleteTarget | null>(null);
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -389,35 +395,29 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
-  const handleDeleteComment = async (commentId: number, isAnonymousWriter: boolean) => {
-    let anonymousPassword = "";
-    if (isAnonymousWriter) {
-      const input = prompt("익명 댓글 삭제 비밀번호를 입력하세요.");
-      if (!input) return;
-      anonymousPassword = input;
-    } else if (!confirm("댓글을 삭제하시겠습니까?")) {
-      return;
-    }
+  const handleOpenCommentDeleteModal = (comment: CommentItem) => {
+    setCommentDeleteTarget({
+      commentId: comment.commentId,
+      requiresPassword: comment.isAnonymous && !currentUserPublicId,
+    });
+  };
 
-    try {
-      const res = await csrfFetch(API_ENDPOINTS.comments.delete(commentId), {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          anonymousPassword: anonymousPassword || null,
-        }),
-      });
-      if (res.ok) {
-        await fetchComments();
-        setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
-        return;
-      }
+  const handleConfirmCommentDelete = async (password: string) => {
+    if (!commentDeleteTarget) return;
 
+    const res = await csrfFetch(API_ENDPOINTS.comments.delete(commentDeleteTarget.commentId), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ anonymousPassword: password || null }),
+    });
+    if (!res.ok) {
       const errorData = await res.json();
-      alert(`삭제 실패: ${errorData.message || "요청을 처리하지 못했습니다."}`);
-    } catch {
-      alert("서버 통신 중 오류가 발생했습니다.");
+      throw new Error(errorData.message || "댓글 삭제에 실패했습니다.");
     }
+
+    setCommentDeleteTarget(null);
+    await fetchComments();
+    setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
   };
 
   if (loading) {
@@ -575,7 +575,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     replyAnonPassword={replyAnonPassword}
                     setReplyAnonPassword={setReplyAnonPassword}
                     handleCreateComment={handleCreateComment}
-                    handleDeleteComment={handleDeleteComment}
+                    handleOpenCommentDeleteModal={handleOpenCommentDeleteModal}
+                    isAdmin={isAdmin}
                     handleLoadMoreReplies={handleLoadMoreReplies}
                     isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
                   />
@@ -605,6 +606,16 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
         description={deleteModalConfig.description}
         requirePassword={deleteModalConfig.requirePassword}
       />
+      <DeleteConfirmModal
+        isOpen={commentDeleteTarget !== null}
+        onClose={() => setCommentDeleteTarget(null)}
+        onConfirm={handleConfirmCommentDelete}
+        title="댓글 삭제 확인"
+        description="정말 삭제하시겠습니까?"
+        requirePassword={commentDeleteTarget?.requiresPassword ?? false}
+        confirmLabel="댓글 삭제"
+        submittingLabel="삭제 중..."
+      />
       <Footer />
     </div>
   );
@@ -623,7 +634,8 @@ function CommentRow({
   replyAnonPassword,
   setReplyAnonPassword,
   handleCreateComment,
-  handleDeleteComment,
+  handleOpenCommentDeleteModal,
+  isAdmin,
   handleLoadMoreReplies,
   isLoadingReplies,
 }: {
@@ -639,10 +651,12 @@ function CommentRow({
   replyAnonPassword: string;
   setReplyAnonPassword: (value: string) => void;
   handleCreateComment: (parentId: number | null) => Promise<void>;
-  handleDeleteComment: (commentId: number, isAnonymousWriter: boolean) => Promise<void>;
+  handleOpenCommentDeleteModal: (comment: CommentItem) => void;
+  isAdmin: boolean;
   handleLoadMoreReplies: (rootCommentId: number) => Promise<void>;
   isLoadingReplies: boolean;
 }) {
+  const canDelete = canDeleteComment(item, currentUserPublicId, isAdmin);
   const openReplyEditor = (target: CommentItem) => {
     if (activeReplyParentId === item.commentId && replyMentionName === getWriterName(target)) {
       setActiveReplyParentId(null);
@@ -666,8 +680,8 @@ function CommentRow({
           <button onClick={() => openReplyEditor(item)} className="text-black">
             {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
           </button>
-          {!item.isDeleted && (
-            <button onClick={() => void handleDeleteComment(item.commentId, item.isAnonymous)} className="text-[var(--snow-error)]">
+          {canDelete && (
+            <button type="button" onClick={() => handleOpenCommentDeleteModal(item)} className="text-[var(--snow-error)]">
               삭제
             </button>
           )}
@@ -680,7 +694,9 @@ function CommentRow({
                 key={reply.commentId}
                 item={reply}
                 onReply={() => openReplyEditor(reply)}
-                handleDeleteComment={handleDeleteComment}
+                currentUserPublicId={currentUserPublicId}
+                isAdmin={isAdmin}
+                handleOpenCommentDeleteModal={handleOpenCommentDeleteModal}
               />
             ))}
           </div>
@@ -748,12 +764,17 @@ function CommentRow({
 function ReplyRow({
   item,
   onReply,
-  handleDeleteComment,
+  currentUserPublicId,
+  isAdmin,
+  handleOpenCommentDeleteModal,
 }: {
   item: CommentItem;
   onReply: () => void;
-  handleDeleteComment: (commentId: number, isAnonymousWriter: boolean) => Promise<void>;
+  currentUserPublicId: string | null;
+  isAdmin: boolean;
+  handleOpenCommentDeleteModal: (comment: CommentItem) => void;
 }) {
+  const canDelete = canDeleteComment(item, currentUserPublicId, isAdmin);
   return (
     <div className="ml-5 border-l-2 border-black pl-5">
       <div className="flex items-center justify-between gap-3">
@@ -768,9 +789,11 @@ function ReplyRow({
           <button type="button" onClick={onReply} className="text-black">
             답글 쓰기
           </button>
-          <button onClick={() => void handleDeleteComment(item.commentId, item.isAnonymous)} className="text-[var(--snow-error)]">
-            삭제
-          </button>
+          {canDelete && (
+            <button type="button" onClick={() => handleOpenCommentDeleteModal(item)} className="text-[var(--snow-error)]">
+              삭제
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -780,4 +803,10 @@ function ReplyRow({
 function getWriterName(comment: CommentItem) {
   if (comment.isAnonymous) return `익명 (${comment.writerIp})`;
   return comment.writer?.nickname || "알 수 없음";
+}
+
+function canDeleteComment(comment: CommentItem, currentUserPublicId: string | null, isAdmin: boolean) {
+  if (comment.isDeleted) return false;
+  if (isAdmin || comment.isAnonymous) return true;
+  return Boolean(currentUserPublicId && comment.writer?.publicId === currentUserPublicId);
 }
