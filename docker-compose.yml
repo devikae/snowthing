@@ -7,9 +7,9 @@ services:
     restart: always
     environment:
       MYSQL_DATABASE: snowthing
-      MYSQL_ROOT_PASSWORD: snowthing_root_2026!
-      MYSQL_USER: snowuser
-      MYSQL_PASSWORD: snowthing_pass_2026!
+      MYSQL_ROOT_PASSWORD: ${SNOWTHING_DB_ROOT_PASSWORD:?SNOWTHING_DB_ROOT_PASSWORD must be set}
+      MYSQL_USER: ${SNOWTHING_DB_USERNAME:-snowuser}
+      MYSQL_PASSWORD: ${SNOWTHING_DB_PASSWORD:?SNOWTHING_DB_PASSWORD must be set}
       TZ: Asia/Seoul
     ports:
       - "3306:3306"
