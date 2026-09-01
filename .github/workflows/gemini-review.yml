@@ -11,67 +11,62 @@ permissions:
 
 jobs:
   review:
-    if: >
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/gemini-review')
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/gemini-review')
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Run Gemini Review via REST API
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
             echo "::error::GEMINI_API_KEY secret is empty."
             exit 1
           fi
 
-          gh pr checkout "$PR_NUMBER"
+          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,body)
+          PR_TITLE=$(echo "$PR_JSON" | jq -r '.title')
+          PR_BODY=$(echo "$PR_JSON" | jq -r '.body' | head -c 2500)
 
-          PR_TITLE=$(gh pr view "$PR_NUMBER" --json title -q '.title')
-          PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body' | head -c 2500)
-          TARGET_BRANCH=$(gh pr view "$PR_NUMBER" --json baseRefName -q '.baseRefName')
-
-          git fetch origin "$TARGET_BRANCH"
-          PR_DIFF=$(git diff "origin/$TARGET_BRANCH...HEAD" -- 'backend/src/' | head -c 12000)
+          # PR Diff 추출 (backend/src Java 코드 위주)
+          PR_DIFF=$(gh pr diff "$PR_NUMBER" --repo "$REPO" | head -c 12000)
 
           if [ -z "$PR_DIFF" ]; then
-            PR_DIFF="No backend/src Java source changes to review."
+            PR_DIFF="리뷰할 코드 변경점이 없습니다."
           fi
 
           PROMPT=$(cat <<EOF
-You are a senior Java and Spring Boot architect reviewing a pull request for a junior backend developer.
+당신은 10년 차 이상의 시니어 자바/스프링 아키텍트이자 정교한 코드 리뷰 멘토입니다.
+주니어 개발자가 작성한 PR 코드 변경사항(Diff)을 분석하여 잠재적 위험을 예방하고 배움을 얻을 수 있도록 한국어로 정밀하게 리뷰해 주세요.
 
-Do not review CI/CD workflow files, labels, AGENTS.md, docs, or frontend files.
-Review only backend application source code, database behavior, security, and architecture.
+⛔ [엄격한 금지 지침]: CI/CD 워크플로우 설정 파일(.github/), 라벨러, AGENTS.md, docs 등은 리뷰하지 마세요. 오직 백엔드 애플리케이션 비즈니스 소스코드, 데이터베이스, 보안, 아키텍처에 대해서만 리뷰하세요.
 
-[PR title]
+[PR 제목]
 $PR_TITLE
 
-[PR body]
+[PR 작성 목적 및 개요]
 $PR_BODY
 
-[Review structure]
-1. Compare the PR goal with the actual code changes.
-2. Identify security, concurrency, data integrity, performance, and failure-mode risks.
-3. Point out code-quality issues and edge cases from the Java/Spring source diff.
-4. Provide concrete Java/Spring Boot improvement examples where useful.
+[리뷰 구조]
+1. 🔍 **[PR 구현 목적 ↔ 실제 코드 대조 분석]**: 비즈니스 기능이 실제 소스코드에 부합하게 구현되었는지 1:1 대조 요약
+2. 🏛️ **[잠재적 위협 & 아키텍처 딥다이브]**: 보안 위협(세션/인증), 동시성(Race Condition), 데이터 무결성, 성능 병목, Trade-off 분석
+3. 💻 **[소스코드 품질 & 엣지 케이스]**: 예외 처리 누락, 엣지 케이스, N+1 쿼리, 객체지향 설계 개선점
+4. 🛠️ **[개선된 코드 예시 (Before vs After)]**: 가독성이 뛰어난 자바/스프링 코드 블록 예시
 
-[Backend Java source diff]
+[실제 코드 Diff]
 $PR_DIFF
 EOF
 )
 
           PAYLOAD=$(jq -n --arg prompt "$PROMPT" '{contents: [{parts: [{text: $prompt}]}]}')
 
-          RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}" \
+          RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
 
@@ -82,6 +77,6 @@ EOF
             exit 1
           fi
 
-          gh issue comment "$PR_NUMBER" --body "### Gemini AI PR Code Review
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "### 🤖 Gemini AI PR Code Review
 
           $REVIEW_TEXT"
