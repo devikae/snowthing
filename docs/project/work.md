@@ -1,3 +1,7 @@
+- **댓글 도메인 계층 모델 및 조회 아키텍처 공식 ADR-001 작성 및 확정 (2026-08-29)**:
+  1. **실측 데이터 기반 아키텍처 의사결정**: 3개 독립 워크트리 브랜치에서 측정한 실측 벤치마크 지표(후보 1: 210KB 폭증 vs 후보 2: 핫스팟 103KB 비대화 vs 후보 3: 5.55KB 완벽 통제)를 근거로, **[후보 3: Adjacency List 기반 하이브리드 프리뷰(루트 20개 + 대댓글 5개) 및 대댓글 분리 페이징]을 최종 채택**.
+  2. **ADR-001 9개 핵심 섹션 완결**: `docs/study/sprint03/comment/ADR-001-comment-hierarchy-and-retrieval-architecture.md`에 문제정의, 요구사항, 후보군, Spike 실측 매트릭스, 기각 근거, 기술 부채, 재검토 트리거 등 표준 아키텍처 의사결정 기록 공식 문서화.
+
 - **댓글 조회 아키텍처 3대 후보 Spike 실험 공통 기반 및 측정 하네스 구축 (2026-08-29)**:
   1. **실험 가이드 및 템플릿 작성**: `docs/study/sprint03/comment/spike_experiment_guide.md` (실험 목적, 2대 시나리오, 5대 측정 지표 정의) 및 `docs/study/sprint03/comment/spike_result_template.md` (표준 결과 보고서 템플릿) 문서화.
   2. **공통 테스트 픽스처 및 하네스 개발**: `CommentSpikeDataInitializer.java` (분산 1,000건 & 핫스팟 500건 자동 주입기) 및 `CommentSpikeBenchmarkHarness.java` (실행 시간, JSON 직렬화 페이로드 바이트 크기, 쿼리 수 측정 러너) 구축.
