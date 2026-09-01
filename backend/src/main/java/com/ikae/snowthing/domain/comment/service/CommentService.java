@@ -88,7 +88,7 @@ public class CommentService {
                     if (request.parentId() != null) {
                         Comment requestedParent =
                                 commentRepository
-                                        .findById(request.parentId())
+                                        .findByIdForUpdate(request.parentId())
                                         .orElseThrow(
                                                 () ->
                                                         new CustomAuthException(
@@ -110,7 +110,7 @@ public class CommentService {
                                                                         .PARENT_COMMENT_NOT_FOUND));
 
                         long activeReplyCount =
-                                commentRepository.countByParentIdAndIsDeletedFalse(rootCommentId);
+                                commentRepository.findActiveReplyIdsForUpdate(rootCommentId).size();
                         if (activeReplyCount >= MAX_REPLY_COUNT) {
                             throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
                         }

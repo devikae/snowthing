@@ -20,6 +20,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     long countByParentIdAndIsDeletedFalse(Long parentId);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("SELECT c.id FROM Comment c WHERE c.parent.id = :parentId AND c.isDeleted = false")
+    List<Long> findActiveReplyIdsForUpdate(@Param("parentId") Long parentId);
+
     @Query(
             "SELECT c FROM Comment c LEFT JOIN FETCH c.member WHERE c.post.id = :postId ORDER BY c.createdAt ASC, c.id ASC")
     List<Comment> findByPostIdWithMember(@Param("postId") Long postId);
