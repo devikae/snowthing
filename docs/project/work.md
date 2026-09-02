@@ -1,3 +1,19 @@
+- **Sprint 03 PR #15 코드리뷰 피드백 반영 및 시드/설정/인덱스 안전화 완결 (2026-09-02)**:
+  1. **스파이크 시드(`database/spike_seed_comments.sql`) 소유권 기반 안전 시딩 적용**:
+     - `post_category`, `member`의 고정 PK(1) 강제 삽입을 제거하고 자연키(`code = 'FREE'`, `public_id = 'member-spike-001'`) 기반 생성 및 변수(`@spike_member_id`) 바인딩으로 변경하여 기존 로컬 1번 회원 데이터 덮어쓰기 방지.
+  2. **DB Username 환경변수 동기화 (Configuration Parity)**:
+     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `${SNOWTHING_DB_USERNAME:snowuser}`로 수정.
+  3. **.env.example 테스트 환경변수 가이드 보강**:
+     - `CommentCreateTest` 및 `CommentUpdateTest` 두 테스트 모두 실제 MySQL 연동을 지원함을 명시하고 `SNOWTHING_TEST_DB_URL` 표준 예시값 추가.
+  4. **인덱스 및 테스트/초기화 무결성 동기화**:
+     - `ddl.sql` 및 `Comment.java` 대댓글 복합 인덱스(`idx_comment_parent_deleted_created`) 동기화.
+     - `DataInitializer.java` 닉네임 유니크 제약조건 중복 가드 추가.
+     - `CommentServiceTest.java` 플레이스홀더 도메인 규칙 및 테스트 간 DB 격리 클린업(`@AfterEach`) 보강.
+  5. **검증 결과**:
+     - `spotlessApply` 서식 교정 완료.
+     - MySQL 스파이크 시드 스크립트 실행 실측 성공 (Post 998: 1,000건, Post 999: 1,000건 생성 확인).
+     - 백엔드 전체 단위/통합 테스트(`gradle test`) **125개 전수 통과 (BUILD SUCCESSFUL in 27s)**.
+
 - **Sprint 03 댓글 수정(PUT /api/v1/comments/{commentId}) 기능 및 테스트 전담 개발 완결 (2026-09-01)**:
   1. **작업명**: 댓글 수정(Update) 기능 구현 및 권한/유효성 검증 테스트
   2. **현재 상태**: 완료
