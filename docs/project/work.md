@@ -1,3 +1,15 @@
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영 및 대댓글 인덱스/설정 최적화 (2026-09-02)**:
+  1. **대댓글 복합 인덱스(idx_comment_parent_deleted_created) 최적화**:
+     - `database/ddl.sql` 및 `Comment.java` `@Index` 명세를 `(parent_id, created_at, comment_id)` ➔ `(parent_id, is_deleted, created_at, comment_id)`로 변경.
+     - 대댓글 100개 상한 검증(`countActiveReplies`) 및 대댓글 조회 시 살아있는 행으로 B-Tree Seek 직행 및 커버링 인덱스(`Using index`) 실측 달성.
+  2. **DB Username 환경변수 동기화 (Configuration Parity)**:
+     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `${SNOWTHING_DB_USERNAME:snowuser}`로 수정.
+  3. **DataInitializer & 테스트 정합성 보강**:
+     - `DataInitializer.java` 내 닉네임 유니크 제약조건 중복 가드 추가.
+     - `CommentServiceTest.java` 내 활성 자식 노드가 있는 삭제 부모 placeholder 정책 반영 및 `@AfterEach` teardown 클린업 추가.
+  4. **검증 결과**:
+     - `spotlessCheck` 및 백엔드 전체 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (23s)** 통과.
+
 - **Sprint 03 댓글 도메인 공식 API 명세서(comment_api_spec.md) 작성 (2026-09-01)**:
   1. **5대 CRUD 엔드포인트 계약 명세화**: `docs/conception/sprint03/comment_api_spec.md`에 댓글 작성(`POST`), 루트 댓글 Batch+Top-5 프리뷰 조회(`GET`), 대댓글 분리 페이징 조회(`GET`), 댓글 수정(`PUT`), Soft Delete 삭제(`DELETE`)의 Request/Response DTO, Header, 에러 코드 매핑을 100% 명세화.
 

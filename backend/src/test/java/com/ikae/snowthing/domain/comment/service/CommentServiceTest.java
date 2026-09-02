@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.comment.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
 import com.ikae.snowthing.domain.comment.dto.PostCommentListResponse;
+import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -22,6 +24,7 @@ import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.dto.PostResponse;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
+import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
@@ -41,11 +44,22 @@ class CommentServiceTest {
 
     @Autowired private PasswordEncoder passwordEncoder;
 
+    @Autowired private CommentRepository commentRepository;
+
+    @Autowired private PostRepository postRepository;
+
     @Autowired private jakarta.persistence.EntityManager entityManager;
 
     private Member member1;
     private CustomUserDetails userDetails1;
     private PostResponse post;
+
+    @AfterEach
+    void tearDown() {
+        commentRepository.deleteAll();
+        postRepository.deleteAll();
+        memberRepository.deleteAll();
+    }
 
     @BeforeEach
     void setUp() {
@@ -180,6 +194,17 @@ class CommentServiceTest {
                                     .build(),
                             userDetails1,
                             "127.0.0.1");
+
+            // 도메인 정책: 활성 자식 대댓글이 있어야 부모가 삭제되어도 '삭제된 댓글입니다.' 플레이스홀더로 유지됨
+            commentService.createComment(
+                    post.publicId(),
+                    CommentCreateRequest.builder()
+                            .parentId(parent1.commentId())
+                            .content("살아있는 자식 대댓글")
+                            .isAnonymous(false)
+                            .build(),
+                    userDetails1,
+                    "127.0.0.1");
 
             commentService.deleteComment(parent1.commentId(), null, userDetails1);
 

@@ -23,8 +23,8 @@ import lombok.NoArgsConstructor;
                     name = "idx_comment_post_parent_created",
                     columnList = "post_id,parent_id,created_at,comment_id"),
             @Index(
-                    name = "idx_comment_parent_created",
-                    columnList = "parent_id,created_at,comment_id")
+                    name = "idx_comment_parent_deleted_created",
+                    columnList = "parent_id,is_deleted,created_at,comment_id")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

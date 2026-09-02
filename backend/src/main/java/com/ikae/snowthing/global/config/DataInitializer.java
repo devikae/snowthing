@@ -35,7 +35,8 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (!memberRepository.existsByEmail("user@snowthing.com")) {
+        if (!memberRepository.existsByEmail("user@snowthing.com")
+                && !memberRepository.existsByNickname("스노보더1")) {
             memberRepository.save(
                     Member.builder()
                             .email("user@snowthing.com")
@@ -45,7 +46,8 @@ public class DataInitializer implements CommandLineRunner {
                             .build());
         }
 
-        if (!memberRepository.existsByEmail("admin@snowthing.com")) {
+        if (!memberRepository.existsByEmail("admin@snowthing.com")
+                && !memberRepository.existsByNickname("최고관리자")) {
             memberRepository.save(
                     Member.builder()
                             .email("admin@snowthing.com")
