@@ -10,6 +10,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
+import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
@@ -27,6 +28,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CommentService {
+
+    private static final long MAX_REPLY_COUNT = 100L;
+    private static final int DEFAULT_READ_SIZE = 20;
+    private static final int MAX_READ_SIZE = 50;
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
@@ -84,30 +89,45 @@ public class CommentService {
 
                     Comment parent = null;
                     if (request.parentId() != null) {
-                        parent =
+                        Comment requestedParent =
                                 commentRepository
-                                        .findById(request.parentId())
+                                        .findByIdForUpdate(request.parentId())
                                         .orElseThrow(
                                                 () ->
                                                         new CustomAuthException(
                                                                 ErrorCode
                                                                         .PARENT_COMMENT_NOT_FOUND));
 
-                        if (!parent.getPost().getId().equals(post.getId())) {
+                        if (!requestedParent.getPost().getId().equals(post.getId())) {
                             throw new CustomAuthException(ErrorCode.INVALID_COMMENT_PARENT);
+                        }
+
+                        Long rootCommentId = requestedParent.rootParent().getId();
+                        parent =
+                                commentRepository
+                                        .findByIdForUpdate(rootCommentId)
+                                        .orElseThrow(
+                                                () ->
+                                                        new CustomAuthException(
+                                                                ErrorCode
+                                                                        .PARENT_COMMENT_NOT_FOUND));
+
+                        long activeReplyCount =
+                                commentRepository.findActiveReplyIdsForUpdate(rootCommentId).size();
+                        if (activeReplyCount >= MAX_REPLY_COUNT) {
+                            throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
                         }
                     }
 
                     Comment comment =
-                            Comment.builder()
-                                    .post(post)
-                                    .member(finalMember)
-                                    .parent(parent)
-                                    .content(request.content())
-                                    .writerIp(clientIp != null ? clientIp : "127.0.0.1")
-                                    .isAnonymous(request.isAnonymous())
-                                    .anonymousPassword(finalEncodedPassword)
-                                    .build();
+                            Comment.create(
+                                    post,
+                                    finalMember,
+                                    parent,
+                                    request.content(),
+                                    clientIp != null ? clientIp : "127.0.0.1",
+                                    request.isAnonymous(),
+                                    finalEncodedPassword);
 
                     Comment savedComment = commentRepository.save(comment);
                     postRepository.increaseCommentCount(post.getId());
@@ -117,6 +137,11 @@ public class CommentService {
     }
 
     public PostCommentListResponse getCommentsByPost(String postPublicId) {
+        return getCommentsByPost(postPublicId, null, DEFAULT_READ_SIZE);
+    }
+
+    public PostCommentListResponse getCommentsByPost(String postPublicId, Long cursor, int size) {
+        validateReadSize(size);
         Post post =
                 postRepository
                         .findByPublicId(postPublicId)
@@ -126,30 +151,115 @@ public class CommentService {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
 
-        List<Comment> comments = commentRepository.findByPostIdWithMember(post.getId());
+        CommentRepositoryCustom.CursorPosition cursorPosition =
+                cursor == null
+                        ? null
+                        : commentRepository
+                                .findRootCursor(post.getId(), cursor)
+                                .orElseThrow(
+                                        () -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+        List<CommentResponse> fetched =
+                commentRepository.findRootComments(post.getId(), cursorPosition, size + 1);
+        boolean hasNext = fetched.size() > size;
+        List<CommentResponse> roots = new ArrayList<>(hasNext ? fetched.subList(0, size) : fetched);
+        Map<Long, List<CommentResponse>> previews =
+                commentRepository.findTopReplyPreviews(
+                        roots.stream().map(CommentResponse::commentId).toList());
+        List<CommentResponse> comments =
+                roots.stream()
+                        .map(
+                                root ->
+                                        root.withPreviewReplies(
+                                                previews.getOrDefault(root.commentId(), List.of())))
+                        .toList();
+        Long nextCursor = hasNext && !comments.isEmpty() ? comments.getLast().commentId() : null;
+        return new PostCommentListResponse(
+                postPublicId, post.getCommentCount(), comments, nextCursor, hasNext);
+    }
 
-        Map<Long, CommentResponse> map = new LinkedHashMap<>();
-        for (Comment comment : comments) {
-            map.put(comment.getId(), CommentResponse.from(comment));
+    public CommentReplyListResponse getCommentReplies(Long commentId, Long cursor, int size) {
+        validateReadSize(size);
+        Comment root =
+                commentRepository
+                        .findById(commentId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+        if (root.getParent() != null) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+        CommentRepositoryCustom.CursorPosition cursorPosition =
+                cursor == null
+                        ? null
+                        : commentRepository
+                                .findReplyCursor(commentId, cursor)
+                                .orElseThrow(
+                                        () -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+        List<CommentResponse> fetched =
+                commentRepository.findReplies(commentId, cursorPosition, size + 1);
+        boolean hasNext = fetched.size() > size;
+        List<CommentResponse> replies = List.copyOf(hasNext ? fetched.subList(0, size) : fetched);
+        Long nextCursor = hasNext && !replies.isEmpty() ? replies.getLast().commentId() : null;
+        return new CommentReplyListResponse(
+                commentId,
+                commentRepository.countActiveReplies(commentId),
+                replies,
+                nextCursor,
+                hasNext);
+    }
+
+    private void validateReadSize(int size) {
+        if (size < 1 || size > MAX_READ_SIZE) {
+            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    @Transactional
+    public CommentUpdateResponse updateComment(
+            Long commentId, CommentUpdateRequest request, CustomUserDetails userDetails) {
+        Comment comment =
+                commentRepository
+                        .findById(commentId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+
+        if (comment.isDeleted()) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
 
-        List<CommentResponse> rootComments = new ArrayList<>();
-        for (CommentResponse dto : map.values()) {
-            if (dto.parentId() == null) {
-                rootComments.add(dto);
-            } else {
-                CommentResponse parentDto = map.get(dto.parentId());
-                if (parentDto != null) {
-                    parentDto.children().add(dto);
-                }
+        validateUpdatePermission(comment, request.anonymousPassword(), userDetails);
+
+        comment.updateContent(request.content());
+
+        return new CommentUpdateResponse(
+                comment.getId(), comment.getContent(), comment.getUpdatedAt());
+    }
+
+    private void validateUpdatePermission(
+            Comment comment, String anonymousPassword, CustomUserDetails userDetails) {
+        if (comment.isAnonymous()) {
+            if (userDetails != null
+                    && comment.getMember() != null
+                    && comment.getMember().getPublicId().equals(userDetails.getPublicId())) {
+                return;
             }
+
+            if (anonymousPassword == null
+                    || !passwordEncoder.matches(
+                            anonymousPassword, comment.getAnonymousPassword())) {
+                throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
+            }
+            return;
         }
 
-        return PostCommentListResponse.builder()
-                .publicId(postPublicId)
-                .totalCommentCount(post.getCommentCount())
-                .comments(rootComments)
-                .build();
+        if (userDetails == null) {
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+
+        boolean isWriter =
+                comment.getMember() != null
+                        && comment.getMember().getPublicId().equals(userDetails.getPublicId());
+
+        if (!isWriter) {
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     @Transactional

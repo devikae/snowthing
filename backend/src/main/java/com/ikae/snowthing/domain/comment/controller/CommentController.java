@@ -39,8 +39,28 @@ public class CommentController {
 
     @GetMapping("/posts/{publicId}/comments")
     public ResponseEntity<PostCommentListResponse> getCommentsByPost(
-            @PathVariable String publicId) {
-        PostCommentListResponse response = commentService.getCommentsByPost(publicId);
+            @PathVariable String publicId,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int size) {
+        PostCommentListResponse response = commentService.getCommentsByPost(publicId, cursor, size);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/comments/{commentId}/replies")
+    public ResponseEntity<CommentReplyListResponse> getCommentReplies(
+            @PathVariable Long commentId,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(commentService.getCommentReplies(commentId, cursor, size));
+    }
+
+    @PutMapping("/comments/{commentId}")
+    public ResponseEntity<CommentUpdateResponse> updateComment(
+            @PathVariable Long commentId,
+            @Valid @RequestBody CommentUpdateRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        CommentUpdateResponse response =
+                commentService.updateComment(commentId, request, userDetails);
         return ResponseEntity.ok(response);
     }
 
