@@ -1,3 +1,16 @@
+- **Sprint 03 댓글/대댓글 인라인 삭제 UI 및 비밀번호 플로팅 팝오버 위젯 구현 (2026-09-03)**:
+  1. **작업명**: 댓글/대댓글 인라인 미니 `✕` 삭제 버튼 및 시간 아래 플로팅 드롭다운 UI 구현 (브라우저 다이얼로그 전면 퇴출)
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - 브라우저 기본 `prompt()`, `confirm()`, `alert()` 호출 코드 100% 제거.
+     - 댓글 및 대댓글 상단 헤더의 작성 시간(`MM.dd HH:mm:ss`) 우측에 미니 사각 `✕` 삭제 버튼 배치.
+     - `✕` 클릭 시 부모 헤더나 주변 텍스트를 밀어내지 않고 시간 바로 아래에 모달처럼 떠 있는 플로팅 팝오버(`absolute right-0 top-full mt-1.5 z-50 shadow-xl`) 위젯 구현.
+     - 외부 클릭 시 자동으로 닫히는 고정 투명 백드롭(`fixed inset-0 z-40`) 및 `ESC` 키보드 닫기, `Enter` 제출 지원.
+     - 비회원 익명 댓글은 비밀번호 인풋창 폼 제공, 로그인 회원 본인 및 최고 관리자는 `삭제할까요?` 즉시 확인 폼 제공.
+     - 하단 액션 바의 중복 텍스트 `삭제` 버튼 제거 (상단 `✕` 아이콘으로 일원화).
+  4. **검증 결과**:
+     - `npm run build` Next.js 16.2.12 Turbopack 컴파일 100% 통과 (Compiled successfully in 1733ms, 0 errors).
+
 - **Sprint 03 댓글 삭제(DELETE /api/v1/comments/{commentId}) 및 4대 권한 매트릭스 전담 개발 완결 (2026-09-01)**:
   1. **작업명**: 댓글 삭제(Soft Delete & 권한 매트릭스) 기능 보강 및 단위/통합 테스트
   2. **현재 상태**: 완료
@@ -783,3 +796,56 @@
 ### 검증
 - 변경 파일 대상 ESLint 오류 0건. 기존 게시글 이미지 `<img>` 최적화 경고 1건만 확인.
 - `npm run build` 성공 및 TypeScript 오류 0건 확인.
+
+## README Mermaid 렌더링 오류 수정 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: GitHub README의 Mermaid `sequenceDiagram`에서 `Set-Cookie: JSESSIONID=...; Path=/; HttpOnly; SameSite=Lax`처럼 실제 HTTP 헤더 문법을 그대로 넣어 파서가 실패하던 줄을 자연어 메시지로 변경.
+- 수정 파일: `README.md`
+- 완료 범위:
+  1. 로그인 성공 응답 메시지를 `신규 세션 쿠키 발급 (JSESSIONID, HttpOnly, SameSite=Lax)`로 변경.
+  2. 로그아웃 응답 메시지를 `JSESSIONID 쿠키 만료 응답 (Max-Age=0)`로 변경.
+- 이슈/주의: Mermaid 다이어그램 안에서는 `:`, `;`, `=`가 많은 실제 헤더 문자열을 그대로 쓰면 GitHub 렌더러와 충돌할 수 있으므로, 다이어그램에는 행위 중심 문장을 쓰고 실제 헤더 예시는 본문 코드블록에 분리하는 편이 안전함.
+
+## 댓글 조회 기술부채 해결 문서 작성 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: 같은 조건에서 수행된 후보 1/2/3 Spike 중 채택된 후보 3 구조가 현재 운영 구현에 어떻게 반영됐는지, 이후 읽기 성능 보강으로 추가된 복합 인덱스와 MySQL 실행계획을 `docs/study/sprint03/comment/test/기술부채 해결_4.md`에 정리.
+- 완료 범위:
+  1. `spike_experiment_guide.md`, `spike_하이브리드프리뷰_분리API.md`, 현재 `CommentRepositoryImpl`, `CommentService`, `CommentController`, `Comment` 인덱스 정의 대조.
+  2. 로컬 MySQL 8.0.46 Docker 컨테이너의 Spike 데이터 확인: Post 998/999 각각 댓글 1,000건 유지.
+  3. 실제 MySQL `SHOW INDEX`, `EXPLAIN`, `EXPLAIN ANALYZE` 결과를 문서에 반영.
+  4. `./gradlew.bat test --tests "*CommentReadTest*"` 실행 결과 10건 통과 확인.
+  5. `./gradlew.bat test --tests "*Comment*"` 실행 결과 42건 중 1건 실패, 1건 스킵 확인. 실패 원인은 후보 3 구조 문제가 아니라 기존 `CommentServiceTest` 일부가 현재 삭제 루트 정책과 다른 기대값을 가진 테스트 정리 대상으로 기록.
+- 이슈/주의:
+  1. 후보 1/2/3 비교 실험은 같은 정책과 같은 데이터셋에서 수행됐으므로 후보 3 선택 근거는 유효함.
+  2. 후보 3 채택 이후 읽기 성능 보강으로 실제 DB에는 `idx_comment_parent_deleted_created(parent_id, is_deleted, created_at, comment_id)`가 확인됨.
+  3. 윈도우 함수와 삭제 정책 쿼리에서 `Using temporary`, `Using filesort`가 남지만, 현재 규모에서는 구조 변경 대상이 아니라 운영 관찰 포인트로 기록.
+  4. 기존 `CommentServiceTest.getCommentsByPost_deletedParentDisplay()`는 현재 정책에 맞게 갱신 필요.
+
+## README 댓글 도메인 아키텍처 섹션 반영 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: README의 게시판 설명 아래에 `댓글(Comment) 도메인 설계 & 기술적 의사결정` 섹션을 독립 추가하고, 후보 3 Spike 선택 근거와 기술부채 개선 내용을 공식 conception 문서 기준으로 요약.
+- 완료 범위:
+  1. `핵심 아키텍처 고민 및 기술적 의사결정` 제목에서 `핵심` 표현 제거.
+  2. `게시판(Post) 도메인 설계 & 핵심 기술적 의사결정` 제목에서 `핵심` 표현 제거.
+  3. `CSRF` 본문과 구분선 사이에 빈 줄을 추가해 Markdown 렌더링이 다음 섹션으로 번지지 않도록 정리.
+  4. 댓글 도메인 구조, 게시글-댓글 관계, 댓글 상태/유형, 삭제 루트 정책, 커서 페이지네이션, 후보 1/2/3 비교, 기술부채와 개선 결과, 테스트 결과를 README에 추가.
+  5. 상세 근거 링크는 gitignore 대상인 `docs/study`가 아니라 `docs/conception/sprint03/`의 ADR, API 명세, 기술부채 해결 문서로 연결.
+- 이슈/주의:
+  1. README에는 전체 SQL과 EXPLAIN을 모두 싣지 않고 프로젝트 소개에 필요한 수준으로 요약.
+  2. 상세 실행계획과 테스트 결과는 `docs/conception/sprint03/기술부채 해결_4.md`를 기준 문서로 사용.
+
+## Sprint 03 Spike 결과 문서 파일명 정리 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: 후보 번호 중심 파일명을 실제 기술 방식이 드러나는 파일명으로 변경.
+- 변경 파일명:
+  1. `spike_result_candidate_1.md` -> `spike_메모리전체트리조립.md`
+  2. `spike_result_candidate_2.md` -> `spike_루트커서_대댓글전체배치.md`
+  3. `spike_result_candidate_3.md` -> `spike_하이브리드프리뷰_분리API.md`
+- 완료 범위:
+  1. `docs/conception/sprint03/` 하위 Spike 결과 문서 3개를 `git mv`로 이름 변경.
+  2. 공식 기술부채 해결 문서와 로컬 학습 문서의 기준 문서명을 새 파일명으로 갱신.
+- 이슈/주의: `.idea/workspace.xml`에도 기존 파일명 참조가 있으나 IDE 로컬 상태 파일이므로 커밋 대상에서 제외.
