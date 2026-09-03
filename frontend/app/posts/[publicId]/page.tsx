@@ -73,9 +73,10 @@ interface ReplyPagingState {
   loading: boolean;
 }
 
-interface CommentDeleteTarget {
+interface CommentUpdateResponse {
   commentId: number;
-  requiresPassword: boolean;
+  content: string;
+  updatedAt: string;
 }
 
 export default function PostDetailPage({ params }: { params: Promise<{ publicId: string }> }) {
@@ -98,7 +99,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [replyMentionName, setReplyMentionName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
-  const [commentDeleteTarget, setCommentDeleteTarget] = useState<CommentDeleteTarget | null>(null);
+  const [activeEditCommentId, setActiveEditCommentId] = useState<number | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [editCommentPassword, setEditCommentPassword] = useState("");
+  const [editCommentError, setEditCommentError] = useState("");
+  const [submittingEditComment, setSubmittingEditComment] = useState(false);
+  const [activeDeleteCommentId, setActiveDeleteCommentId] = useState<number | null>(null);
+  const [deleteCommentPassword, setDeleteCommentPassword] = useState("");
+  const [deleteCommentError, setDeleteCommentError] = useState("");
+  const [submittingDeleteComment, setSubmittingDeleteComment] = useState(false);
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -395,29 +404,116 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
-  const handleOpenCommentDeleteModal = (comment: CommentItem) => {
-    setCommentDeleteTarget({
-      commentId: comment.commentId,
-      requiresPassword: comment.isAnonymous && !currentUserPublicId,
-    });
+  const handleStartEditComment = (comment: CommentItem) => {
+    setActiveReplyParentId(null);
+    setReplyMentionName(null);
+    setActiveEditCommentId(comment.commentId);
+    setEditCommentText(comment.content);
+    setEditCommentPassword("");
+    setEditCommentError("");
   };
 
-  const handleConfirmCommentDelete = async (password: string) => {
-    if (!commentDeleteTarget) return;
+  const handleCancelEditComment = () => {
+    if (submittingEditComment) return;
+    setActiveEditCommentId(null);
+    setEditCommentText("");
+    setEditCommentPassword("");
+    setEditCommentError("");
+  };
 
-    const res = await csrfFetch(API_ENDPOINTS.comments.delete(commentDeleteTarget.commentId), {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ anonymousPassword: password || null }),
-    });
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || "댓글 삭제에 실패했습니다.");
+  const handleUpdateComment = async (comment: CommentItem) => {
+    const content = editCommentText.trim();
+    const requiresPassword = comment.isAnonymous && !currentUserPublicId;
+    if (!content) {
+      setEditCommentError("댓글 내용을 입력해주세요.");
+      return;
+    }
+    if (content.length > 1000) {
+      setEditCommentError("댓글은 1,000자 이하로 입력해주세요.");
+      return;
+    }
+    if (requiresPassword && !editCommentPassword.trim()) {
+      setEditCommentError("익명 댓글 비밀번호를 입력해주세요.");
+      return;
+    }
+    if (content === comment.content) {
+      setEditCommentError("변경된 내용이 없습니다.");
+      return;
     }
 
-    setCommentDeleteTarget(null);
-    await fetchComments();
-    setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
+    setSubmittingEditComment(true);
+    setEditCommentError("");
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.comments.delete(comment.commentId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          anonymousPassword: editCommentPassword.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "댓글 수정에 실패했습니다.");
+      }
+
+      const updated: CommentUpdateResponse = await res.json();
+      setComments((current) => updateCommentContent(current, updated.commentId, updated.content));
+      setActiveEditCommentId(null);
+      setEditCommentText("");
+      setEditCommentPassword("");
+      setEditCommentError("");
+    } catch (error) {
+      setEditCommentError(error instanceof Error ? error.message : "서버 통신 중 오류가 발생했습니다.");
+    } finally {
+      setSubmittingEditComment(false);
+    }
+  };
+
+  const handleStartDeleteComment = (commentId: number) => {
+    setActiveDeleteCommentId(commentId);
+    setDeleteCommentPassword("");
+    setDeleteCommentError("");
+  };
+
+  const handleCancelDeleteComment = () => {
+    setActiveDeleteCommentId(null);
+    setDeleteCommentPassword("");
+    setDeleteCommentError("");
+  };
+
+  const handleConfirmDeleteComment = async (comment: CommentItem) => {
+    const isOwnerMember = !comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
+    const isOwnerAnonMember = comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
+    const requiresPassword = !isAdmin && !isOwnerMember && !isOwnerAnonMember;
+
+    if (requiresPassword && !deleteCommentPassword.trim()) {
+      setDeleteCommentError("비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setSubmittingDeleteComment(true);
+    setDeleteCommentError("");
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.comments.delete(comment.commentId), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anonymousPassword: deleteCommentPassword.trim() || null }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "댓글 삭제에 실패했습니다.");
+      }
+
+      handleCancelDeleteComment();
+      await fetchComments();
+      setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
+    } catch (error) {
+      setDeleteCommentError(error instanceof Error ? error.message : "서버 통신 중 오류가 발생했습니다.");
+    } finally {
+      setSubmittingDeleteComment(false);
+    }
   };
 
   if (loading) {
@@ -575,7 +671,24 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     replyAnonPassword={replyAnonPassword}
                     setReplyAnonPassword={setReplyAnonPassword}
                     handleCreateComment={handleCreateComment}
-                    handleOpenCommentDeleteModal={handleOpenCommentDeleteModal}
+                    activeEditCommentId={activeEditCommentId}
+                    editCommentText={editCommentText}
+                    setEditCommentText={setEditCommentText}
+                    editCommentPassword={editCommentPassword}
+                    setEditCommentPassword={setEditCommentPassword}
+                    editCommentError={editCommentError}
+                    submittingEditComment={submittingEditComment}
+                    handleStartEditComment={handleStartEditComment}
+                    handleCancelEditComment={handleCancelEditComment}
+                    handleUpdateComment={handleUpdateComment}
+                    activeDeleteCommentId={activeDeleteCommentId}
+                    deleteCommentPassword={deleteCommentPassword}
+                    setDeleteCommentPassword={setDeleteCommentPassword}
+                    deleteCommentError={deleteCommentError}
+                    submittingDeleteComment={submittingDeleteComment}
+                    handleStartDeleteComment={handleStartDeleteComment}
+                    handleCancelDeleteComment={handleCancelDeleteComment}
+                    handleConfirmDeleteComment={handleConfirmDeleteComment}
                     isAdmin={isAdmin}
                     handleLoadMoreReplies={handleLoadMoreReplies}
                     isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
@@ -606,16 +719,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
         description={deleteModalConfig.description}
         requirePassword={deleteModalConfig.requirePassword}
       />
-      <DeleteConfirmModal
-        isOpen={commentDeleteTarget !== null}
-        onClose={() => setCommentDeleteTarget(null)}
-        onConfirm={handleConfirmCommentDelete}
-        title="댓글 삭제 확인"
-        description="정말 삭제하시겠습니까?"
-        requirePassword={commentDeleteTarget?.requiresPassword ?? false}
-        confirmLabel="댓글 삭제"
-        submittingLabel="삭제 중..."
-      />
       <Footer />
     </div>
   );
@@ -634,7 +737,24 @@ function CommentRow({
   replyAnonPassword,
   setReplyAnonPassword,
   handleCreateComment,
-  handleOpenCommentDeleteModal,
+  activeEditCommentId,
+  editCommentText,
+  setEditCommentText,
+  editCommentPassword,
+  setEditCommentPassword,
+  editCommentError,
+  submittingEditComment,
+  handleStartEditComment,
+  handleCancelEditComment,
+  handleUpdateComment,
+  activeDeleteCommentId,
+  deleteCommentPassword,
+  setDeleteCommentPassword,
+  deleteCommentError,
+  submittingDeleteComment,
+  handleStartDeleteComment,
+  handleCancelDeleteComment,
+  handleConfirmDeleteComment,
   isAdmin,
   handleLoadMoreReplies,
   isLoadingReplies,
@@ -651,12 +771,31 @@ function CommentRow({
   replyAnonPassword: string;
   setReplyAnonPassword: (value: string) => void;
   handleCreateComment: (parentId: number | null) => Promise<void>;
-  handleOpenCommentDeleteModal: (comment: CommentItem) => void;
+  activeEditCommentId: number | null;
+  editCommentText: string;
+  setEditCommentText: (text: string) => void;
+  editCommentPassword: string;
+  setEditCommentPassword: (password: string) => void;
+  editCommentError: string;
+  submittingEditComment: boolean;
+  handleStartEditComment: (comment: CommentItem) => void;
+  handleCancelEditComment: () => void;
+  handleUpdateComment: (comment: CommentItem) => Promise<void>;
+  activeDeleteCommentId: number | null;
+  deleteCommentPassword: string;
+  setDeleteCommentPassword: (password: string) => void;
+  deleteCommentError: string;
+  submittingDeleteComment: boolean;
+  handleStartDeleteComment: (commentId: number) => void;
+  handleCancelDeleteComment: () => void;
+  handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
   isAdmin: boolean;
   handleLoadMoreReplies: (rootCommentId: number) => Promise<void>;
   isLoadingReplies: boolean;
 }) {
+  const canEdit = canEditComment(item, currentUserPublicId);
   const canDelete = canDeleteComment(item, currentUserPublicId, isAdmin);
+  const isEditing = activeEditCommentId === item.commentId;
   const openReplyEditor = (target: CommentItem) => {
     if (activeReplyParentId === item.commentId && replyMentionName === getWriterName(target)) {
       setActiveReplyParentId(null);
@@ -672,20 +811,53 @@ function CommentRow({
       <div className="border-b border-[var(--snow-border)] pb-4">
         <div className="flex items-center justify-between gap-3">
           <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
-          <span className="font-mono text-xs text-[var(--snow-muted)]">{new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+          <div className="flex items-center">
+            <span className="font-mono text-xs text-[var(--snow-muted)]">{formatCommentDate(item.createdAt)}</span>
+            {canDelete && (
+              <CommentDeleteInline
+                comment={item}
+                currentUserPublicId={currentUserPublicId}
+                isAdmin={isAdmin}
+                isActive={activeDeleteCommentId === item.commentId}
+                onOpen={() => handleStartDeleteComment(item.commentId)}
+                onClose={handleCancelDeleteComment}
+                password={deleteCommentPassword}
+                setPassword={setDeleteCommentPassword}
+                error={activeDeleteCommentId === item.commentId ? deleteCommentError : ""}
+                submitting={submittingDeleteComment}
+                onConfirm={() => void handleConfirmDeleteComment(item)}
+              />
+            )}
+          </div>
         </div>
-        <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
-
-        <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
-          <button onClick={() => openReplyEditor(item)} className="text-black">
-            {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
-          </button>
-          {canDelete && (
-            <button type="button" onClick={() => handleOpenCommentDeleteModal(item)} className="text-[var(--snow-error)]">
-              삭제
-            </button>
-          )}
-        </div>
+        {isEditing ? (
+          <CommentEditForm
+            comment={item}
+            content={editCommentText}
+            setContent={setEditCommentText}
+            password={editCommentPassword}
+            setPassword={setEditCommentPassword}
+            error={editCommentError}
+            submitting={submittingEditComment}
+            requiresPassword={item.isAnonymous && !currentUserPublicId}
+            onCancel={handleCancelEditComment}
+            onSubmit={() => void handleUpdateComment(item)}
+          />
+        ) : (
+          <>
+            <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
+            <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
+              <button onClick={() => openReplyEditor(item)} className="text-black">
+                {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
+              </button>
+              {canEdit && (
+                <button type="button" onClick={() => handleStartEditComment(item)} className="text-black">
+                  수정
+                </button>
+              )}
+            </div>
+          </>
+        )}
 
         {item.previewReplies.length > 0 && (
           <div className="mt-4 grid gap-4">
@@ -694,9 +866,26 @@ function CommentRow({
                 key={reply.commentId}
                 item={reply}
                 onReply={() => openReplyEditor(reply)}
+                isEditing={activeEditCommentId === reply.commentId}
+                editCommentText={editCommentText}
+                setEditCommentText={setEditCommentText}
+                editCommentPassword={editCommentPassword}
+                setEditCommentPassword={setEditCommentPassword}
+                editCommentError={editCommentError}
+                submittingEditComment={submittingEditComment}
+                handleStartEditComment={handleStartEditComment}
+                handleCancelEditComment={handleCancelEditComment}
+                handleUpdateComment={handleUpdateComment}
                 currentUserPublicId={currentUserPublicId}
+                activeDeleteCommentId={activeDeleteCommentId}
+                deleteCommentPassword={deleteCommentPassword}
+                setDeleteCommentPassword={setDeleteCommentPassword}
+                deleteCommentError={deleteCommentError}
+                submittingDeleteComment={submittingDeleteComment}
+                handleStartDeleteComment={handleStartDeleteComment}
+                handleCancelDeleteComment={handleCancelDeleteComment}
+                handleConfirmDeleteComment={handleConfirmDeleteComment}
                 isAdmin={isAdmin}
-                handleOpenCommentDeleteModal={handleOpenCommentDeleteModal}
               />
             ))}
           </div>
@@ -765,37 +954,175 @@ function ReplyRow({
   item,
   onReply,
   currentUserPublicId,
+  isEditing,
+  editCommentText,
+  setEditCommentText,
+  editCommentPassword,
+  setEditCommentPassword,
+  editCommentError,
+  submittingEditComment,
+  handleStartEditComment,
+  handleCancelEditComment,
+  handleUpdateComment,
+  activeDeleteCommentId,
+  deleteCommentPassword,
+  setDeleteCommentPassword,
+  deleteCommentError,
+  submittingDeleteComment,
+  handleStartDeleteComment,
+  handleCancelDeleteComment,
+  handleConfirmDeleteComment,
   isAdmin,
-  handleOpenCommentDeleteModal,
 }: {
   item: CommentItem;
   onReply: () => void;
   currentUserPublicId: string | null;
+  isEditing: boolean;
+  editCommentText: string;
+  setEditCommentText: (text: string) => void;
+  editCommentPassword: string;
+  setEditCommentPassword: (password: string) => void;
+  editCommentError: string;
+  submittingEditComment: boolean;
+  handleStartEditComment: (comment: CommentItem) => void;
+  handleCancelEditComment: () => void;
+  handleUpdateComment: (comment: CommentItem) => Promise<void>;
+  activeDeleteCommentId: number | null;
+  deleteCommentPassword: string;
+  setDeleteCommentPassword: (password: string) => void;
+  deleteCommentError: string;
+  submittingDeleteComment: boolean;
+  handleStartDeleteComment: (commentId: number) => void;
+  handleCancelDeleteComment: () => void;
+  handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
   isAdmin: boolean;
-  handleOpenCommentDeleteModal: (comment: CommentItem) => void;
 }) {
+  const canEdit = canEditComment(item, currentUserPublicId);
   const canDelete = canDeleteComment(item, currentUserPublicId, isAdmin);
+
   return (
     <div className="ml-5 border-l-2 border-black pl-5">
       <div className="flex items-center justify-between gap-3">
         <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
-        <span className="font-mono text-xs text-[var(--snow-muted)]">
-          {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-        </span>
+        <div className="flex items-center">
+          <span className="font-mono text-xs text-[var(--snow-muted)]">
+            {formatCommentDate(item.createdAt)}
+          </span>
+          {canDelete && (
+            <CommentDeleteInline
+              comment={item}
+              currentUserPublicId={currentUserPublicId}
+              isAdmin={isAdmin}
+              isActive={activeDeleteCommentId === item.commentId}
+              onOpen={() => handleStartDeleteComment(item.commentId)}
+              onClose={handleCancelDeleteComment}
+              password={deleteCommentPassword}
+              setPassword={setDeleteCommentPassword}
+              error={activeDeleteCommentId === item.commentId ? deleteCommentError : ""}
+              submitting={submittingDeleteComment}
+              onConfirm={() => void handleConfirmDeleteComment(item)}
+            />
+          )}
+        </div>
       </div>
-      <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
-      {!item.isDeleted && (
+      {isEditing ? (
+        <CommentEditForm
+          comment={item}
+          content={editCommentText}
+          setContent={setEditCommentText}
+          password={editCommentPassword}
+          setPassword={setEditCommentPassword}
+          error={editCommentError}
+          submitting={submittingEditComment}
+          requiresPassword={item.isAnonymous && !currentUserPublicId}
+          onCancel={handleCancelEditComment}
+          onSubmit={() => void handleUpdateComment(item)}
+        />
+      ) : (
+        <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
+      )}
+      {!item.isDeleted && !isEditing && (
         <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
           <button type="button" onClick={onReply} className="text-black">
             답글 쓰기
           </button>
-          {canDelete && (
-            <button type="button" onClick={() => handleOpenCommentDeleteModal(item)} className="text-[var(--snow-error)]">
-              삭제
+          {canEdit && (
+            <button type="button" onClick={() => handleStartEditComment(item)} className="text-black">
+              수정
             </button>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function CommentEditForm({
+  comment,
+  content,
+  setContent,
+  password,
+  setPassword,
+  error,
+  submitting,
+  requiresPassword,
+  onCancel,
+  onSubmit,
+}: {
+  comment: CommentItem;
+  content: string;
+  setContent: (content: string) => void;
+  password: string;
+  setPassword: (password: string) => void;
+  error: string;
+  submitting: boolean;
+  requiresPassword: boolean;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const contentId = `comment-edit-content-${comment.commentId}`;
+  const passwordId = `comment-edit-password-${comment.commentId}`;
+
+  return (
+    <div className="mt-3 rounded border border-[var(--snow-border)] bg-[var(--snow-background)] p-4">
+      <label htmlFor={contentId} className="font-mono text-xs font-bold text-[var(--snow-muted)]">
+        댓글 내용
+      </label>
+      <textarea
+        id={contentId}
+        rows={3}
+        maxLength={1000}
+        value={content}
+        disabled={submitting}
+        onChange={(event) => setContent(event.target.value)}
+        className="snow-textarea mt-2 min-h-[100px]"
+      />
+      <div className="mt-1 text-right font-mono text-xs text-[var(--snow-muted)]">{content.length}/1000</div>
+      {requiresPassword && (
+        <div className="mt-3">
+          <label htmlFor={passwordId} className="font-mono text-xs font-bold text-[var(--snow-muted)]">
+            익명 비밀번호
+          </label>
+          <input
+            id={passwordId}
+            type="password"
+            value={password}
+            disabled={submitting}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="●●●●"
+            className="snow-input mt-2 w-full sm:w-52"
+          />
+        </div>
+      )}
+      {error && <p className="mt-3 text-sm font-bold text-[var(--snow-error)]">{error}</p>}
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" disabled={submitting} onClick={onCancel} className="snow-btn-secondary">
+          취소
+        </button>
+        <button type="button" disabled={submitting} onClick={onSubmit} className="snow-btn-primary">
+          {submitting ? "수정 중..." : "수정 완료"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -805,8 +1132,141 @@ function getWriterName(comment: CommentItem) {
   return comment.writer?.nickname || "알 수 없음";
 }
 
-function canDeleteComment(comment: CommentItem, currentUserPublicId: string | null, isAdmin: boolean) {
+function canEditComment(comment: CommentItem, currentUserPublicId: string | null) {
   if (comment.isDeleted) return false;
-  if (isAdmin || comment.isAnonymous) return true;
+  if (comment.isAnonymous) return true;
+  return Boolean(currentUserPublicId && comment.writer?.publicId === currentUserPublicId);
+}
+
+function updateCommentContent(comments: CommentItem[], commentId: number, content: string) {
+  return comments.map((comment) => {
+    if (comment.commentId === commentId) return { ...comment, content };
+    return {
+      ...comment,
+      previewReplies: comment.previewReplies.map((reply) =>
+        reply.commentId === commentId ? { ...reply, content } : reply,
+      ),
+    };
+  });
+}
+
+function CommentDeleteInline({
+  comment,
+  currentUserPublicId,
+  isAdmin,
+  isActive,
+  onOpen,
+  onClose,
+  password,
+  setPassword,
+  error,
+  submitting,
+  onConfirm,
+}: {
+  comment: CommentItem;
+  currentUserPublicId: string | null;
+  isAdmin: boolean;
+  isActive: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  password: string;
+  setPassword: (val: string) => void;
+  error: string;
+  submitting: boolean;
+  onConfirm: () => void;
+}) {
+  const isOwnerMember = !comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
+  const isOwnerAnonMember = comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
+  const requiresPassword = !isAdmin && !isOwnerMember && !isOwnerAnonMember;
+
+  return (
+    <div className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={isActive ? onClose : onOpen}
+        className={`ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-[2px] text-[10px] font-bold transition cursor-pointer ${
+          isActive ? "bg-black text-white" : "bg-gray-300/80 text-white hover:bg-gray-400"
+        }`}
+        title={isActive ? "취소" : "댓글 삭제"}
+      >
+        ✕
+      </button>
+
+      {isActive && (
+        <>
+          {/* 외부 클릭 시 닫히도록 투명 백드롭 오버레이 */}
+          <div className="fixed inset-0 z-40" onClick={onClose} />
+
+          {/* 시간 및 아이콘 바로 아래에 완벽하게 플로팅되는 팝오버 (레이아웃 밀림 0) */}
+          <div className="absolute right-0 top-full mt-1.5 z-50 flex items-center bg-[#1c2e5c] border border-black shadow-xl rounded-xs">
+            {requiresPassword ? (
+              <input
+                type="password"
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onConfirm();
+                  } else if (e.key === "Escape") {
+                    onClose();
+                  }
+                }}
+                autoFocus
+                className="h-6 w-28 bg-white px-1.5 text-xs text-black outline-none border-r border-black placeholder:text-gray-400"
+              />
+            ) : (
+              <span className="h-6 flex items-center px-2 text-[11px] font-medium text-white select-none whitespace-nowrap border-r border-[#2a4078]">
+                삭제할까요?
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={submitting}
+              className="h-6 px-2.5 text-xs font-bold text-white hover:bg-[#283f7a] transition-colors border-r border-[#2a4078] disabled:opacity-50 whitespace-nowrap cursor-pointer"
+            >
+              {submitting ? "..." : "확인"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-6 px-1.5 text-xs font-bold text-white hover:bg-[#283f7a] transition-colors cursor-pointer"
+              title="취소"
+            >
+              ✕
+            </button>
+            {error && (
+              <div className="absolute right-0 top-full mt-1 z-50 rounded border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 shadow-md whitespace-nowrap">
+                {error}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function formatCommentDate(dateString: string): string {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    return `${mm}.${dd} ${hh}:${min}:${ss}`;
+  } catch {
+    return dateString;
+  }
+}
+
+function canDeleteComment(comment: CommentItem, currentUserPublicId: string | null, isAdmin: boolean): boolean {
+  if (comment.isDeleted) return false;
+  if (isAdmin) return true;
+  if (comment.isAnonymous) return true;
   return Boolean(currentUserPublicId && comment.writer?.publicId === currentUserPublicId);
 }
