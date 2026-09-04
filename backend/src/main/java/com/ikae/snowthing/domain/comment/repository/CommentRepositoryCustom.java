@@ -1,25 +1,27 @@
 package com.ikae.snowthing.domain.comment.repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
 
 public interface CommentRepositoryCustom {
 
-    record CursorPosition(LocalDateTime createdAt, Long commentId) {}
+    boolean existsRootCursor(Long postId, Long cursorId);
 
-    Optional<CursorPosition> findRootCursor(Long postId, Long cursorId);
+    boolean existsReplyCursor(Long rootCommentId, Long cursorId);
 
-    Optional<CursorPosition> findReplyCursor(Long rootCommentId, Long cursorId);
+    List<CommentResponse> findRootComments(Long postId, Long cursorId, int fetchSize);
 
-    List<CommentResponse> findRootComments(Long postId, CursorPosition cursor, int fetchSize);
+    record ReplyStats(long activeCount, long totalCount) {}
+
+    Map<Long, ReplyStats> findReplyStats(List<Long> rootCommentIds);
 
     Map<Long, List<CommentResponse>> findTopReplyPreviews(List<Long> rootCommentIds);
 
-    List<CommentResponse> findReplies(Long rootCommentId, CursorPosition cursor, int fetchSize);
+    List<CommentResponse> findReplies(Long rootCommentId, Long cursorId, int fetchSize);
 
     long countActiveReplies(Long rootCommentId);
+
+    long countReplies(Long rootCommentId);
 }

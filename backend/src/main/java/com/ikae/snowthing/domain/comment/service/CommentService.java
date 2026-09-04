@@ -10,7 +10,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
-import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom;
+import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom.ReplyStats;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
@@ -83,15 +83,13 @@ public class CommentService {
                                                     new CustomAuthException(
                                                             ErrorCode.POST_NOT_FOUND));
 
-                    if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-                        throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
-                    }
+                    validatePostVisibility(post);
 
                     Comment parent = null;
                     if (request.parentId() != null) {
                         Comment requestedParent =
                                 commentRepository
-                                        .findByIdForUpdate(request.parentId())
+                                        .findById(request.parentId())
                                         .orElseThrow(
                                                 () ->
                                                         new CustomAuthException(
@@ -147,30 +145,30 @@ public class CommentService {
                         .findByPublicId(postPublicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
-        }
+        validatePostVisibility(post);
 
-        CommentRepositoryCustom.CursorPosition cursorPosition =
-                cursor == null
-                        ? null
-                        : commentRepository
-                                .findRootCursor(post.getId(), cursor)
-                                .orElseThrow(
-                                        () -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+        if (cursor != null && !commentRepository.existsRootCursor(post.getId(), cursor)) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
         List<CommentResponse> fetched =
-                commentRepository.findRootComments(post.getId(), cursorPosition, size + 1);
+                commentRepository.findRootComments(post.getId(), cursor, size + 1);
         boolean hasNext = fetched.size() > size;
         List<CommentResponse> roots = new ArrayList<>(hasNext ? fetched.subList(0, size) : fetched);
-        Map<Long, List<CommentResponse>> previews =
-                commentRepository.findTopReplyPreviews(
-                        roots.stream().map(CommentResponse::commentId).toList());
+        List<Long> rootIds = roots.stream().map(CommentResponse::commentId).toList();
+        Map<Long, ReplyStats> replyStats = commentRepository.findReplyStats(rootIds);
+        Map<Long, List<CommentResponse>> previews = commentRepository.findTopReplyPreviews(rootIds);
         List<CommentResponse> comments =
                 roots.stream()
                         .map(
-                                root ->
-                                        root.withPreviewReplies(
-                                                previews.getOrDefault(root.commentId(), List.of())))
+                                root -> {
+                                    ReplyStats stat =
+                                            replyStats.getOrDefault(
+                                                    root.commentId(), new ReplyStats(0, 0));
+                                    List<CommentResponse> rootPreviews =
+                                            previews.getOrDefault(root.commentId(), List.of());
+                                    return root.withReplyInfo(
+                                            stat.totalCount(), stat.totalCount() > 5, rootPreviews);
+                                })
                         .toList();
         Long nextCursor = hasNext && !comments.isEmpty() ? comments.getLast().commentId() : null;
         return new PostCommentListResponse(
@@ -183,27 +181,31 @@ public class CommentService {
                 commentRepository
                         .findById(commentId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+
+        Post post =
+                postRepository
+                        .findById(root.getPost().getId())
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        validatePostVisibility(post);
+
         if (root.getParent() != null) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
-        CommentRepositoryCustom.CursorPosition cursorPosition =
-                cursor == null
-                        ? null
-                        : commentRepository
-                                .findReplyCursor(commentId, cursor)
-                                .orElseThrow(
-                                        () -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
-        List<CommentResponse> fetched =
-                commentRepository.findReplies(commentId, cursorPosition, size + 1);
+        if (cursor != null && !commentRepository.existsReplyCursor(commentId, cursor)) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+        List<CommentResponse> fetched = commentRepository.findReplies(commentId, cursor, size + 1);
         boolean hasNext = fetched.size() > size;
         List<CommentResponse> replies = List.copyOf(hasNext ? fetched.subList(0, size) : fetched);
         Long nextCursor = hasNext && !replies.isEmpty() ? replies.getLast().commentId() : null;
         return new CommentReplyListResponse(
-                commentId,
-                commentRepository.countActiveReplies(commentId),
-                replies,
-                nextCursor,
-                hasNext);
+                commentId, commentRepository.countReplies(commentId), replies, nextCursor, hasNext);
+    }
+
+    private void validatePostVisibility(Post post) {
+        if (post == null || post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+        }
     }
 
     private void validateReadSize(int size) {

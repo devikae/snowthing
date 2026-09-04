@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,8 +33,11 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.dto.PostResponse;
+import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
+import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
+import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
@@ -45,6 +50,7 @@ class CommentReadTest {
 
     @Autowired private CommentService commentService;
     @Autowired private PostService postService;
+    @Autowired private PostRepository postRepository;
     @Autowired private MemberRepository memberRepository;
     @Autowired private PostCategoryRepository categoryRepository;
     @Autowired private PasswordEncoder passwordEncoder;
@@ -158,6 +164,33 @@ class CommentReadTest {
         }
 
         @Test
+        @DisplayName("대댓글 중 일부가 삭제되어도 replyCount, 프리뷰, 더보기 기준은 화면 노출 기준으로 전체 대댓글 수를 일관되게 반영한다")
+        void replyCountAndHasMoreConsistentWithDeletedReplies() {
+            CommentResponse root = createRoot("루트 댓글");
+            List<CommentResponse> replies = new ArrayList<>();
+            for (int i = 1; i <= 6; i++) {
+                replies.add(createReply(root.commentId(), "대댓글 " + i));
+            }
+
+            commentService.deleteComment(replies.get(0).commentId(), null, userDetails);
+            commentService.deleteComment(replies.get(1).commentId(), null, userDetails);
+
+            PostCommentListResponse response =
+                    commentService.getCommentsByPost(post.publicId(), null, 20);
+            CommentResponse rootDto = response.comments().getFirst();
+
+            assertThat(rootDto.replyCount()).isEqualTo(6);
+            assertThat(rootDto.previewReplies()).hasSize(5);
+            assertThat(rootDto.hasMoreReplies()).isTrue();
+
+            CommentReplyListResponse replyListResponse =
+                    commentService.getCommentReplies(root.commentId(), null, 5);
+            assertThat(replyListResponse.totalReplyCount()).isEqualTo(6);
+            assertThat(replyListResponse.hasNext()).isTrue();
+            assertThat(replyListResponse.replies()).hasSize(5);
+        }
+
+        @Test
         @DisplayName("삭제 루트는 활성 대댓글이 있으면 placeholder로 남고 모두 삭제되면 은닉한다")
         void deletionVisibilityPolicy() {
             CommentResponse root = createRoot("삭제될 루트");
@@ -261,6 +294,34 @@ class CommentReadTest {
                             commentService.getCommentReplies(
                                     firstRoot.commentId(), foreignReply.commentId(), 20),
                     ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("게시글이 삭제된 경우 대댓글 직접 조회 시 POST_NOT_FOUND를 반환한다")
+        void repliesOfDeletedPostThrowsException() {
+            CommentResponse root = createRoot("루트 댓글");
+            createReply(root.commentId(), "대댓글");
+
+            Post postEntity = postRepository.findByPublicId(post.publicId()).orElseThrow();
+            postEntity.softDelete();
+
+            assertErrorCode(
+                    () -> commentService.getCommentReplies(root.commentId(), null, 20),
+                    ErrorCode.POST_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("게시글이 차단(BLOCKED)된 경우 대댓글 직접 조회 시 POST_NOT_FOUND를 반환한다")
+        void repliesOfBlockedPostThrowsException() {
+            CommentResponse root = createRoot("루트 댓글");
+            createReply(root.commentId(), "대댓글");
+
+            Post postEntity = postRepository.findByPublicId(post.publicId()).orElseThrow();
+            postEntity.changeStatus(PostStatus.BLOCKED);
+
+            assertErrorCode(
+                    () -> commentService.getCommentReplies(root.commentId(), null, 20),
+                    ErrorCode.POST_NOT_FOUND);
         }
     }
 

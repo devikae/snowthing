@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Propagation;
@@ -46,6 +47,7 @@ import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @Transactional
 class CommentCreateTest {
 
@@ -53,7 +55,7 @@ class CommentCreateTest {
     static void useRealMySql(DynamicPropertyRegistry registry) {
         String testDbUrl = System.getenv("SNOWTHING_TEST_DB_URL");
         if (testDbUrl == null || testDbUrl.isBlank()) {
-            return;
+            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
         }
         registry.add("spring.datasource.url", () -> testDbUrl);
         registry.add(
@@ -86,6 +88,7 @@ class CommentCreateTest {
     @Autowired private PostCategoryRepository categoryRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EntityManager entityManager;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     private CustomUserDetails userDetails;
     private PostResponse postResponse;
@@ -395,6 +398,13 @@ class CommentCreateTest {
                     .isEqualTo(100);
         } finally {
             executor.shutdownNow();
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+            jdbcTemplate.execute("DELETE FROM comment");
+            jdbcTemplate.execute(
+                    "DELETE FROM post WHERE public_id = '" + postResponse.publicId() + "'");
+            jdbcTemplate.execute(
+                    "DELETE FROM member WHERE member_id = " + userDetails.getMember().getId());
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
         }
     }
 

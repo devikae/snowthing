@@ -6,10 +6,10 @@ spring:
       - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
 
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${SNOWTHING_DB_USERNAME:snowuser}
+    password: ${SNOWTHING_DB_PASSWORD:snowthing_pass_2026!}
 
   jpa:
     hibernate:
@@ -17,4 +17,5 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect

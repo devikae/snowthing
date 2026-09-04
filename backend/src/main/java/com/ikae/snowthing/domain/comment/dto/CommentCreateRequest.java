@@ -12,4 +12,5 @@ public record CommentCreateRequest(
                 @Size(max = 1000, message = "댓글은 최대 1000자까지 입력 가능합니다.")
                 String content,
         boolean isAnonymous,
-        String anonymousPassword) {}
+        @Size(min = 4, max = 20, message = "익명 비밀번호는 4자 이상 20자 이하로 입력해야 합니다.")
+                String anonymousPassword) {}

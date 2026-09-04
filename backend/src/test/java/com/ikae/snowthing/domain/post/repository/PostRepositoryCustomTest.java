@@ -39,7 +39,15 @@ class PostRepositoryCustomTest {
     @BeforeEach
     void setUp() {
         freeCategory =
-                categoryRepository.save(PostCategory.builder().name("자유게시판").code("FREE").build());
+                categoryRepository
+                        .findByCode("FREE")
+                        .orElseGet(
+                                () ->
+                                        categoryRepository.save(
+                                                PostCategory.builder()
+                                                        .name("자유게시판")
+                                                        .code("FREE")
+                                                        .build()));
 
         testMember =
                 memberRepository.save(

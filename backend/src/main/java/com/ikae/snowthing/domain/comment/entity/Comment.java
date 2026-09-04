@@ -20,11 +20,11 @@ import lombok.NoArgsConstructor;
         name = "comment",
         indexes = {
             @Index(
-                    name = "idx_comment_post_parent_created",
-                    columnList = "post_id,parent_id,created_at,comment_id"),
+                    name = "idx_comment_post_parent_id",
+                    columnList = "post_id,parent_id,comment_id"),
             @Index(
-                    name = "idx_comment_parent_deleted_created",
-                    columnList = "parent_id,is_deleted,created_at,comment_id")
+                    name = "idx_comment_parent_deleted_id",
+                    columnList = "parent_id,is_deleted,comment_id")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -97,7 +97,11 @@ public class Comment extends BaseTimeEntity {
     }
 
     public Comment rootParent() {
-        return parent != null ? parent : this;
+        Comment current = this;
+        while (current.getParent() != null) {
+            current = current.getParent();
+        }
+        return current;
     }
 
     public void softDelete() {

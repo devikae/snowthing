@@ -1,3 +1,107 @@
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 프론트엔드 멘션 UI 제거 및 2-Depth 평탄화 정책 일치화 (2026-09-04)**:
+  1. **가짜 UI(Phantom UI) 제거 및 도메인 스펙 일치화**:
+     - 프론트엔드에서 대댓글 작성 시 대상 닉네임(`@{replyMentionName} 님에게 답글`)을 노출했으나 백엔드 엔티티 및 스키마에는 루트 ID(`parentId`)와 본문만 저장되어 영속되지 않던 UI/데이터 불일치 결함 해소.
+     - 알림 시스템이 부재한 Sprint 03의 '단순 2-Depth 평탄화 정책'(`comment_policy.md`)에 맞추어 `page.tsx` 내의 불필요한 `replyMentionName` 상태 및 멘션 라벨을 완전히 제거하고, 루트 댓글 하위의 순수 2-Depth 답글 입력창 토글(`toggleReplyEditor`)로 단순화.
+  2. **검증 결과**:
+     - Next.js 16 프로덕션 빌드(`npm run build`) **100% SUCCESS** 통과 (TypeScript 타입 에러 0건, 10개 라우트 정상 빌드).
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 프론트엔드 루트 댓글 등록 후 화면 갱신 UX 개선 (Append-on-Create 적용) (2026-09-04)**:
+  1. **첫 페이지 덮어쓰기(Re-fetch)로 인한 새 댓글 시각적 증발 버그 해결**:
+     - 오래된 순(ASC) 페이징 환경에서 다음 페이지(`hasNextComments`)가 존재할 때 신규 댓글 등록 후 첫 페이지(`fetchComments()`)를 다시 불러와, 방금 등록한 최신 댓글이 화면에서 사라져 등록 실패로 오인하게 만들던 UX 결함 해소.
+     - `page.tsx`의 `handleCreateComment`에서 `if (hasNextComments)` 분기를 제거하고, 다음 페이지 존재 여부와 무관하게 서버 응답 객체(`createdComment`)를 현재 댓글 목록 끝에 즉시 결합(`[...current, createdComment]`)하도록 일원화.
+  2. **검증 결과**:
+     - Next.js 16 최적화 프로덕션 빌드(`npm run build`) **100% SUCCESS** 통과 (TypeScript 컴파일 및 10개 라우트 정적/동적 생성 정상 완료).
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: `Comment.rootParent()` 최상위 조상 반복 탐색 로직 개선 및 다계층 방어 (2026-09-04)**:
+  1. **암묵적 2-Depth 가정 탈피 및 최상위 루트 노드 반복 탐색(Root Traversal) 확립**:
+     - 기존 `rootParent()`가 단순 1단계 부모 반환(`parent != null ? parent : this`)으로 작성되어 "부모는 무조건 루트 댓글일 것이다"라는 암묵적 규칙에 취약했던 결함 개선.
+     - `while (current.getParent() != null)` 반복 탐색 로직을 도입하여, 3-depth 이상의 계층 데이터가 존재하더라도 최상위 조상(`parent == null`)까지 확실하게 추적해 진짜 루트 엔티티를 반환하도록 방어적 프로그래밍 구현.
+  2. **단위 테스트 신설 (`CommentTest.java`)**:
+     - 루트 댓글 단독 호출(`root.rootParent() == root`), 일반 2-depth 대댓글(`child.rootParent() == root`), 3-depth 이상 임의 계층(`grandson.rootParent() == grandfather`) 3대 시나리오 단위 테스트 100% 검증.
+  3. **검증 결과**:
+     - `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 128개 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 대댓글 개수·미리보기·더보기 기준 화면 노출 노드(`totalCount`) 일원화 및 정책 동기화 (2026-09-04)**:
+  1. **UI 렌더링 노드 기준 기준 통일 (인지 부조화 해결)**:
+     - 기존에 `replyCount`는 활성 대댓글만 세고(`activeCount`), 미리보기(상위 5개) 및 더보기(`hasMoreReplies`)는 삭제된 대댓글 placeholder를 포함한 전체 수(`totalCount`)를 기준으로 삼아 발생하던 UI 불일치(예: '답글 2개'인데 5개가 펼쳐지고 더보기 버튼이 뜨는 현상)를 해소.
+     - 화면에 한 줄의 높이를 차지하며 렌더링되는 모든 대댓글 노드 수(`totalCount`)로 `replyCount`, `previewReplies`, `hasMoreReplies`, `totalReplyCount`의 기준을 100% 일치시킴.
+  2. **도메인 정책 문서 공식 갱신**:
+     - `docs/conception/sprint03/comment_policy.md`의 `replyCount` 명세를 수정하여, 화면 렌더링 노드 일원화 정책에 따라 삭제 대댓글 placeholder를 포함한 전체 대댓글 수(`totalCount`)로 카운트 및 페이징을 통합함을 명문화.
+  3. **코드 및 테스트 반영**:
+     - `CommentRepositoryCustom` 및 `CommentRepositoryImpl`에 `countReplies(Long rootCommentId)` 구현 (단순 `COUNT(*)`로 일원화).
+     - `CommentService.getCommentsByPost` 및 `getCommentReplies`에서 `replyCount` 매핑을 `stat.totalCount()`로 일원화.
+     - `CommentReadTest`에 대댓글 일부 삭제 시에도 화면 노출 기준으로 `replyCount`, 프리뷰(5개), `hasMoreReplies(true)`가 완벽히 일치함을 검증하는 테스트 신설.
+  4. **검증 결과**:
+     - `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 125개 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 대댓글 직접 조회 시 상위 게시글 가시성 검증 일원화 (2026-09-04)**:
+  1. **상위 리소스 가시성 우회(Visibility Bypass / IDOR) 차단**:
+     - 분리 페이징 API(`GET /api/v1/comments/{commentId}/replies`)에서 게시글의 삭제 여부(`isDeleted`) 및 공개 상태(`PostStatus.NORMAL`) 검증이 누락되어 있던 보안/비즈니스 홀 차단.
+     - `CommentService`에 `validatePostVisibility(Post post)` 공통 검증 메서드를 정의하고, 댓글 작성(`createComment`), 루트 댓글 조회(`getCommentsByPost`), 대댓글 분리 조회(`getCommentReplies`) 3대 진입점에 일관되게 적용.
+  2. **Soft Delete(`@SQLRestriction`) 충돌 방어 및 2단계 Clustered Index Point Lookup 확립**:
+     - `Post`의 `@SQLRestriction("is_deleted = false")`와 Non-null `@ManyToOne` 간의 Broken Entity Relationship(`JpaObjectRetrievalFailureException`) 발생을 원천 차단하기 위해, `commentRepository.findById(commentId)`로 댓글 존재를 먼저 보장한 뒤 `postRepository.findById(postId)`로 게시글 가시성을 순차 검증하도록 설계.
+     - 두 단계 모두 MySQL Clustered Index PK Seek(`WHERE id = ?`, 0.1ms)로 실행되어 초고속 조회 및 정확한 비즈니스 에러(`COMMENT_NOT_FOUND` vs `POST_NOT_FOUND`) 분기 100% 달성.
+  3. **검증 결과**:
+     - `CommentReadTest`에 삭제된 게시글 및 차단(`BLOCKED`)된 게시글 대상 대댓글 직접 조회 차단 테스트 2종 신설.
+     - `spotlessApply` 및 `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 124개 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+  4. **학습 정리 문서 작성**:
+     - `docs/study/sprint03/studyCommentPostVisibilityFetchJoinVsLazyLoading260904.md`에 문제 배경, 4대 후보 비교, 단순 코스트(RTT/CPU/I/O) 매트릭스, `@SQLRestriction` 사이드이펙트, 7대 요소 체계 완벽 문서화 완료.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 대댓글 생성 시 루트 선행 잠금 및 부모 락 배제를 통한 데드락(Deadlock) 원천 방지 (2026-09-04)**:
+  1. **부모 댓글 조회 시 배타적 락(X-Lock) 제거 및 단순 조회 전환**:
+     - `CommentService.createComment`에서 요청된 부모 댓글(`request.parentId`)의 존재 여부 및 최상위 루트 ID(`rootCommentId`) 식별 목적에 불과한 `findByIdForUpdate`를 제거하고 단순 `findById`로 변경.
+     - 부모 행에 대한 불필요한 X-Lock 획득을 배제하여 부모-루트 간 교차 락(Deadlock) 발생 경로를 원천 차단.
+  2. **트랜잭션 락 획득 순서 단일화 (루트 선행 X-Lock -> 자식 S-Lock 카운트)**:
+     - 루트 댓글에 직접 답글을 달 때와 하위 대댓글에 답글을 달 때 모두 항상 [최상위 루트 댓글 선행 배타적 락(`findByIdForUpdate(rootCommentId)`)]을 일관되게 가장 먼저 획득하도록 보장.
+     - 100개 상한 검증 시 MySQL `REPEATABLE_READ` 격리 수준의 Snapshot Read 한계를 방어하기 위해 `findActiveReplyIdsForUpdate`(`@Lock(LockModeType.PESSIMISTIC_READ)`)로 최신 커밋 상태(Locking Read)를 읽어 정합성 보장.
+     - 모든 동시 트랜잭션이 동일한 락 획득 방향(루트 X-Lock -> 자식 S-Lock)을 유지하므로 순환 대기(Circular Wait)가 물리적으로 성립하지 않음.
+  3. **검증 결과**:
+     - `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 122개 단위/통합 테스트(`gradle test --rerun`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 1차·2차 쿼리 최적화 (스칼라 서브쿼리 제거 배치 집계 전환 & CROSS JOIN LATERAL 적용 및 H2 완전 제거) (2026-09-04)**:
+  1. **1차 쿼리(`findRootComments`) 스칼라 서브쿼리 다발 제거 및 배치 집계 분리**:
+     - 기존 `SELECT` 절에서 매 루트 댓글 행마다 반복 실행되던 `reply_count`와 `has_more_replies` 스칼라 서브쿼리 2개(20건 조회 시 총 40회 실행)를 완전 제거.
+     - 루트 댓글 ID 목록을 기반으로 단 1번의 배치 GROUP BY 쿼리(`findReplyStats`: `SELECT parent_id, COUNT(CASE WHEN is_deleted = false THEN 1 END) AS active_count, COUNT(*) AS total_count FROM comment WHERE parent_id IN (:rootCommentIds) GROUP BY parent_id`)로 분리.
+     - `idx_comment_parent_deleted_id(parent_id, is_deleted, comment_id)` 커버링 인덱스를 활용하여 테이블 랜덤 I/O 없이 메모리에서 DTO와 O(1) 매핑 조립.
+  2. **2차 쿼리(`findTopReplyPreviews`) `CROSS JOIN LATERAL` 도입 (MySQL 8.0 Top-5 최적화)**:
+     - 윈도우 함수 및 임시 파생 테이블(Derived Table)을 배제하고, 외부 루트 댓글 각 행마다 `LIMIT 5`를 직접 거는 `CROSS JOIN LATERAL` 쿼리로 전환.
+     - 루트 댓글당 필요한 5건만 인덱스 탐색 즉시 중단(Early Termination) 및 선별된 건에 대해서만 `member`를 조인하여 불필요한 스캔과 Early Join 낭비 0건 달성.
+  3. **H2 완전 제거 및 테스트 환경 MySQL 8.0 전면 통일 (Environment Parity 확보)**:
+     - `build.gradle`에서 `com.h2database:h2` 의존성을 완전 삭제.
+     - `application-test.yml`을 MySQL 8.0 (`jdbc:mysql://localhost:3306/snowthing_test`) 및 `MySQLDialect`로 전환하여 로컬 Docker MySQL과 직통 연동.
+     - `.github/workflows/gradle.yml` CI 파이프라인에 MySQL 8.0 서비스 컨테이너(`services: mysql: image: mysql:8.0`)를 추가하여 프로덕션과 테스트 환경의 DB 방언 및 동작 100% 일치 보장.
+  4. **검증 결과**:
+     - `application.yml` 로컬 DB 패스워드 기본값 설정 및 `bootRun` 실제 서버 기동 검증: HTTP 200 OK 응답 정상 수신 확인.
+     - `frontend` Next.js 16 프로덕션 빌드(`npm run build`) **100% SUCCESS** 통과.
+     - `spotlessApply` 및 `spotlessCheck` 서식 교정 100% 통과.
+     - `PostRepositoryCustomTest` 카테고리 중복 가드 및 `CommentCreateTest` 동시성 테스트 DB 클린업 보강.
+     - 실제 MySQL 8.0 환경 기반 **백엔드 전체 122개 단위/통합 테스트(`gradle test --rerun`) 100% BUILD SUCCESSFUL (32s)** 완전 통과.
+
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: PK(`comment_id`) 기반 논리적 시퀀스 단일 커서 전환 및 인덱스 최적화 (2026-09-04)**:
+  1. **시계열 오차 해소 및 쿼리 단순화**:
+     - 기존 `(created_at, comment_id)` 복합 시계열 커서의 클락 스큐(Clock Skew) 및 트랜잭션 지연에 따른 누락(Phantom Skip) 위험을 해소하기 위해, 단조 증가하는 `comment_id` 단일 커서(`AND c.comment_id > :cursorId`) 및 단일 정렬(`ORDER BY c.comment_id ASC`)로 전환.
+  2. **DB 중복 쿼리 제거 (RTT 50% 절감)**:
+     - 커서의 시각(`created_at`)을 얻기 위해 매 페이징마다 날아가던 선행 `findRootCursor` / `findReplyCursor` SELECT 쿼리를 제거하고, 경량 존재 검증(`existsRootCursor`, `existsReplyCursor`) 및 `cursorId` 직통 전달로 최적화.
+  3. **인덱스 및 DDL 다이어트**:
+     - `Comment.java` 및 `database/ddl.sql`의 복합 인덱스에서 불필요한 `created_at` 컬럼을 제거하여 `idx_comment_post_parent_id(post_id, parent_id, comment_id)` 및 `idx_comment_parent_deleted_id(parent_id, is_deleted, comment_id)`로 B-Tree 인덱스 용량 절감 및 Clustered Index 정렬 일치.
+  4. **검증 결과**:
+     - Spotless 서식 교정(`spotlessApply`) 및 댓글 도메인 전체 단위/통합 테스트(`gradle test --tests com.ikae.snowthing.domain.comment.*`) **100% BUILD SUCCESSFUL (20s)** 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: `CommentResponse` 작성자명 상수화 및 축약 IP 표기 적용 (2026-09-04)**:
+  1. **작성자명 1줄 상수화 및 Plain String 제거**:
+     - `CommentResponse.java` 내부에 `private static final String ANONYMOUS_NAME = "ㅇㅇ";` 상수를 선언하여 하드코딩된 리터럴 완전 제거 및 리뷰어 피드백 수용.
+  2. **익명 축약 IP 포맷팅 (`ㅇㅇ(xxx.xxx)`) 및 일반 회원 정보 보호**:
+     - 익명 댓글인 경우 4옥텟 전체 또는 긴 마스킹 문자열 대신 앞 2개 옥텟만 취하여 `ㅇㅇ(xxx.xxx)` 형태로 간결하게 노출. IP 누락 시 `ㅇㅇ` 반환.
+     - 비익명 일반 회원 댓글의 경우 IP 노출을 원천 차단하고 닉네임을 반환하며, 회원 객체 누락/탈퇴 시에도 `"알 수 없음"` 대신 기본 상수(`ㅇㅇ`)를 반환하도록 Early Return 패턴으로 로직 평탄화.
+  3. **단위 테스트 검증**:
+     - `CommentResponseTest.java` 신설하여 5대 시나리오(마스킹 IP, 원시 IP, IP 누락, 회원 정상 닉네임, 회원 null fallback) 100% 검증 통과.
+     - Spotless 서식 교정(`spotlessApply`) 및 댓글 도메인 전체 테스트(`gradle test --tests com.ikae.snowthing.domain.comment.*`) **100% BUILD SUCCESSFUL (16s)** 통과.
+
 - **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영 및 대댓글 인덱스/설정 최적화 (2026-09-02)**:
   1. **대댓글 복합 인덱스(idx_comment_parent_deleted_created) 최적화**:
      - `database/ddl.sql` 및 `Comment.java` `@Index` 명세를 `(parent_id, created_at, comment_id)` ➔ `(parent_id, is_deleted, created_at, comment_id)`로 변경.
@@ -739,3 +843,26 @@
   6. 댓글·대댓글 응답 병합 시 `commentId` 중복을 방어하고, 삭제된 루트 placeholder 아래의 대댓글과 답글 작성 기능은 유지.
   7. 검증 결과: 변경 파일 대상 ESLint 오류 0건(기존 `<img>` 최적화 경고 1건), `npm run build` 및 TypeScript 검사 통과.
   8. 확인 이슈: 전체 `npm run lint`는 이번 변경과 무관한 기존 `ToastEditor.tsx`, `ToastViewer.tsx`, 게시글 작성·목록 페이지의 오류 6건 때문에 실패. 브라우저 수동 검증은 백엔드와 테스트 데이터가 실행된 환경에서 추가 확인 필요.
+- **Sprint 03 comment CR review fix: preview reply limit state synchronization (2026-09-04)**:
+  - After creating a reply, `previewReplies` is capped at five items with `slice(0, 5)`.
+  - `hasMoreReplies` is recalculated from the updated `replyCount`, so the load-more state is enabled immediately when the sixth reply is created.
+  - `npx eslint 'app/posts/[publicId]/page.tsx'` passed with no errors; one pre-existing `@next/next/no-img-element` warning remains.
+
+- **Sprint 03 comment CR review fix: prevent duplicate reply submissions (2026-09-04)**:
+  1. Reused the existing `submittingComment` request state for reply submissions instead of introducing a separate state store or changing the API contract.
+  2. Added an early-return guard to `handleCreateComment()` and disabled the reply submit button while a comment request is in progress.
+  3. No backend API, database schema, or external dependency changes were required.
+  4. Validation: targeted ESLint passed with no errors and one pre-existing `@next/next/no-img-element` warning; `npm run build` passed.
+- **Sprint 03 댓글 생성 CR 리뷰 반영: 동시성 테스트 MySQL 엔진 강제 (2026-09-04)**:
+  - `CommentCreateTest`에 `test` 프로필을 명시하고 `SNOWTHING_TEST_DB_URL` 누락 시 H2 fallback 대신 `CustomAuthException(INVALID_INPUT)`으로 즉시 실패하도록 변경했습니다.
+  - GitHub Actions에 MySQL 8.0 테스트 DB URL·계정 환경변수를 명시해 `SELECT FOR UPDATE` 검증이 운영과 동일한 InnoDB에서 수행되도록 했습니다.
+
+- **Sprint 03 댓글 생성 CR 리뷰 반영: 익명 비밀번호 경계값 검증 완료 (2026-09-04)**:
+  - 상태: DONE
+  - 명세의 4~20자 조건과 달리 `CommentCreateRequest.anonymousPassword`에 길이 검증이 없음을 확인했습니다.
+  - `@Size(min = 4, max = 20)`로 API 입력 경계에서 검증하고, MockMvc로 3·4·20·21자 경계값을 확인할 계획입니다.
+  - 서비스 직접 호출 테스트는 `@Valid`를 실행하지 않으므로 기존 정상 저장·암호화 검증 역할만 유지합니다.
+  - `CommentCreateRequest.anonymousPassword`에 `@Size(min = 4, max = 20)`를 적용했습니다. `null`은 허용하므로 비밀번호가 필요 없는 회원 요청 계약은 유지됩니다.
+  - MockMvc 경계 테스트에서 3·21자는 `400 Bad Request`와 `COMMON_001`, 4·20자는 `201 Created`를 검증했습니다.
+  - `CommentControllerTest`와 `spotlessCheck`는 통과했습니다.
+  - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
