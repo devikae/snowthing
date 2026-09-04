@@ -2,7 +2,7 @@
 
 - **브랜치명**: `devikae/sprint03-spikeTest-03-Batch/API`
 - **측정 일시**: 2026-08-29
-- **작성자**: devikae (자동 생성)
+- **작성자**: devikae 
 
 ---
 
