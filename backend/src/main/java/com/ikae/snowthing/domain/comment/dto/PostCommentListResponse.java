@@ -2,16 +2,13 @@ package com.ikae.snowthing.domain.comment.dto;
 
 import java.util.List;
 
-import lombok.Builder;
-
-@Builder
 public record PostCommentListResponse(
-        String publicId, int totalCommentCount, List<CommentResponse> comments) {
+        String publicId,
+        int totalCommentCount,
+        List<CommentResponse> comments,
+        Long nextCursor,
+        boolean hasNext) {
     public PostCommentListResponse {
-        if (comments == null) {
-            comments = List.of();
-        } else {
-            comments = List.copyOf(comments);
-        }
+        comments = comments == null ? List.of() : List.copyOf(comments);
     }
 }

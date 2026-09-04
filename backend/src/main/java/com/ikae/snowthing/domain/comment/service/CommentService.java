@@ -10,6 +10,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
+import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom.ReplyStats;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
@@ -27,6 +28,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CommentService {
+
+    private static final long MAX_REPLY_COUNT = 100L;
+    private static final int DEFAULT_READ_SIZE = 20;
+    private static final int MAX_READ_SIZE = 50;
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
@@ -78,13 +83,11 @@ public class CommentService {
                                                     new CustomAuthException(
                                                             ErrorCode.POST_NOT_FOUND));
 
-                    if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-                        throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
-                    }
+                    validatePostVisibility(post);
 
                     Comment parent = null;
                     if (request.parentId() != null) {
-                        parent =
+                        Comment requestedParent =
                                 commentRepository
                                         .findById(request.parentId())
                                         .orElseThrow(
@@ -93,21 +96,36 @@ public class CommentService {
                                                                 ErrorCode
                                                                         .PARENT_COMMENT_NOT_FOUND));
 
-                        if (!parent.getPost().getId().equals(post.getId())) {
+                        if (!requestedParent.getPost().getId().equals(post.getId())) {
                             throw new CustomAuthException(ErrorCode.INVALID_COMMENT_PARENT);
+                        }
+
+                        Long rootCommentId = requestedParent.rootParent().getId();
+                        parent =
+                                commentRepository
+                                        .findByIdForUpdate(rootCommentId)
+                                        .orElseThrow(
+                                                () ->
+                                                        new CustomAuthException(
+                                                                ErrorCode
+                                                                        .PARENT_COMMENT_NOT_FOUND));
+
+                        long activeReplyCount =
+                                commentRepository.findActiveReplyIdsForUpdate(rootCommentId).size();
+                        if (activeReplyCount >= MAX_REPLY_COUNT) {
+                            throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
                         }
                     }
 
                     Comment comment =
-                            Comment.builder()
-                                    .post(post)
-                                    .member(finalMember)
-                                    .parent(parent)
-                                    .content(request.content())
-                                    .writerIp(clientIp != null ? clientIp : "127.0.0.1")
-                                    .isAnonymous(request.isAnonymous())
-                                    .anonymousPassword(finalEncodedPassword)
-                                    .build();
+                            Comment.create(
+                                    post,
+                                    finalMember,
+                                    parent,
+                                    request.content(),
+                                    clientIp != null ? clientIp : "127.0.0.1",
+                                    request.isAnonymous(),
+                                    finalEncodedPassword);
 
                     Comment savedComment = commentRepository.save(comment);
                     postRepository.increaseCommentCount(post.getId());
@@ -117,39 +135,83 @@ public class CommentService {
     }
 
     public PostCommentListResponse getCommentsByPost(String postPublicId) {
+        return getCommentsByPost(postPublicId, null, DEFAULT_READ_SIZE);
+    }
+
+    public PostCommentListResponse getCommentsByPost(String postPublicId, Long cursor, int size) {
+        validateReadSize(size);
         Post post =
                 postRepository
                         .findByPublicId(postPublicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+        validatePostVisibility(post);
+
+        if (cursor != null && !commentRepository.existsRootCursor(post.getId(), cursor)) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+        List<CommentResponse> fetched =
+                commentRepository.findRootComments(post.getId(), cursor, size + 1);
+        boolean hasNext = fetched.size() > size;
+        List<CommentResponse> roots = new ArrayList<>(hasNext ? fetched.subList(0, size) : fetched);
+        List<Long> rootIds = roots.stream().map(CommentResponse::commentId).toList();
+        Map<Long, ReplyStats> replyStats = commentRepository.findReplyStats(rootIds);
+        Map<Long, List<CommentResponse>> previews = commentRepository.findTopReplyPreviews(rootIds);
+        List<CommentResponse> comments =
+                roots.stream()
+                        .map(
+                                root -> {
+                                    ReplyStats stat =
+                                            replyStats.getOrDefault(
+                                                    root.commentId(), new ReplyStats(0, 0));
+                                    List<CommentResponse> rootPreviews =
+                                            previews.getOrDefault(root.commentId(), List.of());
+                                    return root.withReplyInfo(
+                                            stat.totalCount(), stat.totalCount() > 5, rootPreviews);
+                                })
+                        .toList();
+        Long nextCursor = hasNext && !comments.isEmpty() ? comments.getLast().commentId() : null;
+        return new PostCommentListResponse(
+                postPublicId, post.getCommentCount(), comments, nextCursor, hasNext);
+    }
+
+    public CommentReplyListResponse getCommentReplies(Long commentId, Long cursor, int size) {
+        validateReadSize(size);
+        Comment root =
+                commentRepository
+                        .findById(commentId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+
+        Post post =
+                postRepository
+                        .findById(root.getPost().getId())
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        validatePostVisibility(post);
+
+        if (root.getParent() != null) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+        if (cursor != null && !commentRepository.existsReplyCursor(commentId, cursor)) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+        List<CommentResponse> fetched = commentRepository.findReplies(commentId, cursor, size + 1);
+        boolean hasNext = fetched.size() > size;
+        List<CommentResponse> replies = List.copyOf(hasNext ? fetched.subList(0, size) : fetched);
+        Long nextCursor = hasNext && !replies.isEmpty() ? replies.getLast().commentId() : null;
+        return new CommentReplyListResponse(
+                commentId, commentRepository.countReplies(commentId), replies, nextCursor, hasNext);
+    }
+
+    private void validatePostVisibility(Post post) {
+        if (post == null || post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
+    }
 
-        List<Comment> comments = commentRepository.findByPostIdWithMember(post.getId());
-
-        Map<Long, CommentResponse> map = new LinkedHashMap<>();
-        for (Comment comment : comments) {
-            map.put(comment.getId(), CommentResponse.from(comment));
+    private void validateReadSize(int size) {
+        if (size < 1 || size > MAX_READ_SIZE) {
+            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
         }
-
-        List<CommentResponse> rootComments = new ArrayList<>();
-        for (CommentResponse dto : map.values()) {
-            if (dto.parentId() == null) {
-                rootComments.add(dto);
-            } else {
-                CommentResponse parentDto = map.get(dto.parentId());
-                if (parentDto != null) {
-                    parentDto.children().add(dto);
-                }
-            }
-        }
-
-        return PostCommentListResponse.builder()
-                .publicId(postPublicId)
-                .totalCommentCount(post.getCommentCount())
-                .comments(rootComments)
-                .build();
     }
 
     @Transactional
