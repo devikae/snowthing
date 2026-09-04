@@ -16,7 +16,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "comment")
+@Table(
+        name = "comment",
+        indexes = {
+            @Index(
+                    name = "idx_comment_post_parent_created",
+                    columnList = "post_id,parent_id,created_at,comment_id"),
+            @Index(
+                    name = "idx_comment_parent_created",
+                    columnList = "parent_id,created_at,comment_id")
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SQLDelete(sql = "UPDATE comment SET is_deleted = true, deleted_at = NOW() WHERE comment_id = ?")
@@ -74,6 +83,21 @@ public class Comment extends BaseTimeEntity {
         this.isAnonymous = isAnonymous;
         this.anonymousPassword = anonymousPassword;
         this.isDeleted = false;
+    }
+
+    public static Comment create(
+            Post post,
+            Member member,
+            Comment parent,
+            String content,
+            String writerIp,
+            boolean isAnonymous,
+            String anonymousPassword) {
+        return new Comment(post, member, parent, content, writerIp, isAnonymous, anonymousPassword);
+    }
+
+    public Comment rootParent() {
+        return parent != null ? parent : this;
     }
 
     public void softDelete() {

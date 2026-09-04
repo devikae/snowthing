@@ -55,7 +55,7 @@ sequenceDiagram
     Server->>Session: request.changeSessionId() 호출! (세션 식별자 교체)
     Session-->>Server: 신규 32자리 JSESSIONID 발급 (기존 스키장/성향 검색 필터 세션 데이터 유지)
     
-    Server-->>Client: Set-Cookie: JSESSIONID=A1B2...; Path=/; HttpOnly; SameSite=Lax
+    Server-->>Client: 신규 세션 쿠키 발급 (JSESSIONID, HttpOnly, SameSite=Lax)
     Client-->>User: 로그인 성공 (메인 프로필 대시보드 전환)
 
     Note over User, Server: 4. 인증된 API 요청 (프로필 조회/수정)
@@ -69,12 +69,12 @@ sequenceDiagram
     Client->>Server: POST /api/auth/logout
     Server->>Server: 1) ThreadLocal.clearContext() 청소
     Server->>Session: 2) session.invalidate() 톰캣 세션 파기
-    Server-->>Client: 3) Set-Cookie: JSESSIONID=; Max-Age=0 (쿠키 즉시 만료)
+    Server-->>Client: 3) JSESSIONID 쿠키 만료 응답 (Max-Age=0)
 ```
 
 ---
 
-### 핵심 아키텍처 고민 및 기술적 의사결정 
+### 아키텍처 고민 및 기술적 의사결정
 
 #### 1. 공통 엔티티와 JPA Auditing (`@EnableJpaAuditing`) 도입
 
@@ -111,7 +111,7 @@ sequenceDiagram
 
 ---
 
-## 4. 게시판(Post) 도메인 설계 & 핵심 기술적 의사결정 (Board Architecture & Decisions)
+## 4. 게시판(Post) 도메인 설계 & 기술적 의사결정 (Board Architecture & Decisions)
 
 게시판은 Snowthing에서 가장 자주 읽히는 도메인이다. 그래서 단순 CRUD로만 만들지 않고, 목록 조회 비용, 익명 글 권한, 삭제 정책, 이미지 첨부 상태까지 같이 맞춰서 설계했다.
 
@@ -268,13 +268,187 @@ Page<Post> findByCategoryCodeWithMemberAndCategory(@Param("categoryCode") String
 - `INVALID_PAGE_LIMIT (400)`: offset page 제한을 넘긴 요청
 
 ### 11) CSRF
+
 게시글 생성, 수정, 삭제 같은 CUD 요청은 CSRF 공격 표적이 되기 쉽다.
 Spring Security의 `CookieCsrfTokenRepository.withHttpOnlyFalse()`를 적용했다.
 이 방식은 Double Submit Cookie 패턴으로 동작한다. 백엔드가 `XSRF-TOKEN` 쿠키를 발급하면, 프론트엔드가 자원 변경 요청(POST, PUT, DELETE)을 보낼 때 쿠키 값을 읽어 `X-XSRF-TOKEN` HTTP 헤더에 담아서 보낸다. 서버의 `CsrfFilter`는 쿠키의 토큰 값과 헤더의 토큰 값이 일치하는지 비교하여 검증한다.
 외부 해킹 사이트는 동일 출처 정책(SOP) 제약으로 인해 사용자의 `XSRF-TOKEN` 쿠키를 자바스크립트로 읽을 수 없어 `X-XSRF-TOKEN` 헤더를 생성하지 못하므로 위조된 요청은 403 Forbidden으로 차단된다.
+
 ---
 
-## 5. 프로젝트 물리 디렉토리 구조 (Project Structure)
+## 5. 댓글(Comment) 도메인 설계 & 기술적 의사결정
+
+댓글은 게시글 상세 화면에서 가장 자주 읽히는 데이터다. 그래서 단순히 `post_id`로 전체 댓글을 가져오는 방식 대신, 루트 댓글과 대댓글을 나누고 초기 응답 크기를 제한하는 구조로 설계했다.
+
+자세한 후보 비교와 실행계획은 [ADR-001 댓글 아키텍처](docs/conception/sprint03/ADR-001-댓글아키텍처.md), [댓글 API 명세](docs/conception/sprint03/comment_api_spec.md), [기술부채 해결 기록](docs/conception/sprint03/기술부채%20해결_4.md)에 정리했다.
+
+### 1) 댓글 도메인 구조
+
+댓글 엔티티는 `Comment` 하나로 둔다. 별도의 대댓글 `Reply` 엔티티를 만들지 않고, 하나의 `comment` 테이블에서 `parent_id`로 루트 댓글과 대댓글을 표현한다.
+
+- 루트 댓글: `parent_id = null`
+- 대댓글: `parent_id = 루트 댓글 ID`
+- 대댓글의 대댓글: 서버에서 최상위 루트 댓글 ID로 평탄화
+
+무한 계층을 허용하지 않은 이유는 화면과 쿼리 비용 때문이다. 댓글 깊이가 3단계 이상으로 늘어나면 모바일 화면에서 들여쓰기와 접힘 처리가 복잡해지고, DB 조회도 재귀 구조나 별도 계층 테이블을 고민해야 한다.
+
+현재의 프로젝트에서는 댓글과 대댓글 2단계면 대화 흐름을 표현하기에 충분하다고 판단했다.
+
+### 2) 게시글과 댓글의 관계
+
+게시글과 댓글은 `Post 1 : N Comment` 관계. 댓글은 반드시 하나의 게시글에 속하고, 게시글은 여러 댓글을 가질 수 있다.
+
+```text
+Post
+ └─ Comment(parent_id = null)
+     └─ Comment(parent_id = root_comment_id)
+```
+
+`post.comment_count`는 매번 댓글 테이블을 `COUNT(*)` 하지 않기 위한 역정규화 필드.
+
+댓글 생성과 삭제 시 같은 트랜잭션에서 증감시켜 목록 화면에서 댓글 수를 빠르게 보여준다.
+
+이 선택은 읽기 성능을 얻는 대신, 댓글 저장/삭제 실패와 카운트 갱신 실패의 경계를 반드시 같은 트랜잭션 안에 묶어야 하는 트레이드오프가 있다.
+
+### 3) 댓글 상태와 유형
+
+댓글 상태는 크게 정상 댓글과 Soft Delete 댓글로 나뉜다.
+
+- 정상 댓글: 목록과 상세 화면에 그대로 노출된다.
+- 삭제된 댓글: DB row는 남기고 `is_deleted = true`, `deleted_at`을 기록한다.
+
+작성 유형은 세 가지다.
+
+- 로그인 일반 댓글: 회원 ID를 남기고 닉네임 표시
+- 로그인 익명 댓글: 회원 ID는 서버에 남기되 화면에서는 익명 표시
+- 비로그인 익명 댓글: 작성 IP와 익명 비밀번호 해시로 삭제 권한을 검증한다.
+
+삭제된 루트 댓글은 활성 대댓글 유무에 따라 다르게 처리한다.
+
+```text
+삭제된 루트댓글 + 활성 대댓글 없음 -> 목록에서 숨김
+삭제된 루트댓글 + 활성 대댓글 있음 -> 루트 댓글은 "삭제된 댓글입니다."로 표시하고 활성 대댓글은 그대로 표시
+```
+
+### 4) 댓글 조회 페이지네이션 방식
+
+댓글 조회는 cursor pagination을 사용한다.
+
+```http
+GET /api/v1/posts/{publicId}/comments?cursor={commentId}&size=20
+GET /api/v1/comments/{commentId}/replies?cursor={commentId}&size=20
+```
+
+게시글 댓글 목록은 루트 댓글 20개를 먼저 조회하고, 각 루트 댓글의 대댓글은 5개까지만 같이 보여준다. 대댓글이 5개를 넘으면 사용자가 더보기를 눌렀을 때 대댓글 전용 API로 20개씩 추가 조회한다.
+
+정렬 기준은 루트 댓글과 대댓글 모두 같다.
+
+```sql
+ORDER BY created_at ASC, comment_id ASC
+```
+
+
+### 5) 조회 아키텍처 후보 비교
+
+댓글 조회 구조는 같은 데이터셋과 같은 정책으로 후보 1, 2, 3을 Spike 실험한 뒤 결정했다.
+
+| 후보 | 방식 | 장점 | 단점 및 트레이드오프 | 판단 |
+| :--- | :--- | :--- | :--- | :--- |
+| 후보 1 | 전체 댓글을 한 번에 조회하고 메모리에서 트리 조립 | 쿼리 1회로 끝나 구현이 단순함 | 댓글 수가 늘수록 응답 크기와 메모리 사용량이 같이 증가함 | 기각 |
+| 후보 2 | 루트 댓글 20개 조회 후 해당 루트의 대댓글 전체를 Batch 조회 | 루트 댓글 수를 제한하고 N+1을 피할 수 있음 | 특정 루트에 대댓글이 몰리면 초기 응답이 다시 커짐 | 기각 |
+| 후보 3 | 루트 댓글 20개 + 루트별 대댓글 5개 프리뷰 + 대댓글 분리 API | 초기 응답 크기를 제한하고 핫스팟 댓글에도 대응 가능 | 대댓글 전용 API와 부모별 Top-N 쿼리가 필요함 | 채택 |
+
+실측 결과도 후보 3이 가장 안정적이었다.
+
+| 시나리오 | 후보 1 | 후보 2 | 후보 3 |
+| :--- | :---: | :---: | :---: |
+| 분산 데이터(Post 998) 응답 크기 | 210.44 KB | 39.87 KB | 22.03 KB |
+| 핫스팟 데이터(Post 999) 응답 크기 | 205.84 KB | 103.70 KB | 5.55 KB |
+| 핫스팟 데이터 읽은 행 수 | 1,000행 | 520행 | 25행 |
+
+후보 3은 API가 하나 늘어나지만 댓글 조회 시 대댓글 500개를 한 번에 읽어오는 상황을 피할 수 있었다.
+
+커뮤니티 서비스에서는 댓글이 많은 글도 빠르게 보여줘야 한다고 생각해서, 초기 응답 크기를 제한하는 방식을 생각했다.
+
+### 6) 선택한 방식의 기술부채
+
+해당 방식을 선택하면서 다음 기술부채가 남았다.
+
+1. 부모별 Top-5 조회를 위한 MySQL 8.0 `ROW_NUMBER() OVER (PARTITION BY parent_id)`.
+2. 게시글 댓글 조회 API 외에 대댓글 전용 페이징 API의 별도 관리.
+3. `ORDER BY created_at ASC, comment_id ASC` 정렬을 안정적으로 처리하기 위한 복합 인덱스.
+4. MySQL 실행계획에서 윈도우 함수 처리로 `Using temporary`, `Using filesort`가 일부 남을 수 있다.
+
+
+### 7) 기술부채 개선 내용
+
+부모별 Top-5 프리뷰는 MySQL 8.0 윈도우 함수로 구현했다.
+
+```sql
+ROW_NUMBER() OVER (
+    PARTITION BY c.parent_id
+    ORDER BY c.created_at ASC, c.comment_id ASC
+) AS rn
+```
+
+대댓글 전용 API는 `GET /api/v1/comments/{commentId}/replies`로 분리했고, `size + 1`개를 조회해 `hasNext`를 판단한다.
+
+읽기 성능을 위해 복합 인덱스도 보강했다.
+
+```text
+(post_id, parent_id, created_at, comment_id)
+(parent_id, is_deleted, created_at, comment_id)
+```
+
+두 번째 인덱스에서 `is_deleted`는 `parent_id` 다음에 둔다. 특정 루트의 대댓글 범위를 먼저 좁힌 뒤, 활성 댓글만 필터링하고, 그 안에서 생성 시각과 PK 순서로 읽기 위한 구조다.
+
+```sql
+WHERE parent_id = ?
+  AND is_deleted = false
+ORDER BY created_at ASC, comment_id ASC
+```
+
+### 8) 개선 후 결과
+
+| post_id | 데이터셋 | 전체 댓글 | 루트 댓글 | 대댓글 |
+| :---: | :--- | :---: | :---: | :---: |
+| 998 | 분산 데이터 | 1,000개 | 100개 | 900개 |
+| 999 | 핫스팟 데이터 | 1,000개 | 500개 | 500개 |
+
+실행계획에서는 복합 인덱스가 사용되는 것을 확인했는데, `ROW_NUMBER()` 기반 Top-5 쿼리와 삭제 루트 노출 정책이 포함된 쿼리에서는 `Using temporary`, `Using filesort`가 남는다.
+
+목적은 DB 내부 정렬 비용을 완전히 없애는 것이 아니라, 초기 응답 크기와 서버 메모리 사용량을 제한하는 것.
+
+
+### 9) 테스트 및 검증 결과
+개선 후의 테스트 결과
+
+```bash
+./gradlew.bat test --tests "*CommentReadTest*"
+```
+
+| 항목 | 결과 |
+| :--- | :--- |
+| 테스트 수 | 10 |
+| 실패 | 0 |
+| 에러 | 0 |
+| 스킵 | 0 |
+
+댓글 도메인 전체 테스트는 42건 중 1건이 실패하고 1건이 스킵됐다.
+
+```bash
+./gradlew.bat test --tests "*Comment*"
+```
+
+실패한 테스트는 후보 3 구조나 현재 조회 구현 문제가 아니다.
+
+기존 `CommentServiceTest` 일부가 "삭제된 루트 댓글은 활성 대댓글이 없어도 목록에 남는다"는 예전 정책을 기대하고 있어서 현재 정책과 충돌한다.
+
+현재 정책은 활성 대댓글이 없는 삭제 루트를 숨기는 방식이다.
+
+---
+
+## 6. 프로젝트 물리 디렉토리 구조 (Project Structure)
 
 ```
 snowthing/ (프로젝트 최상위 루트)
@@ -296,7 +470,7 @@ snowthing/ (프로젝트 최상위 루트)
 
 ---
 
-## 6. 실행 및 테스트 (Build & Run)
+## 7. 실행 및 테스트 (Build & Run)
 
 ### Backend (Spring Boot)
 ```bash

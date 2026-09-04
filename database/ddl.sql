@@ -159,6 +159,8 @@ CREATE TABLE `comment` (
     `deleted_at` DATETIME NULL COMMENT '삭제 일시',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+    INDEX `idx_comment_post_parent_created` (`post_id`, `parent_id`, `created_at`, `comment_id`),
+    INDEX `idx_comment_parent_created` (`parent_id`, `created_at`, `comment_id`),
     CONSTRAINT `fk_comment_post` FOREIGN KEY (`post_id`) REFERENCES `post` (`post_id`) ON DELETE CASCADE,
     CONSTRAINT `fk_comment_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE SET NULL,
     CONSTRAINT `fk_comment_parent` FOREIGN KEY (`parent_id`) REFERENCES `comment` (`comment_id`) ON DELETE SET NULL

@@ -1,3 +1,49 @@
+- **Sprint 03 댓글/대댓글 인라인 삭제 UI 및 비밀번호 플로팅 팝오버 위젯 구현 (2026-09-03)**:
+  1. **작업명**: 댓글/대댓글 인라인 미니 `✕` 삭제 버튼 및 시간 아래 플로팅 드롭다운 UI 구현 (브라우저 다이얼로그 전면 퇴출)
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - 브라우저 기본 `prompt()`, `confirm()`, `alert()` 호출 코드 100% 제거.
+     - 댓글 및 대댓글 상단 헤더의 작성 시간(`MM.dd HH:mm:ss`) 우측에 미니 사각 `✕` 삭제 버튼 배치.
+     - `✕` 클릭 시 부모 헤더나 주변 텍스트를 밀어내지 않고 시간 바로 아래에 모달처럼 떠 있는 플로팅 팝오버(`absolute right-0 top-full mt-1.5 z-50 shadow-xl`) 위젯 구현.
+     - 외부 클릭 시 자동으로 닫히는 고정 투명 백드롭(`fixed inset-0 z-40`) 및 `ESC` 키보드 닫기, `Enter` 제출 지원.
+     - 비회원 익명 댓글은 비밀번호 인풋창 폼 제공, 로그인 회원 본인 및 최고 관리자는 `삭제할까요?` 즉시 확인 폼 제공.
+     - 하단 액션 바의 중복 텍스트 `삭제` 버튼 제거 (상단 `✕` 아이콘으로 일원화).
+  4. **검증 결과**:
+     - `npm run build` Next.js 16.2.12 Turbopack 컴파일 100% 통과 (Compiled successfully in 1733ms, 0 errors).
+
+- **Sprint 03 댓글 삭제(DELETE /api/v1/comments/{commentId}) 및 4대 권한 매트릭스 전담 개발 완결 (2026-09-01)**:
+  1. **작업명**: 댓글 삭제(Soft Delete & 권한 매트릭스) 기능 보강 및 단위/통합 테스트
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - `CommentService.java` 내 `validateDeletePermission` 권한 매트릭스 리팩토링:
+       * 1) 최고 관리자(`ROLE_ADMIN`): 비밀번호 없이 즉시 삭제 권한 통과
+       * 2) 일반 회원 및 로그인 익명(`comment.getMember() != null`): 본인 세션(`publicId`) 일치 시 통과, 타인 접근 시 `AUTH_002` (403 Forbidden) 반환
+       * 3) 비회원 익명(`comment.getMember() == null`): 비밀번호 불일치/누락 시 `POST_004` (403 Forbidden) 반환, 일치 시 통과
+     - Soft Delete 및 활성 댓글 수 원자적 차감 유지: `comment.softDelete()`, `postRepository.decreaseCommentCount(...)`
+     - `CommentDeleteTest.java` 단위/통합 테스트 8건 신설 (성공 4건 + 실패 4건).
+  4. **남은 항목**: 없음 (Delete 전담 완료)
+  5. **발견된 이슈 및 해결**:
+     - 기존 `validateDeletePermission`에서 로그인 회원이 작성한 익명 댓글(`isAnonymous = true, member != null`)을 타인이 삭제 시도 시 비밀번호 검사로 넘어가 `POST_004`가 발생하던 결함 발견.
+     - `comment.getMember() != null` 조건으로 통합하여 로그인 익명 글도 본인 세션이 아니면 정확히 `AUTH_002`가 발생하도록 인가 로직 일원화 완료.
+  6. **검증 결과**:
+     - `spotlessApply` 서식 포맷팅 완료.
+     - `gradle test --tests "*CommentDeleteTest*"` 총 8개 테스트 케이스 100% PASS (BUILD SUCCESSFUL in 16s).
+       - [성공 1] 일반 회원 본인 댓글 삭제 성공 (`is_deleted = true`, `post.commentCount` 1 차감 확인)
+       - [성공 2] 비회원 익명 댓글 올바른 비밀번호 입력 시 삭제 성공
+       - [성공 3] 최고 관리자(`ROLE_ADMIN`)가 타인/익명 댓글을 비밀번호 없이 강제 삭제 성공
+       - [성공 4] 대댓글이 존재하는 부모 댓글 삭제 시 부모만 `is_deleted = true` 처리되고 하위 대댓글 정상 보존 확인
+       - [실패 1] 로그인 회원이 타인의 댓글 삭제 시도 시 `AUTH_002` (403 Forbidden) 검증
+       - [실패 2] 비회원 익명 댓글에 틀린 비밀번호 입력 시 `POST_004` (403 Forbidden) 검증
+       - [실패 3] 이미 Soft Delete된 댓글 재삭제 시도 시 `COMMENT_001` (404 Not Found) 검증
+       - [실패 4] 존재하지 않는 댓글 ID 삭제 시도 시 `COMMENT_001` (404 Not Found) 검증
+
+- **Sprint 03 댓글 도메인 공식 API 명세서(comment_api_spec.md) 작성 (2026-09-01)**:
+  1. **5대 CRUD 엔드포인트 계약 명세화**: `docs/conception/sprint03/comment_api_spec.md`에 댓글 작성(`POST`), 루트 댓글 Batch+Top-5 프리뷰 조회(`GET`), 대댓글 분리 페이징 조회(`GET`), 댓글 수정(`PUT`), Soft Delete 삭제(`DELETE`)의 Request/Response DTO, Header, 에러 코드 매핑을 100% 명세화.
+
+- **댓글 도메인 계층 모델 및 조회 아키텍처 공식 ADR-001 작성 및 확정 (2026-08-29)**:
+  1. **실측 데이터 기반 아키텍처 의사결정**: 3개 독립 워크트리 브랜치에서 측정한 실측 벤치마크 지표(후보 1: 210KB 폭증 vs 후보 2: 핫스팟 103KB 비대화 vs 후보 3: 5.55KB 완벽 통제)를 근거로, **[후보 3: Adjacency List 기반 하이브리드 프리뷰(루트 20개 + 대댓글 5개) 및 대댓글 분리 페이징]을 최종 채택**.
+  2. **ADR-001 9개 핵심 섹션 완결**: `docs/study/sprint03/comment/ADR-001-comment-hierarchy-and-retrieval-architecture.md`에 문제정의, 요구사항, 후보군, Spike 실측 매트릭스, 기각 근거, 기술 부채, 재검토 트리거 등 표준 아키텍처 의사결정 기록 공식 문서화.
+
 - **댓글 조회 아키텍처 3대 후보 Spike 실험 공통 기반 및 측정 하네스 구축 (2026-08-29)**:
   1. **실험 가이드 및 템플릿 작성**: `docs/study/sprint03/comment/spike_experiment_guide.md` (실험 목적, 2대 시나리오, 5대 측정 지표 정의) 및 `docs/study/sprint03/comment/spike_result_template.md` (표준 결과 보고서 템플릿) 문서화.
   2. **공통 테스트 픽스처 및 하네스 개발**: `CommentSpikeDataInitializer.java` (분산 1,000건 & 핫스팟 500건 자동 주입기) 및 `CommentSpikeBenchmarkHarness.java` (실행 시간, JSON 직렬화 페이로드 바이트 크기, 쿼리 수 측정 러너) 구축.
@@ -685,3 +731,121 @@
   3. `build` job에 `needs: spotless`를 추가하여 Spotless 검사 실패 시 빌드/테스트가 실행되지 않도록 Fast-Fail 흐름 유지.
   4. 기존 깨진 한글 주석은 제거하고 ASCII 기반의 간결한 workflow로 정리.
   5. 검증 결과: `git diff --check` 통과. 실제 GitHub Actions job 표시 여부는 push 후 PR checks 화면에서 확인 필요.
+
+- **Sprint 03 댓글 생성(Create) 기능 구현 및 검증 완료 (2026-09-01)**:
+  1. 댓글 생성 경로에서 빌더 대신 `Comment.create()` 정적 팩토리를 사용하고, 대댓글에 작성한 답글의 부모를 최상위 루트로 평탄화하는 `rootParent()` 도메인 메서드를 추가.
+  2. 루트별 활성 대댓글 수를 최대 100개로 제한하고, 초과 시 `COMMENT_004` (`COMMENT_REPLY_LIMIT_EXCEEDED`, 400 Bad Request) 예외를 반환하도록 구현.
+  3. 동일 루트의 동시 생성 요청이 제한 검증을 함께 통과하지 않도록 루트 댓글에 비관적 쓰기 잠금을 적용하고, 삭제된 대댓글은 활성 개수 집계에서 제외.
+  4. 댓글 저장과 `post.comment_count + 1` 벌크 갱신을 동일 트랜잭션에서 처리하여 성공·실패 경계를 동기화.
+  5. 타 작업과의 충돌 방지를 위해 신규 `CommentCreateTest.java`에만 성공·실패·동시성 테스트 총 16건을 작성. H2를 사용하지 않고 로컬 MySQL 8.0.46의 테스트 전용 `snowthing_test` 스키마에서 `./gradlew.bat test --tests "*CommentCreateTest*"` 실행 결과 16건 전체 통과, `spotlessCheck` 통과, 종료 후 테스트 테이블 0개 확인.
+  6. 실 MySQL 동시성 테스트에서 `REPEATABLE READ` 스냅샷 때문에 루트 잠금만으로는 99개 경계의 두 요청이 모두 통과하는 결함을 발견. 부모 최초 조회와 활성 대댓글 집계를 잠금 기반 현재 읽기로 변경하여 두 요청 중 1건만 성공하고 최종 100개가 유지됨을 검증.
+  7. 남은 이슈: 비관적 잠금은 같은 루트에 대댓글 생성이 집중되면 해당 루트의 쓰기 요청을 직렬화하므로, 운영 환경에서는 잠금 대기 시간과 타임아웃 지표를 관찰해야 함. 프로젝트의 H2 테스트 의존성은 다른 기존 테스트가 사용하므로 제거하지 않았으며 `CommentCreateTest`에서는 MySQL 드라이버와 dialect를 강제해 H2를 사용하지 않음.
+
+- **Sprint 03 댓글 목록 및 대댓글 분리 조회(Read) 구현 완료 (2026-09-01)**:
+  1. `comment` 테이블과 `Comment` 엔티티에 `(post_id, parent_id, created_at, comment_id)`, `(parent_id, created_at, comment_id)` 복합 인덱스를 추가.
+  2. `CommentRepositoryCustom`/`CommentRepositoryImpl`을 추가하고 루트 댓글 커서 페이징, MySQL 8.0 `ROW_NUMBER() OVER (PARTITION BY parent_id)` 기반 부모별 Top-5 프리뷰, 대댓글 분리 커서 페이징을 구현.
+  3. API 명세의 Long 타입 `commentId` 커서를 유지하면서 기준 행의 `created_at`을 복원해 `(created_at ASC, comment_id ASC)` 복합 정렬과 커서 조건이 일치하도록 처리.
+  4. `CommentResponse`, `PostCommentListResponse`, `CommentReplyListResponse`를 조회 명세에 맞춰 구성하고 모든 응답 컬렉션에 `List.copyOf()` 방어적 복사를 적용.
+  5. 삭제 루트에 활성 대댓글이 있으면 placeholder와 프리뷰를 노출하고, 루트와 하위 대댓글이 모두 삭제되면 목록에서 은닉하도록 정책 반영. `replyCount`는 활성 대댓글만 집계.
+  6. `CommentReadTest.java` 신규 파일에 성공/실패 10개 시나리오를 작성: 루트 커서 경계, 동일 시각 PK 타이브레이커, Top-5/분리 조회, 삭제 은닉, DTO 불변성, 게시글 없음, 크기 범위, 다른 범위의 커서, 대댓글 ID의 루트 오용 검증.
+  7. 검증 결과: `./gradlew.bat test --tests "*CommentReadTest*"` 10개 테스트 통과, `compileJava` 및 `spotlessApply` 통과.
+  8. 확인 이슈: 기존 `CommentServiceTest`의 자식 없는 삭제 루트 노출 기대값은 Sprint 3의 고아 노드 은닉 정책과 충돌함. 기존 테스트 파일 수정 금지 조건에 따라 변경하지 않음. `CommentCreateTest` 동시성 테스트는 결과 중 정상 성공을 `null`로 표현하면서 `List.of(null, ...)`을 호출해 테스트 코드 자체에서 `NullPointerException`이 발생하며, Read 구현과 무관한 기존 이슈로 확인됨.
+  9. 운영 확인 필요: Top-5 쿼리는 MySQL 8.0 윈도우 함수에 의존하므로 배포 전 실제 MySQL에서 `EXPLAIN ANALYZE`로 두 복합 인덱스 사용 여부와 filesort/읽은 행 수를 재검증해야 함.
+  10. 공개 저장소 보안 점검에서 테스트, Spring 설정, Docker Compose에 하드코딩된 MySQL 비밀번호를 발견해 모두 환경변수 참조로 교체하고 `.env.example`에는 실제 값이 아닌 placeholder만 제공. `CommentCreateTest`는 `SNOWTHING_TEST_DB_URL`이 없으면 H2를 사용하고, 외부 MySQL을 선택한 경우 username/password 환경변수를 필수 검증하도록 변경.
+  11. 실제 MySQL 8.0에서 Top-5 프리뷰 쿼리 실행 시 `row_number` 별칭이 함수명과 충돌해 500이 발생하는 문제를 확인하고, 윈도우 순번 별칭을 `rn`으로 변경해 MySQL 문법 호환성을 확보.
+  12. MySQL 클라이언트 문자셋 오류로 한글이 손상되어 있던 Spike 전용 게시글 998/999와 댓글 2,000건을 `--default-character-set=utf8mb4`로 제한 재시드. 재검증 결과 게시글별 1,000건, API 루트 20개/Top-5 프리뷰, UTF-8 한글 응답 바이트를 확인.
+  13. 로컬 재기동 시 `DataInitializer`가 이메일 존재 여부만 확인한 뒤 이미 사용 중인 닉네임을 삽입해 유니크 제약으로 실패하는 별도 이슈 발견. 데이터 삭제 없이 확인하기 위해 현재 서버는 `local,test` 프로필로 초기화기만 제외해 실행 중이며, 초기화기 멱등성 보완은 별도 작업 필요.
+  14. 최초 Spike 재시드에서 `INSERT IGNORE`가 기존의 손상된 작성자 닉네임과 카테고리명을 유지하는 문제를 확인. 시드 SQL을 `ON DUPLICATE KEY UPDATE` 방식으로 보완하여 `스파이크테스터`, `자유게시판` 값도 UTF-8로 복구하도록 수정.
+
+- **Sprint 03 댓글 C-R 프론트엔드 2단계 UI 개편 완료 (2026-09-01)**:
+  1. 백엔드의 루트 댓글 20개 커서 조회, 루트별 대댓글 Top-5 프리뷰, 대댓글 분리 커서 조회 계약에 맞춰 프론트엔드 댓글 구조를 재귀형 무한 계층에서 루트/대댓글 2단계 구조로 변경하기로 확정.
+  2. 작업 범위는 댓글 작성(Create)과 조회(Read)이며, 댓글 수정·삭제 UI 개편은 제외. 기존 삭제 기능은 회귀 방지를 위해 유지.
+  3. `frontend/app/lib/api.ts`에 루트 댓글과 대댓글의 `cursor`/`size` URL 빌더를 추가하고, `null` 여부로 커서 포함을 판별하도록 구현.
+  4. `frontend/app/posts/[publicId]/page.tsx`의 DTO를 백엔드 응답 계약에 맞추고, 루트 댓글 20개 누적 조회와 루트별 대댓글 Top-5/20개 누적 조회 상태를 분리.
+  5. 재귀형 `CommentRow`를 루트 `CommentRow`와 비재귀 `ReplyRow`로 분리해 3단계 이상 렌더링을 차단. 대댓글의 답글 버튼도 루트 작성창을 열고 원작성자 멘션 가이드만 표시하며, 서버에는 루트 ID를 `parentId`로 전달.
+  6. 댓글·대댓글 응답 병합 시 `commentId` 중복을 방어하고, 삭제된 루트 placeholder 아래의 대댓글과 답글 작성 기능은 유지.
+  7. 검증 결과: 변경 파일 대상 ESLint 오류 0건(기존 `<img>` 최적화 경고 1건), `npm run build` 및 TypeScript 검사 통과.
+  8. 확인 이슈: 전체 `npm run lint`는 이번 변경과 무관한 기존 `ToastEditor.tsx`, `ToastViewer.tsx`, 게시글 작성·목록 페이지의 오류 6건 때문에 실패. 브라우저 수동 검증은 백엔드와 테스트 데이터가 실행된 환경에서 추가 확인 필요.
+
+## Sprint 03 댓글 삭제 프론트엔드 UI
+
+- 상태: DONE
+- 시작일: 2026-09-01
+
+### 계획
+- 일반 회원은 `writer.publicId`가 현재 사용자와 같은 댓글에만 삭제 버튼을 노출한다.
+- 익명 댓글은 현재 DTO에 소유권 필드가 없어 삭제 버튼을 노출한 뒤 세션 또는 비밀번호를 서버에서 최종 검증하는 방안 A를 적용한다.
+- 댓글 삭제의 `prompt`/`confirm`을 제거하고 기존 `DeleteConfirmModal`을 재사용한다.
+- 변경 파일 대상 ESLint와 `npm run build`로 검증한다.
+
+### 완료
+- 구현 전 설계 문서, 프론트엔드 스킬, 현재 댓글 UI와 공용 삭제 모달 대조 완료.
+- 댓글 삭제의 브라우저 `prompt`/`confirm`을 제거하고 게시글 삭제와 분리된 `DeleteConfirmModal` 인스턴스로 연결.
+- 공용 모달에 동적 확인 문구, 제출 중 닫기 방지, dialog ARIA 속성, 입력 label 연결을 추가.
+- 삭제 성공 후 댓글 목록을 재조회하고 게시글의 `commentCount`를 1 차감하도록 구현.
+
+### 남은 작업
+- 모달의 완전한 focus trap과 Escape 닫기 동작은 후속 접근성 개선 대상으로 남김.
+
+### 이슈
+- 익명 댓글 응답에 `canDelete`, `requiresPassword`가 없어 버튼 노출 권한은 완전히 판별할 수 없다.
+
+### 결정 필요
+- 방안 A 적용을 사용자 승인받음. 서버를 최종 권한 검증 주체로 사용한다.
+
+### 검증
+- 변경 파일 대상 ESLint 오류 0건. 기존 게시글 이미지 `<img>` 최적화 경고 1건만 확인.
+- `npm run build` 성공 및 TypeScript 오류 0건 확인.
+
+## README Mermaid 렌더링 오류 수정 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: GitHub README의 Mermaid `sequenceDiagram`에서 `Set-Cookie: JSESSIONID=...; Path=/; HttpOnly; SameSite=Lax`처럼 실제 HTTP 헤더 문법을 그대로 넣어 파서가 실패하던 줄을 자연어 메시지로 변경.
+- 수정 파일: `README.md`
+- 완료 범위:
+  1. 로그인 성공 응답 메시지를 `신규 세션 쿠키 발급 (JSESSIONID, HttpOnly, SameSite=Lax)`로 변경.
+  2. 로그아웃 응답 메시지를 `JSESSIONID 쿠키 만료 응답 (Max-Age=0)`로 변경.
+- 이슈/주의: Mermaid 다이어그램 안에서는 `:`, `;`, `=`가 많은 실제 헤더 문자열을 그대로 쓰면 GitHub 렌더러와 충돌할 수 있으므로, 다이어그램에는 행위 중심 문장을 쓰고 실제 헤더 예시는 본문 코드블록에 분리하는 편이 안전함.
+
+## 댓글 조회 기술부채 해결 문서 작성 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: 같은 조건에서 수행된 후보 1/2/3 Spike 중 채택된 후보 3 구조가 현재 운영 구현에 어떻게 반영됐는지, 이후 읽기 성능 보강으로 추가된 복합 인덱스와 MySQL 실행계획을 `docs/study/sprint03/comment/test/기술부채 해결_4.md`에 정리.
+- 완료 범위:
+  1. `spike_experiment_guide.md`, `spike_하이브리드프리뷰_분리API.md`, 현재 `CommentRepositoryImpl`, `CommentService`, `CommentController`, `Comment` 인덱스 정의 대조.
+  2. 로컬 MySQL 8.0.46 Docker 컨테이너의 Spike 데이터 확인: Post 998/999 각각 댓글 1,000건 유지.
+  3. 실제 MySQL `SHOW INDEX`, `EXPLAIN`, `EXPLAIN ANALYZE` 결과를 문서에 반영.
+  4. `./gradlew.bat test --tests "*CommentReadTest*"` 실행 결과 10건 통과 확인.
+  5. `./gradlew.bat test --tests "*Comment*"` 실행 결과 42건 중 1건 실패, 1건 스킵 확인. 실패 원인은 후보 3 구조 문제가 아니라 기존 `CommentServiceTest` 일부가 현재 삭제 루트 정책과 다른 기대값을 가진 테스트 정리 대상으로 기록.
+- 이슈/주의:
+  1. 후보 1/2/3 비교 실험은 같은 정책과 같은 데이터셋에서 수행됐으므로 후보 3 선택 근거는 유효함.
+  2. 후보 3 채택 이후 읽기 성능 보강으로 실제 DB에는 `idx_comment_parent_deleted_created(parent_id, is_deleted, created_at, comment_id)`가 확인됨.
+  3. 윈도우 함수와 삭제 정책 쿼리에서 `Using temporary`, `Using filesort`가 남지만, 현재 규모에서는 구조 변경 대상이 아니라 운영 관찰 포인트로 기록.
+  4. 기존 `CommentServiceTest.getCommentsByPost_deletedParentDisplay()`는 현재 정책에 맞게 갱신 필요.
+
+## README 댓글 도메인 아키텍처 섹션 반영 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: README의 게시판 설명 아래에 `댓글(Comment) 도메인 설계 & 기술적 의사결정` 섹션을 독립 추가하고, 후보 3 Spike 선택 근거와 기술부채 개선 내용을 공식 conception 문서 기준으로 요약.
+- 완료 범위:
+  1. `핵심 아키텍처 고민 및 기술적 의사결정` 제목에서 `핵심` 표현 제거.
+  2. `게시판(Post) 도메인 설계 & 핵심 기술적 의사결정` 제목에서 `핵심` 표현 제거.
+  3. `CSRF` 본문과 구분선 사이에 빈 줄을 추가해 Markdown 렌더링이 다음 섹션으로 번지지 않도록 정리.
+  4. 댓글 도메인 구조, 게시글-댓글 관계, 댓글 상태/유형, 삭제 루트 정책, 커서 페이지네이션, 후보 1/2/3 비교, 기술부채와 개선 결과, 테스트 결과를 README에 추가.
+  5. 상세 근거 링크는 gitignore 대상인 `docs/study`가 아니라 `docs/conception/sprint03/`의 ADR, API 명세, 기술부채 해결 문서로 연결.
+- 이슈/주의:
+  1. README에는 전체 SQL과 EXPLAIN을 모두 싣지 않고 프로젝트 소개에 필요한 수준으로 요약.
+  2. 상세 실행계획과 테스트 결과는 `docs/conception/sprint03/기술부채 해결_4.md`를 기준 문서로 사용.
+
+## Sprint 03 Spike 결과 문서 파일명 정리 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: 후보 번호 중심 파일명을 실제 기술 방식이 드러나는 파일명으로 변경.
+- 변경 파일명:
+  1. `spike_result_candidate_1.md` -> `spike_메모리전체트리조립.md`
+  2. `spike_result_candidate_2.md` -> `spike_루트커서_대댓글전체배치.md`
+  3. `spike_result_candidate_3.md` -> `spike_하이브리드프리뷰_분리API.md`
+- 완료 범위:
+  1. `docs/conception/sprint03/` 하위 Spike 결과 문서 3개를 `git mv`로 이름 변경.
+  2. 공식 기술부채 해결 문서와 로컬 학습 문서의 기준 문서명을 새 파일명으로 갱신.
+- 이슈/주의: `.idea/workspace.xml`에도 기존 파일명 참조가 있으나 IDE 로컬 상태 파일이므로 커밋 대상에서 제외.

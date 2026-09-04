@@ -39,9 +39,19 @@ public class CommentController {
 
     @GetMapping("/posts/{publicId}/comments")
     public ResponseEntity<PostCommentListResponse> getCommentsByPost(
-            @PathVariable String publicId) {
-        PostCommentListResponse response = commentService.getCommentsByPost(publicId);
+            @PathVariable String publicId,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int size) {
+        PostCommentListResponse response = commentService.getCommentsByPost(publicId, cursor, size);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/comments/{commentId}/replies")
+    public ResponseEntity<CommentReplyListResponse> getCommentReplies(
+            @PathVariable Long commentId,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(commentService.getCommentReplies(commentId, cursor, size));
     }
 
     @DeleteMapping("/comments/{commentId}")
