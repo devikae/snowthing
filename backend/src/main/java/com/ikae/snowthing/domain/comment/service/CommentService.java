@@ -6,12 +6,11 @@ import java.util.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
-import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom;
+import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom.ReplyStats;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
@@ -27,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class CommentService {
 
     private static final long MAX_REPLY_COUNT = 100L;
@@ -38,9 +36,8 @@ public class CommentService {
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final TransactionTemplate transactionTemplate;
+    private final CommentCommandService commentCommandService;
 
-    @Transactional
     public CommentResponse createComment(
             String postPublicId,
             CommentCreateRequest request,
@@ -51,14 +48,18 @@ public class CommentService {
 
         if (request.isAnonymous()) {
             if (userDetails != null) {
-                member = memberRepository.findByPublicId(userDetails.getPublicId()).orElse(null);
-            }
-            if (member == null
-                    && (request.anonymousPassword() == null
-                            || request.anonymousPassword().isBlank())) {
-                throw new CustomAuthException(ErrorCode.INVALID_INPUT);
-            }
-            if (request.anonymousPassword() != null && !request.anonymousPassword().isBlank()) {
+                member =
+                        memberRepository
+                                .findByPublicId(userDetails.getPublicId())
+                                .orElseThrow(
+                                        () -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
+                if (hasAnonymousPassword(request.anonymousPassword())) {
+                    throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+                }
+            } else {
+                if (!hasAnonymousPassword(request.anonymousPassword())) {
+                    throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+                }
                 encodedPassword = passwordEncoder.encode(request.anonymousPassword());
             }
         } else {
@@ -74,79 +75,21 @@ public class CommentService {
         final Member finalMember = member;
         final String finalEncodedPassword = encodedPassword;
 
-        return transactionTemplate.execute(
-                status -> {
-                    Post post =
-                            postRepository
-                                    .findByPublicId(postPublicId)
-                                    .orElseThrow(
-                                            () ->
-                                                    new CustomAuthException(
-                                                            ErrorCode.POST_NOT_FOUND));
-
-                    if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-                        throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
-                    }
-
-                    Comment parent = null;
-                    if (request.parentId() != null) {
-                        Comment requestedParent =
-                                commentRepository
-                                        .findById(request.parentId())
-                                        .orElseThrow(
-                                                () ->
-                                                        new CustomAuthException(
-                                                                ErrorCode
-                                                                        .PARENT_COMMENT_NOT_FOUND));
-
-                        if (!requestedParent.getPost().getId().equals(post.getId())) {
-                            throw new CustomAuthException(ErrorCode.INVALID_COMMENT_PARENT);
-                        }
-
-                        Long rootCommentId = requestedParent.rootParent().getId();
-                        parent =
-                                commentRepository
-                                        .findByIdForUpdate(rootCommentId)
-                                        .orElseThrow(
-                                                () ->
-                                                        new CustomAuthException(
-                                                                ErrorCode
-                                                                        .PARENT_COMMENT_NOT_FOUND));
-
-                        long activeReplyCount = commentRepository.countActiveReplies(rootCommentId);
-                        if (activeReplyCount >= MAX_REPLY_COUNT) {
-                            throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
-                        }
-                    }
-
-                    Comment comment =
-                            Comment.create(
-                                    post,
-                                    finalMember,
-                                    parent,
-                                    request.content(),
-                                    clientIp != null ? clientIp : "127.0.0.1",
-                                    request.isAnonymous(),
-                                    finalEncodedPassword);
-
-                    Comment savedComment = commentRepository.save(comment);
-                    postRepository.increaseCommentCount(post.getId());
-
-                    return CommentResponse.from(savedComment)
-                            .withDeletePermissions(
-                                    userDetails == null ? null : userDetails.getPublicId(),
-                                    isAdmin(userDetails));
-                });
+        return commentCommandService.createComment(
+                postPublicId, request, finalMember, finalEncodedPassword, userDetails, clientIp);
     }
 
+    @Transactional(readOnly = true)
     public PostCommentListResponse getCommentsByPost(String postPublicId) {
         return getCommentsByPost(postPublicId, null, DEFAULT_READ_SIZE);
     }
 
+    @Transactional(readOnly = true)
     public PostCommentListResponse getCommentsByPost(String postPublicId, Long cursor, int size) {
         return getCommentsByPost(postPublicId, cursor, size, null);
     }
 
+    @Transactional(readOnly = true)
     public PostCommentListResponse getCommentsByPost(
             String postPublicId, Long cursor, int size, CustomUserDetails userDetails) {
         validateReadSize(size);
@@ -157,29 +100,31 @@ public class CommentService {
 
         validatePostVisibility(post);
 
-        CommentRepositoryCustom.CursorPosition cursorPosition =
-                cursor == null
-                        ? null
-                        : commentRepository
-                                .findRootCursor(post.getId(), cursor)
-                                .orElseThrow(
-                                        () -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+        if (cursor != null && !commentRepository.existsRootCursor(post.getId(), cursor)) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
         List<CommentResponse> fetched =
-                commentRepository.findRootComments(post.getId(), cursorPosition, size + 1);
+                commentRepository.findRootComments(post.getId(), cursor, size + 1);
         boolean hasNext = fetched.size() > size;
         List<CommentResponse> roots = new ArrayList<>(hasNext ? fetched.subList(0, size) : fetched);
-        Map<Long, List<CommentResponse>> previews =
-                commentRepository.findTopReplyPreviews(
-                        roots.stream().map(CommentResponse::commentId).toList());
+        List<Long> rootIds = roots.stream().map(CommentResponse::commentId).toList();
+        Map<Long, ReplyStats> replyStats = commentRepository.findReplyStats(rootIds);
+        Map<Long, List<CommentResponse>> previews = commentRepository.findTopReplyPreviews(rootIds);
         List<CommentResponse> comments =
                 roots.stream()
                         .map(
-                                root ->
-                                        root.withPreviewReplies(
-                                                previews.getOrDefault(root.commentId(), List.of())))
+                                root -> {
+                                    ReplyStats stat =
+                                            replyStats.getOrDefault(
+                                                    root.commentId(), new ReplyStats(0, 0));
+                                    List<CommentResponse> rootPreviews =
+                                            previews.getOrDefault(root.commentId(), List.of());
+                                    return root.withReplyInfo(
+                                            stat.totalCount(), stat.totalCount() > 5, rootPreviews);
+                                })
                         .map(
                                 comment ->
-                                        comment.withDeletePermissions(
+                                        comment.withViewerPermissions(
                                                 userDetails == null
                                                         ? null
                                                         : userDetails.getPublicId(),
@@ -190,10 +135,12 @@ public class CommentService {
                 postPublicId, post.getCommentCount(), comments, nextCursor, hasNext);
     }
 
+    @Transactional(readOnly = true)
     public CommentReplyListResponse getCommentReplies(Long commentId, Long cursor, int size) {
         return getCommentReplies(commentId, cursor, size, null);
     }
 
+    @Transactional(readOnly = true)
     public CommentReplyListResponse getCommentReplies(
             Long commentId, Long cursor, int size, CustomUserDetails userDetails) {
         validateReadSize(size);
@@ -201,30 +148,28 @@ public class CommentService {
                 commentRepository
                         .findById(commentId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
-        if (root.getParent() != null) {
-            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
-        }
+
         Post post =
                 postRepository
                         .findById(root.getPost().getId())
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
         validatePostVisibility(post);
-        CommentRepositoryCustom.CursorPosition cursorPosition =
-                cursor == null
-                        ? null
-                        : commentRepository
-                                .findReplyCursor(commentId, cursor)
-                                .orElseThrow(
-                                        () -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
-        List<CommentResponse> fetched =
-                commentRepository.findReplies(commentId, cursorPosition, size + 1);
+
+        if (root.getParent() != null) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        if (cursor != null && !commentRepository.existsReplyCursor(commentId, cursor)) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+        List<CommentResponse> fetched = commentRepository.findReplies(commentId, cursor, size + 1);
         boolean hasNext = fetched.size() > size;
         List<CommentResponse> replies =
                 (hasNext ? fetched.subList(0, size) : fetched)
                         .stream()
                                 .map(
                                         reply ->
-                                                reply.withDeletePermissions(
+                                                reply.withViewerPermissions(
                                                         userDetails == null
                                                                 ? null
                                                                 : userDetails.getPublicId(),
@@ -235,15 +180,56 @@ public class CommentService {
                 commentId, commentRepository.countReplies(commentId), replies, nextCursor, hasNext);
     }
 
-    private void validateReadSize(int size) {
-        if (size < 1 || size > MAX_READ_SIZE) {
-            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+    private void validatePostVisibility(Post post) {
+        if (post == null || post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
     }
 
-    private void validatePostVisibility(Post post) {
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+    private void validateReadSize(int size) {
+        if (size < 1 || size > MAX_READ_SIZE) {
+            throw new CustomAuthException(ErrorCode.COMMENT_INVALID_PAGE_SIZE);
+        }
+    }
+
+    @Transactional
+    public CommentUpdateResponse updateComment(
+            Long commentId, CommentUpdateRequest request, CustomUserDetails userDetails) {
+        Comment comment =
+                commentRepository
+                        .findById(commentId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
+
+        if (comment.isDeleted()) {
+            throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        validateUpdatePermission(comment, request.anonymousPassword(), userDetails);
+
+        comment.updateContent(request.content());
+        commentRepository.flush();
+
+        return new CommentUpdateResponse(
+                comment.getId(), comment.getContent(), comment.getUpdatedAt());
+    }
+
+    private void validateUpdatePermission(
+            Comment comment, String anonymousPassword, CustomUserDetails userDetails) {
+        if (comment.getMember() != null) {
+            if (isWriter(comment, userDetails)) {
+                return;
+            }
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+
+        if (!comment.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+
+        if (!hasAnonymousPassword(anonymousPassword)
+                || comment.getAnonymousPassword() == null
+                || !passwordEncoder.matches(anonymousPassword, comment.getAnonymousPassword())) {
+            throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
         }
     }
 
@@ -271,19 +257,30 @@ public class CommentService {
         }
 
         if (comment.getMember() != null) {
-            boolean isWriter =
-                    userDetails != null
-                            && comment.getMember().getPublicId().equals(userDetails.getPublicId());
-            if (!isWriter) {
-                throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+            if (isWriter(comment, userDetails)) {
+                return;
             }
-            return;
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
 
-        if (anonymousPassword == null
+        if (!comment.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+
+        if (!hasAnonymousPassword(anonymousPassword)
+                || comment.getAnonymousPassword() == null
                 || !passwordEncoder.matches(anonymousPassword, comment.getAnonymousPassword())) {
             throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
         }
+    }
+
+    private boolean isWriter(Comment comment, CustomUserDetails userDetails) {
+        return userDetails != null
+                && comment.getMember().getPublicId().equals(userDetails.getPublicId());
+    }
+
+    private boolean hasAnonymousPassword(String anonymousPassword) {
+        return anonymousPassword != null && !anonymousPassword.isBlank();
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {

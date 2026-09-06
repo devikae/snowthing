@@ -9,6 +9,8 @@ import org.hibernate.annotations.SQLDelete;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.global.common.BaseTimeEntity;
+import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.CustomAuthException;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -20,21 +22,27 @@ import lombok.NoArgsConstructor;
         name = "comment",
         indexes = {
             @Index(
-                    name = "idx_comment_post_parent_created",
-                    columnList = "post_id,parent_id,created_at,comment_id"),
+                    name = "idx_comment_post_parent_id",
+                    columnList = "post_id,parent_id,comment_id"),
             @Index(
-                    name = "idx_comment_parent_created",
-                    columnList = "parent_id,created_at,comment_id")
+                    name = "idx_comment_parent_deleted_id",
+                    columnList = "parent_id,is_deleted,comment_id")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SQLDelete(sql = "UPDATE comment SET is_deleted = true, deleted_at = NOW() WHERE comment_id = ?")
 public class Comment extends BaseTimeEntity {
 
+    private static final int MAX_CONTENT_LENGTH = 1000;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "comment_id")
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id", nullable = false)
@@ -78,7 +86,7 @@ public class Comment extends BaseTimeEntity {
         this.post = post;
         this.member = member;
         this.parent = parent;
-        this.content = content;
+        this.content = validateContent(content);
         this.writerIp = writerIp;
         this.isAnonymous = isAnonymous;
         this.anonymousPassword = anonymousPassword;
@@ -97,11 +105,26 @@ public class Comment extends BaseTimeEntity {
     }
 
     public Comment rootParent() {
-        return parent != null ? parent : this;
+        Comment current = this;
+        while (current.parent != null) {
+            current = current.parent;
+        }
+        return current;
     }
 
     public void softDelete() {
         this.isDeleted = true;
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void updateContent(String newContent) {
+        this.content = validateContent(newContent);
+    }
+
+    private static String validateContent(String content) {
+        if (content == null || content.isBlank() || content.length() > MAX_CONTENT_LENGTH) {
+            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+        }
+        return content;
     }
 }

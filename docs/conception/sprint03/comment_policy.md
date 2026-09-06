@@ -31,7 +31,8 @@
   - 삭제된 댓글을 포함한 게시글의 전체 댓글/대댓글 수를 카운트합니다.
   - Soft Delete 시 카운트를 차감하지 않고, 댓글 생성 시에만 증가시킵니다.
 - **`replyCount` (대댓글 수)**:
-  - 각 루트 댓글 DTO에 포함되는 `replyCount`는 삭제된 대댓글을 포함한 전체 대댓글 수를 집계합니다.
+  - 각 루트 댓글 DTO 및 화면에 노출되는 `replyCount`는 화면 렌더링 노드 일원화 정책에 따라 **삭제된 대댓글 placeholder를 포함한 전체 대댓글 수(`totalCount`)**를 집계합니다.
+  - 이를 통해 화면 상단의 대댓글 수 뱃지(`replyCount`), 상위 5개 미리보기(`previewReplies`), 페이징 더보기 플래그(`hasMoreReplies = totalCount > 5`)의 기준을 100% 일치시켜 UI 인지 부조화를 방지합니다.
 
 ---
 

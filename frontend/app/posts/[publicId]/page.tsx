@@ -48,6 +48,8 @@ interface CommentItem {
   replyCount: number;
   previewReplies: CommentItem[];
   hasMoreReplies: boolean;
+  canEdit: boolean;
+  requiresPassword: boolean;
   canDelete: boolean;
   requiresDeletePassword: boolean;
   createdAt: string;
@@ -101,7 +103,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [activeReplyParentId, setActiveReplyParentId] = useState<string | null>(null);
-  const [replyMentionName, setReplyMentionName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
   const [activeEditCommentId, setActiveEditCommentId] = useState<string | null>(null);
@@ -342,6 +343,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
 
   const handleCreateComment = async (parentId: string | null) => {
+    if (submittingComment) return;
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
       alert("댓글 내용을 입력해주세요.");
@@ -391,16 +393,18 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           setReplyText("");
           setReplyAnonPassword("");
           setActiveReplyParentId(null);
-          setReplyMentionName(null);
           setComments((current) =>
             current.map((comment) => {
               if (comment.commentId !== parentId) return comment;
+              const nextReplyCount = comment.replyCount + 1;
+              const nextPreviewReplies = comment.hasMoreReplies
+                ? comment.previewReplies
+                : [...comment.previewReplies, createdComment].slice(0, 5);
               return {
                 ...comment,
-                replyCount: comment.replyCount + 1,
-                previewReplies: comment.hasMoreReplies
-                  ? comment.previewReplies
-                  : [...comment.previewReplies, createdComment],
+                replyCount: nextReplyCount,
+                previewReplies: nextPreviewReplies,
+                hasMoreReplies: comment.hasMoreReplies || nextReplyCount > 5,
               };
             }),
           );
@@ -430,7 +434,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleStartEditComment = (comment: CommentItem) => {
     setActiveReplyParentId(null);
-    setReplyMentionName(null);
     setActiveEditCommentId(comment.commentId);
     setEditCommentText(comment.content);
     setEditCommentPassword("");
@@ -447,7 +450,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleUpdateComment = async (comment: CommentItem) => {
     const content = editCommentText.trim();
-    const requiresPassword = comment.isAnonymous && !currentUserPublicId;
+    const requiresPassword = comment.requiresPassword;
     if (!content) {
       setEditCommentError("댓글 내용을 입력해주세요.");
       return;
@@ -700,8 +703,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     currentUserPublicId={currentUserPublicId}
                     activeReplyParentId={activeReplyParentId}
                     setActiveReplyParentId={setActiveReplyParentId}
-                    replyMentionName={replyMentionName}
-                    setReplyMentionName={setReplyMentionName}
                     replyText={replyText}
                     setReplyText={setReplyText}
                     replyAnonPassword={replyAnonPassword}
@@ -725,6 +726,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     handleStartDeleteComment={handleStartDeleteComment}
                     handleCancelDeleteComment={handleCancelDeleteComment}
                     handleConfirmDeleteComment={handleConfirmDeleteComment}
+                    submittingComment={submittingComment}
                     handleLoadMoreReplies={handleLoadMoreReplies}
                     isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
                   />
@@ -776,13 +778,12 @@ function CommentRow({
   currentUserPublicId,
   activeReplyParentId,
   setActiveReplyParentId,
-  replyMentionName,
-  setReplyMentionName,
   replyText,
   setReplyText,
   replyAnonPassword,
   setReplyAnonPassword,
   handleCreateComment,
+  submittingComment,
   activeEditCommentId,
   editCommentText,
   setEditCommentText,
@@ -809,13 +810,12 @@ function CommentRow({
   currentUserPublicId: string | null;
   activeReplyParentId: string | null;
   setActiveReplyParentId: (id: string | null) => void;
-  replyMentionName: string | null;
-  setReplyMentionName: (name: string | null) => void;
   replyText: string;
   setReplyText: (text: string) => void;
   replyAnonPassword: string;
   setReplyAnonPassword: (value: string) => void;
   handleCreateComment: (parentId: string | null) => Promise<void>;
+  submittingComment: boolean;
   activeEditCommentId: string | null;
   editCommentText: string;
   setEditCommentText: (text: string) => void;
@@ -837,17 +837,11 @@ function CommentRow({
   handleLoadMoreReplies: (rootCommentId: string) => Promise<void>;
   isLoadingReplies: boolean;
 }) {
-  const canEdit = canEditComment(item, currentUserPublicId);
+  const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
   const isEditing = activeEditCommentId === item.commentId;
-  const openReplyEditor = (target: CommentItem) => {
-    if (activeReplyParentId === item.commentId && replyMentionName === getWriterName(target)) {
-      setActiveReplyParentId(null);
-      setReplyMentionName(null);
-      return;
-    }
-    setActiveReplyParentId(item.commentId);
-    setReplyMentionName(getWriterName(target));
+  const toggleReplyEditor = () => {
+    setActiveReplyParentId(activeReplyParentId === item.commentId ? null : item.commentId);
   };
 
   return (
@@ -881,7 +875,7 @@ function CommentRow({
             setPassword={setEditCommentPassword}
             error={editCommentError}
             submitting={submittingEditComment}
-            requiresPassword={item.isAnonymous && !currentUserPublicId}
+            requiresPassword={item.requiresPassword}
             onCancel={handleCancelEditComment}
             onSubmit={() => void handleUpdateComment(item)}
           />
@@ -889,7 +883,7 @@ function CommentRow({
           <>
             <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
             <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
-              <button onClick={() => openReplyEditor(item)} className="text-black">
+              <button onClick={toggleReplyEditor} className="text-black">
                 {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
               </button>
               {canEdit && (
@@ -907,7 +901,7 @@ function CommentRow({
               <ReplyRow
                 key={reply.commentId}
                 item={reply}
-                onReply={() => openReplyEditor(reply)}
+                onReply={toggleReplyEditor}
                 isEditing={activeEditCommentId === reply.commentId}
                 editCommentText={editCommentText}
                 setEditCommentText={setEditCommentText}
@@ -918,7 +912,6 @@ function CommentRow({
                 handleStartEditComment={handleStartEditComment}
                 handleCancelEditComment={handleCancelEditComment}
                 handleUpdateComment={handleUpdateComment}
-                currentUserPublicId={currentUserPublicId}
                 activeDeleteCommentId={activeDeleteCommentId}
                 deleteCommentPassword={deleteCommentPassword}
                 setDeleteCommentPassword={setDeleteCommentPassword}
@@ -947,9 +940,6 @@ function CommentRow({
 
         {activeReplyParentId === item.commentId && (
           <div className="mt-4 rounded border border-[var(--snow-border)] bg-[var(--snow-background)] p-4">
-            {replyMentionName && (
-              <p className="mb-2 text-xs font-bold text-[var(--snow-muted)]">@{replyMentionName} 님에게 답글</p>
-            )}
             <textarea
               rows={2}
               value={replyText}
@@ -980,7 +970,11 @@ function CommentRow({
                   )}
                 </div>
               )}
-              <button onClick={() => void handleCreateComment(item.commentId)} className="snow-btn-primary sm:ml-auto">
+              <button
+                disabled={submittingComment}
+                onClick={() => void handleCreateComment(item.commentId)}
+                className="snow-btn-primary sm:ml-auto"
+              >
                 답글 등록
               </button>
             </div>
@@ -994,7 +988,6 @@ function CommentRow({
 function ReplyRow({
   item,
   onReply,
-  currentUserPublicId,
   isEditing,
   editCommentText,
   setEditCommentText,
@@ -1016,7 +1009,6 @@ function ReplyRow({
 }: {
   item: CommentItem;
   onReply: () => void;
-  currentUserPublicId: string | null;
   isEditing: boolean;
   editCommentText: string;
   setEditCommentText: (text: string) => void;
@@ -1036,7 +1028,7 @@ function ReplyRow({
   handleCancelDeleteComment: () => void;
   handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
 }) {
-  const canEdit = canEditComment(item, currentUserPublicId);
+  const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
 
   return (
@@ -1071,7 +1063,7 @@ function ReplyRow({
           setPassword={setEditCommentPassword}
           error={editCommentError}
           submitting={submittingEditComment}
-          requiresPassword={item.isAnonymous && !currentUserPublicId}
+          requiresPassword={item.requiresPassword}
           onCancel={handleCancelEditComment}
           onSubmit={() => void handleUpdateComment(item)}
         />
@@ -1169,10 +1161,8 @@ function getWriterName(comment: CommentItem) {
   return comment.writer?.nickname || "알 수 없음";
 }
 
-function canEditComment(comment: CommentItem, currentUserPublicId: string | null) {
-  if (comment.isDeleted) return false;
-  if (comment.isAnonymous) return true;
-  return Boolean(currentUserPublicId && comment.writer?.publicId === currentUserPublicId);
+function canEditComment(comment: CommentItem) {
+  return comment.canEdit;
 }
 
 function updateCommentContent(comments: CommentItem[], commentId: string, content: string) {

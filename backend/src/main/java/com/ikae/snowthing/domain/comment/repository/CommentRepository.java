@@ -28,4 +28,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long>, Comment
             @Param("commentId") Long commentId, @Param("deletedAt") LocalDateTime deletedAt);
 
     long countByParentIdAndIsDeletedFalse(Long parentId);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("SELECT c.id FROM Comment c WHERE c.parent.id = :parentId AND c.isDeleted = false")
+    java.util.List<Long> findActiveReplyIdsForUpdate(@Param("parentId") Long parentId);
 }

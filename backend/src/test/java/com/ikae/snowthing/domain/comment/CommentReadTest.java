@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +33,7 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.dto.PostResponse;
+import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
@@ -47,14 +50,15 @@ class CommentReadTest {
 
     @Autowired private CommentService commentService;
     @Autowired private PostService postService;
+    @Autowired private PostRepository postRepository;
     @Autowired private MemberRepository memberRepository;
     @Autowired private PostCategoryRepository categoryRepository;
-    @Autowired private PostRepository postRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private NamedParameterJdbcTemplate jdbcTemplate;
     @Autowired private MockMvc mockMvc;
 
     private CustomUserDetails userDetails;
+    private CustomUserDetails otherUserDetails;
     private PostResponse post;
 
     @BeforeEach
@@ -75,6 +79,15 @@ class CommentReadTest {
                                 .role(Role.ROLE_USER)
                                 .build());
         userDetails = new CustomUserDetails(member);
+        Member otherMember =
+                memberRepository.save(
+                        Member.builder()
+                                .email("comment-read-other@example.com")
+                                .password(passwordEncoder.encode("Password123!"))
+                                .nickname("댓글조회다른사용자")
+                                .role(Role.ROLE_USER)
+                                .build());
+        otherUserDetails = new CustomUserDetails(otherMember);
         post = createPost("댓글 조회 게시글");
     }
 
@@ -157,7 +170,63 @@ class CommentReadTest {
                                     .param("size", "20"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.rootCommentId").value(root.commentId()))
-                    .andExpect(jsonPath("$.replies.length()").value(2));
+                    .andExpect(jsonPath("$.replies.length()").value(2))
+                    .andExpect(jsonPath("$.replies[0].canEdit").value(false))
+                    .andExpect(jsonPath("$.replies[0].requiresPassword").value(false))
+                    .andExpect(jsonPath("$.replies[0].ownerPublicId").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("삭제된 대댓글도 placeholder로 노출하며 대댓글 수와 더보기 기준을 일치시킨다")
+        void deletedRepliesKeepResponseCountsConsistent() {
+            CommentResponse root = createRoot("삭제 대댓글 집계 루트");
+            List<CommentResponse> replies =
+                    java.util.stream.IntStream.rangeClosed(1, 7)
+                            .mapToObj(index -> createReply(root.commentId(), "대댓글 " + index))
+                            .toList();
+            commentService.deleteComment(replies.get(0).commentId(), null, userDetails);
+            commentService.deleteComment(replies.get(1).commentId(), null, userDetails);
+
+            PostCommentListResponse response =
+                    commentService.getCommentsByPost(post.publicId(), null, 20);
+            CommentResponse rootResponse = response.comments().getFirst();
+
+            assertThat(rootResponse.replyCount()).isEqualTo(7);
+            assertThat(rootResponse.previewReplies()).hasSize(5);
+            assertThat(rootResponse.previewReplies().getFirst().isDeleted()).isTrue();
+            assertThat(rootResponse.hasMoreReplies()).isTrue();
+
+            CommentReplyListResponse repliesResponse =
+                    commentService.getCommentReplies(root.commentId(), null, 20);
+            assertThat(repliesResponse.totalReplyCount()).isEqualTo(7);
+            assertThat(repliesResponse.replies()).hasSize(7);
+        }
+
+        @Test
+        @DisplayName("대댓글 중 일부가 삭제되어도 replyCount, 프리뷰, 더보기 기준은 화면 노출 기준으로 전체 대댓글 수를 일관되게 반영한다")
+        void replyCountAndHasMoreConsistentWithDeletedReplies() {
+            CommentResponse root = createRoot("루트 댓글");
+            List<CommentResponse> replies = new ArrayList<>();
+            for (int i = 1; i <= 6; i++) {
+                replies.add(createReply(root.commentId(), "대댓글 " + i));
+            }
+
+            commentService.deleteComment(replies.get(0).commentId(), null, userDetails);
+            commentService.deleteComment(replies.get(1).commentId(), null, userDetails);
+
+            PostCommentListResponse response =
+                    commentService.getCommentsByPost(post.publicId(), null, 20);
+            CommentResponse rootDto = response.comments().getFirst();
+
+            assertThat(rootDto.replyCount()).isEqualTo(6);
+            assertThat(rootDto.previewReplies()).hasSize(5);
+            assertThat(rootDto.hasMoreReplies()).isTrue();
+
+            CommentReplyListResponse replyListResponse =
+                    commentService.getCommentReplies(root.commentId(), null, 5);
+            assertThat(replyListResponse.totalReplyCount()).isEqualTo(6);
+            assertThat(replyListResponse.hasNext()).isTrue();
+            assertThat(replyListResponse.replies()).hasSize(5);
         }
 
         @Test
@@ -194,6 +263,68 @@ class CommentReadTest {
             assertThatThrownBy(() -> response.comments().getFirst().previewReplies().clear())
                     .isInstanceOf(UnsupportedOperationException.class);
         }
+
+        @Test
+        @DisplayName("댓글 수정 UI 권한은 서버의 작성 주체별 권한 정책과 일치한다")
+        void editPermissionMetadataMatchesOwnershipPolicy() {
+            CommentResponse memberComment = createRoot("회원 댓글");
+            CommentResponse memberAnonymousComment =
+                    commentService.createComment(
+                            post.publicId(),
+                            new CommentCreateRequest(null, "로그인 익명 댓글", true, null),
+                            userDetails,
+                            "127.0.0.1");
+            CommentResponse guestAnonymousComment =
+                    commentService.createComment(
+                            post.publicId(),
+                            new CommentCreateRequest(null, "비회원 익명 댓글", true, "password1234"),
+                            null,
+                            "127.0.0.1");
+
+            PostCommentListResponse ownerView =
+                    commentService.getCommentsByPost(post.publicId(), null, 20, userDetails);
+            assertThat(findComment(ownerView, memberComment.commentId()).canEdit()).isTrue();
+            assertThat(findComment(ownerView, memberComment.commentId()).requiresPassword())
+                    .isFalse();
+            assertThat(findComment(ownerView, memberAnonymousComment.commentId()).canEdit())
+                    .isTrue();
+            assertThat(
+                            findComment(ownerView, memberAnonymousComment.commentId())
+                                    .requiresPassword())
+                    .isFalse();
+            assertThat(findComment(ownerView, guestAnonymousComment.commentId()).canEdit())
+                    .isTrue();
+            assertThat(findComment(ownerView, guestAnonymousComment.commentId()).requiresPassword())
+                    .isTrue();
+
+            PostCommentListResponse otherView =
+                    commentService.getCommentsByPost(post.publicId(), null, 20, otherUserDetails);
+            assertThat(findComment(otherView, memberComment.commentId()).canEdit()).isFalse();
+            assertThat(findComment(otherView, memberAnonymousComment.commentId()).canEdit())
+                    .isFalse();
+            assertThat(findComment(otherView, guestAnonymousComment.commentId()).canEdit())
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("대댓글 분리 조회에도 동일한 수정 UI 권한을 적용한다")
+        void separatedReplyPermissionMetadataMatchesOwnershipPolicy() {
+            CommentResponse root = createRoot("권한 확인 루트");
+            CommentResponse memberAnonymousReply =
+                    commentService.createComment(
+                            post.publicId(),
+                            new CommentCreateRequest(root.commentId(), "로그인 익명 대댓글", true, null),
+                            userDetails,
+                            "127.0.0.1");
+
+            CommentReplyListResponse ownerView =
+                    commentService.getCommentReplies(root.commentId(), null, 20, userDetails);
+            CommentReplyListResponse otherView =
+                    commentService.getCommentReplies(root.commentId(), null, 20, otherUserDetails);
+
+            assertThat(findReply(ownerView, memberAnonymousReply.commentId()).canEdit()).isTrue();
+            assertThat(findReply(otherView, memberAnonymousReply.commentId()).canEdit()).isFalse();
+        }
     }
 
     @Nested
@@ -209,20 +340,22 @@ class CommentReadTest {
         }
 
         @Test
-        @DisplayName("페이지 크기가 허용 범위를 벗어나면 INVALID_INPUT을 반환한다")
+        @DisplayName("댓글 페이지 크기가 허용 범위를 벗어나면 COMMENT_INVALID_PAGE_SIZE를 반환한다")
         void invalidPageSize() throws Exception {
             assertErrorCode(
                     () -> commentService.getCommentsByPost(post.publicId(), null, 0),
-                    ErrorCode.INVALID_INPUT);
+                    ErrorCode.COMMENT_INVALID_PAGE_SIZE);
             assertErrorCode(
                     () -> commentService.getCommentsByPost(post.publicId(), null, 51),
-                    ErrorCode.INVALID_INPUT);
+                    ErrorCode.COMMENT_INVALID_PAGE_SIZE);
 
             mockMvc.perform(
                             get("/api/v1/posts/{publicId}/comments", post.publicId())
                                     .param("size", "51"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.getCode()));
+                    .andExpect(
+                            jsonPath("$.code")
+                                    .value(ErrorCode.COMMENT_INVALID_PAGE_SIZE.getCode()));
         }
 
         @Test
@@ -269,12 +402,43 @@ class CommentReadTest {
         }
 
         @Test
-        @DisplayName("삭제된 게시글의 대댓글 조회는 POST_NOT_FOUND를 반환한다")
-        void repliesOfDeletedPostAreHidden() {
-            CommentResponse root = createRoot("삭제 게시글 루트");
-            createReply(root.commentId(), "삭제 게시글 대댓글");
+        @DisplayName("일반 회원 댓글은 writerIp가 null이고, 익명 댓글은 마스킹된 IP를 반환한다")
+        void getComments_masksWriterIpOnlyForAnonymous() {
+            CommentResponse memberComment = createRoot("회원 댓글");
+            commentService.createComment(
+                    post.publicId(),
+                    CommentCreateRequest.builder()
+                            .content("익명 댓글")
+                            .isAnonymous(true)
+                            .anonymousPassword("1234")
+                            .build(),
+                    null,
+                    "211.234.10.20");
 
-            postRepository.findByPublicId(post.publicId()).orElseThrow().softDelete();
+            PostCommentListResponse response =
+                    commentService.getCommentsByPost(post.publicId(), null, 20, null);
+
+            CommentResponse foundMember = findComment(response, memberComment.commentId());
+            assertThat(foundMember.isAnonymous()).isFalse();
+            assertThat(foundMember.writerIp()).isNull();
+
+            CommentResponse foundAnon =
+                    response.comments().stream()
+                            .filter(CommentResponse::isAnonymous)
+                            .findFirst()
+                            .orElseThrow();
+            assertThat(foundAnon.isAnonymous()).isTrue();
+            assertThat(foundAnon.writerIp()).isEqualTo("211.234.***.***");
+        }
+
+        @Test
+        @DisplayName("게시글이 삭제된 경우 대댓글 직접 조회 시 POST_NOT_FOUND를 반환한다")
+        void repliesOfDeletedPostThrowsException() {
+            CommentResponse root = createRoot("루트 댓글");
+            createReply(root.commentId(), "대댓글");
+
+            Post postEntity = postRepository.findByPublicId(post.publicId()).orElseThrow();
+            postEntity.softDelete();
 
             assertErrorCode(
                     () -> commentService.getCommentReplies(root.commentId(), null, 20),
@@ -282,15 +446,13 @@ class CommentReadTest {
         }
 
         @Test
-        @DisplayName("차단된 게시글의 대댓글 조회는 POST_NOT_FOUND를 반환한다")
-        void repliesOfBlockedPostAreHidden() {
-            CommentResponse root = createRoot("차단 게시글 루트");
-            createReply(root.commentId(), "차단 게시글 대댓글");
+        @DisplayName("게시글이 차단(BLOCKED)된 경우 대댓글 직접 조회 시 POST_NOT_FOUND를 반환한다")
+        void repliesOfBlockedPostThrowsException() {
+            CommentResponse root = createRoot("루트 댓글");
+            createReply(root.commentId(), "대댓글");
 
-            postRepository
-                    .findByPublicId(post.publicId())
-                    .orElseThrow()
-                    .changeStatus(PostStatus.BLOCKED);
+            Post postEntity = postRepository.findByPublicId(post.publicId()).orElseThrow();
+            postEntity.changeStatus(PostStatus.BLOCKED);
 
             assertErrorCode(
                     () -> commentService.getCommentReplies(root.commentId(), null, 20),
@@ -333,5 +495,19 @@ class CommentReadTest {
                 .isInstanceOf(CustomAuthException.class)
                 .extracting("errorCode")
                 .isEqualTo(errorCode);
+    }
+
+    private CommentResponse findComment(PostCommentListResponse response, Long commentId) {
+        return response.comments().stream()
+                .filter(comment -> comment.commentId().equals(commentId))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private CommentResponse findReply(CommentReplyListResponse response, Long commentId) {
+        return response.replies().stream()
+                .filter(comment -> comment.commentId().equals(commentId))
+                .findFirst()
+                .orElseThrow();
     }
 }
