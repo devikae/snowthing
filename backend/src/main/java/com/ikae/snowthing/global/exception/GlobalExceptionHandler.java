@@ -3,6 +3,8 @@ package com.ikae.snowthing.global.exception;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,6 +35,13 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, "요청 데이터의 고유 제약조건 또는 무결성을 위반했습니다."));
     }
 
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+            ObjectOptimisticLockingFailureException e) {
+        return ResponseEntity.status(ErrorCode.COMMENT_UPDATE_CONFLICT.getStatus())
+                .body(ErrorResponse.from(ErrorCode.COMMENT_UPDATE_CONFLICT));
+    }
+
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleAuthenticationException(Exception e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -57,6 +66,14 @@ public class GlobalExceptionHandler {
                                 defaultMessage != null
                                         ? defaultMessage
                                         : ErrorCode.INVALID_INPUT.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException e) {
+        log.warn("요청 본문을 읽을 수 없습니다: {}", e.getMessage());
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
     }
 
     @ExceptionHandler(Exception.class)

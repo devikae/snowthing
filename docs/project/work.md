@@ -1,3 +1,237 @@
+- **Sprint 03 다중 PR 순차 머지 및 베이스 브랜치 통합 완료 (2026-09-06)**:
+  1. **순차 머지 완료 내역**:
+     - **PR #14 (`feature/sprint03-comment-cr`)**: 베이스 브랜치(`feature/sprint03-comment`)로 병합 완료 (`MERGED`).
+     - **PR #15 (`feature/sprint03-comment-u`)**: 베이스 최신화 역병합 및 15개 파일 충돌 해결, 전체 테스트 통과 후 병합 완료 (`MERGED`).
+     - **PR #16 (`feature/sprint03-comment-d`)**: PR #14, #15가 병합된 베이스를 역병합하여 백엔드/프론트엔드/문서 충돌 해결, 백엔드 테스트 및 프론트엔드 빌드 검증 후 병합 완료 (`MERGED`).
+  2. **핵심 충돌 해결 및 통합 사항**:
+     - **백엔드 DTO/서비스**: `CommentResponse` 내 4대 권한 플래그(`canEdit`, `requiresPassword`, `canDelete`, `requiresDeletePassword`)와 익명 IP 마스킹 일원화, `CommentService`의 수정/삭제 트랜잭션 및 가시성 검증 통합.
+     - **프론트엔드 UI**: `page.tsx` 내 인라인 수정 폼(PUT)과 플로팅 팝오버 삭제 위젯(DELETE, `CommentDeleteInline`), 서버 계산 기반 권한 바인딩 및 멘션 없는 2-Depth 토글 입력창 일원화.
+     - **설계/정책 문서**: `comment_api_spec.md` 5대 CRUD 스펙 및 `comment_policy.md` 4대 권한 매트릭스·카운트 일원화 정책 동기화.
+  3. **최종 통합 검증 결과**:
+     - 백엔드 코드 서식 검증: `.\gradlew.bat spotlessApply` 통과.
+     - 실제 MySQL 8.0 테스트 컨테이너 환경 기반 백엔드 전체 단위/통합 테스트: `.\gradlew.bat test` **100% BUILD SUCCESSFUL** (0 failures).
+     - 프론트엔드 Next.js 16.2.12 Turbopack 프로덕션 빌드: `npm run build` **100% SUCCESS** (0 errors, 10 routes).
+     - 베이스 브랜치 최신화: `feature/sprint03-comment` 동기화 완료.
+
+- **Sprint 03 댓글/대댓글 인라인 삭제 UI 및 비밀번호 플로팅 팝오버 위젯 구현 (2026-09-03)**:
+  1. **작업명**: 댓글/대댓글 인라인 미니 `✕` 삭제 버튼 및 시간 아래 플로팅 드롭다운 UI 구현 (브라우저 다이얼로그 전면 퇴출)
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - 브라우저 기본 `prompt()`, `confirm()`, `alert()` 호출 코드 100% 제거.
+     - 댓글 및 대댓글 상단 헤더의 작성 시간(`MM.dd HH:mm:ss`) 우측에 미니 사각 `✕` 삭제 버튼 배치.
+     - `✕` 클릭 시 부모 헤더나 주변 텍스트를 밀어내지 않고 시간 바로 아래에 모달처럼 떠 있는 플로팅 팝오버(`absolute right-0 top-full mt-1.5 z-50 shadow-xl`) 위젯 구현.
+     - 외부 클릭 시 자동으로 닫히는 고정 투명 백드롭(`fixed inset-0 z-40`) 및 `ESC` 키보드 닫기, `Enter` 제출 지원.
+     - 비회원 익명 댓글은 비밀번호 인풋창 폼 제공, 로그인 회원 본인 및 최고 관리자는 `삭제할까요?` 즉시 확인 폼 제공.
+     - 하단 액션 바의 중복 텍스트 `삭제` 버튼 제거 (상단 `✕` 아이콘으로 일원화).
+  4. **검증 결과**:
+     - `npm run build` Next.js 16.2.12 Turbopack 컴파일 100% 통과 (Compiled successfully in 1733ms, 0 errors).
+
+- **Sprint 03 댓글 삭제(DELETE /api/v1/comments/{commentId}) 및 4대 권한 매트릭스 전담 개발 완결 (2026-09-01)**:
+  1. **작업명**: 댓글 삭제(Soft Delete & 권한 매트릭스) 기능 보강 및 단위/통합 테스트
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - `CommentService.java` 내 `validateDeletePermission` 권한 매트릭스 리팩토링:
+       * 1) 최고 관리자(`ROLE_ADMIN`): 비밀번호 없이 즉시 삭제 권한 통과
+       * 2) 일반 회원 및 로그인 익명(`comment.getMember() != null`): 본인 세션(`publicId`) 일치 시 통과, 타인 접근 시 `AUTH_002` (403 Forbidden) 반환
+       * 3) 비회원 익명(`comment.getMember() == null`): 비밀번호 불일치/누락 시 `POST_004` (403 Forbidden) 반환, 일치 시 통과
+     - Soft Delete 및 활성 댓글 수 원자적 차감 유지: `comment.softDelete()`, `postRepository.decreaseCommentCount(...)`
+     - `CommentDeleteTest.java` 단위/통합 테스트 8건 신설 (성공 4건 + 실패 4건).
+  4. **남은 항목**: 없음 (Delete 전담 완료)
+  5. **발견된 이슈 및 해결**:
+     - 기존 `validateDeletePermission`에서 로그인 회원이 작성한 익명 댓글(`isAnonymous = true, member != null`)을 타인이 삭제 시도 시 비밀번호 검사로 넘어가 `POST_004`가 발생하던 결함 발견.
+     - `comment.getMember() != null` 조건으로 통합하여 로그인 익명 글도 본인 세션이 아니면 정확히 `AUTH_002`가 발생하도록 인가 로직 일원화 완료.
+  6. **검증 결과**:
+     - `spotlessApply` 서식 포맷팅 완료.
+     - `gradle test --tests "*CommentDeleteTest*"` 총 8개 테스트 케이스 100% PASS (BUILD SUCCESSFUL in 16s).
+       - [성공 1] 일반 회원 본인 댓글 삭제 성공 (`is_deleted = true`, `post.commentCount` 1 차감 확인)
+       - [성공 2] 비회원 익명 댓글 올바른 비밀번호 입력 시 삭제 성공
+       - [성공 3] 최고 관리자(`ROLE_ADMIN`)가 타인/익명 댓글을 비밀번호 없이 강제 삭제 성공
+       - [성공 4] 대댓글이 존재하는 부모 댓글 삭제 시 부모만 `is_deleted = true` 처리되고 하위 대댓글 정상 보존 확인
+       - [실패 1] 로그인 회원이 타인의 댓글 삭제 시도 시 `AUTH_002` (403 Forbidden) 검증
+       - [실패 2] 비회원 익명 댓글에 틀린 비밀번호 입력 시 `POST_004` (403 Forbidden) 검증
+       - [실패 3] 이미 Soft Delete된 댓글 재삭제 시도 시 `COMMENT_001` (404 Not Found) 검증
+       - [실패 4] 존재하지 않는 댓글 ID 삭제 시도 시 `COMMENT_001` (404 Not Found) 검증
+
+- **Sprint 03 다중 PR 통합: PR #14 베이스 병합 및 PR #15 역병합 충돌 해결 (2026-09-06)**:
+  1. **PR #14 (`feature/sprint03-comment-cr`) 머지 완결**:
+     - 베이스 브랜치(`feature/sprint03-comment`)로 PR #14 병합 완료 (`MERGED`).
+  2. **PR #15 (`feature/sprint03-comment-u`) 역병합 및 15개 파일 충돌 해결**:
+     - CI/CD 워크플로 및 로컬/테스트 MySQL 8.0 단일화 설정 통합.
+     - `database/ddl.sql` 및 `Comment.java` 낙관적 락(`@Version`) + 최적화 인덱스 통합.
+     - `Comment.java` `rootParent()` 최상위 조상 탐색 루프와 `updateContent()` 통합.
+     - `CommentRepositoryCustom` 및 `CommentRepositoryImpl` 대댓글 카운트 및 익명 IP 마스킹 통합.
+     - `CommentResponse` 15개 필드 생성자, `withReplyInfo`, `withViewerPermissions`, 축약 IP 포맷팅 통합.
+     - `CommentService` `CommentCommandService` 트랜잭션 분리 및 게시글 가시성 검증 통합.
+     - 프론트엔드(`page.tsx`) 멘션 UI 제거 및 인라인 수정 폼 동시성 통합, `npm run build` 100% 성공.
+     - `CommentResponseTest` 단위 테스트 통합 (회원 IP 은닉 + 익명 축약 IP).
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 프론트엔드 멘션 UI 제거 및 2-Depth 평탄화 정책 일치화 (2026-09-04)**:
+  1. **가짜 UI(Phantom UI) 제거 및 도메인 스펙 일치화**:
+     - 프론트엔드에서 대댓글 작성 시 대상 닉네임(`@{replyMentionName} 님에게 답글`)을 노출했으나 백엔드 엔티티 및 스키마에는 루트 ID(`parentId`)와 본문만 저장되어 영속되지 않던 UI/데이터 불일치 결함 해소.
+     - 알림 시스템이 부재한 Sprint 03의 '단순 2-Depth 평탄화 정책'(`comment_policy.md`)에 맞추어 `page.tsx` 내의 불필요한 `replyMentionName` 상태 및 멘션 라벨을 완전히 제거하고, 루트 댓글 하위의 순수 2-Depth 답글 입력창 토글(`toggleReplyEditor`)로 단순화.
+  2. **검증 결과**:
+     - Next.js 16 프로덕션 빌드(`npm run build`) **100% SUCCESS** 통과 (TypeScript 타입 에러 0건, 10개 라우트 정상 빌드).
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 프론트엔드 루트 댓글 등록 후 화면 갱신 UX 개선 (Append-on-Create 적용) (2026-09-04)**:
+  1. **첫 페이지 덮어쓰기(Re-fetch)로 인한 새 댓글 시각적 증발 버그 해결**:
+     - 오래된 순(ASC) 페이징 환경에서 다음 페이지(`hasNextComments`)가 존재할 때 신규 댓글 등록 후 첫 페이지(`fetchComments()`)를 다시 불러와, 방금 등록한 최신 댓글이 화면에서 사라져 등록 실패로 오인하게 만들던 UX 결함 해소.
+     - `page.tsx`의 `handleCreateComment`에서 `if (hasNextComments)` 분기를 제거하고, 다음 페이지 존재 여부와 무관하게 서버 응답 객체(`createdComment`)를 현재 댓글 목록 끝에 즉시 결합(`[...current, createdComment]`)하도록 일원화.
+  2. **검증 결과**:
+     - Next.js 16 최적화 프로덕션 빌드(`npm run build`) **100% SUCCESS** 통과 (TypeScript 컴파일 및 10개 라우트 정적/동적 생성 정상 완료).
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: `Comment.rootParent()` 최상위 조상 반복 탐색 로직 개선 및 다계층 방어 (2026-09-04)**:
+  1. **암묵적 2-Depth 가정 탈피 및 최상위 루트 노드 반복 탐색(Root Traversal) 확립**:
+     - 기존 `rootParent()`가 단순 1단계 부모 반환(`parent != null ? parent : this`)으로 작성되어 "부모는 무조건 루트 댓글일 것이다"라는 암묵적 규칙에 취약했던 결함 개선.
+     - `while (current.getParent() != null)` 반복 탐색 로직을 도입하여, 3-depth 이상의 계층 데이터가 존재하더라도 최상위 조상(`parent == null`)까지 확실하게 추적해 진짜 루트 엔티티를 반환하도록 방어적 프로그래밍 구현.
+  2. **단위 테스트 신설 (`CommentTest.java`)**:
+     - 루트 댓글 단독 호출(`root.rootParent() == root`), 일반 2-depth 대댓글(`child.rootParent() == root`), 3-depth 이상 임의 계층(`grandson.rootParent() == grandfather`) 3대 시나리오 단위 테스트 100% 검증.
+  3. **검증 결과**:
+     - `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 128개 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 대댓글 개수·미리보기·더보기 기준 화면 노출 노드(`totalCount`) 일원화 및 정책 동기화 (2026-09-04)**:
+  1. **UI 렌더링 노드 기준 기준 통일 (인지 부조화 해결)**:
+     - 기존에 `replyCount`는 활성 대댓글만 세고(`activeCount`), 미리보기(상위 5개) 및 더보기(`hasMoreReplies`)는 삭제된 대댓글 placeholder를 포함한 전체 수(`totalCount`)를 기준으로 삼아 발생하던 UI 불일치(예: '답글 2개'인데 5개가 펼쳐지고 더보기 버튼이 뜨는 현상)를 해소.
+     - 화면에 한 줄의 높이를 차지하며 렌더링되는 모든 대댓글 노드 수(`totalCount`)로 `replyCount`, `previewReplies`, `hasMoreReplies`, `totalReplyCount`의 기준을 100% 일치시킴.
+  2. **도메인 정책 문서 공식 갱신**:
+     - `docs/conception/sprint03/comment_policy.md`의 `replyCount` 명세를 수정하여, 화면 렌더링 노드 일원화 정책에 따라 삭제 대댓글 placeholder를 포함한 전체 대댓글 수(`totalCount`)로 카운트 및 페이징을 통합함을 명문화.
+  3. **코드 및 테스트 반영**:
+     - `CommentRepositoryCustom` 및 `CommentRepositoryImpl`에 `countReplies(Long rootCommentId)` 구현 (단순 `COUNT(*)`로 일원화).
+     - `CommentService.getCommentsByPost` 및 `getCommentReplies`에서 `replyCount` 매핑을 `stat.totalCount()`로 일원화.
+     - `CommentReadTest`에 대댓글 일부 삭제 시에도 화면 노출 기준으로 `replyCount`, 프리뷰(5개), `hasMoreReplies(true)`가 완벽히 일치함을 검증하는 테스트 신설.
+  4. **검증 결과**:
+     - `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 125개 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 대댓글 직접 조회 시 상위 게시글 가시성 검증 일원화 (2026-09-04)**:
+  1. **상위 리소스 가시성 우회(Visibility Bypass / IDOR) 차단**:
+     - 분리 페이징 API(`GET /api/v1/comments/{commentId}/replies`)에서 게시글의 삭제 여부(`isDeleted`) 및 공개 상태(`PostStatus.NORMAL`) 검증이 누락되어 있던 보안/비즈니스 홀 차단.
+     - `CommentService`에 `validatePostVisibility(Post post)` 공통 검증 메서드를 정의하고, 댓글 작성(`createComment`), 루트 댓글 조회(`getCommentsByPost`), 대댓글 분리 조회(`getCommentReplies`) 3대 진입점에 일관되게 적용.
+  2. **Soft Delete(`@SQLRestriction`) 충돌 방어 및 2단계 Clustered Index Point Lookup 확립**:
+     - `Post`의 `@SQLRestriction("is_deleted = false")`와 Non-null `@ManyToOne` 간의 Broken Entity Relationship(`JpaObjectRetrievalFailureException`) 발생을 원천 차단하기 위해, `commentRepository.findById(commentId)`로 댓글 존재를 먼저 보장한 뒤 `postRepository.findById(postId)`로 게시글 가시성을 순차 검증하도록 설계.
+     - 두 단계 모두 MySQL Clustered Index PK Seek(`WHERE id = ?`, 0.1ms)로 실행되어 초고속 조회 및 정확한 비즈니스 에러(`COMMENT_NOT_FOUND` vs `POST_NOT_FOUND`) 분기 100% 달성.
+  3. **검증 결과**:
+     - `CommentReadTest`에 삭제된 게시글 및 차단(`BLOCKED`)된 게시글 대상 대댓글 직접 조회 차단 테스트 2종 신설.
+     - `spotlessApply` 및 `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 124개 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+  4. **학습 정리 문서 작성**:
+     - `docs/study/sprint03/studyCommentPostVisibilityFetchJoinVsLazyLoading260904.md`에 문제 배경, 4대 후보 비교, 단순 코스트(RTT/CPU/I/O) 매트릭스, `@SQLRestriction` 사이드이펙트, 7대 요소 체계 완벽 문서화 완료.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 대댓글 생성 시 루트 선행 잠금 및 부모 락 배제를 통한 데드락(Deadlock) 원천 방지 (2026-09-04)**:
+  1. **부모 댓글 조회 시 배타적 락(X-Lock) 제거 및 단순 조회 전환**:
+     - `CommentService.createComment`에서 요청된 부모 댓글(`request.parentId`)의 존재 여부 및 최상위 루트 ID(`rootCommentId`) 식별 목적에 불과한 `findByIdForUpdate`를 제거하고 단순 `findById`로 변경.
+     - 부모 행에 대한 불필요한 X-Lock 획득을 배제하여 부모-루트 간 교차 락(Deadlock) 발생 경로를 원천 차단.
+  2. **트랜잭션 락 획득 순서 단일화 (루트 선행 X-Lock -> 자식 S-Lock 카운트)**:
+     - 루트 댓글에 직접 답글을 달 때와 하위 대댓글에 답글을 달 때 모두 항상 [최상위 루트 댓글 선행 배타적 락(`findByIdForUpdate(rootCommentId)`)]을 일관되게 가장 먼저 획득하도록 보장.
+     - 100개 상한 검증 시 MySQL `REPEATABLE_READ` 격리 수준의 Snapshot Read 한계를 방어하기 위해 `findActiveReplyIdsForUpdate`(`@Lock(LockModeType.PESSIMISTIC_READ)`)로 최신 커밋 상태(Locking Read)를 읽어 정합성 보장.
+     - 모든 동시 트랜잭션이 동일한 락 획득 방향(루트 X-Lock -> 자식 S-Lock)을 유지하므로 순환 대기(Circular Wait)가 물리적으로 성립하지 않음.
+  3. **검증 결과**:
+     - `spotlessCheck` 서식 검증 100% 통과.
+     - 실제 MySQL 8.0 환경 기반 백엔드 전체 122개 단위/통합 테스트(`gradle test --rerun`) **100% BUILD SUCCESSFUL (0 failures)** 완전 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: 1차·2차 쿼리 최적화 (스칼라 서브쿼리 제거 배치 집계 전환 & CROSS JOIN LATERAL 적용 및 H2 완전 제거) (2026-09-04)**:
+  1. **1차 쿼리(`findRootComments`) 스칼라 서브쿼리 다발 제거 및 배치 집계 분리**:
+     - 기존 `SELECT` 절에서 매 루트 댓글 행마다 반복 실행되던 `reply_count`와 `has_more_replies` 스칼라 서브쿼리 2개(20건 조회 시 총 40회 실행)를 완전 제거.
+     - 루트 댓글 ID 목록을 기반으로 단 1번의 배치 GROUP BY 쿼리(`findReplyStats`: `SELECT parent_id, COUNT(CASE WHEN is_deleted = false THEN 1 END) AS active_count, COUNT(*) AS total_count FROM comment WHERE parent_id IN (:rootCommentIds) GROUP BY parent_id`)로 분리.
+     - `idx_comment_parent_deleted_id(parent_id, is_deleted, comment_id)` 커버링 인덱스를 활용하여 테이블 랜덤 I/O 없이 메모리에서 DTO와 O(1) 매핑 조립.
+  2. **2차 쿼리(`findTopReplyPreviews`) `CROSS JOIN LATERAL` 도입 (MySQL 8.0 Top-5 최적화)**:
+     - 윈도우 함수 및 임시 파생 테이블(Derived Table)을 배제하고, 외부 루트 댓글 각 행마다 `LIMIT 5`를 직접 거는 `CROSS JOIN LATERAL` 쿼리로 전환.
+     - 루트 댓글당 필요한 5건만 인덱스 탐색 즉시 중단(Early Termination) 및 선별된 건에 대해서만 `member`를 조인하여 불필요한 스캔과 Early Join 낭비 0건 달성.
+  3. **H2 완전 제거 및 테스트 환경 MySQL 8.0 전면 통일 (Environment Parity 확보)**:
+     - `build.gradle`에서 `com.h2database:h2` 의존성을 완전 삭제.
+     - `application-test.yml`을 MySQL 8.0 (`jdbc:mysql://localhost:3306/snowthing_test`) 및 `MySQLDialect`로 전환하여 로컬 Docker MySQL과 직통 연동.
+     - `.github/workflows/gradle.yml` CI 파이프라인에 MySQL 8.0 서비스 컨테이너(`services: mysql: image: mysql:8.0`)를 추가하여 프로덕션과 테스트 환경의 DB 방언 및 동작 100% 일치 보장.
+  4. **검증 결과**:
+     - `application.yml` 로컬 DB 패스워드 기본값 설정 및 `bootRun` 실제 서버 기동 검증: HTTP 200 OK 응답 정상 수신 확인.
+     - `frontend` Next.js 16 프로덕션 빌드(`npm run build`) **100% SUCCESS** 통과.
+     - `spotlessApply` 및 `spotlessCheck` 서식 교정 100% 통과.
+     - `PostRepositoryCustomTest` 카테고리 중복 가드 및 `CommentCreateTest` 동시성 테스트 DB 클린업 보강.
+     - 실제 MySQL 8.0 환경 기반 **백엔드 전체 122개 단위/통합 테스트(`gradle test --rerun`) 100% BUILD SUCCESSFUL (32s)** 완전 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: PK(`comment_id`) 기반 논리적 시퀀스 단일 커서 전환 및 인덱스 최적화 (2026-09-04)**:
+  1. **시계열 오차 해소 및 쿼리 단순화**:
+     - 기존 `(created_at, comment_id)` 복합 시계열 커서의 클락 스큐(Clock Skew) 및 트랜잭션 지연에 따른 누락(Phantom Skip) 위험을 해소하기 위해, 단조 증가하는 `comment_id` 단일 커서(`AND c.comment_id > :cursorId`) 및 단일 정렬(`ORDER BY c.comment_id ASC`)로 전환.
+  2. **DB 중복 쿼리 제거 (RTT 50% 절감)**:
+     - 커서의 시각(`created_at`)을 얻기 위해 매 페이징마다 날아가던 선행 `findRootCursor` / `findReplyCursor` SELECT 쿼리를 제거하고, 경량 존재 검증(`existsRootCursor`, `existsReplyCursor`) 및 `cursorId` 직통 전달로 최적화.
+  3. **인덱스 및 DDL 다이어트**:
+     - `Comment.java` 및 `database/ddl.sql`의 복합 인덱스에서 불필요한 `created_at` 컬럼을 제거하여 `idx_comment_post_parent_id(post_id, parent_id, comment_id)` 및 `idx_comment_parent_deleted_id(parent_id, is_deleted, comment_id)`로 B-Tree 인덱스 용량 절감 및 Clustered Index 정렬 일치.
+  4. **검증 결과**:
+     - Spotless 서식 교정(`spotlessApply`) 및 댓글 도메인 전체 단위/통합 테스트(`gradle test --tests com.ikae.snowthing.domain.comment.*`) **100% BUILD SUCCESSFUL (20s)** 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영: `CommentResponse` 작성자명 상수화 및 축약 IP 포맷팅 적용 (2026-09-04)**:
+  1. **작성자명 1줄 상수화 및 Plain String 제거**:
+     - `CommentResponse.java` 내부에 `private static final String ANONYMOUS_NAME = "ㅇㅇ";` 상수를 선언하여 하드코딩된 리터럴 완전 제거 및 리뷰어 피드백 수용.
+  2. **익명 축약 IP 포맷팅 (`ㅇㅇ(xxx.xxx)`) 및 일반 회원 정보 보호**:
+     - 비회원 익명 댓글에 대해 4옥텟 IP 중 앞 두 자리만 노출하는 축약 IP 포맷팅(`ㅇㅇ(xxx.xxx)`) 적용.
+     - 일반 회원의 경우 IP를 완전히 은닉(`null`)하고 닉네임을 노출하도록 보장.
+  3. **검증 결과**:
+     - Spotless 서식 교정(`spotlessApply`) 및 댓글 도메인 전체 테스트(`gradle test --tests com.ikae.snowthing.domain.comment.*`) **100% BUILD SUCCESSFUL (16s)** 통과.
+
+- **Sprint 03 댓글 PR #14 코드리뷰 피드백 반영 및 대댓글 인덱스/설정 최적화 (2026-09-02)**:
+  1. **대댓글 복합 인덱스(idx_comment_parent_deleted_created) 최적화**:
+     - `database/ddl.sql` 및 `Comment.java` `@Index` 명세를 `(parent_id, created_at, comment_id)` ➔ `(parent_id, is_deleted, created_at, comment_id)`로 변경.
+     - 대댓글 100개 상한 검증(`countActiveReplies`) 및 대댓글 조회 시 살아있는 행으로 B-Tree Seek 직행 및 커버링 인덱스(`Using index`) 실측 달성.
+  2. **DB Username 환경변수 동기화 (Configuration Parity)**:
+     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `${SNOWTHING_DB_USERNAME:snowuser}`로 수정.
+  3. **DataInitializer & 테스트 정합성 보강**:
+     - `DataInitializer.java` 내 닉네임 유니크 제약조건 중복 가드 추가.
+     - `CommentServiceTest.java` 내 활성 자식 노드가 있는 삭제 부모 placeholder 정책 반영 및 `@AfterEach` teardown 클린업 추가.
+  4. **검증 결과**:
+     - `spotlessCheck` 및 백엔드 전체 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL (23s)** 통과.
+
+- **Sprint 03 PR #15 코드리뷰 피드백 반영 및 시드/설정/인덱스 안전화 완결 (2026-09-02)**:
+  1. **스파이크 시드(`database/spike_seed_comments.sql`) 소유권 기반 안전 시딩 적용**:
+     - `post_category`, `member`의 고정 PK(1) 강제 삽입을 제거하고 자연키(`code = 'FREE'`, `public_id = 'member-spike-001'`) 기반 생성 및 변수(`@spike_member_id`) 바인딩으로 변경하여 기존 로컬 1번 회원 데이터 덮어쓰기 방지.
+  2. **DB Username 환경변수 동기화 (Configuration Parity)**:
+     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `${SNOWTHING_DB_USERNAME:snowuser}`로 수정.
+  3. **.env.example 테스트 환경변수 가이드 보강**:
+     - `CommentCreateTest` 및 `CommentUpdateTest` 두 테스트 모두 실제 MySQL 연동을 지원함을 명시하고 `SNOWTHING_TEST_DB_URL` 표준 예시값 추가.
+  4. **인덱스 및 테스트/초기화 무결성 동기화**:
+     - `ddl.sql` 및 `Comment.java` 대댓글 복합 인덱스(`idx_comment_parent_deleted_created`) 동기화.
+     - `DataInitializer.java` 닉네임 유니크 제약조건 중복 가드 추가.
+     - `CommentServiceTest.java` 플레이스홀더 도메인 규칙 및 테스트 간 DB 격리 클린업(`@AfterEach`) 보강.
+  5. **검증 결과**:
+     - `spotlessApply` 서식 교정 완료.
+     - MySQL 스파이크 시드 스크립트 실행 실측 성공 (Post 998: 1,000건, Post 999: 1,000건 생성 확인).
+     - 백엔드 전체 단위/통합 테스트(`gradle test`) **125개 전수 통과 (BUILD SUCCESSFUL in 27s)**.
+
+- **Sprint 03 댓글 수정(PUT /api/v1/comments/{commentId}) 기능 및 테스트 전담 개발 완결 (2026-09-01)**:
+  1. **작업명**: 댓글 수정(Update) 기능 구현 및 권한/유효성 검증 테스트
+  2. **현재 상태**: 완료
+  3. **완료된 항목**:
+     - `CommentUpdateRequest.java` DTO 신설 (`content` @NotBlank/@Size(max=1000), `anonymousPassword` 선택).
+     - `CommentUpdateResponse.java` DTO 신설 (`commentId`, `content`, `updatedAt`).
+     - `Comment.java` 엔티티 내 본문 갱신용 `updateContent(String newContent)` 더티 체킹 메서드 추가.
+     - `CommentService.java` 내 `updateComment` 및 `validateUpdatePermission` 구현 (수정 권한은 오직 작성자 본인만 가능하도록 관리자 우회 제외).
+     - `CommentController.java` 내 `PUT /api/v1/comments/{commentId}` 엔드포인트 연동.
+     - `CommentUpdateTest.java` 단위/통합 테스트 7건 작성 (성공 2건 + 실패 5건).
+  4. **남은 항목**: 없음 (Update 전담 완료)
+  5. **발견된 이슈 및 사용자 결정**:
+     - 이슈: 삭제(DELETE)와 달리 수정(PUT) 작업 시 관리자(`ROLE_ADMIN`)의 타인 댓글 본문 수정 허용 여부 정책 확인 필요.
+     - 사용자 결정: 수정은 오직 작성자 본인만 가능하도록 확정 (`validateUpdatePermission`에 관리자 우회 로직 배제).
+  6. **검증 결과**:
+     - `spotlessApply` 서식 포맷팅 완료.
+     - `gradle test --tests "*CommentUpdateTest*"` 총 7개 테스트 케이스 100% PASS (BUILD SUCCESSFUL in 18s).
+       - [성공 1] 일반 회원 본인 댓글 수정 성공
+       - [성공 2] 비회원 익명 댓글 올바른 비밀번호 입력 시 수정 성공
+       - [실패 1] 로그인 회원이 타인 댓글 수정 시도 시 ACCESS_DENIED (403)
+       - [실패 2] 비회원 익명 댓글에 잘못된 비밀번호 입력 시 INVALID_ANON_PASSWORD (403)
+       - [실패 3] 이미 Soft Delete된 댓글 수정 시도 시 COMMENT_NOT_FOUND (404)
+       - [실패 4] 존재하지 않는 댓글 ID로 수정 시도 시 COMMENT_NOT_FOUND (404)
+       - [실패 5] 비회원 익명 댓글에 비밀번호 누락 시 INVALID_ANON_PASSWORD (403)
+
+- **Sprint 03 댓글 도메인 공식 API 명세서(comment_api_spec.md) 작성 (2026-09-01)**:
+  1. **5대 CRUD 엔드포인트 계약 명세화**: `docs/conception/sprint03/comment_api_spec.md`에 댓글 작성(`POST`), 루트 댓글 Batch+Top-5 프리뷰 조회(`GET`), 대댓글 분리 페이징 조회(`GET`), 댓글 수정(`PUT`), Soft Delete 삭제(`DELETE`)의 Request/Response DTO, Header, 에러 코드 매핑을 100% 명세화.
+
+- **댓글 도메인 계층 모델 및 조회 아키텍처 공식 ADR-001 작성 및 확정 (2026-08-29)**:
+  1. **실측 데이터 기반 아키텍처 의사결정**: 3개 독립 워크트리 브랜치에서 측정한 실측 벤치마크 지표(후보 1: 210KB 폭증 vs 후보 2: 핫스팟 103KB 비대화 vs 후보 3: 5.55KB 완벽 통제)를 근거로, **[후보 3: Adjacency List 기반 하이브리드 프리뷰(루트 20개 + 대댓글 5개) 및 대댓글 분리 페이징]을 최종 채택**.
+  2. **ADR-001 9개 핵심 섹션 완결**: `docs/study/sprint03/comment/ADR-001-comment-hierarchy-and-retrieval-architecture.md`에 문제정의, 요구사항, 후보군, Spike 실측 매트릭스, 기각 근거, 기술 부채, 재검토 트리거 등 표준 아키텍처 의사결정 기록 공식 문서화.
+
+- **댓글 조회 아키텍처 3대 후보 Spike 실험 공통 기반 및 측정 하네스 구축 (2026-08-29)**:
+  1. **실험 가이드 및 템플릿 작성**: `docs/study/sprint03/comment/spike_experiment_guide.md` (실험 목적, 2대 시나리오, 5대 측정 지표 정의) 및 `docs/study/sprint03/comment/spike_result_template.md` (표준 결과 보고서 템플릿) 문서화.
+  2. **공통 테스트 픽스처 및 하네스 개발**: `CommentSpikeDataInitializer.java` (분산 1,000건 & 핫스팟 500건 자동 주입기) 및 `CommentSpikeBenchmarkHarness.java` (실행 시간, JSON 직렬화 페이로드 바이트 크기, 쿼리 수 측정 러너) 구축.
+  3. **단위/통합 테스트 검증**: Spotless 포맷팅(`spotlessApply`) 및 전체 90개 백엔드 단위/통합 테스트(`gradle test`) **100% BUILD SUCCESSFUL** 통과.
+
 - **가상 스레드(Virtual Thread) 조기 최적화 제거 및 표준 플랫폼 스레드 풀 전환 (2026-08-28)**:
   1. **가상 스레드 제거 및 표준화 (YAGNI)**: BCrypt 암호화 연산 병목, HikariCP 커넥션 풀 고갈 위험, Thread Pinning 등 조기 최적화로 인한 잠재적 결함을 방지하기 위해, `application.yml`에서 `spring.threads.virtual.enabled: true`를 완전 제거하고 `spring.jpa.open-in-view: false`를 명시하여 DB 커넥션 점유 최소화.
   2. **표준 `ThreadPoolTaskExecutor` 적용**: `AsyncConfig.java`에서 가상 스레드 대신 예측 가능하고 검증된 고정 플랫폼 스레드 풀(Core 8, Max 16, Queue 100, Prefix `async-worker-`)로 전환.
@@ -680,3 +914,274 @@
   3. `build` job에 `needs: spotless`를 추가하여 Spotless 검사 실패 시 빌드/테스트가 실행되지 않도록 Fast-Fail 흐름 유지.
   4. 기존 깨진 한글 주석은 제거하고 ASCII 기반의 간결한 workflow로 정리.
   5. 검증 결과: `git diff --check` 통과. 실제 GitHub Actions job 표시 여부는 push 후 PR checks 화면에서 확인 필요.
+
+- **Sprint 03 댓글 생성(Create) 기능 구현 및 검증 완료 (2026-09-01)**:
+  1. 댓글 생성 경로에서 빌더 대신 `Comment.create()` 정적 팩토리를 사용하고, 대댓글에 작성한 답글의 부모를 최상위 루트로 평탄화하는 `rootParent()` 도메인 메서드를 추가.
+  2. 루트별 활성 대댓글 수를 최대 100개로 제한하고, 초과 시 `COMMENT_004` (`COMMENT_REPLY_LIMIT_EXCEEDED`, 400 Bad Request) 예외를 반환하도록 구현.
+  3. 동일 루트의 동시 생성 요청이 제한 검증을 함께 통과하지 않도록 루트 댓글에 비관적 쓰기 잠금을 적용하고, 삭제된 대댓글은 활성 개수 집계에서 제외.
+  4. 댓글 저장과 `post.comment_count + 1` 벌크 갱신을 동일 트랜잭션에서 처리하여 성공·실패 경계를 동기화.
+  5. 타 작업과의 충돌 방지를 위해 신규 `CommentCreateTest.java`에만 성공·실패·동시성 테스트 총 16건을 작성. H2를 사용하지 않고 로컬 MySQL 8.0.46의 테스트 전용 `snowthing_test` 스키마에서 `./gradlew.bat test --tests "*CommentCreateTest*"` 실행 결과 16건 전체 통과, `spotlessCheck` 통과, 종료 후 테스트 테이블 0개 확인.
+  6. 실 MySQL 동시성 테스트에서 `REPEATABLE READ` 스냅샷 때문에 루트 잠금만으로는 99개 경계의 두 요청이 모두 통과하는 결함을 발견. 부모 최초 조회와 활성 대댓글 집계를 잠금 기반 현재 읽기로 변경하여 두 요청 중 1건만 성공하고 최종 100개가 유지됨을 검증.
+  7. 남은 이슈: 비관적 잠금은 같은 루트에 대댓글 생성이 집중되면 해당 루트의 쓰기 요청을 직렬화하므로, 운영 환경에서는 잠금 대기 시간과 타임아웃 지표를 관찰해야 함. 프로젝트의 H2 테스트 의존성은 다른 기존 테스트가 사용하므로 제거하지 않았으며 `CommentCreateTest`에서는 MySQL 드라이버와 dialect를 강제해 H2를 사용하지 않음.
+
+- **Sprint 03 댓글 목록 및 대댓글 분리 조회(Read) 구현 완료 (2026-09-01)**:
+  1. `comment` 테이블과 `Comment` 엔티티에 `(post_id, parent_id, created_at, comment_id)`, `(parent_id, created_at, comment_id)` 복합 인덱스를 추가.
+  2. `CommentRepositoryCustom`/`CommentRepositoryImpl`을 추가하고 루트 댓글 커서 페이징, MySQL 8.0 `ROW_NUMBER() OVER (PARTITION BY parent_id)` 기반 부모별 Top-5 프리뷰, 대댓글 분리 커서 페이징을 구현.
+  3. API 명세의 Long 타입 `commentId` 커서를 유지하면서 기준 행의 `created_at`을 복원해 `(created_at ASC, comment_id ASC)` 복합 정렬과 커서 조건이 일치하도록 처리.
+  4. `CommentResponse`, `PostCommentListResponse`, `CommentReplyListResponse`를 조회 명세에 맞춰 구성하고 모든 응답 컬렉션에 `List.copyOf()` 방어적 복사를 적용.
+  5. 삭제 루트에 활성 대댓글이 있으면 placeholder와 프리뷰를 노출하고, 루트와 하위 대댓글이 모두 삭제되면 목록에서 은닉하도록 정책 반영. `replyCount`는 활성 대댓글만 집계.
+  6. `CommentReadTest.java` 신규 파일에 성공/실패 10개 시나리오를 작성: 루트 커서 경계, 동일 시각 PK 타이브레이커, Top-5/분리 조회, 삭제 은닉, DTO 불변성, 게시글 없음, 크기 범위, 다른 범위의 커서, 대댓글 ID의 루트 오용 검증.
+  7. 검증 결과: `./gradlew.bat test --tests "*CommentReadTest*"` 10개 테스트 통과, `compileJava` 및 `spotlessApply` 통과.
+  8. 확인 이슈: 기존 `CommentServiceTest`의 자식 없는 삭제 루트 노출 기대값은 Sprint 3의 고아 노드 은닉 정책과 충돌함. 기존 테스트 파일 수정 금지 조건에 따라 변경하지 않음. `CommentCreateTest` 동시성 테스트는 결과 중 정상 성공을 `null`로 표현하면서 `List.of(null, ...)`을 호출해 테스트 코드 자체에서 `NullPointerException`이 발생하며, Read 구현과 무관한 기존 이슈로 확인됨.
+  9. 운영 확인 필요: Top-5 쿼리는 MySQL 8.0 윈도우 함수에 의존하므로 배포 전 실제 MySQL에서 `EXPLAIN ANALYZE`로 두 복합 인덱스 사용 여부와 filesort/읽은 행 수를 재검증해야 함.
+  10. 공개 저장소 보안 점검에서 테스트, Spring 설정, Docker Compose에 하드코딩된 MySQL 비밀번호를 발견해 모두 환경변수 참조로 교체하고 `.env.example`에는 실제 값이 아닌 placeholder만 제공. `CommentCreateTest`는 `SNOWTHING_TEST_DB_URL`이 없으면 H2를 사용하고, 외부 MySQL을 선택한 경우 username/password 환경변수를 필수 검증하도록 변경.
+  11. 실제 MySQL 8.0에서 Top-5 프리뷰 쿼리 실행 시 `row_number` 별칭이 함수명과 충돌해 500이 발생하는 문제를 확인하고, 윈도우 순번 별칭을 `rn`으로 변경해 MySQL 문법 호환성을 확보.
+  12. MySQL 클라이언트 문자셋 오류로 한글이 손상되어 있던 Spike 전용 게시글 998/999와 댓글 2,000건을 `--default-character-set=utf8mb4`로 제한 재시드. 재검증 결과 게시글별 1,000건, API 루트 20개/Top-5 프리뷰, UTF-8 한글 응답 바이트를 확인.
+  13. 로컬 재기동 시 `DataInitializer`가 이메일 존재 여부만 확인한 뒤 이미 사용 중인 닉네임을 삽입해 유니크 제약으로 실패하는 별도 이슈 발견. 데이터 삭제 없이 확인하기 위해 현재 서버는 `local,test` 프로필로 초기화기만 제외해 실행 중이며, 초기화기 멱등성 보완은 별도 작업 필요.
+  14. 최초 Spike 재시드에서 `INSERT IGNORE`가 기존의 손상된 작성자 닉네임과 카테고리명을 유지하는 문제를 확인. 시드 SQL을 `ON DUPLICATE KEY UPDATE` 방식으로 보완하여 `스파이크테스터`, `자유게시판` 값도 UTF-8로 복구하도록 수정.
+
+- **Sprint 03 댓글 C-R 프론트엔드 2단계 UI 개편 완료 (2026-09-01)**:
+  1. 백엔드의 루트 댓글 20개 커서 조회, 루트별 대댓글 Top-5 프리뷰, 대댓글 분리 커서 조회 계약에 맞춰 프론트엔드 댓글 구조를 재귀형 무한 계층에서 루트/대댓글 2단계 구조로 변경하기로 확정.
+  2. 작업 범위는 댓글 작성(Create)과 조회(Read)이며, 댓글 수정·삭제 UI 개편은 제외. 기존 삭제 기능은 회귀 방지를 위해 유지.
+  3. `frontend/app/lib/api.ts`에 루트 댓글과 대댓글의 `cursor`/`size` URL 빌더를 추가하고, `null` 여부로 커서 포함을 판별하도록 구현.
+  4. `frontend/app/posts/[publicId]/page.tsx`의 DTO를 백엔드 응답 계약에 맞추고, 루트 댓글 20개 누적 조회와 루트별 대댓글 Top-5/20개 누적 조회 상태를 분리.
+  5. 재귀형 `CommentRow`를 루트 `CommentRow`와 비재귀 `ReplyRow`로 분리해 3단계 이상 렌더링을 차단. 대댓글의 답글 버튼도 루트 작성창을 열고 원작성자 멘션 가이드만 표시하며, 서버에는 루트 ID를 `parentId`로 전달.
+  6. 댓글·대댓글 응답 병합 시 `commentId` 중복을 방어하고, 삭제된 루트 placeholder 아래의 대댓글과 답글 작성 기능은 유지.
+  7. 검증 결과: 변경 파일 대상 ESLint 오류 0건(기존 `<img>` 최적화 경고 1건), `npm run build` 및 TypeScript 검사 통과.
+  8. 확인 이슈: 전체 `npm run lint`는 이번 변경과 무관한 기존 `ToastEditor.tsx`, `ToastViewer.tsx`, 게시글 작성·목록 페이지의 오류 6건 때문에 실패. 브라우저 수동 검증은 백엔드와 테스트 데이터가 실행된 환경에서 추가 확인 필요.
+## Sprint 03 댓글 삭제 프론트엔드 UI
+
+- 상태: DONE
+- 시작일: 2026-09-01
+
+### 계획
+- 일반 회원은 `writer.publicId`가 현재 사용자와 같은 댓글에만 삭제 버튼을 노출한다.
+- 익명 댓글은 현재 DTO에 소유권 필드가 없어 삭제 버튼을 노출한 뒤 세션 또는 비밀번호를 서버에서 최종 검증하는 방안 A를 적용한다.
+- 댓글 삭제의 `prompt`/`confirm`을 제거하고 기존 `DeleteConfirmModal`을 재사용한다.
+- 변경 파일 대상 ESLint와 `npm run build`로 검증한다.
+
+### 완료
+- 구현 전 설계 문서, 프론트엔드 스킬, 현재 댓글 UI와 공용 삭제 모달 대조 완료.
+- 댓글 삭제의 브라우저 `prompt`/`confirm`을 제거하고 게시글 삭제와 분리된 `DeleteConfirmModal` 인스턴스로 연결.
+- 공용 모달에 동적 확인 문구, 제출 중 닫기 방지, dialog ARIA 속성, 입력 label 연결을 추가.
+- 삭제 성공 후 댓글 목록을 재조회하고 게시글의 `commentCount`를 1 차감하도록 구현.
+
+### 남은 작업
+- 모달의 완전한 focus trap과 Escape 닫기 동작은 후속 접근성 개선 대상으로 남김.
+
+### 이슈
+- 익명 댓글 응답에 `canDelete`, `requiresPassword`가 없어 버튼 노출 권한은 완전히 판별할 수 없다.
+
+### 결정 필요
+- 방안 A 적용을 사용자 승인받음. 서버를 최종 권한 검증 주체로 사용한다.
+
+### 검증
+- 변경 파일 대상 ESLint 오류 0건. 기존 게시글 이미지 `<img>` 최적화 경고 1건만 확인.
+- `npm run build` 성공 및 TypeScript 오류 0건 확인.
+
+## Sprint 03 댓글 수정 프론트엔드 UI
+
+- 상태: DONE
+- 시작일: 2026-09-01
+
+### 계획
+- 루트 댓글과 대댓글에 한 번에 하나만 열리는 인라인 수정 폼을 적용한다.
+- 일반 회원 댓글은 `writer.publicId`가 현재 사용자와 같을 때 수정 버튼을 노출한다.
+- 익명 댓글은 소유권 응답 필드가 없어 버튼 노출 후 세션 또는 비밀번호를 서버에서 최종 검증하는 방안 A를 적용한다.
+- 삭제 UI 변경은 `feature/sprint03-comment-d`로 분리하고 이 브랜치에는 포함하지 않는다.
+
+### 완료
+- 공백, 1,000자 제한, 변경 없음, 비로그인 익명 비밀번호를 검증하는 인라인 수정 폼 구현.
+- PUT 성공 시 루트 또는 대댓글의 해당 `commentId` 본문만 불변 업데이트하도록 구현.
+- 답글 작성 폼과 수정 폼이 동시에 열리지 않도록 수정 시작 시 답글 상태 초기화.
+
+### 남은 작업
+- 백엔드 Update API와 실제 브라우저 통합 검증.
+
+### 이슈
+- 익명 댓글 응답에 `canEdit`, `requiresPassword`가 없어 프론트만으로 정확한 소유권 버튼 노출은 불가능하다.
+
+### 결정 필요
+- 방안 A 적용을 사용자 승인받았으며 서버를 최종 권한 검증 주체로 사용한다.
+
+### 검증
+- 변경 파일 대상 ESLint 오류 0건. 기존 게시글 이미지 `<img>` 최적화 경고 1건만 확인.
+- `npm run build` 성공 및 TypeScript 오류 0건 확인.
+
+## README Mermaid 렌더링 오류 수정 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: GitHub README의 Mermaid `sequenceDiagram`에서 `Set-Cookie: JSESSIONID=...; Path=/; HttpOnly; SameSite=Lax`처럼 실제 HTTP 헤더 문법을 그대로 넣어 파서가 실패하던 줄을 자연어 메시지로 변경.
+- 수정 파일: `README.md`
+- 완료 범위:
+  1. 로그인 성공 응답 메시지를 `신규 세션 쿠키 발급 (JSESSIONID, HttpOnly, SameSite=Lax)`로 변경.
+  2. 로그아웃 응답 메시지를 `JSESSIONID 쿠키 만료 응답 (Max-Age=0)`로 변경.
+- 이슈/주의: Mermaid 다이어그램 안에서는 `:`, `;`, `=`가 많은 실제 헤더 문자열을 그대로 쓰면 GitHub 렌더러와 충돌할 수 있으므로, 다이어그램에는 행위 중심 문장을 쓰고 실제 헤더 예시는 본문 코드블록에 분리하는 편이 안전함.
+
+## 댓글 조회 기술부채 해결 문서 작성 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: 같은 조건에서 수행된 후보 1/2/3 Spike 중 채택된 후보 3 구조가 현재 운영 구현에 어떻게 반영됐는지, 이후 읽기 성능 보강으로 추가된 복합 인덱스와 MySQL 실행계획을 `docs/study/sprint03/comment/test/기술부채 해결_4.md`에 정리.
+- 완료 범위:
+  1. `spike_experiment_guide.md`, `spike_하이브리드프리뷰_분리API.md`, 현재 `CommentRepositoryImpl`, `CommentService`, `CommentController`, `Comment` 인덱스 정의 대조.
+  2. 로컬 MySQL 8.0.46 Docker 컨테이너의 Spike 데이터 확인: Post 998/999 각각 댓글 1,000건 유지.
+  3. 실제 MySQL `SHOW INDEX`, `EXPLAIN`, `EXPLAIN ANALYZE` 결과를 문서에 반영.
+  4. `./gradlew.bat test --tests "*CommentReadTest*"` 실행 결과 10건 통과 확인.
+  5. `./gradlew.bat test --tests "*Comment*"` 실행 결과 42건 중 1건 실패, 1건 스킵 확인. 실패 원인은 후보 3 구조 문제가 아니라 기존 `CommentServiceTest` 일부가 현재 삭제 루트 정책과 다른 기대값을 가진 테스트 정리 대상으로 기록.
+- 이슈/주의:
+  1. 후보 1/2/3 비교 실험은 같은 정책과 같은 데이터셋에서 수행됐으므로 후보 3 선택 근거는 유효함.
+  2. 후보 3 채택 이후 읽기 성능 보강으로 실제 DB에는 `idx_comment_parent_deleted_created(parent_id, is_deleted, created_at, comment_id)`가 확인됨.
+  3. 윈도우 함수와 삭제 정책 쿼리에서 `Using temporary`, `Using filesort`가 남지만, 현재 규모에서는 구조 변경 대상이 아니라 운영 관찰 포인트로 기록.
+  4. 기존 `CommentServiceTest.getCommentsByPost_deletedParentDisplay()`는 현재 정책에 맞게 갱신 필요.
+
+## README 댓글 도메인 아키텍처 섹션 반영 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: README의 게시판 설명 아래에 `댓글(Comment) 도메인 설계 & 기술적 의사결정` 섹션을 독립 추가하고, 후보 3 Spike 선택 근거와 기술부채 개선 내용을 공식 conception 문서 기준으로 요약.
+- 완료 범위:
+  1. `핵심 아키텍처 고민 및 기술적 의사결정` 제목에서 `핵심` 표현 제거.
+  2. `게시판(Post) 도메인 설계 & 핵심 기술적 의사결정` 제목에서 `핵심` 표현 제거.
+  3. `CSRF` 본문과 구분선 사이에 빈 줄을 추가해 Markdown 렌더링이 다음 섹션으로 번지지 않도록 정리.
+  4. 댓글 도메인 구조, 게시글-댓글 관계, 댓글 상태/유형, 삭제 루트 정책, 커서 페이지네이션, 후보 1/2/3 비교, 기술부채와 개선 결과, 테스트 결과를 README에 추가.
+  5. 상세 근거 링크는 gitignore 대상인 `docs/study`가 아니라 `docs/conception/sprint03/`의 ADR, API 명세, 기술부채 해결 문서로 연결.
+- 이슈/주의:
+  1. README에는 전체 SQL과 EXPLAIN을 모두 싣지 않고 프로젝트 소개에 필요한 수준으로 요약.
+  2. 상세 실행계획과 테스트 결과는 `docs/conception/sprint03/기술부채 해결_4.md`를 기준 문서로 사용.
+
+## Sprint 03 Spike 결과 문서 파일명 정리 (2026-09-03)
+
+- 상태: DONE
+- 작업 내용: 후보 번호 중심 파일명을 실제 기술 방식이 드러나는 파일명으로 변경.
+- 변경 파일명:
+  1. `spike_result_candidate_1.md` -> `spike_메모리전체트리조립.md`
+  2. `spike_result_candidate_2.md` -> `spike_루트커서_대댓글전체배치.md`
+  3. `spike_result_candidate_3.md` -> `spike_하이브리드프리뷰_분리API.md`
+- 완료 범위:
+  1. `docs/conception/sprint03/` 하위 Spike 결과 문서 3개를 `git mv`로 이름 변경.
+  2. 공식 기술부채 해결 문서와 로컬 학습 문서의 기준 문서명을 새 파일명으로 갱신.
+- 이슈/주의: `.idea/workspace.xml`에도 기존 파일명 참조가 있으나 IDE 로컬 상태 파일이므로 커밋 대상에서 제외.
+
+- **댓글 동시 삭제 카운트 중복 차감 방지 (2026-09-06)**:
+  - 삭제를 `is_deleted = false` 조건부 UPDATE로 원자화했습니다.
+  - 영향 행이 1인 최초 삭제 요청만 `post.commentCount`를 차감하며, 동시 요청에서 영향 행이 0이면 카운트를 차감하지 않습니다.
+
+- **Sprint 03 로그인 익명 댓글 삭제 UI 권한 정합성 보강 (2026-09-06)**:
+  - 댓글 조회 응답에 요청자 기준 `canDelete`, `requiresDeletePassword`를 추가했습니다. 로그인 익명 작성자의 내부 식별자는 `ownerPublicId`로만 판정하고 `@JsonIgnore`로 외부 응답에서 제외했습니다.
+  - 일반 회원 본인, 로그인 익명 본인, 비회원 익명, 관리자, 타 회원, 삭제 댓글을 삭제 권한 매트릭스와 동일하게 판정하며 루트 프리뷰와 분리 대댓글에도 적용했습니다.
+  - 프런트엔드의 `writer` 기반 `isOwnerAnonMember` 추정을 제거하고, 삭제 버튼과 비밀번호 입력 여부를 각각 서버의 `canDelete`, `requiresDeletePassword`로 결정하도록 변경했습니다.
+  - `CommentDeleteTest`에 작성자별 권한 매트릭스와 분리 대댓글 권한 테스트를, `CommentControllerTest`에 로그인 익명 작성자의 응답 권한 및 내부 식별자 비노출 테스트를 추가했습니다.
+  - 검증 결과: `CommentDeleteTest`, `CommentReadTest`, 백엔드 `spotlessCheck`, 변경 프런트 파일 ESLint, `npm run build`가 통과했습니다. 기존 게시글 이미지의 `<img>` 관련 ESLint 경고 1건은 남아 있습니다.
+- **댓글 삭제 후 대댓글 페이징 상태 초기화 (2026-09-06)**:
+  - 삭제 성공 후 루트 댓글을 재조회할 때 기존 `replyPagingByRootId`도 함께 초기화해 이전 커서·더보기 상태가 새 미리보기와 섞이지 않도록 수정했습니다.
+
+- **댓글 조회 실패 상태 및 재시도 UI 보강 (2026-09-06)**:
+  - 최초 댓글 조회의 로딩·성공 빈 목록·실패 상태를 분리해 서버 오류가 빈 목록처럼 표시되지 않도록 수정했습니다.
+  - 최초 조회 실패 시 오류 메시지와 재시도 버튼을 표시하고, 재시도 중에는 중복 요청을 막는 로딩 상태를 적용했습니다.
+  - 댓글 더보기 실패 시 이미 조회한 댓글을 유지하면서 오류 메시지와 더보기 재시도 버튼을 표시하도록 구현했습니다.
+  - HTTP 비정상 응답도 실패로 처리하며 서버 오류 메시지가 없으면 기본 안내 문구를 사용하도록 보강했습니다.
+  - 검증 결과: 변경 파일 ESLint는 오류 없이 통과했으며 기존 `<img>` 최적화 경고 1건만 남았습니다. `npm run build`도 통과했습니다.
+
+- **대댓글 생성 락 순서 및 조회 비용 개선 (2026-09-06)**:
+  - 요청된 부모 댓글은 일반 조회로 식별하고, 최상위 루트 댓글 한 행에만 비관적 쓰기 락을 획득하도록 락 지점을 단일화했습니다.
+  - 루트의 활성 대댓글 ID 전체를 잠그고 애플리케이션에서 개수를 세던 `findActiveReplyIdsForUpdate()`를 제거하고, 루트 락을 보유한 트랜잭션 안에서 `countActiveReplies()`를 실행하도록 변경했습니다.
+  - 같은 루트의 서로 다른 대댓글을 부모로 지정한 두 동시 요청이 모두 데드락 없이 저장되는 회귀 테스트를 추가했습니다.
+  - 기존 99개 상한 경계 동시성 테스트를 포함한 `CommentCreateTest`와 백엔드 `spotlessCheck`가 통과했습니다.
+- **댓글 식별자·커서 프론트 정밀도 보호 (2026-09-06)**:
+  - 댓글 응답의 `Long` 식별자와 커서를 JSON 문자열로 직렬화하고 프론트 상태를 `string`으로 변경했습니다.
+  - JavaScript `number`의 `MAX_SAFE_INTEGER` 초과 시 댓글 수정·삭제 및 커서가 손상되는 문제를 방지했습니다.
+- **댓글 삭제 tombstone 및 카운트 정책 단순화 (2026-09-06)**:
+  - 삭제된 루트와 대댓글을 모두 tombstone으로 계속 노출하고, 루트가 모든 자식과 함께 삭제되어도 목록에서 숨기지 않도록 정책을 변경했습니다.
+  - `post.commentCount`, `replyCount`, `totalReplyCount`, 프리뷰·대댓글 목록을 삭제 포함 전체 댓글 기준으로 통일했습니다.
+  - 대댓글 100개 작성 제한 검증은 삭제 댓글이 한도를 영구 점유하지 않도록 활성 대댓글 수 기준을 유지했습니다.
+  - 삭제 시 게시글 댓글 수를 차감하지 않도록 서비스와 테스트를 갱신했습니다.
+
+- **댓글 대댓글 조회 게시글 공개 상태 검증 보강 (2026-09-06)**:
+  - `getCommentReplies`가 루트 댓글 여부만 확인하던 문제를 수정하고, 루트 댓글의 게시글을 조회해 삭제 여부와 `PostStatus.NORMAL`을 공통 검증하도록 변경했다.
+  - 게시글 댓글 목록과 대댓글 조회가 동일한 `POST_NOT_FOUND` 정책을 사용하도록 `validatePostVisibility`를 적용했다.
+  - 삭제·차단 게시글의 대댓글 조회가 `POST_NOT_FOUND`로 차단되는 통합 테스트를 `CommentReadTest`에 추가했다.
+  - 검증: `spotlessApply` 및 `CommentReadTest` 성공. 테스트 DB 환경변수 미설정 상태에서는 실제 MySQL 테스트 실행이 보류됨.
+=======
+- **Sprint 03 테스트 환경 MySQL 단일화 (2026-09-06)**:
+  - H2 의존성·datasource·dialect를 제거하고 모든 Spring Boot 테스트 설정을 MySQL 8.0/InnoDB로 통일했습니다.
+  - `CommentCreateTest`와 `CommentUpdateTest`는 `SNOWTHING_TEST_DB_URL` 누락 시 fallback 없이 즉시 실패하며, `.env.example`에 프로세스 환경변수 전달 방법을 명시했습니다.
+
+- **Sprint 03 댓글 수정 감사 시각 및 본문 불변식 보강 (2026-09-06)**:
+  - 상태: DONE
+  - `CommentService.updateComment()`가 본문 변경 후 repository를 flush한 다음 응답을 생성하도록 변경하여 `@LastModifiedDate`가 갱신된 `updatedAt`을 반환하게 했습니다.
+  - `Comment` 생성자와 `updateContent()`가 공통 본문 검증을 사용하도록 변경하여 null, 공백, 1,000자 초과 값을 `INVALID_INPUT`으로 즉시 거부합니다.
+  - `CommentUpdateTest`에 수정 전보다 이후인 응답 `updatedAt`, 생성·수정 엔티티 불변식, 실패 후 기존 본문 보존 검증을 추가했습니다.
+  - 검증: `compileTestJava` 통과. `spotlessCheck`는 기존 수정 파일 `CommentReadTest.java`의 혼합 줄바꿈 위반 때문에 전체 완료되지 않았으며, 이번 변경 파일의 포맷 지적은 해소했습니다.
+  - 테스트 실행: 로컬 `snowthing-mysql` 컨테이너에 `snowthing_test` 스키마를 준비하고 자격정보를 해당 Gradle 프로세스에만 주입하여 `./gradlew.bat test --tests "*CommentUpdateTest*"`를 실행했습니다. 총 12건 모두 통과했습니다.
+- **Sprint 03 댓글 페이지 크기 전용 오류 코드 추가 (2026-09-06)**:
+  - 댓글 조회의 잘못된 `size` 요청에 `COMMENT_005`를 사용하도록 변경했습니다.
+  - 게시글 API의 공용 `INVALID_PAGE_SIZE(COMMON_002)` 계약은 변경하지 않았습니다.
+  - `CommentReadTest`에 서비스·HTTP 응답 오류 코드 검증을 반영했습니다.
+- **DataInitializer 운영 실행 방지 (2026-09-06)**:
+  - 샘플 회원·고정 관리자·마스터 데이터 초기화기를 `@Profile("local")`로 제한했습니다.
+  - `docker`, `prod`, `test` 프로필에서는 초기화기가 로드되지 않아 운영 환경에서 고정 관리자 계정이 자동 생성되지 않습니다.
+  - 운영 관리자 계정은 별도 운영 생성·시크릿 주입 절차로 관리해야 합니다.
+
+- **Sprint 03 로그인 익명 댓글 소유권 정책 보강 (2026-09-06)**:
+  - 로그인 사용자가 익명 댓글을 생성할 때 `anonymousPassword`를 함께 보내면 `INVALID_INPUT`으로 거부하고, 회원 식별자가 없는 비회원 익명 댓글에만 비밀번호 해시를 저장하도록 변경했습니다.
+  - 수정·삭제 권한 판단을 `isAnonymous` 단독 기준에서 `member_id` 존재 여부 기준으로 변경했습니다. 회원이 작성한 익명 댓글은 작성자 세션으로만 수정·삭제할 수 있고, 비회원 익명 댓글만 비밀번호 검증 경로를 사용합니다. 관리자의 삭제 권한은 기존 정책대로 유지했습니다.
+  - 성공 테스트로 로그인 익명 작성자의 세션 수정과 비회원 익명 댓글의 비밀번호 삭제를 검증하고, 실패 테스트로 로그인 사용자의 비밀번호 동시 제출 거부 및 타 사용자·비회원의 비밀번호 우회 수정·삭제 차단을 검증했습니다.
+  - 검증 결과: `spotlessCheck` 통과, 로컬 MySQL 8.0의 `snowthing_test` 스키마에서 `CommentCreateTest`와 `CommentUpdateTest` 총 33건 통과했습니다.
+  - 확인 이슈: 테스트 종료 시 Hibernate `create-drop` 정리 과정에서 외래 키 제거 실패 로그가 출력되지만 Gradle 테스트 결과는 성공입니다. 테스트 컨텍스트가 둘 이상 생성되며 동일 스키마 정리를 시도하는 기존 테스트 환경 문제로, 이번 권한 정책 변경의 실패는 아닙니다.
+
+- **Sprint 03 댓글 수정 버튼 권한 응답 정합성 보강 (2026-09-06)**:
+  - 댓글 조회 응답에 현재 요청자 기준 `canEdit`, `requiresPassword`를 추가했습니다. 익명 댓글의 실제 회원 식별자는 `ownerPublicId` 내부 필드로만 판정하고 `@JsonIgnore`로 응답에서 제외했습니다.
+  - 공개 조회 컨트롤러가 선택적 인증 주체를 서비스에 전달하도록 변경했으며, 서비스는 일반 회원·로그인 익명·비회원 익명·삭제 댓글의 수정 가능 여부를 서버 권한 매트릭스와 동일하게 계산합니다.
+  - 프런트엔드는 `isAnonymous`나 로그인 여부를 자체 추정하지 않고 서버의 `canEdit`, `requiresPassword`를 사용해 수정 버튼과 비밀번호 입력을 표시합니다.
+  - `CommentReadTest`에 작성자/타 사용자별 루트 댓글 권한, 분리 대댓글 권한, 내부 소유자 식별자 비노출 검증을 추가했습니다.
+  - 검증 결과: `CommentReadTest`, `CommentCreateTest`, `CommentUpdateTest` 통과, 백엔드 `spotlessCheck` 통과, 프런트엔드 `npm run build` 통과했습니다.
+  - 전체 `npm run lint`는 이번 변경 파일 외의 기존 오류 6건(`ToastEditor.tsx`, `ToastViewer.tsx`, 게시글 작성·목록 페이지) 때문에 실패했습니다. 이번 변경 파일은 별도 ESLint 검사로 신규 오류가 없음을 확인합니다.
+- **댓글 생성 트랜잭션 경계 리뷰 이슈 기록 (2026-09-06)**:
+  - `TransactionTemplate`의 기본 전파가 `REQUIRED`라 `CommentService.createComment`의 기존 트랜잭션에 참여하는 구조임을 확인했습니다.
+
+- **Sprint 03 댓글 수정 MockMvc 통합 테스트 보강 (2026-09-06)**:
+  - `CommentControllerTest`에 `PUT /api/v1/comments/{commentId}`의 정상 회원 수정, 타 회원 권한 거부, 공백 본문 검증, 잘못된 JSON 역직렬화, CSRF 누락, 비회원 익명 비밀번호 수정 시나리오를 추가했습니다.
+  - 정상 요청은 `@AuthenticationPrincipal` 주입과 JSON 응답뿐 아니라 실제 댓글 본문이 DB에 반영됐는지도 확인합니다.
+  - 테스트 과정에서 `HttpMessageNotReadableException`이 공통 예외 처리에 누락되어 잘못된 JSON이 `500 SERVER_001`로 반환되는 문제를 발견했습니다. `GlobalExceptionHandler`에서 이를 `400 COMMON_001`로 변환하도록 보강했습니다.
+  - 검증 결과: `CommentControllerTest` 9건과 `CommentUpdateTest` 16건, 총 25건 통과 및 `spotlessCheck` 통과했습니다.
+  - `NOT_SUPPORTED` 또는 `REQUIRES_NEW`로 단순 변경하면 `CommentCreateTest`·`CommentUpdateTest`의 미커밋 픽스처를 새 트랜잭션에서 읽지 못해 테스트가 실패합니다.
+  - 안전한 해결에는 생성 전용 트랜잭션 Bean 분리와 테스트 픽스처의 별도 커밋 경계 조정이 함께 필요합니다. 현재는 동작을 깨뜨리는 부분 수정 대신 후속 작업으로 남겼습니다.
+- **댓글 익명 사용자 유형별 삭제 비밀번호 분기 수정 (2026-09-06)**:
+  - 삭제 핸들러가 `isAnonymous`가 아닌 서버 응답의 `requiresPassword`를 기준으로 동작하도록 변경했습니다.
+  - 로그인 익명 댓글은 비밀번호 없이 로그인 세션으로 삭제를 요청하고, 비회원 익명 댓글만 비밀번호를 요구합니다.
+- **댓글 생성 후 대댓글 미리보기·더보기 상태 동기화 (2026-09-06)**:
+  - 대댓글 생성 직후 미리보기를 최대 5개로 제한했습니다.
+  - 증가된 `replyCount`를 기준으로 `hasMoreReplies`를 재계산해 6번째 대댓글부터 더보기 상태가 활성화됩니다.
+- **Spike 댓글 시드 충돌 안전성 보강 (2026-09-06)**:
+  - 기존 `member_id`, `category_id`, `post_id` 고정값에 의존하던 시드를 자연키와 전용 `public_id` 기준으로 변경했습니다.
+  - 중복 시 기존 회원·카테고리 값을 덮어쓰지 않는 no-op upsert를 적용했습니다.
+  - 기존 스파이크 게시글 삭제도 고정 PK가 아닌 전용 `public_id`로 제한하고, 생성 후 실제 PK를 변수로 전달하도록 수정했습니다.
+- **댓글 생성 트랜잭션 범위 축소 (2026-09-06)**:
+  - `CommentService`의 클래스-level read-only 트랜잭션을 제거하고 읽기 메서드의 개별 트랜잭션만 유지했습니다.
+  - `createComment`의 회원 조회·BCrypt 처리는 트랜잭션 외부에서 수행하고, `TransactionTemplate` 내부에서 게시글·부모 잠금, 제한 검증, 저장 및 카운트 증가만 처리하도록 변경했습니다.
+  - `spotlessApply`는 통과했으며, `CommentCreateTest`는 현재 MySQL 테스트 환경변수 미설정으로 애플리케이션 컨텍스트 초기화 단계에서 실패했습니다.
+- **댓글 생성 명령 트랜잭션 별도 Bean 분리 (2026-09-06)**:
+  - `CommentCommandService`를 신규 Bean으로 분리하고 댓글 저장·잠금·대댓글 제한·게시글 카운트 증가를 해당 Bean의 `@Transactional` 메서드에서 수행하도록 변경했습니다.
+  - `CommentService`는 회원 조회와 BCrypt 처리 후 명령 Bean을 호출하므로 인증 처리와 짧은 DB 쓰기 트랜잭션의 경계를 분리했습니다.
+  - 검증: `spotlessApply`, `compileJava` 성공.
+- **댓글 수정 동시성 제어 보강 (2026-09-06)**:
+  - `Comment`에 JPA `@Version`을 추가해 동시 수정 시 낙관적 락으로 선착순 변경만 반영하도록 했습니다.
+  - 버전 충돌은 `COMMENT_006` Conflict 응답으로 변환해 마지막 요청의 조용한 덮어쓰기를 방지했습니다.
+  - `spotlessApply`, `compileJava` 검증을 통과했습니다.
+- **일반 회원 IP 노출 차단 및 익명 마스킹 일원화 (2026-09-06)**:
+  - `CommentRepositoryImpl`과 `CommentResponse.from()`에서 익명 댓글(`isAnonymous == true`)일 때만 마스킹된 IP를 응답하고, 일반 회원은 `null`로 차단하여 네트워크 정보 과다 노출을 방지했습니다.
+  - `CommentResponse.writerName()`에 null 방어 로직을 추가하고 `CommentResponseTest` 단위 테스트 및 `CommentReadTest` 통합 검증을 통과했습니다.
+
+- **Sprint 03 댓글 생성 CR 리뷰 반영: 동시성 테스트 MySQL 엔진 강제 (2026-09-04)**:
+  - `CommentCreateTest`에 `test` 프로필을 명시하고 `SNOWTHING_TEST_DB_URL` 누락 시 H2 fallback 대신 `CustomAuthException(INVALID_INPUT)`으로 즉시 실패하도록 변경했습니다.
+  - GitHub Actions에 MySQL 8.0 테스트 DB URL·계정 환경변수를 명시해 `SELECT FOR UPDATE` 검증이 운영과 동일한 InnoDB에서 수행되도록 했습니다.
+
+- **Sprint 03 댓글 생성 CR 리뷰 반영: 익명 비밀번호 경계값 검증 완료 (2026-09-04)**:
+  - 상태: DONE
+  - 명세의 4~20자 조건과 달리 `CommentCreateRequest.anonymousPassword`에 길이 검증이 없음을 확인했습니다.
+  - `@Size(min = 4, max = 20)`로 API 입력 경계에서 검증하고, MockMvc로 3·4·20·21자 경계값을 확인할 계획입니다.
+  - 서비스 직접 호출 테스트는 `@Valid`를 실행하지 않으므로 기존 정상 저장·암호화 검증 역할만 유지합니다.
+  - `CommentCreateRequest.anonymousPassword`에 `@Size(min = 4, max = 20)`를 적용했습니다. `null`은 허용하므로 비밀번호가 필요 없는 회원 요청 계약은 유지됩니다.
+  - MockMvc 경계 테스트에서 3·21자는 `400 Bad Request`와 `COMMON_001`, 4·20자는 `201 Created`를 검증했습니다.
+  - `CommentControllerTest`와 `spotlessCheck`는 통과했습니다.
+  - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
+>>>>>>> origin/feature/sprint03-comment

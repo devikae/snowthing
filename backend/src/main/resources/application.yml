@@ -39,8 +39,8 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/snowthing?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: snowuser
-    password: snowthing_pass_2026!
+    username: ${SNOWTHING_DB_USERNAME:snowuser}
+    password: ${SNOWTHING_DB_PASSWORD:snowthing_pass_2026!}
 
   jpa:
     hibernate:
@@ -63,8 +63,8 @@ spring:
   datasource:
     url: jdbc:mysql://mysql:3306/snowthing?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: snowuser
-    password: snowthing_pass_2026!
+    username: ${SNOWTHING_DB_USERNAME:snowuser}
+    password: ${SNOWTHING_DB_PASSWORD}
 
   jpa:
     hibernate:
