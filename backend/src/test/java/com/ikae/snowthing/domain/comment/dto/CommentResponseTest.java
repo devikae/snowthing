@@ -7,8 +7,61 @@ import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.ikae.snowthing.domain.comment.entity.Comment;
+import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.Role;
+import com.ikae.snowthing.domain.post.entity.Post;
 
 class CommentResponseTest {
+
+    @Test
+    @DisplayName("일반 회원 댓글은 클라이언트에 writerIp를 노출하지 않는다 (null)")
+    void from_memberComment_doesNotExposeWriterIp() {
+        Member member =
+                Member.builder()
+                        .email("user@example.com")
+                        .password("encodedPassword")
+                        .nickname("보더스노우")
+                        .role(Role.ROLE_USER)
+                        .build();
+        ReflectionTestUtils.setField(member, "publicId", "mbr_public_123");
+
+        Post post = Post.builder().title("게시글").content("내용").build();
+        ReflectionTestUtils.setField(post, "id", 1L);
+
+        Comment comment =
+                Comment.create(post, member, null, "일반 회원 댓글", "192.168.0.15", false, null);
+        ReflectionTestUtils.setField(comment, "id", 10L);
+        ReflectionTestUtils.setField(comment, "createdAt", LocalDateTime.now());
+
+        CommentResponse response = CommentResponse.from(comment);
+
+        assertThat(response.isAnonymous()).isFalse();
+        assertThat(response.writerIp()).isNull();
+        assertThat(response.writer()).isNotNull();
+        assertThat(response.writer().nickname()).isEqualTo("보더스노우");
+        assertThat(response.writerName()).isEqualTo("보더스노우");
+    }
+
+    @Test
+    @DisplayName("익명 댓글은 마스킹된 writerIp를 전달하고 writerName에 축약 IP를 포함한다")
+    void from_anonymousComment_exposesMaskedWriterIp() {
+        Post post = Post.builder().title("게시글").content("내용").build();
+        ReflectionTestUtils.setField(post, "id", 1L);
+
+        Comment comment = Comment.create(post, null, null, "익명 댓글", "211.234.120.45", true, "1234");
+        ReflectionTestUtils.setField(comment, "id", 20L);
+        ReflectionTestUtils.setField(comment, "createdAt", LocalDateTime.now());
+
+        CommentResponse response = CommentResponse.from(comment);
+
+        assertThat(response.isAnonymous()).isTrue();
+        assertThat(response.writerIp()).isEqualTo("211.234.***.***");
+        assertThat(response.writer()).isNull();
+        assertThat(response.writerName()).isEqualTo("ㅇㅇ(211.234)");
+    }
 
     @Test
     @DisplayName("[익명 댓글 IP 마스킹] 익명 댓글이고 IP가 주어지면 앞 두 자리만 포함하여 'ㅇㅇ(xxx.xxx)' 형태로 반환해야 한다")
@@ -67,6 +120,9 @@ class CommentResponseTest {
                 false,
                 0L,
                 List.of(),
+                false,
+                null,
+                false,
                 false,
                 LocalDateTime.now());
     }

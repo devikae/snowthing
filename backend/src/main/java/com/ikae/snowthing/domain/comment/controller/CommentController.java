@@ -41,8 +41,10 @@ public class CommentController {
     public ResponseEntity<PostCommentListResponse> getCommentsByPost(
             @PathVariable String publicId,
             @RequestParam(required = false) Long cursor,
-            @RequestParam(defaultValue = "20") int size) {
-        PostCommentListResponse response = commentService.getCommentsByPost(publicId, cursor, size);
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        PostCommentListResponse response =
+                commentService.getCommentsByPost(publicId, cursor, size, userDetails);
         return ResponseEntity.ok(response);
     }
 
@@ -50,8 +52,20 @@ public class CommentController {
     public ResponseEntity<CommentReplyListResponse> getCommentReplies(
             @PathVariable Long commentId,
             @RequestParam(required = false) Long cursor,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(commentService.getCommentReplies(commentId, cursor, size));
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(
+                commentService.getCommentReplies(commentId, cursor, size, userDetails));
+    }
+
+    @PutMapping("/comments/{commentId}")
+    public ResponseEntity<CommentUpdateResponse> updateComment(
+            @PathVariable Long commentId,
+            @Valid @RequestBody CommentUpdateRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        CommentUpdateResponse response =
+                commentService.updateComment(commentId, request, userDetails);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/comments/{commentId}")

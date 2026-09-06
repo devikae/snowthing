@@ -58,6 +58,7 @@ class CommentReadTest {
     @Autowired private MockMvc mockMvc;
 
     private CustomUserDetails userDetails;
+    private CustomUserDetails otherUserDetails;
     private PostResponse post;
 
     @BeforeEach
@@ -78,6 +79,15 @@ class CommentReadTest {
                                 .role(Role.ROLE_USER)
                                 .build());
         userDetails = new CustomUserDetails(member);
+        Member otherMember =
+                memberRepository.save(
+                        Member.builder()
+                                .email("comment-read-other@example.com")
+                                .password(passwordEncoder.encode("Password123!"))
+                                .nickname("댓글조회다른사용자")
+                                .role(Role.ROLE_USER)
+                                .build());
+        otherUserDetails = new CustomUserDetails(otherMember);
         post = createPost("댓글 조회 게시글");
     }
 
@@ -160,7 +170,36 @@ class CommentReadTest {
                                     .param("size", "20"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.rootCommentId").value(root.commentId()))
-                    .andExpect(jsonPath("$.replies.length()").value(2));
+                    .andExpect(jsonPath("$.replies.length()").value(2))
+                    .andExpect(jsonPath("$.replies[0].canEdit").value(false))
+                    .andExpect(jsonPath("$.replies[0].requiresPassword").value(false))
+                    .andExpect(jsonPath("$.replies[0].ownerPublicId").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("삭제된 대댓글도 placeholder로 노출하며 대댓글 수와 더보기 기준을 일치시킨다")
+        void deletedRepliesKeepResponseCountsConsistent() {
+            CommentResponse root = createRoot("삭제 대댓글 집계 루트");
+            List<CommentResponse> replies =
+                    java.util.stream.IntStream.rangeClosed(1, 7)
+                            .mapToObj(index -> createReply(root.commentId(), "대댓글 " + index))
+                            .toList();
+            commentService.deleteComment(replies.get(0).commentId(), null, userDetails);
+            commentService.deleteComment(replies.get(1).commentId(), null, userDetails);
+
+            PostCommentListResponse response =
+                    commentService.getCommentsByPost(post.publicId(), null, 20);
+            CommentResponse rootResponse = response.comments().getFirst();
+
+            assertThat(rootResponse.replyCount()).isEqualTo(7);
+            assertThat(rootResponse.previewReplies()).hasSize(5);
+            assertThat(rootResponse.previewReplies().getFirst().isDeleted()).isTrue();
+            assertThat(rootResponse.hasMoreReplies()).isTrue();
+
+            CommentReplyListResponse repliesResponse =
+                    commentService.getCommentReplies(root.commentId(), null, 20);
+            assertThat(repliesResponse.totalReplyCount()).isEqualTo(7);
+            assertThat(repliesResponse.replies()).hasSize(7);
         }
 
         @Test
@@ -222,6 +261,68 @@ class CommentReadTest {
             assertThatThrownBy(() -> response.comments().getFirst().previewReplies().clear())
                     .isInstanceOf(UnsupportedOperationException.class);
         }
+
+        @Test
+        @DisplayName("댓글 수정 UI 권한은 서버의 작성 주체별 권한 정책과 일치한다")
+        void editPermissionMetadataMatchesOwnershipPolicy() {
+            CommentResponse memberComment = createRoot("회원 댓글");
+            CommentResponse memberAnonymousComment =
+                    commentService.createComment(
+                            post.publicId(),
+                            new CommentCreateRequest(null, "로그인 익명 댓글", true, null),
+                            userDetails,
+                            "127.0.0.1");
+            CommentResponse guestAnonymousComment =
+                    commentService.createComment(
+                            post.publicId(),
+                            new CommentCreateRequest(null, "비회원 익명 댓글", true, "password1234"),
+                            null,
+                            "127.0.0.1");
+
+            PostCommentListResponse ownerView =
+                    commentService.getCommentsByPost(post.publicId(), null, 20, userDetails);
+            assertThat(findComment(ownerView, memberComment.commentId()).canEdit()).isTrue();
+            assertThat(findComment(ownerView, memberComment.commentId()).requiresPassword())
+                    .isFalse();
+            assertThat(findComment(ownerView, memberAnonymousComment.commentId()).canEdit())
+                    .isTrue();
+            assertThat(
+                            findComment(ownerView, memberAnonymousComment.commentId())
+                                    .requiresPassword())
+                    .isFalse();
+            assertThat(findComment(ownerView, guestAnonymousComment.commentId()).canEdit())
+                    .isTrue();
+            assertThat(findComment(ownerView, guestAnonymousComment.commentId()).requiresPassword())
+                    .isTrue();
+
+            PostCommentListResponse otherView =
+                    commentService.getCommentsByPost(post.publicId(), null, 20, otherUserDetails);
+            assertThat(findComment(otherView, memberComment.commentId()).canEdit()).isFalse();
+            assertThat(findComment(otherView, memberAnonymousComment.commentId()).canEdit())
+                    .isFalse();
+            assertThat(findComment(otherView, guestAnonymousComment.commentId()).canEdit())
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("대댓글 분리 조회에도 동일한 수정 UI 권한을 적용한다")
+        void separatedReplyPermissionMetadataMatchesOwnershipPolicy() {
+            CommentResponse root = createRoot("권한 확인 루트");
+            CommentResponse memberAnonymousReply =
+                    commentService.createComment(
+                            post.publicId(),
+                            new CommentCreateRequest(root.commentId(), "로그인 익명 대댓글", true, null),
+                            userDetails,
+                            "127.0.0.1");
+
+            CommentReplyListResponse ownerView =
+                    commentService.getCommentReplies(root.commentId(), null, 20, userDetails);
+            CommentReplyListResponse otherView =
+                    commentService.getCommentReplies(root.commentId(), null, 20, otherUserDetails);
+
+            assertThat(findReply(ownerView, memberAnonymousReply.commentId()).canEdit()).isTrue();
+            assertThat(findReply(otherView, memberAnonymousReply.commentId()).canEdit()).isFalse();
+        }
     }
 
     @Nested
@@ -237,20 +338,22 @@ class CommentReadTest {
         }
 
         @Test
-        @DisplayName("페이지 크기가 허용 범위를 벗어나면 INVALID_INPUT을 반환한다")
+        @DisplayName("댓글 페이지 크기가 허용 범위를 벗어나면 COMMENT_INVALID_PAGE_SIZE를 반환한다")
         void invalidPageSize() throws Exception {
             assertErrorCode(
                     () -> commentService.getCommentsByPost(post.publicId(), null, 0),
-                    ErrorCode.INVALID_INPUT);
+                    ErrorCode.COMMENT_INVALID_PAGE_SIZE);
             assertErrorCode(
                     () -> commentService.getCommentsByPost(post.publicId(), null, 51),
-                    ErrorCode.INVALID_INPUT);
+                    ErrorCode.COMMENT_INVALID_PAGE_SIZE);
 
             mockMvc.perform(
                             get("/api/v1/posts/{publicId}/comments", post.publicId())
                                     .param("size", "51"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.getCode()));
+                    .andExpect(
+                            jsonPath("$.code")
+                                    .value(ErrorCode.COMMENT_INVALID_PAGE_SIZE.getCode()));
         }
 
         @Test
@@ -294,6 +397,36 @@ class CommentReadTest {
                             commentService.getCommentReplies(
                                     firstRoot.commentId(), foreignReply.commentId(), 20),
                     ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("일반 회원 댓글은 writerIp가 null이고, 익명 댓글은 마스킹된 IP를 반환한다")
+        void getComments_masksWriterIpOnlyForAnonymous() {
+            CommentResponse memberComment = createRoot("회원 댓글");
+            commentService.createComment(
+                    post.publicId(),
+                    CommentCreateRequest.builder()
+                            .content("익명 댓글")
+                            .isAnonymous(true)
+                            .anonymousPassword("1234")
+                            .build(),
+                    null,
+                    "211.234.10.20");
+
+            PostCommentListResponse response =
+                    commentService.getCommentsByPost(post.publicId(), null, 20, null);
+
+            CommentResponse foundMember = findComment(response, memberComment.commentId());
+            assertThat(foundMember.isAnonymous()).isFalse();
+            assertThat(foundMember.writerIp()).isNull();
+
+            CommentResponse foundAnon =
+                    response.comments().stream()
+                            .filter(CommentResponse::isAnonymous)
+                            .findFirst()
+                            .orElseThrow();
+            assertThat(foundAnon.isAnonymous()).isTrue();
+            assertThat(foundAnon.writerIp()).isEqualTo("211.234.***.***");
         }
 
         @Test
@@ -360,5 +493,19 @@ class CommentReadTest {
                 .isInstanceOf(CustomAuthException.class)
                 .extracting("errorCode")
                 .isEqualTo(errorCode);
+    }
+
+    private CommentResponse findComment(PostCommentListResponse response, Long commentId) {
+        return response.comments().stream()
+                .filter(comment -> comment.commentId().equals(commentId))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private CommentResponse findReply(CommentReplyListResponse response, Long commentId) {
+        return response.replies().stream()
+                .filter(comment -> comment.commentId().equals(commentId))
+                .findFirst()
+                .orElseThrow();
     }
 }

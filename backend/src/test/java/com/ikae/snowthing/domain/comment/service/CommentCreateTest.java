@@ -155,6 +155,22 @@ class CommentCreateTest {
     }
 
     @Test
+    @DisplayName("로그인 회원은 익명 댓글 생성 시 비밀번호를 함께 보낼 수 없다")
+    void rejectAnonymousPasswordFromMember() {
+        assertThatThrownBy(
+                        () ->
+                                commentService.createComment(
+                                        postResponse.publicId(),
+                                        new CommentCreateRequest(
+                                                null, "로그인 익명 댓글", true, "password1234"),
+                                        userDetails,
+                                        "127.0.0.1"))
+                .isInstanceOf(CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
     @DisplayName("비로그인 사용자는 비밀번호를 제공하면 익명 댓글을 생성할 수 있다")
     void createAnonymousCommentAsGuest() {
         CommentResponse response =

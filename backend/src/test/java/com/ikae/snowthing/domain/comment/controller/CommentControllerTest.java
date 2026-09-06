@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.comment.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -24,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
+import com.ikae.snowthing.domain.comment.dto.CommentUpdateRequest;
+import com.ikae.snowthing.domain.comment.entity.Comment;
+import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.comment.service.CommentService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -51,6 +55,8 @@ class CommentControllerTest {
     @Autowired private PostService postService;
 
     @Autowired private CommentService commentService;
+
+    @Autowired private CommentRepository commentRepository;
 
     @Autowired private PasswordEncoder passwordEncoder;
 
@@ -185,5 +191,126 @@ class CommentControllerTest {
                                 .with(user(userDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{commentId} - 작성자 인증과 CSRF 토큰으로 수정하면 200 OK")
+    void updateComment_success() throws Exception {
+        CommentResponse comment = createMemberComment("수정 전 댓글");
+        CommentUpdateRequest request = new CommentUpdateRequest("수정 후 댓글", null);
+
+        mockMvc.perform(
+                        put("/api/v1/comments/{commentId}", comment.commentId())
+                                .with(csrf())
+                                .with(user(userDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.commentId").value(comment.commentId()))
+                .andExpect(jsonPath("$.content").value("수정 후 댓글"))
+                .andExpect(jsonPath("$.updatedAt").exists());
+
+        Comment updated = commentRepository.findById(comment.commentId()).orElseThrow();
+        assertThat(updated.getContent()).isEqualTo("수정 후 댓글");
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{commentId} - 다른 회원이면 AUTH_002와 403을 반환한다")
+    void updateComment_forbiddenForOtherMember() throws Exception {
+        CommentResponse comment = createMemberComment("작성자 댓글");
+        Member otherMember =
+                memberRepository.save(
+                        Member.builder()
+                                .email("comment-update-other@example.com")
+                                .password(passwordEncoder.encode("Password123!"))
+                                .nickname("댓글수정타인")
+                                .role(Role.ROLE_USER)
+                                .build());
+        CustomUserDetails otherUserDetails = new CustomUserDetails(otherMember);
+
+        mockMvc.perform(
+                        put("/api/v1/comments/{commentId}", comment.commentId())
+                                .with(csrf())
+                                .with(user(otherUserDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new CommentUpdateRequest("타인의 수정", null))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_002"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{commentId} - 공백 본문은 COMMON_001과 400을 반환한다")
+    void updateComment_rejectsInvalidRequestBody() throws Exception {
+        CommentResponse comment = createMemberComment("수정 전 댓글");
+
+        mockMvc.perform(
+                        put("/api/v1/comments/{commentId}", comment.commentId())
+                                .with(csrf())
+                                .with(user(userDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"content\":\"   \",\"anonymousPassword\":null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{commentId} - JSON 역직렬화 실패 시 400을 반환한다")
+    void updateComment_rejectsMalformedJson() throws Exception {
+        CommentResponse comment = createMemberComment("수정 전 댓글");
+
+        mockMvc.perform(
+                        put("/api/v1/comments/{commentId}", comment.commentId())
+                                .with(csrf())
+                                .with(user(userDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"content\":{"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{commentId} - CSRF 토큰이 없으면 403을 반환한다")
+    void updateComment_rejectsRequestWithoutCsrfToken() throws Exception {
+        CommentResponse comment = createMemberComment("수정 전 댓글");
+
+        mockMvc.perform(
+                        put("/api/v1/comments/{commentId}", comment.commentId())
+                                .with(user(userDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new CommentUpdateRequest("수정 시도", null))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{commentId} - 비회원 익명 댓글은 비밀번호로 수정하면 200 OK")
+    void updateGuestAnonymousComment_success() throws Exception {
+        CommentResponse comment =
+                commentService.createComment(
+                        post.publicId(),
+                        new CommentCreateRequest(null, "비회원 익명 댓글", true, "password1234"),
+                        null,
+                        "127.0.0.1");
+
+        mockMvc.perform(
+                        put("/api/v1/comments/{commentId}", comment.commentId())
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new CommentUpdateRequest(
+                                                        "비회원 수정 댓글", "password1234"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("비회원 수정 댓글"));
+    }
+
+    private CommentResponse createMemberComment(String content) {
+        return commentService.createComment(
+                post.publicId(),
+                new CommentCreateRequest(null, content, false, null),
+                userDetails,
+                "127.0.0.1");
     }
 }

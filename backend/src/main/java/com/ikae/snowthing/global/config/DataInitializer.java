@@ -22,7 +22,7 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 
 @Component
-@Profile("!test")
+@Profile("local")
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
