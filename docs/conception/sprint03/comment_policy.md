@@ -31,8 +31,8 @@
   - **"삭제된 댓글입니다"를 제외한 실제 살아있는 활성 댓글/대댓글(`is_deleted = false`)의 총합**만 카운트합니다.
   - Soft Delete 실행 시 즉시 `comment_count - 1` 벌크 차감.
 - **`replyCount` (대댓글 수)**:
-  - 삭제된 대댓글도 placeholder로 노출하는 정책과 응답 수치의 일관성을 위해, 각 루트 댓글 DTO의 `replyCount`와 분리 조회의 `totalReplyCount`는 **삭제된 대댓글을 포함한 전체 대댓글 수**를 집계합니다.
-  - 게시글의 `post.commentCount`는 기존처럼 실제 활성 댓글·대댓글만 집계합니다.
+  - 각 루트 댓글 DTO 및 화면에 노출되는 `replyCount`는 화면 렌더링 노드 일원화 정책에 따라 **삭제된 대댓글 placeholder를 포함한 전체 대댓글 수(`totalCount`)**를 집계합니다.
+  - 이를 통해 화면 상단의 대댓글 수 뱃지(`replyCount`), 상위 5개 미리보기(`previewReplies`), 페이징 더보기 플래그(`hasMoreReplies = totalCount > 5`)의 기준을 100% 일치시켜 UI 인지 부조화를 방지합니다.
 
 ---
 

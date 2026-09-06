@@ -25,6 +25,8 @@ public record CommentResponse(
         boolean requiresPassword,
         LocalDateTime createdAt) {
 
+    private static final String ANONYMOUS_NAME = "ㅇㅇ";
+
     public CommentResponse {
         previewReplies = previewReplies == null ? List.of() : List.copyOf(previewReplies);
     }
@@ -106,14 +108,42 @@ public record CommentResponse(
                 createdAt);
     }
 
+    public CommentResponse withReplyInfo(
+            long replyCount, boolean hasMoreReplies, List<CommentResponse> replies) {
+        return new CommentResponse(
+                commentId,
+                postId,
+                parentId,
+                writer,
+                isAnonymous,
+                writerIp,
+                content,
+                isDeleted,
+                replyCount,
+                replies,
+                hasMoreReplies,
+                ownerPublicId,
+                canEdit,
+                requiresPassword,
+                createdAt);
+    }
+
     public List<CommentResponse> children() {
         return previewReplies;
     }
 
     public String writerName() {
-        if (isAnonymous) {
-            return writerIp != null ? "익명 (" + writerIp + ")" : "익명";
+        if (!isAnonymous) {
+            return (writer != null && writer.nickname() != null)
+                    ? writer.nickname()
+                    : ANONYMOUS_NAME;
         }
-        return writer == null ? "알 수 없음" : writer.nickname();
+        if (writerIp == null || writerIp.isBlank()) {
+            return ANONYMOUS_NAME;
+        }
+
+        String[] ip = writerIp.split("\\.");
+        String shortIp = (ip.length >= 2) ? ip[0] + "." + ip[1] : writerIp;
+        return ANONYMOUS_NAME + "(" + shortIp + ")";
     }
 }

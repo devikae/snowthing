@@ -98,7 +98,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [activeReplyParentId, setActiveReplyParentId] = useState<number | null>(null);
-  const [replyMentionName, setReplyMentionName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
   const [activeEditCommentId, setActiveEditCommentId] = useState<number | null>(null);
@@ -316,6 +315,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
 
   const handleCreateComment = async (parentId: number | null) => {
+    if (submittingComment) return;
+
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
       alert("댓글 내용을 입력해주세요.");
@@ -365,7 +366,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           setReplyText("");
           setReplyAnonPassword("");
           setActiveReplyParentId(null);
-          setReplyMentionName(null);
           setComments((current) =>
             current.map((comment) => {
               if (comment.commentId !== parentId) return comment;
@@ -407,7 +407,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleStartEditComment = (comment: CommentItem) => {
     setActiveReplyParentId(null);
-    setReplyMentionName(null);
     setActiveEditCommentId(comment.commentId);
     setEditCommentText(comment.content);
     setEditCommentPassword("");
@@ -648,8 +647,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     currentUserPublicId={currentUserPublicId}
                     activeReplyParentId={activeReplyParentId}
                     setActiveReplyParentId={setActiveReplyParentId}
-                    replyMentionName={replyMentionName}
-                    setReplyMentionName={setReplyMentionName}
                     replyText={replyText}
                     setReplyText={setReplyText}
                     replyAnonPassword={replyAnonPassword}
@@ -665,6 +662,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     handleStartEditComment={handleStartEditComment}
                     handleCancelEditComment={handleCancelEditComment}
                     handleUpdateComment={handleUpdateComment}
+                    submittingComment={submittingComment}
                     handleDeleteComment={handleDeleteComment}
                     handleLoadMoreReplies={handleLoadMoreReplies}
                     isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
@@ -706,13 +704,12 @@ function CommentRow({
   currentUserPublicId,
   activeReplyParentId,
   setActiveReplyParentId,
-  replyMentionName,
-  setReplyMentionName,
   replyText,
   setReplyText,
   replyAnonPassword,
   setReplyAnonPassword,
   handleCreateComment,
+  submittingComment,
   activeEditCommentId,
   editCommentText,
   setEditCommentText,
@@ -732,13 +729,12 @@ function CommentRow({
   currentUserPublicId: string | null;
   activeReplyParentId: number | null;
   setActiveReplyParentId: (id: number | null) => void;
-  replyMentionName: string | null;
-  setReplyMentionName: (name: string | null) => void;
   replyText: string;
   setReplyText: (text: string) => void;
   replyAnonPassword: string;
   setReplyAnonPassword: (value: string) => void;
   handleCreateComment: (parentId: number | null) => Promise<void>;
+  submittingComment: boolean;
   activeEditCommentId: number | null;
   editCommentText: string;
   setEditCommentText: (text: string) => void;
@@ -755,14 +751,8 @@ function CommentRow({
 }) {
   const canEdit = canEditComment(item);
   const isEditing = activeEditCommentId === item.commentId;
-  const openReplyEditor = (target: CommentItem) => {
-    if (activeReplyParentId === item.commentId && replyMentionName === getWriterName(target)) {
-      setActiveReplyParentId(null);
-      setReplyMentionName(null);
-      return;
-    }
-    setActiveReplyParentId(item.commentId);
-    setReplyMentionName(getWriterName(target));
+  const toggleReplyEditor = () => {
+    setActiveReplyParentId(activeReplyParentId === item.commentId ? null : item.commentId);
   };
 
   return (
@@ -789,7 +779,7 @@ function CommentRow({
           <>
             <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
             <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
-              <button onClick={() => openReplyEditor(item)} className="text-black">
+              <button onClick={toggleReplyEditor} className="text-black">
                 {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
               </button>
               {canEdit && (
@@ -812,7 +802,7 @@ function CommentRow({
               <ReplyRow
                 key={reply.commentId}
                 item={reply}
-                onReply={() => openReplyEditor(reply)}
+                onReply={toggleReplyEditor}
                 isEditing={activeEditCommentId === reply.commentId}
                 editCommentText={editCommentText}
                 setEditCommentText={setEditCommentText}
@@ -844,9 +834,6 @@ function CommentRow({
 
         {activeReplyParentId === item.commentId && (
           <div className="mt-4 rounded border border-[var(--snow-border)] bg-[var(--snow-background)] p-4">
-            {replyMentionName && (
-              <p className="mb-2 text-xs font-bold text-[var(--snow-muted)]">@{replyMentionName} 님에게 답글</p>
-            )}
             <textarea
               rows={2}
               value={replyText}
@@ -877,7 +864,11 @@ function CommentRow({
                   )}
                 </div>
               )}
-              <button onClick={() => void handleCreateComment(item.commentId)} className="snow-btn-primary sm:ml-auto">
+              <button
+                disabled={submittingComment}
+                onClick={() => void handleCreateComment(item.commentId)}
+                className="snow-btn-primary sm:ml-auto"
+              >
                 답글 등록
               </button>
             </div>

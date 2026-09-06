@@ -88,6 +88,7 @@ class CommentCreateTest {
     @Autowired private PostCategoryRepository categoryRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EntityManager entityManager;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     private CustomUserDetails userDetails;
     private PostResponse postResponse;
@@ -413,6 +414,13 @@ class CommentCreateTest {
                     .isEqualTo(100);
         } finally {
             executor.shutdownNow();
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+            jdbcTemplate.execute("DELETE FROM comment");
+            jdbcTemplate.execute(
+                    "DELETE FROM post WHERE public_id = '" + postResponse.publicId() + "'");
+            jdbcTemplate.execute(
+                    "DELETE FROM member WHERE member_id = " + userDetails.getMember().getId());
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
         }
     }
 

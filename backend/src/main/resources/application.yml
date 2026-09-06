@@ -40,7 +40,7 @@ spring:
     url: jdbc:mysql://localhost:3306/snowthing?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${SNOWTHING_DB_USERNAME:snowuser}
-    password: ${SNOWTHING_DB_PASSWORD}
+    password: ${SNOWTHING_DB_PASSWORD:snowthing_pass_2026!}
 
   jpa:
     hibernate:
