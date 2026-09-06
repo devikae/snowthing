@@ -209,7 +209,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 nullableLong(rs, "parent_id"),
                 writer,
                 anonymous,
-                WriterDisplayFormatter.maskIp(rs.getString("writer_ip")),
+                anonymous ? WriterDisplayFormatter.maskIp(rs.getString("writer_ip")) : null,
                 deleted ? "삭제된 댓글입니다." : rs.getString("content"),
                 deleted,
                 rs.getLong("reply_count"),

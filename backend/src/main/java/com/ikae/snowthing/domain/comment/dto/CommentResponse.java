@@ -46,7 +46,7 @@ public record CommentResponse(
                 comment.getParent() == null ? null : comment.getParent().getId(),
                 writer,
                 comment.isAnonymous(),
-                WriterDisplayFormatter.maskIp(comment.getWriterIp()),
+                comment.isAnonymous() ? WriterDisplayFormatter.maskIp(comment.getWriterIp()) : null,
                 comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent(),
                 comment.isDeleted(),
                 0,
@@ -112,7 +112,7 @@ public record CommentResponse(
 
     public String writerName() {
         if (isAnonymous) {
-            return "익명 (" + writerIp + ")";
+            return writerIp != null ? "익명 (" + writerIp + ")" : "익명";
         }
         return writer == null ? "알 수 없음" : writer.nickname();
     }

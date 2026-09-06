@@ -366,6 +366,36 @@ class CommentReadTest {
                                     firstRoot.commentId(), foreignReply.commentId(), 20),
                     ErrorCode.COMMENT_NOT_FOUND);
         }
+
+        @Test
+        @DisplayName("일반 회원 댓글은 writerIp가 null이고, 익명 댓글은 마스킹된 IP를 반환한다")
+        void getComments_masksWriterIpOnlyForAnonymous() {
+            CommentResponse memberComment = createRoot("회원 댓글");
+            commentService.createComment(
+                    post.publicId(),
+                    CommentCreateRequest.builder()
+                            .content("익명 댓글")
+                            .isAnonymous(true)
+                            .anonymousPassword("1234")
+                            .build(),
+                    null,
+                    "211.234.10.20");
+
+            PostCommentListResponse response =
+                    commentService.getCommentsByPost(post.publicId(), null, 20, null);
+
+            CommentResponse foundMember = findComment(response, memberComment.commentId());
+            assertThat(foundMember.isAnonymous()).isFalse();
+            assertThat(foundMember.writerIp()).isNull();
+
+            CommentResponse foundAnon =
+                    response.comments().stream()
+                            .filter(CommentResponse::isAnonymous)
+                            .findFirst()
+                            .orElseThrow();
+            assertThat(foundAnon.isAnonymous()).isTrue();
+            assertThat(foundAnon.writerIp()).isEqualTo("211.234.***.***");
+        }
     }
 
     private PostResponse createPost(String title) {

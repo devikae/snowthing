@@ -847,3 +847,23 @@
 - **댓글 생성 후 대댓글 미리보기·더보기 상태 동기화 (2026-09-06)**:
   - 대댓글 생성 직후 미리보기를 최대 5개로 제한했습니다.
   - 증가된 `replyCount`를 기준으로 `hasMoreReplies`를 재계산해 6번째 대댓글부터 더보기 상태가 활성화됩니다.
+- **Spike 댓글 시드 충돌 안전성 보강 (2026-09-06)**:
+  - 기존 `member_id`, `category_id`, `post_id` 고정값에 의존하던 시드를 자연키와 전용 `public_id` 기준으로 변경했습니다.
+  - 중복 시 기존 회원·카테고리 값을 덮어쓰지 않는 no-op upsert를 적용했습니다.
+  - 기존 스파이크 게시글 삭제도 고정 PK가 아닌 전용 `public_id`로 제한하고, 생성 후 실제 PK를 변수로 전달하도록 수정했습니다.
+- **댓글 생성 트랜잭션 범위 축소 (2026-09-06)**:
+  - `CommentService`의 클래스-level read-only 트랜잭션을 제거하고 읽기 메서드의 개별 트랜잭션만 유지했습니다.
+  - `createComment`의 회원 조회·BCrypt 처리는 트랜잭션 외부에서 수행하고, `TransactionTemplate` 내부에서 게시글·부모 잠금, 제한 검증, 저장 및 카운트 증가만 처리하도록 변경했습니다.
+  - `spotlessApply`는 통과했으며, `CommentCreateTest`는 현재 MySQL 테스트 환경변수 미설정으로 애플리케이션 컨텍스트 초기화 단계에서 실패했습니다.
+- **댓글 생성 명령 트랜잭션 별도 Bean 분리 (2026-09-06)**:
+  - `CommentCommandService`를 신규 Bean으로 분리하고 댓글 저장·잠금·대댓글 제한·게시글 카운트 증가를 해당 Bean의 `@Transactional` 메서드에서 수행하도록 변경했습니다.
+  - `CommentService`는 회원 조회와 BCrypt 처리 후 명령 Bean을 호출하므로 인증 처리와 짧은 DB 쓰기 트랜잭션의 경계를 분리했습니다.
+  - 검증: `spotlessApply`, `compileJava` 성공.
+- **댓글 수정 동시성 제어 보강 (2026-09-06)**:
+  - `Comment`에 JPA `@Version`을 추가해 동시 수정 시 낙관적 락으로 선착순 변경만 반영하도록 했습니다.
+  - 버전 충돌은 `COMMENT_006` Conflict 응답으로 변환해 마지막 요청의 조용한 덮어쓰기를 방지했습니다.
+  - `spotlessApply`, `compileJava` 검증을 통과했습니다.
+- **일반 회원 IP 노출 차단 및 익명 마스킹 일원화 (2026-09-06)**:
+  - `CommentRepositoryImpl`과 `CommentResponse.from()`에서 익명 댓글(`isAnonymous == true`)일 때만 마스킹된 IP를 응답하고, 일반 회원은 `null`로 차단하여 네트워크 정보 과다 노출을 방지했습니다.
+  - `CommentResponse.writerName()`에 null 방어 로직을 추가하고 `CommentResponseTest` 단위 테스트 및 `CommentReadTest` 통합 검증을 통과했습니다.
+

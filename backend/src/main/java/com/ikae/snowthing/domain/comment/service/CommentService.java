@@ -5,7 +5,6 @@ import java.util.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
@@ -26,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class CommentService {
 
     private static final long MAX_REPLY_COUNT = 100L;
@@ -37,9 +35,8 @@ public class CommentService {
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final TransactionTemplate transactionTemplate;
+    private final CommentCommandService commentCommandService;
 
-    @Transactional
     public CommentResponse createComment(
             String postPublicId,
             CommentCreateRequest request,
@@ -77,69 +74,71 @@ public class CommentService {
         final Member finalMember = member;
         final String finalEncodedPassword = encodedPassword;
 
-        return transactionTemplate.execute(
-                status -> {
-                    Post post =
-                            postRepository
-                                    .findByPublicId(postPublicId)
-                                    .orElseThrow(
-                                            () ->
-                                                    new CustomAuthException(
-                                                            ErrorCode.POST_NOT_FOUND));
+        return commentCommandService.createComment(
+                postPublicId, request, finalMember, finalEncodedPassword, userDetails, clientIp);
+        /* return transactionTemplate.execute(
+        status -> {
+            Post post =
+                    postRepository
+                            .findByPublicId(postPublicId)
+                            .orElseThrow(
+                                    () ->
+                                            new CustomAuthException(
+                                                    ErrorCode.POST_NOT_FOUND));
 
-                    if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-                        throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
-                    }
+            if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+                throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+            }
 
-                    Comment parent = null;
-                    if (request.parentId() != null) {
-                        Comment requestedParent =
-                                commentRepository
-                                        .findByIdForUpdate(request.parentId())
-                                        .orElseThrow(
-                                                () ->
-                                                        new CustomAuthException(
-                                                                ErrorCode
-                                                                        .PARENT_COMMENT_NOT_FOUND));
+            Comment parent = null;
+            if (request.parentId() != null) {
+                Comment requestedParent =
+                        commentRepository
+                                .findByIdForUpdate(request.parentId())
+                                .orElseThrow(
+                                        () ->
+                                                new CustomAuthException(
+                                                        ErrorCode
+                                                                .PARENT_COMMENT_NOT_FOUND));
 
-                        if (!requestedParent.getPost().getId().equals(post.getId())) {
-                            throw new CustomAuthException(ErrorCode.INVALID_COMMENT_PARENT);
-                        }
+                if (!requestedParent.getPost().getId().equals(post.getId())) {
+                    throw new CustomAuthException(ErrorCode.INVALID_COMMENT_PARENT);
+                }
 
-                        Long rootCommentId = requestedParent.rootParent().getId();
-                        parent =
-                                commentRepository
-                                        .findByIdForUpdate(rootCommentId)
-                                        .orElseThrow(
-                                                () ->
-                                                        new CustomAuthException(
-                                                                ErrorCode
-                                                                        .PARENT_COMMENT_NOT_FOUND));
+                Long rootCommentId = requestedParent.rootParent().getId();
+                parent =
+                        commentRepository
+                                .findByIdForUpdate(rootCommentId)
+                                .orElseThrow(
+                                        () ->
+                                                new CustomAuthException(
+                                                        ErrorCode
+                                                                .PARENT_COMMENT_NOT_FOUND));
 
-                        long activeReplyCount =
-                                commentRepository.findActiveReplyIdsForUpdate(rootCommentId).size();
-                        if (activeReplyCount >= MAX_REPLY_COUNT) {
-                            throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
-                        }
-                    }
+                long activeReplyCount =
+                        commentRepository.findActiveReplyIdsForUpdate(rootCommentId).size();
+                if (activeReplyCount >= MAX_REPLY_COUNT) {
+                    throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
+                }
+            }
 
-                    Comment comment =
-                            Comment.create(
-                                    post,
-                                    finalMember,
-                                    parent,
-                                    request.content(),
-                                    clientIp != null ? clientIp : "127.0.0.1",
-                                    request.isAnonymous(),
-                                    finalEncodedPassword);
+            Comment comment =
+                    Comment.create(
+                            post,
+                            finalMember,
+                            parent,
+                            request.content(),
+                            clientIp != null ? clientIp : "127.0.0.1",
+                            request.isAnonymous(),
+                            finalEncodedPassword);
 
-                    Comment savedComment = commentRepository.save(comment);
-                    postRepository.increaseCommentCount(post.getId());
+            Comment savedComment = commentRepository.save(comment);
+            postRepository.increaseCommentCount(post.getId());
 
-                    return CommentResponse.from(savedComment)
-                            .withViewerPermissions(
-                                    userDetails == null ? null : userDetails.getPublicId());
-                });
+            return CommentResponse.from(savedComment)
+                    .withViewerPermissions(
+                            userDetails == null ? null : userDetails.getPublicId());
+        }); */
     }
 
     @Transactional(readOnly = true)
