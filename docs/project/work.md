@@ -1,17 +1,20 @@
-- **Sprint 03 다중 PR 순차 머지 및 베이스 브랜치 통합 완료 (2026-09-06)**:
-  1. **순차 머지 완료 내역**:
+- **Sprint 03 댓글 도메인 메인 브랜치 최종 병합 완료 (2026-09-06)**:
+  1. **PR #17 (`feature/sprint03-comment` ➔ `main`) 병합 완결**:
+     - Sprint 03 댓글 도메인(생성·조회·수정·삭제 및 하이브리드 프리뷰 아키텍처) 전체 작업물을 `main` 브랜치로 병합 완료 ([PR #17](https://github.com/devikae/snowthing/pull/17) `MERGED`).
+     - 회원(Sprint 01) ➔ 게시판(Sprint 02) ➔ 댓글(Sprint 03) 핵심 커뮤니티 기능이 `main` 브랜치에 완전히 통합됨.
+  2. **순차 머지 완료 내역**:
      - **PR #14 (`feature/sprint03-comment-cr`)**: 베이스 브랜치(`feature/sprint03-comment`)로 병합 완료 (`MERGED`).
      - **PR #15 (`feature/sprint03-comment-u`)**: 베이스 최신화 역병합 및 15개 파일 충돌 해결, 전체 테스트 통과 후 병합 완료 (`MERGED`).
      - **PR #16 (`feature/sprint03-comment-d`)**: PR #14, #15가 병합된 베이스를 역병합하여 백엔드/프론트엔드/문서 충돌 해결, 백엔드 테스트 및 프론트엔드 빌드 검증 후 병합 완료 (`MERGED`).
-  2. **핵심 충돌 해결 및 통합 사항**:
+  3. **핵심 충돌 해결 및 통합 사항**:
      - **백엔드 DTO/서비스**: `CommentResponse` 내 4대 권한 플래그(`canEdit`, `requiresPassword`, `canDelete`, `requiresDeletePassword`)와 익명 IP 마스킹 일원화, `CommentService`의 수정/삭제 트랜잭션 및 가시성 검증 통합.
      - **프론트엔드 UI**: `page.tsx` 내 인라인 수정 폼(PUT)과 플로팅 팝오버 삭제 위젯(DELETE, `CommentDeleteInline`), 서버 계산 기반 권한 바인딩 및 멘션 없는 2-Depth 토글 입력창 일원화.
      - **설계/정책 문서**: `comment_api_spec.md` 5대 CRUD 스펙 및 `comment_policy.md` 4대 권한 매트릭스·카운트 일원화 정책 동기화.
-  3. **최종 통합 검증 결과**:
+  4. **최종 통합 검증 결과**:
      - 백엔드 코드 서식 검증: `.\gradlew.bat spotlessApply` 통과.
      - 실제 MySQL 8.0 테스트 컨테이너 환경 기반 백엔드 전체 단위/통합 테스트: `.\gradlew.bat test` **100% BUILD SUCCESSFUL** (0 failures).
      - 프론트엔드 Next.js 16.2.12 Turbopack 프로덕션 빌드: `npm run build` **100% SUCCESS** (0 errors, 10 routes).
-     - 베이스 브랜치 최신화: `feature/sprint03-comment` 동기화 완료.
+     - `main` 브랜치 최신화 및 작업 트리 clean 상태 확립.
 
 - **Sprint 03 댓글/대댓글 인라인 삭제 UI 및 비밀번호 플로팅 팝오버 위젯 구현 (2026-09-03)**:
   1. **작업명**: 댓글/대댓글 인라인 미니 `✕` 삭제 버튼 및 시간 아래 플로팅 드롭다운 UI 구현 (브라우저 다이얼로그 전면 퇴출)
