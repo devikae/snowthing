@@ -20,7 +20,9 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
+import com.ikae.snowthing.domain.comment.dto.CommentReplyListResponse;
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
+import com.ikae.snowthing.domain.comment.dto.PostCommentListResponse;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -166,7 +168,7 @@ class CommentDeleteTest {
             assertThat(deletedComment.getDeletedAt()).isNotNull();
 
             Post post = postRepository.findByPublicId(postResponse.publicId()).orElseThrow();
-            assertThat(post.getCommentCount()).isEqualTo(0);
+            assertThat(post.getCommentCount()).isEqualTo(1);
         }
 
         @Test
@@ -183,7 +185,7 @@ class CommentDeleteTest {
             assertThat(deletedComment.getDeletedAt()).isNotNull();
 
             Post post = postRepository.findByPublicId(postResponse.publicId()).orElseThrow();
-            assertThat(post.getCommentCount()).isEqualTo(0);
+            assertThat(post.getCommentCount()).isEqualTo(1);
         }
 
         @Test
@@ -208,7 +210,7 @@ class CommentDeleteTest {
             assertThat(deletedAnonComment.isDeleted()).isTrue();
 
             Post post = postRepository.findByPublicId(postResponse.publicId()).orElseThrow();
-            assertThat(post.getCommentCount()).isEqualTo(0);
+            assertThat(post.getCommentCount()).isEqualTo(2);
         }
 
         @Test
@@ -237,7 +239,60 @@ class CommentDeleteTest {
 
             Post postAfterDelete =
                     postRepository.findByPublicId(postResponse.publicId()).orElseThrow();
-            assertThat(postAfterDelete.getCommentCount()).isEqualTo(2);
+            assertThat(postAfterDelete.getCommentCount()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("댓글 삭제 UI 권한은 작성 주체와 현재 요청자에 따라 계산한다")
+        void deletePermissionMetadataMatchesOwnershipPolicy() {
+            CommentResponse memberComment = createMemberComment("회원 댓글");
+            CommentResponse memberAnonymousComment =
+                    createMemberAnonymousComment(null, "로그인 익명 댓글");
+            CommentResponse guestAnonymousComment =
+                    createGuestAnonymousComment("비회원 익명 댓글", "anonPass1234");
+
+            PostCommentListResponse writerView =
+                    commentService.getCommentsByPost(
+                            postResponse.publicId(), null, 20, writerDetails);
+            assertDeletePermission(writerView, memberComment.commentId(), true, false);
+            assertDeletePermission(writerView, memberAnonymousComment.commentId(), true, false);
+            assertDeletePermission(writerView, guestAnonymousComment.commentId(), true, true);
+
+            PostCommentListResponse otherView =
+                    commentService.getCommentsByPost(
+                            postResponse.publicId(), null, 20, otherDetails);
+            assertDeletePermission(otherView, memberComment.commentId(), false, false);
+            assertDeletePermission(otherView, memberAnonymousComment.commentId(), false, false);
+            assertDeletePermission(otherView, guestAnonymousComment.commentId(), true, true);
+
+            PostCommentListResponse adminView =
+                    commentService.getCommentsByPost(
+                            postResponse.publicId(), null, 20, adminDetails);
+            assertDeletePermission(adminView, memberComment.commentId(), true, false);
+            assertDeletePermission(adminView, memberAnonymousComment.commentId(), true, false);
+            assertDeletePermission(adminView, guestAnonymousComment.commentId(), true, false);
+        }
+
+        @Test
+        @DisplayName("대댓글 분리 조회에도 로그인 익명 작성자의 삭제 권한을 적용한다")
+        void separatedReplyDeletePermissionMatchesOwnershipPolicy() {
+            CommentResponse root = createMemberComment("권한 확인 루트");
+            CommentResponse memberAnonymousReply =
+                    createMemberAnonymousComment(root.commentId(), "로그인 익명 대댓글");
+
+            CommentReplyListResponse writerView =
+                    commentService.getCommentReplies(root.commentId(), null, 20, writerDetails);
+            CommentReplyListResponse otherView =
+                    commentService.getCommentReplies(root.commentId(), null, 20, otherDetails);
+
+            assertThat(findReply(writerView, memberAnonymousReply.commentId()).canDelete())
+                    .isTrue();
+            assertThat(
+                            findReply(writerView, memberAnonymousReply.commentId())
+                                    .requiresDeletePassword())
+                    .isFalse();
+            assertThat(findReply(otherView, memberAnonymousReply.commentId()).canDelete())
+                    .isFalse();
         }
     }
 
@@ -315,11 +370,40 @@ class CommentDeleteTest {
                 "127.0.0.1");
     }
 
+    private CommentResponse createMemberAnonymousComment(Long parentId, String content) {
+        return commentService.createComment(
+                postResponse.publicId(),
+                new CommentCreateRequest(parentId, content, true, null),
+                writerDetails,
+                "127.0.0.1");
+    }
+
     private CommentResponse createReply(Long parentId, String content) {
         return commentService.createComment(
                 postResponse.publicId(),
                 new CommentCreateRequest(parentId, content, false, null),
                 writerDetails,
                 "127.0.0.1");
+    }
+
+    private void assertDeletePermission(
+            PostCommentListResponse response,
+            Long commentId,
+            boolean canDelete,
+            boolean requiresPassword) {
+        CommentResponse comment =
+                response.comments().stream()
+                        .filter(item -> item.commentId().equals(commentId))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(comment.canDelete()).isEqualTo(canDelete);
+        assertThat(comment.requiresDeletePassword()).isEqualTo(requiresPassword);
+    }
+
+    private CommentResponse findReply(CommentReplyListResponse response, Long commentId) {
+        return response.replies().stream()
+                .filter(comment -> comment.commentId().equals(commentId))
+                .findFirst()
+                .orElseThrow();
     }
 }

@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.comment.service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -91,7 +92,7 @@ public class CommentService {
                     if (request.parentId() != null) {
                         Comment requestedParent =
                                 commentRepository
-                                        .findByIdForUpdate(request.parentId())
+                                        .findById(request.parentId())
                                         .orElseThrow(
                                                 () ->
                                                         new CustomAuthException(
@@ -112,8 +113,7 @@ public class CommentService {
                                                                 ErrorCode
                                                                         .PARENT_COMMENT_NOT_FOUND));
 
-                        long activeReplyCount =
-                                commentRepository.findActiveReplyIdsForUpdate(rootCommentId).size();
+                        long activeReplyCount = commentRepository.countActiveReplies(rootCommentId);
                         if (activeReplyCount >= MAX_REPLY_COUNT) {
                             throw new CustomAuthException(ErrorCode.COMMENT_REPLY_LIMIT_EXCEEDED);
                         }
@@ -132,7 +132,10 @@ public class CommentService {
                     Comment savedComment = commentRepository.save(comment);
                     postRepository.increaseCommentCount(post.getId());
 
-                    return CommentResponse.from(savedComment);
+                    return CommentResponse.from(savedComment)
+                            .withDeletePermissions(
+                                    userDetails == null ? null : userDetails.getPublicId(),
+                                    isAdmin(userDetails));
                 });
     }
 
@@ -141,15 +144,18 @@ public class CommentService {
     }
 
     public PostCommentListResponse getCommentsByPost(String postPublicId, Long cursor, int size) {
+        return getCommentsByPost(postPublicId, cursor, size, null);
+    }
+
+    public PostCommentListResponse getCommentsByPost(
+            String postPublicId, Long cursor, int size, CustomUserDetails userDetails) {
         validateReadSize(size);
         Post post =
                 postRepository
                         .findByPublicId(postPublicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
-        }
+        validatePostVisibility(post);
 
         CommentRepositoryCustom.CursorPosition cursorPosition =
                 cursor == null
@@ -171,6 +177,13 @@ public class CommentService {
                                 root ->
                                         root.withPreviewReplies(
                                                 previews.getOrDefault(root.commentId(), List.of())))
+                        .map(
+                                comment ->
+                                        comment.withDeletePermissions(
+                                                userDetails == null
+                                                        ? null
+                                                        : userDetails.getPublicId(),
+                                                isAdmin(userDetails)))
                         .toList();
         Long nextCursor = hasNext && !comments.isEmpty() ? comments.getLast().commentId() : null;
         return new PostCommentListResponse(
@@ -178,6 +191,11 @@ public class CommentService {
     }
 
     public CommentReplyListResponse getCommentReplies(Long commentId, Long cursor, int size) {
+        return getCommentReplies(commentId, cursor, size, null);
+    }
+
+    public CommentReplyListResponse getCommentReplies(
+            Long commentId, Long cursor, int size, CustomUserDetails userDetails) {
         validateReadSize(size);
         Comment root =
                 commentRepository
@@ -186,6 +204,11 @@ public class CommentService {
         if (root.getParent() != null) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
+        Post post =
+                postRepository
+                        .findById(root.getPost().getId())
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        validatePostVisibility(post);
         CommentRepositoryCustom.CursorPosition cursorPosition =
                 cursor == null
                         ? null
@@ -196,19 +219,31 @@ public class CommentService {
         List<CommentResponse> fetched =
                 commentRepository.findReplies(commentId, cursorPosition, size + 1);
         boolean hasNext = fetched.size() > size;
-        List<CommentResponse> replies = List.copyOf(hasNext ? fetched.subList(0, size) : fetched);
+        List<CommentResponse> replies =
+                (hasNext ? fetched.subList(0, size) : fetched)
+                        .stream()
+                                .map(
+                                        reply ->
+                                                reply.withDeletePermissions(
+                                                        userDetails == null
+                                                                ? null
+                                                                : userDetails.getPublicId(),
+                                                        isAdmin(userDetails)))
+                                .toList();
         Long nextCursor = hasNext && !replies.isEmpty() ? replies.getLast().commentId() : null;
         return new CommentReplyListResponse(
-                commentId,
-                commentRepository.countActiveReplies(commentId),
-                replies,
-                nextCursor,
-                hasNext);
+                commentId, commentRepository.countReplies(commentId), replies, nextCursor, hasNext);
     }
 
     private void validateReadSize(int size) {
         if (size < 1 || size > MAX_READ_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private void validatePostVisibility(Post post) {
+        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
     }
 
@@ -226,17 +261,12 @@ public class CommentService {
 
         validateDeletePermission(comment, anonymousPassword, userDetails);
 
-        comment.softDelete();
-        postRepository.decreaseCommentCount(comment.getPost().getId());
+        commentRepository.softDeleteIfActive(commentId, LocalDateTime.now());
     }
 
     private void validateDeletePermission(
             Comment comment, String anonymousPassword, CustomUserDetails userDetails) {
-        boolean isAdmin =
-                userDetails != null
-                        && userDetails.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        if (isAdmin) {
+        if (isAdmin(userDetails)) {
             return;
         }
 
@@ -254,5 +284,11 @@ public class CommentService {
                 || !passwordEncoder.matches(anonymousPassword, comment.getAnonymousPassword())) {
             throw new CustomAuthException(ErrorCode.INVALID_ANON_PASSWORD);
         }
+    }
+
+    private boolean isAdmin(CustomUserDetails userDetails) {
+        return userDetails != null
+                && userDetails.getAuthorities().stream()
+                        .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }

@@ -1,6 +1,6 @@
 package com.ikae.snowthing.domain.comment.repository;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
@@ -18,9 +18,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long>, Comment
     @Query("SELECT c FROM Comment c WHERE c.id = :commentId")
     Optional<Comment> findByIdForUpdate(@Param("commentId") Long commentId);
 
-    long countByParentIdAndIsDeletedFalse(Long parentId);
+    @org.springframework.data.jpa.repository.Modifying(
+            flushAutomatically = true,
+            clearAutomatically = true)
+    @Query(
+            "UPDATE Comment c SET c.isDeleted = true, c.deletedAt = :deletedAt "
+                    + "WHERE c.id = :commentId AND c.isDeleted = false")
+    int softDeleteIfActive(
+            @Param("commentId") Long commentId, @Param("deletedAt") LocalDateTime deletedAt);
 
-    @Lock(LockModeType.PESSIMISTIC_READ)
-    @Query("SELECT c.id FROM Comment c WHERE c.parent.id = :parentId AND c.isDeleted = false")
-    List<Long> findActiveReplyIdsForUpdate(@Param("parentId") Long parentId);
+    long countByParentIdAndIsDeletedFalse(Long parentId);
 }

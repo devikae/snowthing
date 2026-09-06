@@ -69,9 +69,8 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 "SELECT "
                         + SELECT_RESPONSE_COLUMNS
                         + """
-                        , (SELECT COUNT(*) FROM comment active_reply
-                           WHERE active_reply.parent_id = c.comment_id
-                             AND active_reply.is_deleted = false) AS reply_count,
+                        , (SELECT COUNT(*) FROM comment reply
+                           WHERE reply.parent_id = c.comment_id) AS reply_count,
                           CASE WHEN (SELECT COUNT(*) FROM comment all_reply
                                       WHERE all_reply.parent_id = c.comment_id) > 5
                                THEN true ELSE false END AS has_more_replies
@@ -79,10 +78,6 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                         LEFT JOIN member m ON m.member_id = c.member_id
                         WHERE c.post_id = :postId
                           AND c.parent_id IS NULL
-                          AND (c.is_deleted = false OR EXISTS (
-                              SELECT 1 FROM comment active_child
-                              WHERE active_child.parent_id = c.comment_id
-                                AND active_child.is_deleted = false))
                         """
                         + cursorCondition
                         + " ORDER BY c.created_at ASC, c.comment_id ASC LIMIT :fetchSize";
@@ -173,6 +168,16 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
         return count == null ? 0 : count;
     }
 
+    @Override
+    public long countReplies(Long rootCommentId) {
+        Long count =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM comment WHERE parent_id = :rootCommentId",
+                        new MapSqlParameterSource("rootCommentId", rootCommentId),
+                        Long.class);
+        return count == null ? 0 : count;
+    }
+
     private Optional<CursorPosition> findCursor(String sql, Long scopeId, Long cursorId) {
         List<CursorPosition> positions =
                 jdbcTemplate.query(
@@ -216,6 +221,9 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 rs.getLong("reply_count"),
                 List.of(),
                 rs.getBoolean("has_more_replies"),
+                memberPublicId,
+                false,
+                false,
                 rs.getObject("created_at", LocalDateTime.class));
     }
 

@@ -3,14 +3,17 @@ package com.ikae.snowthing.domain.comment.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.util.WriterDisplayFormatter;
 
 public record CommentResponse(
-        Long commentId,
-        Long postId,
-        Long parentId,
+        @JsonSerialize(using = ToStringSerializer.class) Long commentId,
+        @JsonSerialize(using = ToStringSerializer.class) Long postId,
+        @JsonSerialize(using = ToStringSerializer.class) Long parentId,
         WriterResponse writer,
         boolean isAnonymous,
         String writerIp,
@@ -19,6 +22,9 @@ public record CommentResponse(
         long replyCount,
         List<CommentResponse> previewReplies,
         boolean hasMoreReplies,
+        @JsonIgnore String ownerPublicId,
+        boolean canDelete,
+        boolean requiresDeletePassword,
         LocalDateTime createdAt) {
 
     public CommentResponse {
@@ -48,6 +54,9 @@ public record CommentResponse(
                 0,
                 List.of(),
                 false,
+                member == null ? null : member.getPublicId(),
+                false,
+                false,
                 comment.getCreatedAt());
     }
 
@@ -64,6 +73,36 @@ public record CommentResponse(
                 replyCount,
                 replies,
                 hasMoreReplies,
+                ownerPublicId,
+                canDelete,
+                requiresDeletePassword,
+                createdAt);
+    }
+
+    public CommentResponse withDeletePermissions(String viewerPublicId, boolean admin) {
+        boolean guestAnonymous = ownerPublicId == null && isAnonymous;
+        boolean owner = ownerPublicId != null && ownerPublicId.equals(viewerPublicId);
+        boolean deletable = !isDeleted && (admin || owner || guestAnonymous);
+        boolean passwordRequired = deletable && !admin && guestAnonymous;
+        List<CommentResponse> visibleReplies =
+                previewReplies.stream()
+                        .map(reply -> reply.withDeletePermissions(viewerPublicId, admin))
+                        .toList();
+        return new CommentResponse(
+                commentId,
+                postId,
+                parentId,
+                writer,
+                isAnonymous,
+                writerIp,
+                content,
+                isDeleted,
+                replyCount,
+                visibleReplies,
+                hasMoreReplies,
+                ownerPublicId,
+                deletable,
+                passwordRequired,
                 createdAt);
     }
 

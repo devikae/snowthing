@@ -124,6 +124,25 @@ class CommentControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/posts/{publicId}/comments - 로그인 익명 작성자는 비밀번호 없이 삭제 가능")
+    void getComments_exposesDeletePermissionForAnonymousMemberOwner() throws Exception {
+        commentService.createComment(
+                post.publicId(),
+                CommentCreateRequest.builder().content("로그인 익명 댓글").isAnonymous(true).build(),
+                userDetails,
+                "127.0.0.1");
+
+        mockMvc.perform(
+                        get("/api/v1/posts/{publicId}/comments", post.publicId())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comments[0].writer").doesNotExist())
+                .andExpect(jsonPath("$.comments[0].ownerPublicId").doesNotExist())
+                .andExpect(jsonPath("$.comments[0].canDelete").value(true))
+                .andExpect(jsonPath("$.comments[0].requiresDeletePassword").value(false));
+    }
+
+    @Test
     @DisplayName("DELETE /api/v1/comments/{commentId} - 댓글 Soft Delete 삭제 200 OK")
     void deleteComment_success() throws Exception {
         CommentResponse comment =

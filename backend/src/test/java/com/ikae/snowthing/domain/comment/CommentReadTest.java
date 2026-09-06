@@ -32,7 +32,9 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.dto.PostResponse;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
+import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
+import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
@@ -47,6 +49,7 @@ class CommentReadTest {
     @Autowired private PostService postService;
     @Autowired private MemberRepository memberRepository;
     @Autowired private PostCategoryRepository categoryRepository;
+    @Autowired private PostRepository postRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private NamedParameterJdbcTemplate jdbcTemplate;
     @Autowired private MockMvc mockMvc;
@@ -173,7 +176,9 @@ class CommentReadTest {
             commentService.deleteComment(reply.commentId(), null, userDetails);
             PostCommentListResponse allDeleted =
                     commentService.getCommentsByPost(post.publicId(), null, 20);
-            assertThat(allDeleted.comments()).isEmpty();
+            assertThat(allDeleted.comments()).hasSize(1);
+            assertThat(allDeleted.comments().getFirst().isDeleted()).isTrue();
+            assertThat(allDeleted.comments().getFirst().replyCount()).isEqualTo(1);
         }
 
         @Test
@@ -261,6 +266,35 @@ class CommentReadTest {
                             commentService.getCommentReplies(
                                     firstRoot.commentId(), foreignReply.commentId(), 20),
                     ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("삭제된 게시글의 대댓글 조회는 POST_NOT_FOUND를 반환한다")
+        void repliesOfDeletedPostAreHidden() {
+            CommentResponse root = createRoot("삭제 게시글 루트");
+            createReply(root.commentId(), "삭제 게시글 대댓글");
+
+            postRepository.findByPublicId(post.publicId()).orElseThrow().softDelete();
+
+            assertErrorCode(
+                    () -> commentService.getCommentReplies(root.commentId(), null, 20),
+                    ErrorCode.POST_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("차단된 게시글의 대댓글 조회는 POST_NOT_FOUND를 반환한다")
+        void repliesOfBlockedPostAreHidden() {
+            CommentResponse root = createRoot("차단 게시글 루트");
+            createReply(root.commentId(), "차단 게시글 대댓글");
+
+            postRepository
+                    .findByPublicId(post.publicId())
+                    .orElseThrow()
+                    .changeStatus(PostStatus.BLOCKED);
+
+            assertErrorCode(
+                    () -> commentService.getCommentReplies(root.commentId(), null, 20),
+                    ErrorCode.POST_NOT_FOUND);
         }
     }
 

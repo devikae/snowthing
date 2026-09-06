@@ -53,7 +53,7 @@ X-XSRF-TOKEN: {csrf_token}
 | 필드명 | 타입 | 필수 여부 | 설명 |
 | :--- | :---: | :---: | :--- |
 | `content` | String | **필수** | 댓글 본문 (1자 이상 1,000자 이하) |
-| `parentId` | Long | 선택 | 부모 댓글 ID. `null`이면 루트 댓글, 대댓글 작성 시 대상 댓글 ID 전달 (대댓글에 답글 시 서버에서 최상위 루트 ID로 자동 평탄화) |
+| `parentId` | String | 선택 | 부모 댓글 ID. `null`이면 루트 댓글, 대댓글 작성 시 대상 댓글 ID 전달 (대댓글에 답글 시 서버에서 최상위 루트 ID로 자동 평탄화) |
 | `isAnonymous` | Boolean | **필수** | 익명 작성 여부 (`true` / `false`) |
 | `anonymousPassword` | String | 조건부 필수 | 비로그인 익명 작성 시 필수 (4자 이상 20자 이하) |
 
@@ -88,6 +88,8 @@ X-XSRF-TOKEN: {csrf_token}
 
 게시글 상세 화면에서 루트 댓글 20개와 각 루트 댓글 하위의 대댓글 상위 5개를 일괄 조회합니다.
 
+삭제된 루트 댓글과 대댓글도 `"삭제된 댓글입니다."` placeholder로 노출하며, `replyCount`와 대댓글 목록은 삭제된 항목을 포함한 전체 수를 기준으로 합니다.
+
 - **HTTP Method**: `GET`
 - **URI**: `/api/v1/posts/{publicId}/comments`
 - **인증 요구사항**: 없음 (Public)
@@ -95,7 +97,7 @@ X-XSRF-TOKEN: {csrf_token}
 #### Request Query Parameters
 | 파라미터명 | 타입 | 기본값 | 설명 |
 | :--- | :---: | :---: | :--- |
-| `cursor` | Long | `null` | 커서 페이징용 마지막 루트 댓글 ID (`commentId`). 첫 페이지 조회 시 생략 |
+| `cursor` | String | `null` | 커서 페이징용 마지막 루트 댓글 ID (`commentId`). 첫 페이지 조회 시 생략 |
 | `size` | Integer | `20` | 조회할 루트 댓글 수 (기본 20개, 최대 50개) |
 
 #### Response (200 OK)
@@ -116,6 +118,8 @@ X-XSRF-TOKEN: {csrf_token}
       "writerIp": "211.234.***.***",
       "content": "하이원 아테나 슬로프 오픈했나요?",
       "isDeleted": false,
+      "canDelete": true,
+      "requiresDeletePassword": false,
       "replyCount": 8,
       "previewReplies": [
         {
@@ -130,6 +134,8 @@ X-XSRF-TOKEN: {csrf_token}
           "writerIp": "175.120.***.***",
           "content": "네 오늘 오전 9시에 오픈했습니다!",
           "isDeleted": false,
+          "canDelete": false,
+          "requiresDeletePassword": false,
           "createdAt": "2026-09-01T15:32:00"
         }
       ],
@@ -170,6 +176,9 @@ X-XSRF-TOKEN: {csrf_token}
 }
 ```
 
+- `canDelete`: 현재 요청자가 해당 댓글을 삭제할 수 있는지 나타냅니다. 로그인 익명 댓글도 작성자 세션이 일치하거나 관리자인 경우에만 `true`입니다.
+- `requiresDeletePassword`: 삭제 시 익명 비밀번호가 필요한지 나타냅니다. 비회원 익명 댓글에만 `true`이며, 로그인 익명 작성자의 회원 식별자는 응답에 노출하지 않습니다.
+
 ---
 
 ### 3. 대댓글 목록 분리 페이징 조회 (Read Separated Replies)
@@ -183,7 +192,7 @@ X-XSRF-TOKEN: {csrf_token}
 #### Request Query Parameters
 | 파라미터명 | 타입 | 기본값 | 설명 |
 | :--- | :---: | :---: | :--- |
-| `cursor` | Long | `null` | 커서 페이징용 마지막 대댓글 ID (`commentId`). 첫 더보기 호출 시 5번째 프리뷰 대댓글의 ID를 전달 |
+| `cursor` | String | `null` | 커서 페이징용 마지막 대댓글 ID (`commentId`). 첫 더보기 호출 시 5번째 프리뷰 대댓글의 ID를 전달 |
 | `size` | Integer | `20` | 조회할 대댓글 수 (기본 20개, 최대 50개) |
 
 #### Response (200 OK)

@@ -38,8 +38,8 @@ interface PostDetail {
 }
 
 interface CommentItem {
-  commentId: number;
-  parentId: number | null;
+  commentId: string;
+  parentId: string | null;
   writer: WriterInfo | null;
   isAnonymous: boolean;
   writerIp: string;
@@ -48,6 +48,8 @@ interface CommentItem {
   replyCount: number;
   previewReplies: CommentItem[];
   hasMoreReplies: boolean;
+  canDelete: boolean;
+  requiresDeletePassword: boolean;
   createdAt: string;
 }
 
@@ -55,26 +57,26 @@ interface CommentListResponse {
   publicId: string;
   totalCommentCount: number;
   comments: CommentItem[];
-  nextCursor: number | null;
+  nextCursor: string | null;
   hasNext: boolean;
 }
 
 interface CommentReplyListResponse {
-  rootCommentId: number;
+  rootCommentId: string;
   totalReplyCount: number;
   replies: CommentItem[];
-  nextCursor: number | null;
+  nextCursor: string | null;
   hasNext: boolean;
 }
 
 interface ReplyPagingState {
-  nextCursor: number | null;
+  nextCursor: string | null;
   hasNext: boolean;
   loading: boolean;
 }
 
 interface CommentUpdateResponse {
-  commentId: number;
+  commentId: string;
   content: string;
   updatedAt: string;
 }
@@ -85,26 +87,29 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [totalCommentCount, setTotalCommentCount] = useState(0);
-  const [commentNextCursor, setCommentNextCursor] = useState<number | null>(null);
+  const [commentNextCursor, setCommentNextCursor] = useState<string | null>(null);
   const [hasNextComments, setHasNextComments] = useState(false);
+  const [isLoadingComments, setIsLoadingComments] = useState(true);
+  const [commentLoadError, setCommentLoadError] = useState("");
+  const [loadMoreCommentError, setLoadMoreCommentError] = useState("");
   const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
-  const [replyPagingByRootId, setReplyPagingByRootId] = useState<Record<number, ReplyPagingState>>({});
+  const [replyPagingByRootId, setReplyPagingByRootId] = useState<Record<string, ReplyPagingState>>({});
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
   const [newCommentText, setNewCommentText] = useState("");
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [activeReplyParentId, setActiveReplyParentId] = useState<number | null>(null);
+  const [activeReplyParentId, setActiveReplyParentId] = useState<string | null>(null);
   const [replyMentionName, setReplyMentionName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
-  const [activeEditCommentId, setActiveEditCommentId] = useState<number | null>(null);
+  const [activeEditCommentId, setActiveEditCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [editCommentPassword, setEditCommentPassword] = useState("");
   const [editCommentError, setEditCommentError] = useState("");
   const [submittingEditComment, setSubmittingEditComment] = useState(false);
-  const [activeDeleteCommentId, setActiveDeleteCommentId] = useState<number | null>(null);
+  const [activeDeleteCommentId, setActiveDeleteCommentId] = useState<string | null>(null);
   const [deleteCommentPassword, setDeleteCommentPassword] = useState("");
   const [deleteCommentError, setDeleteCommentError] = useState("");
   const [submittingDeleteComment, setSubmittingDeleteComment] = useState(false);
@@ -159,24 +164,43 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
-  const fetchComments = useCallback(async (cursor: number | null = null, append = false) => {
+  const fetchComments = useCallback(async (cursor: string | null = null, append = false) => {
+    if (append) {
+      setLoadMoreCommentError("");
+    } else {
+      setIsLoadingComments(true);
+      setCommentLoadError("");
+    }
+
     try {
       const res = await fetch(API_ENDPOINTS.posts.comments(publicId, cursor), { credentials: "include" });
-      if (res.ok) {
-        const data: CommentListResponse = await res.json();
-        setComments((current) => {
-          if (!append) return data.comments || [];
-          const merged = [...current, ...(data.comments || [])];
-          return merged.filter(
-            (comment, index) => merged.findIndex((candidate) => candidate.commentId === comment.commentId) === index,
-          );
-        });
-        setTotalCommentCount(data.totalCommentCount || 0);
-        setCommentNextCursor(data.nextCursor ?? null);
-        setHasNextComments(Boolean(data.hasNext));
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.message || "댓글을 불러오지 못했습니다.");
       }
+
+      const data: CommentListResponse = await res.json();
+      setComments((current) => {
+        if (!append) return data.comments || [];
+        const merged = [...current, ...(data.comments || [])];
+        return merged.filter(
+          (comment, index) => merged.findIndex((candidate) => candidate.commentId === comment.commentId) === index,
+        );
+      });
+      setTotalCommentCount(data.totalCommentCount || 0);
+      setCommentNextCursor(data.nextCursor ?? null);
+      setHasNextComments(Boolean(data.hasNext));
     } catch (error) {
       console.error("댓글 로드 실패:", error);
+      const message = error instanceof Error ? error.message : "서버 통신 중 오류가 발생했습니다.";
+      if (append) {
+        setLoadMoreCommentError(message);
+      } else {
+        setCommentLoadError(message);
+      }
+    } finally {
+      if (!append) setIsLoadingComments(false);
     }
   }, [publicId]);
 
@@ -191,7 +215,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
-  const handleLoadMoreReplies = async (rootCommentId: number) => {
+  const handleLoadMoreReplies = async (rootCommentId: string) => {
     const root = comments.find((comment) => comment.commentId === rootCommentId);
     if (!root) return;
 
@@ -317,7 +341,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
 
-  const handleCreateComment = async (parentId: number | null) => {
+  const handleCreateComment = async (parentId: string | null) => {
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
       alert("댓글 내용을 입력해주세요.");
@@ -470,7 +494,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
-  const handleStartDeleteComment = (commentId: number) => {
+  const handleStartDeleteComment = (commentId: string) => {
     setActiveDeleteCommentId(commentId);
     setDeleteCommentPassword("");
     setDeleteCommentError("");
@@ -483,11 +507,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   };
 
   const handleConfirmDeleteComment = async (comment: CommentItem) => {
-    const isOwnerMember = !comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
-    const isOwnerAnonMember = comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
-    const requiresPassword = !isAdmin && !isOwnerMember && !isOwnerAnonMember;
-
-    if (requiresPassword && !deleteCommentPassword.trim()) {
+    if (comment.requiresDeletePassword && !deleteCommentPassword.trim()) {
       setDeleteCommentError("비밀번호를 입력해주세요.");
       return;
     }
@@ -507,6 +527,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       }
 
       handleCancelDeleteComment();
+      setReplyPagingByRootId({});
       await fetchComments();
       setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
     } catch (error) {
@@ -653,7 +674,22 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             </div>
 
             <div className="grid gap-4">
-              {comments.length === 0 ? (
+              {isLoadingComments ? (
+                <p role="status" className="py-8 text-center text-sm text-[var(--snow-muted)]">
+                  댓글을 불러오는 중입니다.
+                </p>
+              ) : commentLoadError ? (
+                <div role="alert" className="grid justify-items-center gap-3 py-8 text-center">
+                  <p className="text-sm text-red-600">{commentLoadError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void fetchComments()}
+                    className="snow-btn-secondary"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              ) : comments.length === 0 ? (
                 <p className="py-8 text-center text-sm text-[var(--snow-muted)]">첫 댓글을 작성해보세요.</p>
               ) : (
                 comments.map((comment) => (
@@ -689,7 +725,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     handleStartDeleteComment={handleStartDeleteComment}
                     handleCancelDeleteComment={handleCancelDeleteComment}
                     handleConfirmDeleteComment={handleConfirmDeleteComment}
-                    isAdmin={isAdmin}
                     handleLoadMoreReplies={handleLoadMoreReplies}
                     isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
                   />
@@ -697,15 +732,26 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
               )}
             </div>
 
-            {hasNextComments && (
-              <button
-                type="button"
-                disabled={isLoadingMoreComments}
-                onClick={() => void handleLoadMoreComments()}
-                className="snow-btn-secondary mt-6 w-full"
-              >
-                {isLoadingMoreComments ? "댓글을 불러오는 중..." : "댓글 더보기 (20개)"}
-              </button>
+            {!isLoadingComments && !commentLoadError && hasNextComments && (
+              <div className="mt-6 grid gap-2">
+                {loadMoreCommentError && (
+                  <p role="alert" className="text-center text-sm text-red-600">
+                    {loadMoreCommentError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={isLoadingMoreComments}
+                  onClick={() => void handleLoadMoreComments()}
+                  className="snow-btn-secondary w-full"
+                >
+                  {isLoadingMoreComments
+                    ? "댓글을 불러오는 중..."
+                    : loadMoreCommentError
+                      ? "댓글 더보기 다시 시도"
+                      : "댓글 더보기 (20개)"}
+                </button>
+              </div>
             )}
           </section>
         </div>
@@ -755,23 +801,22 @@ function CommentRow({
   handleStartDeleteComment,
   handleCancelDeleteComment,
   handleConfirmDeleteComment,
-  isAdmin,
   handleLoadMoreReplies,
   isLoadingReplies,
 }: {
   item: CommentItem;
   isAnonymousPost: boolean;
   currentUserPublicId: string | null;
-  activeReplyParentId: number | null;
-  setActiveReplyParentId: (id: number | null) => void;
+  activeReplyParentId: string | null;
+  setActiveReplyParentId: (id: string | null) => void;
   replyMentionName: string | null;
   setReplyMentionName: (name: string | null) => void;
   replyText: string;
   setReplyText: (text: string) => void;
   replyAnonPassword: string;
   setReplyAnonPassword: (value: string) => void;
-  handleCreateComment: (parentId: number | null) => Promise<void>;
-  activeEditCommentId: number | null;
+  handleCreateComment: (parentId: string | null) => Promise<void>;
+  activeEditCommentId: string | null;
   editCommentText: string;
   setEditCommentText: (text: string) => void;
   editCommentPassword: string;
@@ -781,20 +826,19 @@ function CommentRow({
   handleStartEditComment: (comment: CommentItem) => void;
   handleCancelEditComment: () => void;
   handleUpdateComment: (comment: CommentItem) => Promise<void>;
-  activeDeleteCommentId: number | null;
+  activeDeleteCommentId: string | null;
   deleteCommentPassword: string;
   setDeleteCommentPassword: (password: string) => void;
   deleteCommentError: string;
   submittingDeleteComment: boolean;
-  handleStartDeleteComment: (commentId: number) => void;
+  handleStartDeleteComment: (commentId: string) => void;
   handleCancelDeleteComment: () => void;
   handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
-  isAdmin: boolean;
-  handleLoadMoreReplies: (rootCommentId: number) => Promise<void>;
+  handleLoadMoreReplies: (rootCommentId: string) => Promise<void>;
   isLoadingReplies: boolean;
 }) {
   const canEdit = canEditComment(item, currentUserPublicId);
-  const canDelete = canDeleteComment(item, currentUserPublicId, isAdmin);
+  const canDelete = canDeleteComment(item);
   const isEditing = activeEditCommentId === item.commentId;
   const openReplyEditor = (target: CommentItem) => {
     if (activeReplyParentId === item.commentId && replyMentionName === getWriterName(target)) {
@@ -816,8 +860,6 @@ function CommentRow({
             {canDelete && (
               <CommentDeleteInline
                 comment={item}
-                currentUserPublicId={currentUserPublicId}
-                isAdmin={isAdmin}
                 isActive={activeDeleteCommentId === item.commentId}
                 onOpen={() => handleStartDeleteComment(item.commentId)}
                 onClose={handleCancelDeleteComment}
@@ -885,7 +927,6 @@ function CommentRow({
                 handleStartDeleteComment={handleStartDeleteComment}
                 handleCancelDeleteComment={handleCancelDeleteComment}
                 handleConfirmDeleteComment={handleConfirmDeleteComment}
-                isAdmin={isAdmin}
               />
             ))}
           </div>
@@ -972,7 +1013,6 @@ function ReplyRow({
   handleStartDeleteComment,
   handleCancelDeleteComment,
   handleConfirmDeleteComment,
-  isAdmin,
 }: {
   item: CommentItem;
   onReply: () => void;
@@ -987,18 +1027,17 @@ function ReplyRow({
   handleStartEditComment: (comment: CommentItem) => void;
   handleCancelEditComment: () => void;
   handleUpdateComment: (comment: CommentItem) => Promise<void>;
-  activeDeleteCommentId: number | null;
+  activeDeleteCommentId: string | null;
   deleteCommentPassword: string;
   setDeleteCommentPassword: (password: string) => void;
   deleteCommentError: string;
   submittingDeleteComment: boolean;
-  handleStartDeleteComment: (commentId: number) => void;
+  handleStartDeleteComment: (commentId: string) => void;
   handleCancelDeleteComment: () => void;
   handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
-  isAdmin: boolean;
 }) {
   const canEdit = canEditComment(item, currentUserPublicId);
-  const canDelete = canDeleteComment(item, currentUserPublicId, isAdmin);
+  const canDelete = canDeleteComment(item);
 
   return (
     <div className="ml-5 border-l-2 border-black pl-5">
@@ -1011,8 +1050,6 @@ function ReplyRow({
           {canDelete && (
             <CommentDeleteInline
               comment={item}
-              currentUserPublicId={currentUserPublicId}
-              isAdmin={isAdmin}
               isActive={activeDeleteCommentId === item.commentId}
               onOpen={() => handleStartDeleteComment(item.commentId)}
               onClose={handleCancelDeleteComment}
@@ -1138,7 +1175,7 @@ function canEditComment(comment: CommentItem, currentUserPublicId: string | null
   return Boolean(currentUserPublicId && comment.writer?.publicId === currentUserPublicId);
 }
 
-function updateCommentContent(comments: CommentItem[], commentId: number, content: string) {
+function updateCommentContent(comments: CommentItem[], commentId: string, content: string) {
   return comments.map((comment) => {
     if (comment.commentId === commentId) return { ...comment, content };
     return {
@@ -1152,8 +1189,6 @@ function updateCommentContent(comments: CommentItem[], commentId: number, conten
 
 function CommentDeleteInline({
   comment,
-  currentUserPublicId,
-  isAdmin,
   isActive,
   onOpen,
   onClose,
@@ -1164,8 +1199,6 @@ function CommentDeleteInline({
   onConfirm,
 }: {
   comment: CommentItem;
-  currentUserPublicId: string | null;
-  isAdmin: boolean;
   isActive: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -1175,10 +1208,6 @@ function CommentDeleteInline({
   submitting: boolean;
   onConfirm: () => void;
 }) {
-  const isOwnerMember = !comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
-  const isOwnerAnonMember = comment.isAnonymous && currentUserPublicId && comment.writer?.publicId === currentUserPublicId;
-  const requiresPassword = !isAdmin && !isOwnerMember && !isOwnerAnonMember;
-
   return (
     <div className="relative inline-flex items-center">
       <button
@@ -1199,7 +1228,7 @@ function CommentDeleteInline({
 
           {/* 시간 및 아이콘 바로 아래에 완벽하게 플로팅되는 팝오버 (레이아웃 밀림 0) */}
           <div className="absolute right-0 top-full mt-1.5 z-50 flex items-center bg-[#1c2e5c] border border-black shadow-xl rounded-xs">
-            {requiresPassword ? (
+            {comment.requiresDeletePassword ? (
               <input
                 type="password"
                 placeholder="비밀번호"
@@ -1264,9 +1293,6 @@ function formatCommentDate(dateString: string): string {
   }
 }
 
-function canDeleteComment(comment: CommentItem, currentUserPublicId: string | null, isAdmin: boolean): boolean {
-  if (comment.isDeleted) return false;
-  if (isAdmin) return true;
-  if (comment.isAnonymous) return true;
-  return Boolean(currentUserPublicId && comment.writer?.publicId === currentUserPublicId);
+function canDeleteComment(comment: CommentItem): boolean {
+  return comment.canDelete;
 }
