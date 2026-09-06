@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @Transactional
 class CommentUpdateTest {
 
@@ -46,7 +48,7 @@ class CommentUpdateTest {
     static void useRealMySql(DynamicPropertyRegistry registry) {
         String testDbUrl = System.getenv("SNOWTHING_TEST_DB_URL");
         if (testDbUrl == null || testDbUrl.isBlank()) {
-            return;
+            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
         }
         registry.add("spring.datasource.url", () -> testDbUrl);
         registry.add(
@@ -173,6 +175,31 @@ class CommentUpdateTest {
             Comment savedComment = commentRepository.findById(created.commentId()).orElseThrow();
             assertThat(savedComment.getContent()).isEqualTo("익명 수정 후");
         }
+
+        @Test
+        @DisplayName("로그인 익명 댓글은 작성자 세션으로 수정할 수 있다")
+        void updateMemberAnonymousCommentByOwnerSession() {
+            CommentResponse created = createMemberAnonymousComment("로그인 익명 댓글");
+
+            CommentUpdateResponse updated =
+                    commentService.updateComment(
+                            created.commentId(),
+                            new CommentUpdateRequest("작성자 수정", null),
+                            writerDetails);
+
+            assertThat(updated.content()).isEqualTo("작성자 수정");
+        }
+
+        @Test
+        @DisplayName("비회원 익명 댓글은 올바른 비밀번호로 삭제할 수 있다")
+        void deleteGuestAnonymousCommentWithCorrectPassword() {
+            CommentResponse created = createGuestAnonymousComment("비회원 익명 댓글", "password1234");
+
+            commentService.deleteComment(created.commentId(), "password1234", null);
+
+            assertThat(commentRepository.findById(created.commentId()).orElseThrow().isDeleted())
+                    .isTrue();
+        }
     }
 
     @Nested
@@ -193,6 +220,39 @@ class CommentUpdateTest {
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("로그인 익명 댓글은 다른 사용자가 비밀번호를 보내도 수정할 수 없다")
+        void rejectPasswordFallbackForMemberAnonymousUpdate() {
+            CommentResponse created = createMemberAnonymousComment("로그인 익명 댓글");
+
+            assertThatThrownBy(
+                            () ->
+                                    commentService.updateComment(
+                                            created.commentId(),
+                                            new CommentUpdateRequest("수정 시도", "password1234"),
+                                            otherDetails))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("로그인 익명 댓글은 비회원이 비밀번호를 보내도 삭제할 수 없다")
+        void rejectPasswordFallbackForMemberAnonymousDelete() {
+            CommentResponse created = createMemberAnonymousComment("로그인 익명 댓글");
+
+            assertThatThrownBy(
+                            () ->
+                                    commentService.deleteComment(
+                                            created.commentId(), "password1234", null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ACCESS_DENIED);
+
+            assertThat(commentRepository.findById(created.commentId()).orElseThrow().isDeleted())
+                    .isFalse();
         }
 
         @Test
@@ -259,6 +319,84 @@ class CommentUpdateTest {
         }
     }
 
+    @Test
+    @DisplayName("수정 응답의 updatedAt은 수정 전 값보다 이후이다")
+    void returnUpdatedAtAfterFlush() {
+        CommentResponse created = createMemberComment("수정 전 본문");
+        Comment beforeUpdate = commentRepository.findById(created.commentId()).orElseThrow();
+        java.time.LocalDateTime previousUpdatedAt = beforeUpdate.getUpdatedAt();
+
+        CommentUpdateResponse updated =
+                commentService.updateComment(
+                        created.commentId(),
+                        new CommentUpdateRequest("수정 후 본문", null),
+                        writerDetails);
+
+        assertThat(updated.updatedAt()).isAfter(previousUpdatedAt);
+    }
+
+    @Nested
+    @DisplayName("엔티티 본문 불변식")
+    class EntityContentInvariant {
+
+        @Test
+        @DisplayName("생성 시에도 잘못된 본문을 거부한다")
+        void rejectInvalidContentOnCreation() {
+            assertThatThrownBy(
+                            () -> Comment.create(null, null, null, null, "127.0.0.1", true, null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INVALID_INPUT);
+            assertThatThrownBy(
+                            () -> Comment.create(null, null, null, "   ", "127.0.0.1", true, null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INVALID_INPUT);
+            assertThatThrownBy(
+                            () ->
+                                    Comment.create(
+                                            null,
+                                            null,
+                                            null,
+                                            "a".repeat(1001),
+                                            "127.0.0.1",
+                                            true,
+                                            null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INVALID_INPUT);
+        }
+
+        @Test
+        @DisplayName("null 본문을 거부하고 기존 본문을 유지한다")
+        void rejectNullContent() {
+            assertInvalidEntityContent(null);
+        }
+
+        @Test
+        @DisplayName("공백 본문을 거부하고 기존 본문을 유지한다")
+        void rejectBlankContent() {
+            assertInvalidEntityContent("   ");
+        }
+
+        @Test
+        @DisplayName("1,000자를 초과한 본문을 거부하고 기존 본문을 유지한다")
+        void rejectOversizedContent() {
+            assertInvalidEntityContent("a".repeat(1001));
+        }
+    }
+
+    private void assertInvalidEntityContent(String invalidContent) {
+        CommentResponse created = createMemberComment("기존 본문");
+        Comment comment = commentRepository.findById(created.commentId()).orElseThrow();
+
+        assertThatThrownBy(() -> comment.updateContent(invalidContent))
+                .isInstanceOf(CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+        assertThat(comment.getContent()).isEqualTo("기존 본문");
+    }
+
     private CommentResponse createMemberComment(String content) {
         return commentService.createComment(
                 postResponse.publicId(),
@@ -272,6 +410,14 @@ class CommentUpdateTest {
                 postResponse.publicId(),
                 new CommentCreateRequest(null, content, true, password),
                 null,
+                "127.0.0.1");
+    }
+
+    private CommentResponse createMemberAnonymousComment(String content) {
+        return commentService.createComment(
+                postResponse.publicId(),
+                new CommentCreateRequest(null, content, true, null),
+                writerDetails,
                 "127.0.0.1");
     }
 }

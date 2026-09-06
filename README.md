@@ -27,7 +27,7 @@
 * **Build & Test**: Gradle, JUnit5, Mockito, MockMvc
 
 ### Database & Cache
-* **RDBMS**: H2 (In-Memory Dev), MySQL 8.0 (Production)
+* **RDBMS**: MySQL 8.0 (local, test, and production)
 * **In-Memory Cache**: Spring Session Redis (Scale-out Ready)
 
 ---

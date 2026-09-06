@@ -28,6 +28,8 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "COMMENT_004", "루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "COMMON_002", "페이지 크기는 1 이상 100 이하이어야 합니다."),
+    COMMENT_INVALID_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

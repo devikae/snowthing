@@ -116,6 +116,8 @@ X-XSRF-TOKEN: {csrf_token}
       "writerIp": "211.234.***.***",
       "content": "하이원 아테나 슬로프 오픈했나요?",
       "isDeleted": false,
+      "canEdit": true,
+      "requiresPassword": false,
       "replyCount": 8,
       "previewReplies": [
         {
@@ -130,6 +132,8 @@ X-XSRF-TOKEN: {csrf_token}
           "writerIp": "175.120.***.***",
           "content": "네 오늘 오전 9시에 오픈했습니다!",
           "isDeleted": false,
+          "canEdit": false,
+          "requiresPassword": false,
           "createdAt": "2026-09-01T15:32:00"
         }
       ],
@@ -144,6 +148,8 @@ X-XSRF-TOKEN: {csrf_token}
       "writerIp": "121.160.***.***",
       "content": "삭제된 댓글입니다.",
       "isDeleted": true,
+      "canEdit": false,
+      "requiresPassword": false,
       "replyCount": 1,
       "previewReplies": [
         {
@@ -158,6 +164,8 @@ X-XSRF-TOKEN: {csrf_token}
           "writerIp": "220.70.***.***",
           "content": "삭제된 질문이지만 답변 남깁니다. 야간개장은 18시부터입니다.",
           "isDeleted": false,
+          "canEdit": false,
+          "requiresPassword": false,
           "createdAt": "2026-09-01T15:35:00"
         }
       ],
@@ -169,6 +177,9 @@ X-XSRF-TOKEN: {csrf_token}
   "hasNext": true
 }
 ```
+
+- `canEdit`: 현재 요청 사용자가 해당 댓글을 수정할 수 있는지 나타냅니다. 로그인 익명 댓글도 작성자 세션이 일치할 때만 `true`입니다.
+- `requiresPassword`: 수정 시 익명 비밀번호가 필요한지 나타냅니다. 비회원 익명 댓글에만 `true`이며, 작성 회원의 식별자는 익명 응답에 노출하지 않습니다.
 
 ---
 
@@ -204,6 +215,8 @@ X-XSRF-TOKEN: {csrf_token}
       "writerIp": "112.180.***.***",
       "content": "빅토리아 슬로프는 다음 주 오픈 예정이랍니다.",
       "isDeleted": false,
+      "canEdit": false,
+      "requiresPassword": false,
       "createdAt": "2026-09-01T15:40:00"
     }
   ],
@@ -270,6 +283,7 @@ X-XSRF-TOKEN: {csrf_token}
 | HTTP Status | ErrorCode | 에러 메시지 |
 | :--- | :--- | :--- |
 | `400 Bad Request` | `COMMENT_004` | 루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다. |
+| `400 Bad Request` | `COMMENT_005` | 댓글 페이지 크기는 1 이상 50 이하이어야 합니다. |
 | `400 Bad Request` | `COMMENT_003` | 동일한 게시글의 댓글에만 대댓글을 달 수 있습니다. |
 | `400 Bad Request` | `COMMON_001` | 잘못된 입력값입니다. (글자수 제한 위반, 비밀번호 누락 등) |
 | `403 Forbidden` | `AUTH_002` | 해당 작업을 수행할 권한이 없습니다. |

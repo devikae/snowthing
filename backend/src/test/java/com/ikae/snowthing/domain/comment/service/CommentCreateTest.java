@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Propagation;
@@ -46,6 +47,7 @@ import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @Transactional
 class CommentCreateTest {
 
@@ -53,7 +55,7 @@ class CommentCreateTest {
     static void useRealMySql(DynamicPropertyRegistry registry) {
         String testDbUrl = System.getenv("SNOWTHING_TEST_DB_URL");
         if (testDbUrl == null || testDbUrl.isBlank()) {
-            return;
+            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
         }
         registry.add("spring.datasource.url", () -> testDbUrl);
         registry.add(
@@ -149,6 +151,22 @@ class CommentCreateTest {
         assertThat(savedComment.isAnonymous()).isTrue();
         assertThat(savedComment.getMember()).isNotNull();
         assertThat(savedComment.getAnonymousPassword()).isNull();
+    }
+
+    @Test
+    @DisplayName("로그인 회원은 익명 댓글 생성 시 비밀번호를 함께 보낼 수 없다")
+    void rejectAnonymousPasswordFromMember() {
+        assertThatThrownBy(
+                        () ->
+                                commentService.createComment(
+                                        postResponse.publicId(),
+                                        new CommentCreateRequest(
+                                                null, "로그인 익명 댓글", true, "password1234"),
+                                        userDetails,
+                                        "127.0.0.1"))
+                .isInstanceOf(CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
     }
 
     @Test

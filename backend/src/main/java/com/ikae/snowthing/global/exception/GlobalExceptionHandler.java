@@ -3,6 +3,7 @@ package com.ikae.snowthing.global.exception;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -57,6 +58,14 @@ public class GlobalExceptionHandler {
                                 defaultMessage != null
                                         ? defaultMessage
                                         : ErrorCode.INVALID_INPUT.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException e) {
+        log.warn("요청 본문을 읽을 수 없습니다: {}", e.getMessage());
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
     }
 
     @ExceptionHandler(Exception.class)

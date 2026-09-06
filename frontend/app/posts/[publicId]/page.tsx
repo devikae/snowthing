@@ -48,6 +48,8 @@ interface CommentItem {
   replyCount: number;
   previewReplies: CommentItem[];
   hasMoreReplies: boolean;
+  canEdit: boolean;
+  requiresPassword: boolean;
   createdAt: string;
 }
 
@@ -367,12 +369,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           setComments((current) =>
             current.map((comment) => {
               if (comment.commentId !== parentId) return comment;
+              const nextReplyCount = comment.replyCount + 1;
+              const nextPreviewReplies = comment.hasMoreReplies
+                ? comment.previewReplies
+                : [...comment.previewReplies, createdComment].slice(0, 5);
               return {
                 ...comment,
-                replyCount: comment.replyCount + 1,
-                previewReplies: comment.hasMoreReplies
-                  ? comment.previewReplies
-                  : [...comment.previewReplies, createdComment],
+                replyCount: nextReplyCount,
+                previewReplies: nextPreviewReplies,
+                hasMoreReplies: comment.hasMoreReplies || nextReplyCount > 5,
               };
             }),
           );
@@ -419,7 +424,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleUpdateComment = async (comment: CommentItem) => {
     const content = editCommentText.trim();
-    const requiresPassword = comment.isAnonymous && !currentUserPublicId;
+    const requiresPassword = comment.requiresPassword;
     if (!content) {
       setEditCommentError("댓글 내용을 입력해주세요.");
       return;
@@ -466,9 +471,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
-  const handleDeleteComment = async (commentId: number, isAnonymousWriter: boolean) => {
+  const handleDeleteComment = async (comment: CommentItem) => {
     let anonymousPassword = "";
-    if (isAnonymousWriter) {
+    if (comment.requiresPassword) {
       const input = prompt("익명 댓글 삭제 비밀번호를 입력하세요.");
       if (!input) return;
       anonymousPassword = input;
@@ -477,7 +482,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
 
     try {
-      const res = await csrfFetch(API_ENDPOINTS.comments.delete(commentId), {
+      const res = await csrfFetch(API_ENDPOINTS.comments.delete(comment.commentId), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ anonymousPassword: anonymousPassword || null }),
@@ -744,11 +749,11 @@ function CommentRow({
   handleStartEditComment: (comment: CommentItem) => void;
   handleCancelEditComment: () => void;
   handleUpdateComment: (comment: CommentItem) => Promise<void>;
-  handleDeleteComment: (commentId: number, isAnonymousWriter: boolean) => Promise<void>;
+  handleDeleteComment: (comment: CommentItem) => Promise<void>;
   handleLoadMoreReplies: (rootCommentId: number) => Promise<void>;
   isLoadingReplies: boolean;
 }) {
-  const canEdit = canEditComment(item, currentUserPublicId);
+  const canEdit = canEditComment(item);
   const isEditing = activeEditCommentId === item.commentId;
   const openReplyEditor = (target: CommentItem) => {
     if (activeReplyParentId === item.commentId && replyMentionName === getWriterName(target)) {
@@ -776,7 +781,7 @@ function CommentRow({
             setPassword={setEditCommentPassword}
             error={editCommentError}
             submitting={submittingEditComment}
-            requiresPassword={item.isAnonymous && !currentUserPublicId}
+            requiresPassword={item.requiresPassword}
             onCancel={handleCancelEditComment}
             onSubmit={() => void handleUpdateComment(item)}
           />
@@ -793,7 +798,7 @@ function CommentRow({
                 </button>
               )}
               {!item.isDeleted && (
-                <button type="button" onClick={() => void handleDeleteComment(item.commentId, item.isAnonymous)} className="text-[var(--snow-error)]">
+                <button type="button" onClick={() => void handleDeleteComment(item)} className="text-[var(--snow-error)]">
                   삭제
                 </button>
               )}
@@ -818,7 +823,6 @@ function CommentRow({
                 handleStartEditComment={handleStartEditComment}
                 handleCancelEditComment={handleCancelEditComment}
                 handleUpdateComment={handleUpdateComment}
-                currentUserPublicId={currentUserPublicId}
                 handleDeleteComment={handleDeleteComment}
               />
             ))}
@@ -887,7 +891,6 @@ function CommentRow({
 function ReplyRow({
   item,
   onReply,
-  currentUserPublicId,
   isEditing,
   editCommentText,
   setEditCommentText,
@@ -902,7 +905,6 @@ function ReplyRow({
 }: {
   item: CommentItem;
   onReply: () => void;
-  currentUserPublicId: string | null;
   isEditing: boolean;
   editCommentText: string;
   setEditCommentText: (text: string) => void;
@@ -913,9 +915,9 @@ function ReplyRow({
   handleStartEditComment: (comment: CommentItem) => void;
   handleCancelEditComment: () => void;
   handleUpdateComment: (comment: CommentItem) => Promise<void>;
-  handleDeleteComment: (commentId: number, isAnonymousWriter: boolean) => Promise<void>;
+  handleDeleteComment: (comment: CommentItem) => Promise<void>;
 }) {
-  const canEdit = canEditComment(item, currentUserPublicId);
+  const canEdit = canEditComment(item);
 
   return (
     <div className="ml-5 border-l-2 border-black pl-5">
@@ -934,7 +936,7 @@ function ReplyRow({
           setPassword={setEditCommentPassword}
           error={editCommentError}
           submitting={submittingEditComment}
-          requiresPassword={item.isAnonymous && !currentUserPublicId}
+          requiresPassword={item.requiresPassword}
           onCancel={handleCancelEditComment}
           onSubmit={() => void handleUpdateComment(item)}
         />
@@ -951,7 +953,7 @@ function ReplyRow({
               수정
             </button>
           )}
-          <button type="button" onClick={() => void handleDeleteComment(item.commentId, item.isAnonymous)} className="text-[var(--snow-error)]">
+          <button type="button" onClick={() => void handleDeleteComment(item)} className="text-[var(--snow-error)]">
             삭제
           </button>
         </div>
@@ -1035,10 +1037,8 @@ function getWriterName(comment: CommentItem) {
   return comment.writer?.nickname || "알 수 없음";
 }
 
-function canEditComment(comment: CommentItem, currentUserPublicId: string | null) {
-  if (comment.isDeleted) return false;
-  if (comment.isAnonymous) return true;
-  return Boolean(currentUserPublicId && comment.writer?.publicId === currentUserPublicId);
+function canEditComment(comment: CommentItem) {
+  return comment.canEdit;
 }
 
 function updateCommentContent(comments: CommentItem[], commentId: number, content: string) {

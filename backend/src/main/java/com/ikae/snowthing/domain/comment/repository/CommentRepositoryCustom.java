@@ -21,5 +21,5 @@ public interface CommentRepositoryCustom {
 
     List<CommentResponse> findReplies(Long rootCommentId, CursorPosition cursor, int fetchSize);
 
-    long countActiveReplies(Long rootCommentId);
+    long countReplies(Long rootCommentId);
 }
