@@ -4,14 +4,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.util.WriterDisplayFormatter;
 
 public record CommentResponse(
-        Long commentId,
-        Long postId,
-        Long parentId,
+        @JsonSerialize(using = ToStringSerializer.class) Long commentId,
+        @JsonSerialize(using = ToStringSerializer.class) Long postId,
+        @JsonSerialize(using = ToStringSerializer.class) Long parentId,
         WriterResponse writer,
         boolean isAnonymous,
         String writerIp,
@@ -23,6 +25,8 @@ public record CommentResponse(
         @JsonIgnore String ownerPublicId,
         boolean canEdit,
         boolean requiresPassword,
+        boolean canDelete,
+        boolean requiresDeletePassword,
         LocalDateTime createdAt) {
 
     private static final String ANONYMOUS_NAME = "ㅇㅇ";
@@ -57,6 +61,8 @@ public record CommentResponse(
                 member == null ? null : member.getPublicId(),
                 false,
                 false,
+                false,
+                false,
                 comment.getCreatedAt());
     }
 
@@ -76,35 +82,8 @@ public record CommentResponse(
                 ownerPublicId,
                 canEdit,
                 requiresPassword,
-                createdAt);
-    }
-
-    public CommentResponse withViewerPermissions(String viewerPublicId) {
-        boolean editable =
-                !isDeleted
-                        && (ownerPublicId == null
-                                ? isAnonymous
-                                : ownerPublicId.equals(viewerPublicId));
-        boolean passwordRequired = editable && ownerPublicId == null && isAnonymous;
-        List<CommentResponse> visibleReplies =
-                previewReplies.stream()
-                        .map(reply -> reply.withViewerPermissions(viewerPublicId))
-                        .toList();
-        return new CommentResponse(
-                commentId,
-                postId,
-                parentId,
-                writer,
-                isAnonymous,
-                writerIp,
-                content,
-                isDeleted,
-                replyCount,
-                visibleReplies,
-                hasMoreReplies,
-                ownerPublicId,
-                editable,
-                passwordRequired,
+                canDelete,
+                requiresDeletePassword,
                 createdAt);
     }
 
@@ -125,7 +104,48 @@ public record CommentResponse(
                 ownerPublicId,
                 canEdit,
                 requiresPassword,
+                canDelete,
+                requiresDeletePassword,
                 createdAt);
+    }
+
+    public CommentResponse withViewerPermissions(String viewerPublicId, boolean admin) {
+        boolean guestAnonymous = ownerPublicId == null && isAnonymous;
+        boolean owner = ownerPublicId != null && ownerPublicId.equals(viewerPublicId);
+
+        boolean editable = !isDeleted && (owner || guestAnonymous);
+        boolean editPasswordRequired = editable && guestAnonymous;
+
+        boolean deletable = !isDeleted && (admin || owner || guestAnonymous);
+        boolean deletePasswordRequired = deletable && !admin && guestAnonymous;
+
+        List<CommentResponse> visibleReplies =
+                previewReplies.stream()
+                        .map(reply -> reply.withViewerPermissions(viewerPublicId, admin))
+                        .toList();
+
+        return new CommentResponse(
+                commentId,
+                postId,
+                parentId,
+                writer,
+                isAnonymous,
+                writerIp,
+                content,
+                isDeleted,
+                replyCount,
+                visibleReplies,
+                hasMoreReplies,
+                ownerPublicId,
+                editable,
+                editPasswordRequired,
+                deletable,
+                deletePasswordRequired,
+                createdAt);
+    }
+
+    public CommentResponse withViewerPermissions(String viewerPublicId) {
+        return withViewerPermissions(viewerPublicId, false);
     }
 
     public List<CommentResponse> children() {

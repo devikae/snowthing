@@ -69,10 +69,6 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                         LEFT JOIN member m ON m.member_id = c.member_id
                         WHERE c.post_id = :postId
                           AND c.parent_id IS NULL
-                          AND (c.is_deleted = false OR EXISTS (
-                              SELECT 1 FROM comment active_child
-                              WHERE active_child.parent_id = c.comment_id
-                                AND active_child.is_deleted = false))
                         """
                         + cursorCondition
                         + " ORDER BY c.comment_id ASC LIMIT :fetchSize";
@@ -225,6 +221,8 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 List.of(),
                 rs.getBoolean("has_more_replies"),
                 memberPublicId,
+                false,
+                false,
                 false,
                 false,
                 rs.getObject("created_at", LocalDateTime.class));

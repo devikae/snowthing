@@ -245,7 +245,9 @@ class CommentReadTest {
             commentService.deleteComment(reply.commentId(), null, userDetails);
             PostCommentListResponse allDeleted =
                     commentService.getCommentsByPost(post.publicId(), null, 20);
-            assertThat(allDeleted.comments()).isEmpty();
+            assertThat(allDeleted.comments()).hasSize(1);
+            assertThat(allDeleted.comments().getFirst().isDeleted()).isTrue();
+            assertThat(allDeleted.comments().getFirst().replyCount()).isEqualTo(1);
         }
 
         @Test

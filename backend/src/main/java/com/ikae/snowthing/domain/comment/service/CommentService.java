@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.comment.service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -126,7 +127,8 @@ public class CommentService {
                                         comment.withViewerPermissions(
                                                 userDetails == null
                                                         ? null
-                                                        : userDetails.getPublicId()))
+                                                        : userDetails.getPublicId(),
+                                                isAdmin(userDetails)))
                         .toList();
         Long nextCursor = hasNext && !comments.isEmpty() ? comments.getLast().commentId() : null;
         return new PostCommentListResponse(
@@ -156,6 +158,7 @@ public class CommentService {
         if (root.getParent() != null) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
+
         if (cursor != null && !commentRepository.existsReplyCursor(commentId, cursor)) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
@@ -169,7 +172,8 @@ public class CommentService {
                                                 reply.withViewerPermissions(
                                                         userDetails == null
                                                                 ? null
-                                                                : userDetails.getPublicId()))
+                                                                : userDetails.getPublicId(),
+                                                        isAdmin(userDetails)))
                                 .toList();
         Long nextCursor = hasNext && !replies.isEmpty() ? replies.getLast().commentId() : null;
         return new CommentReplyListResponse(
@@ -243,17 +247,12 @@ public class CommentService {
 
         validateDeletePermission(comment, anonymousPassword, userDetails);
 
-        comment.softDelete();
-        postRepository.decreaseCommentCount(comment.getPost().getId());
+        commentRepository.softDeleteIfActive(commentId, LocalDateTime.now());
     }
 
     private void validateDeletePermission(
             Comment comment, String anonymousPassword, CustomUserDetails userDetails) {
-        boolean isAdmin =
-                userDetails != null
-                        && userDetails.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        if (isAdmin) {
+        if (isAdmin(userDetails)) {
             return;
         }
 
@@ -282,5 +281,11 @@ public class CommentService {
 
     private boolean hasAnonymousPassword(String anonymousPassword) {
         return anonymousPassword != null && !anonymousPassword.isBlank();
+    }
+
+    private boolean isAdmin(CustomUserDetails userDetails) {
+        return userDetails != null
+                && userDetails.getAuthorities().stream()
+                        .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }

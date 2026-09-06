@@ -424,12 +424,46 @@ class CommentCreateTest {
         }
     }
 
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("같은 루트의 서로 다른 대댓글에 동시에 답글을 작성해도 데드락 없이 저장된다")
+    void createConcurrentRepliesThroughDifferentChildrenWithoutDeadlock() throws Exception {
+        CommentResponse root = createComment(null, "동시성 루트 댓글");
+        CommentResponse firstChild = createComment(root.commentId(), "첫 번째 대댓글");
+        CommentResponse secondChild = createComment(root.commentId(), "두 번째 대댓글");
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<ErrorCode>> results =
+                    List.of(
+                            executor.submit(
+                                    () ->
+                                            createConcurrentReply(
+                                                    firstChild.commentId(), ready, start)),
+                            executor.submit(
+                                    () ->
+                                            createConcurrentReply(
+                                                    secondChild.commentId(), ready, start)));
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            assertThat(results.get(0).get(30, TimeUnit.SECONDS)).isNull();
+            assertThat(results.get(1).get(30, TimeUnit.SECONDS)).isNull();
+            assertThat(commentRepository.countByParentIdAndIsDeletedFalse(root.commentId()))
+                    .isEqualTo(4);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     private ErrorCode createConcurrentReply(
-            Long rootCommentId, CountDownLatch ready, CountDownLatch start) throws Exception {
+            Long parentCommentId, CountDownLatch ready, CountDownLatch start) throws Exception {
         ready.countDown();
         assertThat(start.await(10, TimeUnit.SECONDS)).isTrue();
         try {
-            createComment(rootCommentId, "동시 대댓글");
+            createComment(parentCommentId, "동시 대댓글");
             return null;
         } catch (CustomAuthException exception) {
             return exception.getErrorCode();

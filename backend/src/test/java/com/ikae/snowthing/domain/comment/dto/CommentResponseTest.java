@@ -124,6 +124,8 @@ class CommentResponseTest {
                 null,
                 false,
                 false,
+                false,
+                false,
                 LocalDateTime.now());
     }
 }
