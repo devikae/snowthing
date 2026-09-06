@@ -77,19 +77,20 @@ public class CommentSpikeBenchmarkHarness {
                     List<Object[]> rows = em.createNativeQuery("EXPLAIN " + sql).getResultList();
                     List<ExplainRow> explainList = new ArrayList<>();
                     for (Object[] r : rows) {
+                        int partitionsOffset = r.length >= 12 ? 1 : 0;
                         explainList.add(
                                 new ExplainRow(
                                         String.valueOf(r[0]),
                                         String.valueOf(r[1]),
                                         String.valueOf(r[2]),
-                                        String.valueOf(r[3]),
-                                        String.valueOf(r[4]),
-                                        String.valueOf(r[5]),
-                                        String.valueOf(r[6]),
-                                        String.valueOf(r[7]),
-                                        String.valueOf(r[8]),
-                                        String.valueOf(r[9]),
-                                        String.valueOf(r[10])));
+                                        String.valueOf(r[3 + partitionsOffset]),
+                                        String.valueOf(r[4 + partitionsOffset]),
+                                        String.valueOf(r[5 + partitionsOffset]),
+                                        String.valueOf(r[6 + partitionsOffset]),
+                                        String.valueOf(r[7 + partitionsOffset]),
+                                        String.valueOf(r[8 + partitionsOffset]),
+                                        String.valueOf(r[9 + partitionsOffset]),
+                                        String.valueOf(r[10 + partitionsOffset])));
                     }
                     explains.add(explainList);
                 } catch (Exception e) {

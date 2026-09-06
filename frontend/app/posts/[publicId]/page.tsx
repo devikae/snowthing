@@ -40,17 +40,37 @@ interface PostDetail {
 interface CommentItem {
   commentId: number;
   parentId: number | null;
-  writerName: string;
+  writer: WriterInfo | null;
+  isAnonymous: boolean;
+  writerIp: string;
   content: string;
   isDeleted: boolean;
+  replyCount: number;
+  previewReplies: CommentItem[];
+  hasMoreReplies: boolean;
   createdAt: string;
-  children: CommentItem[];
 }
 
 interface CommentListResponse {
   publicId: string;
   totalCommentCount: number;
   comments: CommentItem[];
+  nextCursor: number | null;
+  hasNext: boolean;
+}
+
+interface CommentReplyListResponse {
+  rootCommentId: number;
+  totalReplyCount: number;
+  replies: CommentItem[];
+  nextCursor: number | null;
+  hasNext: boolean;
+}
+
+interface ReplyPagingState {
+  nextCursor: number | null;
+  hasNext: boolean;
+  loading: boolean;
 }
 
 export default function PostDetailPage({ params }: { params: Promise<{ publicId: string }> }) {
@@ -59,6 +79,10 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [totalCommentCount, setTotalCommentCount] = useState(0);
+  const [commentNextCursor, setCommentNextCursor] = useState<number | null>(null);
+  const [hasNextComments, setHasNextComments] = useState(false);
+  const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
+  const [replyPagingByRootId, setReplyPagingByRootId] = useState<Record<number, ReplyPagingState>>({});
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
@@ -119,18 +143,96 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
-  const fetchComments = useCallback(async () => {
+  const fetchComments = useCallback(async (cursor: number | null = null, append = false) => {
     try {
-      const res = await fetch(API_ENDPOINTS.posts.comments(publicId), { credentials: "include" });
+      const res = await fetch(API_ENDPOINTS.posts.comments(publicId, cursor), { credentials: "include" });
       if (res.ok) {
         const data: CommentListResponse = await res.json();
-        setComments(data.comments || []);
+        setComments((current) => {
+          if (!append) return data.comments || [];
+          const merged = [...current, ...(data.comments || [])];
+          return merged.filter(
+            (comment, index) => merged.findIndex((candidate) => candidate.commentId === comment.commentId) === index,
+          );
+        });
         setTotalCommentCount(data.totalCommentCount || 0);
+        setCommentNextCursor(data.nextCursor ?? null);
+        setHasNextComments(Boolean(data.hasNext));
       }
     } catch (error) {
       console.error("댓글 로드 실패:", error);
     }
   }, [publicId]);
+
+  const handleLoadMoreComments = async () => {
+    if (isLoadingMoreComments || !hasNextComments || commentNextCursor == null) return;
+
+    setIsLoadingMoreComments(true);
+    try {
+      await fetchComments(commentNextCursor, true);
+    } finally {
+      setIsLoadingMoreComments(false);
+    }
+  };
+
+  const handleLoadMoreReplies = async (rootCommentId: number) => {
+    const root = comments.find((comment) => comment.commentId === rootCommentId);
+    if (!root) return;
+
+    const paging = replyPagingByRootId[rootCommentId];
+    if (paging?.loading) return;
+
+    const cursor = paging?.nextCursor ?? root.previewReplies.at(-1)?.commentId ?? null;
+    setReplyPagingByRootId((current) => ({
+      ...current,
+      [rootCommentId]: {
+        nextCursor: cursor,
+        hasNext: paging?.hasNext ?? root.hasMoreReplies,
+        loading: true,
+      },
+    }));
+
+    try {
+      const res = await fetch(API_ENDPOINTS.comments.replies(rootCommentId, cursor), {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("답글을 불러오지 못했습니다.");
+
+      const data: CommentReplyListResponse = await res.json();
+      setComments((current) =>
+        current.map((comment) => {
+          if (comment.commentId !== rootCommentId) return comment;
+          const merged = [...comment.previewReplies, ...(data.replies || [])];
+          return {
+            ...comment,
+            replyCount: data.totalReplyCount,
+            previewReplies: merged.filter(
+              (reply, index) => merged.findIndex((candidate) => candidate.commentId === reply.commentId) === index,
+            ),
+            hasMoreReplies: data.hasNext,
+          };
+        }),
+      );
+      setReplyPagingByRootId((current) => ({
+        ...current,
+        [rootCommentId]: {
+          nextCursor: data.nextCursor ?? null,
+          hasNext: data.hasNext,
+          loading: false,
+        },
+      }));
+    } catch (error) {
+      console.error("답글 로드 실패:", error);
+      setReplyPagingByRootId((current) => ({
+        ...current,
+        [rootCommentId]: {
+          nextCursor: current[rootCommentId]?.nextCursor ?? cursor,
+          hasNext: current[rootCommentId]?.hasNext ?? root.hasMoreReplies,
+          loading: false,
+        },
+      }));
+    }
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -200,6 +302,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
 
   const handleCreateComment = async (parentId: number | null) => {
+    if (submittingComment) return;
+
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
       alert("댓글 내용을 입력해주세요.");
@@ -244,15 +348,34 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       });
 
       if (res.ok) {
+        const createdComment: CommentItem = await res.json();
         if (parentId) {
           setReplyText("");
           setReplyAnonPassword("");
           setActiveReplyParentId(null);
+          setComments((current) =>
+            current.map((comment) => {
+              if (comment.commentId !== parentId) return comment;
+              return {
+                ...comment,
+                replyCount: comment.replyCount + 1,
+                previewReplies: comment.hasMoreReplies
+                  ? comment.previewReplies
+                  : [...comment.previewReplies, createdComment],
+              };
+            }),
+          );
+          setTotalCommentCount((current) => current + 1);
         } else {
           setNewCommentText("");
           setCommentAnonPassword("");
+          if (hasNextComments) {
+            await fetchComments();
+          } else {
+            setComments((current) => [...current, createdComment]);
+            setTotalCommentCount((current) => current + 1);
+          }
         }
-        await fetchComments();
         setPost((current) => (current ? { ...current, commentCount: current.commentCount + 1 } : current));
         return;
       }
@@ -450,11 +573,25 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     replyAnonPassword={replyAnonPassword}
                     setReplyAnonPassword={setReplyAnonPassword}
                     handleCreateComment={handleCreateComment}
+                    submittingComment={submittingComment}
                     handleDeleteComment={handleDeleteComment}
+                    handleLoadMoreReplies={handleLoadMoreReplies}
+                    isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
                   />
                 ))
               )}
             </div>
+
+            {hasNextComments && (
+              <button
+                type="button"
+                disabled={isLoadingMoreComments}
+                onClick={() => void handleLoadMoreComments()}
+                className="snow-btn-secondary mt-6 w-full"
+              >
+                {isLoadingMoreComments ? "댓글을 불러오는 중..." : "댓글 더보기 (20개)"}
+              </button>
+            )}
           </section>
         </div>
       </main>
@@ -474,7 +611,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
 function CommentRow({
   item,
-  depth = 0,
   isAnonymousPost,
   currentUserPublicId,
   activeReplyParentId,
@@ -484,10 +620,12 @@ function CommentRow({
   replyAnonPassword,
   setReplyAnonPassword,
   handleCreateComment,
+  submittingComment,
   handleDeleteComment,
+  handleLoadMoreReplies,
+  isLoadingReplies,
 }: {
   item: CommentItem;
-  depth?: number;
   isAnonymousPost: boolean;
   currentUserPublicId: string | null;
   activeReplyParentId: number | null;
@@ -497,24 +635,57 @@ function CommentRow({
   replyAnonPassword: string;
   setReplyAnonPassword: (value: string) => void;
   handleCreateComment: (parentId: number | null) => Promise<void>;
+  submittingComment: boolean;
   handleDeleteComment: (commentId: number, isAnonymousWriter: boolean) => Promise<void>;
+  handleLoadMoreReplies: (rootCommentId: number) => Promise<void>;
+  isLoadingReplies: boolean;
 }) {
+  const toggleReplyEditor = () => {
+    setActiveReplyParentId(activeReplyParentId === item.commentId ? null : item.commentId);
+  };
+
   return (
-    <div className={`${depth > 0 ? "ml-5 border-l-2 border-black pl-5" : ""}`}>
+    <div>
       <div className="border-b border-[var(--snow-border)] pb-4">
         <div className="flex items-center justify-between gap-3">
-          <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{item.writerName}</span>
+          <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
           <span className="font-mono text-xs text-[var(--snow-muted)]">{new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
         </div>
         <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
 
-        {!item.isDeleted && (
-          <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
-            <button onClick={() => setActiveReplyParentId(activeReplyParentId === item.commentId ? null : item.commentId)} className="text-black">
-              {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
-            </button>
-            <button onClick={() => void handleDeleteComment(item.commentId, item.writerName.includes("익명"))} className="text-[var(--snow-error)]">
+        <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
+          <button onClick={toggleReplyEditor} className="text-black">
+            {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
+          </button>
+          {!item.isDeleted && (
+            <button onClick={() => void handleDeleteComment(item.commentId, item.isAnonymous)} className="text-[var(--snow-error)]">
               삭제
+            </button>
+          )}
+        </div>
+
+        {item.previewReplies.length > 0 && (
+          <div className="mt-4 grid gap-4">
+            {item.previewReplies.map((reply) => (
+              <ReplyRow
+                key={reply.commentId}
+                item={reply}
+                onReply={toggleReplyEditor}
+                handleDeleteComment={handleDeleteComment}
+              />
+            ))}
+          </div>
+        )}
+
+        {item.hasMoreReplies && (
+          <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
+            <button
+              type="button"
+              disabled={isLoadingReplies}
+              onClick={() => void handleLoadMoreReplies(item.commentId)}
+              className="text-black disabled:text-[var(--snow-muted)]"
+            >
+              {isLoadingReplies ? "답글을 불러오는 중..." : `답글 더보기 (총 ${item.replyCount}개)`}
             </button>
           </div>
         )}
@@ -551,35 +722,54 @@ function CommentRow({
                   )}
                 </div>
               )}
-              <button onClick={() => void handleCreateComment(item.commentId)} className="snow-btn-primary sm:ml-auto">
+              <button
+                disabled={submittingComment}
+                onClick={() => void handleCreateComment(item.commentId)}
+                className="snow-btn-primary sm:ml-auto"
+              >
                 답글 등록
               </button>
             </div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      {item.children?.length > 0 && (
-        <div className="mt-4 grid gap-4">
-          {item.children.map((child) => (
-            <CommentRow
-              key={child.commentId}
-              item={child}
-              depth={depth + 1}
-              isAnonymousPost={isAnonymousPost}
-              currentUserPublicId={currentUserPublicId}
-              activeReplyParentId={activeReplyParentId}
-              setActiveReplyParentId={setActiveReplyParentId}
-              replyText={replyText}
-              setReplyText={setReplyText}
-              replyAnonPassword={replyAnonPassword}
-              setReplyAnonPassword={setReplyAnonPassword}
-              handleCreateComment={handleCreateComment}
-              handleDeleteComment={handleDeleteComment}
-            />
-          ))}
+function ReplyRow({
+  item,
+  onReply,
+  handleDeleteComment,
+}: {
+  item: CommentItem;
+  onReply: () => void;
+  handleDeleteComment: (commentId: number, isAnonymousWriter: boolean) => Promise<void>;
+}) {
+  return (
+    <div className="ml-5 border-l-2 border-black pl-5">
+      <div className="flex items-center justify-between gap-3">
+        <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
+        <span className="font-mono text-xs text-[var(--snow-muted)]">
+          {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      </div>
+      <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
+      {!item.isDeleted && (
+        <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
+          <button type="button" onClick={onReply} className="text-black">
+            답글 쓰기
+          </button>
+          <button onClick={() => void handleDeleteComment(item.commentId, item.isAnonymous)} className="text-[var(--snow-error)]">
+            삭제
+          </button>
         </div>
       )}
     </div>
   );
+}
+
+function getWriterName(comment: CommentItem) {
+  if (comment.isAnonymous) return `익명 (${comment.writerIp})`;
+  return comment.writer?.nickname || "알 수 없음";
 }

@@ -1,35 +1,107 @@
 package com.ikae.snowthing.domain.comment.dto;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.ikae.snowthing.domain.comment.entity.Comment;
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.util.WriterDisplayFormatter;
 
 public record CommentResponse(
         Long commentId,
+        Long postId,
         Long parentId,
-        String writerName,
+        WriterResponse writer,
+        boolean isAnonymous,
+        String writerIp,
         String content,
         boolean isDeleted,
-        LocalDateTime createdAt,
-        List<CommentResponse> children) {
+        long replyCount,
+        List<CommentResponse> previewReplies,
+        boolean hasMoreReplies,
+        LocalDateTime createdAt) {
+
+    private static final String ANONYMOUS_NAME = "ㅇㅇ";
+
+    public CommentResponse {
+        previewReplies = previewReplies == null ? List.of() : List.copyOf(previewReplies);
+    }
+
+    public record WriterResponse(String publicId, String nickname, String profileImageUrl) {}
+
     public static CommentResponse from(Comment comment) {
-        String writerName =
-                WriterDisplayFormatter.format(
-                        comment.isAnonymous(), comment.getMember(), comment.getWriterIp());
-
-        String displayContent = comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent();
-        Long parentIdValue = comment.getParent() != null ? comment.getParent().getId() : null;
-
+        Member member = comment.getMember();
+        WriterResponse writer =
+                !comment.isAnonymous() && member != null
+                        ? new WriterResponse(
+                                member.getPublicId(),
+                                member.getNickname(),
+                                member.getProfileImageUrl())
+                        : null;
         return new CommentResponse(
                 comment.getId(),
-                parentIdValue,
-                writerName,
-                displayContent,
+                comment.getPost().getId(),
+                comment.getParent() == null ? null : comment.getParent().getId(),
+                writer,
+                comment.isAnonymous(),
+                WriterDisplayFormatter.maskIp(comment.getWriterIp()),
+                comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent(),
                 comment.isDeleted(),
-                comment.getCreatedAt(),
-                new ArrayList<>());
+                0,
+                List.of(),
+                false,
+                comment.getCreatedAt());
+    }
+
+    public CommentResponse withPreviewReplies(List<CommentResponse> replies) {
+        return new CommentResponse(
+                commentId,
+                postId,
+                parentId,
+                writer,
+                isAnonymous,
+                writerIp,
+                content,
+                isDeleted,
+                replyCount,
+                replies,
+                hasMoreReplies,
+                createdAt);
+    }
+
+    public CommentResponse withReplyInfo(
+            long replyCount, boolean hasMoreReplies, List<CommentResponse> replies) {
+        return new CommentResponse(
+                commentId,
+                postId,
+                parentId,
+                writer,
+                isAnonymous,
+                writerIp,
+                content,
+                isDeleted,
+                replyCount,
+                replies,
+                hasMoreReplies,
+                createdAt);
+    }
+
+    public List<CommentResponse> children() {
+        return previewReplies;
+    }
+
+    public String writerName() {
+        if (!isAnonymous) {
+            return (writer != null && writer.nickname() != null)
+                    ? writer.nickname()
+                    : ANONYMOUS_NAME;
+        }
+        if (writerIp == null || writerIp.isBlank()) {
+            return ANONYMOUS_NAME;
+        }
+
+        String[] ip = writerIp.split("\\.");
+        String shortIp = (ip.length >= 2) ? ip[0] + "." + ip[1] : writerIp;
+        return ANONYMOUS_NAME + "(" + shortIp + ")";
     }
 }

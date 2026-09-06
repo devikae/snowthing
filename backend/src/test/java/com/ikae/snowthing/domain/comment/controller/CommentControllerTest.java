@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.comment.controller;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -8,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -106,6 +109,49 @@ class CommentControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.commentId").exists())
                 .andExpect(jsonPath("$.content").value("통합 테스트 댓글 내용"));
+    }
+
+    @ParameterizedTest(name = "익명 비밀번호 {0}자는 허용된다")
+    @ValueSource(ints = {4, 20})
+    @DisplayName("POST /api/v1/posts/{publicId}/comments - 익명 비밀번호 허용 경계값")
+    void createAnonymousComment_acceptsValidPasswordBoundary(int passwordLength) throws Exception {
+        CommentCreateRequest request =
+                CommentCreateRequest.builder()
+                        .content("비로그인 익명 댓글")
+                        .isAnonymous(true)
+                        .anonymousPassword("1".repeat(passwordLength))
+                        .build();
+
+        mockMvc.perform(
+                        post("/api/v1/posts/" + post.publicId() + "/comments")
+                                .with(csrf())
+                                .with(anonymous())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.commentId").exists());
+    }
+
+    @ParameterizedTest(name = "익명 비밀번호 {0}자는 거부된다")
+    @ValueSource(ints = {3, 21})
+    @DisplayName("POST /api/v1/posts/{publicId}/comments - 익명 비밀번호 거부 경계값")
+    void createAnonymousComment_rejectsInvalidPasswordBoundary(int passwordLength)
+            throws Exception {
+        CommentCreateRequest request =
+                CommentCreateRequest.builder()
+                        .content("비로그인 익명 댓글")
+                        .isAnonymous(true)
+                        .anonymousPassword("1".repeat(passwordLength))
+                        .build();
+
+        mockMvc.perform(
+                        post("/api/v1/posts/" + post.publicId() + "/comments")
+                                .with(csrf())
+                                .with(anonymous())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_001"));
     }
 
     @Test

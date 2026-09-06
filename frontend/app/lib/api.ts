@@ -22,9 +22,16 @@ export const API_ENDPOINTS = {
     update: (publicId: string) => `${API_V1_URL}/posts/${publicId}`,
     delete: (publicId: string) => `${API_V1_URL}/posts/${publicId}`,
     reactions: (publicId: string) => `${API_V1_URL}/posts/${publicId}/reactions`,
-    comments: (publicId: string) => `${API_V1_URL}/posts/${publicId}/comments`,
+    comments: (publicId: string, cursor?: number | null, size = 20) =>
+      `${API_V1_URL}/posts/${publicId}/comments?${
+        cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`
+      }`,
   },
   comments: {
+    replies: (commentId: number | string, cursor?: number | null, size = 20) =>
+      `${API_V1_URL}/comments/${commentId}/replies?${
+        cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`
+      }`,
     delete: (commentId: number | string) => `${API_V1_URL}/comments/${commentId}`,
   },
 } as const;

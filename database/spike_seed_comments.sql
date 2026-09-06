@@ -9,9 +9,11 @@ DELETE FROM `comment` WHERE `post_id` IN (998, 999);
 DELETE FROM `post` WHERE `post_id` IN (998, 999);
 
 -- 1. 테스트용 기본 카테고리 및 회원 확인/생성
-INSERT IGNORE INTO `post_category` (`category_id`, `name`, `code`) VALUES (1, '자유게시판', 'FREE');
-INSERT IGNORE INTO `member` (`member_id`, `public_id`, `email`, `password_hash`, `nickname`, `role`, `status`, `created_at`, `updated_at`)
-VALUES (1, 'member-spike-001', 'spike@snowthing.com', '$2a$10$dummyHashValueForSpikeTestingOnly1234567890', '스파이크테스터', 'ROLE_USER', 'ACTIVE', NOW(), NOW());
+INSERT INTO `post_category` (`category_id`, `name`, `code`) VALUES (1, '자유게시판', 'FREE')
+ON DUPLICATE KEY UPDATE `name` = '자유게시판';
+INSERT INTO `member` (`member_id`, `public_id`, `email`, `password`, `nickname`, `role`, `status`, `created_at`, `updated_at`)
+VALUES (1, 'member-spike-001', 'spike@snowthing.com', '$2a$10$dummyHashValueForSpikeTestingOnly1234567890', '스파이크테스터', 'ROLE_USER', 'ACTIVE', NOW(), NOW())
+ON DUPLICATE KEY UPDATE `nickname` = '스파이크테스터';
 
 -- 2. 테스트용 게시글 2개 생성
 -- Post 998: 시나리오 A (분산 1,000건용)
