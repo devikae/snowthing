@@ -61,8 +61,14 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        if (!project.hasProperty('includeBenchmark')) {
+            excludeTags 'benchmark'
+        }
+    }
     systemProperty 'spring.profiles.active', 'test'
+    // 대규모 MySQL Seed 테스트는 일반 단위·통합 테스트와 별도 실행한다.
+    // 필요할 때만 ./gradlew test -PincludeBenchmark 로 명시적으로 포함한다.
 }
 
 spotless {
