@@ -1275,3 +1275,7 @@
   - 벤치마크 실행 테스트에 `test`·`benchmark` Profile을 명시하고 전용 `application-benchmark.yml`을 추가했습니다.
   - SQL Seed 시작 시 현재 DB 이름이 `test` 또는 `benchmark`를 포함하는지 검사하고, 운영 스키마면 MySQL `SIGNAL`로 즉시 중단하도록 했습니다.
   - `compileTestJava` 검증을 통과했습니다.
+- **Sprint 04 CI 벤치마크 테스트 격리 (2026-09-09)**:
+  - 기본 `./gradlew test`에서 `benchmark` 태그 테스트를 제외해 일반 테스트와 대규모 Seed 테스트가 같은 DB Context를 오염시키지 않도록 했습니다.
+  - 벤치마크 실행은 `./gradlew test --tests CommentBenchmarkSeedRunnerTest -PincludeBenchmark`로 명시해야 합니다.
+  - GitHub Actions 실패 로그에서 확인된 11건의 DB 제약조건·기대값 오류 원인을 반영했습니다.

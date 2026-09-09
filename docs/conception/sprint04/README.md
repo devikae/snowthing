@@ -67,10 +67,10 @@ Spring Context 기반으로 데이터를 주입하고 8대 도메인 불변식�
 
 ```bash
 # 기본 1천건 검증
-./gradlew test --tests CommentBenchmarkSeedRunnerTest
+./gradlew test --tests CommentBenchmarkSeedRunnerTest -PincludeBenchmark
 
 # 환경변수로 규모를 지정해 실행할 때
-BENCHMARK_COMMENTS=10000 ./gradlew test --tests CommentBenchmarkSeedRunnerTest
+BENCHMARK_COMMENTS=10000 ./gradlew test --tests CommentBenchmarkSeedRunnerTest -PincludeBenchmark
 ```
 
 ### (3) 레이턴시 측정 및 실행계획 수집
