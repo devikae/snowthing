@@ -1,3 +1,9 @@
+- **Sprint 04 댓글 벤치마크 디렉터리 영문화 및 종합 README 가이드 작성 (2026-09-09)**:
+  1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
+  2. **경로 동기화**: `ADR-002-댓글아키텍처.md` 및 `댓글-벤치마크-결과.md` 내 실행계획 경로를 `explain-plans/`로 갱신.
+  3. **재현가이드 ➔ README.md 개편 및 내용 보강 (no_ai 톤)**:
+     - `재현가이드.md`를 `README.md`로 전환하고 실무 개발자 톤으로 4대 핵심 영역(Seed 코드 위치, 실행/초기화 명령어, 데이터 분포 구조, 1K~1M 9대 시나리오 검증 결과 및 인덱스/불변식 요약) 보강 완료.
+
 - **Sprint 03 댓글 도메인 메인 브랜치 최종 병합 완료 (2026-09-06)**:
   1. **PR #17 (`feature/sprint03-comment` ➔ `main`) 병합 완결**:
      - Sprint 03 댓글 도메인(생성·조회·수정·삭제 및 하이브리드 프리뷰 아키텍처) 전체 작업물을 `main` 브랜치로 병합 완료 ([PR #17](https://github.com/devikae/snowthing/pull/17) `MERGED`).
@@ -16,6 +22,35 @@
      - 프론트엔드 Next.js 16.2.12 Turbopack 프로덕션 빌드: `npm run build` **100% SUCCESS** (0 errors, 10 routes).
      - `main` 브랜치 최신화 및 작업 트리 clean 상태 확립.
 
+### 2026-09-07 Sprint 04 댓글 벤치마크
+- 실제 MySQL 8.0.46 `snowthing_test`에서 재생성 SQL 검증 완료: 100,000건(루트 20,000 / 대댓글 80,000 / 삭제 20,000).
+- `database/benchmark/seed-template.sql`의 MySQL 프로시저/재실행 정리 로직과 삭제 플래그 집계를 보강했다.
+- 1,000,000건 시드는 현재 동일 DB에서 실행 중이며 완료 후 결과를 추가한다.
+- 이슈: Windows MySQL Shell 설치는 기존 Windows Installer 잠금으로 보류했지만 Docker의 MySQL 8.0 CLI로 동일 엔진 검증을 수행했다.
+- 1M 완료 검증: 총 1,000,000건(루트 200,000 / 대댓글 800,000 / 삭제 200,000), `post.comment_count` 불일치 0건, 활성 대댓글 최대 4건.
+- `EXPLAIN ANALYZE` 원문을 `docs/study/sprint04/comment/benchmark/explain/`에 저장하고 규모별 결과 문서를 작성했다.
+- Hotspot 루트에 활성 대댓글 100건을 확보하고 1M 불변식을 재검증했다(총 1,000,000 / 불일치 0 / 최대 100).
+- 측정 보강: ANALYZE TABLE 수행, root first-page warm-up 5회 후 20회 평균/p95 측정 및 `idx_comment_post_parent_id` visible/invisible 비교 완료(102.47/115.88ms vs 226.22/241.63ms). 인덱스는 visible로 복구했다.
+- 1M 원본을 유지한 채 `snowthing_benchmark_1k`, `snowthing_benchmark_10k`, `snowthing_benchmark_100k` 스키마를 복제 생성하고 root first-page 규모별 EXPLAIN ANALYZE를 저장했다. 네 규모 모두 복합 인덱스 선택, loops=1을 확인했다.
+- Seed harness의 게시글 분포를 일반 80개/중간 19개/Hot 1개(45/45/10 비율)로 수정하고, Seed 테스트에 게시글 수·Hot post·댓글 수·루트/대댓글·삭제·comment_count·대댓글 상한·중복 ID 자동 불변식 검증을 추가했다. `compileTestJava` 통과.
+- SQL seed template도 동일한 일반/중간/Hot 게시글 매핑을 적용하고, 생성 후 게시글별 댓글 수를 출력하도록 보강했다.
+- `snowthing_benchmark_1k`에서 수정 SQL을 실제 실행해 1,000건(루트 200/대댓글 800/삭제 200), Hot post 100건, 게시글별 분포 출력과 총량 집계를 확인했다. `snowthing_test` 1M 원본은 보존했다.
+- 단일 MySQL 세션 기반 측정 스크립트로 1K·10K·100K·1M 각 5개 시나리오를 warm-up 5회 + 유효 20회 측정하고 `timing.csv`에 평균/p95를 저장했다.
+- 삭제 루트 placeholder/은닉 및 Top-5 batch를 추가해 7개 시나리오(4개 규모)의 평균/p95를 재측정했다. `timing.csv` 28개 결과 행과 규모별 EXPLAIN 원문을 확인했다.
+- 4개 규모에서 두 댓글 복합 인덱스를 invisible/visible로 전환하며 Top-5 batch·삭제 루트 전후 `EXPLAIN ANALYZE` 원문을 저장하고, 측정 후 인덱스를 복구했다.
+- `snowthing_benchmark_1k/10k/100k`를 수정 분포 Seed로 재생성했다. 100K 실제 검증 결과는 100,000 benchmark 댓글(20,000 루트/80,000 대댓글, 활성/삭제 80,000/20,000), 일반 80개·중간 19개·Hot 1개(10,000건) 분포다.
+- 모든 규모 Hotspot 검증: 1K 8건, 10K 80건, 100K 100건, 1M 100건(소규모는 전체량에 따른 10% 축소)을 확인했다.
+- 2026-09-08 실행계획 측정을 운영 `CommentRepositoryImpl` SQL 기준 9개 시나리오로 재정의하고, 스키마별 숫자 ID 하드코딩을 benchmark prefix 기반 동적 바인딩으로 교체했다.
+- Java/SQL 시드의 Hotspot 규칙을 활성 대댓글 100건으로 통일하고 1K·10K·100K·1M을 재생성했다. 네 규모 모두 총량, 루트/대댓글, 부모·자식 `post_id`, `post.comment_count`, 중복 ID 및 활성 대댓글 상한 검증을 통과했다.
+- MySQL 8.0.46에서 4개 규모 × 9개 시나리오의 `EXPLAIN ANALYZE` 원문 36개와 warm-up 5회 + 유효 20회 평균/p95 36행을 저장했다. 누락됐던 대댓글 통계와 Hotspot 중간 페이지를 포함한다.
+- 통합 해석표를 `docs/study/sprint04/comment/benchmark/execution-plan-matrix.md`에 작성했다. 1M에서 루트 첫 페이지 36.578/39.388ms, 삭제 placeholder 29.876/32.770ms였고, 대댓글 계열은 상한 100과 parent 복합 인덱스로 0.2~0.7ms 수준을 유지했다.
+- 이슈: 루트 첫 페이지와 삭제 placeholder는 member LEFT JOIN 이후 정렬되어 LIMIT 전에 각각 루트 20,000건/삭제 후보 4,000건을 처리한다. JOIN 전 루트 ID LIMIT 파생 테이블과 삭제 조건 포함 복합 인덱스를 후속 개선 후보로 기록했으며 운영 쿼리·인덱스는 변경하지 않았다.
+- 평균·p95 측정 대상을 9개 시나리오로 확장(삭제 루트 원문/placeholder, 삭제 대댓글 포함)하고 4개 규모 × 9개 = 36개 결과 행을 `timing.csv`에 저장했다. 각 시나리오는 warm-up 5회 후 20회 측정했다.
+- 인덱스 전·후 비교를 9개 시나리오 × 4개 규모로 실행해 36개 원문과 `index-comparison.csv`를 저장했다. 측정 후 인덱스 visible 상태를 확인했다.
+- Spring Boot를 `snowthing_test`/18080으로 기동해 실제 댓글·대댓글 API를 호출하고 응답 크기를 측정했다(16,841 bytes / 2,739 bytes). 측정 후 서버를 종료했다.
+- 불변식 자동 검증 보강: 벤치마크 게시글 100개별 루트 댓글과 페이지 크기를 초과한 대댓글을 운영과 동일한 `comment_id` 커서로 마지막 페이지까지 순회하고, 전체 기대 ID 집합과 대조해 누락·중복·정렬 오류를 검증한다. 동일 `created_at` 데이터의 `comment_id` 타이브레이커와 게시글별 `post.comment_count`/실제 활성 댓글 수도 전수 검증한다.
+- 자동 검증 과정에서 루트 ID 수집 쿼리가 콘텐츠 마커만 검색해 다른 게시글의 과거 마커 데이터를 포함할 수 있는 Seed 범위 결함을 발견했다. 벤치마크 `public_id`와 루트 조건으로 범위를 제한했으며, 기본 1K MySQL 실행 결과 `CommentBenchmarkSeedRunnerTest`가 통과했다.
+- 실행계획 통합표 작성: MySQL 8.0.46에서 1K·10K·100K의 필수 9개 시나리오를 복합 인덱스 visible/invisible 상태로 전통형 `EXPLAIN`하고, 54개 실행계획(노드별 원본 114행)의 `key_len`, `Using filesort`, `Using temporary`를 `explain-plan-summary.md`와 `explain-plan-details.csv`에 기록했다. 실행 전 `ANALYZE TABLE`을 수행했으며 측정 후 세 스키마의 두 복합 인덱스가 모두 visible임을 확인했다.
 - **Sprint 03 댓글/대댓글 인라인 삭제 UI 및 비밀번호 플로팅 팝오버 위젯 구현 (2026-09-03)**:
   1. **작업명**: 댓글/대댓글 인라인 미니 `✕` 삭제 버튼 및 시간 아래 플로팅 드롭다운 UI 구현 (브라우저 다이얼로그 전면 퇴출)
   2. **현재 상태**: 완료
@@ -1188,3 +1223,54 @@
   - `CommentControllerTest`와 `spotlessCheck`는 통과했습니다.
   - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
 >>>>>>> origin/feature/sprint03-comment
+- **Sprint 04 댓글 벤치마크 실행 기준 및 EXPLAIN 쿼리 정리 (2026-09-07)**:
+  - 기존 `test/sprint04-comment-benchmark` 브랜치에서 전용 벤치마크 실행 가이드와 안전 조건을 작성했습니다.
+  - 규모별 데이터 분포, 고정 seed, MySQL 전용 실행, 정확성 불변식, warm-up/p95 측정 규칙을 문서화했습니다.
+  - 루트 첫·중간·마지막 페이지, Top-5 batch, Hotspot 대댓글, 활성 count용 EXPLAIN 입력 SQL을 분리했습니다.
+  - 현재 문서는 실행 기준과 쿼리 입력 파일이며, 1K/10K/100K 실제 결과 파일은 하네스 실행 후 생성해야 합니다.
+- **Sprint 04 JDBC batch 벤치마크 하네스 추가 (2026-09-07)**:
+  - `CommentBenchmarkSeedHarness`를 추가해 규모와 seed를 파라미터로 받는 MySQL JDBC batch 데이터 주입 기반을 마련했습니다.
+  - DB 이름 test/benchmark 검증, 전용 public_id 정리, 게시글 분산, 루트/대댓글, 익명·삭제 분포를 적용했습니다.
+  - 컴파일 검증: `spotlessApply`, `compileTestJava` 성공.
+- **Sprint 04 현실형 댓글 콘텐츠 생성기 추가 (2026-09-07)**:
+  - 고정 seed 기반 스키장·설질·리프트·장비 주제의 게시글 제목/본문과 실제 커뮤니티 문장형 루트 댓글·대댓글 생성기를 추가했습니다.
+  - 기존 JDBC batch 하네스가 생성된 콘텐츠를 사용하도록 연결해 성능 측정에서도 payload와 화면 응답 형태를 현실적으로 재현합니다.
+  - `spotlessApply`, `compileTestJava` 성공.
+- **Sprint 04 벤치마크 데이터 관리·테스트 계획 문서화 (2026-09-07)**:
+  - 전용 스키마, prefix 기반 정리, seed 재현성, manifest 관리와 단계별 1K/10K/100K/1M 검증 절차를 문서화했습니다.
+  - 정확성 불변식과 SQL/바인딩/EXPLAIN/p95 증거 저장 규칙을 분리해 기록했습니다.
+  - JDBC batch 하네스에 Hotspot 루트 집중 분포를 반영하고 컴파일 검증을 통과했습니다.
+- **Sprint 04 규모별 MySQL SQL 시드 파일 추가 (2026-09-07)**:
+  - `database/benchmark/seed-template.sql`과 1K/10K/100K/1M 실행 래퍼를 추가했습니다.
+  - `snowthing_test` 전용 스키마와 benchmark prefix만 사용하며, 게시글·루트·대댓글·삭제 분포 및 `post.comment_count` 검증을 포함합니다.
+  - 사용자는 원하는 규모의 SQL 파일을 MySQL 클라이언트에서 실행해 데이터를 재생성할 수 있습니다.
+- **Sprint 04 EXPLAIN 원문 파일별 한국어 해설 보강 (2026-09-08)**:
+  - 별도 `explain/README.md`는 제거했습니다.
+  - 107개 EXPLAIN 원문 `.txt` 파일 각각의 상단에 시나리오, 데이터 규모, estimated/actual rows·loops·인덱스 해석을 삽입했습니다.
+- **Sprint 04 EXPLAIN 파일명 한글화 (2026-09-08)**:
+  - 실행계획 파일명을 `루트-첫-페이지`, `루트-중간-페이지`, `핫스팟-대댓글`, `삭제된-루트`, `삭제된-대댓글-은닉`, `상위5개` 등 시나리오가 바로 드러나는 한글명으로 변경했습니다.
+  - 규모도 `1천건`, `1만건`, `10만건`, `백만건`으로 표시해 파일명만 보고 대상 데이터와 인덱스 제거 여부를 구분할 수 있습니다.
+- **Sprint 04 EXPLAIN 문서 구조 통합 (2026-09-08)**:
+  - `explain/`을 9개 시나리오별 Markdown 문서로 통합했습니다.
+  - 각 문서에 규모별·인덱스 적용 전후 원문과 지표 해석을 함께 배치했습니다.
+  - SQL 입력 파일은 `benchmark/queries/`로 이동하고, 기존 중복 원문은 `benchmark/archive-explain-raw/`에 보관했습니다.
+  - 현재 정책과 맞지 않는 삭제 placeholder/hidden 결과는 삭제하지 않고 보관 영역으로 분리했으며, `삭제된-대댓글.md`에 정책 차이를 명시했습니다.
+- **Sprint 04 벤치마크 산출물 전체 구조 정리 (2026-09-08)**:
+  - `results/`에 `1천건.md`, `1만건.md`, `10만건.md`, `백만건.md`를 생성해 규모별 결과·정합성·평균/p95를 통합했습니다.
+  - `metrics/`에 실행계획·인덱스 비교·실행시간·정합성 집계 파일을 모았습니다.
+  - `guides/`, `질의/`, `실행계획/`으로 목적별 파일을 분리하고 파일명을 한글화했습니다.
+  - 이전 중복 원문과 이전 결과 파일은 `../benchmark-archive/`로 이동해 작업 폴더에서는 제외했습니다.
+- **Sprint 04 규모별 결과 문서 단일화 (2026-09-08)**:
+  - `results/`의 규모별 4개 Markdown을 `댓글-벤치마크-결과.md` 하나로 통합하고 문서 내부에서 1천·1만·10만·백만건 섹션으로 구분했습니다.
+- **Sprint 04 정합성 결과 표 형식 개선 (2026-09-08)**:
+  - 통합 결과 문서의 원시 탭 구분 정합성 출력 4개를 검증 항목·결과·판정 Markdown 표로 변환했습니다.
+- **Sprint 04 ADR 실행계획 요약표 보강 (2026-09-08)**:
+  - ADR-002에 9개 시나리오의 규모별 평균/p95, 선택 인덱스, 인덱스 전후 차이, 병목 원인을 한글 표로 추가했습니다.
+  - 변경된 benchmark 결과 경로와 삭제 댓글 정책의 기존 은닉 측정 한계를 명시했습니다.
+- **Sprint 04 댓글 조회 벤치마크 학습 문서 작성 (2026-09-08)**:
+  - 선택도, 실행계획, estimated/actual rows, Cursor seek, Seed, Spring Profile, JDBC batch, 인덱스 지표를 개념·원리·트레이드오프 관점에서 정리했습니다.
+  - 실제 측정 결과에 대한 질문 답변과 데이터 규모·사용자 증가 시 확장 대응 방향을 추가했습니다.
+- **Sprint 04 벤치마크 실행 안전장치 보강 (2026-09-08)**:
+  - 벤치마크 실행 테스트에 `test`·`benchmark` Profile을 명시하고 전용 `application-benchmark.yml`을 추가했습니다.
+  - SQL Seed 시작 시 현재 DB 이름이 `test` 또는 `benchmark`를 포함하는지 검사하고, 운영 스키마면 MySQL `SIGNAL`로 즉시 중단하도록 했습니다.
+  - `compileTestJava` 검증을 통과했습니다.
