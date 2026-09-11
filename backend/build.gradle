@@ -31,12 +31,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-jackson'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-
     // JPA & DB
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // AWS Advanced JDBC Wrapper & RDS/S3 SDK
     implementation 'software.amazon.jdbc:aws-advanced-jdbc-wrapper:2.3.7'
     implementation 'software.amazon.awssdk:rds:2.25.70'
+    implementation 'software.amazon.awssdk:s3:2.25.70'
 
     // Security & Session Redis
     implementation 'org.springframework.boot:spring-boot-starter-security'

@@ -1,3 +1,21 @@
+- **AWS EC2 + RDS + S3 운영 배포 4단계 비공개 S3 이미지 API 구현 및 단위 테스트 검증 완결 (2026-09-11)**:
+  1. **작업명**: AWS S3 SDK 연동, 비공개 버킷(`snowthing-media-00001`) 기반 이미지 업로드/다운로드 API 개발, 권한 검증 및 단위 테스트 수트 작성
+  2. **현재 상태**: 백엔드 코드 작성, Spotless 포맷팅 및 단위 테스트 100% 통과 완료 (EC2 배포 및 실측 대기 중)
+  3. **완료된 항목**:
+     - `software.amazon.awssdk:s3:2.25.70` AWS Java SDK v2 의존성 추가.
+     - `S3Config.java`: `DefaultCredentialsProvider` 기반으로 EC2 IAM Role 임시 자격증명 자동 주입 아키텍처 수립 (정적 액세스 키 배제).
+     - `ErrorCode.java`: `INVALID_FILE_TYPE(FILE_001)`, `FILE_SIZE_EXCEEDED(FILE_002)`, `FILE_NOT_FOUND(FILE_003)`, `FILE_UPLOAD_FAILED(FILE_004)` 비즈니스 에러 코드 정의.
+     - `BusinessException.java` & `GlobalExceptionHandler.java`: 문자열 리터럴 예외 금지 규칙 준수 기반 표준 비즈니스 예외 핸들러 구축.
+     - `ImageUploadResponse.java`, `ImageDownloadResponse.java`: 방어적 복사(`byte[].clone()`)를 통한 DTO 불변성 완벽 보장.
+     - `ImageService.java`: 5MB 파일 크기 제한, 확장자/MIME 화이트리스트(`jpg`, `jpeg`, `png`, `webp`) 검증, 경로 탐색(`..`) 방어, S3 `putObject`/`getObject` 로직 구현.
+     - `ImageController.java`: `POST /api/v1/images` (인증 필수 업로드), `GET /api/v1/images/**` (인가 필수 조회) 엔드포인트 구현 (비인증/외부 접근 시 401/403 차단).
+     - `ImageServiceTest.java`: Mockito 기반 격리 단위 테스트 6종 작성 및 100% 통과 (정상 업로드, 5MB 초과 차단, 비허용 확장자 차단, 정상 다운로드, 경로 탐색 차단, 존재하지 않는 파일 404 차단).
+     - `spotlessApply` 및 `spotlessCheck` 서식 검증 100% 통과.
+  4. **남은 항목**:
+     - 4단계 실측: `deploy/aws-ec2` 커밋/푸시 ➔ EC2 `git pull` ➔ 백엔드 컨테이너 리빌드 ➔ S3 업로드/인가 다운로드 실측.
+     - 5단계: 도메인 연결 및 Cloudflare Free (Full strict) HTTPS 암호화.
+     - 6단계: GitHub Actions 기반 자동 배포 파이프라인 구축.
+
 - **AWS EC2 + RDS 운영 배포 3단계 수동 배포 및 웹 접속 완결 (2026-09-11)**:
   1. **작업명**: EC2 배포 브랜치(`deploy/aws-ec2`) 동기화, RDS 비파괴 스키마/기준데이터 적용, 호스트 Nginx 리버스 프록시 연동 및 실제 웹 접속 검증
   2. **현재 상태**: 3단계 100% 완료 (EC2 공인 IP `43.202.157.3` 웹 화면 및 백엔드 API 정상 서빙 중)
@@ -9,10 +27,6 @@
      - Next.js 16 (`--legacy-peer-deps`) 및 Spring Boot 도커 컨테이너 빌드 & `Up` 구동 성공.
      - 호스트 Nginx 설치 및 `/` (Next.js 3000), `/api/` (Spring Boot 8080) 리버스 프록시 라우팅 구성 완료.
      - `curl -i http://127.0.0.1:8080/api/v1/master/resorts` 200 OK 및 브라우저(`http://43.202.157.3`) 접속 실측 완료.
-  4. **남은 항목**:
-     - 4단계: 비공개 AWS S3 버킷 생성 및 EC2 IAM Role 연동 (이미지 업로드/조회 API 구현).
-     - 5단계: 도메인 연결 및 Cloudflare Free (Full strict) HTTPS 암호화.
-     - 6단계: GitHub Actions 기반 자동 배포 파이프라인 구축.
 
 - **Sprint 04 댓글 벤치마크 학습정리 문서 보강 및 디렉터리 영문화 완료 (2026-09-09)**:
   1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
