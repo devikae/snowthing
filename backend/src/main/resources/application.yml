@@ -45,6 +45,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+
     show-sql: true
     properties:
       hibernate:
@@ -53,12 +54,12 @@ spring:
 
 ---
 # ==========================================
-# [Profile: docker / prod] Docker Compose 및 운영 컨테이너 환경
+# [Profile: docker] 로컬 Docker Compose 환경
 # ==========================================
 spring:
   config:
     activate:
-      on-profile: docker, prod
+      on-profile: docker
 
   datasource:
     url: jdbc:mysql://mysql:3306/snowthing?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
@@ -73,3 +74,38 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+
+---
+# ==========================================
+# [Profile: prod] AWS EC2 + RDS 운영 컨테이너 환경
+# ==========================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${SNOWTHING_PROD_DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${SNOWTHING_DB_USERNAME}
+    password: ${SNOWTHING_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    org.hibernate.SQL: info
+    org.hibernate.orm.jdbc.bind: info
+    com.ikae.snowthing: info

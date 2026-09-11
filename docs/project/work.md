@@ -1,3 +1,32 @@
+- **AWS EC2 + RDS 운영 배포 3단계 스키마/설정/Compose 준비 완료 (2026-09-11)**:
+  1. **작업명**: 운영 비파괴 스키마(`001_initial_schema.sql`), 기준데이터(`002_reference_data.sql`), Spring Boot prod 프로필 분리, multi-stage Dockerfile 및 `compose.prod.yml` 작성
+  2. **현재 상태**: 로컬 준비 및 구문/컴파일 검증 완료 (EC2 전달 및 적용 대기)
+  3. **완료된 항목**:
+     - `database/production/001_initial_schema.sql`: 엔티티 불일치 4대 결함(`comment.version`, `riding_style.description`, `post_image.updated_at`, `resort.name UNIQUE`) 교정 및 비파괴 스키마 작성 완료.
+     - `database/production/002_reference_data.sql`: 테스트 계정 및 더미 글을 배제하고 스키장(6), 라이딩스타일(6), 게시판 카테고리(5) 필수 마스터 데이터만 분리 작성 완료 (`INSERT IGNORE`).
+     - `application.yml`: `docker`와 `prod` 프로필 분리, `SNOWTHING_PROD_DB_URL` 외부 주입, RDS TLS 검증(`useSSL=true`), HikariCP 풀 최적화, 운영 로그 `INFO` 설정 완료.
+     - `backend/Dockerfile`: Eclipse Temurin 21 JRE 경량 Multi-stage 및 비root `spring` 유저 실행 도커파일 작성 완료.
+     - `frontend/Dockerfile`: Node 20 Alpine 기반 `npm ci` ➔ `npm run build` ➔ `npm run start` Multi-stage 도커파일 작성 완료 (`NEXT_PUBLIC_API_BASE_URL` ARG 주입).
+     - `compose.prod.yml`: MySQL/Redis 없이 `backend`, `frontend`만 정의, 호스트 포트는 루프백(`127.0.0.1:8080:8080`, `127.0.0.1:3000:3000`) 바인딩 완료.
+  4. **검증 결과**:
+     - `gradlew spotlessCheck compileJava` 100% BUILD SUCCESSFUL 통과.
+     - `docker compose -f compose.prod.yml config --services` 실행 결과 `backend`, `frontend`만 정확히 출력 확인.
+     - `docker compose -f compose.prod.yml config --quiet` 문법 검증 통과 (exit code 0).
+  5. **남은 항목**:
+     - Git push ➔ EC2에서 `git pull`로 파일 동기화.
+     - EC2에서 RDS로 `001_initial_schema.sql` 및 `002_reference_data.sql` 적용 (테이블 11개 및 기준데이터 생성).
+     - EC2 `/etc/snowthing/prod.env` 작성 및 `compose.prod.yml up -d --build` 수동 배포 가동.
+
+- **Sprint 04 댓글 벤치마크 학습정리 문서 보강 및 디렉터리 영문화 완료 (2026-09-09)**:
+  1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
+  2. **경로 동기화**: `ADR-002-댓글아키텍처.md` 및 `댓글-벤치마크-결과.md` 내 실행계획 경로를 `explain-plans/`로 갱신.
+  3. **재현가이드 ➔ README.md 개편 및 내용 보강 (no_ai 톤)**:
+     - `재현가이드.md`를 `README.md`로 전환하고 실무 개발자 톤으로 4대 핵심 영역(Seed 코드 위치, 실행/초기화 명령어, 데이터 분포 구조, 1K~1M 9대 시나리오 검증 결과 및 인덱스/불변식 요약) 보강 완료.
+  4. **`docs/study/sprint04/댓글조회-벤치마크-학습정리.md` 심층 학습서 보강 완결**:
+     - 5대 학습 목표와 멘토의 실험 의도 및 실무 배경(1K 메모리 착시 vs 1M 운영 장애, estimated/actual rows/loops 해석, 재현 가능 시드, 읽기 이점 vs 쓰기 비용, 운영 DB 안전장치) 기술.
+     - 1K·10K·100K·1M 9대 시나리오 종합 레이턴시 비교표 및 1M Invisible 인덱스 검증 비교표(226ms vs 36ms, actual rows 200,001 ➔ 2,000) 수록.
+     - 4대 핵심 결론 및 MySQL InnoDB 물리 엔진 심층 분석(16KB Buffer Pool I/O, B-Tree 수직 Seek 및 수평 Scan 메커니즘, Hotspot 국소 격리, 커버링 인덱스 Clustered Random I/O 차단, `Using filesort` 메모리 정렬 vs 4컬럼 B-Tree 페이지 분할 트레이드오프) 반영.
+     - 7대 필수 요소 체계(개념, Why, When, How, Pros, Alternatives, Trade-off & 극복 방안) 기반 복합 인덱스 계층 조회 아키텍처 정리 완료.
 - **Sprint 03 댓글 도메인 메인 브랜치 최종 병합 완료 (2026-09-06)**:
   1. **PR #17 (`feature/sprint03-comment` ➔ `main`) 병합 완결**:
      - Sprint 03 댓글 도메인(생성·조회·수정·삭제 및 하이브리드 프리뷰 아키텍처) 전체 작업물을 `main` 브랜치로 병합 완료 ([PR #17](https://github.com/devikae/snowthing/pull/17) `MERGED`).
