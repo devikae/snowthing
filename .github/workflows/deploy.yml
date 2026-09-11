@@ -1,0 +1,125 @@
+name: CI/CD Deploy Pipeline
+
+on:
+  push:
+    branches: [ "main", "deploy/aws-ec2" ]
+  workflow_dispatch:
+
+jobs:
+  ci-backend:
+    name: Backend CI (Spotless & Test)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: snowthing_test
+          MYSQL_USER: snowuser
+          MYSQL_PASSWORD: snowthing_pass_2026!
+          MYSQL_ROOT_PASSWORD: snowthing_root_2026!
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    env:
+      SNOWTHING_DB_USERNAME: snowuser
+      SNOWTHING_DB_PASSWORD: snowthing_pass_2026!
+      SNOWTHING_TEST_DB_URL: jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+      SNOWTHING_TEST_DB_USERNAME: snowuser
+      SNOWTHING_TEST_DB_PASSWORD: snowthing_pass_2026!
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Spotless Linter Check
+        run: ./gradlew spotlessCheck
+
+      - name: Build and Test with Gradle
+        run: ./gradlew test build -x spotlessCheck
+
+  ci-frontend:
+    name: Frontend CI (Build Verification)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Next.js
+        run: npm run build
+
+  deploy:
+    name: Deploy to AWS EC2
+    needs: [ci-backend, ci-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2'
+
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 10m
+          script_stop: true
+          script: |
+            set -e
+            echo "=== [1/4] 최신 배포 브랜치 동기화 (${{ github.ref_name }}) ==="
+            cd ~/snowthing
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+
+            echo "=== [2/4] 도커 컨테이너 증분 빌드 및 롤링 배포 ==="
+            docker compose --env-file /etc/snowthing/prod.env -f compose.prod.yml up -d --build
+
+            echo "=== [3/4] 불필요한 이전 댕글링(dangling) 이미지 정리 ==="
+            docker image prune -f
+
+            echo "=== [4/4] 헬스 체크 검증 (최대 60초 대기) ==="
+            for i in $(seq 1 12); do
+              HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/api/v1/master/resorts || true)
+              if [ "$HTTP_STATUS" -eq 200 ]; then
+                echo "✅ 백엔드 헬스 체크 성공 (HTTP 200 OK)"
+                exit 0
+              fi
+              echo "⏳ 백엔드 초기화 대기 중... ($i/12, HTTP $HTTP_STATUS)"
+              sleep 5
+            done
+            echo "❌ 백엔드 헬스 체크 실패! 백엔드 로그 확인:"
+            docker logs --tail 30 snowthing-backend
+            exit 1
