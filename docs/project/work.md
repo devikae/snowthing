@@ -1,9 +1,13 @@
-- **Sprint 04 댓글 벤치마크 디렉터리 영문화 및 종합 README 가이드 작성 (2026-09-09)**:
+- **Sprint 04 댓글 벤치마크 학습정리 문서 보강 및 디렉터리 영문화 완료 (2026-09-09)**:
   1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
   2. **경로 동기화**: `ADR-002-댓글아키텍처.md` 및 `댓글-벤치마크-결과.md` 내 실행계획 경로를 `explain-plans/`로 갱신.
   3. **재현가이드 ➔ README.md 개편 및 내용 보강 (no_ai 톤)**:
      - `재현가이드.md`를 `README.md`로 전환하고 실무 개발자 톤으로 4대 핵심 영역(Seed 코드 위치, 실행/초기화 명령어, 데이터 분포 구조, 1K~1M 9대 시나리오 검증 결과 및 인덱스/불변식 요약) 보강 완료.
-     - `댓글-벤치마크-결과.md` 상단에 멘토의 실험 의도 및 5대 학습 목표(규모·분포 영향, estimated/actual rows/loops 해석, 재현 가능 Seed, 인덱스 쓰기 비용, 운영 DB 안전장치) 상세 해설 추가.
+  4. **`docs/study/sprint04/댓글조회-벤치마크-학습정리.md` 심층 학습서 보강 완결**:
+     - 5대 학습 목표와 멘토의 실험 의도 및 실무 배경(1K 메모리 착시 vs 1M 운영 장애, estimated/actual rows/loops 해석, 재현 가능 시드, 읽기 이점 vs 쓰기 비용, 운영 DB 안전장치) 기술.
+     - 1K·10K·100K·1M 9대 시나리오 종합 레이턴시 비교표 및 1M Invisible 인덱스 검증 비교표(226ms vs 36ms, actual rows 200,001 ➔ 2,000) 수록.
+     - 4대 핵심 결론 및 MySQL InnoDB 물리 엔진 심층 분석(16KB Buffer Pool I/O, B-Tree 수직 Seek 및 수평 Scan 메커니즘, Hotspot 국소 격리, 커버링 인덱스 Clustered Random I/O 차단, `Using filesort` 메모리 정렬 vs 4컬럼 B-Tree 페이지 분할 트레이드오프) 반영.
+     - 7대 필수 요소 체계(개념, Why, When, How, Pros, Alternatives, Trade-off & 극복 방안) 기반 복합 인덱스 계층 조회 아키텍처 정리 완료.
 
 - **Sprint 03 댓글 도메인 메인 브랜치 최종 병합 완료 (2026-09-06)**:
   1. **PR #17 (`feature/sprint03-comment` ➔ `main`) 병합 완결**:
@@ -46,12 +50,19 @@
 - MySQL 8.0.46에서 4개 규모 × 9개 시나리오의 `EXPLAIN ANALYZE` 원문 36개와 warm-up 5회 + 유효 20회 평균/p95 36행을 저장했다. 누락됐던 대댓글 통계와 Hotspot 중간 페이지를 포함한다.
 - 통합 해석표를 `docs/study/sprint04/comment/benchmark/execution-plan-matrix.md`에 작성했다. 1M에서 루트 첫 페이지 36.578/39.388ms, 삭제 placeholder 29.876/32.770ms였고, 대댓글 계열은 상한 100과 parent 복합 인덱스로 0.2~0.7ms 수준을 유지했다.
 - 이슈: 루트 첫 페이지와 삭제 placeholder는 member LEFT JOIN 이후 정렬되어 LIMIT 전에 각각 루트 20,000건/삭제 후보 4,000건을 처리한다. JOIN 전 루트 ID LIMIT 파생 테이블과 삭제 조건 포함 복합 인덱스를 후속 개선 후보로 기록했으며 운영 쿼리·인덱스는 변경하지 않았다.
+- 2026-09-09 PR 피드백 반영: 비표준 규모에서 Hotspot 루트가 라운드로빈에 다시 포함되어 활성 대댓글 100건 상한을 넘을 수 있던 시드 결함을 수정했다. 최초 100건 이후에는 루트 0을 구조적으로 제외하도록 Java/SQL 공식을 통일하고, 댓글 1,234건 조건의 회귀 테스트를 추가했다. 기존 벤치마크 DB와 실행계획·timing 결과는 재생성하지 않았으며 `spotlessCheck`, `compileTestJava`, 신규 단위 테스트가 통과했다.
+- 2026-09-09 PR 보안 피드백 반영: `collect-explain-plan.ps1`, `measure-timing.ps1`에서 하드코딩된 MySQL 사용자명·비밀번호를 제거하고 `SNOWTHING_DB_USERNAME`, `SNOWTHING_DB_PASSWORD`를 필수 검증하도록 변경했다. 비밀번호는 Docker 명령행 값으로 넣지 않고 호출 중에만 `MYSQL_PWD` 환경으로 전달한 뒤 복원한다. 두 스크립트의 PowerShell 구문과 자격증명 누락 시 MySQL 호출 전 비정상 종료를 검증했으며 기존 DB·실행계획·측정 결과는 재실행하거나 변경하지 않았다. 실제 노출 자격증명 회전과 애플리케이션/CI 평문 기본값 제거는 별도 후속 작업이다.
+- 2026-09-09 DB 자격증명 전체 정리 및 회전: GitHub Actions, Spring local/test/docker/prod, Docker Compose, Sprint 04 실행 문서와 `.env.example`에서 DB 사용자명·비밀번호 기본값 및 평문 값을 제거했다. 로컬 전용 `.env`를 생성하고 `snowthing_ci` 계정에 `snowthing`, `snowthing_test`, `snowthing_benchmark_1k/10k/100k` 스키마 권한을 부여했으며 root 비밀번호도 별도 값으로 회전했다. 영속 볼륨을 유지한 채 MySQL 컨테이너만 새 환경으로 재생성했고 일반 계정/root 로그인, 다섯 스키마 접근, benchmark prefix 총량 1K·10K·100K·1M 보존을 확인했다. GitHub에는 `SNOWTHING_DB_USERNAME`, `SNOWTHING_DB_PASSWORD`, `SNOWTHING_DB_ROOT_PASSWORD` Repository Secrets 등록이 필요하다.
+- 2026-09-09 DB 자격증명 하드코딩 전수 제거: GitHub Actions의 MySQL 서비스 및 테스트 연결을 Repository Secrets 세 가지로 전환하고, Spring local/test/docker/prod 설정과 Docker Compose에서 사용자명·비밀번호 fallback을 제거해 환경변수를 필수화했다. `.env.example`과 Sprint 04 실행 가이드는 실제 계정·비밀번호가 아닌 placeholder와 환경변수 참조만 사용하도록 수정했다. 추적 파일 검사 결과 기존 DB 사용자명·비밀번호 리터럴은 0건이며, 기존 benchmark DB와 실행계획·시간 측정 산출물은 변경하지 않았다. GitHub Actions 실행 전 Repository Secrets 등록과 기존 노출 비밀번호 회전이 필요하다.
 - 평균·p95 측정 대상을 9개 시나리오로 확장(삭제 루트 원문/placeholder, 삭제 대댓글 포함)하고 4개 규모 × 9개 = 36개 결과 행을 `timing.csv`에 저장했다. 각 시나리오는 warm-up 5회 후 20회 측정했다.
 - 인덱스 전·후 비교를 9개 시나리오 × 4개 규모로 실행해 36개 원문과 `index-comparison.csv`를 저장했다. 측정 후 인덱스 visible 상태를 확인했다.
 - Spring Boot를 `snowthing_test`/18080으로 기동해 실제 댓글·대댓글 API를 호출하고 응답 크기를 측정했다(16,841 bytes / 2,739 bytes). 측정 후 서버를 종료했다.
 - 불변식 자동 검증 보강: 벤치마크 게시글 100개별 루트 댓글과 페이지 크기를 초과한 대댓글을 운영과 동일한 `comment_id` 커서로 마지막 페이지까지 순회하고, 전체 기대 ID 집합과 대조해 누락·중복·정렬 오류를 검증한다. 동일 `created_at` 데이터의 `comment_id` 타이브레이커와 게시글별 `post.comment_count`/실제 활성 댓글 수도 전수 검증한다.
 - 자동 검증 과정에서 루트 ID 수집 쿼리가 콘텐츠 마커만 검색해 다른 게시글의 과거 마커 데이터를 포함할 수 있는 Seed 범위 결함을 발견했다. 벤치마크 `public_id`와 루트 조건으로 범위를 제한했으며, 기본 1K MySQL 실행 결과 `CommentBenchmarkSeedRunnerTest`가 통과했다.
 - 실행계획 통합표 작성: MySQL 8.0.46에서 1K·10K·100K의 필수 9개 시나리오를 복합 인덱스 visible/invisible 상태로 전통형 `EXPLAIN`하고, 54개 실행계획(노드별 원본 114행)의 `key_len`, `Using filesort`, `Using temporary`를 `explain-plan-summary.md`와 `explain-plan-details.csv`에 기록했다. 실행 전 `ANALYZE TABLE`을 수행했으며 측정 후 세 스키마의 두 복합 인덱스가 모두 visible임을 확인했다.
+- PR cleanup 피드백 반영: 기존 대댓글·루트 대량 DELETE를 각각 5,000건 단위의 단일 테이블 DELETE 반복으로 변경해 문장별 undo log와 row lock 범위를 제한했다. 공식 DDL은 `ON DELETE SET NULL`이지만 Hibernate가 새 테스트 스키마에 만든 self FK는 `RESTRICT`여서 대댓글을 먼저 정리하도록 호환성을 보장했다. 별도 `snowthing_cleanup_test`에서 기존 10K를 chunk 삭제한 뒤 동일 10K Seed를 재생성했으며 `CommentBenchmarkSeedRunnerTest`가 통과했다. 검증 스키마는 제거했고 기존 1K·10K·100K 스키마와 결과 파일은 변경하지 않았다.
+- PR 출력 경로 피드백 반영: `collect-explain-plan.ps1`이 DB 조회와 인덱스 변경 전에 `$OutputPath`, `$SummaryPath`의 상위 디렉터리를 각각 생성하도록 보강했다. 서로 다른 신규 경로를 지정해 114개 실행계획 노드·54개 시나리오 그룹의 CSV와 Markdown 저장을 확인했으며, 기존 결과 파일은 덮어쓰지 않고 세 스키마의 복합 인덱스가 모두 visible로 복구됐음을 확인했다.
+- PR SQL Seed 트랜잭션 피드백 반영: `seed_benchmark()`에 SQL 예외 시 현재 배치를 롤백하고 재전파하는 handler를 추가하고, 루트·대댓글을 합산해 댓글 5,000건마다 커밋하도록 변경했다. 1M 단일 트랜잭션의 undo/lock 비용을 피하는 대신 이미 커밋된 배치는 재실행 시 benchmark prefix 정리로 제거한다. 생성 공식과 기존 결과 파일은 변경하지 않았으며, 모든 PR 코드 수정 후 일괄 재생성·재측정하기 위해 이번 단계에서는 Seed 실행을 보류했다.
 - **Sprint 03 댓글/대댓글 인라인 삭제 UI 및 비밀번호 플로팅 팝오버 위젯 구현 (2026-09-03)**:
   1. **작업명**: 댓글/대댓글 인라인 미니 `✕` 삭제 버튼 및 시간 아래 플로팅 드롭다운 UI 구현 (브라우저 다이얼로그 전면 퇴출)
   2. **현재 상태**: 완료
@@ -211,7 +222,7 @@
      - `database/ddl.sql` 및 `Comment.java` `@Index` 명세를 `(parent_id, created_at, comment_id)` ➔ `(parent_id, is_deleted, created_at, comment_id)`로 변경.
      - 대댓글 100개 상한 검증(`countActiveReplies`) 및 대댓글 조회 시 살아있는 행으로 B-Tree Seek 직행 및 커버링 인덱스(`Using index`) 실측 달성.
   2. **DB Username 환경변수 동기화 (Configuration Parity)**:
-     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `${SNOWTHING_DB_USERNAME:snowuser}`로 수정.
+     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `SNOWTHING_DB_USERNAME` 환경변수 참조로 수정.
   3. **DataInitializer & 테스트 정합성 보강**:
      - `DataInitializer.java` 내 닉네임 유니크 제약조건 중복 가드 추가.
      - `CommentServiceTest.java` 내 활성 자식 노드가 있는 삭제 부모 placeholder 정책 반영 및 `@AfterEach` teardown 클린업 추가.
@@ -222,7 +233,7 @@
   1. **스파이크 시드(`database/spike_seed_comments.sql`) 소유권 기반 안전 시딩 적용**:
      - `post_category`, `member`의 고정 PK(1) 강제 삽입을 제거하고 자연키(`code = 'FREE'`, `public_id = 'member-spike-001'`) 기반 생성 및 변수(`@spike_member_id`) 바인딩으로 변경하여 기존 로컬 1번 회원 데이터 덮어쓰기 방지.
   2. **DB Username 환경변수 동기화 (Configuration Parity)**:
-     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `${SNOWTHING_DB_USERNAME:snowuser}`로 수정.
+     - `backend/src/main/resources/application.yml`의 `datasource.username`을 `docker-compose.yml`과 일치하도록 `SNOWTHING_DB_USERNAME` 환경변수 참조로 수정.
   3. **.env.example 테스트 환경변수 가이드 보강**:
      - `CommentCreateTest` 및 `CommentUpdateTest` 두 테스트 모두 실제 MySQL 연동을 지원함을 명시하고 `SNOWTHING_TEST_DB_URL` 표준 예시값 추가.
   4. **인덱스 및 테스트/초기화 무결성 동기화**:
@@ -1279,3 +1290,32 @@
   - 기본 `./gradlew test`에서 `benchmark` 태그 테스트를 제외해 일반 테스트와 대규모 Seed 테스트가 같은 DB Context를 오염시키지 않도록 했습니다.
   - 벤치마크 실행은 `./gradlew test --tests CommentBenchmarkSeedRunnerTest -PincludeBenchmark`로 명시해야 합니다.
   - GitHub Actions 실패 로그에서 확인된 11건의 DB 제약조건·기대값 오류 원인을 반영했습니다.
+- **Sprint 04 벤치마크 Seed 청크 생성 최적화 (2026-09-09)**:
+  - `CommentBenchmarkSeedHarness`가 전체 `List<Object[]>`를 만들지 않고 5,000개 청크 내부에서 row factory로 생성 후 즉시 `batchUpdate`하도록 변경했습니다.
+  - 루트·대댓글 생성 분포와 고정 seed 동작은 유지하고, 1M 실행 시 힙·GC 부담을 줄였습니다.
+  - `compileTestJava` 검증을 통과했습니다.
+  - 1K `CommentBenchmarkSeedRunnerTest`는 Docker Desktop/MySQL 미기동으로 DB 연결 단계에서 중단됐으며, 테스트 assertion 실패는 발생하지 않았습니다.
+  - PK 특성상 항상 0이던 댓글 ID 중복 검사를 제거하고, 대댓글과 부모 댓글의 `post_id` 불일치 건수를 0으로 검증하도록 변경했습니다.
+  - 변경 후 `compileTestJava`, `spotlessJavaCheck` 검증을 통과했습니다.
+- **Sprint 04 벤치마크 9개 시나리오 공통화 (2026-09-09)**:
+  - `database/benchmark/benchmark-queries.ps1`에 동적 바인딩 선택과 문서 기준 9개 쿼리를 공통 정의했습니다.
+  - `measure-timing.ps1`과 `collect-explain-plan.ps1`이 공통 정의를 dot-source하도록 변경했습니다.
+  - 실행계획 수집에서 `deleted-reply-hidden`을 제외하고 누락됐던 `reply-stats`를 포함해 레이턴시 측정과 시나리오 집합을 일치시켰습니다.
+  - 세 PowerShell 파일의 파서 검사와 mock DB 응답 기반 시나리오 검사(정확히 9개)를 통과했습니다.
+  - 사용자의 요청에 따라 기존 측정 결과와 문서 산출물은 재생성하지 않았습니다.
+- **Sprint 04 estimated rows·actual rows 학습 문서 보강 (2026-09-09)**:
+  - `docs/study/sprint04/댓글조회-벤치마크-학습정리.md`에 같은 실행계획 노드의 예상·실제 행 수를 비교하는 방법을 추가했습니다.
+  - `actual rows`가 루프당 평균 출력 행 수라는 점과 `actual rows × loops`로 전체 처리량을 해석하는 방법을 명시했습니다.
+  - 1M 루트 첫·중간 페이지, 100K Top-5 LATERAL, 1M 활성 대댓글 count의 기존 `EXPLAIN ANALYZE` 수치를 비교표로 정리했습니다.
+  - 통계 오차의 영향, 확인 시점, 대안 지표, `EXPLAIN ANALYZE` 실행 부하와 대응 순서를 7개 필수 서술 요소에 맞춰 보강했습니다.
+  - 1K와 100K의 비용 변화, `post_id`·`parent_id` 선택도, 추정 오차가 큰 쿼리, 복합 인덱스의 WHERE·ORDER BY 활용 범위를 질문별 답변으로 추가했습니다.
+  - Hot post 후보 행 증가 원인과 중간·마지막 Cursor의 range scan 차이, 조회 이점과 아직 측정하지 않은 쓰기 비용을 구분해 정리했습니다.
+- **Sprint 04 벤치마크 PR 피드백 보완 (2026-09-09)**:
+  - 실행계획 수집이 실패하더라도 각 스키마의 인덱스 복구를 끝까지 시도하고, 수집 오류와 복구 오류를 함께 확인할 수 있도록 `collect-explain-plan.ps1`의 정리 로직을 보완했습니다.
+  - README와 ADR에 레이턴시 측정 범위를 MySQL SQL 실행 경계로 명시하고, 응답 매핑·JSON 직렬화·네트워크·HTTP 엔드투엔드 시간은 포함하지 않는다고 기록했습니다.
+  - 기존 측정값과 결과 파일은 수정하지 않았으며, 원본 SQL 직접 실행 방식의 재측정은 전체 피드백 반영 후로 보류했습니다.
+  - 1M 전용 스키마 생성과 EXPLAIN 수집 대상 추가는 하루 이상 걸리는 Seed 비용과 당일 리뷰 범위를 고려해 이번 작업에서 제외했습니다.
+- **Sprint 04 원본 SQL 레이턴시 재측정 (2026-09-09)**:
+  - MySQL 8.0.46의 `snowthing_benchmark_1k`, `snowthing_benchmark_10k`, `snowthing_benchmark_100k`에서 공통 9개 시나리오를 warm-up 5회 후 20회씩 재측정했습니다.
+  - `measure-timing.ps1`이 `COUNT(*)` 래퍼 없이 원본 SQL을 직접 실행하도록 변경된 측정 경계의 결과를 `timing-direct-query.csv`와 `실행시간.csv`에 반영하고, 규모별 결과 문서·README·ADR의 1K·10K·100K 평균/p95를 갱신했습니다.
+  - 1M 데이터·측정값과 기존 EXPLAIN 원문은 변경하지 않았습니다. 실제 Spring API JSON 응답 크기는 애플리케이션 서버가 기동되지 않아 재측정하지 않고 기존 측정값을 유지했습니다.

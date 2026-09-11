@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.comment.spike;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.function.IntFunction;
 import javax.sql.DataSource;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class CommentBenchmarkSeedHarness {
 
     private static final String BENCHMARK_PREFIX = "benchmark-sprint04-";
+    private static final int CLEANUP_BATCH_SIZE = 5_000;
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
 
@@ -48,7 +50,8 @@ public class CommentBenchmarkSeedHarness {
         int rootCount = Math.max(100, totalComments / 5);
         executeBatchInChunks(
                 "INSERT INTO comment (post_id, member_id, parent_id, content, writer_ip, is_anonymous, is_deleted, version, created_at, updated_at) VALUES (?, ?, NULL, ?, ?, ?, ?, 0, ?, NOW())",
-                buildRootArgs(postIds, memberId, rootCount, random));
+                rootCount,
+                i -> buildRootArgs(postIds, memberId, rootCount, i, random));
         roots.addAll(
                 jdbcTemplate.query(
                         """
@@ -66,7 +69,8 @@ public class CommentBenchmarkSeedHarness {
         if (replyCount > 0 && !roots.isEmpty()) {
             executeBatchInChunks(
                     "INSERT INTO comment (post_id, member_id, parent_id, content, writer_ip, is_anonymous, is_deleted, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, NOW())",
-                    buildReplyArgs(postIds, roots, memberId, replyCount, random));
+                    replyCount,
+                    i -> buildReplyArgs(postIds, roots, memberId, replyCount, i, random));
         }
         jdbcTemplate.update(
                 "UPDATE post p SET comment_count = (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) WHERE p.public_id LIKE ?",
@@ -74,11 +78,15 @@ public class CommentBenchmarkSeedHarness {
         return new SeedResult(memberId, postIds, totalComments);
     }
 
-    private void executeBatchInChunks(String sql, List<Object[]> args) {
+    private void executeBatchInChunks(String sql, int rowCount, IntFunction<Object[]> rowFactory) {
         final int chunkSize = 5_000;
-        for (int from = 0; from < args.size(); from += chunkSize) {
-            int to = Math.min(from + chunkSize, args.size());
-            jdbcTemplate.batchUpdate(sql, args.subList(from, to));
+        for (int from = 0; from < rowCount; from += chunkSize) {
+            int to = Math.min(from + chunkSize, rowCount);
+            List<Object[]> chunk = new ArrayList<>(to - from);
+            for (int index = from; index < to; index++) {
+                chunk.add(rowFactory.apply(index));
+            }
+            jdbcTemplate.batchUpdate(sql, chunk);
         }
     }
 
@@ -97,14 +105,23 @@ public class CommentBenchmarkSeedHarness {
     }
 
     private void cleanup() {
-        jdbcTemplate.update(
-                "DELETE c FROM comment c JOIN comment parent ON parent.comment_id = c.parent_id JOIN post p ON p.post_id = parent.post_id WHERE p.public_id LIKE ?",
-                BENCHMARK_PREFIX + "%");
-        jdbcTemplate.update(
-                "DELETE c FROM comment c JOIN post p ON p.post_id = c.post_id WHERE p.public_id LIKE ?",
-                BENCHMARK_PREFIX + "%");
+        deleteCommentsInChunks("parent_id IS NOT NULL");
+        deleteCommentsInChunks("parent_id IS NULL");
         jdbcTemplate.update("DELETE FROM post WHERE public_id LIKE ?", BENCHMARK_PREFIX + "%");
         jdbcTemplate.update("DELETE FROM member WHERE public_id = ?", BENCHMARK_PREFIX + "member");
+    }
+
+    private void deleteCommentsInChunks(String hierarchyCondition) {
+        int deletedRows;
+        do {
+            deletedRows =
+                    jdbcTemplate.update(
+                            "DELETE FROM comment WHERE "
+                                    + hierarchyCondition
+                                    + " AND post_id IN (SELECT post_id FROM post WHERE public_id LIKE ?) LIMIT ?",
+                            BENCHMARK_PREFIX + "%",
+                            CLEANUP_BATCH_SIZE);
+        } while (deletedRows == CLEANUP_BATCH_SIZE);
     }
 
     private long seedMember() {
@@ -140,43 +157,41 @@ public class CommentBenchmarkSeedHarness {
                 BENCHMARK_PREFIX + "post-%");
     }
 
-    private List<Object[]> buildRootArgs(List<Long> posts, long member, int count, Random random) {
-        List<Object[]> args = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            args.add(
-                    new Object[] {
-                        posts.get(distributedPostIndex(i, count, posts.size())),
-                        member,
-                        RealisticContentGenerator.rootComment(random, i),
-                        "127.0.0.1",
-                        i % 10 == 0,
-                        i % 5 == 0,
-                        java.sql.Timestamp.valueOf("2026-01-01 00:00:00")
-                    });
-        }
-        return args;
+    private Object[] buildRootArgs(
+            List<Long> posts, long member, int total, int index, Random random) {
+        return new Object[] {
+            posts.get(distributedPostIndex(index, total, posts.size())),
+            member,
+            RealisticContentGenerator.rootComment(random, index),
+            "127.0.0.1",
+            index % 10 == 0,
+            index % 5 == 0,
+            java.sql.Timestamp.valueOf("2026-01-01 00:00:00")
+        };
     }
 
-    private List<Object[]> buildReplyArgs(
-            List<Long> posts, List<Long> roots, long member, int count, Random random) {
-        List<Object[]> args = new ArrayList<>();
-        int hotspotReplyCount = Math.min(100, count);
-        for (int i = 0; i < count; i++) {
-            int rootIndex = i < hotspotReplyCount ? 0 : i % roots.size();
-            long root = roots.get(rootIndex);
-            args.add(
-                    new Object[] {
-                        posts.get(distributedPostIndex(rootIndex, roots.size(), posts.size())),
-                        member,
-                        root,
-                        RealisticContentGenerator.reply(random, i),
-                        "127.0.0.1",
-                        i % 10 == 0,
-                        i >= hotspotReplyCount && i % 5 == 0,
-                        java.sql.Timestamp.valueOf("2026-01-01 00:00:00")
-                    });
+    private Object[] buildReplyArgs(
+            List<Long> posts, List<Long> roots, long member, int total, int index, Random random) {
+        int hotspotReplyCount = Math.min(100, total);
+        int rootIndex = replyRootIndex(index, hotspotReplyCount, roots.size());
+        long root = roots.get(rootIndex);
+        return new Object[] {
+            posts.get(distributedPostIndex(rootIndex, roots.size(), posts.size())),
+            member,
+            root,
+            RealisticContentGenerator.reply(random, index),
+            "127.0.0.1",
+            index % 10 == 0,
+            index >= hotspotReplyCount && index % 5 == 0,
+            java.sql.Timestamp.valueOf("2026-01-01 00:00:00")
+        };
+    }
+
+    static int replyRootIndex(int replyIndex, int hotspotReplyCount, int rootCount) {
+        if (replyIndex < hotspotReplyCount) {
+            return 0;
         }
-        return args;
+        return 1 + ((replyIndex - hotspotReplyCount) % (rootCount - 1));
     }
 
     /** 45% general posts, 45% medium posts, 10% hot post. */

@@ -8,7 +8,7 @@ services:
     environment:
       MYSQL_DATABASE: snowthing
       MYSQL_ROOT_PASSWORD: ${SNOWTHING_DB_ROOT_PASSWORD:?SNOWTHING_DB_ROOT_PASSWORD must be set}
-      MYSQL_USER: ${SNOWTHING_DB_USERNAME:-snowuser}
+      MYSQL_USER: ${SNOWTHING_DB_USERNAME:?SNOWTHING_DB_USERNAME must be set}
       MYSQL_PASSWORD: ${SNOWTHING_DB_PASSWORD:?SNOWTHING_DB_PASSWORD must be set}
       TZ: Asia/Seoul
     ports:

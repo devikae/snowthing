@@ -36,7 +36,7 @@ class CommentBenchmarkSeedRunnerTest {
         assertTotalDistribution(total);
         assertPostDistribution(total);
         assertActiveCommentCountForEveryPost();
-        assertReplyLimitAndUniqueIds();
+        assertReplyLimitAndPostConsistency();
         assertNoRootPageOmissions(result.postIds());
         assertNoReplyPageOmissions();
     }
@@ -91,19 +91,22 @@ class CommentBenchmarkSeedRunnerTest {
                                         .isEqualTo(count.actualActiveCount()));
     }
 
-    private void assertReplyLimitAndUniqueIds() {
+    private void assertReplyLimitAndPostConsistency() {
         Long overReplyLimit =
                 queryCount(
                         "SELECT COUNT(*) FROM (SELECT c.parent_id FROM comment c JOIN post p ON p.post_id=c.post_id "
                                 + "WHERE p.public_id LIKE ? AND c.parent_id IS NOT NULL AND c.is_deleted=FALSE "
                                 + "GROUP BY c.parent_id HAVING COUNT(*)>100) over_limit",
                         BENCHMARK_POST_PATTERN);
-        Long duplicateIds =
+        Long crossPostReplies =
                 queryCount(
-                        "SELECT COUNT(*)-COUNT(DISTINCT c.comment_id) FROM comment c JOIN post p ON p.post_id=c.post_id WHERE p.public_id LIKE ?",
+                        "SELECT COUNT(*) FROM comment child "
+                                + "JOIN comment parent ON parent.comment_id=child.parent_id "
+                                + "JOIN post p ON p.post_id=child.post_id "
+                                + "WHERE p.public_id LIKE ? AND child.post_id<>parent.post_id",
                         BENCHMARK_POST_PATTERN);
         assertThat(overReplyLimit).isZero();
-        assertThat(duplicateIds).isZero();
+        assertThat(crossPostReplies).isZero();
     }
 
     private void assertNoRootPageOmissions(List<Long> postIds) {

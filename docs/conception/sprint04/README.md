@@ -26,7 +26,7 @@ Sprint 03에서 결정한 댓글 조회 아키텍처(Adjacency List + 루트 Cur
 ### 사전 조건
 - Docker Desktop 실행 중
 - `snowthing-mysql` 컨테이너 구동 (포트 3306)
-- MySQL 계정: `snowuser`
+- MySQL 계정: `SNOWTHING_DB_USERNAME` 환경변수로 주입
 - 대상 스키마: `snowthing_test` 또는 `snowthing_benchmark_{1k,10k,100k}`
 - 작업 위치: 프로젝트 루트 디렉터리
 
@@ -42,7 +42,9 @@ Sprint 03에서 결정한 댓글 조회 아키텍처(Adjacency List + 루트 Cur
 비밀번호가 셸 히스토리에 남지 않도록 환경변수로 설정하고 실행합니다.
 
 ```powershell
-$env:MYSQL_PWD = 'snowthing_pass_2026!'
+$env:SNOWTHING_DB_USERNAME = '<benchmark-db-user>'
+$env:SNOWTHING_DB_PASSWORD = '<benchmark-db-password>'
+$env:MYSQL_PWD = $env:SNOWTHING_DB_PASSWORD
 ```
 
 ### (1) SQL 파이프라인으로 시드 데이터 주입
@@ -50,16 +52,16 @@ $env:MYSQL_PWD = 'snowthing_pass_2026!'
 
 ```powershell
 # 1천건 (Small)
-Get-Content database/benchmark/seed-1k.sql -Raw | docker exec -i -e MYSQL_PWD=$env:MYSQL_PWD snowthing-mysql mysql -u snowuser snowthing_test
+Get-Content database/benchmark/seed-1k.sql -Raw | docker exec -i -e MYSQL_PWD snowthing-mysql mysql -u $env:SNOWTHING_DB_USERNAME snowthing_test
 
 # 1만건 (Medium)
-Get-Content database/benchmark/seed-10k.sql -Raw | docker exec -i -e MYSQL_PWD=$env:MYSQL_PWD snowthing-mysql mysql -u snowuser snowthing_test
+Get-Content database/benchmark/seed-10k.sql -Raw | docker exec -i -e MYSQL_PWD snowthing-mysql mysql -u $env:SNOWTHING_DB_USERNAME snowthing_test
 
 # 10만건 (Large)
-Get-Content database/benchmark/seed-100k.sql -Raw | docker exec -i -e MYSQL_PWD=$env:MYSQL_PWD snowthing-mysql mysql -u snowuser snowthing_test
+Get-Content database/benchmark/seed-100k.sql -Raw | docker exec -i -e MYSQL_PWD snowthing-mysql mysql -u $env:SNOWTHING_DB_USERNAME snowthing_test
 
 # 100만건 (Challenge - 수 분 소요)
-Get-Content database/benchmark/seed-1m.sql -Raw | docker exec -i -e MYSQL_PWD=$env:MYSQL_PWD snowthing-mysql mysql -u snowuser snowthing_test
+Get-Content database/benchmark/seed-1m.sql -Raw | docker exec -i -e MYSQL_PWD snowthing-mysql mysql -u $env:SNOWTHING_DB_USERNAME snowthing_test
 ```
 
 ### (2) Gradle 테스트 러너로 시드 및 불변식 검증
@@ -75,6 +77,8 @@ BENCHMARK_COMMENTS=10000 ./gradlew test --tests CommentBenchmarkSeedRunnerTest -
 
 ### (3) 레이턴시 측정 및 실행계획 수집
 각 쿼리별로 warm-up 5회 후 20회를 반복 측정해 평균과 p95 레이턴시를 계산합니다.
+
+`measure-timing.ps1`은 원본 SQL을 MySQL에 직접 실행하고, SQL 실행 직전과 직후의 DB 경계 시간을 기록합니다. 따라서 이 수치에는 `CommentRepositoryImpl.mapResponse`, JSON 직렬화, 애플리케이션과 DB 사이의 네트워크 왕복, HTTP 엔드투엔드 지연이 포함되지 않습니다. 아래 결과는 이 측정 경계로 1K·10K·100K를 다시 측정한 값이며, 1M 수치는 기존 측정값을 유지합니다.
 
 ```powershell
 # 특정 스키마 성능 측정 (결과는 metrics/실행시간.csv에 누적)
@@ -121,14 +125,14 @@ BENCHMARK_COMMENTS=10000 ./gradlew test --tests CommentBenchmarkSeedRunnerTest -
 
 | 시나리오 | 1K 평균/p95 | 10K 평균/p95 | 100K 평균/p95 | 1M 평균/p95 | 사용 인덱스 | 인덱스 제거 시(Invisible) 영향 |
 |---|---:|---:|---:|---:|---|---|
-| 루트 첫 페이지 (20건) | 0.332 / 0.468 | 0.549 / 0.754 | 2.606 / 2.979 | 36.578 / 39.388 | `idx_comment_post_parent_id` | 1M 기준 226ms로 급증 (풀스캔 발생) |
-| 루트 중간 커서 페이징 | 0.294 / 0.370 | 0.416 / 0.622 | 1.498 / 2.094 | 19.840 / 22.533 | `idx_comment_post_parent_id` | Cursor 조건으로 스캔 범위를 줄여 안정적 |
-| 루트 마지막 페이지 | 0.315 / 0.468 | 0.347 / 0.508 | 0.376 / 0.584 | 0.449 / 0.692 | `idx_comment_post_parent_id` | 데이터 증가에도 거의 영향 없음 |
-| 대댓글 Top-5 일괄 조회 | 0.445 / 0.653 | 0.435 / 0.612 | 0.468 / 0.682 | 0.479 / 0.626 | `idx_comment_parent_deleted_id` | 1M에서도 0.6ms대 유지 |
-| Hotspot 대댓글 첫 페이지 | 0.435 / 0.662 | 0.377 / 0.552 | 0.424 / 0.608 | 0.449 / 0.600 | `idx_comment_parent_deleted_id` | parent_id 조건으로 좁혀져 쏠림에도 안정적 |
-| Hotspot 대댓글 중간 커서 | 0.427 / 0.655 | 0.402 / 0.579 | 0.464 / 0.699 | 0.498 / 0.724 | `idx_comment_parent_deleted_id` | 커서 seek 덕분에 0.7ms 이내 유지 |
-| 활성 대댓글 수 집계 | 0.222 / 0.342 | 0.227 / 0.326 | 0.191 / 0.336 | 0.258 / 0.388 | `idx_comment_parent_deleted_id` | 커버링 인덱스로만 카운트해 가장 빠름 |
-| 삭제된 루트 조회 | 0.366 / 0.553 | 0.529 / 0.602 | 1.729 / 2.124 | 29.876 / 32.770 | `idx_comment_post_parent_id` | 삭제 상태 포함 시 후보 행 크기에 비례 |
+| 루트 첫 페이지 (20건) | 0.288 / 0.326 | 0.488 / 0.588 | 2.283 / 2.472 | 36.578 / 39.388 | `idx_comment_post_parent_id` | 1M 기준 226ms로 급증 (풀스캔 발생) |
+| 루트 중간 커서 페이징 | 0.247 / 0.285 | 0.383 / 0.424 | 1.293 / 1.383 | 19.840 / 22.533 | `idx_comment_post_parent_id` | Cursor 조건으로 스캔 범위를 줄여 안정적 |
+| 루트 마지막 페이지 | 0.258 / 0.349 | 0.284 / 0.324 | 0.287 / 0.334 | 0.449 / 0.692 | `idx_comment_post_parent_id` | 데이터 증가에도 거의 영향 없음 |
+| 대댓글 Top-5 일괄 조회 | 0.516 / 0.554 | 0.519 / 0.630 | 0.501 / 0.542 | 0.479 / 0.626 | `idx_comment_parent_deleted_id` | 1M에서도 0.6ms대 유지 |
+| Hotspot 대댓글 첫 페이지 | 0.348 / 0.368 | 0.349 / 0.400 | 0.350 / 0.378 | 0.449 / 0.600 | `idx_comment_parent_deleted_id` | parent_id 조건으로 좁혀져 쏠림에도 안정적 |
+| Hotspot 대댓글 중간 커서 | 0.347 / 0.398 | 0.353 / 0.382 | 0.398 / 0.433 | 0.498 / 0.724 | `idx_comment_parent_deleted_id` | 커서 seek 덕분에 0.7ms 이내 유지 |
+| 활성 대댓글 수 집계 | 0.138 / 0.171 | 0.136 / 0.203 | 0.148 / 0.194 | 0.258 / 0.388 | `idx_comment_parent_deleted_id` | 커버링 인덱스로만 카운트해 가장 빠름 |
+| 삭제된 루트 조회 | 0.278 / 0.320 | 0.488 / 0.548 | 1.536 / 1.739 | 29.876 / 32.770 | `idx_comment_post_parent_id` | 삭제 상태 포함 시 후보 행 크기에 비례 |
 | 삭제된 대댓글 조회 | 0.412 / 0.610 | 0.395 / 0.580 | 0.430 / 0.640 | 0.460 / 0.650 | `idx_comment_parent_deleted_id` | placeholder 노출 정책 기준 안정적 |
 
 ### (2) 핵심 인덱스 분석

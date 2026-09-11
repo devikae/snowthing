@@ -34,6 +34,15 @@ DROP PROCEDURE IF EXISTS seed_benchmark;
 DELIMITER $$
 CREATE PROCEDURE seed_benchmark()
 BEGIN
+DECLARE batch_rows INT DEFAULT 0;
+DECLARE EXIT HANDLER FOR SQLEXCEPTION
+BEGIN
+  ROLLBACK;
+  RESIGNAL;
+END;
+
+START TRANSACTION;
+-- Bound undo/redo growth while keeping each 5,000-comment batch atomic.
 SET @i = 0;
 WHILE @i < 100 DO
   INSERT INTO post (public_id,member_id,category_id,title,content,writer_ip,is_anonymous,view_count,comment_count,like_count,dislike_count,has_image,status,is_deleted,created_at,updated_at)
@@ -61,13 +70,22 @@ WHILE @i < @root_count DO
   SET @new_comment_id = LAST_INSERT_ID();
   INSERT INTO benchmark_roots (seq, comment_id, post_id) VALUES (@i, @new_comment_id, @new_post_id);
   SET @i = @i + 1;
+  SET batch_rows = batch_rows + 1;
+  IF batch_rows >= 5000 THEN
+    COMMIT;
+    START TRANSACTION;
+    SET batch_rows = 0;
+  END IF;
 END WHILE;
 
 SET @reply_count = @target_comments - @root_count;
 SET @hotspot_reply_count = LEAST(100, @reply_count);
 SET @i = 0;
 WHILE @i < @reply_count DO
-  SET @root_offset = CASE WHEN @i < @hotspot_reply_count THEN 0 ELSE MOD(@i,@root_count) END;
+  SET @root_offset = CASE
+    WHEN @i < @hotspot_reply_count THEN 0
+    ELSE 1 + MOD(@i - @hotspot_reply_count, @root_count - 1)
+  END;
   INSERT INTO comment (post_id,member_id,parent_id,content,writer_ip,is_anonymous,is_deleted,`version`,created_at,updated_at)
   SELECT r.post_id,@member_id,r.comment_id,
     CONCAT(ELT(1+MOD(@i,4),'저도 같은 경험이었어요','오전에는 대기가 짧았습니다','도움 되는 정보 감사합니다','정상 쪽이 더 좋았습니다'),' (답글 ',@i,') [benchmark-sprint04-reply-',@i,']'),
@@ -75,10 +93,17 @@ WHILE @i < @reply_count DO
   FROM benchmark_roots r WHERE r.seq = @root_offset;
   -- The selected root is deterministic and spreads replies across all roots.
   SET @i = @i + 1;
+  SET batch_rows = batch_rows + 1;
+  IF batch_rows >= 5000 THEN
+    COMMIT;
+    START TRANSACTION;
+    SET batch_rows = 0;
+  END IF;
 END WHILE;
 
 UPDATE post p SET comment_count=(SELECT COUNT(*) FROM comment c WHERE c.post_id=p.post_id AND c.is_deleted=FALSE)
 WHERE p.public_id LIKE CONCAT(@prefix,'%');
+COMMIT;
 SELECT p.public_id, COUNT(c.comment_id) comment_count
 FROM post p LEFT JOIN comment c ON c.post_id=p.post_id
 WHERE p.public_id LIKE CONCAT(@prefix,'%')
