@@ -77,7 +77,7 @@ spring:
 
 ---
 # ==========================================
-# [Profile: prod] AWS EC2 + RDS 운영 컨테이너 환경
+# [Profile: prod] AWS EC2 + RDS 운영 컨테이너 환경 (IAM 무암호 인증)
 # ==========================================
 spring:
   config:
@@ -86,15 +86,18 @@ spring:
 
   datasource:
     url: ${SNOWTHING_PROD_DB_URL}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${SNOWTHING_DB_USERNAME}
-    password: ${SNOWTHING_DB_PASSWORD}
+    driver-class-name: software.amazon.jdbc.Driver
+    username: ${SNOWTHING_DB_USERNAME:snowthing_app}
+    password: ${SNOWTHING_DB_PASSWORD:}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      data-source-properties:
+        wrapperPlugins: iam
+        iamExpiration: 870
 
   jpa:
     hibernate:
