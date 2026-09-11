@@ -1,18 +1,22 @@
-- **AWS EC2 + RDS + S3 운영 배포 4단계 비공개 S3 이미지 API 구현 및 단위 테스트 검증 완결 (2026-09-11)**:
-  1. **작업명**: AWS S3 SDK 연동, 비공개 버킷(`snowthing-media-00001`) 기반 이미지 업로드/다운로드 API 개발, 권한 검증 및 단위 테스트 수트 작성
-  2. **현재 상태**: 백엔드 코드 작성, Spotless 포맷팅 및 단위 테스트 100% 통과 완료 (EC2 배포 및 실측 대기 중)
+- **AWS EC2 + RDS + S3 운영 배포 4단계 비공개 S3 이미지 연동 및 프로덕션 실측 100% 완결 (2026-09-11)**:
+  1. **작업명**: AWS S3 SDK 연동, 비공개 버킷(`snowthing-media-00001`) 기반 이미지 업로드/다운로드 API 개발, EC2 IAM Role 정책(`snowthing-s3-policy`) 연동 및 인가 실측
+  2. **현재 상태**: 4단계 100% 완료 (EC2 ➔ S3 이미지 업로드 및 로그인 세션 기반 인가 다운로드 실측 성공)
   3. **완료된 항목**:
      - `software.amazon.awssdk:s3:2.25.70` AWS Java SDK v2 의존성 추가.
      - `S3Config.java`: `DefaultCredentialsProvider` 기반으로 EC2 IAM Role 임시 자격증명 자동 주입 아키텍처 수립 (정적 액세스 키 배제).
+     - EC2 IAM 역할(`snowthing-rds-connect-policy`)에 인라인 정책 `snowthing-s3-policy` (`s3:PutObject`, `s3:GetObject` on `arn:aws:s3:::snowthing-media-00001/*`) 부여 완료.
      - `ErrorCode.java`: `INVALID_FILE_TYPE(FILE_001)`, `FILE_SIZE_EXCEEDED(FILE_002)`, `FILE_NOT_FOUND(FILE_003)`, `FILE_UPLOAD_FAILED(FILE_004)` 비즈니스 에러 코드 정의.
      - `BusinessException.java` & `GlobalExceptionHandler.java`: 문자열 리터럴 예외 금지 규칙 준수 기반 표준 비즈니스 예외 핸들러 구축.
      - `ImageUploadResponse.java`, `ImageDownloadResponse.java`: 방어적 복사(`byte[].clone()`)를 통한 DTO 불변성 완벽 보장.
      - `ImageService.java`: 5MB 파일 크기 제한, 확장자/MIME 화이트리스트(`jpg`, `jpeg`, `png`, `webp`) 검증, 경로 탐색(`..`) 방어, S3 `putObject`/`getObject` 로직 구현.
      - `ImageController.java`: `POST /api/v1/images` (인증 필수 업로드), `GET /api/v1/images/**` (인가 필수 조회) 엔드포인트 구현 (비인증/외부 접근 시 401/403 차단).
      - `ImageServiceTest.java`: Mockito 기반 격리 단위 테스트 6종 작성 및 100% 통과 (정상 업로드, 5MB 초과 차단, 비허용 확장자 차단, 정상 다운로드, 경로 탐색 차단, 존재하지 않는 파일 404 차단).
-     - `spotlessApply` 및 `spotlessCheck` 서식 검증 100% 통과.
+     - 프로덕션 실측 완료:
+       * 비인가 다운로드 시도 시 Spring Security에 의한 401 Unauthorized 차단 검증 완료.
+       * `POST /api/v1/members` 및 `POST /api/v1/auth/login` 인증 세션 획득 성공 (RDS MySQL 연동 확인).
+       * `POST /api/v1/images` 호출 시 S3 버킷(`snowthing-media-00001`)에 고유 UUID 객체 업로드 성공 (`201 Created`).
+       * `GET /api/v1/images/**` 호출 시 S3 객체 스트리밍을 통해 HTTP 200 OK 및 원본 데이터 수신 실측 성공.
   4. **남은 항목**:
-     - 4단계 실측: `deploy/aws-ec2` 커밋/푸시 ➔ EC2 `git pull` ➔ 백엔드 컨테이너 리빌드 ➔ S3 업로드/인가 다운로드 실측.
      - 5단계: 도메인 연결 및 Cloudflare Free (Full strict) HTTPS 암호화.
      - 6단계: GitHub Actions 기반 자동 배포 파이프라인 구축.
 
