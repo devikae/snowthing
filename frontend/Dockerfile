@@ -6,7 +6,7 @@ WORKDIR /app
 
 # 패키지 의존성 파일 복사 및 설치 (npm ci로 정확한 잠금 버전 설치)
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # 소스코드 전체 복사
 COPY . .
