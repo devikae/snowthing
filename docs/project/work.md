@@ -1,18 +1,18 @@
-- **AWS EC2 + RDS + S3 운영 배포 6단계 GitHub Actions CI/CD 자동 배포 파이프라인 구축 및 Elastic IP 확립 (2026-09-11)**:
-  1. **작업명**: 영구 고정 탄력적 IP(`13.124.57.166`) 연결, GitHub Secrets 등록, `.github/workflows/deploy.yml` 자동 배포 파이프라인 구축 및 DTO 역직렬화 방어
-  2. **현재 상태**: 6단계 파이프라인 코드 작성 및 푸시 대기 (GitHub Actions 트리거 및 실측 검증 단계)
+- **AWS EC2 + RDS + S3 운영 배포 6단계 GitHub Actions CI/CD 파이프라인 구축 및 검증 (2026-09-11)**:
+  1. **작업명**: 탄력적 IP(`13.124.57.166`) 연결, GitHub Secrets 등록, `.github/workflows/deploy.yml` 배포 파이프라인 구축 및 헬스체크 검증
+  2. **현재 상태**: 완료 (GitHub Actions 워크플로 정상 동작 및 EC2 컨테이너 자동 재배포/헬스체크 200 OK 확인)
   3. **완료된 항목**:
-     - AWS 탄력적 IP(Elastic IP) 할당 및 EC2(`i-014492690412b656e`) 영구 연결 완결 (`13.124.57.166`).
-     - GitHub 저장소 Secrets 등록: `EC2_HOST` (`13.124.57.166`), `EC2_USER` (`ubuntu`), `EC2_SSH_KEY` (PEM 개인키 전체).
-     - EC2 2GB Linux Swap 메모리 활성화 가이드 (OOM-Killer 원천 방어).
+     - AWS 탄력적 IP(Elastic IP) 할당 및 EC2(`i-014492690412b656e`) 연결 (`13.124.57.166`).
+     - GitHub 저장소 Secrets 등록: `EC2_HOST` (`13.124.57.166`), `EC2_USER` (`ubuntu`), `EC2_SSH_KEY` (PEM 개인키).
+     - EC2 보안 그룹(Security Group) 포트 22번 인바운드 `0.0.0.0/0` 개방 (GitHub Actions 러너 SSH 접속 허용).
+     - EC2 2GB Linux Swap 메모리 활성화 가이드 (OOM 방어).
      - `MemberLoginRequest.java`: Jackson 역직렬화 시 `null`을 원시 `boolean`에 매핑하지 못하던 결함을 래퍼 클래스 `Boolean` 및 방어 메서드(`isRememberMe()`)로 개선.
-     - `.github/workflows/deploy.yml` 신설:
-       * `ci-backend`: JDK 21 + Spotless 서식 검사 + MySQL 8.0 테스트 컨테이너 기반 단위/통합 테스트
-       * `ci-frontend`: Node.js 20 + Next.js 16 Turbopack 프로덕션 빌드 사전 검증
-       * `deploy`: `appleboy/ssh-action@v1.0.3` 기반 무중단 배포 및 60초 헬스체크 루프(`http://127.0.0.1:8080/api/v1/master/resorts`) 연동
+     - `.github/workflows/deploy.yml` 구축 및 동작 검증:
+       * `Backend CI (Spotless & Test)`: 통과 (MySQL 8.0 테스트 컨테이너 기반)
+       * `Frontend CI (Build Verification)`: 통과 (Next.js 16 Turbopack 프로덕션 빌드)
+       * `Deploy to AWS EC2`: 통과 (`appleboy/ssh-action` SSH 접속 ➔ Git reset ➔ Docker Compose 증분 빌드 ➔ 댕글링 이미지 정리 ➔ 헬스체크 루프 HTTP 200 OK 판정)
   4. **남은 항목**:
-     - 6단계 실측: `deploy/aws-ec2` 푸시 ➔ GitHub Actions 탭에서 CI 통과 및 EC2 자동 배포 성공 여부 실측.
-     - 5단계: 추후 도메인 준비 완료 시 Cloudflare Free (Full strict) HTTPS 암호화.
+     - 5단계: 도메인 준비 시 Cloudflare Free (Full strict) HTTPS 암호화.
 
 - **AWS EC2 + RDS + S3 운영 배포 4단계 비공개 S3 이미지 연동 및 프로덕션 실측 100% 완결 (2026-09-11)**:
   1. **작업명**: AWS S3 SDK 연동, 비공개 버킷(`snowthing-media-00001`) 기반 이미지 업로드/다운로드 API 개발, EC2 IAM Role 정책(`snowthing-s3-policy`) 연동 및 인가 실측
