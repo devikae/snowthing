@@ -1,0 +1,82 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ "main", "deploy/aws-ec2" ]
+    paths:
+      - 'frontend/**'
+      - 'compose.prod.yml'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ec2-production-deployment
+  cancel-in-progress: false
+
+jobs:
+  ci-frontend:
+    name: Frontend CI (Build Verification)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Next.js
+        run: npm run build
+
+  deploy-frontend:
+    name: Deploy Frontend to EC2
+    needs: [ci-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2'
+
+    steps:
+      - name: Deploy Frontend via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 10m
+          script_stop: true
+          script: |
+            set -e
+            echo "=== [1/4] 최신 배포 브랜치 동기화 (${{ github.ref_name }}) ==="
+            cd ~/snowthing
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+
+            echo "=== [2/4] 프론트엔드 컨테이너 단독 증분 빌드 및 롤링 배포 ==="
+            docker compose --env-file /etc/snowthing/prod.env -f compose.prod.yml up -d --build frontend
+
+            echo "=== [3/4] 불필요한 이전 댕글링(dangling) 이미지 정리 ==="
+            docker image prune -f
+
+            echo "=== [4/4] 프론트엔드 헬스 체크 검증 (최대 60초 대기) ==="
+            for i in $(seq 1 12); do
+              HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000 || true)
+              if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 304 ]; then
+                echo "✅ 프론트엔드 헬스 체크 성공 (HTTP $HTTP_STATUS)"
+                exit 0
+              fi
+              echo "⏳ 프론트엔드 초기화 대기 중... ($i/12, HTTP $HTTP_STATUS)"
+              sleep 5
+            done
+            echo "❌ 프론트엔드 헬스 체크 실패! 프론트엔드 로그 확인:"
+            docker logs --tail 30 snowthing-frontend
+            exit 1

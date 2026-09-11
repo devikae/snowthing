@@ -1,3 +1,18 @@
+- **AWS EC2 + RDS + S3 운영 배포 6단계 모노레포 선별적 배포(Selective CI/CD) 파이프라인 분리 구축 (2026-09-11)**:
+  1. **작업명**: `.github/workflows/deploy.yml` 단일 워크플로를 `deploy-backend.yml`과 `deploy-frontend.yml`로 분리하여 경로 기반 선별적 배포 및 동시성 큐잉 적용
+  2. **현재 상태**: 완료 (워크플로 파일 분리 생성 및 커밋/푸시 완료)
+  3. **완료된 항목**:
+     - 기존 단일 `.github/workflows/deploy.yml` 제거.
+     - `.github/workflows/deploy-backend.yml` 신설:
+       * `backend/**`, `database/**`, `compose.prod.yml` 변경 시에만 트리거.
+       * 백엔드 CI(Spotless + MySQL 8.0 테스트) 통과 후 EC2에서 `docker compose up -d --build backend` 단독 증분 빌드 및 API 헬스체크(200 OK) 수행.
+     - `.github/workflows/deploy-frontend.yml` 신설:
+       * `frontend/**`, `compose.prod.yml` 변경 시에만 트리거.
+       * 프론트엔드 CI(Next.js 16 프로덕션 빌드) 통과 후 EC2에서 `docker compose up -d --build frontend` 단독 증분 빌드 및 웹 헬스체크(200/304 OK) 수행.
+     - 두 워크플로 모두 `concurrency: group: ec2-production-deployment, cancel-in-progress: false` 적용하여 동시 커밋 시 EC2 배포 명령 충돌 방지 및 큐잉 직렬화 보장.
+  4. **남은 항목**:
+     - 5단계: 도메인 준비 시 Cloudflare Free (Full strict) HTTPS 암호화.
+
 - **AWS EC2 + RDS + S3 운영 배포 6단계 GitHub Actions CI/CD 파이프라인 구축 및 검증 (2026-09-11)**:
   1. **작업명**: 탄력적 IP(`13.124.57.166`) 연결, GitHub Secrets 등록, `.github/workflows/deploy.yml` 배포 파이프라인 구축 및 헬스체크 검증
   2. **현재 상태**: 완료 (GitHub Actions 워크플로 정상 동작 및 EC2 컨테이너 자동 재배포/헬스체크 200 OK 확인)
