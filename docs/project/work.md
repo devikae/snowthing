@@ -1,21 +1,18 @@
-- **AWS EC2 + RDS 운영 배포 3단계 스키마/설정/Compose 준비 완료 (2026-09-11)**:
-  1. **작업명**: 운영 비파괴 스키마(`001_initial_schema.sql`), 기준데이터(`002_reference_data.sql`), Spring Boot prod 프로필 분리, multi-stage Dockerfile 및 `compose.prod.yml` 작성
-  2. **현재 상태**: 로컬 준비 및 구문/컴파일 검증 완료 (EC2 전달 및 적용 대기)
+- **AWS EC2 + RDS 운영 배포 3단계 수동 배포 및 웹 접속 완결 (2026-09-11)**:
+  1. **작업명**: EC2 배포 브랜치(`deploy/aws-ec2`) 동기화, RDS 비파괴 스키마/기준데이터 적용, 호스트 Nginx 리버스 프록시 연동 및 실제 웹 접속 검증
+  2. **현재 상태**: 3단계 100% 완료 (EC2 공인 IP `43.202.157.3` 웹 화면 및 백엔드 API 정상 서빙 중)
   3. **완료된 항목**:
-     - `database/production/001_initial_schema.sql`: 엔티티 불일치 4대 결함(`comment.version`, `riding_style.description`, `post_image.updated_at`, `resort.name UNIQUE`) 교정 및 비파괴 스키마 작성 완료.
-     - `database/production/002_reference_data.sql`: 테스트 계정 및 더미 글을 배제하고 스키장(6), 라이딩스타일(6), 게시판 카테고리(5) 필수 마스터 데이터만 분리 작성 완료 (`INSERT IGNORE`).
-     - `application.yml`: `docker`와 `prod` 프로필 분리, `SNOWTHING_PROD_DB_URL` 외부 주입, RDS TLS 검증(`useSSL=true`), HikariCP 풀 최적화, 운영 로그 `INFO` 설정 완료.
-     - `backend/Dockerfile`: Eclipse Temurin 21 JRE 경량 Multi-stage 및 비root `spring` 유저 실행 도커파일 작성 완료.
-     - `frontend/Dockerfile`: Node 20 Alpine 기반 `npm ci` ➔ `npm run build` ➔ `npm run start` Multi-stage 도커파일 작성 완료 (`NEXT_PUBLIC_API_BASE_URL` ARG 주입).
-     - `compose.prod.yml`: MySQL/Redis 없이 `backend`, `frontend`만 정의, 호스트 포트는 루프백(`127.0.0.1:8080:8080`, `127.0.0.1:3000:3000`) 바인딩 완료.
-  4. **검증 결과**:
-     - `gradlew spotlessCheck compileJava` 100% BUILD SUCCESSFUL 통과.
-     - `docker compose -f compose.prod.yml config --services` 실행 결과 `backend`, `frontend`만 정확히 출력 확인.
-     - `docker compose -f compose.prod.yml config --quiet` 문법 검증 통과 (exit code 0).
-  5. **남은 항목**:
-     - Git push ➔ EC2에서 `git pull`로 파일 동기화.
-     - EC2에서 RDS로 `001_initial_schema.sql` 및 `002_reference_data.sql` 적용 (테이블 11개 및 기준데이터 생성).
-     - EC2 `/etc/snowthing/prod.env` 작성 및 `compose.prod.yml up -d --build` 수동 배포 가동.
+     - `deploy/aws-ec2` 브랜치 생성 및 GitHub 원격 푸시 완료 (`ddee2fe`, `4426b9c`, `9cedf54`).
+     - RDS MySQL에 `001_initial_schema.sql` (테이블 11개) 및 `002_reference_data.sql` (스키장 6개, 카테고리 5개 등) 무결성 생성 완료.
+     - EC2 환경변수 `/etc/snowthing/prod.env` 작성 및 `chmod 600`, 소유권 `ubuntu:ubuntu` 격리 완료.
+     - AWS Advanced JDBC Wrapper 기반 IAM 무암호 DB 인증으로 Spring Boot 백엔드 RDS 연결 완결.
+     - Next.js 16 (`--legacy-peer-deps`) 및 Spring Boot 도커 컨테이너 빌드 & `Up` 구동 성공.
+     - 호스트 Nginx 설치 및 `/` (Next.js 3000), `/api/` (Spring Boot 8080) 리버스 프록시 라우팅 구성 완료.
+     - `curl -i http://127.0.0.1:8080/api/v1/master/resorts` 200 OK 및 브라우저(`http://43.202.157.3`) 접속 실측 완료.
+  4. **남은 항목**:
+     - 4단계: 비공개 AWS S3 버킷 생성 및 EC2 IAM Role 연동 (이미지 업로드/조회 API 구현).
+     - 5단계: 도메인 연결 및 Cloudflare Free (Full strict) HTTPS 암호화.
+     - 6단계: GitHub Actions 기반 자동 배포 파이프라인 구축.
 
 - **Sprint 04 댓글 벤치마크 학습정리 문서 보강 및 디렉터리 영문화 완료 (2026-09-09)**:
   1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
