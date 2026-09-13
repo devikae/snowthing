@@ -3,39 +3,35 @@ name: Deploy Frontend
 on:
   push:
     branches: [ "main", "deploy/aws-ec2" ]
-    paths:
-      - 'frontend/**'
-      - 'compose.prod.yml'
-      - '.github/workflows/deploy-frontend.yml'
+    paths: [ 'frontend/**', 'compose.prod.yml', '.github/workflows/deploy-frontend.yml' ]
   workflow_dispatch:
 
 concurrency:
   group: ec2-production-deployment
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   ci-frontend:
     name: Frontend CI (Build Verification)
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: ./frontend
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
-
       - name: Build Next.js
         run: npm run build
 
@@ -44,39 +40,34 @@ jobs:
     needs: [ci-frontend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2'
-
     steps:
-      - name: Deploy Frontend via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 10m
-          script_stop: true
-          script: |
-            set -e
-            echo "=== [1/4] 최신 배포 브랜치 동기화 (${{ github.ref_name }}) ==="
-            cd ~/snowthing
-            git fetch origin ${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
-
-            echo "=== [2/4] 프론트엔드 컨테이너 단독 증분 빌드 및 롤링 배포 ==="
-            docker compose --env-file /etc/snowthing/prod.env -f compose.prod.yml up -d --build frontend
-
-            echo "=== [3/4] 불필요한 이전 댕글링(dangling) 이미지 정리 ==="
-            docker image prune -f
-
-            echo "=== [4/4] 프론트엔드 헬스 체크 검증 (최대 60초 대기) ==="
-            for i in $(seq 1 12); do
-              HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000 || true)
-              if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 304 ]; then
-                echo "✅ 프론트엔드 헬스 체크 성공 (HTTP $HTTP_STATUS)"
-                exit 0
-              fi
-              echo "⏳ 프론트엔드 초기화 대기 중... ($i/12, HTTP $HTTP_STATUS)"
-              sleep 5
-            done
-            echo "❌ 프론트엔드 헬스 체크 실패! 프론트엔드 로그 확인:"
-            docker logs --tail 30 snowthing-frontend
-            exit 1
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Deploy Frontend via SSM
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          PARAMETERS=$(jq -n --arg branch "$DEPLOY_BRANCH" '{commands: [
+            "set -e", "echo \"=== [1/4] 배포 브랜치 동기화 ===\"", "cd /home/ubuntu/snowthing",
+            "git fetch origin \"" + $branch + "\"", "git reset --hard \"origin/" + $branch + "\"",
+            "echo \"=== [2/4] 프론트엔드 이미지 빌드 및 컨테이너 배포 ===\"",
+            "docker compose --env-file /etc/snowthing/prod.env -f compose.prod.yml up -d --build frontend",
+            "echo \"=== [3/4] 사용하지 않는 이미지 정리 ===\"", "docker image prune -f",
+            "echo \"=== [4/4] 프론트엔드 헬스체크 ===\"",
+            "for i in $(seq 1 12); do HTTP_STATUS=$(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:3000 || true); if [ \"$HTTP_STATUS\" = \"200\" ] || [ \"$HTTP_STATUS\" = \"304\" ]; then echo \"프론트엔드 헬스체크 성공 (HTTP $HTTP_STATUS)\"; exit 0; fi; echo \"프론트엔드 시작 대기 중 ($i/12, HTTP $HTTP_STATUS)\"; sleep 5; done; echo \"프론트엔드 헬스체크 실패\"; docker logs --tail 30 snowthing-frontend; exit 1"
+          ]}')
+          COMMAND_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript --timeout-seconds 900 --parameters "$PARAMETERS" --comment "Deploy frontend from ${GITHUB_REPOSITORY}@${GITHUB_SHA}" --query 'Command.CommandId' --output text)
+          echo "SSM command ID: $COMMAND_ID"
+          STATUS=Pending
+          for _ in $(seq 1 180); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Cancelled|TimedOut|Failed|Cancelling) break ;; esac
+            sleep 5
+          done
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query '{Status:Status,StandardOutput:StandardOutputContent,StandardError:StandardErrorContent}'
+          test "$STATUS" = Success

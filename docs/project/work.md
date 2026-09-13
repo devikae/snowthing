@@ -1,3 +1,12 @@
+- **GitHub Actions 배포 인증을 OIDC + SSM으로 전환 (2026-09-13)**:
+  - 상태: 진행 중
+  - EC2 인스턴스 역할에 `AmazonSSMManagedInstanceCore`를 연결하고 SSM Agent의 제어 채널 연결을 확인했습니다.
+  - GitHub OIDC 공급자와 배포 전용 IAM 역할을 만들고, `main`과 `deploy/aws-ec2` 브랜치만 역할을 맡을 수 있도록 신뢰 정책을 제한했습니다.
+  - Repository variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `EC2_INSTANCE_ID`를 등록했습니다.
+  - 백엔드와 프론트엔드 워크플로에서 PEM 기반 SSH 배포를 제거하고, OIDC 임시 자격증명으로 SSM Run Command를 호출하도록 변경했습니다.
+  - SSM 명령은 최대 15분 동안 완료 상태를 확인하고, 원격 명령의 최종 상태가 `Success`일 때만 Actions 작업을 성공 처리합니다.
+  - 남은 작업: 워크플로 실제 실행 검증, 성공 후 기존 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` Secrets 삭제, UI 디자인 커밋 배포.
+
 - **AWS EC2 + RDS + S3 운영 배포 6단계 모노레포 선별적 배포(Selective CI/CD) 파이프라인 분리 구축 (2026-09-11)**:
   1. **작업명**: `.github/workflows/deploy.yml` 단일 워크플로를 `deploy-backend.yml`과 `deploy-frontend.yml`로 분리하여 경로 기반 선별적 배포 및 동시성 큐잉 적용
   2. **현재 상태**: 완료 (워크플로 파일 분리 생성 및 커밋/푸시 완료)
