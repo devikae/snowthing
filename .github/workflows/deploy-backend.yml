@@ -82,8 +82,8 @@ jobs:
         run: |
           set -euo pipefail
           PARAMETERS=$(jq -n --arg branch "$DEPLOY_BRANCH" '{commands: [
-            "set -e", "echo \"=== [1/4] 배포 브랜치 동기화 ===\"", "cd /home/ubuntu/snowthing", "git config --global --add safe.directory /home/ubuntu/snowthing",
-            "git fetch origin \"" + $branch + "\"", "git reset --hard \"origin/" + $branch + "\"",
+            "set -e", "echo \"=== [1/4] 배포 브랜치 동기화 ===\"", "cd /home/ubuntu/snowthing",
+            "git -c safe.directory=/home/ubuntu/snowthing fetch origin \"" + $branch + "\"", "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"origin/" + $branch + "\"",
             "echo \"=== [2/4] 백엔드 이미지 빌드 및 컨테이너 배포 ===\"",
             "docker compose --env-file /etc/snowthing/prod.env -f compose.prod.yml up -d --build backend",
             "echo \"=== [3/4] 사용하지 않는 이미지 정리 ===\"", "docker image prune -f",

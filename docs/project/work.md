@@ -7,7 +7,7 @@
   - SSM 명령은 최대 15분 동안 완료 상태를 확인하고, 원격 명령의 최종 상태가 `Success`일 때만 Actions 작업을 성공 처리합니다.
   - 남은 작업: 워크플로 실제 실행 검증, 성공 후 기존 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` Secrets 삭제, UI 디자인 커밋 배포.
   - 진단 중: AWS 역할 수임 거부 원인을 확인하기 위해 OIDC 토큰 원문을 노출하지 않고 `sub`, `aud`, `repository`, `ref` 클레임만 출력하는 일회성 진단 단계를 추가했습니다.
-  - OIDC 및 SSM 명령 전송은 성공했으나 root로 실행되는 SSM의 Git 안전 디렉터리 검사에서 중단되었습니다. 배포 명령에 `/home/ubuntu/snowthing`을 `safe.directory`로 등록하는 보완을 추가합니다.
+  - OIDC 및 SSM 명령 전송은 성공했습니다. root로 실행되는 SSM에서 Git 안전 디렉터리를 전역 설정하려 했으나 `$HOME`이 없어 실패했으므로, 전역 설정 없이 각 Git 명령에 `-c safe.directory=/home/ubuntu/snowthing`을 전달하도록 보완했습니다.
 
 - **AWS EC2 + RDS + S3 운영 배포 6단계 모노레포 선별적 배포(Selective CI/CD) 파이프라인 분리 구축 (2026-09-11)**:
   1. **작업명**: `.github/workflows/deploy.yml` 단일 워크플로를 `deploy-backend.yml`과 `deploy-frontend.yml`로 분리하여 경로 기반 선별적 배포 및 동시성 큐잉 적용
