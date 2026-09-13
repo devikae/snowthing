@@ -5,7 +5,9 @@
   - Repository variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `EC2_INSTANCE_ID`를 등록했습니다.
   - 백엔드와 프론트엔드 워크플로에서 PEM 기반 SSH 배포를 제거하고, OIDC 임시 자격증명으로 SSM Run Command를 호출하도록 변경했습니다.
   - SSM 명령은 최대 15분 동안 완료 상태를 확인하고, 원격 명령의 최종 상태가 `Success`일 때만 Actions 작업을 성공 처리합니다.
-  - 남은 작업: 워크플로 실제 실행 검증, 성공 후 기존 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` Secrets 삭제, UI 디자인 커밋 배포.
+  - 검증 완료: 백엔드 CI와 SSM 배포 성공([Actions 실행](https://github.com/devikae/snowthing/actions/runs/34757010101)), 프론트엔드 CI와 SSM 배포 성공([Actions 실행](https://github.com/devikae/snowthing/actions/runs/34757130034)).
+  - 기존 SSH 배포용 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`와 중복 등록된 `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `EC2_INSTANCE_ID` Secrets를 삭제하고 Repository variables만 유지했습니다.
+  - 남은 작업: UI 디자인 커밋을 이 브랜치에 반영하고 새 SSM 배포로 공개 화면을 검증합니다.
   - 진단 결과 GitHub OIDC의 실제 `sub`에는 저장소·소유자 식별자가 포함되어 기존 조건과 불일치했습니다. 신뢰 정책을 실제 클레임에 맞춰 수정한 뒤 역할 수임이 성공했습니다. 진단 단계는 확인 후 제거했습니다.
   - OIDC 및 SSM 명령 전송은 성공했습니다. root로 실행되는 SSM에서 Git 안전 디렉터리를 전역 설정하려 했으나 `$HOME`이 없어 실패했으므로, 전역 설정 없이 각 Git 명령에 `-c safe.directory=/home/ubuntu/snowthing`을 전달하도록 보완했습니다.
 
