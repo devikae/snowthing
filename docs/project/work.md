@@ -1278,6 +1278,11 @@
   - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
 >>>>>>> origin/feature/sprint03-comment
 
+- **커뮤니티 UI 디자인 운영 배포 (2026-09-13)**:
+  - `feature/ui-redesign`의 `02fde60` 커밋을 `deploy/aws-ec2`에 반영해 `12bfe1b`로 배포 브랜치에 포함했습니다.
+  - 프론트 CI가 성공했고, OIDC + SSM을 통해 EC2 프론트 컨테이너 재빌드·재시작 및 로컬 HTTP 200 헬스체크까지 완료했습니다.
+  - 운영 도메인 `https://snowthing.org/` 응답이 HTTP 200임을 확인했습니다. 원본 디자인 브랜치는 삭제하지 않았습니다.
+
 - **운영 CSRF/CORS 검증 및 수정 (2026-09-13)**:
   - 프론트엔드 운영 API 주소가 이전 EC2 IP의 HTTP 주소로 남아 있어 `https://snowthing.org`로 교체하고 프론트엔드를 재배포했습니다.
   - 운영 도메인에서 CSRF 발급 요청은 200이었지만 로그인 요청이 `403 Invalid CORS request`로 차단되었습니다. 원인은 백엔드 CORS 허용 origin이 `http://localhost:3000`만 포함하고 있었기 때문입니다.
