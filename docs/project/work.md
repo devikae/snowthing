@@ -8,6 +8,7 @@
   - 검증 완료: 백엔드 CI와 SSM 배포 성공([Actions 실행](https://github.com/devikae/snowthing/actions/runs/34757010101)), 프론트엔드 CI와 SSM 배포 성공([Actions 실행](https://github.com/devikae/snowthing/actions/runs/34757130034)).
   - 기존 SSH 배포용 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`와 중복 등록된 `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `EC2_INSTANCE_ID` Secrets를 삭제하고 Repository variables만 유지했습니다.
   - 남은 작업: UI 디자인 커밋을 이 브랜치에 반영하고 새 SSM 배포로 공개 화면을 검증합니다.
+  - 운영 CSRF 확인 중 API 주소를 `https://snowthing.org`로 교체했으며, 백엔드 CORS가 localhost만 허용해 `403 Invalid CORS request`를 반환하는 문제를 확인했습니다. 운영 apex/www HTTPS origin을 허용하도록 수정합니다.
   - 진단 결과 GitHub OIDC의 실제 `sub`에는 저장소·소유자 식별자가 포함되어 기존 조건과 불일치했습니다. 신뢰 정책을 실제 클레임에 맞춰 수정한 뒤 역할 수임이 성공했습니다. 진단 단계는 확인 후 제거했습니다.
   - OIDC 및 SSM 명령 전송은 성공했습니다. root로 실행되는 SSM에서 Git 안전 디렉터리를 전역 설정하려 했으나 `$HOME`이 없어 실패했으므로, 전역 설정 없이 각 Git 명령에 `-c safe.directory=/home/ubuntu/snowthing`을 전달하도록 보완했습니다.
 
