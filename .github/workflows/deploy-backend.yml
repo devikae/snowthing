@@ -62,14 +62,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2'
     steps:
-      - name: Diagnose GitHub OIDC claims
-        run: |
-          set -euo pipefail
-          TOKEN_RESPONSE=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
-          TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -r '.value')
-          PAYLOAD=$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+' | awk '{ l=length($0)%4; if (l==2) printf "%s==", $0; else if (l==3) printf "%s=", $0; else printf "%s", $0 }' | base64 -d 2>/dev/null)
-          printf '%s' "$PAYLOAD" | jq '{sub, aud, repository, ref, event_name}'
-
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
