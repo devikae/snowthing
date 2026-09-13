@@ -1277,3 +1277,9 @@
   - `CommentControllerTest`와 `spotlessCheck`는 통과했습니다.
   - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
 >>>>>>> origin/feature/sprint03-comment
+
+- **운영 CSRF/CORS 검증 및 수정 (2026-09-13)**:
+  - 프론트엔드 운영 API 주소가 이전 EC2 IP의 HTTP 주소로 남아 있어 `https://snowthing.org`로 교체하고 프론트엔드를 재배포했습니다.
+  - 운영 도메인에서 CSRF 발급 요청은 200이었지만 로그인 요청이 `403 Invalid CORS request`로 차단되었습니다. 원인은 백엔드 CORS 허용 origin이 `http://localhost:3000`만 포함하고 있었기 때문입니다.
+  - `https://snowthing.org`, `https://www.snowthing.org`를 허용 origin에 추가하고 백엔드를 OIDC+SSM으로 재배포했습니다.
+  - 재검증 결과 운영 CSRF 발급은 200, 동일 세션의 로그인 요청은 CORS 차단이 아닌 정상적인 `401 AUTH_001 INVALID_CREDENTIALS`를 반환했습니다. 즉 브라우저와 백엔드 사이의 CORS/CSRF 진입 문제는 해결되었습니다.
