@@ -1,3 +1,25 @@
+- **Phase 5 도메인 연결, Cloudflare HTTPS 종단간 암호화 및 AWS 오리진 차폐 구축 (2026-09-15)**:
+  1. **작업명**: Cloudflare 도메인(`snowthing.org`) 연결, Origin CA 기반 HTTPS(443) 암호화 구축 및 AWS 보안 그룹 Cloudflare 전용 화이트리스팅(30개 IP) 적용
+  2. **현재 상태**: 완료 (DONE)
+  3. **완료된 항목**:
+     - Cloudflare Registrar를 통한 공식 도메인(`snowthing.org`) 등록 및 Anycast DNS A/CNAME 프록시(주황색 구름) 레코드 구성.
+     - Cloudflare Origin CA 15년 유효 인증서 발급 및 EC2 호스트 배포 (`/etc/ssl/certs/snowthing.origin.pem`, `/etc/ssl/private/snowthing.origin.key`, 권한 `chmod 600`).
+     - EC2 Host Nginx 443번 SSL(HTTP/2) 가상 호스트 설정 및 80번(HTTP) 인바운드 요청의 443번 301 영구 리다이렉트(`return 301 https://$host$request_uri;`) 구성.
+     - Cloudflare SSL/TLS 암호화 모드 `Full (strict)` 전환 및 `Always Use HTTPS` 활성화.
+     - AWS EC2 인바운드 보안 그룹(Security Group) 강화: 포트 80 및 443에 대해 Cloudflare 공식 IPv4 15개 대역만 허용하도록 화이트리스팅(총 30개 규칙) 적용 및 기존 전 세계 허용(`0.0.0.0/0`) 룰 제거를 통한 오리진 직접 우회(Bypass) 공격 물리적 차폐.
+  4. **남은 항목**: 없음 (Phase 5 인프라 목표 달성)
+  5. **발견된 이슈 및 해결**:
+     - 이슈 1: 초기 DNS 프록시 적용 직후 `https://snowthing.org` 접속 시 `HTTP 521 Web Server Is Down` 에러 발생.
+       - 원인: Cloudflare 엣지가 443번 포트로 암호화 핸드셰이크를 시도했으나 오리진 EC2 Nginx에 SSL 리스너 및 인증서가 부재하여 `Connection Refused` 발생.
+       - 해결: Cloudflare Origin CA 발급 후 Nginx 443 포트 SSL 블록 구성 및 리로드(`nginx -s reload`)로 정상 해소.
+     - 이슈 2: 오리진 IP 직접 접근을 통한 Cloudflare WAF/DDoS 우회 취약점 존재.
+       - 해결: AWS 보안 그룹 인바운드 규칙에 Cloudflare IPv4 15개 대역만 등록하여 비정상적인 IP 직접 접근을 L4 레벨에서 패킷 DROP 처리.
+  6. **검증 결과**:
+     - `https://snowthing.org` 및 `https://www.snowthing.org`: `HTTP/1.1 200 OK` (Next.js SSR/정적 페이지 정상 서빙 확인).
+     - `http://snowthing.org`: `HTTP/1.1 301 Moved Permanently` (HTTPS 자동 리다이렉트 정상 동작 확인).
+     - `GET https://snowthing.org/api/v1/posts`: `HTTP/1.1 200 OK` (Nginx `/api/` 리버스 프록시 및 RDS MySQL 실제 게시글 데이터 JSON 반환 확인).
+     - 오리진 직접 IP 차단 검증: `curl --connect-timeout 5 http://13.124.57.166/` 및 `https://13.124.57.166/` 호출 시 패킷 DROP(Connection timed out) 실측 확인.
+
 - **익명 게시글 목록 작성자 표기 복원 (2026-09-13)**:
   - 익명게시판 목록에서 작성자를 `익명보더`로 강제 치환하던 프런트 로직을 제거했습니다.
   - 일반·익명 게시글 모두 백엔드가 권한과 마스킹 정책에 따라 생성한 `writerNickname`을 그대로 표시하도록 통일했습니다.
