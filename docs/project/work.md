@@ -12,7 +12,11 @@
   - 이전 `release-eaf7acc...` digest로 수동 롤백했습니다. Actions 전체 27초, digest 조회·SSM 배포 19초가 걸렸고, 외부 로그인 화면이 이전 UI로 바뀌면서 게시글 API는 200을 유지했습니다. 실행: https://github.com/devikae/snowthing/actions/runs/35079786140
   - 새 `release-bf94203...` digest 재배포는 Actions 전체 31초, digest 조회·SSM 배포 21초가 걸렸습니다. 외부 로그인 화면이 새 UI로 돌아왔고 게시글·리조트 API 모두 200을 확인했습니다. 실행: https://github.com/devikae/snowthing/actions/runs/35081931883
   - 관련 실행: 최초 프런트 https://github.com/devikae/snowthing/actions/runs/35076355024, 최초 백엔드 https://github.com/devikae/snowthing/actions/runs/35076355176, 새 프런트 https://github.com/devikae/snowthing/actions/runs/35079283676
-  - 남은 항목: 배포 브랜치를 기본 브랜치에 병합한 뒤 수동 관리 워크플로에서 stable 태그를 지정하고, RDS 백업을 별도 DB로 복원하는 검증을 수행해야 합니다.
+  - 공식 액션을 `checkout@v7`, `setup-node@v7`, `setup-java@v6`, `setup-gradle@v6`, `configure-aws-credentials@v6`으로 갱신했습니다. 갱신 후 프런트·백엔드 CI와 digest 배포가 모두 성공했고 기존 Node.js 20 사용 중단 경고가 사라졌습니다.
+  - 배포 실패 시 `/var/log/snowthing-deploy/`에 Docker 상태, 비밀 환경변수를 제외한 inspect 결과, 컨테이너 로그, Nginx error log를 같은 UTC 시각으로 저장하도록 보강했습니다.
+  - `stable-3ecdc50b305aece0f40697216ea0b62eefc02c97`을 프런트와 백엔드에 지정했습니다. 백엔드 stable digest는 `sha256:dec23cf6574e4fecddfb32946ce88a924afbc3561f31bb6069e55d0b714c9016`, 프런트 stable digest는 `sha256:3bdfa20b2d63f9fba13296f3bd3daba0662cec87f3e2e112df0396a38ae7b2aa`입니다.
+  - stable 지정 후 로그인·게시글·리조트 API가 모두 200을 반환했습니다. 실행: 백엔드 https://github.com/devikae/snowthing/actions/runs/35087127962, 프런트 https://github.com/devikae/snowthing/actions/runs/35087130593
+  - 남은 항목: 비용 승인을 받은 뒤 RDS 백업을 별도 DB로 복원하고 읽기 전용 검증 앱에서 조회하는 절차가 남았습니다.
 
 - **GitHub Actions 배포 인증을 OIDC + SSM으로 전환 (2026-09-13)**:
   - 상태: 진행 중
