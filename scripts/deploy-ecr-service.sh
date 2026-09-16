@@ -46,6 +46,29 @@ check_health() {
   return 1
 }
 
+collect_diagnostics() {
+  local timestamp diagnostic_file
+  timestamp="$(date -u +'%Y%m%dT%H%M%SZ')"
+  mkdir -p /var/log/snowthing-deploy
+  diagnostic_file="/var/log/snowthing-deploy/${SERVICE}-${timestamp}.log"
+
+  {
+    echo "timestamp_utc=$timestamp"
+    echo "service=$SERVICE"
+    echo "target_image=$IMAGE_URI"
+    echo "=== docker ps -a ==="
+    docker ps -a --filter "name=^/${CONTAINER_NAME}$" --no-trunc || true
+    echo "=== docker inspect (secrets excluded) ==="
+    docker inspect --format 'image={{.Config.Image}} status={{.State.Status}} running={{.State.Running}} exit_code={{.State.ExitCode}} error={{.State.Error}} started_at={{.State.StartedAt}} finished_at={{.State.FinishedAt}} restart_count={{.RestartCount}} network_mode={{.HostConfig.NetworkMode}}' "$CONTAINER_NAME" || true
+    echo "=== container logs (last 100 lines) ==="
+    docker logs --tail 100 --timestamps "$CONTAINER_NAME" 2>&1 || true
+    echo "=== nginx error log (last 100 lines) ==="
+    tail -n 100 /var/log/nginx/error.log 2>&1 || true
+  } | tee "$diagnostic_file"
+
+  echo "진단 로그 저장 위치: $diagnostic_file" >&2
+}
+
 echo "ECR 로그인 및 digest 이미지 pull"
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$REGISTRY"
@@ -61,7 +84,7 @@ if env "$IMAGE_VARIABLE=$IMAGE_URI" docker compose \
 fi
 
 echo "$SERVICE 배포 실패" >&2
-docker logs --tail 50 "$CONTAINER_NAME" 2>&1 || true
+collect_diagnostics
 
 if [[ -z "$PREVIOUS_IMAGE" ]]; then
   echo "복구할 이전 이미지가 없습니다." >&2

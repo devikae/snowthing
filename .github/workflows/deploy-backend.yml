@@ -5,6 +5,11 @@ on:
     branches: [ "main", "deploy/aws-ec2" ]
     paths: [ 'backend/**', 'database/**', 'compose.prod.yml', 'scripts/deploy-ecr-service.sh', '.github/workflows/deploy-backend.yml' ]
   workflow_dispatch:
+    inputs:
+      stable_tag:
+        description: 'release-<40자리 SHA>를 stable 태그로 이동'
+        required: false
+        type: string
 
 concurrency:
   group: ec2-production-deployment
@@ -18,6 +23,7 @@ jobs:
   ci-backend:
     name: Backend CI (Spotless & Test)
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || inputs.stable_tag == ''
     services:
       mysql:
         image: mysql:8.0
@@ -38,14 +44,14 @@ jobs:
       run:
         working-directory: ./backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
       - run: ./gradlew spotlessCheck
       - run: ./gradlew test build -x spotlessCheck
@@ -55,11 +61,11 @@ jobs:
     needs: [ci-backend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2') && (github.event_name == 'push' || inputs.stable_tag == '')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Configure AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -134,3 +140,30 @@ jobs:
           MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'images[0].imageManifest' --output text)
           aws ecr put-image --repository-name "$REPOSITORY" --image-tag "$RELEASE_TAG" --image-manifest "$MANIFEST" >/dev/null
           aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" >/dev/null
+
+  mark-stable-backend:
+    name: Mark Backend Release as Stable
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.stable_tag != ''
+    steps:
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Move all release tags on the digest to one stable tag
+        env:
+          REPOSITORY: ${{ vars.ECR_BACKEND_REPOSITORY }}
+          SOURCE_TAG: ${{ inputs.stable_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_TAG" =~ ^release-[0-9a-f]{40}$ ]]
+          DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+          MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'images[0].imageManifest' --output text)
+          STABLE_TAG="stable-${SOURCE_TAG#release-}"
+          aws ecr put-image --repository-name "$REPOSITORY" --image-tag "$STABLE_TAG" --image-manifest "$MANIFEST" >/dev/null
+          mapfile -t RELEASE_TAGS < <(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'imageDetails[0].imageTags[?starts_with(@, `release-`)]' --output text | tr '\t' '\n')
+          for tag in "${RELEASE_TAGS[@]}"; do
+            [[ -n "$tag" ]] && aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$tag" >/dev/null
+          done
+          echo "$STABLE_TAG -> $DIGEST"

@@ -46,10 +46,10 @@ jobs:
             exit 2
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Configure AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -107,7 +107,11 @@ jobs:
         run: |
           set -euo pipefail
           STABLE_TAG="stable-${SOURCE_TAG#release-}"
-          MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'images[0].imageManifest' --output text)
+          DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+          MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'images[0].imageManifest' --output text)
           aws ecr put-image --repository-name "$REPOSITORY" --image-tag "$STABLE_TAG" --image-manifest "$MANIFEST" >/dev/null
-          aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" >/dev/null
-          echo "$SOURCE_TAG 태그를 $STABLE_TAG 태그로 이동했습니다."
+          mapfile -t RELEASE_TAGS < <(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'imageDetails[0].imageTags[?starts_with(@, `release-`)]' --output text | tr '\t' '\n')
+          for tag in "${RELEASE_TAGS[@]}"; do
+            [[ -n "$tag" ]] && aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$tag" >/dev/null
+          done
+          echo "$STABLE_TAG -> $DIGEST"
