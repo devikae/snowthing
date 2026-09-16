@@ -1,3 +1,14 @@
+- **ECR digest 기반 배포·복구 전환 (2026-09-16)**:
+  - 상태: 구현 및 로컬 정적 검증 완료, GitHub Actions 실제 배포 검증 전
+  - ECR 비공개 저장소 `snowthing/backend`, `snowthing/frontend`와 수명 주기 정책을 준비했습니다.
+  - GitHub OIDC 역할은 두 저장소에 한정된 push·조회·태그 삭제 권한을, EC2 역할은 두 저장소에 한정된 pull 권한을 사용합니다.
+  - GitHub Actions가 `candidate-<commit SHA>` 이미지를 빌드·push하고 ECR digest를 조회한 뒤, EC2가 `저장소@sha256:...` 주소로 pull·실행하도록 변경했습니다.
+  - EC2의 소스 빌드를 제거하고 Compose가 외부 이미지 주소를 받도록 변경했습니다. 배포 실패 시 직전에 실행 중이던 이미지로 자동 복구합니다.
+  - 헬스체크 성공 후 `release-<commit SHA>` 태그로 승격하고 candidate 태그를 제거하여 수명 주기 규칙이 release 이미지를 함께 삭제하지 않도록 했습니다.
+  - 수동 Actions에서 release/stable 태그의 digest로 복구하거나 release 태그를 `stable-<commit SHA>`로 이동할 수 있는 관리 워크플로를 추가했습니다.
+  - 로컬 확인: GitHub Actions YAML 파싱 성공, `docker compose config --quiet` 성공, 서비스 목록이 backend·frontend만 존재함을 확인했습니다.
+  - 남은 작업: 변경 커밋·푸시, 최초 백엔드/프론트엔드 ECR 배포, 외부 HTTPS 기능 확인, 이전 release digest 수동 복구와 재배포 검증, stable 이미지 지정.
+
 - **GitHub Actions 배포 인증을 OIDC + SSM으로 전환 (2026-09-13)**:
   - 상태: 진행 중
   - EC2 인스턴스 역할에 `AmazonSSMManagedInstanceCore`를 연결하고 SSM Agent의 제어 채널 연결을 확인했습니다.

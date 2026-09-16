@@ -1,8 +1,6 @@
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE_URI:-snowthing-backend:latest}
     container_name: snowthing-backend
     restart: unless-stopped
     ports:
@@ -15,11 +13,7 @@ services:
       - TZ=Asia/Seoul
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+    image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:latest}
     container_name: snowthing-frontend
     restart: unless-stopped
     ports:
