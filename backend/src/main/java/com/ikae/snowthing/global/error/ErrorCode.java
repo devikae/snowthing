@@ -32,6 +32,11 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     COMMENT_UPDATE_CONFLICT(
             HttpStatus.CONFLICT, "COMMENT_006", "다른 요청에서 댓글을 먼저 수정했습니다. 최신 댓글을 다시 확인해 주세요."),
+    INVALID_FILE_TYPE(
+            HttpStatus.BAD_REQUEST, "FILE_001", "지원하지 않는 파일 형식입니다. JPG, PNG, WEBP 이미지만 업로드 가능합니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_002", "파일 크기는 최대 5MB까지 업로드 가능합니다."),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_003", "존재하지 않는 파일입니다."),
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_004", "파일 업로드에 실패했습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

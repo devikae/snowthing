@@ -20,6 +20,12 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
+        return ResponseEntity.status(e.getErrorCode().getStatus())
+                .body(ErrorResponse.from(e.getErrorCode()));
+    }
+
     @ExceptionHandler(CustomAuthException.class)
     public ResponseEntity<ErrorResponse> handleCustomAuthException(CustomAuthException e) {
         ErrorCode errorCode =
