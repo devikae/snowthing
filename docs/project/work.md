@@ -1,13 +1,18 @@
 - **ECR digest 기반 배포·복구 전환 (2026-09-16)**:
-  - 상태: 구현 및 로컬 정적 검증 완료, GitHub Actions 실제 배포 검증 전
+  - 상태: 프런트·백엔드 실제 배포와 프런트 이전 버전 롤백·재배포 검증 완료
   - ECR 비공개 저장소 `snowthing/backend`, `snowthing/frontend`와 수명 주기 정책을 준비했습니다.
   - GitHub OIDC 역할은 두 저장소에 한정된 push·조회·태그 삭제 권한을, EC2 역할은 두 저장소에 한정된 pull 권한을 사용합니다.
   - GitHub Actions가 `candidate-<commit SHA>` 이미지를 빌드·push하고 ECR digest를 조회한 뒤, EC2가 `저장소@sha256:...` 주소로 pull·실행하도록 변경했습니다.
   - EC2의 소스 빌드를 제거하고 Compose가 외부 이미지 주소를 받도록 변경했습니다. 배포 실패 시 직전에 실행 중이던 이미지로 자동 복구합니다.
   - 헬스체크 성공 후 `release-<commit SHA>` 태그로 승격하고 candidate 태그를 제거하여 수명 주기 규칙이 release 이미지를 함께 삭제하지 않도록 했습니다.
-  - 수동 Actions에서 release/stable 태그의 digest로 복구하거나 release 태그를 `stable-<commit SHA>`로 이동할 수 있는 관리 워크플로를 추가했습니다.
-  - 로컬 확인: GitHub Actions YAML 파싱 성공, `docker compose config --quiet` 성공, 서비스 목록이 backend·frontend만 존재함을 확인했습니다.
-  - 남은 작업: 변경 커밋·푸시, 최초 백엔드/프론트엔드 ECR 배포, 외부 HTTPS 기능 확인, 이전 release digest 수동 복구와 재배포 검증, stable 이미지 지정.
+  - 최초 실제 배포 커밋은 `eaf7acc669f1c9ae0f82dee2ca07a65bfdfb4fbb`입니다. 프런트 digest는 `sha256:acba5de24d57eee6fa56da4845db6d59fc1b0a43e7b8d9867dd4fd1586b6798d`, 백엔드 digest는 `sha256:f47b877a6aac0e3eb7b973bba78999a765e3415c7f7fda6c15a82834fca26d9c`입니다.
+  - 최초 프런트는 CI 29초, 빌드·push·배포 1분 59초가 걸렸습니다. 백엔드는 CI 2분 55초, 빌드·push·배포 2분 6초가 걸렸습니다.
+  - 배포 도중 외부 API에서 `502 Bad Gateway`를 확인했습니다. 당시 `/posts`는 200이었지만 `/api/v1/posts`와 `/api/v1/master/resorts`는 502였으므로 DB 응답 오류가 아니라 Nginx가 백엔드 8080에 연결하지 못한 상태로 판단했습니다. 백엔드 배포 후 두 API 모두 200으로 회복했습니다.
+  - 새 로그인 UI 커밋 `bf94203015a6edf6d0b0a977af5e4afb2c9c5710`의 프런트 digest는 `sha256:91f7b9d8027704d895ff697e37fea8329514cf684d619242f77e229a59946ffb`이며, CI 29초와 빌드·push·배포 1분 52초가 걸렸습니다.
+  - 이전 `release-eaf7acc...` digest로 수동 롤백했습니다. Actions 전체 27초, digest 조회·SSM 배포 19초가 걸렸고, 외부 로그인 화면이 이전 UI로 바뀌면서 게시글 API는 200을 유지했습니다. 실행: https://github.com/devikae/snowthing/actions/runs/35079786140
+  - 새 `release-bf94203...` digest 재배포는 Actions 전체 31초, digest 조회·SSM 배포 21초가 걸렸습니다. 외부 로그인 화면이 새 UI로 돌아왔고 게시글·리조트 API 모두 200을 확인했습니다. 실행: https://github.com/devikae/snowthing/actions/runs/35081931883
+  - 관련 실행: 최초 프런트 https://github.com/devikae/snowthing/actions/runs/35076355024, 최초 백엔드 https://github.com/devikae/snowthing/actions/runs/35076355176, 새 프런트 https://github.com/devikae/snowthing/actions/runs/35079283676
+  - 남은 항목: 배포 브랜치를 기본 브랜치에 병합한 뒤 수동 관리 워크플로에서 stable 태그를 지정하고, RDS 백업을 별도 DB로 복원하는 검증을 수행해야 합니다.
 
 - **GitHub Actions 배포 인증을 OIDC + SSM으로 전환 (2026-09-13)**:
   - 상태: 진행 중
