@@ -244,11 +244,7 @@ class ReactionConcurrencyIntegrationTest {
     @DisplayName("동일 익명 사용자의 DELETE 100건은 최종 상태를 미추천으로 유지한다")
     void sameAnonymousVoter_concurrentDelete_isIdempotent() throws Exception {
         reactionService.apply(
-                post.getPublicId(),
-                ReactionType.LIKE,
-                null,
-                DEFAULT_CLIENT_IP,
-                ANONYMOUS_VOTER_ID);
+                post.getPublicId(), ReactionType.LIKE, null, DEFAULT_CLIENT_IP, ANONYMOUS_VOTER_ID);
 
         ConcurrentResult result =
                 executeConcurrentCommands(
@@ -390,8 +386,7 @@ class ReactionConcurrencyIntegrationTest {
     void reconciliation_detectsAndRepairsMismatch() {
         reactionService.apply(
                 post.getPublicId(), ReactionType.LIKE, users.getFirst(), DEFAULT_CLIENT_IP, null);
-        jdbcTemplate.update(
-                UPDATE_LIKE_COUNT_SQL, FORCED_INCONSISTENT_COUNT, post.getId());
+        jdbcTemplate.update(UPDATE_LIKE_COUNT_SQL, FORCED_INCONSISTENT_COUNT, post.getId());
 
         List<ReactionCountMismatch> mismatches =
                 reactionService.findCountMismatches(ReactionType.LIKE);
