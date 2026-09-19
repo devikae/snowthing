@@ -1385,3 +1385,5 @@
   - 설정, 전역 예외 처리, 기존 이미지 서비스 제한을 검증하는 테스트 7개가 모두 통과했습니다.
   - 첫 운영 확인에서 1,434,020바이트 multipart 요청이 Nginx 기본 제한에 걸려 `413 Payload Too Large`를 반환하는 것을 확인했습니다.
   - 배포 스크립트가 `client_max_body_size 6m` 설정을 관리하고, `nginx -t` 성공 후에만 reload하도록 보완했습니다. 설정 검증 실패 시 기존 파일을 복원합니다.
+  - 백엔드 Actions [35427435330](https://github.com/devikae/snowthing/actions/runs/35427435330)에서 CI와 ECR·SSM 배포가 성공했습니다. 같은 1,434,020바이트 요청은 배포 후 Nginx 413이 아니라 Spring Security의 403 JSON 응답을 반환해 Nginx를 통과한 것을 확인했습니다.
+  - 배포 후 게시글과 리조트 API가 모두 `200 OK`를 유지했습니다.
