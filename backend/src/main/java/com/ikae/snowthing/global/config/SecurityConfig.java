@@ -155,7 +155,8 @@ public class SecurityConfig {
                                                 "/api/v1/comments",
                                                 "/api/v1/comments/**",
                                                 "/ws-chat",
-                                                "/ws-chat/**")
+                                                "/ws-chat/**",
+                                                "/api/v1/chat/**")
                                         .permitAll()
                                         .requestMatchers("/api/admin/**", "/api/v1/admin/**")
                                         .hasRole("ADMIN")

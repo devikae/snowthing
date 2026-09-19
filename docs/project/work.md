@@ -1,3 +1,24 @@
+- **라이브톡 인메모리 링 버퍼 최근 30개 대화 복원 및 비로그인 유도 UX / 가시성 개선 완료 (2026-09-20)**:
+  - **작업 브랜치**: `feature/live-chat`
+  - **현재 상태**: 구현 및 검증 완료 (백엔드 단위/통합 테스트 100% 통과, 프론트엔드 Turbopack 빌드 성공)
+  - **완료된 항목**:
+    1. **백엔드 인메모리 링 버퍼 (최근 30개 유지)**:
+       - `ChatRecentHistoryBuffer.java`: `ConcurrentLinkedDeque` 기반 최대 30개 순환 버퍼 구축 (FIFO eviction, 방어적 복사 `List.copyOf` 불변 보장).
+       - `ChatService.java`: 메시지 브로드캐스트 시 버퍼 적재 및 `getRecentMessages()` 연동.
+       - `ChatRecentController.java`: `GET /api/v1/chat/recent` 비로그인/신규 유저 최근 대화 30개 조회 엔드포인트 신설.
+       - `SecurityConfig.java`: `/api/v1/chat/**` 엔드포인트 `permitAll()` 추가.
+       - 단위/통합 테스트 신설: `ChatRecentHistoryBufferTest` (상한 30개, FIFO 방출, 불변성, 멀티스레드 동시성 검증), `ChatRecentControllerTest` (GET 200 OK 검증).
+    2. **프론트엔드 비로그인 가입 유도 및 가시성 개선**:
+       - `LiveChatSection.tsx`:
+         * 최초 마운트 시 `GET /api/v1/chat/recent` 호출하여 최근 30개 대화 복원 및 하단 자동 스크롤.
+         * 좌측 원형 아바타 `(휘팍)` 완전 삭제 ➔ 닉네임 우측의 `[휘닉스]` 직사각형 뱃지만 단독 유지 (일반 잡담은 뱃지 없이 닉네임만 표기).
+         * 비로그인 유저 리조트 드롭다운: `"일반"` 고정 표기 및 비활성화 잠금.
+         * 비로그인 유저 채팅 입력창: 비활성화 해제, `"로그인하고 라이브톡에 참여해보세요"` 안내문 노출, 입력창 클릭/포커스 또는 전송 버튼 클릭 시 `router.push('/login')`으로 즉시 로그인/가입 페이지 이동 유도.
+         * 드롭다운 기본 옵션: `"선택 안 함 (잡담)"` ➔ `"일반"`으로 라벨 단순화.
+    3. **자동화 검증 완료**:
+       - 백엔드 테스트 전체 통과 (BUILD SUCCESSFUL).
+       - 프론트엔드 Turbopack 컴파일 통과 (0 errors).
+
 - **실시간 라이브톡 백엔드/프론트엔드 V1 구현 및 단위/통합 테스트 완료 (2026-09-20)**:
   - **작업 브랜치**: `feature/live-chat`
   - **현재 상태**: 구현 완료 (백엔드 단위/통합 테스트 100% 통과, 프론트엔드 Turbopack 빌드 성공)

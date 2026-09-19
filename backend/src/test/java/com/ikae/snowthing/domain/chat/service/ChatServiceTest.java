@@ -33,9 +33,12 @@ class ChatServiceTest {
     private CustomUserDetails testUserDetails;
     private Member testMember;
 
+    private ChatRecentHistoryBuffer chatRecentHistoryBuffer;
+
     @BeforeEach
     void setUp() {
-        chatService = new ChatService(chatAuditLogger);
+        chatRecentHistoryBuffer = new ChatRecentHistoryBuffer();
+        chatService = new ChatService(chatAuditLogger, chatRecentHistoryBuffer);
         testMember =
                 Member.builder()
                         .publicId("0191a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4")
@@ -90,6 +93,22 @@ class ChatServiceTest {
             assertThat(response.resortTag()).isNull();
             assertThat(response.content()).isEqualTo("오늘 다들 어디로 출격하시나요? 날씨가 많이 춥네요.");
             verify(chatAuditLogger).log(100L, "127.0.0.1", "MAIN_CHAT");
+        }
+
+        @Test
+        @DisplayName("발송된 메시지는 최근 대화 버퍼에 자동으로 보관된다")
+        void sentMessageStoredInRecentBuffer() {
+            // given
+            ChatMessageRequest request = new ChatMessageRequest("HIGH1", "아테나 슬로프 컨디션 좋습니다");
+
+            // when
+            ChatMessageResponse response =
+                    chatService.processMessage(request, testUserDetails, "127.0.0.1");
+
+            // then
+            assertThat(chatService.getRecentMessages()).hasSize(1);
+            assertThat(chatService.getRecentMessages().get(0).messageId())
+                    .isEqualTo(response.messageId());
         }
 
         @Test

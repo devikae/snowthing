@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.chat.service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +37,7 @@ public class ChatService {
                     "(?i).*(https?://|www\\.|\\b[a-zA-Z0-9.-]+\\.(com|net|org|kr|io|xyz|top|me|cc|tv)\\b|t\\.me/|telegram|open\\.kakao\\.com|@[a-zA-Z0-9_]{3,}).*");
 
     private final ChatAuditLogger chatAuditLogger;
+    private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
 
     // In-memory duplicate message cache per member_id: (memberId -> LastMessageInfo)
     private final Map<Long, LastMessageInfo> recentMessageCache = new ConcurrentHashMap<>();
@@ -93,11 +95,19 @@ public class ChatService {
         String sentAt = LocalDateTime.now().format(ISO_FORMATTER);
         SenderDto sender = new SenderDto(member.getPublicId(), member.getNickname());
 
-        return new ChatMessageResponse(messageId, sender, resolvedTag, sanitizedContent, sentAt);
+        ChatMessageResponse response =
+                new ChatMessageResponse(messageId, sender, resolvedTag, sanitizedContent, sentAt);
+        chatRecentHistoryBuffer.append(response);
+        return response;
+    }
+
+    public List<ChatMessageResponse> getRecentMessages() {
+        return chatRecentHistoryBuffer.getRecentMessages();
     }
 
     /** Cache eviction for tests or periodic maintenance */
     public void clearCache() {
         recentMessageCache.clear();
+        chatRecentHistoryBuffer.clear();
     }
 }
