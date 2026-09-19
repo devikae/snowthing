@@ -208,7 +208,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - name: Move all release tags on the digest to one stable tag
+      - name: Move selected release tag to stable
         env:
           REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
           SOURCE_TAG: ${{ inputs.stable_tag }}
@@ -219,8 +219,5 @@ jobs:
           MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'images[0].imageManifest' --output text)
           STABLE_TAG="stable-${SOURCE_TAG#release-}"
           aws ecr put-image --repository-name "$REPOSITORY" --image-tag "$STABLE_TAG" --image-manifest "$MANIFEST" >/dev/null
-          mapfile -t RELEASE_TAGS < <(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'imageDetails[0].imageTags[?starts_with(@, `release-`)]' --output text | tr '\t' '\n')
-          for tag in "${RELEASE_TAGS[@]}"; do
-            [[ -n "$tag" ]] && aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$tag" >/dev/null
-          done
+          aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" >/dev/null
           echo "$STABLE_TAG -> $DIGEST"

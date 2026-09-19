@@ -76,10 +76,15 @@ check_health() {
   return 1
 }
 
+prepare_diagnostic_directory() {
+  install -d -m 0700 /var/log/snowthing-deploy
+  find /var/log/snowthing-deploy -type f -name '*.log' -mtime +14 -delete
+}
+
 collect_diagnostics() {
   local timestamp diagnostic_file
   timestamp="$(date -u +'%Y%m%dT%H%M%SZ')"
-  mkdir -p /var/log/snowthing-deploy
+  prepare_diagnostic_directory
   diagnostic_file="/var/log/snowthing-deploy/${SERVICE}-${timestamp}.log"
 
   {
@@ -94,12 +99,16 @@ collect_diagnostics() {
     docker logs --tail 100 --timestamps "$CONTAINER_NAME" 2>&1 || true
     echo "=== nginx error log (last 100 lines) ==="
     tail -n 100 /var/log/nginx/error.log 2>&1 || true
-  } | tee "$diagnostic_file"
+  } > "$diagnostic_file" 2>&1
+  chmod 0600 "$diagnostic_file"
 
-  echo "진단 로그 저장 위치: $diagnostic_file" >&2
+  echo "Deployment diagnostics saved on EC2: $diagnostic_file" >&2
+  echo "service=$SERVICE container=$CONTAINER_NAME target_image=$IMAGE_URI" >&2
+  docker inspect --format 'status={{.State.Status}} running={{.State.Running}} exit_code={{.State.ExitCode}} restart_count={{.RestartCount}}' "$CONTAINER_NAME" 2>/dev/null >&2 || true
 }
 
 echo "ECR 로그인 및 digest 이미지 pull"
+prepare_diagnostic_directory
 if [[ "$SERVICE" == "backend" ]]; then
   configure_nginx_upload_limit
 fi

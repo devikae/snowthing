@@ -1387,3 +1387,8 @@
   - 배포 스크립트가 `client_max_body_size 6m` 설정을 관리하고, `nginx -t` 성공 후에만 reload하도록 보완했습니다. 설정 검증 실패 시 기존 파일을 복원합니다.
   - 백엔드 Actions [35427435330](https://github.com/devikae/snowthing/actions/runs/35427435330)에서 CI와 ECR·SSM 배포가 성공했습니다. 같은 1,434,020바이트 요청은 배포 후 Nginx 413이 아니라 Spring Security의 403 JSON 응답을 반환해 Nginx를 통과한 것을 확인했습니다.
   - 배포 후 게시글과 리조트 API가 모두 `200 OK`를 유지했습니다.
+- **PR 잔여 인프라 리뷰 보완 (2026-09-19)**:
+  - 과거 S3 다운로드의 `ResponseInputStream` 미종료 문제는 백엔드 이미지 다운로드 API와 `ImageDownloadResponse`를 제거하고 CloudFront 직접 조회로 전환하면서 해당 실행 경로 자체가 사라진 것을 확인했습니다.
+  - stable 승격 시 같은 digest의 모든 `release-*` 태그를 삭제하던 세 workflow를 수정해 사용자가 선택한 `SOURCE_TAG` 하나만 제거하도록 변경했습니다.
+  - 장애 진단 원문이 `tee`를 통해 SSM·Actions 로그에 노출되지 않도록 EC2 파일로만 저장합니다. 디렉터리 `0700`, 파일 `0600`, 보관 기간 14일을 적용하고 stdout에는 비민감 상태 요약만 출력합니다.
+  - 운영 DB는 앱 계정에 DDL 권한이 없는 구조이므로 앱 시작 Flyway를 즉시 추가하지 않았습니다. 다음 스키마 변경 전에 별도 migration 계정·승인 환경·배포 선행 job·실패 차단과 expand/contract 절차를 구성하는 것을 필수 선행 조건으로 기록했습니다.
