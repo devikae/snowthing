@@ -265,8 +265,8 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("PUT/DELETE /api/v1/posts/{publicId}/reaction - 반복 요청에도 최종 상태가 유지된다")
-    void reactionCommands_areIdempotent() throws Exception {
+    @DisplayName("응답 유실을 가정해 PUT/DELETE를 재전송해도 최종 추천 상태가 유지된다")
+    void reactionCommands_networkRetryIsIdempotent() throws Exception {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()

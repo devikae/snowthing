@@ -15,10 +15,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.JpaSystemException;
@@ -40,6 +42,9 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.domain.post.service.ReactionService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Tag("benchmark")
 @SpringBootTest
 @ActiveProfiles({"test", "concurrency"})
@@ -47,8 +52,10 @@ class ReactionConcurrencyIntegrationTest {
 
     private static final int CONCURRENT_REQUESTS = 100;
     private static final int MIXED_COMMAND_COUNT = 50;
+    private static final int REPEAT_COUNT = 3;
     private static final int EXPECTED_SINGLE_REACTION = 1;
     private static final int EXPECTED_NO_REACTION = 0;
+    private static final int INVALID_NEGATIVE_COUNT = -1;
     private static final int FORCED_INCONSISTENT_COUNT = 7;
     private static final long AWAIT_TIMEOUT_SECONDS = 60L;
     private static final String CATEGORY_CODE = "REACTION_CONCURRENCY";
@@ -56,6 +63,7 @@ class ReactionConcurrencyIntegrationTest {
     private static final String POST_TITLE = "추천 동시성 테스트 게시글";
     private static final String POST_CONTENT = "추천 동시성 테스트 본문";
     private static final String DEFAULT_CLIENT_IP = "127.0.0.1";
+    private static final String ANONYMOUS_VOTER_ID = "reaction-test-anonymous-voter";
     private static final String MEMBER_EMAIL_FORMAT = "reaction-user-%03d@example.com";
     private static final String MEMBER_NICKNAME_FORMAT = "추천테스트%03d";
     private static final String MEMBER_PUBLIC_ID_FORMAT = "reaction-test-member-%03d";
@@ -63,6 +71,10 @@ class ReactionConcurrencyIntegrationTest {
     private static final String INSERT_FAILURE_TRIGGER = "trg_reaction_insert_failure";
     private static final String COUNTER_FAILURE_TRIGGER = "trg_reaction_counter_failure";
     private static final String TRIGGER_FAILURE_MESSAGE = "forced reaction test failure";
+    private static final String START_BARRIER_TIMEOUT_MESSAGE = "동시성 테스트 시작 장벽 대기 시간이 초과됐습니다.";
+    private static final String START_BARRIER_INTERRUPTED_MESSAGE = "동시성 테스트 시작 장벽 대기가 중단됐습니다.";
+    private static final String UPDATE_LIKE_COUNT_SQL =
+            "UPDATE post SET like_count = ? WHERE post_id = ?";
 
     @Autowired private ReactionService reactionService;
     @Autowired private PostRepository postRepository;
@@ -105,7 +117,7 @@ class ReactionConcurrencyIntegrationTest {
         dropFailureTriggers();
     }
 
-    @Test
+    @RepeatedTest(REPEAT_COUNT)
     @DisplayName("서로 다른 100명이 동시에 추천해도 row 수와 likeCount는 100으로 일치한다")
     void differentMembers_concurrentPut_preservesInvariant() throws Exception {
         ConcurrentResult result =
@@ -120,11 +132,12 @@ class ReactionConcurrencyIntegrationTest {
                                         null));
 
         assertThat(result.errors()).isZero();
+        assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
         assertThat(result.changed()).isEqualTo(CONCURRENT_REQUESTS);
         assertInvariant(CONCURRENT_REQUESTS);
     }
 
-    @Test
+    @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 사용자의 PUT 100건은 추천 row와 likeCount를 1로 유지한다")
     void sameMember_concurrentPut_isIdempotent() throws Exception {
         CustomUserDetails sameUser = users.getFirst();
@@ -143,11 +156,12 @@ class ReactionConcurrencyIntegrationTest {
                                         null));
 
         assertThat(result.errors()).isZero();
+        assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
         assertThat(result.changed()).isEqualTo(EXPECTED_SINGLE_REACTION);
         assertInvariant(EXPECTED_SINGLE_REACTION);
     }
 
-    @Test
+    @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 사용자의 DELETE 100건은 최종 상태를 미추천으로 유지한다")
     void sameMember_concurrentDelete_isIdempotent() throws Exception {
         CustomUserDetails sameUser = users.getFirst();
@@ -168,11 +182,12 @@ class ReactionConcurrencyIntegrationTest {
                                         null));
 
         assertThat(result.errors()).isZero();
+        assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
         assertThat(result.changed()).isEqualTo(EXPECTED_SINGLE_REACTION);
         assertInvariant(EXPECTED_NO_REACTION);
     }
 
-    @Test
+    @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 사용자의 추천과 취소가 동시에 발생해도 row 수와 likeCount는 일치한다")
     void sameMember_mixedPutAndDelete_preservesInvariant() throws Exception {
         CustomUserDetails sameUser = users.getFirst();
@@ -199,6 +214,86 @@ class ReactionConcurrencyIntegrationTest {
         ConcurrentResult result = executeConcurrentCommands(commands);
 
         assertThat(result.errors()).isZero();
+        assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
+        int rowCount = activeReactionRowCount();
+        assertThat(rowCount).isBetween(EXPECTED_NO_REACTION, EXPECTED_SINGLE_REACTION);
+        assertInvariant(rowCount);
+    }
+
+    @RepeatedTest(REPEAT_COUNT)
+    @DisplayName("동일 익명 사용자의 PUT 100건은 추천 row와 likeCount를 1로 유지한다")
+    void sameAnonymousVoter_concurrentPut_isIdempotent() throws Exception {
+        ConcurrentResult result =
+                executeConcurrentCommands(
+                        repeatedAnonymousCommands(
+                                () ->
+                                        reactionService.apply(
+                                                post.getPublicId(),
+                                                ReactionType.LIKE,
+                                                null,
+                                                DEFAULT_CLIENT_IP,
+                                                ANONYMOUS_VOTER_ID)));
+
+        assertThat(result.errors()).isZero();
+        assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
+        assertThat(result.changed()).isEqualTo(EXPECTED_SINGLE_REACTION);
+        assertInvariant(EXPECTED_SINGLE_REACTION);
+    }
+
+    @RepeatedTest(REPEAT_COUNT)
+    @DisplayName("동일 익명 사용자의 DELETE 100건은 최종 상태를 미추천으로 유지한다")
+    void sameAnonymousVoter_concurrentDelete_isIdempotent() throws Exception {
+        reactionService.apply(
+                post.getPublicId(),
+                ReactionType.LIKE,
+                null,
+                DEFAULT_CLIENT_IP,
+                ANONYMOUS_VOTER_ID);
+
+        ConcurrentResult result =
+                executeConcurrentCommands(
+                        repeatedAnonymousCommands(
+                                () ->
+                                        reactionService.remove(
+                                                post.getPublicId(),
+                                                ReactionType.LIKE,
+                                                null,
+                                                DEFAULT_CLIENT_IP,
+                                                ANONYMOUS_VOTER_ID)));
+
+        assertThat(result.errors()).isZero();
+        assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
+        assertThat(result.changed()).isEqualTo(EXPECTED_SINGLE_REACTION);
+        assertInvariant(EXPECTED_NO_REACTION);
+    }
+
+    @RepeatedTest(REPEAT_COUNT)
+    @DisplayName("동일 익명 사용자의 추천과 취소가 동시에 발생해도 row 수와 likeCount는 일치한다")
+    void sameAnonymousVoter_mixedPutAndDelete_preservesInvariant() throws Exception {
+        List<ReactionCommand> commands = new ArrayList<>();
+        for (int index = 0; index < MIXED_COMMAND_COUNT; index++) {
+            commands.add(
+                    () ->
+                            reactionService.apply(
+                                    post.getPublicId(),
+                                    ReactionType.LIKE,
+                                    null,
+                                    DEFAULT_CLIENT_IP,
+                                    ANONYMOUS_VOTER_ID));
+            commands.add(
+                    () ->
+                            reactionService.remove(
+                                    post.getPublicId(),
+                                    ReactionType.LIKE,
+                                    null,
+                                    DEFAULT_CLIENT_IP,
+                                    ANONYMOUS_VOTER_ID));
+        }
+
+        ConcurrentResult result = executeConcurrentCommands(commands);
+
+        assertThat(result.errors()).isZero();
+        assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
         int rowCount = activeReactionRowCount();
         assertThat(rowCount).isBetween(EXPECTED_NO_REACTION, EXPECTED_SINGLE_REACTION);
         assertInvariant(rowCount);
@@ -266,14 +361,37 @@ class ReactionConcurrencyIntegrationTest {
     }
 
     @Test
+    @DisplayName("DB UNIQUE 제약조건은 같은 익명 식별자의 중복 추천 row를 차단한다")
+    void uniqueConstraint_blocksDuplicateAnonymousRows() {
+        PostReaction first = anonymousReaction();
+        PostReaction duplicate = anonymousReaction();
+        reactionRepository.saveAndFlush(first);
+
+        assertThatThrownBy(() -> reactionRepository.saveAndFlush(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("DB CHECK 제약조건은 likeCount 음수 저장을 차단한다")
+    void checkConstraint_blocksNegativeLikeCount() {
+        assertThatThrownBy(
+                        () ->
+                                jdbcTemplate.update(
+                                        UPDATE_LIKE_COUNT_SQL,
+                                        INVALID_NEGATIVE_COUNT,
+                                        post.getId()))
+                .isInstanceOf(DataAccessException.class);
+
+        assertInvariant(EXPECTED_NO_REACTION);
+    }
+
+    @Test
     @DisplayName("Reconciliation은 불일치 게시글을 탐지하고 활성 추천 row 수로 복구한다")
     void reconciliation_detectsAndRepairsMismatch() {
         reactionService.apply(
                 post.getPublicId(), ReactionType.LIKE, users.getFirst(), DEFAULT_CLIENT_IP, null);
         jdbcTemplate.update(
-                "UPDATE post SET like_count = ? WHERE post_id = ?",
-                FORCED_INCONSISTENT_COUNT,
-                post.getId());
+                UPDATE_LIKE_COUNT_SQL, FORCED_INCONSISTENT_COUNT, post.getId());
 
         List<ReactionCountMismatch> mismatches =
                 reactionService.findCountMismatches(ReactionType.LIKE);
@@ -309,6 +427,19 @@ class ReactionConcurrencyIntegrationTest {
         return createdMembers;
     }
 
+    private List<ReactionCommand> repeatedAnonymousCommands(ReactionCommand command) {
+        return java.util.Collections.nCopies(CONCURRENT_REQUESTS, command);
+    }
+
+    private PostReaction anonymousReaction() {
+        return PostReaction.builder()
+                .post(post)
+                .writerIp(DEFAULT_CLIENT_IP)
+                .anonymousVoterId(ANONYMOUS_VOTER_ID)
+                .type(ReactionType.LIKE)
+                .build();
+    }
+
     private ConcurrentResult executeConcurrent(
             List<CustomUserDetails> requestUsers, ReactionUserCommand command) throws Exception {
         List<ReactionCommand> commands =
@@ -320,6 +451,7 @@ class ReactionConcurrencyIntegrationTest {
 
     private ConcurrentResult executeConcurrentCommands(List<ReactionCommand> commands)
             throws Exception {
+        long startedAt = System.nanoTime();
         ExecutorService executor = Executors.newFixedThreadPool(commands.size());
         CountDownLatch readyBarrier = new CountDownLatch(commands.size());
         CountDownLatch startBarrier = new CountDownLatch(1);
@@ -355,7 +487,18 @@ class ReactionConcurrencyIntegrationTest {
             executor.shutdownNow();
             assertThat(executor.awaitTermination(AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
         }
-        return new ConcurrentResult(changed.get(), errors.get());
+        long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+        ConcurrentResult result =
+                new ConcurrentResult(
+                        changed.get(), commands.size() - errors.get(), errors.get(), elapsedMillis);
+        log.info(
+                "추천 동시성 검증 - requests: {}, successes: {}, errors: {}, changed: {}, elapsedMs: {}",
+                commands.size(),
+                result.successes(),
+                result.errors(),
+                result.changed(),
+                result.elapsedMillis());
+        return result;
     }
 
     private void assertInvariant(int expectedCount) {
@@ -400,11 +543,11 @@ class ReactionConcurrencyIntegrationTest {
     private void await(CountDownLatch barrier) {
         try {
             if (!barrier.await(AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("동시성 테스트 시작 장벽 대기 시간이 초과됐습니다.");
+                throw new IllegalStateException(START_BARRIER_TIMEOUT_MESSAGE);
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("동시성 테스트 시작 장벽 대기가 중단됐습니다.", exception);
+            throw new IllegalStateException(START_BARRIER_INTERRUPTED_MESSAGE, exception);
         }
     }
 
@@ -418,5 +561,5 @@ class ReactionConcurrencyIntegrationTest {
         ReactionResponse execute(CustomUserDetails user);
     }
 
-    private record ConcurrentResult(int changed, int errors) {}
+    private record ConcurrentResult(int changed, int successes, int errors, long elapsedMillis) {}
 }
