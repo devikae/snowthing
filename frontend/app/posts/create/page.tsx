@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { API_ENDPOINTS } from "../../lib/api";
@@ -26,9 +27,10 @@ function PostCreateForm() {
 
   const [categoryCode, setCategoryCode] = useState(initialCat);
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
   const [anonymousPassword, setAnonymousPassword] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageKey, setImageKey] = useState("");
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [userProfile, setUserProfile] = useState<MemberProfile | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -37,14 +39,6 @@ function PostCreateForm() {
 
   const editorRef = useRef<ToastEditorHandle>(null);
   const hasAlertedRef = useRef(false);
-
-  // URL 카테고리 동기화
-  useEffect(() => {
-    const catFromUrl = searchParams.get("category");
-    if (catFromUrl) {
-      setCategoryCode(catFromUrl);
-    }
-  }, [searchParams]);
 
   // 로그인 상태 확인 & 권한 라우트 가드 (Route Guard - 중복 알림 방지 적용)
   useEffect(() => {
@@ -103,9 +97,38 @@ function PostCreateForm() {
     setCategoryCode(newCategory);
   };
 
+  const handleImageUpload = async (file: File | undefined) => {
+    if (!file) return;
+
+    setUploadingImage(true);
+    setErrorMsg("");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.images.upload, {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        setErrorMsg(error.message || "이미지 업로드에 실패했습니다.");
+        return;
+      }
+
+      const uploaded: { imageUrl: string; imageKey: string } = await response.json();
+      setImageKey(uploaded.imageKey);
+      setImagePreviewUrl(uploaded.imageUrl);
+    } catch {
+      setErrorMsg("이미지 업로드 중 서버 통신 오류가 발생했습니다.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const editorContent = editorRef.current?.getInstance().getMarkdown() || content;
+    const editorContent = editorRef.current?.getInstance().getMarkdown() || "";
 
     if (!title.trim()) {
       setErrorMsg("제목을 입력해 주세요.");
@@ -137,7 +160,7 @@ function PostCreateForm() {
           content: editorContent.trim(),
           isAnonymous: isAnonCategory,
           anonymousPassword: isAnonCategory && !userProfile ? anonymousPassword : null,
-          imageUrls: imageUrl.trim() ? [imageUrl.trim()] : [],
+          imageUrls: imageKey ? [imageKey] : [],
         }),
       });
 
@@ -163,34 +186,31 @@ function PostCreateForm() {
     );
   }
 
-  return (
-    <main className="max-w-4xl mx-auto px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-black italic tracking-wide text-[#111827]">
-          {isAnonCategory ? "🕵️ 익명 게시판 게시글 작성" : "NEW POST"}
-        </h1>
-        <p className="text-xs text-[#6b7280] mt-1 font-mono">
-          {isAnonCategory
-            ? "작성자 닉네임이 외부 화면에 노출되지 않는 익명 글쓰기 공간"
-            : "자유게시판 및 장비 Q&A 본문 작성"}
-        </p>
-      </div>
+  const boardName = categoryCode === "ANONYMOUS" ? "익명게시판" : categoryCode === "QNA" ? "장비·테크닉" : categoryCode === "FOOD" ? "리조트 맛집" : "자유게시판";
 
-      <form onSubmit={handleSubmit} className="bg-white border border-[#e5e7eb] rounded p-6 shadow-sm space-y-5">
+  return (
+    <main className="compose-page community-container">
+      <header className="compose-heading">
+        <span className="compose-heading-icon material-symbols-outlined">edit_square</span>
+        <h1>{boardName} 글쓰기</h1>
+      </header>
+
+      <div className="compose-layout">
+        <form onSubmit={handleSubmit} className="compose-card">
         {errorMsg && (
-          <div className="bg-[#fef2f2] border border-[#fecaca] p-3 rounded text-xs text-[#dc2626] font-semibold">
-            🚨 {errorMsg}
+          <div className="compose-error" role="alert">
+            <span className="material-symbols-outlined">error</span>{errorMsg}
           </div>
         )}
 
-        {/* Category Selection */}
-        <div className="space-y-1">
-          <label className="text-xs font-mono font-bold text-[#45464c]">카테고리</label>
+        <section className="compose-section">
+          <label htmlFor="post-category" className="compose-label">주제 분류 <b>*필수선택</b></label>
           <select
+            id="post-category"
             value={categoryCode}
             disabled={isCategoryLocked}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full bg-[#f9f9f9] border border-[#e5e7eb] rounded px-3 py-2 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#111827] disabled:opacity-80 disabled:cursor-not-allowed"
+            className="compose-select"
           >
             <option value="FREE">자유게시판</option>
             <option value="ANONYMOUS">익명 게시판</option>
@@ -198,120 +218,111 @@ function PostCreateForm() {
             <option value="FOOD">리조트 맛집</option>
           </select>
           {isCategoryLocked && (
-            <p className="text-[11px] font-mono text-[#6b7280]">
-              * 진입 게시판 카테고리로 작성 위치가 고정되었습니다.
-            </p>
+            <p className="compose-help">현재 게시판으로 작성 위치가 고정되어 있습니다.</p>
           )}
-        </div>
+        </section>
 
-        {/* Title */}
-        <div className="space-y-1">
-          <label className="text-xs font-mono font-bold text-[#45464c]">게시글 제목</label>
+        <section className="compose-author-box">
+          <div className="compose-author">
+            <span className="material-symbols-outlined">{isAnonCategory ? "theater_comedy" : "person"}</span>
+            <strong>{isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자"}</strong>
+          </div>
+          {isAnonCategory && !userProfile && (
+            <label className="compose-password">
+              <span>글 수정/삭제 비밀번호</span>
+              <span className="compose-password-field">
+                <input type="password" placeholder="비밀번호 입력" value={anonymousPassword} onChange={(e) => setAnonymousPassword(e.target.value)} />
+                <span className="material-symbols-outlined">lock</span>
+              </span>
+            </label>
+          )}
+        </section>
+
+        <section className="compose-section">
+          <label htmlFor="post-title" className="compose-label">글 제목</label>
           <input
+            id="post-title"
             type="text"
-            placeholder="제목을 입력하세요..."
+            maxLength={200}
+            placeholder="글 제목을 입력해주세요."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-white border border-[#e5e7eb] rounded px-3 py-2 text-sm text-[#111827] focus:outline-none focus:border-[#111827]"
+            className="compose-title-input"
           />
-        </div>
+        </section>
 
-        {/* Content - Toast UI Editor */}
-        <div className="space-y-1">
-          <label className="text-xs font-mono font-bold text-[#45464c]">본문 내용 (스마트 에디터 / 마크다운 듀얼)</label>
-          <div className="rounded border border-[#e5e7eb] bg-white p-1">
+        <section className="compose-section">
+          <label className="compose-label">본문 내용</label>
+          <div className="compose-editor">
             <ToastEditor ref={editorRef} initialValue="" height="500px" />
           </div>
-        </div>
+        </section>
 
-        {/* Image URL Optional */}
-        <div className="space-y-1">
-          <label className="text-xs font-mono font-bold text-[#45464c]">첨부 이미지 URL (선택)</label>
+        <section className="compose-section">
+          <label htmlFor="post-image" className="compose-label"><span className="material-symbols-outlined">attach_file</span> 사진 첨부 <small>(선택, 최대 5MB)</small></label>
           <input
-            type="text"
-            placeholder="https://cdn.example.com/image.jpg"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            className="w-full bg-white border border-[#e5e7eb] rounded px-3 py-2 text-xs font-mono text-[#111827] focus:outline-none focus:border-[#111827]"
+            id="post-image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={!userProfile || uploadingImage}
+            onChange={(e) => handleImageUpload(e.target.files?.[0])}
+            className="compose-image-input"
           />
-        </div>
+          <p className="compose-help">
+            {!userProfile
+              ? "이미지 첨부는 로그인한 회원만 사용할 수 있습니다."
+              : uploadingImage
+                ? "이미지를 업로드하고 있습니다."
+                : imageKey
+                  ? "이미지 업로드가 완료되었습니다."
+                  : "JPG, PNG, WebP 이미지 1개를 첨부할 수 있습니다."}
+          </p>
+          {imagePreviewUrl && (
+            <img src={imagePreviewUrl} alt="첨부 이미지 미리보기" className="mt-3 max-h-64 rounded-xl object-contain" />
+          )}
+        </section>
 
-        {/* Anonymous Category Condition Handling */}
-        {isAnonCategory && (
-          <div className="bg-[#e6f7f0] border border-[#a7f3d0] rounded p-4 space-y-3">
-            <div className="text-xs font-bold text-[#10b981] flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">visibility_off</span>
-              <span>익명 게시판 작성 안내</span>
-            </div>
-
-            {userProfile ? (
-              <div className="text-xs text-[#065f46] space-y-1">
-                <p className="font-bold">
-                  🟢 로그인 상태입니다 ({userProfile.nickname} 님).
-                </p>
-                <p>
-                  작성자 닉네임은 외부 화면에서 완전히 숨겨져 "익명 보더"로 표시되며, 본인 계정 정보는 안전하게 DB에 보존되어 비밀번호 입력 없이 즉시 등록 및 삭제가 가능합니다.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-[#065f46]">
-                  비로그인 사용자로 익명글을 작성합니다. 글 수정 및 삭제에 필요한 비밀번호를 설정해 주세요.
-                </p>
-                <input
-                  type="password"
-                  placeholder="익명 글 수정/삭제용 비밀번호 (4자리 이상)"
-                  value={anonymousPassword}
-                  onChange={(e) => setAnonymousPassword(e.target.value)}
-                  className="w-full bg-white border border-[#a7f3d0] rounded px-3 py-2 text-xs text-[#111827] focus:outline-none focus:border-[#10b981]"
-                />
-                <p className="text-[11px] font-bold text-[#dc2626] bg-[#fef2f2] p-2 rounded border border-[#fecaca]">
-                  ⚠️ 익명 비밀번호 분실 시 게시글 수정 및 삭제가 불가능합니다.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Buttons */}
-        <div className="flex justify-end gap-3 pt-3 border-t border-[#e5e7eb]">
+        <footer className="compose-actions">
           <Link
-            href={isAnonCategory ? "/posts/anonymous" : "/posts"}
-            className="px-4 py-2 rounded border border-[#e5e7eb] text-xs font-semibold text-[#45464c] hover:border-[#111827] transition"
+            href={`/posts${categoryCode ? `?category=${categoryCode}` : ""}`}
+            className="compose-cancel"
           >
-            취소
+            <span className="material-symbols-outlined">arrow_back</span> 취소 / 뒤로가기
           </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="px-5 py-2 rounded bg-[#111827] text-white text-xs font-semibold hover:bg-[#1f2937] transition shadow-sm"
+            className="compose-submit"
           >
-            {submitting ? "등록 처리 중..." : "게시글 등록하기"}
+            <span className="material-symbols-outlined">edit_note</span>
+            {submitting ? "등록 처리 중..." : `${isAnonCategory ? "익명 " : ""}게시글 등록`}
           </button>
-        </div>
-      </form>
+        </footer>
+        </form>
+
+        <aside className="compose-sidebar" aria-label="참고 정보">
+          <section className="compose-side-card">
+            <header><span className="material-symbols-outlined">ac_unit</span><strong>오늘의 설질</strong><small>참고 정보</small></header>
+            <div className="compose-weather-grid">
+              <article><span>용평 발왕산</span><b>-6.4°C</b><small>설질: 최상 파우더</small></article>
+              <article><span>휘닉스 몽블랑</span><b>-4.8°C</b><small>설질: 압설 양호</small></article>
+            </div>
+          </section>
+          <p className="compose-side-note">설질 영역은 현재 화면 구성을 위한 예시입니다.</p>
+        </aside>
+      </div>
     </main>
   );
 }
 
 export default function PostCreatePage() {
   return (
-    <div className="min-h-screen bg-[#f9f9f9]">
-      <header className="border-b border-[#e5e7eb] bg-white px-6 py-4 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <Link href="/posts" className="text-xl font-extrabold tracking-tight italic flex items-center gap-2 text-[#111827]">
-            <span className="material-symbols-outlined text-2xl">downhill_skiing</span>
-            <span>SNOWBOARDERS</span>
-          </Link>
-          <Link href="/posts" className="text-xs font-mono font-semibold text-[#6b7280] hover:text-[#111827]">
-            ◀ 목록으로 돌아가기
-          </Link>
-        </div>
-      </header>
-
+    <div className="community-page">
+      <TopNav active="posts" />
       <Suspense fallback={<div className="p-12 text-center text-xs text-[#6b7280]">로딩 중입니다...</div>}>
         <PostCreateForm />
       </Suspense>
+      <Footer />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import com.ikae.snowthing.domain.member.entity.Member;
 
@@ -23,7 +24,11 @@ public class MemberSignUpRequest {
     private String email;
 
     @NotBlank(message = "비밀번호는 필수 입력값입니다.")
-    @jakarta.validation.constraints.Size(min = 4, message = "비밀번호는 최소 4자 이상이어야 합니다.")
+    @Size(min = 8, message = "비밀번호는 최소 8자 이상이어야 합니다.")
+    @Pattern(regexp = ".*[A-Z].*", message = "비밀번호에는 영문 대문자가 포함되어야 합니다.")
+    @Pattern(
+            regexp = ".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*",
+            message = "비밀번호에는 특수문자가 포함되어야 합니다.")
     private String password;
 
     @NotBlank(message = "닉네임은 필수 입력값입니다.")

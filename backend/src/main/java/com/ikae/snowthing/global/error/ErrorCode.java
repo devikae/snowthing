@@ -42,6 +42,11 @@ public enum ErrorCode {
     CHAT_MESSAGE_TOO_LONG(HttpStatus.BAD_REQUEST, "CHAT_005", "메시지는 최대 100자까지 작성할 수 있습니다."),
     CHAT_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "CHAT_006", "로그인 후 라이브톡에 참여할 수 있습니다."),
     CHAT_KILL_SWITCH_ACTIVE(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_007", "현재 라이브톡 점검 중입니다."),
+    INVALID_FILE_TYPE(
+            HttpStatus.BAD_REQUEST, "FILE_001", "지원하지 않는 파일 형식입니다. JPG, PNG, WEBP 이미지만 업로드 가능합니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_002", "파일 크기는 최대 5MB까지 업로드 가능합니다."),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_003", "존재하지 않는 파일입니다."),
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_004", "파일 업로드에 실패했습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

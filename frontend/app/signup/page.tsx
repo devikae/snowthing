@@ -89,8 +89,8 @@ export default function SignUpPage() {
       return;
     }
 
-    if (password.length < 4) {
-      setErrorMsg("비밀번호는 최소 4자 이상이어야 합니다.");
+    if (!isPasswordComplexityValid) {
+      setErrorMsg("비밀번호는 8자 이상이며 영문 대문자와 특수문자를 포함해야 합니다.");
       return;
     }
 
@@ -161,12 +161,12 @@ export default function SignUpPage() {
 
               <label className="grid gap-2">
                 <span className="snow-label">Password</span>
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" className="snow-input" required />
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" className="snow-input" autoComplete="new-password" minLength={8} required />
               </label>
 
               <label className="grid gap-2">
                 <span className="snow-label">Confirm</span>
-                <input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="비밀번호 확인" className="snow-input" required />
+                <input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="비밀번호 확인" className="snow-input" autoComplete="new-password" minLength={8} required />
               </label>
             </div>
 
@@ -198,7 +198,7 @@ export default function SignUpPage() {
             <SelectionGrid title="Base Resorts" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={handleResortToggle} />
             <SelectionGrid title="Riding Styles" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={handleStyleToggle} />
 
-            <button type="submit" className="snow-btn-primary w-full" disabled={loading || !isPasswordMatch}>
+            <button type="submit" className="snow-btn-primary w-full" disabled={loading || !isPasswordComplexityValid || !isPasswordMatch}>
               {loading ? "가입 처리 중" : "회원가입 완료"}
             </button>
           </form>

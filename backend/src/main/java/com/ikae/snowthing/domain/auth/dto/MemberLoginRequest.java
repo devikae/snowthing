@@ -16,12 +16,16 @@ public class MemberLoginRequest {
     @NotBlank(message = "비밀번호는 필수 입력값입니다.")
     private String password;
 
-    private boolean rememberMe = false; // 로그인 상태 유지 (30일 지속 세션 쿠키)
+    private Boolean rememberMe = Boolean.FALSE; // 로그인 상태 유지 (30일 지속 세션 쿠키)
 
     @Builder
-    public MemberLoginRequest(String email, String password, boolean rememberMe) {
+    public MemberLoginRequest(String email, String password, Boolean rememberMe) {
         this.email = email;
         this.password = password;
-        this.rememberMe = rememberMe;
+        this.rememberMe = rememberMe != null ? rememberMe : Boolean.FALSE;
+    }
+
+    public boolean isRememberMe() {
+        return Boolean.TRUE.equals(this.rememberMe);
     }
 }

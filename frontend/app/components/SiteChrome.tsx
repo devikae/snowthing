@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 
-export type ActiveNav = "home" | "posts" | "resort" | "profile" | "login" | "signup";
+export type ActiveNav = "home" | "posts" | "free" | "anonymous" | "gear" | "resort" | "profile" | "login" | "signup";
 
 interface MemberUser {
   publicId: string;
@@ -14,36 +15,42 @@ interface MemberUser {
   profileImageUrl: string | null;
 }
 
-const navItems: { href: string; label: string; key: ActiveNav }[] = [
-  { href: "/resort", label: "Resorts", key: "resort" },
-  { href: "/posts", label: "Community", key: "posts" },
-  { href: "/profile", label: "Rider Card", key: "profile" },
+interface NavItem {
+  href: string;
+  label: string;
+  key: string;
+}
+
+const navItems: NavItem[] = [
+  { href: "/posts", label: "전체글", key: "posts" },
+  { href: "/posts?sort=popular", label: "실시간 베스트", key: "best" },
+  { href: "/posts?category=FREE", label: "자유게시판", key: "free" },
+  { href: "/posts?category=ANONYMOUS", label: "익명게시판", key: "anonymous" },
+  { href: "/resort", label: "실시간 설질/웹캠", key: "resort" },
+  { href: "/posts?category=QNA", label: "장비·테크닉", key: "gear" },
+  { href: "/#carpool", label: "카풀/동행", key: "carpool" },
+  { href: "/#market", label: "중고장터", key: "market" },
 ];
 
-const categories = [
-  { href: "/posts", label: "전체 게시판", icon: "forum", key: "all" },
-  { href: "/posts?category=FREE", label: "자유 게시판", icon: "terrain", key: "free" },
-  { href: "/posts?category=ANONYMOUS", label: "익명 게시판", icon: "visibility_off", key: "anonymous" },
-  { href: "/posts?category=QNA", label: "장비 Q&A", icon: "help", key: "qna" },
-  { href: "/posts?category=FOOD", label: "리조트 맛집", icon: "restaurant", key: "food" },
-];
+const mobileItems = [
+  { href: "/", label: "홈", icon: "home", key: "home" },
+  { href: "/posts?sort=popular", label: "베스트", icon: "local_fire_department", key: "best" },
+  { href: "/resort", label: "실시간 설질", icon: "ac_unit", key: "resort" },
+  { href: "/#carpool", label: "카풀", icon: "directions_car", key: "carpool" },
+  { href: "/posts?category=ANONYMOUS", label: "익명", icon: "forum", key: "anonymous" },
+] as const;
 
 export function TopNav({ active = "home" }: { active?: ActiveNav }) {
+  const router = useRouter();
   const [user, setUser] = useState<MemberUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
-        const res = await fetch(API_ENDPOINTS.members.me, {
-          credentials: "include",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-        } else {
-          setUser(null);
-        }
+        const response = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
+        setUser(response.ok ? await response.json() : null);
       } catch {
         setUser(null);
       } finally {
@@ -52,13 +59,15 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
     })();
   }, []);
 
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const keyword = search.trim();
+    if (keyword) router.push(`/posts?keyword=${encodeURIComponent(keyword)}`);
+  };
+
   const handleLogout = async () => {
     try {
-      await csrfFetch(API_ENDPOINTS.auth.logout, {
-        method: "POST",
-      });
-    } catch {
-      // ignore
+      await csrfFetch(API_ENDPOINTS.auth.logout, { method: "POST" });
     } finally {
       setUser(null);
       window.location.href = "/";
@@ -66,107 +75,95 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--snow-border)] bg-white">
-      <div className="snow-container flex h-16 items-center justify-between px-5 lg:px-8">
-        <div className="flex items-center gap-10">
-          <Link href="/" className="snow-brand">
-            SnowThing
-          </Link>
-          <nav className="hidden items-center gap-8 md:flex">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`font-mono text-xs uppercase tracking-[0.22em] transition ${
-                  active === item.key
-                    ? "border-b-2 border-black pb-1 text-black"
-                    : "text-[var(--snow-ink-soft)] hover:text-black"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          {!loading && (
-            <>
-              {user ? (
-                <div className="flex items-center gap-3">
-                  <Link
-                    href="/profile"
-                    className="font-mono text-xs font-bold text-black hover:underline"
-                  >
-                    {user.nickname}님
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--snow-ink-soft)] hover:text-[#dc2626]"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href="/login"
-                  className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--snow-ink-soft)] hover:text-black sm:inline"
-                >
-                  Sign In
-                </Link>
-              )}
-            </>
-          )}
-          <Link href="/posts/create" className="snow-btn-primary min-h-9 px-4">
-            <span className="material-symbols-outlined text-[16px]">edit</span>
-            Write
-          </Link>
+    <>
+      <div className="community-notice">
+        <div className="community-container community-notice-inner">
+          <div className="community-notice-message">
+            <span className="notice-badge">공지</span>
+            <span className="truncate">24/25 시즌방 인원 구인 및 리조트 실시간 슬로프 제보 게시판 이용 수칙 안내</span>
+          </div>
+          <div className="community-notice-links">
+            <span>강원권 야간 정설 완료</span><i />
+            <Link href="/resort">실시간 웹캠 센터</Link><i />
+            <Link href="/login">출석체크</Link>
+          </div>
         </div>
       </div>
-    </header>
+
+      <header className="community-header">
+        <div className="community-container community-header-inner">
+          <div className="community-header-left">
+            <Link href="/" aria-label="Snowthing 홈" className="alpine-logo">
+              <span className="alpine-logo-mark"><i /><i /><i /></span>
+              <span>SnowThing</span>
+            </Link>
+            <nav className="community-main-nav" aria-label="메인 메뉴">
+              {navItems.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={active === item.key ? "nav-active" : ""}
+                  aria-current={active === item.key ? "page" : undefined}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          <div className="community-header-actions">
+            <form className="header-search" onSubmit={handleSearch}>
+              <span className="material-symbols-outlined">search</span>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="슬로프, 장비, 카풀 검색" aria-label="통합 검색" />
+            </form>
+            <Link href="/posts/create" className="header-write-button">
+              <span className="material-symbols-outlined">edit</span><span>글쓰기</span>
+            </Link>
+            <button type="button" className="header-icon-button" aria-label="알림">
+              <span className="material-symbols-outlined">notifications</span><i />
+            </button>
+            {!loading && (user ? (
+              <div className="header-profile-wrap">
+                <Link href="/profile" className="header-profile" title={`${user.nickname} 프로필`}>
+                  {user.profileImageUrl ? <img src={user.profileImageUrl} alt="" /> : <span>{user.nickname.slice(0, 1)}</span>}
+                </Link>
+                <button type="button" onClick={handleLogout} className="header-logout">로그아웃</button>
+              </div>
+            ) : (
+              <Link href="/login" className="header-login">로그인</Link>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <nav className="community-mobile-nav" aria-label="모바일 메뉴">
+        {mobileItems.map((item) => (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={active === item.key ? "active" : ""}
+            aria-current={active === item.key ? "page" : undefined}
+          >
+            <span className="material-symbols-outlined">{item.icon}</span><span>{item.label}</span>
+          </Link>
+        ))}
+      </nav>
+    </>
   );
 }
 
 export function SideCategories({ active = "all" }: { active?: string }) {
-  return (
-    <aside className="hidden border-r-2 border-black bg-white px-6 py-8 lg:block">
-      <div className="mb-8">
-        <h2 className="text-2xl font-extrabold italic text-black">Categories</h2>
-        <p className="mt-1 text-sm text-[var(--snow-muted)]">Find your ride</p>
-      </div>
-      <nav className="flex flex-col gap-2">
-        {categories.map((category) => (
-          <Link
-            key={category.href}
-            href={category.href}
-            className={`flex items-center gap-3 rounded px-4 py-3 text-sm font-semibold transition ${
-              active === category.key
-                ? "bg-[var(--snow-surface-low)] text-black"
-                : "text-[var(--snow-ink-soft)] hover:bg-[var(--snow-background)] hover:text-black"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[19px]">{category.icon}</span>
-            {category.label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
-  );
+  return <aside hidden data-active-category={active} aria-hidden="true" />;
 }
 
 export function Footer() {
   return (
-    <footer className="border-t border-[var(--snow-border)] bg-white">
-      <div className="snow-container flex flex-col gap-4 px-5 py-6 text-xs text-[var(--snow-muted)] md:flex-row md:items-center md:justify-between lg:px-8">
-        <Link href="/" className="snow-brand text-xl">
-          SnowThing
-        </Link>
-        <div className="flex flex-wrap gap-6 font-mono">
-          <span>© 2026 Snowthing</span>
-          <Link href="/">Privacy Policy</Link>
-          <Link href="/">Terms of Service</Link>
-          <Link href="/">Contact Support</Link>
-        </div>
+    <footer className="community-footer">
+      <div className="community-container community-footer-inner">
+        <div className="community-footer-brand"><span className="alpine-logo-mark small"><i /><i /><i /></span><strong>SNOWTHING</strong><span>대한민국 스노보드 &amp; 스키 커뮤니티</span></div>
+        <nav><Link href="/">이용약관</Link><Link href="/">개인정보처리방침</Link><Link href="/">게시판 운영원칙</Link><Link href="/">고객센터</Link></nav>
       </div>
+      <div className="community-container community-copyright">Copyright © SNOWTHING Alpine Community. All rights reserved.</div>
     </footer>
   );
 }

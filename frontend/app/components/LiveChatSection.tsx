@@ -4,11 +4,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { API_BASE_URL } from "../lib/api";
 
-interface MemberProfile {
+export interface MemberProfile {
   publicId: string;
   email: string;
   nickname: string;
-  role: string;
+  role?: string;
 }
 
 interface ChatSender {

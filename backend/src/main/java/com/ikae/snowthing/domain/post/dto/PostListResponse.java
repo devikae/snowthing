@@ -45,4 +45,22 @@ public record PostListResponse(
                 post.isDeleted(),
                 post.getCreatedAt());
     }
+
+    public PostListResponse withThumbnailImageUrl(String resolvedThumbnailImageUrl) {
+        return new PostListResponse(
+                publicId,
+                categoryName,
+                categoryCode,
+                title,
+                writerNickname,
+                resolvedThumbnailImageUrl,
+                hasImage,
+                viewCount,
+                commentCount,
+                likeCount,
+                dislikeCount,
+                status,
+                isDeleted,
+                createdAt);
+    }
 }

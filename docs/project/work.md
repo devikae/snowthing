@@ -33,13 +33,121 @@
        - 프론트엔드 프로덕션 빌드: `npm run build` Next.js 16.2.12 Turbopack 컴파일 100% 성공 (0 errors).
   - **다음 진행 예정**: 로컬 브라우저 2개 창(일반 창 + 시크릿 창)을 띄워 유저와 함께 실시간 대화 E2E 테스트 수행.
 
-- **Sprint 04 댓글 벤치마크 디렉터리 영문화 및 종합 README 가이드 작성 (2026-09-09)**:
+- **ECR digest 기반 배포·복구 전환 (2026-09-16)**:
+  - 상태: 프런트·백엔드 실제 배포와 프런트 이전 버전 롤백·재배포 검증 완료
+  - ECR 비공개 저장소 `snowthing/backend`, `snowthing/frontend`와 수명 주기 정책을 준비했습니다.
+  - GitHub OIDC 역할은 두 저장소에 한정된 push·조회·태그 삭제 권한을, EC2 역할은 두 저장소에 한정된 pull 권한을 사용합니다.
+  - GitHub Actions가 `candidate-<commit SHA>` 이미지를 빌드·push하고 ECR digest를 조회한 뒤, EC2가 `저장소@sha256:...` 주소로 pull·실행하도록 변경했습니다.
+  - EC2의 소스 빌드를 제거하고 Compose가 외부 이미지 주소를 받도록 변경했습니다. 배포 실패 시 직전에 실행 중이던 이미지로 자동 복구합니다.
+  - 헬스체크 성공 후 `release-<commit SHA>` 태그로 승격하고 candidate 태그를 제거하여 수명 주기 규칙이 release 이미지를 함께 삭제하지 않도록 했습니다.
+  - 최초 실제 배포 커밋은 `eaf7acc669f1c9ae0f82dee2ca07a65bfdfb4fbb`입니다. 프런트 digest는 `sha256:acba5de24d57eee6fa56da4845db6d59fc1b0a43e7b8d9867dd4fd1586b6798d`, 백엔드 digest는 `sha256:f47b877a6aac0e3eb7b973bba78999a765e3415c7f7fda6c15a82834fca26d9c`입니다.
+  - 최초 프런트는 CI 29초, 빌드·push·배포 1분 59초가 걸렸습니다. 백엔드는 CI 2분 55초, 빌드·push·배포 2분 6초가 걸렸습니다.
+  - 배포 도중 외부 API에서 `502 Bad Gateway`를 확인했습니다. 당시 `/posts`는 200이었지만 `/api/v1/posts`와 `/api/v1/master/resorts`는 502였으므로 DB 응답 오류가 아니라 Nginx가 백엔드 8080에 연결하지 못한 상태로 판단했습니다. 백엔드 배포 후 두 API 모두 200으로 회복했습니다.
+  - 새 로그인 UI 커밋 `bf94203015a6edf6d0b0a977af5e4afb2c9c5710`의 프런트 digest는 `sha256:91f7b9d8027704d895ff697e37fea8329514cf684d619242f77e229a59946ffb`이며, CI 29초와 빌드·push·배포 1분 52초가 걸렸습니다.
+  - 이전 `release-eaf7acc...` digest로 수동 롤백했습니다. Actions 전체 27초, digest 조회·SSM 배포 19초가 걸렸고, 외부 로그인 화면이 이전 UI로 바뀌면서 게시글 API는 200을 유지했습니다. 실행: https://github.com/devikae/snowthing/actions/runs/35079786140
+  - 새 `release-bf94203...` digest 재배포는 Actions 전체 31초, digest 조회·SSM 배포 21초가 걸렸습니다. 외부 로그인 화면이 새 UI로 돌아왔고 게시글·리조트 API 모두 200을 확인했습니다. 실행: https://github.com/devikae/snowthing/actions/runs/35081931883
+  - 관련 실행: 최초 프런트 https://github.com/devikae/snowthing/actions/runs/35076355024, 최초 백엔드 https://github.com/devikae/snowthing/actions/runs/35076355176, 새 프런트 https://github.com/devikae/snowthing/actions/runs/35079283676
+  - 공식 액션을 `checkout@v7`, `setup-node@v7`, `setup-java@v6`, `setup-gradle@v6`, `configure-aws-credentials@v6`으로 갱신했습니다. 갱신 후 프런트·백엔드 CI와 digest 배포가 모두 성공했고 기존 Node.js 20 사용 중단 경고가 사라졌습니다.
+  - 배포 실패 시 `/var/log/snowthing-deploy/`에 Docker 상태, 비밀 환경변수를 제외한 inspect 결과, 컨테이너 로그, Nginx error log를 같은 UTC 시각으로 저장하도록 보강했습니다.
+  - `stable-3ecdc50b305aece0f40697216ea0b62eefc02c97`을 프런트와 백엔드에 지정했습니다. 백엔드 stable digest는 `sha256:dec23cf6574e4fecddfb32946ce88a924afbc3561f31bb6069e55d0b714c9016`, 프런트 stable digest는 `sha256:3bdfa20b2d63f9fba13296f3bd3daba0662cec87f3e2e112df0396a38ae7b2aa`입니다.
+  - stable 지정 후 로그인·게시글·리조트 API가 모두 200을 반환했습니다. 실행: 백엔드 https://github.com/devikae/snowthing/actions/runs/35087127962, 프런트 https://github.com/devikae/snowthing/actions/runs/35087130593
+  - 남은 항목: 비용 승인을 받은 뒤 RDS 백업을 별도 DB로 복원하고 읽기 전용 검증 앱에서 조회하는 절차가 남았습니다.
+
+- **GitHub Actions 배포 인증을 OIDC + SSM으로 전환 (2026-09-13)**:
+  - 상태: 진행 중
+  - EC2 인스턴스 역할에 `AmazonSSMManagedInstanceCore`를 연결하고 SSM Agent의 제어 채널 연결을 확인했습니다.
+  - GitHub OIDC 공급자와 배포 전용 IAM 역할을 만들고, `main`과 `deploy/aws-ec2` 브랜치만 역할을 맡을 수 있도록 신뢰 정책을 제한했습니다.
+  - Repository variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `EC2_INSTANCE_ID`를 등록했습니다.
+  - 백엔드와 프론트엔드 워크플로에서 PEM 기반 SSH 배포를 제거하고, OIDC 임시 자격증명으로 SSM Run Command를 호출하도록 변경했습니다.
+  - SSM 명령은 최대 15분 동안 완료 상태를 확인하고, 원격 명령의 최종 상태가 `Success`일 때만 Actions 작업을 성공 처리합니다.
+  - 검증 완료: 백엔드 CI와 SSM 배포 성공([Actions 실행](https://github.com/devikae/snowthing/actions/runs/34757010101)), 프론트엔드 CI와 SSM 배포 성공([Actions 실행](https://github.com/devikae/snowthing/actions/runs/34757130034)).
+  - 기존 SSH 배포용 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`와 중복 등록된 `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `EC2_INSTANCE_ID` Secrets를 삭제하고 Repository variables만 유지했습니다.
+  - 남은 작업: UI 디자인 커밋을 이 브랜치에 반영하고 새 SSM 배포로 공개 화면을 검증합니다.
+  - 운영 CSRF 확인 중 API 주소를 `https://snowthing.org`로 교체했으며, 백엔드 CORS가 localhost만 허용해 `403 Invalid CORS request`를 반환하는 문제를 확인했습니다. 운영 apex/www HTTPS origin을 허용하도록 수정합니다.
+  - 진단 결과 GitHub OIDC의 실제 `sub`에는 저장소·소유자 식별자가 포함되어 기존 조건과 불일치했습니다. 신뢰 정책을 실제 클레임에 맞춰 수정한 뒤 역할 수임이 성공했습니다. 진단 단계는 확인 후 제거했습니다.
+  - OIDC 및 SSM 명령 전송은 성공했습니다. root로 실행되는 SSM에서 Git 안전 디렉터리를 전역 설정하려 했으나 `$HOME`이 없어 실패했으므로, 전역 설정 없이 각 Git 명령에 `-c safe.directory=/home/ubuntu/snowthing`을 전달하도록 보완했습니다.
+
+- **AWS EC2 + RDS + S3 운영 배포 6단계 모노레포 선별적 배포(Selective CI/CD) 파이프라인 분리 구축 (2026-09-11)**:
+  1. **작업명**: `.github/workflows/deploy.yml` 단일 워크플로를 `deploy-backend.yml`과 `deploy-frontend.yml`로 분리하여 경로 기반 선별적 배포 및 동시성 큐잉 적용
+  2. **현재 상태**: 완료 (워크플로 파일 분리 생성 및 커밋/푸시 완료)
+  3. **완료된 항목**:
+     - 기존 단일 `.github/workflows/deploy.yml` 제거.
+     - `.github/workflows/deploy-backend.yml` 신설:
+       * `backend/**`, `database/**`, `compose.prod.yml` 변경 시에만 트리거.
+       * 백엔드 CI(Spotless + MySQL 8.0 테스트) 통과 후 EC2에서 `docker compose up -d --build backend` 단독 증분 빌드 및 API 헬스체크(200 OK) 수행.
+     - `.github/workflows/deploy-frontend.yml` 신설:
+       * `frontend/**`, `compose.prod.yml` 변경 시에만 트리거.
+       * 프론트엔드 CI(Next.js 16 프로덕션 빌드) 통과 후 EC2에서 `docker compose up -d --build frontend` 단독 증분 빌드 및 웹 헬스체크(200/304 OK) 수행.
+     - 두 워크플로 모두 `concurrency: group: ec2-production-deployment, cancel-in-progress: false` 적용하여 동시 커밋 시 EC2 배포 명령 충돌 방지 및 큐잉 직렬화 보장.
+  4. **남은 항목**:
+     - 5단계: 도메인 준비 시 Cloudflare Free (Full strict) HTTPS 암호화.
+
+- **AWS EC2 + RDS + S3 운영 배포 6단계 GitHub Actions CI/CD 파이프라인 구축 및 검증 (2026-09-11)**:
+  1. **작업명**: 탄력적 IP(`13.124.57.166`) 연결, GitHub Secrets 등록, `.github/workflows/deploy.yml` 배포 파이프라인 구축 및 헬스체크 검증
+  2. **현재 상태**: 완료 (GitHub Actions 워크플로 정상 동작 및 EC2 컨테이너 자동 재배포/헬스체크 200 OK 확인)
+  3. **완료된 항목**:
+     - AWS 탄력적 IP(Elastic IP) 할당 및 EC2(`i-014492690412b656e`) 연결 (`13.124.57.166`).
+     - GitHub 저장소 Secrets 등록: `EC2_HOST` (`13.124.57.166`), `EC2_USER` (`ubuntu`), `EC2_SSH_KEY` (PEM 개인키).
+     - EC2 보안 그룹(Security Group) 포트 22번 인바운드 `0.0.0.0/0` 개방 (GitHub Actions 러너 SSH 접속 허용).
+     - EC2 2GB Linux Swap 메모리 활성화 가이드 (OOM 방어).
+     - `MemberLoginRequest.java`: Jackson 역직렬화 시 `null`을 원시 `boolean`에 매핑하지 못하던 결함을 래퍼 클래스 `Boolean` 및 방어 메서드(`isRememberMe()`)로 개선.
+     - `.github/workflows/deploy.yml` 구축 및 동작 검증:
+       * `Backend CI (Spotless & Test)`: 통과 (MySQL 8.0 테스트 컨테이너 기반)
+       * `Frontend CI (Build Verification)`: 통과 (Next.js 16 Turbopack 프로덕션 빌드)
+       * `Deploy to AWS EC2`: 통과 (`appleboy/ssh-action` SSH 접속 ➔ Git reset ➔ Docker Compose 증분 빌드 ➔ 댕글링 이미지 정리 ➔ 헬스체크 루프 HTTP 200 OK 판정)
+  4. **남은 항목**:
+     - 5단계: 도메인 준비 시 Cloudflare Free (Full strict) HTTPS 암호화.
+
+- **AWS EC2 + RDS + S3 운영 배포 4단계 비공개 S3 이미지 연동 및 프로덕션 실측 100% 완결 (2026-09-11)**:
+  1. **작업명**: AWS S3 SDK 연동, 비공개 버킷(`snowthing-media-00001`) 기반 이미지 업로드/다운로드 API 개발, EC2 IAM Role 정책(`snowthing-s3-policy`) 연동 및 인가 실측
+  2. **현재 상태**: 4단계 100% 완료 (EC2 ➔ S3 이미지 업로드 및 로그인 세션 기반 인가 다운로드 실측 성공)
+  3. **완료된 항목**:
+     - `software.amazon.awssdk:s3:2.25.70` AWS Java SDK v2 의존성 추가.
+     - `S3Config.java`: `DefaultCredentialsProvider` 기반으로 EC2 IAM Role 임시 자격증명 자동 주입 아키텍처 수립 (정적 액세스 키 배제).
+     - EC2 IAM 역할(`snowthing-rds-connect-policy`)에 인라인 정책 `snowthing-s3-policy` (`s3:PutObject`, `s3:GetObject` on `arn:aws:s3:::snowthing-media-00001/*`) 부여 완료.
+     - `ErrorCode.java`: `INVALID_FILE_TYPE(FILE_001)`, `FILE_SIZE_EXCEEDED(FILE_002)`, `FILE_NOT_FOUND(FILE_003)`, `FILE_UPLOAD_FAILED(FILE_004)` 비즈니스 에러 코드 정의.
+     - `BusinessException.java` & `GlobalExceptionHandler.java`: 문자열 리터럴 예외 금지 규칙 준수 기반 표준 비즈니스 예외 핸들러 구축.
+     - `ImageUploadResponse.java`, `ImageDownloadResponse.java`: 방어적 복사(`byte[].clone()`)를 통한 DTO 불변성 완벽 보장.
+     - `ImageService.java`: 5MB 파일 크기 제한, 확장자/MIME 화이트리스트(`jpg`, `jpeg`, `png`, `webp`) 검증, 경로 탐색(`..`) 방어, S3 `putObject`/`getObject` 로직 구현.
+     - `ImageController.java`: `POST /api/v1/images` (인증 필수 업로드), `GET /api/v1/images/**` (인가 필수 조회) 엔드포인트 구현 (비인증/외부 접근 시 401/403 차단).
+     - `ImageServiceTest.java`: Mockito 기반 격리 단위 테스트 6종 작성 및 100% 통과 (정상 업로드, 5MB 초과 차단, 비허용 확장자 차단, 정상 다운로드, 경로 탐색 차단, 존재하지 않는 파일 404 차단).
+     - 프로덕션 실측 완료:
+       * 비인가 다운로드 시도 시 Spring Security에 의한 401 Unauthorized 차단 검증 완료.
+       * `POST /api/v1/members` 및 `POST /api/v1/auth/login` 인증 세션 획득 성공 (RDS MySQL 연동 확인).
+       * `POST /api/v1/images` 호출 시 S3 버킷(`snowthing-media-00001`)에 고유 UUID 객체 업로드 성공 (`201 Created`).
+       * `GET /api/v1/images/**` 호출 시 S3 객체 스트리밍을 통해 HTTP 200 OK 및 원본 데이터 수신 실측 성공.
+  4. **남은 항목**:
+     - 5단계: 도메인 연결 및 Cloudflare Free (Full strict) HTTPS 암호화.
+     - 6단계: GitHub Actions 기반 자동 배포 파이프라인 구축.
+
+- **AWS EC2 + RDS 운영 배포 3단계 수동 배포 및 웹 접속 완결 (2026-09-11)**:
+  1. **작업명**: EC2 배포 브랜치(`deploy/aws-ec2`) 동기화, RDS 비파괴 스키마/기준데이터 적용, 호스트 Nginx 리버스 프록시 연동 및 실제 웹 접속 검증
+  2. **현재 상태**: 3단계 100% 완료 (EC2 공인 IP `43.202.157.3` 웹 화면 및 백엔드 API 정상 서빙 중)
+  3. **완료된 항목**:
+     - `deploy/aws-ec2` 브랜치 생성 및 GitHub 원격 푸시 완료 (`ddee2fe`, `4426b9c`, `9cedf54`).
+     - RDS MySQL에 `001_initial_schema.sql` (테이블 11개) 및 `002_reference_data.sql` (스키장 6개, 카테고리 5개 등) 무결성 생성 완료.
+     - EC2 환경변수 `/etc/snowthing/prod.env` 작성 및 `chmod 600`, 소유권 `ubuntu:ubuntu` 격리 완료.
+     - AWS Advanced JDBC Wrapper 기반 IAM 무암호 DB 인증으로 Spring Boot 백엔드 RDS 연결 완결.
+     - Next.js 16 (`--legacy-peer-deps`) 및 Spring Boot 도커 컨테이너 빌드 & `Up` 구동 성공.
+     - 호스트 Nginx 설치 및 `/` (Next.js 3000), `/api/` (Spring Boot 8080) 리버스 프록시 라우팅 구성 완료.
+     - `curl -i http://127.0.0.1:8080/api/v1/master/resorts` 200 OK 및 브라우저(`http://43.202.157.3`) 접속 실측 완료.
+
+- **Sprint 04 댓글 벤치마크 학습정리 문서 보강 및 디렉터리 영문화 완료 (2026-09-09)**:
+>>>>>>> deploy/aws-ec2
   1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
   2. **경로 동기화**: `ADR-002-댓글아키텍처.md` 및 `댓글-벤치마크-결과.md` 내 실행계획 경로를 `explain-plans/`로 갱신.
   3. **재현가이드 ➔ README.md 개편 및 내용 보강 (no_ai 톤)**:
      - `재현가이드.md`를 `README.md`로 전환하고 실무 개발자 톤으로 4대 핵심 영역(Seed 코드 위치, 실행/초기화 명령어, 데이터 분포 구조, 1K~1M 9대 시나리오 검증 결과 및 인덱스/불변식 요약) 보강 완료.
+<<<<<<< HEAD
      - `댓글-벤치마크-결과.md` 상단에 멘토의 실험 의도 및 5대 학습 목표(규모·분포 영향, estimated/actual rows/loops 해석, 재현 가능 Seed, 인덱스 쓰기 비용, 운영 DB 안전장치) 상세 해설 추가.
 
+=======
+  4. **`docs/study/sprint04/댓글조회-벤치마크-학습정리.md` 심층 학습서 보강 완결**:
+     - 5대 학습 목표와 멘토의 실험 의도 및 실무 배경(1K 메모리 착시 vs 1M 운영 장애, estimated/actual rows/loops 해석, 재현 가능 시드, 읽기 이점 vs 쓰기 비용, 운영 DB 안전장치) 기술.
+     - 1K·10K·100K·1M 9대 시나리오 종합 레이턴시 비교표 및 1M Invisible 인덱스 검증 비교표(226ms vs 36ms, actual rows 200,001 ➔ 2,000) 수록.
+     - 4대 핵심 결론 및 MySQL InnoDB 물리 엔진 심층 분석(16KB Buffer Pool I/O, B-Tree 수직 Seek 및 수평 Scan 메커니즘, Hotspot 국소 격리, 커버링 인덱스 Clustered Random I/O 차단, `Using filesort` 메모리 정렬 vs 4컬럼 B-Tree 페이지 분할 트레이드오프) 반영.
+     - 7대 필수 요소 체계(개념, Why, When, How, Pros, Alternatives, Trade-off & 극복 방안) 기반 복합 인덱스 계층 조회 아키텍처 정리 완료.
+>>>>>>> deploy/aws-ec2
 - **Sprint 03 댓글 도메인 메인 브랜치 최종 병합 완료 (2026-09-06)**:
   1. **PR #17 (`feature/sprint03-comment` ➔ `main`) 병합 완결**:
      - Sprint 03 댓글 도메인(생성·조회·수정·삭제 및 하이브리드 프리뷰 아키텍처) 전체 작업물을 `main` 브랜치로 병합 완료 ([PR #17](https://github.com/devikae/snowthing/pull/17) `MERGED`).
@@ -1259,6 +1367,7 @@
   - `CommentControllerTest`와 `spotlessCheck`는 통과했습니다.
   - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
 >>>>>>> origin/feature/sprint03-comment
+<<<<<<< HEAD
 - **Sprint 04 댓글 벤치마크 실행 기준 및 EXPLAIN 쿼리 정리 (2026-09-07)**:
   - 기존 `test/sprint04-comment-benchmark` 브랜치에서 전용 벤치마크 실행 가이드와 안전 조건을 작성했습니다.
   - 규모별 데이터 분포, 고정 seed, MySQL 전용 실행, 정확성 불변식, warm-up/p95 측정 규칙을 문서화했습니다.
@@ -1314,3 +1423,107 @@
   - 기본 `./gradlew test`에서 `benchmark` 태그 테스트를 제외해 일반 테스트와 대규모 Seed 테스트가 같은 DB Context를 오염시키지 않도록 했습니다.
   - 벤치마크 실행은 `./gradlew test --tests CommentBenchmarkSeedRunnerTest -PincludeBenchmark`로 명시해야 합니다.
   - GitHub Actions 실패 로그에서 확인된 11건의 DB 제약조건·기대값 오류 원인을 반영했습니다.
+=======
+
+- **커뮤니티 UI 디자인 운영 배포 (2026-09-13)**:
+  - `feature/ui-redesign`의 `02fde60` 커밋을 `deploy/aws-ec2`에 반영해 `12bfe1b`로 배포 브랜치에 포함했습니다.
+  - 프론트 CI가 성공했고, OIDC + SSM을 통해 EC2 프론트 컨테이너 재빌드·재시작 및 로컬 HTTP 200 헬스체크까지 완료했습니다.
+  - 운영 도메인 `https://snowthing.org/` 응답이 HTTP 200임을 확인했습니다. 원본 디자인 브랜치는 삭제하지 않았습니다.
+
+- **운영 CSRF/CORS 검증 및 수정 (2026-09-13)**:
+  - 프론트엔드 운영 API 주소가 이전 EC2 IP의 HTTP 주소로 남아 있어 `https://snowthing.org`로 교체하고 프론트엔드를 재배포했습니다.
+  - 운영 도메인에서 CSRF 발급 요청은 200이었지만 로그인 요청이 `403 Invalid CORS request`로 차단되었습니다. 원인은 백엔드 CORS 허용 origin이 `http://localhost:3000`만 포함하고 있었기 때문입니다.
+  - `https://snowthing.org`, `https://www.snowthing.org`를 허용 origin에 추가하고 백엔드를 OIDC+SSM으로 재배포했습니다.
+  - 재검증 결과 운영 CSRF 발급은 200, 동일 세션의 로그인 요청은 CORS 차단이 아닌 정상적인 `401 AUTH_001 INVALID_CREDENTIALS`를 반환했습니다. 즉 브라우저와 백엔드 사이의 CORS/CSRF 진입 문제는 해결되었습니다.
+
+- **Sprint 06 RDS 스냅샷 복원 증거 및 제출 문서 갱신 (2026-09-16)**:
+  - 운영 RDS의 스냅샷 기준 쿼리, 수동 스냅샷 생성, 스냅샷 이후 비교 행 추가, 별도 RDS 복원, 복원 DB 쿼리 결과 화면을 선별해 `docs/conception/sprint06/evidence/rds-restore/`에 보관했습니다.
+  - 복원 DB에는 스냅샷 기준 행 두 개만 있고 이후 추가한 행은 없음을 확인해 스냅샷 시점 복원을 검증했습니다.
+  - Sprint 06 제출 문서 3개에 실제 ECR digest 배포·롤백·stable 지정·Actions 갱신·장애 진단 보강·RDS 복원 결과를 현행 기준으로 반영했습니다.
+  - 미확인 항목: 복원 DB 전용 읽기 계정과 검증 앱 연결, 운영 DB·S3 쓰기 차단, 복원용 RDS 삭제 여부는 제공된 증거만으로 확인되지 않았습니다.
+
+- **운영 프런트 API 주소 수정 및 재배포 (2026-09-16)**:
+  - 운영 프런트 이미지에 `NEXT_PUBLIC_API_BASE_URL`이 `snowthing.org`로 빌드돼 브라우저가 API 주소를 상대경로로 해석하고 게시글 조회가 실패했습니다.
+  - GitHub Actions Variable을 `https://snowthing.org`로 수정하고 프런트 이미지를 다시 빌드·배포했습니다.
+  - Actions 실행 `35101946958`에서 CI 32초, 빌드·ECR push·SSM 배포 1분 55초로 완료됐습니다.
+  - 실제 Chrome에서 익명게시판을 새로고침한 뒤 게시글 3개가 표시되는 것을 확인했습니다.
+
+- **PR #19 CodeRabbit 리뷰 8건 반영 (2026-09-19)**:
+  - OIDC `id-token: write` 권한을 AWS 인증이 필요한 배포·롤백·stable 작업으로 제한하고 Gradle checkout의 자격 증명 보존을 끈 상태로 `contents: read`만 허용했습니다.
+  - 프런트 이미지 태그에 `NEXT_PUBLIC_API_BASE_URL`의 SHA-256 앞 12자리 설정 지문을 포함해 같은 커밋에서 API 주소가 바뀌어도 이전 이미지를 재사용하지 않도록 했습니다. 기존 SHA 전용 태그의 롤백 호환성은 유지했습니다.
+  - Temurin JDK/JRE 21 Jammy 베이스 이미지를 공식 multi-architecture digest로 고정했습니다.
+  - 이미지 응답의 null·공백 Content-Type을 `application/octet-stream`으로 정규화하고 AWS SDK 공통 예외를 파일 오류 정책으로 변환했습니다.
+  - 운영 DB URL이 `jdbc:aws-wrapper:mysql://`로 시작하는지 컨테이너 entrypoint에서 검사하고, 셸 파일의 LF 줄바꿈을 `.gitattributes`로 고정했습니다.
+  - 배포 헬스체크에 연결 2초·전체 5초 타임아웃을 추가했습니다.
+  - 검증: 이미지 서비스 단위 테스트, Spotless, `build -x test`, Compose config, YAML 파싱, 셸 문법, 설정 지문·태그 정규식, 잘못된 운영 DB URL 차단을 통과했습니다.
+  - Docker Desktop이 실행 중이 아니어서 로컬 Docker image build는 수행하지 못했습니다. 베이스 이미지 digest 조회는 완료했습니다.
+
+- **이미지 조회 경로를 비공개 S3 + CloudFront로 분리 (2026-09-19)**:
+  - 상태: 코드 수정 및 로컬 정적 검증 완료, 운영 배포·실제 S3 객체 검증 대기.
+  - S3 Block Public Access와 OAC를 유지하면서 Client가 `https://images.snowthing.org`를 통해 이미지를 직접 조회하도록 변경했습니다.
+  - 신규 게시글 이미지는 `public/posts/{UUID}.{확장자}` 키로 저장하고, 업로드 API는 CloudFront URL과 객체 키를 함께 반환합니다.
+  - 게시글 DB에는 CloudFront URL 대신 객체 키를 저장하고 응답 시 URL로 변환합니다. 기존 외부 URL 데이터는 그대로 응답해 호환성을 유지합니다.
+  - 백엔드의 이미지 바이트 중계용 `GET /api/v1/images/**`와 다운로드 DTO를 제거했습니다.
+  - 게시글 작성 화면을 URL 직접 입력에서 인증된 파일 업로드로 변경하고, 게시글 생성 요청에는 객체 키를 전달하도록 연결했습니다.
+  - 확장자와 요청 MIME 외에도 PNG·JPEG·WebP 파일 시그니처를 검사하도록 업로드 검증을 보강했습니다.
+  - 검증: 이미지 단위 테스트 8건, Backend Spotless 및 `build -x test`, Frontend production build, Compose config, `git diff --check` 통과.
+  - Frontend lint는 이번 변경과 무관한 기존 `ToastEditor.tsx`, `ToastViewer.tsx`의 `@ts-ignore` 규칙 위반 2건 때문에 실패했습니다. 이번 이미지 화면에는 신규 경고 1건(`<img>`)만 존재합니다.
+  - 게시글 통합 테스트는 로컬 MySQL이 실행되지 않아 연결 단계에서 실패했습니다. 운영 배포 후 실제 업로드, CloudFront 비로그인 조회, S3 원본 URL 차단을 확인해야 합니다.
+
+- **게시글 목록 썸네일 생성 및 CDN 경로 보정 (2026-09-19)**:
+  - 상태: 구현·CI·운영 배포·실제 업로드 검증 완료
+  - 목록 API가 S3 객체 키를 그대로 반환해 브라우저가 `snowthing.org/posts/public/...`로 요청하던 문제를 확인했습니다.
+  - 새 업로드는 원본을 `public/posts/originals/{UUID}.{확장자}`, 목록용 JPEG 썸네일을 `public/posts/thumbnails/{UUID}.jpg`에 저장합니다.
+  - 썸네일은 최대 320×320 범위에서 비율을 유지하고 품질 0.8로 압축합니다. UUID 경로에는 1년 immutable 캐시 헤더를 적용했습니다.
+  - DB에는 원본 객체 키만 저장하고 목록 응답에서 썸네일 경로를 계산합니다. 기존 `public/posts/{UUID}.{확장자}` 데이터는 원본 CloudFront URL을 사용해 호환성을 유지합니다.
+  - 이미지 업로드·URL 변환 단위 테스트와 Spotless 검증을 통과했습니다. 로컬 게시글 통합 테스트는 MySQL 미실행으로 연결 단계에서 실패했지만 Actions 실행 `35424121640`의 MySQL 전체 테스트와 ECR·SSM 배포는 성공했습니다.
+  - 운영 업로드로 원본 PNG `675×128, 11,976 bytes`와 썸네일 JPEG `320×61, 6,117 bytes`가 각각 생성되고 CloudFront에서 모두 200으로 조회되는 것을 확인했습니다. 두 S3 직접 URL은 모두 403으로 차단됐습니다.
+  - 기존 게시글 목록 API가 `https://images.snowthing.org/public/posts/...` URL을 반환하고 Orca 브라우저 목록에 정상 노출되는 것도 확인했습니다.
+
+- **회원가입 비밀번호 검증 일치 (2026-09-19)**:
+  - 상태: 코드 수정·CI·운영 배포·API 검증 완료
+  - 회원가입 화면은 8자·대문자·특수문자 조건을 표시했지만 submit에서는 4자만 검사했고, 백엔드 DTO도 최소 4자만 검사해 `123123` 가입이 가능했습니다.
+  - 회원가입 전용 규칙을 프런트와 백엔드 모두 `8자 이상 + 영문 대문자 + 특수문자`로 통일했습니다. 익명 글·댓글 비밀번호와 로그인 처리는 변경하지 않았습니다.
+  - 프런트 버튼 비활성화와 submit 검사를 함께 적용하고, 백엔드는 길이·대문자·특수문자를 독립적으로 검증합니다.
+  - `123123`, 8자 미만, 대문자 누락, 특수문자 누락 요청의 400 응답 테스트와 정상 요청의 201 테스트를 통과했습니다. 프런트 production build도 통과했습니다.
+  - Actions 실행 `35424685949`(프런트)와 `35424685956`(백엔드)에서 ECR·SSM 배포까지 성공했습니다.
+  - 운영 CSRF 토큰을 발급받아 임의 이메일과 `123123`으로 회원가입 API를 직접 호출한 결과 400으로 거부됐습니다. 실패 요청이므로 회원 데이터는 생성되지 않았습니다.
+
+- **Sprint 06 이미지 인프라 문서 현행화 (2026-09-19)**:
+  - 비공개 S3·CloudFront OAC·`images.snowthing.org` 요청 흐름과 백엔드 이미지 바이트 중계 제거 결정을 학습 문서에 반영했습니다.
+  - 원본·320px JPEG 썸네일 경로, DB 객체 키 저장, 기존 이미지 호환, immutable 캐시, 고아 객체와 회원 전용 이미지 분리 과제를 정리했습니다.
+  - Sprint 06 제출 문서 01·02·03에 이미지 배포 커밋, Actions 실행, CloudFront 200·S3 403, 원본·썸네일 크기 검증 결과를 추가했습니다.
+  - 학습 문서는 저장소 추적 대상에서 제외된 기존 정책을 유지하고, 제출 문서와 작업 기록만 Git 변경 대상으로 둡니다.
+
+- **ECR 이미지와 EC2 배포 파일의 커밋 SHA 고정 (2026-09-19)**:
+  - 상태: 워크플로 수정 및 정적 검증 완료, 운영 배포 검증 진행 중
+  - 기존에는 이미지를 `github.sha`로 만들고 EC2에서는 배포 브랜치의 최신 HEAD를 reset해, Actions 대기 중 새 커밋이 들어오면 이미지와 `compose.prod.yml`·배포 스크립트의 버전이 달라질 수 있었습니다.
+  - 백엔드·프런트 일반 배포는 `${{ github.sha }}`를 SSM에 전달하고 EC2가 해당 SHA를 직접 fetch/reset한 뒤 `rev-parse HEAD` 일치를 검사하도록 변경했습니다.
+  - 프런트 전용 롤백과 공통 ECR 롤백은 `release/stable-<SHA>[-<설정지문>]`에서 원본 커밋 SHA를 추출해 같은 커밋의 배포 파일을 사용하도록 변경했습니다.
+  - 세 워크플로에서 브랜치 기반 배포 변수가 제거됐고, YAML 파싱과 SHA fetch/reset/검증 구문 정적 검사를 통과했습니다.
+  - 실제 프런트 배포 [35425934449](https://github.com/devikae/snowthing/actions/runs/35425934449)가 성공했습니다. CI 24초, 빌드·push·SSM 배포 1분 50초였고 SSM 출력에서 `HEAD is now at 7debde2`와 digest `sha256:5a4f989b...` 실행을 확인했습니다.
+  - 실제 백엔드 배포 [35425934475](https://github.com/devikae/snowthing/actions/runs/35425934475)가 성공했습니다. CI 2분 30초, 빌드·push·SSM 배포 2분 11초였고 SSM 출력에서 같은 `7debde2`와 digest `sha256:602c4610...` 실행을 확인했습니다.
+  - 배포 후 `https://snowthing.org/`, 게시글 조회 API, 리조트 기준정보 API가 모두 `200 OK`를 반환했습니다.
+  - Sprint 06 제출 문서 01·02·03과 로컬 학습 문서에 SHA와 digest의 역할, 정상 배포·롤백 동작, 대안과 트레이드오프를 현행 구조로 반영했습니다. 학습 문서는 Git에 포함하지 않습니다.
+- **이미지 multipart 업로드 제한 일치 (2026-09-19)**:
+  - 서비스에서는 5MB까지 허용하지만 Spring multipart 설정이 없어 기본 제한이 먼저 적용될 수 있는 문제를 수정했습니다.
+  - `spring.servlet.multipart.max-file-size`는 `5MB`, multipart 오버헤드를 포함하는 `max-request-size`는 `6MB`로 설정했습니다.
+  - 파서 단계의 `MaxUploadSizeExceededException`도 `400 FILE_SIZE_EXCEEDED`로 반환하도록 전역 예외 처리를 추가했습니다.
+  - 설정, 전역 예외 처리, 기존 이미지 서비스 제한을 검증하는 테스트 7개가 모두 통과했습니다.
+  - 첫 운영 확인에서 1,434,020바이트 multipart 요청이 Nginx 기본 제한에 걸려 `413 Payload Too Large`를 반환하는 것을 확인했습니다.
+  - 배포 스크립트가 `client_max_body_size 6m` 설정을 관리하고, `nginx -t` 성공 후에만 reload하도록 보완했습니다. 설정 검증 실패 시 기존 파일을 복원합니다.
+  - 백엔드 Actions [35427435330](https://github.com/devikae/snowthing/actions/runs/35427435330)에서 CI와 ECR·SSM 배포가 성공했습니다. 같은 1,434,020바이트 요청은 배포 후 Nginx 413이 아니라 Spring Security의 403 JSON 응답을 반환해 Nginx를 통과한 것을 확인했습니다.
+  - 배포 후 게시글과 리조트 API가 모두 `200 OK`를 유지했습니다.
+- **PR 잔여 인프라 리뷰 보완 (2026-09-19)**:
+  - 과거 S3 다운로드의 `ResponseInputStream` 미종료 문제는 백엔드 이미지 다운로드 API와 `ImageDownloadResponse`를 제거하고 CloudFront 직접 조회로 전환하면서 해당 실행 경로 자체가 사라진 것을 확인했습니다.
+  - stable 승격 시 같은 digest의 모든 `release-*` 태그를 삭제하던 세 workflow를 수정해 사용자가 선택한 `SOURCE_TAG` 하나만 제거하도록 변경했습니다.
+  - 장애 진단 원문이 `tee`를 통해 SSM·Actions 로그에 노출되지 않도록 EC2 파일로만 저장합니다. 디렉터리 `0700`, 파일 `0600`, 보관 기간 14일을 적용하고 stdout에는 비민감 상태 요약만 출력합니다.
+  - 운영 DB는 앱 계정에 DDL 권한이 없는 구조이므로 앱 시작 Flyway를 즉시 추가하지 않았습니다. 다음 스키마 변경 전에 별도 migration 계정·승인 환경·배포 선행 job·실패 차단과 expand/contract 절차를 구성하는 것을 필수 선행 조건으로 기록했습니다.
+  - 변경 커밋 `893811c`의 [프런트 배포 35428068493](https://github.com/devikae/snowthing/actions/runs/35428068493)와 [백엔드 배포 35428068484](https://github.com/devikae/snowthing/actions/runs/35428068484)가 성공했습니다. 배포 후 메인 화면·게시글 API·리조트 API가 모두 `200 OK`를 반환했습니다.
+- **PR 리뷰 학습 문서 및 `my_ai` 재발 방지 규칙 보강 (2026-09-19)**:
+  - Sprint 06 통합 학습 문서에 비공개 S3·CloudFront OAC, 공개/인증 캐시 분리, 객체 키와 IAM 경계, `readAllBytes()` 메모리 문제, multipart 전 구간 제한, SHA·digest 일치, ECR tag 승격, 진단 로그 보호, DB migration 분리를 하나의 리뷰 학습 장으로 정리했습니다.
+  - 각 항목에 개념, 도입 이유, 동작 방식, 대안, 트레이드오프와 다음 PR용 점검 목록을 추가했습니다.
+  - `my_ai/.ai/RULES.md`에 공통 필수 규칙을 등록하고, backend performance·Spring security·logging, application config, database migration, common security 문서의 해당 지점에 세부 규칙을 나눠 추가했습니다.
+  - 배포 시 commit SHA와 image digest를 함께 고정하고 ECR tag·SSM 로그·프록시 설정을 검증하는 `skills/infrastructure/deployment-safety.md`를 새로 등록했습니다.
+  - `docs/study/`는 학습 문서 비추적 원칙에 따라 Git 커밋 대상에서 제외합니다.
+>>>>>>> deploy/aws-ec2

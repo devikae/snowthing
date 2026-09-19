@@ -36,6 +36,14 @@
 - 파일명과 MIME
 - 메시지 큐 payload
 
+## 파일·Object Storage
+
+- 파일명, 객체 키, prefix를 클라이언트가 전달한 그대로 storage API에 사용하지 않는다.
+- `..` 문자열 차단 하나로 path/object 경계를 보장하지 않는다. canonicalization, 허용 prefix, 서버 생성 UUID, 소유권 검사를 함께 적용한다.
+- 애플리케이션 IAM Role은 bucket 전체가 아니라 필요한 bucket·prefix·action으로 제한한다.
+- upload 역할과 CDN read 역할을 분리하고, public access 차단 여부를 확인한다.
+- 공개 객체와 회원 전용 객체를 같은 prefix와 같은 CDN cache behavior로 운영하지 않는다.
+
 ## Secret
 
 - API Key, DB Password, JWT Secret, OAuth Secret, private key를 소스코드에 넣지 않는다.
