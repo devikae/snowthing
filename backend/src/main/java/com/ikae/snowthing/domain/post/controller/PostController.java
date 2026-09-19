@@ -12,7 +12,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.post.dto.*;
+import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.service.PostService;
+import com.ikae.snowthing.domain.post.service.ReactionService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.AnonymousVoterCookieManager;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -26,8 +28,10 @@ import lombok.RequiredArgsConstructor;
 public class PostController {
 
     private static final String DEFAULT_PAGE_SIZE_PARAM = "20";
+    private static final String DEFAULT_REACTION_TYPE_PARAM = "LIKE";
 
     private final PostService postService;
+    private final ReactionService reactionService;
     private final ClientIpResolver clientIpResolver;
     private final ViewCountCookieManager viewCountCookieManager;
     private final AnonymousVoterCookieManager anonymousVoterCookieManager;
@@ -52,7 +56,10 @@ public class PostController {
                 viewCountCookieManager.markIfFirstView(publicId, request, response);
         PostDetailResponse postDetailResponse =
                 postService.getPostDetail(publicId, userDetails, shouldIncreaseViewCount);
-        return ResponseEntity.ok(postDetailResponse);
+        String anonymousVoterId = anonymousVoterCookieManager.find(request).orElse(null);
+        return ResponseEntity.ok(
+                postDetailResponse.withActiveReactionTypes(
+                        reactionService.findActiveTypes(publicId, userDetails, anonymousVoterId)));
     }
 
     @GetMapping
@@ -107,8 +114,41 @@ public class PostController {
                 Map.of("message", "게시글이 정상적으로 삭제(Soft Delete) 처리되었습니다.", "publicId", publicId));
     }
 
+    @PutMapping("/{publicId}/reaction")
+    public ResponseEntity<ReactionResponse> applyReaction(
+            @PathVariable String publicId,
+            @RequestParam(defaultValue = DEFAULT_REACTION_TYPE_PARAM) ReactionType type,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        String anonymousVoterId =
+                userDetails == null
+                        ? anonymousVoterCookieManager.getOrCreate(httpRequest, httpResponse)
+                        : null;
+        return ResponseEntity.ok(
+                reactionService.apply(publicId, type, userDetails, clientIp, anonymousVoterId));
+    }
+
+    @DeleteMapping("/{publicId}/reaction")
+    public ResponseEntity<ReactionResponse> removeReaction(
+            @PathVariable String publicId,
+            @RequestParam(defaultValue = DEFAULT_REACTION_TYPE_PARAM) ReactionType type,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        String anonymousVoterId =
+                userDetails == null
+                        ? anonymousVoterCookieManager.getOrCreate(httpRequest, httpResponse)
+                        : null;
+        return ResponseEntity.ok(
+                reactionService.remove(publicId, type, userDetails, clientIp, anonymousVoterId));
+    }
+
+    @Deprecated(forRemoval = true)
     @PostMapping("/{publicId}/reactions")
-    public ResponseEntity<com.ikae.snowthing.domain.post.dto.ReactionToggleResponse> reactToPost(
+    public ResponseEntity<ReactionResponse> toggleReaction(
             @PathVariable String publicId,
             @Valid @RequestBody PostReactionRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -119,9 +159,8 @@ public class PostController {
                 userDetails == null
                         ? anonymousVoterCookieManager.getOrCreate(httpRequest, httpResponse)
                         : null;
-        com.ikae.snowthing.domain.post.dto.ReactionToggleResponse response =
-                postService.reactToPost(
-                        publicId, request.type(), userDetails, clientIp, anonymousVoterId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                reactionService.toggle(
+                        publicId, request.type(), userDetails, clientIp, anonymousVoterId));
     }
 }

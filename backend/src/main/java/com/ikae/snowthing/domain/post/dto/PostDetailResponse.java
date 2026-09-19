@@ -2,10 +2,12 @@ package com.ikae.snowthing.domain.post.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostImage;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
+import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.global.util.WriterDisplayFormatter;
 
 public record PostDetailResponse(
@@ -22,7 +24,14 @@ public record PostDetailResponse(
         int dislikeCount,
         WriterInfo writer,
         List<String> images,
+        Set<ReactionType> activeReactionTypes,
         LocalDateTime createdAt) {
+
+    public PostDetailResponse {
+        images = List.copyOf(images);
+        activeReactionTypes = Set.copyOf(activeReactionTypes);
+    }
+
     public record WriterInfo(String publicId, String nickname, String profileImageUrl) {
         public static WriterInfo anonymous(String maskedIp) {
             return new WriterInfo(null, maskedIp, null);
@@ -59,7 +68,27 @@ public record PostDetailResponse(
                 post.getDislikeCount(),
                 writerInfo,
                 List.copyOf(imageUrls),
+                Set.of(),
                 post.getCreatedAt());
+    }
+
+    public PostDetailResponse withActiveReactionTypes(Set<ReactionType> reactionTypes) {
+        return new PostDetailResponse(
+                publicId,
+                categoryName,
+                categoryCode,
+                title,
+                content,
+                status,
+                isAnonymous,
+                viewCount,
+                commentCount,
+                likeCount,
+                dislikeCount,
+                writer,
+                images,
+                reactionTypes,
+                createdAt);
     }
 
     public static PostDetailResponse from(Post post, int viewCount) {

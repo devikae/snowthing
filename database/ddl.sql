@@ -116,7 +116,9 @@ CREATE TABLE `post` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '수정 일시',
     CONSTRAINT `fk_post_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_post_category` FOREIGN KEY (`category_id`) REFERENCES `post_category` (`category_id`)
+    CONSTRAINT `fk_post_category` FOREIGN KEY (`category_id`) REFERENCES `post_category` (`category_id`),
+    CONSTRAINT `chk_post_like_count_non_negative` CHECK (`like_count` >= 0),
+    CONSTRAINT `chk_post_dislike_count_non_negative` CHECK (`dislike_count` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='게시글';
 
 -- 9. 게시글 첨부 이미지 테이블 (1:N)

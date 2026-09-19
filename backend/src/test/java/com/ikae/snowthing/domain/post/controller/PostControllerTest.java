@@ -41,6 +41,8 @@ import com.ikae.snowthing.global.web.AnonymousVoterCookieManager;
 @Transactional
 class PostControllerTest {
 
+    private static final String LIKE_REACTION_PARAM = "LIKE";
+
     @Autowired private MockMvc mockMvc;
 
     @Autowired private ObjectMapper objectMapper;
@@ -263,6 +265,62 @@ class PostControllerTest {
     }
 
     @Test
+    @DisplayName("PUT/DELETE /api/v1/posts/{publicId}/reaction - 반복 요청에도 최종 상태가 유지된다")
+    void reactionCommands_areIdempotent() throws Exception {
+        PostResponse post =
+                postService.createPost(
+                        PostCreateRequest.builder()
+                                .categoryCode("FREE")
+                                .title("멱등 추천 API 테스트")
+                                .content("본문")
+                                .isAnonymous(false)
+                                .build(),
+                        userDetails,
+                        "127.0.0.1");
+        String endpoint = "/api/v1/posts/" + post.publicId() + "/reaction";
+
+        mockMvc.perform(
+                        put(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.changed").value(true))
+                .andExpect(jsonPath("$.likeCount").value(1));
+
+        mockMvc.perform(
+                        put(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.changed").value(false))
+                .andExpect(jsonPath("$.likeCount").value(1));
+
+        mockMvc.perform(
+                        delete(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.changed").value(true))
+                .andExpect(jsonPath("$.likeCount").value(0));
+
+        mockMvc.perform(
+                        delete(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.changed").value(false))
+                .andExpect(jsonPath("$.likeCount").value(0));
+    }
+
+    @Test
     @DisplayName(
             "DELETE /api/v1/posts/{publicId} - 비회원 익명글에 올바른 비밀번호를 Request Body로 전송 시 삭제 200 OK")
     void deletePost_anonymous_success_withRequestBody() throws Exception {
@@ -458,7 +516,7 @@ class PostControllerTest {
                                 cookie().exists(
                                                 AnonymousVoterCookieManager
                                                         .ANONYMOUS_VOTER_COOKIE_NAME))
-                        .andExpect(jsonPath("$.isToggledOn").value(true))
+                        .andExpect(jsonPath("$.active").value(true))
                         .andExpect(jsonPath("$.likeCount").value(1))
                         .andReturn();
 
@@ -475,7 +533,7 @@ class PostControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isToggledOn").value(false))
+                .andExpect(jsonPath("$.active").value(false))
                 .andExpect(jsonPath("$.likeCount").value(0));
     }
 

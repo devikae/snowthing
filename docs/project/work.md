@@ -1279,3 +1279,12 @@
   - 기본 `./gradlew test`에서 `benchmark` 태그 테스트를 제외해 일반 테스트와 대규모 Seed 테스트가 같은 DB Context를 오염시키지 않도록 했습니다.
   - 벤치마크 실행은 `./gradlew test --tests CommentBenchmarkSeedRunnerTest -PincludeBenchmark`로 명시해야 합니다.
   - GitHub Actions 실패 로그에서 확인된 11건의 DB 제약조건·기대값 오류 원인을 반영했습니다.
+- **Sprint 05 추천 동시성 제어 및 멱등 API 구현 (2026-09-19)**:
+  - `feature/sprint05-reaction/comment-count-concurrency` 브랜치에서 Read-Modify-Write Lost Update를 MySQL 8.0.46과 100개 동시 트랜잭션으로 세 번 재현했습니다. 추천 row는 매번 100개였지만 카운터는 1로 남았습니다.
+  - 같은 조건에서 원자적 UPDATE, 낙관적 락, 비관적 락을 세 번 비교했습니다. 세 후보 모두 정합성을 지켰지만 낙관적 락은 회당 약 4,950회 재시도와 2.84~3.00초가 필요했고, 원자적 UPDATE와 비관적 락은 약 0.44~0.48초였습니다.
+  - 추천 row INSERT 후 카운터 UPDATE 순서에서 외래키 공유 락의 배타 락 승격으로 deadlock이 발생하는 것을 확인했습니다. 게시글 row를 먼저 확보한 뒤 `post_reaction`을 변경하도록 락 순서를 통일했습니다.
+  - `PUT/DELETE /api/v1/posts/{publicId}/reaction` 멱등 명령을 추가하고 LIKE·DISLIKE에 같은 원자적 카운터·UNIQUE·트랜잭션 구조를 적용했습니다. 기존 POST 토글은 호환용 deprecated API로 남겼습니다.
+  - 실제 `post`·`post_reaction`에서 서로 다른 100명 추천, 동일 사용자 PUT/DELETE 100건, 추천·취소 경합, 중간 예외 롤백, UNIQUE, 음수 CHECK, 불일치 탐지와 reconciliation을 검증했습니다.
+  - `docs/conception/sprint05/ADR-003 추천 동시성.md`와 관련 API·ERD·아키텍처 문서를 현행화했습니다. 학습 문서는 `docs/study/sprint05/추천 동시성과 멱등성 학습.md`에 작성했으며 Git 추적 대상에서 제외합니다.
+  - 추천 후보 비교 테스트와 실제 테이블 통합 테스트를 함께 실행해 통과했습니다. 프런트엔드 운영 빌드와 Spotless 검사도 통과했습니다.
+  - 전체 백엔드 테스트 174건 중 34건은 기존 댓글 테스트가 요구하는 `SNOWTHING_TEST_DB_URL` 미설정으로 Spring Context 생성 전에 중단됐습니다. 추천 변경으로 발생한 assertion 실패는 아니며, 댓글 테스트 환경 변수를 갖춘 환경에서 별도 재실행해야 합니다.

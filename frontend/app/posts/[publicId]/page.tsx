@@ -32,6 +32,7 @@ interface PostDetail {
   commentCount: number;
   likeCount: number;
   dislikeCount: number;
+  activeReactionTypes: ("LIKE" | "DISLIKE")[];
   writer: WriterInfo;
   images: string[];
   createdAt: string;
@@ -313,10 +314,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
     try {
-      const res = await csrfFetch(API_ENDPOINTS.posts.reactions(publicId), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
+      const isActive = post?.activeReactionTypes.includes(type) ?? false;
+      const res = await csrfFetch(API_ENDPOINTS.posts.reaction(publicId, type), {
+        method: isActive ? "DELETE" : "PUT",
       });
 
       if (res.ok) {
@@ -328,6 +328,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             ...current,
             likeCount: data.likeCount,
             dislikeCount: data.dislikeCount,
+            activeReactionTypes: data.active
+              ? Array.from(new Set([...current.activeReactionTypes, type]))
+              : current.activeReactionTypes.filter((activeType) => activeType !== type),
           };
         });
         return;
