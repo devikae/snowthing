@@ -81,3 +81,15 @@
 1. 업로드 후 게시글 등록을 취소하거나 원본·썸네일 중 한쪽 저장만 성공하면 고아 객체가 남을 수 있습니다. 임시 업로드 prefix와 수명 주기 정리 또는 게시글 연결 후 승격 절차가 필요합니다.
 2. `public/posts/`는 공개 조회 경로입니다. 회원 전용 중고장터 이미지는 별도 prefix로 분리하고 CloudFront Signed URL/Cookie 등 별도 권한 정책을 적용해야 합니다.
 3. UUID 객체에는 장기 immutable 캐시를 적용했습니다. 같은 키를 덮어쓰지 말고 변경 시 새 UUID를 사용해야 합니다.
+
+## 이미지와 배포 설정의 커밋 일치 보완 (2026-09-19)
+
+이미지는 `github.sha` 기준으로 만들면서 EC2는 배포 브랜치의 최신 HEAD를 받던 문제를 수정했습니다. 이제 백엔드와 프런트 워크플로가 브랜치명이 아니라 워크플로를 시작한 정확한 커밋 SHA를 SSM으로 전달합니다. EC2는 그 SHA를 직접 fetch/reset하고 `rev-parse HEAD`가 전달값과 같은지 확인한 뒤, 같은 커밋의 `compose.prod.yml`과 배포 스크립트를 실행합니다.
+
+- 배포 설정 고정 커밋: `7debde270710c38ac4e084fa146c306f590e3bcf`
+- 프런트 이미지 digest: `sha256:5a4f989ba9c9b73b83325b78a6444893bd2fa7ae476ed8c41a4ef4040ee125ee`
+- 백엔드 이미지 digest: `sha256:602c461015674d5de0ba4d274d8e9a256e025cdba4c34fe368e05f4eb701808d`
+- [프런트 검증 실행 35425934449](https://github.com/devikae/snowthing/actions/runs/35425934449): CI 24초, 빌드·push·SSM 배포 1분 50초
+- [백엔드 검증 실행 35425934475](https://github.com/devikae/snowthing/actions/runs/35425934475): CI 2분 30초, 빌드·push·SSM 배포 2분 11초
+
+두 SSM 출력에서 `HEAD is now at 7debde2`를 확인했습니다. 배포 후 `https://snowthing.org/`, 게시글 API, 리조트 API도 모두 `200 OK`였습니다. 롤백 워크플로는 선택한 `release-<SHA>` 또는 `stable-<SHA>` 태그에서 원본 SHA를 꺼내 같은 방식으로 배포 파일까지 과거 커밋에 맞춥니다. 프런트 태그 뒤에 설정 지문이 붙어도 원본 40자리 SHA만 분리합니다.

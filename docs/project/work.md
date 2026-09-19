@@ -1374,3 +1374,7 @@
   - 백엔드·프런트 일반 배포는 `${{ github.sha }}`를 SSM에 전달하고 EC2가 해당 SHA를 직접 fetch/reset한 뒤 `rev-parse HEAD` 일치를 검사하도록 변경했습니다.
   - 프런트 전용 롤백과 공통 ECR 롤백은 `release/stable-<SHA>[-<설정지문>]`에서 원본 커밋 SHA를 추출해 같은 커밋의 배포 파일을 사용하도록 변경했습니다.
   - 세 워크플로에서 브랜치 기반 배포 변수가 제거됐고, YAML 파싱과 SHA fetch/reset/검증 구문 정적 검사를 통과했습니다.
+  - 실제 프런트 배포 [35425934449](https://github.com/devikae/snowthing/actions/runs/35425934449)가 성공했습니다. CI 24초, 빌드·push·SSM 배포 1분 50초였고 SSM 출력에서 `HEAD is now at 7debde2`와 digest `sha256:5a4f989b...` 실행을 확인했습니다.
+  - 실제 백엔드 배포 [35425934475](https://github.com/devikae/snowthing/actions/runs/35425934475)가 성공했습니다. CI 2분 30초, 빌드·push·SSM 배포 2분 11초였고 SSM 출력에서 같은 `7debde2`와 digest `sha256:602c4610...` 실행을 확인했습니다.
+  - 배포 후 `https://snowthing.org/`, 게시글 조회 API, 리조트 기준정보 API가 모두 `200 OK`를 반환했습니다.
+  - Sprint 06 제출 문서 01·02·03과 로컬 학습 문서에 SHA와 digest의 역할, 정상 배포·롤백 동작, 대안과 트레이드오프를 현행 구조로 반영했습니다. 학습 문서는 Git에 포함하지 않습니다.
