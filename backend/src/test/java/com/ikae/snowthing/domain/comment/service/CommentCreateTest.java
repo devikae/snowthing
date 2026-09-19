@@ -55,7 +55,7 @@ class CommentCreateTest {
     static void useRealMySql(DynamicPropertyRegistry registry) {
         String testDbUrl = System.getenv("SNOWTHING_TEST_DB_URL");
         if (testDbUrl == null || testDbUrl.isBlank()) {
-            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+            return;
         }
         registry.add("spring.datasource.url", () -> testDbUrl);
         registry.add(
