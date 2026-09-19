@@ -6,7 +6,7 @@
 - 운영 URL: `https://snowthing.org`
 - ECR 전환 커밋: `eaf7acc669f1c9ae0f82dee2ca07a65bfdfb4fbb`
 - 로그인 UI 및 수동 롤백 추가 커밋: `bf94203015a6edf6d0b0a977af5e4afb2c9c5710`
-- 배포 PR: 아직 만들지 않았습니다. 현재 결과를 정리한 뒤 `deploy/aws-ec2`에서 `main`으로 PR을 열어야 합니다.
+- 배포 PR: [#19 aws-ec2](https://github.com/devikae/snowthing/pull/19)
 
 ## 실제 배포 이미지
 
@@ -56,3 +56,28 @@
 - 스냅샷을 새 인스턴스 `snowthing-db-restore-test`로 복원했습니다.
 - 복원 DB에는 스냅샷 이전의 두 행만 있었고, 스냅샷 이후 추가한 행은 없었습니다. 운영 DB를 덮어쓰지 않고 스냅샷 시점의 데이터를 별도 DB에서 복구한 결과입니다.
 - 증거 이미지는 [`evidence/rds-restore`](./evidence/rds-restore/)에 정리했습니다.
+
+## 이미지 CDN 변경 결과
+
+- 이미지 전달 구조 변경 커밋: `1466217f15d3d04ece095c044f3030cccbfd0192`
+- 썸네일 생성·목록 URL 보정 커밋: `86888ff`
+- 이미지 도메인: `https://images.snowthing.org`
+- CloudFront 원본: Block Public Access가 적용된 비공개 S3 버킷
+- S3 접근: CloudFront OAC와 EC2 IAM Role만 허용
+
+기존 백엔드의 `GET /api/v1/images/**` 바이트 중계 API를 제거했습니다. 업로드 API는 CloudFront URL과 객체 키를 반환하고, Client는 CloudFront에서 이미지를 직접 조회합니다. 리뷰에서 제안한 S3 공개 URL은 사용하지 않았습니다. S3를 공개하면 향후 회원 전용 중고장터 이미지와 접근 정책이 충돌하므로, 비공개 S3를 원본으로 두고 CloudFront만 공개 조회 지점으로 사용했습니다.
+
+새 게시글 이미지는 다음 두 객체로 저장됩니다.
+
+- 원본: `public/posts/originals/{UUID}.{확장자}`
+- 목록용 썸네일: `public/posts/thumbnails/{UUID}.jpg`
+
+썸네일은 최대 320×320, 비율 유지, JPEG 품질 0.8로 생성합니다. 게시글 DB에는 원본 객체 키만 저장하고 상세 응답은 원본 CloudFront URL, 목록 응답은 썸네일 CloudFront URL을 반환합니다. 기존 `public/posts/{UUID}.{확장자}` 데이터는 원본 URL로 응답해 호환성을 유지합니다.
+
+[이미지 CDN 최초 배포](https://github.com/devikae/snowthing/actions/runs/35422759822)와 [썸네일 배포](https://github.com/devikae/snowthing/actions/runs/35424121640)가 성공했습니다. 운영 업로드 결과 원본 PNG는 675×128, 11,976바이트였고 썸네일 JPEG는 320×61, 6,117바이트였습니다. 두 CloudFront URL은 200, 두 S3 직접 URL은 403이었습니다.
+
+### 이미지 관련 잔여 이슈
+
+1. 업로드 후 게시글 등록을 취소하거나 원본·썸네일 중 한쪽 저장만 성공하면 고아 객체가 남을 수 있습니다. 임시 업로드 prefix와 수명 주기 정리 또는 게시글 연결 후 승격 절차가 필요합니다.
+2. `public/posts/`는 공개 조회 경로입니다. 회원 전용 중고장터 이미지는 별도 prefix로 분리하고 CloudFront Signed URL/Cookie 등 별도 권한 정책을 적용해야 합니다.
+3. UUID 객체에는 장기 immutable 캐시를 적용했습니다. 같은 키를 덮어쓰지 말고 변경 시 새 UUID를 사용해야 합니다.
