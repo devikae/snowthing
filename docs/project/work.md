@@ -1393,3 +1393,9 @@
   - 장애 진단 원문이 `tee`를 통해 SSM·Actions 로그에 노출되지 않도록 EC2 파일로만 저장합니다. 디렉터리 `0700`, 파일 `0600`, 보관 기간 14일을 적용하고 stdout에는 비민감 상태 요약만 출력합니다.
   - 운영 DB는 앱 계정에 DDL 권한이 없는 구조이므로 앱 시작 Flyway를 즉시 추가하지 않았습니다. 다음 스키마 변경 전에 별도 migration 계정·승인 환경·배포 선행 job·실패 차단과 expand/contract 절차를 구성하는 것을 필수 선행 조건으로 기록했습니다.
   - 변경 커밋 `893811c`의 [프런트 배포 35428068493](https://github.com/devikae/snowthing/actions/runs/35428068493)와 [백엔드 배포 35428068484](https://github.com/devikae/snowthing/actions/runs/35428068484)가 성공했습니다. 배포 후 메인 화면·게시글 API·리조트 API가 모두 `200 OK`를 반환했습니다.
+- **PR 리뷰 학습 문서 및 `my_ai` 재발 방지 규칙 보강 (2026-09-19)**:
+  - Sprint 06 통합 학습 문서에 비공개 S3·CloudFront OAC, 공개/인증 캐시 분리, 객체 키와 IAM 경계, `readAllBytes()` 메모리 문제, multipart 전 구간 제한, SHA·digest 일치, ECR tag 승격, 진단 로그 보호, DB migration 분리를 하나의 리뷰 학습 장으로 정리했습니다.
+  - 각 항목에 개념, 도입 이유, 동작 방식, 대안, 트레이드오프와 다음 PR용 점검 목록을 추가했습니다.
+  - `my_ai/.ai/RULES.md`에 공통 필수 규칙을 등록하고, backend performance·Spring security·logging, application config, database migration, common security 문서의 해당 지점에 세부 규칙을 나눠 추가했습니다.
+  - 배포 시 commit SHA와 image digest를 함께 고정하고 ECR tag·SSM 로그·프록시 설정을 검증하는 `skills/infrastructure/deployment-safety.md`를 새로 등록했습니다.
+  - `docs/study/`는 학습 문서 비추적 원칙에 따라 Git 커밋 대상에서 제외합니다.

@@ -21,6 +21,15 @@
 - 운영 환경에서 debug/trace 로그가 기본 활성화되지 않게 한다.
 - Actuator endpoint 공개 범위를 검토한다.
 
+## 파일 업로드 제한
+
+- 서비스 코드의 파일 크기 상수만으로 업로드 제한이 적용된다고 판단하지 않는다.
+- `spring.servlet.multipart.max-file-size`는 서비스의 단일 파일 정책과 맞춘다.
+- `max-request-size`는 multipart boundary·part header 등 요청 오버헤드를 고려해 파일 제한보다 크게 설정한다.
+- CDN/WAF/Nginx·Spring multipart parser·서비스 검증 중 가장 작은 제한이 실제 제한이므로 전 구간을 대조한다.
+- proxy가 먼저 차단하면 애플리케이션 표준 오류가 나오지 않을 수 있으므로 413과 애플리케이션 오류 응답을 실제 환경에서 확인한다.
+- parser 단계의 `MaxUploadSizeExceededException`도 프로젝트의 정적 `ErrorCode` 응답으로 변환한다.
+
 ## Docker/Container
 
 - Secret을 Docker image layer에 bake하지 않는다.
