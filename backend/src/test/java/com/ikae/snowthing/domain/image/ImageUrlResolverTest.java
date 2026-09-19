@@ -11,22 +11,24 @@ class ImageUrlResolverTest {
     private final ImageUrlResolver resolver = new ImageUrlResolver("https://images.snowthing.org/");
 
     @Test
-    void convertsCloudFrontUrlToStorageKey() {
-        assertThat(resolver.toStorageValue("https://images.snowthing.org/public/posts/sample.png"))
-                .isEqualTo("public/posts/sample.png");
+    void resolvesNewOriginalKeyToThumbnailUrl() {
+        String result = resolver.toThumbnailPublicUrl("public/posts/originals/image-id.png");
+
+        assertThat(result)
+                .isEqualTo("https://images.snowthing.org/public/posts/thumbnails/image-id.jpg");
     }
 
     @Test
-    void convertsStorageKeyToCloudFrontUrl() {
-        assertThat(resolver.toPublicUrl("public/posts/sample.png"))
-                .isEqualTo("https://images.snowthing.org/public/posts/sample.png");
+    void resolvesLegacyKeyToOriginalUrl() {
+        String result = resolver.toThumbnailPublicUrl("public/posts/legacy-image.jpg");
+
+        assertThat(result).isEqualTo("https://images.snowthing.org/public/posts/legacy-image.jpg");
     }
 
     @Test
-    void keepsLegacyExternalUrlUnchanged() {
-        String legacyUrl = "https://cdn.example.com/sample.png";
+    void preservesLegacyAbsoluteUrl() {
+        String result = resolver.toThumbnailPublicUrl("https://legacy.example.com/image.jpg");
 
-        assertThat(resolver.toStorageValue(legacyUrl)).isEqualTo(legacyUrl);
-        assertThat(resolver.toPublicUrl(legacyUrl)).isEqualTo(legacyUrl);
+        assertThat(result).isEqualTo("https://legacy.example.com/image.jpg");
     }
 }

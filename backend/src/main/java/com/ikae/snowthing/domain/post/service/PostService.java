@@ -23,6 +23,7 @@ import com.ikae.snowthing.domain.post.event.PostReactionEvent;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.repository.PostReactionRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -165,7 +166,7 @@ public class PostService {
             posts = postRepository.findAllWithMemberAndCategory(pageable);
         }
 
-        return posts.map(PostListResponse::from);
+        return posts.map(this::toPostListResponse);
     }
 
     public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
@@ -176,7 +177,7 @@ public class PostService {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return postRepository.findPostsByOffset(request);
+        return resolveThumbnailUrls(postRepository.findPostsByOffset(request));
     }
 
     public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
@@ -184,7 +185,7 @@ public class PostService {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return postRepository.findPostsByCursor(request);
+        return resolveThumbnailUrls(postRepository.findPostsByCursor(request));
     }
 
     @Transactional
@@ -397,6 +398,25 @@ public class PostService {
         return userDetails != null
                 && userDetails.getAuthorities().stream()
                         .anyMatch(a -> a.getAuthority().equals(Role.ROLE_ADMIN.getKey()));
+    }
+
+    private PostListResponse toPostListResponse(Post post) {
+        PostListResponse response = PostListResponse.from(post);
+        return response.withThumbnailImageUrl(
+                imageUrlResolver.toThumbnailPublicUrl(response.thumbnailImageUrl()));
+    }
+
+    private CursorPageResponse<PostListResponse> resolveThumbnailUrls(
+            CursorPageResponse<PostListResponse> page) {
+        List<PostListResponse> content =
+                page.content().stream()
+                        .map(
+                                response ->
+                                        response.withThumbnailImageUrl(
+                                                imageUrlResolver.toThumbnailPublicUrl(
+                                                        response.thumbnailImageUrl())))
+                        .toList();
+        return new CursorPageResponse<>(content, page.pageInfo());
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {

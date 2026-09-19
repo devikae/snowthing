@@ -1342,3 +1342,11 @@
   - 검증: 이미지 단위 테스트 8건, Backend Spotless 및 `build -x test`, Frontend production build, Compose config, `git diff --check` 통과.
   - Frontend lint는 이번 변경과 무관한 기존 `ToastEditor.tsx`, `ToastViewer.tsx`의 `@ts-ignore` 규칙 위반 2건 때문에 실패했습니다. 이번 이미지 화면에는 신규 경고 1건(`<img>`)만 존재합니다.
   - 게시글 통합 테스트는 로컬 MySQL이 실행되지 않아 연결 단계에서 실패했습니다. 운영 배포 후 실제 업로드, CloudFront 비로그인 조회, S3 원본 URL 차단을 확인해야 합니다.
+
+- **게시글 목록 썸네일 생성 및 CDN 경로 보정 (2026-09-19)**:
+  - 상태: 구현 및 로컬 단위 검증 완료, 운영 배포 검증 진행 중
+  - 목록 API가 S3 객체 키를 그대로 반환해 브라우저가 `snowthing.org/posts/public/...`로 요청하던 문제를 확인했습니다.
+  - 새 업로드는 원본을 `public/posts/originals/{UUID}.{확장자}`, 목록용 JPEG 썸네일을 `public/posts/thumbnails/{UUID}.jpg`에 저장합니다.
+  - 썸네일은 최대 320×320 범위에서 비율을 유지하고 품질 0.8로 압축합니다. UUID 경로에는 1년 immutable 캐시 헤더를 적용했습니다.
+  - DB에는 원본 객체 키만 저장하고 목록 응답에서 썸네일 경로를 계산합니다. 기존 `public/posts/{UUID}.{확장자}` 데이터는 원본 CloudFront URL을 사용해 호환성을 유지합니다.
+  - 이미지 업로드·URL 변환 단위 테스트와 Spotless 검증을 통과했습니다. 게시글 통합 테스트는 로컬 MySQL 미실행으로 연결 단계에서 실패했으며 CI MySQL 환경에서 다시 확인합니다.

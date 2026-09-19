@@ -40,6 +40,10 @@ dependencies {
     implementation 'software.amazon.awssdk:rds:2.25.70'
     implementation 'software.amazon.awssdk:s3:2.25.70'
 
+    // Image thumbnail generation (WebP decoding + resize/JPEG encoding)
+    implementation 'net.coobird:thumbnailator:0.4.21'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.14.0'
+
     // Security & Session Redis
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'

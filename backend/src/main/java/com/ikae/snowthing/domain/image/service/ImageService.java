@@ -1,5 +1,7 @@
 package com.ikae.snowthing.domain.image.service;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
@@ -14,6 +16,7 @@ import com.ikae.snowthing.global.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.coobird.thumbnailator.Thumbnails;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -28,7 +31,12 @@ public class ImageService {
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Set<String> ALLOWED_MIME_TYPES =
             Set.of("image/jpeg", "image/png", "image/webp");
-    private static final String PUBLIC_POST_IMAGE_PREFIX = "public/posts/";
+    private static final String ORIGINAL_PREFIX = "public/posts/originals/";
+    private static final String THUMBNAIL_PREFIX = "public/posts/thumbnails/";
+    private static final int THUMBNAIL_MAX_WIDTH = 320;
+    private static final int THUMBNAIL_MAX_HEIGHT = 320;
+    private static final double THUMBNAIL_QUALITY = 0.8;
+    private static final String IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
     private final S3Client s3Client;
 
@@ -43,17 +51,14 @@ public class ImageService {
         validateFile(file, imageBytes);
 
         String extension = extractExtension(file.getOriginalFilename());
-        String imageKey = PUBLIC_POST_IMAGE_PREFIX + UUID.randomUUID() + "." + extension;
+        String imageId = UUID.randomUUID().toString();
+        String imageKey = ORIGINAL_PREFIX + imageId + "." + extension;
+        String thumbnailKey = THUMBNAIL_PREFIX + imageId + ".jpg";
+        byte[] thumbnailBytes = createThumbnail(imageBytes);
 
         try {
-            PutObjectRequest putRequest =
-                    PutObjectRequest.builder()
-                            .bucket(bucketName)
-                            .key(imageKey)
-                            .contentType(file.getContentType())
-                            .build();
-
-            s3Client.putObject(putRequest, RequestBody.fromBytes(imageBytes));
+            putObject(thumbnailKey, "image/jpeg", thumbnailBytes);
+            putObject(imageKey, file.getContentType(), imageBytes);
 
             String imageUrl = cloudFrontBaseUrl.replaceAll("/+$", "") + "/" + imageKey;
             log.info("S3 이미지 업로드 성공: bucket={}, key={}", bucketName, imageKey);
@@ -65,6 +70,32 @@ public class ImageService {
                     imageKey,
                     e.getMessage());
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    private void putObject(String key, String contentType, byte[] bytes) {
+        PutObjectRequest putRequest =
+                PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .contentType(contentType)
+                        .cacheControl(IMMUTABLE_CACHE_CONTROL)
+                        .build();
+        s3Client.putObject(putRequest, RequestBody.fromBytes(bytes));
+    }
+
+    private byte[] createThumbnail(byte[] imageBytes) {
+        try (ByteArrayInputStream input = new ByteArrayInputStream(imageBytes);
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Thumbnails.of(input)
+                    .size(THUMBNAIL_MAX_WIDTH, THUMBNAIL_MAX_HEIGHT)
+                    .outputFormat("jpg")
+                    .outputQuality(THUMBNAIL_QUALITY)
+                    .toOutputStream(output);
+            return output.toByteArray();
+        } catch (IOException | RuntimeException e) {
+            log.warn("썸네일 생성 실패: error={}", e.getMessage());
+            throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
         }
     }
 
