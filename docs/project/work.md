@@ -1392,3 +1392,4 @@
   - stable 승격 시 같은 digest의 모든 `release-*` 태그를 삭제하던 세 workflow를 수정해 사용자가 선택한 `SOURCE_TAG` 하나만 제거하도록 변경했습니다.
   - 장애 진단 원문이 `tee`를 통해 SSM·Actions 로그에 노출되지 않도록 EC2 파일로만 저장합니다. 디렉터리 `0700`, 파일 `0600`, 보관 기간 14일을 적용하고 stdout에는 비민감 상태 요약만 출력합니다.
   - 운영 DB는 앱 계정에 DDL 권한이 없는 구조이므로 앱 시작 Flyway를 즉시 추가하지 않았습니다. 다음 스키마 변경 전에 별도 migration 계정·승인 환경·배포 선행 job·실패 차단과 expand/contract 절차를 구성하는 것을 필수 선행 조건으로 기록했습니다.
+  - 변경 커밋 `893811c`의 [프런트 배포 35428068493](https://github.com/devikae/snowthing/actions/runs/35428068493)와 [백엔드 배포 35428068484](https://github.com/devikae/snowthing/actions/runs/35428068484)가 성공했습니다. 배포 후 메인 화면·게시글 API·리조트 API가 모두 `200 OK`를 반환했습니다.
