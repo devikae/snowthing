@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Footer, SideCategories, TopNav } from "./components/SiteChrome";
+import LiveChatSection from "./components/LiveChatSection";
 import { API_ENDPOINTS } from "./lib/api";
 
 interface MemberProfile {
@@ -104,7 +105,11 @@ export default function HomePage() {
             </div>
           </section>
 
-          <section className="mt-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="mt-8">
+            <LiveChatSection currentMember={profile} />
+          </div>
+
+          <section className="mt-6 grid gap-8 xl:grid-cols-[minmax(0,1fr)_280px]">
             <div>
               <div className="mb-6 flex items-end justify-between border-b-2 border-black pb-3">
                 <h2 className="flex items-center gap-2 text-2xl font-extrabold text-black">

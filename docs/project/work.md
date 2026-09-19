@@ -1,3 +1,38 @@
+- **실시간 라이브톡 백엔드/프론트엔드 V1 구현 및 단위/통합 테스트 완료 (2026-09-20)**:
+  - **작업 브랜치**: `feature/live-chat`
+  - **현재 상태**: 구현 완료 (백엔드 단위/통합 테스트 100% 통과, 프론트엔드 Turbopack 빌드 성공)
+  - **완료된 항목**:
+    1. **백엔드 의존성 및 보안 설정**:
+       - `backend/build.gradle`: `org.springframework.boot:spring-boot-starter-websocket` 추가.
+       - `SecurityConfig.java`: `/ws-chat/**` 엔드포인트 `permitAll()`, SockJS 핸드셰이크 CSRF 예외(`ignoringRequestMatchers("/ws-chat/**")`) 적용.
+       - `ErrorCode.java`: `CHAT_001` ~ `CHAT_007` 비즈니스 에러 코드 신설.
+       - `CustomException.java` 신설 및 `GlobalExceptionHandler.java`에 핸들러 등록하여 Rule 23 준수.
+    2. **STOMP 인메모리 브로커 및 핸드셰이크 인터셉터 구축**:
+       - `WebSocketConfig.java`: 엔드포인트 `/ws-chat` (SockJS 지원), SimpleBroker `/sub`, `/queue`, 목적지 접두사 `/pub`, 사용자 접두사 `/user` 구성.
+       - `ChatHandshakeInterceptor.java`: `ClientIpResolver`를 통해 클라이언트 IP 추출 후 세션 속성(`clientIp`) 바인딩.
+    3. **도메인 컴플라이언스 및 비즈니스 로직 구현 (`com.ikae.snowthing.domain.chat`)**:
+       - `ResortTag.java`: 6대 리조트 Enum 및 2글자 약칭 매핑.
+       - 불변 DTO 구현: `ChatMessageRequest`, `ChatMessageResponse`, `SenderDto`, `ChatErrorResponse` (Rule 22 준수).
+       - `ChatAuditLogger.java`: 통신비밀보호법 3개월 의무 준수를 위한 TSV 포맷 메타데이터(`[timestamp]\t[member_id]\t[client_ip]\t[channel]`) 비동기 감사 로그 기록.
+       - `ChatService.java`: 비인증 발송 차단, 1~100자 검증, 외부 URL 및 텔레그램/카톡 ID 정규식 차단, `ConcurrentHashMap` 기반 5초 동일 메시지 쿨다운, `HtmlUtils.htmlEscape` XSS 방어선 구축.
+       - `ChatController.java`: `@MessageMapping("/chat/messages")` 수신 후 `/sub/chat/main` 브로드캐스팅 및 `@MessageExceptionHandler` 기반 발신자 전용 에러 채널(`/user/queue/errors`) 라우팅.
+    4. **프론트엔드 메신저형 대화 버블 UI 구현 (`LiveChatSection.tsx`)**:
+       - `@stomp/stompjs` 기반 WebSocket 연결 수명주기 및 자동 재연결 관리.
+       - 본인 메시지(우측 정렬 하늘색 버블) vs 타인 메시지(좌측 정렬 원형 아바타 + 닉네임 + 리조트 뱃지 + 흰색 버블) 분기 렌더링.
+       - 슬로프 현장 제보(리조트 선택 시 뱃지 표시) vs 일반 잡담(미선택 시 뱃지 생략) 시각적 위계 확립.
+       - `localStorage` 기반 마지막 선택 리조트 자동 기억 및 복원.
+       - 스크롤 앵커링(Scroll Anchoring) 및 `새 메시지 수신 ↓` 플로팅 버튼.
+       - 최신 100개 메시지 DOM 상한 유지(FIFO Pruning).
+       - 비로그인 시 입력창 비활성화 및 안내.
+       - 메인 화면(`frontend/app/page.tsx`) 프로모션 배너 하단에 임베드 완료.
+    5. **자동화 검증 완료**:
+       - `ChatServiceTest.java`: 비즈니스 로직, 링크 차단, 도배 쿨다운, XSS 방어 단위 테스트 통과.
+       - `WebSocketChatIntegrationTest.java`: 실제 HTTP 로그인 후 JSESSIONID 연동, WebSocket 연결 수립, `/sub/chat/main` 브로드캐스트 수신, `/user/queue/errors` 개인 에러 수신 통합 테스트 100% 통과.
+       - 백엔드 전체 테스트: `.\gradlew.bat test` 175개 테스트 전체 통과 (BUILD SUCCESSFUL).
+       - 서식 검증: `.\gradlew.bat spotlessApply` 통과.
+       - 프론트엔드 프로덕션 빌드: `npm run build` Next.js 16.2.12 Turbopack 컴파일 100% 성공 (0 errors).
+  - **다음 진행 예정**: 로컬 브라우저 2개 창(일반 창 + 시크릿 창)을 띄워 유저와 함께 실시간 대화 E2E 테스트 수행.
+
 - **Sprint 04 댓글 벤치마크 디렉터리 영문화 및 종합 README 가이드 작성 (2026-09-09)**:
   1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
   2. **경로 동기화**: `ADR-002-댓글아키텍처.md` 및 `댓글-벤치마크-결과.md` 내 실행계획 경로를 `explain-plans/`로 갱신.

@@ -1,0 +1,62 @@
+package com.ikae.snowthing.domain.chat.controller;
+
+import java.security.Principal;
+
+import jakarta.validation.Valid;
+
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.annotation.SendToUser;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Controller;
+
+import com.ikae.snowthing.domain.chat.dto.ChatErrorResponse;
+import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
+import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
+import com.ikae.snowthing.domain.chat.service.ChatService;
+import com.ikae.snowthing.global.config.websocket.ChatHandshakeInterceptor;
+import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.security.CustomUserDetails;
+
+import lombok.RequiredArgsConstructor;
+
+@Controller
+@RequiredArgsConstructor
+public class ChatController {
+
+    private final ChatService chatService;
+
+    @MessageMapping("/chat/messages")
+    @SendTo("/sub/chat/main")
+    public ChatMessageResponse handleChatMessage(
+            @Valid @Payload ChatMessageRequest request,
+            Principal principal,
+            SimpMessageHeaderAccessor headerAccessor) {
+
+        CustomUserDetails userDetails = null;
+        if (principal instanceof Authentication auth
+                && auth.getPrincipal() instanceof CustomUserDetails cud) {
+            userDetails = cud;
+        }
+
+        String clientIp = null;
+        if (headerAccessor.getSessionAttributes() != null) {
+            clientIp =
+                    (String)
+                            headerAccessor
+                                    .getSessionAttributes()
+                                    .get(ChatHandshakeInterceptor.ATTR_CLIENT_IP);
+        }
+
+        return chatService.processMessage(request, userDetails, clientIp);
+    }
+
+    @MessageExceptionHandler(CustomException.class)
+    @SendToUser(destinations = "/queue/errors", broadcast = false)
+    public ChatErrorResponse handleChatException(CustomException ex) {
+        return ChatErrorResponse.from(ex.getErrorCode());
+    }
+}

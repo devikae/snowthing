@@ -55,7 +55,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
+        config.setAllowedOrigins(List.of("http://localhost:3000", "https://snowthing.org"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -76,7 +76,8 @@ public class SecurityConfig {
                 .csrf(
                         csrf ->
                                 csrf.csrfTokenRepository(
-                                        CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                                                CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                        .ignoringRequestMatchers("/ws-chat/**"))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .securityContext(
@@ -148,7 +149,9 @@ public class SecurityConfig {
                                                 "/api/comments",
                                                 "/api/comments/**",
                                                 "/api/v1/comments",
-                                                "/api/v1/comments/**")
+                                                "/api/v1/comments/**",
+                                                "/ws-chat",
+                                                "/ws-chat/**")
                                         .permitAll()
                                         .requestMatchers("/api/admin/**", "/api/v1/admin/**")
                                         .hasRole("ADMIN")
