@@ -1383,4 +1383,5 @@
   - `spring.servlet.multipart.max-file-size`는 `5MB`, multipart 오버헤드를 포함하는 `max-request-size`는 `6MB`로 설정했습니다.
   - 파서 단계의 `MaxUploadSizeExceededException`도 `400 FILE_SIZE_EXCEEDED`로 반환하도록 전역 예외 처리를 추가했습니다.
   - 설정, 전역 예외 처리, 기존 이미지 서비스 제한을 검증하는 테스트 7개가 모두 통과했습니다.
-  - 운영 배포 후 Nginx `client_max_body_size`가 6MB 이상인지와 실제 1MB 초과 이미지 업로드를 확인해야 합니다.
+  - 첫 운영 확인에서 1,434,020바이트 multipart 요청이 Nginx 기본 제한에 걸려 `413 Payload Too Large`를 반환하는 것을 확인했습니다.
+  - 배포 스크립트가 `client_max_body_size 6m` 설정을 관리하고, `nginx -t` 성공 후에만 reload하도록 보완했습니다. 설정 검증 실패 시 기존 파일을 복원합니다.

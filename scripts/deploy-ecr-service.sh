@@ -32,6 +32,35 @@ fi
 REGISTRY="${IMAGE_URI%%/*}"
 PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || true)"
 
+configure_nginx_upload_limit() {
+  local config_path backup_path
+  config_path="/etc/nginx/conf.d/snowthing-upload-limit.conf"
+  backup_path=""
+
+  if [[ -f "$config_path" ]]; then
+    backup_path="$(mktemp)"
+    cp "$config_path" "$backup_path"
+  fi
+
+  printf '%s\n' 'client_max_body_size 6m;' > "$config_path"
+  if nginx -t; then
+    systemctl reload nginx
+    [[ -n "$backup_path" ]] && rm -f "$backup_path"
+    echo "Nginx multipart request limit configured: 6m"
+    return 0
+  fi
+
+  if [[ -n "$backup_path" ]]; then
+    cp "$backup_path" "$config_path"
+    rm -f "$backup_path"
+  else
+    rm -f "$config_path"
+  fi
+  nginx -t || true
+  echo "Failed to configure Nginx multipart request limit" >&2
+  return 1
+}
+
 check_health() {
   local attempt status
   for attempt in $(seq 1 12); do
@@ -71,6 +100,9 @@ collect_diagnostics() {
 }
 
 echo "ECR 로그인 및 digest 이미지 pull"
+if [[ "$SERVICE" == "backend" ]]; then
+  configure_nginx_upload_limit
+fi
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$REGISTRY"
 docker pull "$IMAGE_URI"
