@@ -1378,3 +1378,9 @@
   - 실제 백엔드 배포 [35425934475](https://github.com/devikae/snowthing/actions/runs/35425934475)가 성공했습니다. CI 2분 30초, 빌드·push·SSM 배포 2분 11초였고 SSM 출력에서 같은 `7debde2`와 digest `sha256:602c4610...` 실행을 확인했습니다.
   - 배포 후 `https://snowthing.org/`, 게시글 조회 API, 리조트 기준정보 API가 모두 `200 OK`를 반환했습니다.
   - Sprint 06 제출 문서 01·02·03과 로컬 학습 문서에 SHA와 digest의 역할, 정상 배포·롤백 동작, 대안과 트레이드오프를 현행 구조로 반영했습니다. 학습 문서는 Git에 포함하지 않습니다.
+- **이미지 multipart 업로드 제한 일치 (2026-09-19)**:
+  - 서비스에서는 5MB까지 허용하지만 Spring multipart 설정이 없어 기본 제한이 먼저 적용될 수 있는 문제를 수정했습니다.
+  - `spring.servlet.multipart.max-file-size`는 `5MB`, multipart 오버헤드를 포함하는 `max-request-size`는 `6MB`로 설정했습니다.
+  - 파서 단계의 `MaxUploadSizeExceededException`도 `400 FILE_SIZE_EXCEEDED`로 반환하도록 전역 예외 처리를 추가했습니다.
+  - 설정, 전역 예외 처리, 기존 이미지 서비스 제한을 검증하는 테스트 7개가 모두 통과했습니다.
+  - 운영 배포 후 Nginx `client_max_body_size`가 6MB 이상인지와 실제 1MB 초과 이미지 업로드를 확인해야 합니다.

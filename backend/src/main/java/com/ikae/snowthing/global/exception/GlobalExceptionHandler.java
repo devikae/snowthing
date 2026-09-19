@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
@@ -80,6 +81,14 @@ public class GlobalExceptionHandler {
         log.warn("요청 본문을 읽을 수 없습니다: {}", e.getMessage());
         return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException e) {
+        log.warn("Multipart upload size exceeded: {}", e.getMessage());
+        return ResponseEntity.status(ErrorCode.FILE_SIZE_EXCEEDED.getStatus())
+                .body(ErrorResponse.from(ErrorCode.FILE_SIZE_EXCEEDED));
     }
 
     @ExceptionHandler(Exception.class)
