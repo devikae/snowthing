@@ -76,16 +76,20 @@ jobs:
         if: inputs.operation == 'rollback'
         env:
           INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
-          DEPLOY_BRANCH: ${{ github.ref_name }}
           IMAGE_URI: ${{ steps.image.outputs.image_uri }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           SERVICE: ${{ inputs.service }}
+          SOURCE_TAG: ${{ inputs.source_tag }}
         run: |
           set -euo pipefail
-          PARAMETERS=$(jq -n --arg branch "$DEPLOY_BRANCH" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" --arg service "$SERVICE" '{commands: [
+          DEPLOY_SHA="${SOURCE_TAG#*-}"
+          DEPLOY_SHA="${DEPLOY_SHA%%-*}"
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          PARAMETERS=$(jq -n --arg sha "$DEPLOY_SHA" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" --arg service "$SERVICE" '{commands: [
             "set -e", "cd /home/ubuntu/snowthing",
-            "git -c safe.directory=/home/ubuntu/snowthing fetch origin \"" + $branch + "\"",
-            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"origin/" + $branch + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing fetch --no-tags origin \"" + $sha + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"" + $sha + "\"",
+            "test \"$(git -c safe.directory=/home/ubuntu/snowthing rev-parse HEAD)\" = \"" + $sha + "\"",
             "chmod +x scripts/deploy-ecr-service.sh",
             "scripts/deploy-ecr-service.sh \"" + $service + "\" \"" + $image + "\" \"" + $region + "\""
           ]}')

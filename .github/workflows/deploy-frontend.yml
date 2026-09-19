@@ -102,15 +102,17 @@ jobs:
       - name: Deploy frontend digest via SSM
         env:
           INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
-          DEPLOY_BRANCH: ${{ github.ref_name }}
+          DEPLOY_SHA: ${{ github.sha }}
           IMAGE_URI: ${{ steps.image.outputs.image_uri }}
           AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
           set -euo pipefail
-          PARAMETERS=$(jq -n --arg branch "$DEPLOY_BRANCH" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" '{commands: [
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          PARAMETERS=$(jq -n --arg sha "$DEPLOY_SHA" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" '{commands: [
             "set -e", "cd /home/ubuntu/snowthing",
-            "git -c safe.directory=/home/ubuntu/snowthing fetch origin \"" + $branch + "\"",
-            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"origin/" + $branch + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing fetch --no-tags origin \"" + $sha + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"" + $sha + "\"",
+            "test \"$(git -c safe.directory=/home/ubuntu/snowthing rev-parse HEAD)\" = \"" + $sha + "\"",
             "chmod +x scripts/deploy-ecr-service.sh",
             "scripts/deploy-ecr-service.sh frontend \"" + $image + "\" \"" + $region + "\""
           ]}')
@@ -162,7 +164,6 @@ jobs:
       - name: Resolve rollback digest and deploy via SSM
         env:
           INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
-          DEPLOY_BRANCH: ${{ github.ref_name }}
           REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           ROLLBACK_TAG: ${{ inputs.rollback_tag }}
@@ -172,10 +173,14 @@ jobs:
           REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
           DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$ROLLBACK_TAG" --query 'imageDetails[0].imageDigest' --output text)
           IMAGE_URI="$REGISTRY/$REPOSITORY@$DIGEST"
-          PARAMETERS=$(jq -n --arg branch "$DEPLOY_BRANCH" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" '{commands: [
+          DEPLOY_SHA="${ROLLBACK_TAG#*-}"
+          DEPLOY_SHA="${DEPLOY_SHA%%-*}"
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          PARAMETERS=$(jq -n --arg sha "$DEPLOY_SHA" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" '{commands: [
             "set -e", "cd /home/ubuntu/snowthing",
-            "git -c safe.directory=/home/ubuntu/snowthing fetch origin \"" + $branch + "\"",
-            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"origin/" + $branch + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing fetch --no-tags origin \"" + $sha + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"" + $sha + "\"",
+            "test \"$(git -c safe.directory=/home/ubuntu/snowthing rev-parse HEAD)\" = \"" + $sha + "\"",
             "chmod +x scripts/deploy-ecr-service.sh",
             "scripts/deploy-ecr-service.sh frontend \"" + $image + "\" \"" + $region + "\""
           ]}')
