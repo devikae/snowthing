@@ -28,7 +28,9 @@ function PostCreateForm() {
   const [categoryCode, setCategoryCode] = useState(initialCat);
   const [title, setTitle] = useState("");
   const [anonymousPassword, setAnonymousPassword] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageKey, setImageKey] = useState("");
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [userProfile, setUserProfile] = useState<MemberProfile | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -95,6 +97,35 @@ function PostCreateForm() {
     setCategoryCode(newCategory);
   };
 
+  const handleImageUpload = async (file: File | undefined) => {
+    if (!file) return;
+
+    setUploadingImage(true);
+    setErrorMsg("");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.images.upload, {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        setErrorMsg(error.message || "이미지 업로드에 실패했습니다.");
+        return;
+      }
+
+      const uploaded: { imageUrl: string; imageKey: string } = await response.json();
+      setImageKey(uploaded.imageKey);
+      setImagePreviewUrl(uploaded.imageUrl);
+    } catch {
+      setErrorMsg("이미지 업로드 중 서버 통신 오류가 발생했습니다.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const editorContent = editorRef.current?.getInstance().getMarkdown() || "";
@@ -129,7 +160,7 @@ function PostCreateForm() {
           content: editorContent.trim(),
           isAnonymous: isAnonCategory,
           anonymousPassword: isAnonCategory && !userProfile ? anonymousPassword : null,
-          imageUrls: imageUrl.trim() ? [imageUrl.trim()] : [],
+          imageUrls: imageKey ? [imageKey] : [],
         }),
       });
 
@@ -228,16 +259,27 @@ function PostCreateForm() {
         </section>
 
         <section className="compose-section">
-          <label htmlFor="post-image" className="compose-label"><span className="material-symbols-outlined">attach_file</span> 사진 첨부 <small>(이미지 URL, 선택)</small></label>
+          <label htmlFor="post-image" className="compose-label"><span className="material-symbols-outlined">attach_file</span> 사진 첨부 <small>(선택, 최대 5MB)</small></label>
           <input
             id="post-image"
-            type="text"
-            placeholder="https://cdn.example.com/image.jpg"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={!userProfile || uploadingImage}
+            onChange={(e) => handleImageUpload(e.target.files?.[0])}
             className="compose-image-input"
           />
-          <p className="compose-help">현재는 이미지 주소 1개를 첨부할 수 있습니다.</p>
+          <p className="compose-help">
+            {!userProfile
+              ? "이미지 첨부는 로그인한 회원만 사용할 수 있습니다."
+              : uploadingImage
+                ? "이미지를 업로드하고 있습니다."
+                : imageKey
+                  ? "이미지 업로드가 완료되었습니다."
+                  : "JPG, PNG, WebP 이미지 1개를 첨부할 수 있습니다."}
+          </p>
+          {imagePreviewUrl && (
+            <img src={imagePreviewUrl} alt="첨부 이미지 미리보기" className="mt-3 max-h-64 rounded-xl object-contain" />
+          )}
         </section>
 
         <footer className="compose-actions">

@@ -7,9 +7,12 @@ services:
       - "127.0.0.1:8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - SNOWTHING_PROD_DB_URL=${SNOWTHING_PROD_DB_URL:?SNOWTHING_PROD_DB_URL must be set}
+      # backend entrypoint가 jdbc:aws-wrapper:mysql:// 접두사까지 검증한다.
+      - SNOWTHING_PROD_DB_URL=${SNOWTHING_PROD_DB_URL:?SNOWTHING_PROD_DB_URL must be set and start with jdbc:aws-wrapper:mysql://}
       - SNOWTHING_DB_USERNAME=${SNOWTHING_DB_USERNAME:-snowthing_app}
       - SNOWTHING_DB_PASSWORD=${SNOWTHING_DB_PASSWORD:-}
+      - SNOWTHING_S3_BUCKET=${SNOWTHING_S3_BUCKET:-snowthing-media-00001}
+      - SNOWTHING_IMAGE_BASE_URL=${SNOWTHING_IMAGE_BASE_URL:-https://images.snowthing.org}
       - TZ=Asia/Seoul
 
   frontend:

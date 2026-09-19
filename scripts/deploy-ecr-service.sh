@@ -35,7 +35,8 @@ PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 
 check_health() {
   local attempt status
   for attempt in $(seq 1 12); do
-    status="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || true)"
+    status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+      --connect-timeout 2 --max-time 5 "$HEALTH_URL" || true)"
     if [[ "$status" =~ ^($EXPECTED_STATUS)$ ]]; then
       echo "$SERVICE 헬스체크 성공 (HTTP $status)"
       return 0

@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       rollback_tag:
-        description: '비워 두면 현재 커밋 배포, 입력하면 release-<40자리 SHA> 또는 stable-<40자리 SHA>로 복구'
+        description: '비워 두면 현재 커밋 배포, 입력하면 release/stable-<SHA>[-<설정지문>]으로 복구'
         required: false
         type: string
       stable_tag:
-        description: 'release-<40자리 SHA>를 stable 태그로 이동'
+        description: 'release-<SHA>[-<설정지문>]을 stable 태그로 이동'
         required: false
         type: string
 
@@ -21,7 +21,6 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   ci-frontend:
@@ -46,6 +45,9 @@ jobs:
     needs: [ci-frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2') && (github.event_name == 'push' || (inputs.rollback_tag == '' && inputs.stable_tag == ''))
     steps:
       - uses: actions/checkout@v7
@@ -73,8 +75,14 @@ jobs:
           API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
         run: |
           set -euo pipefail
-          CANDIDATE_TAG="candidate-${COMMIT_SHA}"
-          RELEASE_TAG="release-${COMMIT_SHA}"
+          if [[ ! "$API_BASE_URL" =~ ^https://[^[:space:]]+$ ]]; then
+            echo "NEXT_PUBLIC_API_BASE_URL은 https://로 시작하는 완전한 URL이어야 합니다." >&2
+            exit 2
+          fi
+          CONFIG_FINGERPRINT=$(printf '%s' "$API_BASE_URL" | sha256sum | cut -c1-12)
+          IMAGE_VERSION="${COMMIT_SHA}-${CONFIG_FINGERPRINT}"
+          CANDIDATE_TAG="candidate-${IMAGE_VERSION}"
+          RELEASE_TAG="release-${IMAGE_VERSION}"
           if aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$RELEASE_TAG" >/dev/null 2>&1; then
             SOURCE_TAG="$RELEASE_TAG"; PROMOTE=false
           elif aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$CANDIDATE_TAG" >/dev/null 2>&1; then
@@ -87,6 +95,8 @@ jobs:
           DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'imageDetails[0].imageDigest' --output text)
           echo "image_uri=$REGISTRY/$REPOSITORY@$DIGEST" >> "$GITHUB_OUTPUT"
           echo "source_tag=$SOURCE_TAG" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "config_fingerprint=$CONFIG_FINGERPRINT" >> "$GITHUB_OUTPUT"
           echo "promote=$PROMOTE" >> "$GITHUB_OUTPUT"
 
       - name: Deploy frontend digest via SSM
@@ -120,7 +130,7 @@ jobs:
         env:
           REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
           SOURCE_TAG: ${{ steps.image.outputs.source_tag }}
-          RELEASE_TAG: release-${{ github.sha }}
+          RELEASE_TAG: ${{ steps.image.outputs.release_tag }}
         run: |
           set -euo pipefail
           MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'images[0].imageManifest' --output text)
@@ -131,6 +141,9 @@ jobs:
     name: Roll Back Frontend to Selected Digest
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     if: github.event_name == 'workflow_dispatch' && inputs.rollback_tag != ''
     steps:
       - name: Validate rollback tag
@@ -138,7 +151,7 @@ jobs:
           ROLLBACK_TAG: ${{ inputs.rollback_tag }}
         run: |
           set -euo pipefail
-          [[ "$ROLLBACK_TAG" =~ ^(release|stable)-[0-9a-f]{40}$ ]]
+          [[ "$ROLLBACK_TAG" =~ ^(release|stable)-[0-9a-f]{40}(-[0-9a-f]{12})?$ ]]
 
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v6
@@ -180,6 +193,9 @@ jobs:
   mark-stable-frontend:
     name: Mark Frontend Release as Stable
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     if: github.event_name == 'workflow_dispatch' && inputs.stable_tag != ''
     steps:
       - name: Configure AWS credentials with OIDC
@@ -193,7 +209,7 @@ jobs:
           SOURCE_TAG: ${{ inputs.stable_tag }}
         run: |
           set -euo pipefail
-          [[ "$SOURCE_TAG" =~ ^release-[0-9a-f]{40}$ ]]
+          [[ "$SOURCE_TAG" =~ ^release-[0-9a-f]{40}(-[0-9a-f]{12})?$ ]]
           DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'imageDetails[0].imageDigest' --output text)
           MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'images[0].imageManifest' --output text)
           STABLE_TAG="stable-${SOURCE_TAG#release-}"

@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.image.service.ImageUrlResolver;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -50,6 +51,7 @@ public class PostService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
+    private final ImageUrlResolver imageUrlResolver;
 
     @Transactional
     public PostResponse createPost(
@@ -128,7 +130,11 @@ public class PostService {
             }
         }
 
-        List<String> imageUrls = post.getImages().stream().map(PostImage::getImageUrl).toList();
+        List<String> imageUrls =
+                post.getImages().stream()
+                        .map(PostImage::getImageUrl)
+                        .map(imageUrlResolver::toPublicUrl)
+                        .toList();
         int viewCount = post.getViewCount();
         if (shouldIncreaseViewCount) {
             postRepository.increaseViewCount(post.getId());
@@ -397,7 +403,11 @@ public class PostService {
         List<PostImage> images = new ArrayList<>();
         int sortOrder = FIRST_IMAGE_SORT_ORDER;
         for (String imageUrl : imageUrls) {
-            images.add(PostImage.builder().imageUrl(imageUrl).sortOrder(sortOrder++).build());
+            images.add(
+                    PostImage.builder()
+                            .imageUrl(imageUrlResolver.toStorageValue(imageUrl))
+                            .sortOrder(sortOrder++)
+                            .build());
         }
         return images;
     }

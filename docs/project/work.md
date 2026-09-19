@@ -1308,3 +1308,37 @@
   - 운영 도메인에서 CSRF 발급 요청은 200이었지만 로그인 요청이 `403 Invalid CORS request`로 차단되었습니다. 원인은 백엔드 CORS 허용 origin이 `http://localhost:3000`만 포함하고 있었기 때문입니다.
   - `https://snowthing.org`, `https://www.snowthing.org`를 허용 origin에 추가하고 백엔드를 OIDC+SSM으로 재배포했습니다.
   - 재검증 결과 운영 CSRF 발급은 200, 동일 세션의 로그인 요청은 CORS 차단이 아닌 정상적인 `401 AUTH_001 INVALID_CREDENTIALS`를 반환했습니다. 즉 브라우저와 백엔드 사이의 CORS/CSRF 진입 문제는 해결되었습니다.
+
+- **Sprint 06 RDS 스냅샷 복원 증거 및 제출 문서 갱신 (2026-09-16)**:
+  - 운영 RDS의 스냅샷 기준 쿼리, 수동 스냅샷 생성, 스냅샷 이후 비교 행 추가, 별도 RDS 복원, 복원 DB 쿼리 결과 화면을 선별해 `docs/conception/sprint06/evidence/rds-restore/`에 보관했습니다.
+  - 복원 DB에는 스냅샷 기준 행 두 개만 있고 이후 추가한 행은 없음을 확인해 스냅샷 시점 복원을 검증했습니다.
+  - Sprint 06 제출 문서 3개에 실제 ECR digest 배포·롤백·stable 지정·Actions 갱신·장애 진단 보강·RDS 복원 결과를 현행 기준으로 반영했습니다.
+  - 미확인 항목: 복원 DB 전용 읽기 계정과 검증 앱 연결, 운영 DB·S3 쓰기 차단, 복원용 RDS 삭제 여부는 제공된 증거만으로 확인되지 않았습니다.
+
+- **운영 프런트 API 주소 수정 및 재배포 (2026-09-16)**:
+  - 운영 프런트 이미지에 `NEXT_PUBLIC_API_BASE_URL`이 `snowthing.org`로 빌드돼 브라우저가 API 주소를 상대경로로 해석하고 게시글 조회가 실패했습니다.
+  - GitHub Actions Variable을 `https://snowthing.org`로 수정하고 프런트 이미지를 다시 빌드·배포했습니다.
+  - Actions 실행 `35101946958`에서 CI 32초, 빌드·ECR push·SSM 배포 1분 55초로 완료됐습니다.
+  - 실제 Chrome에서 익명게시판을 새로고침한 뒤 게시글 3개가 표시되는 것을 확인했습니다.
+
+- **PR #19 CodeRabbit 리뷰 8건 반영 (2026-09-19)**:
+  - OIDC `id-token: write` 권한을 AWS 인증이 필요한 배포·롤백·stable 작업으로 제한하고 Gradle checkout의 자격 증명 보존을 끈 상태로 `contents: read`만 허용했습니다.
+  - 프런트 이미지 태그에 `NEXT_PUBLIC_API_BASE_URL`의 SHA-256 앞 12자리 설정 지문을 포함해 같은 커밋에서 API 주소가 바뀌어도 이전 이미지를 재사용하지 않도록 했습니다. 기존 SHA 전용 태그의 롤백 호환성은 유지했습니다.
+  - Temurin JDK/JRE 21 Jammy 베이스 이미지를 공식 multi-architecture digest로 고정했습니다.
+  - 이미지 응답의 null·공백 Content-Type을 `application/octet-stream`으로 정규화하고 AWS SDK 공통 예외를 파일 오류 정책으로 변환했습니다.
+  - 운영 DB URL이 `jdbc:aws-wrapper:mysql://`로 시작하는지 컨테이너 entrypoint에서 검사하고, 셸 파일의 LF 줄바꿈을 `.gitattributes`로 고정했습니다.
+  - 배포 헬스체크에 연결 2초·전체 5초 타임아웃을 추가했습니다.
+  - 검증: 이미지 서비스 단위 테스트, Spotless, `build -x test`, Compose config, YAML 파싱, 셸 문법, 설정 지문·태그 정규식, 잘못된 운영 DB URL 차단을 통과했습니다.
+  - Docker Desktop이 실행 중이 아니어서 로컬 Docker image build는 수행하지 못했습니다. 베이스 이미지 digest 조회는 완료했습니다.
+
+- **이미지 조회 경로를 비공개 S3 + CloudFront로 분리 (2026-09-19)**:
+  - 상태: 코드 수정 및 로컬 정적 검증 완료, 운영 배포·실제 S3 객체 검증 대기.
+  - S3 Block Public Access와 OAC를 유지하면서 Client가 `https://images.snowthing.org`를 통해 이미지를 직접 조회하도록 변경했습니다.
+  - 신규 게시글 이미지는 `public/posts/{UUID}.{확장자}` 키로 저장하고, 업로드 API는 CloudFront URL과 객체 키를 함께 반환합니다.
+  - 게시글 DB에는 CloudFront URL 대신 객체 키를 저장하고 응답 시 URL로 변환합니다. 기존 외부 URL 데이터는 그대로 응답해 호환성을 유지합니다.
+  - 백엔드의 이미지 바이트 중계용 `GET /api/v1/images/**`와 다운로드 DTO를 제거했습니다.
+  - 게시글 작성 화면을 URL 직접 입력에서 인증된 파일 업로드로 변경하고, 게시글 생성 요청에는 객체 키를 전달하도록 연결했습니다.
+  - 확장자와 요청 MIME 외에도 PNG·JPEG·WebP 파일 시그니처를 검사하도록 업로드 검증을 보강했습니다.
+  - 검증: 이미지 단위 테스트 8건, Backend Spotless 및 `build -x test`, Frontend production build, Compose config, `git diff --check` 통과.
+  - Frontend lint는 이번 변경과 무관한 기존 `ToastEditor.tsx`, `ToastViewer.tsx`의 `@ts-ignore` 규칙 위반 2건 때문에 실패했습니다. 이번 이미지 화면에는 신규 경고 1건(`<img>`)만 존재합니다.
+  - 게시글 통합 테스트는 로컬 MySQL이 실행되지 않아 연결 단계에서 실패했습니다. 운영 배포 후 실제 업로드, CloudFront 비로그인 조회, S3 원본 URL 차단을 확인해야 합니다.

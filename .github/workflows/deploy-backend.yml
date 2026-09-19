@@ -17,7 +17,6 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   ci-backend:
@@ -61,6 +60,9 @@ jobs:
     needs: [ci-backend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2') && (github.event_name == 'push' || inputs.stable_tag == '')
     steps:
       - uses: actions/checkout@v7
@@ -144,6 +146,9 @@ jobs:
   mark-stable-backend:
     name: Mark Backend Release as Stable
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     if: github.event_name == 'workflow_dispatch' && inputs.stable_tag != ''
     steps:
       - name: Configure AWS credentials with OIDC

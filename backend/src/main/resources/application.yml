@@ -27,6 +27,13 @@ server:
         http-only: true
         same-site: lax
 
+cloud:
+  aws:
+    s3:
+      bucket: ${SNOWTHING_S3_BUCKET:snowthing-media-00001}
+    cloudfront:
+      base-url: ${SNOWTHING_IMAGE_BASE_URL:https://images.snowthing.org}
+
 ---
 # ==========================================
 # [Profile: local] 로컬 개발 환경 (Local / Docker MySQL 8.0 연동)
@@ -85,6 +92,7 @@ spring:
       on-profile: prod
 
   datasource:
+    # 운영 계약: AWS Advanced JDBC Wrapper는 jdbc:aws-wrapper:mysql:// 접두사만 허용한다.
     url: ${SNOWTHING_PROD_DB_URL}
     driver-class-name: software.amazon.jdbc.Driver
     username: ${SNOWTHING_DB_USERNAME:snowthing_app}

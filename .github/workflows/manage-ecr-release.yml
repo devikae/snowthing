@@ -14,7 +14,7 @@ on:
         type: choice
         options: [backend, frontend]
       source_tag:
-        description: release-<전체 SHA> 또는 stable-<전체 SHA>
+        description: release/stable-<전체 SHA>[-<12자리 설정지문>]
         required: true
         type: string
 
@@ -37,8 +37,8 @@ jobs:
           SOURCE_TAG: ${{ inputs.source_tag }}
         run: |
           set -euo pipefail
-          if [[ ! "$SOURCE_TAG" =~ ^(release|stable)-[0-9a-f]{40}$ ]]; then
-            echo "태그 형식은 release-<40자리 SHA> 또는 stable-<40자리 SHA>여야 합니다." >&2
+          if [[ ! "$SOURCE_TAG" =~ ^(release|stable)-[0-9a-f]{40}(-[0-9a-f]{12})?$ ]]; then
+            echo "태그 형식은 release/stable-<40자리 SHA>[-<12자리 설정지문>]이어야 합니다." >&2
             exit 2
           fi
           if [[ "$OPERATION" == "mark-stable" && ! "$SOURCE_TAG" =~ ^release- ]]; then
