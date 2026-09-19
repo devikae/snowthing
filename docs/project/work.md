@@ -28,9 +28,10 @@
     5. **자동화 검증 완료**:
        - `ChatServiceTest.java`: 비즈니스 로직, 링크 차단, 도배 쿨다운, XSS 방어 단위 테스트 통과.
        - `WebSocketChatIntegrationTest.java`: 실제 HTTP 로그인 후 JSESSIONID 연동, WebSocket 연결 수립, `/sub/chat/main` 브로드캐스트 수신, `/user/queue/errors` 개인 에러 수신 통합 테스트 100% 통과.
-       - 백엔드 전체 테스트: `.\gradlew.bat test` 175개 테스트 전체 통과 (BUILD SUCCESSFUL).
+       - 백엔드 전체 테스트: `.\gradlew.bat test` 197개 테스트 전체 통과 (BUILD SUCCESSFUL).
        - 서식 검증: `.\gradlew.bat spotlessApply` 통과.
        - 프론트엔드 프로덕션 빌드: `npm run build` Next.js 16.2.12 Turbopack 컴파일 100% 성공 (0 errors).
+       - 프로덕션 UI 동기화: `deploy/aws-ec2` 브랜치 병합 완료 (배너 기획전, 스키장 실시간 슬로프 현황 카드, 장비 관리 핫클립, 카풀/장터 위젯 및 `⚡ 라이브톡` 일체형 통합).
   - **다음 진행 예정**: 로컬 브라우저 2개 창(일반 창 + 시크릿 창)을 띄워 유저와 함께 실시간 대화 E2E 테스트 수행.
 
 - **ECR digest 기반 배포·복구 전환 (2026-09-16)**:
