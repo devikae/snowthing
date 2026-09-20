@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty
+            scope="context"
+            name="CHAT_AUDIT_LOG_PATH"
+            source="logging.chat-audit.path"
+            defaultValue="logs/chat_audit.log"/>
+
+    <appender name="CHAT_AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${CHAT_AUDIT_LOG_PATH}</file>
+        <encoder>
+            <pattern>%msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${CHAT_AUDIT_LOG_PATH}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="ASYNC_CHAT_AUDIT" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <appender-ref ref="CHAT_AUDIT_FILE"/>
+    </appender>
+
+    <logger name="chat.audit" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_CHAT_AUDIT"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

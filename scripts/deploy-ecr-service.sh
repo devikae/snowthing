@@ -81,6 +81,10 @@ prepare_diagnostic_directory() {
   find /var/log/snowthing-deploy -type f -name '*.log' -mtime +14 -delete
 }
 
+prepare_chat_audit_directory() {
+  install -d -o 1001 -g 1001 -m 0700 /var/log/snowthing-chat
+}
+
 collect_diagnostics() {
   local timestamp diagnostic_file
   timestamp="$(date -u +'%Y%m%dT%H%M%SZ')"
@@ -111,6 +115,7 @@ echo "ECR 로그인 및 digest 이미지 pull"
 prepare_diagnostic_directory
 if [[ "$SERVICE" == "backend" ]]; then
   configure_nginx_upload_limit
+  prepare_chat_audit_directory
 fi
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$REGISTRY"

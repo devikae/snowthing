@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.chat.controller;
 
 import java.security.Principal;
+import java.util.Map;
 
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,6 +17,8 @@ import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.global.config.websocket.ChatHandshakeInterceptor;
+import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
+import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
@@ -26,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class ChatController {
 
     private final ChatService chatService;
+    private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
 
     @MessageMapping("/chat/messages")
     @SendTo("/sub/chat/main")
@@ -40,13 +44,15 @@ public class ChatController {
             userDetails = cud;
         }
 
+        Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
         String clientIp = null;
-        if (headerAccessor.getSessionAttributes() != null) {
-            clientIp =
-                    (String)
-                            headerAccessor
-                                    .getSessionAttributes()
-                                    .get(ChatHandshakeInterceptor.ATTR_CLIENT_IP);
+        if (sessionAttributes != null) {
+            String httpSessionId =
+                    (String) sessionAttributes.get(ChatHandshakeInterceptor.ATTR_HTTP_SESSION_ID);
+            if (chatSessionRevocationRegistry.isRevoked(httpSessionId)) {
+                throw new CustomException(ErrorCode.CHAT_UNAUTHORIZED);
+            }
+            clientIp = (String) sessionAttributes.get(ChatHandshakeInterceptor.ATTR_CLIENT_IP);
         }
 
         return chatService.processMessage(request, userDetails, clientIp);

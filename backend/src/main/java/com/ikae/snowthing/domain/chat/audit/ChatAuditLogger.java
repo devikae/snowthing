@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,7 +15,6 @@ public class ChatAuditLogger {
     private static final Logger AUDIT_LOG = LoggerFactory.getLogger("chat.audit");
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
-    @Async
     public void log(Long memberId, String clientIp, String channel) {
         String timestamp = OffsetDateTime.now().format(ISO_FORMATTER);
         String resolvedIp =

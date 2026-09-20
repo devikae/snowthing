@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class ChatHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
 
     public static final String ATTR_CLIENT_IP = "clientIp";
+    public static final String ATTR_HTTP_SESSION_ID = "httpSessionId";
 
     private final ClientIpResolver clientIpResolver;
 
@@ -36,6 +37,9 @@ public class ChatHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
             HttpServletRequest httpServletRequest = servletRequest.getServletRequest();
             String clientIp = clientIpResolver.resolve(httpServletRequest);
             attributes.put(ATTR_CLIENT_IP, clientIp);
+            if (httpServletRequest.getSession(false) != null) {
+                attributes.put(ATTR_HTTP_SESSION_ID, httpServletRequest.getSession(false).getId());
+            }
         }
 
         return true;

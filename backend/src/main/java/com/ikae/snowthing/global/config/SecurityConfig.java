@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,17 +25,22 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
 
+import lombok.RequiredArgsConstructor;
+
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private static final String JSON_CONTENT_TYPE = "application/json;charset=UTF-8";
     private static final String LOGOUT_SUCCESS_MESSAGE = "LOGOUT_SUCCESS";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
 
     @Bean
     public ObjectMapper objectMapper() {
@@ -97,9 +103,18 @@ public class SecurityConfig {
                 .logout(
                         logout ->
                                 logout.logoutUrl("/api/v1/auth/logout")
-                                        .invalidateHttpSession(true)
+                                        .invalidateHttpSession(false)
                                         .clearAuthentication(true)
                                         .deleteCookies("JSESSIONID")
+                                        .addLogoutHandler(
+                                                (request, response, authentication) -> {
+                                                    HttpSession session = request.getSession(false);
+                                                    if (session != null) {
+                                                        chatSessionRevocationRegistry.revoke(
+                                                                session.getId());
+                                                        session.invalidate();
+                                                    }
+                                                })
                                         .logoutSuccessHandler(
                                                 (request, response, authentication) -> {
                                                     response.setStatus(HttpServletResponse.SC_OK);

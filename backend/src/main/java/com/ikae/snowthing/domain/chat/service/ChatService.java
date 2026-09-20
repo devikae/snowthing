@@ -1,17 +1,18 @@
 package com.ikae.snowthing.domain.chat.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ikae.snowthing.domain.chat.audit.ChatAuditLogger;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
@@ -51,10 +52,16 @@ public class ChatService {
     private final ChatAuditLogger chatAuditLogger;
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
 
-    private final Object abuseGuardMonitor = new Object();
-    private final Map<Long, LastMessageInfo> recentMessageCache =
-            new LinkedHashMap<>(16, 0.75f, true);
-    private final Map<Long, BurstWindow> burstWindowCache = new LinkedHashMap<>(16, 0.75f, true);
+    private final Cache<Long, LastMessageInfo> recentMessageCache =
+            Caffeine.newBuilder()
+                    .maximumSize(MAX_RATE_LIMIT_ENTRIES)
+                    .expireAfterWrite(Duration.ofMillis(DUPLICATE_COOLDOWN_MILLIS))
+                    .build();
+    private final Cache<Long, BurstWindow> burstWindowCache =
+            Caffeine.newBuilder()
+                    .maximumSize(MAX_RATE_LIMIT_ENTRIES)
+                    .expireAfterWrite(Duration.ofMillis(BURST_WINDOW_MILLIS))
+                    .build();
 
     private record LastMessageInfo(String normalizedContent, long sentAtMillis) {}
 
@@ -97,7 +104,7 @@ public class ChatService {
         ResortTag tag = ResortTag.from(request.resortTag());
         String resolvedTag = tag != null ? tag.name() : null;
 
-        // 6. Audit log (Communications Secrets Act 3-month retention)
+        // 6. Audit metadata log. The final retention period is an operations/legal decision.
         chatAuditLogger.log(member.getId(), clientIp, AUDIT_CHANNEL);
 
         // 7. Construct response payload. React renders content as escaped JSX text.
@@ -117,10 +124,8 @@ public class ChatService {
 
     /** Cache eviction for tests or periodic maintenance */
     public void clearCache() {
-        synchronized (abuseGuardMonitor) {
-            recentMessageCache.clear();
-            burstWindowCache.clear();
-        }
+        recentMessageCache.invalidateAll();
+        burstWindowCache.invalidateAll();
         chatRecentHistoryBuffer.clear();
     }
 
@@ -130,58 +135,50 @@ public class ChatService {
     }
 
     private void validateAbuseLimits(Long memberId, String normalizedContent, long now) {
-        synchronized (abuseGuardMonitor) {
-            evictExpiredEntries(now);
-            try {
-                validateBurstLimit(memberId, now);
-                validateDuplicateMessage(memberId, normalizedContent, now);
-            } finally {
-                trimToMaximumSize(burstWindowCache);
-                trimToMaximumSize(recentMessageCache);
-            }
-        }
+        validateBurstLimit(memberId, now);
+        validateDuplicateMessage(memberId, normalizedContent, now);
     }
 
     private void validateBurstLimit(Long memberId, long now) {
-        BurstWindow current = burstWindowCache.get(memberId);
-        BurstWindow updated;
-        if (current == null || now - current.startedAtMillis() >= BURST_WINDOW_MILLIS) {
-            updated = new BurstWindow(now, 1);
-        } else {
-            updated = new BurstWindow(current.startedAtMillis(), current.attempts() + 1);
-        }
-        burstWindowCache.put(memberId, updated);
-        if (updated.attempts() >= BURST_ATTEMPT_LIMIT) {
+        AtomicBoolean rejected = new AtomicBoolean();
+        burstWindowCache
+                .asMap()
+                .compute(
+                        memberId,
+                        (ignored, current) -> {
+                            BurstWindow updated =
+                                    current == null
+                                                    || now - current.startedAtMillis()
+                                                            >= BURST_WINDOW_MILLIS
+                                            ? new BurstWindow(now, 1)
+                                            : new BurstWindow(
+                                                    current.startedAtMillis(),
+                                                    current.attempts() + 1);
+                            rejected.set(updated.attempts() >= BURST_ATTEMPT_LIMIT);
+                            return updated;
+                        });
+        if (rejected.get()) {
             throw new CustomException(ErrorCode.CHAT_BURST_RATE_LIMIT);
         }
     }
 
     private void validateDuplicateMessage(Long memberId, String normalizedContent, long now) {
-        LastMessageInfo lastInfo = recentMessageCache.get(memberId);
-        if (lastInfo != null
-                && lastInfo.normalizedContent().equals(normalizedContent)
-                && now - lastInfo.sentAtMillis() < DUPLICATE_COOLDOWN_MILLIS) {
-            throw new CustomException(ErrorCode.CHAT_DUPLICATE_MESSAGE);
-        }
-        recentMessageCache.put(memberId, new LastMessageInfo(normalizedContent, now));
-    }
-
-    private void evictExpiredEntries(long now) {
-        burstWindowCache
-                .entrySet()
-                .removeIf(entry -> now - entry.getValue().startedAtMillis() >= BURST_WINDOW_MILLIS);
+        AtomicBoolean rejected = new AtomicBoolean();
         recentMessageCache
-                .entrySet()
-                .removeIf(
-                        entry ->
-                                now - entry.getValue().sentAtMillis() >= DUPLICATE_COOLDOWN_MILLIS);
-    }
-
-    private <T> void trimToMaximumSize(Map<Long, T> cache) {
-        Iterator<Long> keys = cache.keySet().iterator();
-        while (cache.size() > MAX_RATE_LIMIT_ENTRIES && keys.hasNext()) {
-            keys.next();
-            keys.remove();
+                .asMap()
+                .compute(
+                        memberId,
+                        (ignored, current) -> {
+                            if (current != null
+                                    && current.normalizedContent().equals(normalizedContent)
+                                    && now - current.sentAtMillis() < DUPLICATE_COOLDOWN_MILLIS) {
+                                rejected.set(true);
+                                return current;
+                            }
+                            return new LastMessageInfo(normalizedContent, now);
+                        });
+        if (rejected.get()) {
+            throw new CustomException(ErrorCode.CHAT_DUPLICATE_MESSAGE);
         }
     }
 }

@@ -96,6 +96,19 @@ const RESORT_OPTIONS = [
 
 const LOCAL_STORAGE_TAG_KEY = "snowthing_chat_resort";
 const MAX_DOM_MESSAGES = 100;
+const RECONNECT_BASE_DELAY_MILLIS = 1000;
+const RECONNECT_MAX_DELAY_MILLIS = 30000;
+const RECONNECT_JITTER_MILLIS = 1000;
+
+function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
+  const messagesById = new Map<string, ChatMessage>();
+  for (const message of [...current, ...incoming]) {
+    messagesById.set(message.messageId, message);
+  }
+  return [...messagesById.values()]
+    .sort((left, right) => new Date(left.sentAt).getTime() - new Date(right.sentAt).getTime())
+    .slice(-MAX_DOM_MESSAGES);
+}
 
 function formatRelativeTime(isoString: string): string {
   try {
@@ -130,32 +143,11 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const stompClientRef = useRef<Client | null>(null);
+  const reconnectAttemptRef = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const isAtBottomRef = useRef<boolean>(true);
 
-  // 1. 최근 대화 30개 복원 (Catch-up / 새로고침 보존)
-  useEffect(() => {
-    let isMounted = true;
-    fetch(API_ENDPOINTS.chat.recent)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: ChatMessage[]) => {
-        if (isMounted && Array.isArray(data) && data.length > 0) {
-          setMessages(data);
-          setTimeout(() => {
-            if (scrollContainerRef.current) {
-              scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-            }
-          }, 50);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // 2. 브라우저 localStorage에서 리조트 태그 복원
+  // 1. 브라우저 localStorage에서 리조트 태그 복원
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_TAG_KEY);
@@ -206,20 +198,19 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
 
     const client = new Client({
       brokerURL: wsUrl,
-      reconnectDelay: 3000,
+      reconnectDelay: RECONNECT_BASE_DELAY_MILLIS,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
       onConnect: () => {
+        reconnectAttemptRef.current = 0;
+        client.reconnectDelay = RECONNECT_BASE_DELAY_MILLIS;
         setIsConnected(true);
 
         // 메인 광장 브로드캐스트 채널 구독
         client.subscribe("/sub/chat/main", (frame) => {
           try {
             const newMsg: ChatMessage = JSON.parse(frame.body);
-            setMessages((prev) => {
-              const updated = [...prev.slice(-(MAX_DOM_MESSAGES - 1)), newMsg];
-              return updated;
-            });
+            setMessages((previous) => mergeMessages(previous, [newMsg]));
 
             // 스크롤이 바닥 근처에 있을 때만 자동 스크롤
             setTimeout(() => {
@@ -243,6 +234,21 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             setToastError("메시지 전송이 거부되었습니다.");
           }
         });
+
+        // 구독을 먼저 마친 뒤 최근 메시지를 합쳐 조회-구독 사이 유실과 중복을 줄인다.
+        fetch(API_ENDPOINTS.chat.recent)
+          .then((response) => (response.ok ? response.json() : []))
+          .then((recentMessages: ChatMessage[]) => {
+            if (Array.isArray(recentMessages)) {
+              setMessages((previous) => mergeMessages(previous, recentMessages));
+              setTimeout(() => {
+                if (isAtBottomRef.current) {
+                  scrollToBottom("auto");
+                }
+              }, 50);
+            }
+          })
+          .catch(() => {});
       },
       onDisconnect: () => {
         setIsConnected(false);
@@ -252,6 +258,11 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       },
       onWebSocketClose: () => {
         setIsConnected(false);
+        reconnectAttemptRef.current += 1;
+        const exponentialDelay =
+          RECONNECT_BASE_DELAY_MILLIS * 2 ** Math.min(reconnectAttemptRef.current, 5);
+        const jitter = Math.floor(Math.random() * RECONNECT_JITTER_MILLIS);
+        client.reconnectDelay = Math.min(RECONNECT_MAX_DELAY_MILLIS, exponentialDelay + jitter);
       },
     });
 
@@ -262,7 +273,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       client.deactivate();
       stompClientRef.current = null;
     };
-  }, []);
+  }, [currentMember?.publicId]);
 
   // 5. 토스트 에러 자동 닫기 (4초)
   useEffect(() => {
