@@ -1,59 +1,13 @@
-- **라이브톡 인메모리 링 버퍼 최근 30개 대화 복원 및 비로그인 유도 UX / 가시성 개선 완료 (2026-09-20)**:
-  - **작업 브랜치**: `feature/live-chat`
-  - **현재 상태**: 구현 및 검증 완료 (백엔드 단위/통합 테스트 100% 통과, 프론트엔드 Turbopack 빌드 성공)
-  - **완료된 항목**:
-    1. **백엔드 인메모리 링 버퍼 (최근 30개 유지)**:
-       - `ChatRecentHistoryBuffer.java`: `ConcurrentLinkedDeque` 기반 최대 30개 순환 버퍼 구축 (FIFO eviction, 방어적 복사 `List.copyOf` 불변 보장).
-       - `ChatService.java`: 메시지 브로드캐스트 시 버퍼 적재 및 `getRecentMessages()` 연동.
-       - `ChatRecentController.java`: `GET /api/v1/chat/recent` 비로그인/신규 유저 최근 대화 30개 조회 엔드포인트 신설.
-       - `SecurityConfig.java`: `/api/v1/chat/**` 엔드포인트 `permitAll()` 추가.
-       - 단위/통합 테스트 신설: `ChatRecentHistoryBufferTest` (상한 30개, FIFO 방출, 불변성, 멀티스레드 동시성 검증), `ChatRecentControllerTest` (GET 200 OK 검증).
-    2. **프론트엔드 비로그인 가입 유도 및 가시성 개선**:
-       - `LiveChatSection.tsx`:
-         * 최초 마운트 시 `GET /api/v1/chat/recent` 호출하여 최근 30개 대화 복원 및 하단 자동 스크롤.
-         * 좌측 원형 아바타 `(휘팍)` 완전 삭제 ➔ 닉네임 우측의 `[휘닉스]` 직사각형 뱃지만 단독 유지 (일반 잡담은 뱃지 없이 닉네임만 표기).
-         * 비로그인 유저 리조트 드롭다운: `"일반"` 고정 표기 및 비활성화 잠금.
-         * 비로그인 유저 채팅 입력창: 비활성화 해제, `"로그인하고 라이브톡에 참여해보세요"` 안내문 노출, 입력창 클릭/포커스 또는 전송 버튼 클릭 시 `router.push('/login')`으로 즉시 로그인/가입 페이지 이동 유도.
-         * 드롭다운 기본 옵션: `"선택 안 함 (잡담)"` ➔ `"일반"`으로 라벨 단순화.
-    3. **자동화 검증 완료**:
-       - 백엔드 테스트 전체 통과 (BUILD SUCCESSFUL).
-       - 프론트엔드 Turbopack 컴파일 통과 (0 errors).
-
-- **실시간 라이브톡 백엔드/프론트엔드 V1 구현 및 단위/통합 테스트 완료 (2026-09-20)**:
-  - **작업 브랜치**: `feature/live-chat`
-  - **현재 상태**: 구현 완료 (백엔드 단위/통합 테스트 100% 통과, 프론트엔드 Turbopack 빌드 성공)
-  - **완료된 항목**:
-    1. **백엔드 의존성 및 보안 설정**:
-       - `backend/build.gradle`: `org.springframework.boot:spring-boot-starter-websocket` 추가.
-       - `SecurityConfig.java`: `/ws-chat/**` 엔드포인트 `permitAll()`, SockJS 핸드셰이크 CSRF 예외(`ignoringRequestMatchers("/ws-chat/**")`) 적용.
-       - `ErrorCode.java`: `CHAT_001` ~ `CHAT_007` 비즈니스 에러 코드 신설.
-       - `CustomException.java` 신설 및 `GlobalExceptionHandler.java`에 핸들러 등록하여 Rule 23 준수.
-    2. **STOMP 인메모리 브로커 및 핸드셰이크 인터셉터 구축**:
-       - `WebSocketConfig.java`: 엔드포인트 `/ws-chat` (SockJS 지원), SimpleBroker `/sub`, `/queue`, 목적지 접두사 `/pub`, 사용자 접두사 `/user` 구성.
-       - `ChatHandshakeInterceptor.java`: `ClientIpResolver`를 통해 클라이언트 IP 추출 후 세션 속성(`clientIp`) 바인딩.
-    3. **도메인 컴플라이언스 및 비즈니스 로직 구현 (`com.ikae.snowthing.domain.chat`)**:
-       - `ResortTag.java`: 6대 리조트 Enum 및 2글자 약칭 매핑.
-       - 불변 DTO 구현: `ChatMessageRequest`, `ChatMessageResponse`, `SenderDto`, `ChatErrorResponse` (Rule 22 준수).
-       - `ChatAuditLogger.java`: 통신비밀보호법 3개월 의무 준수를 위한 TSV 포맷 메타데이터(`[timestamp]\t[member_id]\t[client_ip]\t[channel]`) 비동기 감사 로그 기록.
-       - `ChatService.java`: 비인증 발송 차단, 1~100자 검증, 외부 URL 및 텔레그램/카톡 ID 정규식 차단, `ConcurrentHashMap` 기반 5초 동일 메시지 쿨다운, `HtmlUtils.htmlEscape` XSS 방어선 구축.
-       - `ChatController.java`: `@MessageMapping("/chat/messages")` 수신 후 `/sub/chat/main` 브로드캐스팅 및 `@MessageExceptionHandler` 기반 발신자 전용 에러 채널(`/user/queue/errors`) 라우팅.
-    4. **프론트엔드 메신저형 대화 버블 UI 구현 (`LiveChatSection.tsx`)**:
-       - `@stomp/stompjs` 기반 WebSocket 연결 수명주기 및 자동 재연결 관리.
-       - 본인 메시지(우측 정렬 하늘색 버블) vs 타인 메시지(좌측 정렬 원형 아바타 + 닉네임 + 리조트 뱃지 + 흰색 버블) 분기 렌더링.
-       - 슬로프 현장 제보(리조트 선택 시 뱃지 표시) vs 일반 잡담(미선택 시 뱃지 생략) 시각적 위계 확립.
-       - `localStorage` 기반 마지막 선택 리조트 자동 기억 및 복원.
-       - 스크롤 앵커링(Scroll Anchoring) 및 `새 메시지 수신 ↓` 플로팅 버튼.
-       - 최신 100개 메시지 DOM 상한 유지(FIFO Pruning).
-       - 비로그인 시 입력창 비활성화 및 안내.
-       - 메인 화면(`frontend/app/page.tsx`) 프로모션 배너 하단에 임베드 완료.
-    5. **자동화 검증 완료**:
-       - `ChatServiceTest.java`: 비즈니스 로직, 링크 차단, 도배 쿨다운, XSS 방어 단위 테스트 통과.
-       - `WebSocketChatIntegrationTest.java`: 실제 HTTP 로그인 후 JSESSIONID 연동, WebSocket 연결 수립, `/sub/chat/main` 브로드캐스트 수신, `/user/queue/errors` 개인 에러 수신 통합 테스트 100% 통과.
-       - 백엔드 전체 테스트: `.\gradlew.bat test` 197개 테스트 전체 통과 (BUILD SUCCESSFUL).
-       - 서식 검증: `.\gradlew.bat spotlessApply` 통과.
-       - 프론트엔드 프로덕션 빌드: `npm run build` Next.js 16.2.12 Turbopack 컴파일 100% 성공 (0 errors).
-       - 프로덕션 UI 동기화: `deploy/aws-ec2` 브랜치 병합 완료 (배너 기획전, 스키장 실시간 슬로프 현황 카드, 장비 관리 핫클립, 카풀/장터 위젯 및 `⚡ 라이브톡` 일체형 통합).
-  - **다음 진행 예정**: 로컬 브라우저 2개 창(일반 창 + 시크릿 창)을 띄워 유저와 함께 실시간 대화 E2E 테스트 수행.
+- **실시간 라이브톡 구현 및 최근 30개 대화 복원 (2026-09-20)**:
+  - 작업 브랜치: feature/live-chat
+  - 상태: 구현 및 로컬 검증 완료
+  - 내용:
+    - 백엔드 WebSocket/STOMP 브로커 (/ws-chat, /sub/chat/main, /pub/chat/messages) 및 핸드셰이크 인터셉터 구현
+    - 최근 대화 30개 인메모리 링 버퍼(ConcurrentLinkedDeque) 보관 및 GET /api/v1/chat/recent 조회 API 추가
+    - 통신비밀보호법 대응 비동기 감사 로그(ChatAuditLogger) 추가
+    - 프론트엔드 실시간 채팅 UI(LiveChatSection.tsx) 구현 및 메인 페이지 연동
+    - 비로그인 사용자가 채팅 입력 시 로그인 페이지로 이동하도록 UX 처리, 리조트 뱃지 가시성 정리
+    - 백엔드 단위/통합 테스트 199건 통과, 프론트엔드 빌드 통과
 
 - **ECR digest 기반 배포·복구 전환 (2026-09-16)**:
   - 상태: 프런트·백엔드 실제 배포와 프런트 이전 버전 롤백·재배포 검증 완료
@@ -155,21 +109,15 @@
      - `curl -i http://127.0.0.1:8080/api/v1/master/resorts` 200 OK 및 브라우저(`http://43.202.157.3`) 접속 실측 완료.
 
 - **Sprint 04 댓글 벤치마크 학습정리 문서 보강 및 디렉터리 영문화 완료 (2026-09-09)**:
->>>>>>> deploy/aws-ec2
   1. **디렉터리 영문화**: `benchmark` 하위 한글 폴더를 영문 표준으로 변경 (`실행계획` ➔ `explain-plans`, `쿼리` ➔ `queries`).
   2. **경로 동기화**: `ADR-002-댓글아키텍처.md` 및 `댓글-벤치마크-결과.md` 내 실행계획 경로를 `explain-plans/`로 갱신.
   3. **재현가이드 ➔ README.md 개편 및 내용 보강 (no_ai 톤)**:
      - `재현가이드.md`를 `README.md`로 전환하고 실무 개발자 톤으로 4대 핵심 영역(Seed 코드 위치, 실행/초기화 명령어, 데이터 분포 구조, 1K~1M 9대 시나리오 검증 결과 및 인덱스/불변식 요약) 보강 완료.
-<<<<<<< HEAD
-     - `댓글-벤치마크-결과.md` 상단에 멘토의 실험 의도 및 5대 학습 목표(규모·분포 영향, estimated/actual rows/loops 해석, 재현 가능 Seed, 인덱스 쓰기 비용, 운영 DB 안전장치) 상세 해설 추가.
-
-=======
   4. **`docs/study/sprint04/댓글조회-벤치마크-학습정리.md` 심층 학습서 보강 완결**:
      - 5대 학습 목표와 멘토의 실험 의도 및 실무 배경(1K 메모리 착시 vs 1M 운영 장애, estimated/actual rows/loops 해석, 재현 가능 시드, 읽기 이점 vs 쓰기 비용, 운영 DB 안전장치) 기술.
      - 1K·10K·100K·1M 9대 시나리오 종합 레이턴시 비교표 및 1M Invisible 인덱스 검증 비교표(226ms vs 36ms, actual rows 200,001 ➔ 2,000) 수록.
      - 4대 핵심 결론 및 MySQL InnoDB 물리 엔진 심층 분석(16KB Buffer Pool I/O, B-Tree 수직 Seek 및 수평 Scan 메커니즘, Hotspot 국소 격리, 커버링 인덱스 Clustered Random I/O 차단, `Using filesort` 메모리 정렬 vs 4컬럼 B-Tree 페이지 분할 트레이드오프) 반영.
      - 7대 필수 요소 체계(개념, Why, When, How, Pros, Alternatives, Trade-off & 극복 방안) 기반 복합 인덱스 계층 조회 아키텍처 정리 완료.
->>>>>>> deploy/aws-ec2
 - **Sprint 03 댓글 도메인 메인 브랜치 최종 병합 완료 (2026-09-06)**:
   1. **PR #17 (`feature/sprint03-comment` ➔ `main`) 병합 완결**:
      - Sprint 03 댓글 도메인(생성·조회·수정·삭제 및 하이브리드 프리뷰 아키텍처) 전체 작업물을 `main` 브랜치로 병합 완료 ([PR #17](https://github.com/devikae/snowthing/pull/17) `MERGED`).
@@ -1304,7 +1252,7 @@
   - 게시글 댓글 목록과 대댓글 조회가 동일한 `POST_NOT_FOUND` 정책을 사용하도록 `validatePostVisibility`를 적용했다.
   - 삭제·차단 게시글의 대댓글 조회가 `POST_NOT_FOUND`로 차단되는 통합 테스트를 `CommentReadTest`에 추가했다.
   - 검증: `spotlessApply` 및 `CommentReadTest` 성공. 테스트 DB 환경변수 미설정 상태에서는 실제 MySQL 테스트 실행이 보류됨.
-=======
+
 - **Sprint 03 테스트 환경 MySQL 단일화 (2026-09-06)**:
   - H2 의존성·datasource·dialect를 제거하고 모든 Spring Boot 테스트 설정을 MySQL 8.0/InnoDB로 통일했습니다.
   - `CommentCreateTest`와 `CommentUpdateTest`는 `SNOWTHING_TEST_DB_URL` 누락 시 fallback 없이 즉시 실패하며, `.env.example`에 프로세스 환경변수 전달 방법을 명시했습니다.
@@ -1388,64 +1336,7 @@
   - MockMvc 경계 테스트에서 3·21자는 `400 Bad Request`와 `COMMON_001`, 4·20자는 `201 Created`를 검증했습니다.
   - `CommentControllerTest`와 `spotlessCheck`는 통과했습니다.
   - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
->>>>>>> origin/feature/sprint03-comment
-<<<<<<< HEAD
-- **Sprint 04 댓글 벤치마크 실행 기준 및 EXPLAIN 쿼리 정리 (2026-09-07)**:
-  - 기존 `test/sprint04-comment-benchmark` 브랜치에서 전용 벤치마크 실행 가이드와 안전 조건을 작성했습니다.
-  - 규모별 데이터 분포, 고정 seed, MySQL 전용 실행, 정확성 불변식, warm-up/p95 측정 규칙을 문서화했습니다.
-  - 루트 첫·중간·마지막 페이지, Top-5 batch, Hotspot 대댓글, 활성 count용 EXPLAIN 입력 SQL을 분리했습니다.
-  - 현재 문서는 실행 기준과 쿼리 입력 파일이며, 1K/10K/100K 실제 결과 파일은 하네스 실행 후 생성해야 합니다.
-- **Sprint 04 JDBC batch 벤치마크 하네스 추가 (2026-09-07)**:
-  - `CommentBenchmarkSeedHarness`를 추가해 규모와 seed를 파라미터로 받는 MySQL JDBC batch 데이터 주입 기반을 마련했습니다.
-  - DB 이름 test/benchmark 검증, 전용 public_id 정리, 게시글 분산, 루트/대댓글, 익명·삭제 분포를 적용했습니다.
-  - 컴파일 검증: `spotlessApply`, `compileTestJava` 성공.
-- **Sprint 04 현실형 댓글 콘텐츠 생성기 추가 (2026-09-07)**:
-  - 고정 seed 기반 스키장·설질·리프트·장비 주제의 게시글 제목/본문과 실제 커뮤니티 문장형 루트 댓글·대댓글 생성기를 추가했습니다.
-  - 기존 JDBC batch 하네스가 생성된 콘텐츠를 사용하도록 연결해 성능 측정에서도 payload와 화면 응답 형태를 현실적으로 재현합니다.
-  - `spotlessApply`, `compileTestJava` 성공.
-- **Sprint 04 벤치마크 데이터 관리·테스트 계획 문서화 (2026-09-07)**:
-  - 전용 스키마, prefix 기반 정리, seed 재현성, manifest 관리와 단계별 1K/10K/100K/1M 검증 절차를 문서화했습니다.
-  - 정확성 불변식과 SQL/바인딩/EXPLAIN/p95 증거 저장 규칙을 분리해 기록했습니다.
-  - JDBC batch 하네스에 Hotspot 루트 집중 분포를 반영하고 컴파일 검증을 통과했습니다.
-- **Sprint 04 규모별 MySQL SQL 시드 파일 추가 (2026-09-07)**:
-  - `database/benchmark/seed-template.sql`과 1K/10K/100K/1M 실행 래퍼를 추가했습니다.
-  - `snowthing_test` 전용 스키마와 benchmark prefix만 사용하며, 게시글·루트·대댓글·삭제 분포 및 `post.comment_count` 검증을 포함합니다.
-  - 사용자는 원하는 규모의 SQL 파일을 MySQL 클라이언트에서 실행해 데이터를 재생성할 수 있습니다.
-- **Sprint 04 EXPLAIN 원문 파일별 한국어 해설 보강 (2026-09-08)**:
-  - 별도 `explain/README.md`는 제거했습니다.
-  - 107개 EXPLAIN 원문 `.txt` 파일 각각의 상단에 시나리오, 데이터 규모, estimated/actual rows·loops·인덱스 해석을 삽입했습니다.
-- **Sprint 04 EXPLAIN 파일명 한글화 (2026-09-08)**:
-  - 실행계획 파일명을 `루트-첫-페이지`, `루트-중간-페이지`, `핫스팟-대댓글`, `삭제된-루트`, `삭제된-대댓글-은닉`, `상위5개` 등 시나리오가 바로 드러나는 한글명으로 변경했습니다.
-  - 규모도 `1천건`, `1만건`, `10만건`, `백만건`으로 표시해 파일명만 보고 대상 데이터와 인덱스 제거 여부를 구분할 수 있습니다.
-- **Sprint 04 EXPLAIN 문서 구조 통합 (2026-09-08)**:
-  - `explain/`을 9개 시나리오별 Markdown 문서로 통합했습니다.
-  - 각 문서에 규모별·인덱스 적용 전후 원문과 지표 해석을 함께 배치했습니다.
-  - SQL 입력 파일은 `benchmark/queries/`로 이동하고, 기존 중복 원문은 `benchmark/archive-explain-raw/`에 보관했습니다.
-  - 현재 정책과 맞지 않는 삭제 placeholder/hidden 결과는 삭제하지 않고 보관 영역으로 분리했으며, `삭제된-대댓글.md`에 정책 차이를 명시했습니다.
-- **Sprint 04 벤치마크 산출물 전체 구조 정리 (2026-09-08)**:
-  - `results/`에 `1천건.md`, `1만건.md`, `10만건.md`, `백만건.md`를 생성해 규모별 결과·정합성·평균/p95를 통합했습니다.
-  - `metrics/`에 실행계획·인덱스 비교·실행시간·정합성 집계 파일을 모았습니다.
-  - `guides/`, `질의/`, `실행계획/`으로 목적별 파일을 분리하고 파일명을 한글화했습니다.
-  - 이전 중복 원문과 이전 결과 파일은 `../benchmark-archive/`로 이동해 작업 폴더에서는 제외했습니다.
-- **Sprint 04 규모별 결과 문서 단일화 (2026-09-08)**:
-  - `results/`의 규모별 4개 Markdown을 `댓글-벤치마크-결과.md` 하나로 통합하고 문서 내부에서 1천·1만·10만·백만건 섹션으로 구분했습니다.
-- **Sprint 04 정합성 결과 표 형식 개선 (2026-09-08)**:
-  - 통합 결과 문서의 원시 탭 구분 정합성 출력 4개를 검증 항목·결과·판정 Markdown 표로 변환했습니다.
-- **Sprint 04 ADR 실행계획 요약표 보강 (2026-09-08)**:
-  - ADR-002에 9개 시나리오의 규모별 평균/p95, 선택 인덱스, 인덱스 전후 차이, 병목 원인을 한글 표로 추가했습니다.
-  - 변경된 benchmark 결과 경로와 삭제 댓글 정책의 기존 은닉 측정 한계를 명시했습니다.
-- **Sprint 04 댓글 조회 벤치마크 학습 문서 작성 (2026-09-08)**:
-  - 선택도, 실행계획, estimated/actual rows, Cursor seek, Seed, Spring Profile, JDBC batch, 인덱스 지표를 개념·원리·트레이드오프 관점에서 정리했습니다.
-  - 실제 측정 결과에 대한 질문 답변과 데이터 규모·사용자 증가 시 확장 대응 방향을 추가했습니다.
-- **Sprint 04 벤치마크 실행 안전장치 보강 (2026-09-08)**:
-  - 벤치마크 실행 테스트에 `test`·`benchmark` Profile을 명시하고 전용 `application-benchmark.yml`을 추가했습니다.
-  - SQL Seed 시작 시 현재 DB 이름이 `test` 또는 `benchmark`를 포함하는지 검사하고, 운영 스키마면 MySQL `SIGNAL`로 즉시 중단하도록 했습니다.
-  - `compileTestJava` 검증을 통과했습니다.
-- **Sprint 04 CI 벤치마크 테스트 격리 (2026-09-09)**:
-  - 기본 `./gradlew test`에서 `benchmark` 태그 테스트를 제외해 일반 테스트와 대규모 Seed 테스트가 같은 DB Context를 오염시키지 않도록 했습니다.
-  - 벤치마크 실행은 `./gradlew test --tests CommentBenchmarkSeedRunnerTest -PincludeBenchmark`로 명시해야 합니다.
-  - GitHub Actions 실패 로그에서 확인된 11건의 DB 제약조건·기대값 오류 원인을 반영했습니다.
-=======
+
 
 - **커뮤니티 UI 디자인 운영 배포 (2026-09-13)**:
   - `feature/ui-redesign`의 `02fde60` 커밋을 `deploy/aws-ec2`에 반영해 `12bfe1b`로 배포 브랜치에 포함했습니다.
@@ -1548,4 +1439,3 @@
   - `my_ai/.ai/RULES.md`에 공통 필수 규칙을 등록하고, backend performance·Spring security·logging, application config, database migration, common security 문서의 해당 지점에 세부 규칙을 나눠 추가했습니다.
   - 배포 시 commit SHA와 image digest를 함께 고정하고 ECR tag·SSM 로그·프록시 설정을 검증하는 `skills/infrastructure/deployment-safety.md`를 새로 등록했습니다.
   - `docs/study/`는 학습 문서 비추적 원칙에 따라 Git 커밋 대상에서 제외합니다.
->>>>>>> deploy/aws-ec2
