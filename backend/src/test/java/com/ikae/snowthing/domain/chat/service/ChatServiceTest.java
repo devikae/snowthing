@@ -2,8 +2,6 @@ package com.ikae.snowthing.domain.chat.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,11 +16,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.ikae.snowthing.domain.chat.audit.ChatAuditLogger;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.model.ResortTag;
@@ -40,8 +36,6 @@ class ChatServiceTest {
     private static final int CONCURRENT_DUPLICATE_REQUESTS = 2;
     private static final long CONCURRENT_TEST_TIMEOUT_SECONDS = 10L;
 
-    @Mock private ChatAuditLogger chatAuditLogger;
-
     private ChatService chatService;
     private CustomUserDetails testUserDetails;
     private Member testMember;
@@ -51,7 +45,7 @@ class ChatServiceTest {
     @BeforeEach
     void setUp() {
         chatRecentHistoryBuffer = new ChatRecentHistoryBuffer();
-        chatService = new ChatService(chatAuditLogger, chatRecentHistoryBuffer);
+        chatService = new ChatService(chatRecentHistoryBuffer);
         testMember =
                 Member.builder()
                         .publicId("0191a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4")
@@ -87,8 +81,6 @@ class ChatServiceTest {
             assertThat(response.resortTag()).isEqualTo(ResortTag.PHOENIX.name());
             assertThat(response.content()).isEqualTo(request.content());
             assertThat(response.sentAt()).isNotBlank();
-
-            verify(chatAuditLogger).log(100L, "121.135.24.56", "MAIN_CHAT");
         }
 
         @Test
@@ -105,7 +97,6 @@ class ChatServiceTest {
             // then
             assertThat(response.resortTag()).isNull();
             assertThat(response.content()).isEqualTo("오늘 다들 어디로 출격하시나요? 날씨가 많이 춥네요.");
-            verify(chatAuditLogger).log(100L, "127.0.0.1", "MAIN_CHAT");
         }
 
         @Test
@@ -294,9 +285,6 @@ class ChatServiceTest {
                     .isEqualTo(ErrorCode.CHAT_BURST_RATE_LIMIT);
             assertThat(chatRecentHistoryBuffer.getRecentMessages())
                     .hasSize(BURST_REJECTED_ATTEMPT - 1);
-            verify(chatAuditLogger, org.mockito.Mockito.times(BURST_REJECTED_ATTEMPT - 1))
-                    .log(100L, "127.0.0.1", "MAIN_CHAT");
-            verifyNoMoreInteractions(chatAuditLogger);
         }
 
         @Test

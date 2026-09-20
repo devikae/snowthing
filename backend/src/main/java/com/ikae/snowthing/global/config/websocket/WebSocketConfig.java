@@ -11,6 +11,8 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 
+import com.ikae.snowthing.domain.chat.audit.ChatAuditLogger;
+
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -29,6 +31,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final ChatHandshakeInterceptor chatHandshakeInterceptor;
     private final ChatConnectionRegistry chatConnectionRegistry;
+    private final ChatAuditLogger chatAuditLogger;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -84,7 +87,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .addDecoratorFactory(
                         handler ->
                                 new ChatConnectionWebSocketHandlerDecorator(
-                                        handler, chatConnectionRegistry));
+                                        handler, chatConnectionRegistry, chatAuditLogger));
     }
 
     @Bean

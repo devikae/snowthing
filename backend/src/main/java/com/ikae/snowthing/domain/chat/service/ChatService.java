@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.ikae.snowthing.domain.chat.audit.ChatAuditLogger;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.dto.SenderDto;
@@ -35,7 +34,6 @@ public class ChatService {
     private static final long BURST_WINDOW_MILLIS = 1_000L;
     private static final long DUPLICATE_COOLDOWN_MILLIS = 5000L;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-    private static final String AUDIT_CHANNEL = "MAIN_CHAT";
 
     private static final Pattern URL_PATTERN =
             Pattern.compile(
@@ -49,7 +47,6 @@ public class ChatService {
                     "(?i)(?:\\bt\\.me/\\S+|\\btelegram\\b|\\bopen\\.kakao\\.com/\\S+|(?<![\\w.])@[a-z0-9_]{3,})");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
-    private final ChatAuditLogger chatAuditLogger;
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
 
     private final Cache<Long, LastMessageInfo> recentMessageCache =
@@ -104,10 +101,7 @@ public class ChatService {
         ResortTag tag = ResortTag.from(request.resortTag());
         String resolvedTag = tag != null ? tag.name() : null;
 
-        // 6. Audit metadata log. The final retention period is an operations/legal decision.
-        chatAuditLogger.log(member.getId(), clientIp, AUDIT_CHANNEL);
-
-        // 7. Construct response payload. React renders content as escaped JSX text.
+        // 6. Construct response payload. React renders content as escaped JSX text.
         String messageId = UUID.randomUUID().toString();
         String sentAt = LocalDateTime.now().format(ISO_FORMATTER);
         SenderDto sender = new SenderDto(member.getPublicId(), member.getNickname());

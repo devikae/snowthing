@@ -205,17 +205,19 @@ content-type:application/json
 
 - **로그 목적**: 운영 감사와 적법한 요청 대응에 필요한 최소 메타데이터 확보. 적용 법령과 실제 보관 기간은 법률 검토 후 확정한다.
 - **저장 위치**: `/var/log/snowthing-chat/chat_audit.log` (운영 컨테이너와 EC2 호스트 공유)
-- **보관 정책**: Logback 일별·용량별 Rolling, `maxHistory = 90`, 전체 용량 2GB 상한. CloudWatch 전송과 법적 보존 기간은 별도 운영 설정에서 확정한다.
-- **포맷**: 탭 구분(TSV) 포맷으로 대화 본문을 제외한 메타데이터만 단방향 비동기 적재.
+- **보관 정책**: 운영 정책은 3개월이며 월별 일수 차이를 흡수하도록 Logback `maxHistory = 100`으로 설정한다. 일별·100MB 단위로 압축 회전하고 100일이 지난 파일은 자동 삭제한다.
+- **포맷**: 탭 구분(TSV) 포맷으로 대화 본문과 메시지별 발송 내역을 제외한 연결 생명주기 메타데이터만 비동기 적재한다.
 
 ```text
 # 포맷 규격
-[timestamp]\t[member_id]\t[client_ip]\t[channel]
+[timestamp]\t[event]\t[member_id]\t[client_ip]\t[channel]\t[connection_id]\t[close_reason]
 
 # 기록 예시
-2026-09-20T00:20:00.123+09:00\t102\t121.135.24.56\tMAIN_CHAT
-2026-09-20T00:20:01.890+09:00\t88\t211.202.11.90\tMAIN_CHAT
+2026-09-20T00:20:00.123+09:00\tCONNECT\t102\t121.135.24.56\tMAIN_CHAT\tws-123\tNONE
+2026-09-20T00:50:00.456+09:00\tDISCONNECT\t102\t121.135.24.56\tMAIN_CHAT\tws-123\tCloseStatus[code=1000, reason=null]
 ```
+
+이 로그는 일반 사이트 로그인 성공·실패 이력이 아니라 라이브톡 WebSocket 접속·종료 이력이다. 연결이 수락될 때 한 번, 종료될 때 한 번만 기록하며 메시지 50건을 보내도 추가 감사 로그 50건을 만들지 않는다. EC2 호스트 파일의 자동 파기까지는 구성됐지만 EC2 손실에 대비한 CloudWatch Logs 또는 비공개 S3 외부 보관은 후속 운영 작업이다.
 
 ## 6. 연결 생명주기와 부하 제한
 
