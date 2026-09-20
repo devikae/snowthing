@@ -125,6 +125,35 @@
      - 프론트엔드 Next.js 16.2.12 Turbopack 프로덕션 빌드: `npm run build` **100% SUCCESS** (0 errors, 10 routes).
      - `main` 브랜치 최신화 및 작업 트리 clean 상태 확립.
 
+### 2026-09-07 Sprint 04 댓글 벤치마크
+- 실제 MySQL 8.0.46 `snowthing_test`에서 재생성 SQL 검증 완료: 100,000건(루트 20,000 / 대댓글 80,000 / 삭제 20,000).
+- `database/benchmark/seed-template.sql`의 MySQL 프로시저/재실행 정리 로직과 삭제 플래그 집계를 보강했다.
+- 1,000,000건 시드는 현재 동일 DB에서 실행 중이며 완료 후 결과를 추가한다.
+- 이슈: Windows MySQL Shell 설치는 기존 Windows Installer 잠금으로 보류했지만 Docker의 MySQL 8.0 CLI로 동일 엔진 검증을 수행했다.
+- 1M 완료 검증: 총 1,000,000건(루트 200,000 / 대댓글 800,000 / 삭제 200,000), `post.comment_count` 불일치 0건, 활성 대댓글 최대 4건.
+- `EXPLAIN ANALYZE` 원문을 `docs/study/sprint04/comment/benchmark/explain/`에 저장하고 규모별 결과 문서를 작성했다.
+- Hotspot 루트에 활성 대댓글 100건을 확보하고 1M 불변식을 재검증했다(총 1,000,000 / 불일치 0 / 최대 100).
+- 측정 보강: ANALYZE TABLE 수행, root first-page warm-up 5회 후 20회 평균/p95 측정 및 `idx_comment_post_parent_id` visible/invisible 비교 완료(102.47/115.88ms vs 226.22/241.63ms). 인덱스는 visible로 복구했다.
+- 1M 원본을 유지한 채 `snowthing_benchmark_1k`, `snowthing_benchmark_10k`, `snowthing_benchmark_100k` 스키마를 복제 생성하고 root first-page 규모별 EXPLAIN ANALYZE를 저장했다. 네 규모 모두 복합 인덱스 선택, loops=1을 확인했다.
+- Seed harness의 게시글 분포를 일반 80개/중간 19개/Hot 1개(45/45/10 비율)로 수정하고, Seed 테스트에 게시글 수·Hot post·댓글 수·루트/대댓글·삭제·comment_count·대댓글 상한·중복 ID 자동 불변식 검증을 추가했다. `compileTestJava` 통과.
+- SQL seed template도 동일한 일반/중간/Hot 게시글 매핑을 적용하고, 생성 후 게시글별 댓글 수를 출력하도록 보강했다.
+- `snowthing_benchmark_1k`에서 수정 SQL을 실제 실행해 1,000건(루트 200/대댓글 800/삭제 200), Hot post 100건, 게시글별 분포 출력과 총량 집계를 확인했다. `snowthing_test` 1M 원본은 보존했다.
+- 단일 MySQL 세션 기반 측정 스크립트로 1K·10K·100K·1M 각 5개 시나리오를 warm-up 5회 + 유효 20회 측정하고 `timing.csv`에 평균/p95를 저장했다.
+- 삭제 루트 placeholder/은닉 및 Top-5 batch를 추가해 7개 시나리오(4개 규모)의 평균/p95를 재측정했다. `timing.csv` 28개 결과 행과 규모별 EXPLAIN 원문을 확인했다.
+- 4개 규모에서 두 댓글 복합 인덱스를 invisible/visible로 전환하며 Top-5 batch·삭제 루트 전후 `EXPLAIN ANALYZE` 원문을 저장하고, 측정 후 인덱스를 복구했다.
+- `snowthing_benchmark_1k/10k/100k`를 수정 분포 Seed로 재생성했다. 100K 실제 검증 결과는 100,000 benchmark 댓글(20,000 루트/80,000 대댓글, 활성/삭제 80,000/20,000), 일반 80개·중간 19개·Hot 1개(10,000건) 분포다.
+- 모든 규모 Hotspot 검증: 1K 8건, 10K 80건, 100K 100건, 1M 100건(소규모는 전체량에 따른 10% 축소)을 확인했다.
+- 2026-09-08 실행계획 측정을 운영 `CommentRepositoryImpl` SQL 기준 9개 시나리오로 재정의하고, 스키마별 숫자 ID 하드코딩을 benchmark prefix 기반 동적 바인딩으로 교체했다.
+- Java/SQL 시드의 Hotspot 규칙을 활성 대댓글 100건으로 통일하고 1K·10K·100K·1M을 재생성했다. 네 규모 모두 총량, 루트/대댓글, 부모·자식 `post_id`, `post.comment_count`, 중복 ID 및 활성 대댓글 상한 검증을 통과했다.
+- MySQL 8.0.46에서 4개 규모 × 9개 시나리오의 `EXPLAIN ANALYZE` 원문 36개와 warm-up 5회 + 유효 20회 평균/p95 36행을 저장했다. 누락됐던 대댓글 통계와 Hotspot 중간 페이지를 포함한다.
+- 통합 해석표를 `docs/study/sprint04/comment/benchmark/execution-plan-matrix.md`에 작성했다. 1M에서 루트 첫 페이지 36.578/39.388ms, 삭제 placeholder 29.876/32.770ms였고, 대댓글 계열은 상한 100과 parent 복합 인덱스로 0.2~0.7ms 수준을 유지했다.
+- 이슈: 루트 첫 페이지와 삭제 placeholder는 member LEFT JOIN 이후 정렬되어 LIMIT 전에 각각 루트 20,000건/삭제 후보 4,000건을 처리한다. JOIN 전 루트 ID LIMIT 파생 테이블과 삭제 조건 포함 복합 인덱스를 후속 개선 후보로 기록했으며 운영 쿼리·인덱스는 변경하지 않았다.
+- 평균·p95 측정 대상을 9개 시나리오로 확장(삭제 루트 원문/placeholder, 삭제 대댓글 포함)하고 4개 규모 × 9개 = 36개 결과 행을 `timing.csv`에 저장했다. 각 시나리오는 warm-up 5회 후 20회 측정했다.
+- 인덱스 전·후 비교를 9개 시나리오 × 4개 규모로 실행해 36개 원문과 `index-comparison.csv`를 저장했다. 측정 후 인덱스 visible 상태를 확인했다.
+- Spring Boot를 `snowthing_test`/18080으로 기동해 실제 댓글·대댓글 API를 호출하고 응답 크기를 측정했다(16,841 bytes / 2,739 bytes). 측정 후 서버를 종료했다.
+- 불변식 자동 검증 보강: 벤치마크 게시글 100개별 루트 댓글과 페이지 크기를 초과한 대댓글을 운영과 동일한 `comment_id` 커서로 마지막 페이지까지 순회하고, 전체 기대 ID 집합과 대조해 누락·중복·정렬 오류를 검증한다. 동일 `created_at` 데이터의 `comment_id` 타이브레이커와 게시글별 `post.comment_count`/실제 활성 댓글 수도 전수 검증한다.
+- 자동 검증 과정에서 루트 ID 수집 쿼리가 콘텐츠 마커만 검색해 다른 게시글의 과거 마커 데이터를 포함할 수 있는 Seed 범위 결함을 발견했다. 벤치마크 `public_id`와 루트 조건으로 범위를 제한했으며, 기본 1K MySQL 실행 결과 `CommentBenchmarkSeedRunnerTest`가 통과했다.
+- 실행계획 통합표 작성: MySQL 8.0.46에서 1K·10K·100K의 필수 9개 시나리오를 복합 인덱스 visible/invisible 상태로 전통형 `EXPLAIN`하고, 54개 실행계획(노드별 원본 114행)의 `key_len`, `Using filesort`, `Using temporary`를 `explain-plan-summary.md`와 `explain-plan-details.csv`에 기록했다. 실행 전 `ANALYZE TABLE`을 수행했으며 측정 후 세 스키마의 두 복합 인덱스가 모두 visible임을 확인했다.
 - **Sprint 03 댓글/대댓글 인라인 삭제 UI 및 비밀번호 플로팅 팝오버 위젯 구현 (2026-09-03)**:
   1. **작업명**: 댓글/대댓글 인라인 미니 `✕` 삭제 버튼 및 시간 아래 플로팅 드롭다운 UI 구현 (브라우저 다이얼로그 전면 퇴출)
   2. **현재 상태**: 완료
@@ -1212,7 +1241,7 @@
   - 게시글 댓글 목록과 대댓글 조회가 동일한 `POST_NOT_FOUND` 정책을 사용하도록 `validatePostVisibility`를 적용했다.
   - 삭제·차단 게시글의 대댓글 조회가 `POST_NOT_FOUND`로 차단되는 통합 테스트를 `CommentReadTest`에 추가했다.
   - 검증: `spotlessApply` 및 `CommentReadTest` 성공. 테스트 DB 환경변수 미설정 상태에서는 실제 MySQL 테스트 실행이 보류됨.
-=======
+
 - **Sprint 03 테스트 환경 MySQL 단일화 (2026-09-06)**:
   - H2 의존성·datasource·dialect를 제거하고 모든 Spring Boot 테스트 설정을 MySQL 8.0/InnoDB로 통일했습니다.
   - `CommentCreateTest`와 `CommentUpdateTest`는 `SNOWTHING_TEST_DB_URL` 누락 시 fallback 없이 즉시 실패하며, `.env.example`에 프로세스 환경변수 전달 방법을 명시했습니다.
@@ -1296,7 +1325,7 @@
   - MockMvc 경계 테스트에서 3·21자는 `400 Bad Request`와 `COMMON_001`, 4·20자는 `201 Created`를 검증했습니다.
   - `CommentControllerTest`와 `spotlessCheck`는 통과했습니다.
   - `CommentCreateTest` 16건은 `SNOWTHING_TEST_DB_URL` 미설정 시 실행을 차단하는 기존 MySQL 강제 설정 때문에 Spring Context 생성 전에 실패했습니다. 경계값 변경으로 인한 테스트 assertion 실패는 아닙니다.
->>>>>>> origin/feature/sprint03-comment
+
 
 - **커뮤니티 UI 디자인 운영 배포 (2026-09-13)**:
   - `feature/ui-redesign`의 `02fde60` 커밋을 `deploy/aws-ec2`에 반영해 `12bfe1b`로 배포 브랜치에 포함했습니다.
