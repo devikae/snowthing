@@ -25,6 +25,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.global.config.websocket.ChatConnectionRegistry;
 import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
@@ -41,6 +42,7 @@ public class SecurityConfig {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
+    private final ChatConnectionRegistry chatConnectionRegistry;
 
     @Bean
     public ObjectMapper objectMapper() {
@@ -110,6 +112,9 @@ public class SecurityConfig {
                                                 (request, response, authentication) -> {
                                                     HttpSession session = request.getSession(false);
                                                     if (session != null) {
+                                                        chatConnectionRegistry
+                                                                .disconnectHttpSession(
+                                                                        session.getId());
                                                         chatSessionRevocationRegistry.revoke(
                                                                 session.getId());
                                                         session.invalidate();

@@ -26,6 +26,10 @@ logging:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
 
+snowthing:
+  chat:
+    max-connections: ${SNOWTHING_CHAT_MAX_CONNECTIONS:500}
+
 server:
   servlet:
     session:

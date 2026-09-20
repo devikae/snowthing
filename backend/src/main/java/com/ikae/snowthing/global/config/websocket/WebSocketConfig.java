@@ -28,6 +28,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private static final int MESSAGE_SIZE_LIMIT_BYTES = 16 * 1024;
 
     private final ChatHandshakeInterceptor chatHandshakeInterceptor;
+    private final ChatConnectionRegistry chatConnectionRegistry;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -79,7 +80,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registration
                 .setSendTimeLimit(SEND_TIME_LIMIT_MILLIS)
                 .setSendBufferSizeLimit(SEND_BUFFER_SIZE_LIMIT_BYTES)
-                .setMessageSizeLimit(MESSAGE_SIZE_LIMIT_BYTES);
+                .setMessageSizeLimit(MESSAGE_SIZE_LIMIT_BYTES)
+                .addDecoratorFactory(
+                        handler ->
+                                new ChatConnectionWebSocketHandlerDecorator(
+                                        handler, chatConnectionRegistry));
     }
 
     @Bean
