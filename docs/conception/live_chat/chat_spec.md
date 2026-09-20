@@ -231,3 +231,4 @@ content-type:application/json
 - EC2 보안 그룹의 80·443은 고객 관리형 접두사 목록 `cloudflare-ipv4`만 허용한다. Nginx는 공식 Cloudflare IPv4 15개 대역만 trusted proxy로 등록하고 `CF-Connecting-IP`를 `$remote_addr`로 복원한다.
 - `/ws-chat`은 복원한 사용자 IP 기준 동시 연결 5개, 초당 신규 요청 3개와 burst 6개로 제한한다. 다른 HTTP 경로는 빈 제한 키를 사용해 이 제한에서 제외한다.
 - 백엔드는 Nginx가 덮어쓴 `X-Real-IP`를 `X-Forwarded-For`보다 우선해 감사 로그와 익명 사용자 식별에 사용한다.
+- 로컬 200명 benchmark는 `./gradlew test -PincludeBenchmark --tests '*ChatLoadTest' --rerun-tasks`로 실행한다. 일반 테스트와 CI에서는 `benchmark` 태그를 제외한다.
