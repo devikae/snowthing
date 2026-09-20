@@ -109,4 +109,5 @@
 4. **연결 제한**:
    - 회원 한 명은 활성 연결 1개만 유지한다. 새 연결이 성공하면 기존 연결을 종료한다.
    - 서버 전체 연결은 기본 500개로 제한하고 `SNOWTHING_CHAT_MAX_CONNECTIONS`로 조정한다.
-   - IP별 제한은 Cloudflare 원본 접근 제한과 trusted proxy 구성이 완료된 뒤 적용한다.
+   - EC2의 80·443은 `cloudflare-ipv4` 접두사 목록만 허용한다. Nginx는 같은 공식 대역을 신뢰해 실제 사용자 IP를 복원한 뒤 `/ws-chat`의 IP당 동시 연결을 5개, 초당 신규 요청을 3개로 제한한다.
+   - Cloudflare 공식 IP 목록이 바뀌면 AWS 접두사 목록과 Nginx 목록을 같은 작업에서 갱신한다.

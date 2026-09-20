@@ -228,4 +228,6 @@ content-type:application/json
 - 재연결은 1초부터 최대 30초까지 지수 백오프와 최대 1초 지터를 적용해 장애 직후 동시 재접속을 분산한다.
 - 로그아웃 시 HTTP 세션 ID를 폐기 목록에 넣는다. 이미 연결된 WebSocket이 메시지를 보내더라도 폐기된 세션이면 `CHAT_006`으로 거부한다.
 - 현재 폐기 목록은 단일 인스턴스 Caffeine 캐시다. 다중 서버 전환 시 모든 서버가 같은 폐기 상태를 보도록 Redis 저장소로 교체한다.
-- IP별 연결 제한은 아직 적용하지 않는다. Cloudflare 원본 접근 제한과 Nginx trusted proxy 설정 없이 `$remote_addr`를 사용하면 여러 사용자가 같은 Cloudflare 엣지 IP로 묶이고, 전달 헤더를 무조건 신뢰하면 직접 접근자가 IP를 위조할 수 있기 때문이다.
+- EC2 보안 그룹의 80·443은 고객 관리형 접두사 목록 `cloudflare-ipv4`만 허용한다. Nginx는 공식 Cloudflare IPv4 15개 대역만 trusted proxy로 등록하고 `CF-Connecting-IP`를 `$remote_addr`로 복원한다.
+- `/ws-chat`은 복원한 사용자 IP 기준 동시 연결 5개, 초당 신규 요청 3개와 burst 6개로 제한한다. 다른 HTTP 경로는 빈 제한 키를 사용해 이 제한에서 제외한다.
+- 백엔드는 Nginx가 덮어쓴 `X-Real-IP`를 `X-Forwarded-For`보다 우선해 감사 로그와 익명 사용자 식별에 사용한다.

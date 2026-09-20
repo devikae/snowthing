@@ -96,4 +96,17 @@ class WebCookieManagerTest {
 
         assertThat(ip).isEqualTo("203.0.113.10");
     }
+
+    @Test
+    @DisplayName("Nginx가 복원한 X-Real-IP를 전달하면 전달 체인보다 우선한다")
+    void resolve_withRealIp_prefersTrustedProxyValue() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Real-IP", "203.0.113.20");
+        request.addHeader("X-Forwarded-For", "198.51.100.99, 203.0.113.20");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("203.0.113.20");
+    }
 }

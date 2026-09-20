@@ -9,11 +9,15 @@ public class ClientIpResolver {
 
     public static final String DEFAULT_LOCAL_IP = "127.0.0.1";
     private static final String UNKNOWN = "unknown";
+    private static final String X_REAL_IP = "X-Real-IP";
     private static final String X_FORWARDED_FOR = "X-Forwarded-For";
     private static final String PROXY_CLIENT_IP = "Proxy-Client-IP";
 
     public String resolve(HttpServletRequest request) {
-        String ip = request.getHeader(X_FORWARDED_FOR);
+        String ip = request.getHeader(X_REAL_IP);
+        if (!hasValidIp(ip)) {
+            ip = request.getHeader(X_FORWARDED_FOR);
+        }
         if (!hasValidIp(ip)) {
             ip = request.getHeader(PROXY_CLIENT_IP);
         }
