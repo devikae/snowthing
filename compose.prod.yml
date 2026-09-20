@@ -1,0 +1,26 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE_URI:-snowthing-backend:latest}
+    container_name: snowthing-backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      # backend entrypoint가 jdbc:aws-wrapper:mysql:// 접두사까지 검증한다.
+      - SNOWTHING_PROD_DB_URL=${SNOWTHING_PROD_DB_URL:?SNOWTHING_PROD_DB_URL must be set and start with jdbc:aws-wrapper:mysql://}
+      - SNOWTHING_DB_USERNAME=${SNOWTHING_DB_USERNAME:-snowthing_app}
+      - SNOWTHING_DB_PASSWORD=${SNOWTHING_DB_PASSWORD:-}
+      - SNOWTHING_S3_BUCKET=${SNOWTHING_S3_BUCKET:-snowthing-media-00001}
+      - SNOWTHING_IMAGE_BASE_URL=${SNOWTHING_IMAGE_BASE_URL:-https://images.snowthing.org}
+      - TZ=Asia/Seoul
+
+  frontend:
+    image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:latest}
+    container_name: snowthing-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000

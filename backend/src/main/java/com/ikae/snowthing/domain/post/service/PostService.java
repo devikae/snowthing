@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.image.service.ImageUrlResolver;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -22,6 +23,7 @@ import com.ikae.snowthing.domain.post.event.PostReactionEvent;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.repository.PostReactionRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -50,6 +52,7 @@ public class PostService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
+    private final ImageUrlResolver imageUrlResolver;
 
     @Transactional
     public PostResponse createPost(
@@ -128,7 +131,11 @@ public class PostService {
             }
         }
 
-        List<String> imageUrls = post.getImages().stream().map(PostImage::getImageUrl).toList();
+        List<String> imageUrls =
+                post.getImages().stream()
+                        .map(PostImage::getImageUrl)
+                        .map(imageUrlResolver::toPublicUrl)
+                        .toList();
         int viewCount = post.getViewCount();
         if (shouldIncreaseViewCount) {
             postRepository.increaseViewCount(post.getId());
@@ -159,7 +166,7 @@ public class PostService {
             posts = postRepository.findAllWithMemberAndCategory(pageable);
         }
 
-        return posts.map(PostListResponse::from);
+        return posts.map(this::toPostListResponse);
     }
 
     public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
@@ -170,7 +177,7 @@ public class PostService {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return postRepository.findPostsByOffset(request);
+        return resolveThumbnailUrls(postRepository.findPostsByOffset(request));
     }
 
     public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
@@ -178,7 +185,7 @@ public class PostService {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return postRepository.findPostsByCursor(request);
+        return resolveThumbnailUrls(postRepository.findPostsByCursor(request));
     }
 
     @Transactional
@@ -393,11 +400,34 @@ public class PostService {
                         .anyMatch(a -> a.getAuthority().equals(Role.ROLE_ADMIN.getKey()));
     }
 
+    private PostListResponse toPostListResponse(Post post) {
+        PostListResponse response = PostListResponse.from(post);
+        return response.withThumbnailImageUrl(
+                imageUrlResolver.toThumbnailPublicUrl(response.thumbnailImageUrl()));
+    }
+
+    private CursorPageResponse<PostListResponse> resolveThumbnailUrls(
+            CursorPageResponse<PostListResponse> page) {
+        List<PostListResponse> content =
+                page.content().stream()
+                        .map(
+                                response ->
+                                        response.withThumbnailImageUrl(
+                                                imageUrlResolver.toThumbnailPublicUrl(
+                                                        response.thumbnailImageUrl())))
+                        .toList();
+        return new CursorPageResponse<>(content, page.pageInfo());
+    }
+
     private List<PostImage> toPostImages(List<String> imageUrls) {
         List<PostImage> images = new ArrayList<>();
         int sortOrder = FIRST_IMAGE_SORT_ORDER;
         for (String imageUrl : imageUrls) {
-            images.add(PostImage.builder().imageUrl(imageUrl).sortOrder(sortOrder++).build());
+            images.add(
+                    PostImage.builder()
+                            .imageUrl(imageUrlResolver.toStorageValue(imageUrl))
+                            .sortOrder(sortOrder++)
+                            .build());
         }
         return images;
     }

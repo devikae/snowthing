@@ -2,6 +2,11 @@ spring:
   application:
     name: snowthing
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   profiles:
     default: local
 
@@ -27,6 +32,13 @@ server:
         http-only: true
         same-site: lax
 
+cloud:
+  aws:
+    s3:
+      bucket: ${SNOWTHING_S3_BUCKET:snowthing-media-00001}
+    cloudfront:
+      base-url: ${SNOWTHING_IMAGE_BASE_URL:https://images.snowthing.org}
+
 ---
 # ==========================================
 # [Profile: local] 로컬 개발 환경 (Local / Docker MySQL 8.0 연동)
@@ -45,6 +57,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+
     show-sql: true
     properties:
       hibernate:
@@ -53,12 +66,12 @@ spring:
 
 ---
 # ==========================================
-# [Profile: docker / prod] Docker Compose 및 운영 컨테이너 환경
+# [Profile: docker] 로컬 Docker Compose 환경
 # ==========================================
 spring:
   config:
     activate:
-      on-profile: docker, prod
+      on-profile: docker
 
   datasource:
     url: jdbc:mysql://mysql:3306/snowthing?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
@@ -73,3 +86,42 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+
+---
+# ==========================================
+# [Profile: prod] AWS EC2 + RDS 운영 컨테이너 환경 (IAM 무암호 인증)
+# ==========================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    # 운영 계약: AWS Advanced JDBC Wrapper는 jdbc:aws-wrapper:mysql:// 접두사만 허용한다.
+    url: ${SNOWTHING_PROD_DB_URL}
+    driver-class-name: software.amazon.jdbc.Driver
+    username: ${SNOWTHING_DB_USERNAME:snowthing_app}
+    password: ${SNOWTHING_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      data-source-properties:
+        wrapperPlugins: iam
+        iamExpiration: 870
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    org.hibernate.SQL: info
+    org.hibernate.orm.jdbc.bind: info
+    com.ikae.snowthing: info

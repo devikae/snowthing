@@ -1,0 +1,223 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ "main", "deploy/aws-ec2" ]
+    paths: [ 'frontend/**', 'compose.prod.yml', 'scripts/deploy-ecr-service.sh', '.github/workflows/deploy-frontend.yml' ]
+  workflow_dispatch:
+    inputs:
+      rollback_tag:
+        description: '비워 두면 현재 커밋 배포, 입력하면 release/stable-<SHA>[-<설정지문>]으로 복구'
+        required: false
+        type: string
+      stable_tag:
+        description: 'release-<SHA>[-<설정지문>]을 stable 태그로 이동'
+        required: false
+        type: string
+
+concurrency:
+  group: ec2-production-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci-frontend:
+    name: Frontend CI (Build Verification)
+    if: github.event_name == 'push' || (inputs.rollback_tag == '' && inputs.stable_tag == '')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build
+
+  deploy-frontend:
+    name: Build, Push and Deploy Frontend Digest
+    needs: [ci-frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2') && (github.event_name == 'push' || (inputs.rollback_tag == '' && inputs.stable_tag == ''))
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REGISTRY="${ACCOUNT_ID}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
+          aws ecr get-login-password --region "${{ vars.AWS_REGION }}" | docker login --username AWS --password-stdin "$REGISTRY"
+          echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
+
+      - name: Build or reuse commit image
+        id: image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
+          COMMIT_SHA: ${{ github.sha }}
+          API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$API_BASE_URL" =~ ^https://[^[:space:]]+$ ]]; then
+            echo "NEXT_PUBLIC_API_BASE_URL은 https://로 시작하는 완전한 URL이어야 합니다." >&2
+            exit 2
+          fi
+          CONFIG_FINGERPRINT=$(printf '%s' "$API_BASE_URL" | sha256sum | cut -c1-12)
+          IMAGE_VERSION="${COMMIT_SHA}-${CONFIG_FINGERPRINT}"
+          CANDIDATE_TAG="candidate-${IMAGE_VERSION}"
+          RELEASE_TAG="release-${IMAGE_VERSION}"
+          if aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$RELEASE_TAG" >/dev/null 2>&1; then
+            SOURCE_TAG="$RELEASE_TAG"; PROMOTE=false
+          elif aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$CANDIDATE_TAG" >/dev/null 2>&1; then
+            SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
+          else
+            docker build --build-arg NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL" --tag "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG" ./frontend
+            docker push "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG"
+            SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
+          fi
+          DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+          echo "image_uri=$REGISTRY/$REPOSITORY@$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "source_tag=$SOURCE_TAG" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "config_fingerprint=$CONFIG_FINGERPRINT" >> "$GITHUB_OUTPUT"
+          echo "promote=$PROMOTE" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy frontend digest via SSM
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          DEPLOY_SHA: ${{ github.sha }}
+          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          PARAMETERS=$(jq -n --arg sha "$DEPLOY_SHA" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" '{commands: [
+            "set -e", "cd /home/ubuntu/snowthing",
+            "git -c safe.directory=/home/ubuntu/snowthing fetch --no-tags origin \"" + $sha + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"" + $sha + "\"",
+            "test \"$(git -c safe.directory=/home/ubuntu/snowthing rev-parse HEAD)\" = \"" + $sha + "\"",
+            "chmod +x scripts/deploy-ecr-service.sh",
+            "scripts/deploy-ecr-service.sh frontend \"" + $image + "\" \"" + $region + "\""
+          ]}')
+          COMMAND_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript --timeout-seconds 900 --parameters "$PARAMETERS" --comment "Deploy frontend digest from ${GITHUB_REPOSITORY}@${GITHUB_SHA}" --query 'Command.CommandId' --output text)
+          echo "SSM command ID: $COMMAND_ID"
+          STATUS=Pending
+          for _ in $(seq 1 180); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Cancelled|TimedOut|Failed|Cancelling) break ;; esac
+            sleep 5
+          done
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query '{Status:Status,StandardOutput:StandardOutputContent,StandardError:StandardErrorContent}'
+          test "$STATUS" = Success
+
+      - name: Promote successful image to release
+        if: steps.image.outputs.promote == 'true'
+        env:
+          REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
+          SOURCE_TAG: ${{ steps.image.outputs.source_tag }}
+          RELEASE_TAG: ${{ steps.image.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'images[0].imageManifest' --output text)
+          aws ecr put-image --repository-name "$REPOSITORY" --image-tag "$RELEASE_TAG" --image-manifest "$MANIFEST" >/dev/null
+          aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" >/dev/null
+
+  rollback-frontend:
+    name: Roll Back Frontend to Selected Digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    if: github.event_name == 'workflow_dispatch' && inputs.rollback_tag != ''
+    steps:
+      - name: Validate rollback tag
+        env:
+          ROLLBACK_TAG: ${{ inputs.rollback_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$ROLLBACK_TAG" =~ ^(release|stable)-[0-9a-f]{40}(-[0-9a-f]{12})?$ ]]
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Resolve rollback digest and deploy via SSM
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ROLLBACK_TAG: ${{ inputs.rollback_tag }}
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$ROLLBACK_TAG" --query 'imageDetails[0].imageDigest' --output text)
+          IMAGE_URI="$REGISTRY/$REPOSITORY@$DIGEST"
+          DEPLOY_SHA="${ROLLBACK_TAG#*-}"
+          DEPLOY_SHA="${DEPLOY_SHA%%-*}"
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          PARAMETERS=$(jq -n --arg sha "$DEPLOY_SHA" --arg image "$IMAGE_URI" --arg region "$AWS_REGION" '{commands: [
+            "set -e", "cd /home/ubuntu/snowthing",
+            "git -c safe.directory=/home/ubuntu/snowthing fetch --no-tags origin \"" + $sha + "\"",
+            "git -c safe.directory=/home/ubuntu/snowthing reset --hard \"" + $sha + "\"",
+            "test \"$(git -c safe.directory=/home/ubuntu/snowthing rev-parse HEAD)\" = \"" + $sha + "\"",
+            "chmod +x scripts/deploy-ecr-service.sh",
+            "scripts/deploy-ecr-service.sh frontend \"" + $image + "\" \"" + $region + "\""
+          ]}')
+          COMMAND_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript --timeout-seconds 900 --parameters "$PARAMETERS" --comment "Rollback frontend to $ROLLBACK_TAG" --query 'Command.CommandId' --output text)
+          echo "SSM command ID: $COMMAND_ID"
+          STATUS=Pending
+          for _ in $(seq 1 180); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Cancelled|TimedOut|Failed|Cancelling) break ;; esac
+            sleep 5
+          done
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query '{Status:Status,StandardOutput:StandardOutputContent,StandardError:StandardErrorContent}'
+          test "$STATUS" = Success
+
+  mark-stable-frontend:
+    name: Mark Frontend Release as Stable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    if: github.event_name == 'workflow_dispatch' && inputs.stable_tag != ''
+    steps:
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Move selected release tag to stable
+        env:
+          REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
+          SOURCE_TAG: ${{ inputs.stable_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_TAG" =~ ^release-[0-9a-f]{40}(-[0-9a-f]{12})?$ ]]
+          DIGEST=$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+          MANIFEST=$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --query 'images[0].imageManifest' --output text)
+          STABLE_TAG="stable-${SOURCE_TAG#release-}"
+          aws ecr put-image --repository-name "$REPOSITORY" --image-tag "$STABLE_TAG" --image-manifest "$MANIFEST" >/dev/null
+          aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids imageTag="$SOURCE_TAG" >/dev/null
+          echo "$STABLE_TAG -> $DIGEST"

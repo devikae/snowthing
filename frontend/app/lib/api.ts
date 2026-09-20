@@ -11,6 +11,9 @@ export const API_ENDPOINTS = {
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
   },
+  images: {
+    upload: `${API_V1_URL}/images`,
+  },
   master: {
     resorts: `${API_V1_URL}/master/resorts`,
     ridingStyles: `${API_V1_URL}/master/riding-styles`,
