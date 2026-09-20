@@ -23,8 +23,13 @@ public class ClientIpResolver {
         if (!hasValidIp(ip)) {
             return DEFAULT_LOCAL_IP;
         }
-        int commaIndex = ip.indexOf(',');
-        return commaIndex >= 0 ? ip.substring(0, commaIndex).trim() : ip;
+        for (String candidate : ip.split(",")) {
+            String trimmedCandidate = candidate.trim();
+            if (hasValidIp(trimmedCandidate)) {
+                return trimmedCandidate;
+            }
+        }
+        return DEFAULT_LOCAL_IP;
     }
 
     private boolean hasValidIp(String ip) {

@@ -2,8 +2,6 @@ package com.ikae.snowthing.domain.chat.controller;
 
 import java.security.Principal;
 
-import jakarta.validation.Valid;
-
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -32,7 +30,7 @@ public class ChatController {
     @MessageMapping("/chat/messages")
     @SendTo("/sub/chat/main")
     public ChatMessageResponse handleChatMessage(
-            @Valid @Payload ChatMessageRequest request,
+            @Payload ChatMessageRequest request,
             Principal principal,
             SimpMessageHeaderAccessor headerAccessor) {
 

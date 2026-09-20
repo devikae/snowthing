@@ -108,7 +108,7 @@ content-type:application/json
 
 ### 3.4. 라이브톡 브로드캐스팅 수신 (`MESSAGE`)
 
-서버가 유효성 검사, XSS 이스케이프, 컴플라이언스 필터링을 거친 후 `/sub/chat/main`을 구독 중인 모든 사용자에게 전송하는 페이로드이다.
+서버가 유효성 검사와 컴플라이언스 필터링을 거친 후 `/sub/chat/main`을 구독 중인 모든 사용자에게 전송하는 페이로드이다. 본문은 원문 문자열이며 React JSX 텍스트 렌더링 경계에서 이스케이프한다.
 
 #### Server Broadcast Frame
 ```http
@@ -138,7 +138,7 @@ content-type:application/json
 | `sender.publicId` | String | 보낸 회원 외부 식별자 (클라이언트의 본인/타인 메시지 좌우 배치 판별에 사용) |
 | `sender.nickname` | String | 보낸 회원 닉네임 |
 | `resortTag` | String (Nullable) | 리조트 코드 (`PHOENIX` 등). 잡담인 경우 `null` |
-| `content` | String | XSS 특수문자(`<`, `>`, `&`, `"`, `'`) 이스케이프가 완료된 본문 |
+| `content` | String | 앞뒤 공백을 제거한 원문. 프론트엔드는 JSX 텍스트로만 렌더링하며 HTML로 재해석하지 않음 |
 | `sentAt` | String | 발송 일시 (ISO-8601, `YYYY-MM-DDTHH:mm:ss.SSS`) |
 
 ---

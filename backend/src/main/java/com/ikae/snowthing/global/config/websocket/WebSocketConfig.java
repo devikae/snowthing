@@ -20,13 +20,19 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // Raw WebSocket endpoint
         registry.addEndpoint("/ws-chat")
                 .setAllowedOriginPatterns(
-                        "http://localhost:3000", "https://snowthing.org", "http://localhost:*")
+                        "http://localhost:3000",
+                        "https://snowthing.org",
+                        "https://www.snowthing.org",
+                        "http://localhost:*")
                 .addInterceptors(chatHandshakeInterceptor);
 
         // SockJS fallback endpoint
         registry.addEndpoint("/ws-chat")
                 .setAllowedOriginPatterns(
-                        "http://localhost:3000", "https://snowthing.org", "http://localhost:*")
+                        "http://localhost:3000",
+                        "https://snowthing.org",
+                        "https://www.snowthing.org",
+                        "http://localhost:*")
                 .addInterceptors(chatHandshakeInterceptor)
                 .withSockJS();
     }

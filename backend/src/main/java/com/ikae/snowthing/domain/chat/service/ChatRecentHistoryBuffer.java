@@ -18,7 +18,7 @@ public class ChatRecentHistoryBuffer {
 
     private final ConcurrentLinkedDeque<ChatMessageResponse> buffer = new ConcurrentLinkedDeque<>();
 
-    public void append(ChatMessageResponse message) {
+    public synchronized void append(ChatMessageResponse message) {
         if (message == null) {
             return;
         }
@@ -28,11 +28,11 @@ public class ChatRecentHistoryBuffer {
         }
     }
 
-    public List<ChatMessageResponse> getRecentMessages() {
+    public synchronized List<ChatMessageResponse> getRecentMessages() {
         return List.copyOf(buffer); // Rule 22 방어적 복사 불변 보장
     }
 
-    public void clear() {
+    public synchronized void clear() {
         buffer.clear();
     }
 }

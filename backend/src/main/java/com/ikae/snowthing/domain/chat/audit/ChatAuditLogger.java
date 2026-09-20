@@ -11,14 +11,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class ChatAuditLogger {
 
+    private static final String UNKNOWN_CLIENT_IP = "UNKNOWN";
+    private static final String DEFAULT_CHANNEL = "MAIN_CHAT";
     private static final Logger AUDIT_LOG = LoggerFactory.getLogger("chat.audit");
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     @Async
     public void log(Long memberId, String clientIp, String channel) {
         String timestamp = OffsetDateTime.now().format(ISO_FORMATTER);
-        String resolvedIp = (clientIp != null && !clientIp.isBlank()) ? clientIp : "127.0.0.1";
-        String resolvedChannel = (channel != null && !channel.isBlank()) ? channel : "MAIN_CHAT";
+        String resolvedIp =
+                (clientIp != null && !clientIp.isBlank()) ? clientIp : UNKNOWN_CLIENT_IP;
+        String resolvedChannel =
+                (channel != null && !channel.isBlank()) ? channel : DEFAULT_CHANNEL;
 
         // Legal compliance format per Communications Secrets Act:
         // [timestamp]\t[member_id]\t[client_ip]\t[channel]

@@ -1439,3 +1439,8 @@
   - `my_ai/.ai/RULES.md`에 공통 필수 규칙을 등록하고, backend performance·Spring security·logging, application config, database migration, common security 문서의 해당 지점에 세부 규칙을 나눠 추가했습니다.
   - 배포 시 commit SHA와 image digest를 함께 고정하고 ECR tag·SSM 로그·프록시 설정을 검증하는 `skills/infrastructure/deployment-safety.md`를 새로 등록했습니다.
   - `docs/study/`는 학습 문서 비추적 원칙에 따라 Git 커밋 대상에서 제외합니다.
+- **라이브톡 PR #22 CodeRabbit 리뷰 반영 (2026-09-20)**:
+  - 감사 로그의 빈 IP를 로컬 주소로 위장하지 않고 `UNKNOWN`으로 기록하며, 빈 항목으로 시작하는 `X-Forwarded-For`에서도 첫 유효 IP를 선택하도록 수정했습니다.
+  - STOMP 메시지 검증을 `ChatService`로 일원화하고 회원별 burst·중복 검사를 원자화했습니다. 상태 캐시는 TTL과 최대 10,000명 상한을 적용했습니다.
+  - 최근 30개 버퍼 연산을 직렬화하고, 모든 일반 도메인·IPv4·메신저 식별자를 분리 탐지하며, React JSX 텍스트 렌더링에 맞춰 서버 HTML Entity 변환을 제거했습니다.
+  - `www.snowthing.org` WebSocket Origin, 공백 메시지의 개인 오류 큐 회귀 테스트, 공통 MySQL 테스트 URL 설정을 보강했습니다.

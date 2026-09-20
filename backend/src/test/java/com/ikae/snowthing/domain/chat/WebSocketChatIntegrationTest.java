@@ -238,4 +238,37 @@ class WebSocketChatIntegrationTest {
         assertThat(error.code()).isEqualTo("CHAT_001");
         assertThat(error.message()).contains("외부 링크 및 메신저 연락처는 전송할 수 없습니다.");
     }
+
+    @Test
+    @DisplayName("공백 메시지 전송 시 발신자 단독 에러 채널로 CHAT_004를 수신한다")
+    void sendBlankMessage_returnsPrivateValidationError() throws Exception {
+        WebSocketHttpHeaders wsHeaders = new WebSocketHttpHeaders();
+        wsHeaders.add(HttpHeaders.COOKIE, sessionCookie);
+        String wsUrl = "http://localhost:" + port + "/ws-chat";
+        CompletableFuture<ChatErrorResponse> errorFuture = new CompletableFuture<>();
+
+        StompSession session =
+                stompClient
+                        .connectAsync(wsUrl, wsHeaders, new StompSessionHandlerAdapter() {})
+                        .get(5, TimeUnit.SECONDS);
+        session.subscribe(
+                "/user/queue/errors",
+                new StompFrameHandler() {
+                    @Override
+                    public Type getPayloadType(StompHeaders headers) {
+                        return ChatErrorResponse.class;
+                    }
+
+                    @Override
+                    public void handleFrame(StompHeaders headers, Object payload) {
+                        errorFuture.complete((ChatErrorResponse) payload);
+                    }
+                });
+
+        session.send("/pub/chat/messages", new ChatMessageRequest(null, "   "));
+
+        ChatErrorResponse error = errorFuture.get(5, TimeUnit.SECONDS);
+        assertThat(error.code()).isEqualTo("CHAT_004");
+        assertThat(error.message()).contains("공백 메시지");
+    }
 }

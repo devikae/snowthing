@@ -84,4 +84,16 @@ class WebCookieManagerTest {
 
         assertThat(ip).isEqualTo("203.0.113.10");
     }
+
+    @Test
+    @DisplayName("X-Forwarded-For의 첫 항목이 비어 있으면 첫 번째 유효 IP를 사용한다")
+    void resolve_withBlankFirstForwardedFor_usesFirstValidIp() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Forwarded-For", ", 203.0.113.10");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("203.0.113.10");
+    }
 }

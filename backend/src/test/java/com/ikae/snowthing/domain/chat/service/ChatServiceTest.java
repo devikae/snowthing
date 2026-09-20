@@ -3,6 +3,15 @@ package com.ikae.snowthing.domain.chat.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +35,10 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
+
+    private static final int BURST_REJECTED_ATTEMPT = 5;
+    private static final int CONCURRENT_DUPLICATE_REQUESTS = 2;
+    private static final long CONCURRENT_TEST_TIMEOUT_SECONDS = 10L;
 
     @Mock private ChatAuditLogger chatAuditLogger;
 
@@ -112,8 +125,8 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("XSS 위험 태그 입력 시 HTML Entity로 안전하게 이스케이프 처리")
-        void xssSanitization_Success() {
+        @DisplayName("HTML 문자열은 원문으로 응답하고 React JSX 텍스트 경계에서 이스케이프한다")
+        void htmlContent_keepsOriginalText() {
             // given
             ChatMessageRequest request =
                     new ChatMessageRequest(
@@ -124,10 +137,7 @@ class ChatServiceTest {
                     chatService.processMessage(request, testUserDetails, "127.0.0.1");
 
             // then
-            assertThat(response.content()).doesNotContain("<script>");
-            assertThat(response.content())
-                    .contains("&lt;script&gt;alert(&#39;hack&#39;)&lt;/script&gt;");
-            assertThat(response.content()).contains("&amp; &quot;hello&quot; &#39;world&#39;");
+            assertThat(response.content()).isEqualTo(request.content());
         }
     }
 
@@ -197,6 +207,29 @@ class ChatServiceTest {
         }
 
         @Test
+        @DisplayName("고정 TLD 목록 밖의 도메인·IPv4·단축 URL도 외부 링크로 차단한다")
+        void externalUrl_withoutProtocolOrKnownTld_throwsException() {
+            List<String> forbiddenMessages =
+                    List.of(
+                            "거래는 dealer.dev 에서 해요",
+                            "초대 주소 discord.gg/snowthing",
+                            "상품은 shop.ai 에 있습니다",
+                            "서버 주소 203.0.113.10:8080/path",
+                            "단축 주소 bit.ly/snowthing");
+
+            for (String content : forbiddenMessages) {
+                ChatMessageRequest request = new ChatMessageRequest(null, content);
+                assertThatThrownBy(
+                                () ->
+                                        chatService.processMessage(
+                                                request, testUserDetails, "127.0.0.1"))
+                        .isInstanceOf(CustomException.class)
+                        .extracting("errorCode")
+                        .isEqualTo(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
+            }
+        }
+
+        @Test
         @DisplayName("메신저 ID(텔레그램/오픈카톡/@아이디) 전송 시 CHAT_EXTERNAL_LINK_FORBIDDEN 차단")
         void messengerId_ThrowsException() {
             ChatMessageRequest request1 =
@@ -238,6 +271,82 @@ class ChatServiceTest {
                     .isInstanceOf(CustomException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.CHAT_DUPLICATE_MESSAGE);
+        }
+
+        @Test
+        @DisplayName("1초 안에 서로 다른 메시지를 다섯 번 시도하면 CHAT_BURST_RATE_LIMIT으로 차단한다")
+        void burstRateLimit_blocksFifthAttempt() {
+            for (int attempt = 1; attempt < BURST_REJECTED_ATTEMPT; attempt++) {
+                chatService.processMessage(
+                        new ChatMessageRequest(null, "서로 다른 메시지 " + attempt),
+                        testUserDetails,
+                        "127.0.0.1");
+            }
+
+            assertThatThrownBy(
+                            () ->
+                                    chatService.processMessage(
+                                            new ChatMessageRequest(null, "다섯 번째 메시지"),
+                                            testUserDetails,
+                                            "127.0.0.1"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_BURST_RATE_LIMIT);
+            assertThat(chatRecentHistoryBuffer.getRecentMessages())
+                    .hasSize(BURST_REJECTED_ATTEMPT - 1);
+            verify(chatAuditLogger, org.mockito.Mockito.times(BURST_REJECTED_ATTEMPT - 1))
+                    .log(100L, "127.0.0.1", "MAIN_CHAT");
+            verifyNoMoreInteractions(chatAuditLogger);
+        }
+
+        @Test
+        @DisplayName("같은 회원의 동일 메시지 동시 요청은 하나만 성공한다")
+        void duplicateMessage_concurrentRequests_allowOnlyOne() throws Exception {
+            ExecutorService executor = Executors.newFixedThreadPool(CONCURRENT_DUPLICATE_REQUESTS);
+            CountDownLatch ready = new CountDownLatch(CONCURRENT_DUPLICATE_REQUESTS);
+            CountDownLatch start = new CountDownLatch(1);
+            List<Future<ErrorCode>> results = new ArrayList<>();
+
+            for (int index = 0; index < CONCURRENT_DUPLICATE_REQUESTS; index++) {
+                results.add(
+                        executor.submit(
+                                () -> {
+                                    ready.countDown();
+                                    start.await();
+                                    try {
+                                        chatService.processMessage(
+                                                new ChatMessageRequest(null, "동시에 보낸 같은 메시지"),
+                                                testUserDetails,
+                                                "127.0.0.1");
+                                        return null;
+                                    } catch (CustomException exception) {
+                                        return exception.getErrorCode();
+                                    }
+                                }));
+            }
+
+            assertThat(ready.await(CONCURRENT_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            try {
+                List<ErrorCode> errorCodes =
+                        results.stream()
+                                .map(
+                                        result -> {
+                                            try {
+                                                return result.get(
+                                                        CONCURRENT_TEST_TIMEOUT_SECONDS,
+                                                        TimeUnit.SECONDS);
+                                            } catch (Exception exception) {
+                                                throw new IllegalStateException(exception);
+                                            }
+                                        })
+                                .toList();
+                assertThat(errorCodes)
+                        .containsExactlyInAnyOrder(null, ErrorCode.CHAT_DUPLICATE_MESSAGE);
+                assertThat(chatRecentHistoryBuffer.getRecentMessages()).hasSize(1);
+            } finally {
+                executor.shutdownNow();
+            }
         }
     }
 }
