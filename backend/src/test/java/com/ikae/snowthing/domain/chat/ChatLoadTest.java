@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,14 +63,15 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 class ChatLoadTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChatLoadTest.class);
-    private static final int USER_COUNT = 200;
+    private static final String LOAD_STAGE_PROPERTY = "chat.load.stage";
+    private static final LoadScenario SCENARIO =
+            LoadScenario.from(System.getProperty(LOAD_STAGE_PROPERTY, "target"));
     private static final int LOGIN_CONCURRENCY = 20;
     private static final int SERVER_MAX_CONNECTIONS = 500;
-    private static final int EXPECTED_DELIVERY_COUNT = USER_COUNT * USER_COUNT;
     private static final int HTTP_CONNECT_TIMEOUT_SECONDS = 10;
     private static final int CONNECTION_TIMEOUT_SECONDS = 30;
     private static final int SUBSCRIPTION_STABILIZATION_SECONDS = 2;
-    private static final int DELIVERY_TIMEOUT_SECONDS = 30;
+    private static final int DELIVERY_TIMEOUT_SECONDS = 60;
     private static final int HEARTBEAT_OBSERVATION_SECONDS = 12;
     private static final int METRIC_SAMPLE_INTERVAL_MILLIS = 100;
     private static final int COOKIE_SPLIT_LIMIT = 2;
@@ -115,8 +117,8 @@ class ChatLoadTest {
     void setUp() {
         memberRepository.deleteAll();
         String encodedPassword = passwordEncoder.encode(PASSWORD);
-        List<Member> members = new ArrayList<>(USER_COUNT);
-        for (int index = 0; index < USER_COUNT; index++) {
+        List<Member> members = new ArrayList<>(SCENARIO.userCount());
+        for (int index = 0; index < SCENARIO.userCount(); index++) {
             members.add(
                     Member.builder()
                             .email(email(index))
@@ -144,9 +146,9 @@ class ChatLoadTest {
     }
 
     @Test
-    @DisplayName("회원 200명의 연결 유지와 동시 메시지 브로드캐스트 결과를 측정한다")
-    void twoHundredMembersConnectAndBroadcastConcurrently() throws Exception {
-        LoadMetrics metrics = new LoadMetrics();
+    @DisplayName("선택한 단계의 회원 연결 유지와 동시 메시지 브로드캐스트 결과를 측정한다")
+    void membersConnectAndBroadcastBySelectedStage() throws Exception {
+        LoadMetrics metrics = new LoadMetrics(SCENARIO.expectedDeliveryCount());
         metrics.start();
         try {
             List<String> sessionCookies = loginAllMembers();
@@ -156,14 +158,14 @@ class ChatLoadTest {
             TimeUnit.SECONDS.sleep(HEARTBEAT_OBSERVATION_SECONDS);
             long aliveConnections = sessions.stream().filter(StompSession::isConnected).count();
 
-            boolean allMessagesReceived = broadcastSimultaneously(metrics);
+            boolean allMessagesReceived = broadcastByScenario(metrics);
             metrics.finish();
             metrics.log(aliveConnections);
 
-            assertThat(sessions).hasSize(USER_COUNT);
-            assertThat(aliveConnections).isEqualTo(USER_COUNT);
+            assertThat(sessions).hasSize(SCENARIO.userCount());
+            assertThat(aliveConnections).isEqualTo(SCENARIO.userCount());
             assertThat(allMessagesReceived).isTrue();
-            assertThat(metrics.deliveryCount()).isEqualTo(EXPECTED_DELIVERY_COUNT);
+            assertThat(metrics.deliveryCount()).isEqualTo(SCENARIO.expectedDeliveryCount());
             assertThat(metrics.transportErrorCount()).isZero();
         } finally {
             metrics.close();
@@ -176,8 +178,8 @@ class ChatLoadTest {
                         .connectTimeout(Duration.ofSeconds(HTTP_CONNECT_TIMEOUT_SECONDS))
                         .build();
         try (var executor = Executors.newFixedThreadPool(LOGIN_CONCURRENCY)) {
-            List<CompletableFuture<String>> loginFutures = new ArrayList<>(USER_COUNT);
-            for (int index = 0; index < USER_COUNT; index++) {
+            List<CompletableFuture<String>> loginFutures = new ArrayList<>(SCENARIO.userCount());
+            for (int index = 0; index < SCENARIO.userCount(); index++) {
                 int memberIndex = index;
                 loginFutures.add(
                         CompletableFuture.supplyAsync(
@@ -225,7 +227,8 @@ class ChatLoadTest {
 
     private void connectAllMembers(List<String> sessionCookies, LoadMetrics metrics)
             throws Exception {
-        List<CompletableFuture<StompSession>> connectionFutures = new ArrayList<>(USER_COUNT);
+        List<CompletableFuture<StompSession>> connectionFutures =
+                new ArrayList<>(SCENARIO.userCount());
         for (String sessionCookie : sessionCookies) {
             WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
             headers.add(HttpHeaders.COOKIE, sessionCookie);
@@ -263,18 +266,28 @@ class ChatLoadTest {
         TimeUnit.SECONDS.sleep(SUBSCRIPTION_STABILIZATION_SECONDS);
     }
 
-    private boolean broadcastSimultaneously(LoadMetrics metrics) throws Exception {
+    private boolean broadcastByScenario(LoadMetrics metrics) throws Exception {
+        for (int round = 0; round < SCENARIO.roundCount(); round++) {
+            broadcastSimultaneously(metrics, round);
+            if (round + 1 < SCENARIO.roundCount()) {
+                TimeUnit.MILLISECONDS.sleep(SCENARIO.roundIntervalMillis());
+            }
+        }
+        return metrics.awaitDeliveries();
+    }
+
+    private void broadcastSimultaneously(LoadMetrics metrics, int round) throws Exception {
         CountDownLatch startBarrier = new CountDownLatch(1);
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            List<CompletableFuture<Void>> sendFutures = new ArrayList<>(USER_COUNT);
-            for (int index = 0; index < USER_COUNT; index++) {
+            List<CompletableFuture<Void>> sendFutures = new ArrayList<>(SCENARIO.userCount());
+            for (int index = 0; index < SCENARIO.userCount(); index++) {
                 int senderIndex = index;
                 StompSession session = sessions.get(index);
                 sendFutures.add(
                         CompletableFuture.runAsync(
                                 () -> {
                                     await(startBarrier);
-                                    String content = message(senderIndex);
+                                    String content = message(round, senderIndex);
                                     metrics.recordMessageSent(content);
                                     session.send(
                                             CHAT_DESTINATION,
@@ -285,7 +298,6 @@ class ChatLoadTest {
             startBarrier.countDown();
             CompletableFuture.allOf(sendFutures.toArray(CompletableFuture[]::new))
                     .get(CONNECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            return metrics.awaitDeliveries();
         }
     }
 
@@ -322,8 +334,8 @@ class ChatLoadTest {
         return "부하회원" + index;
     }
 
-    private static String message(int index) {
-        return "load-message-" + index;
+    private static String message(int round, int index) {
+        return "load-message-" + round + "-" + index;
     }
 
     private static String environmentOrDefault(String name, String defaultValue) {
@@ -333,7 +345,8 @@ class ChatLoadTest {
 
     private static final class LoadMetrics implements AutoCloseable {
 
-        private final CountDownLatch deliveryLatch = new CountDownLatch(EXPECTED_DELIVERY_COUNT);
+        private final int expectedDeliveryCount;
+        private final CountDownLatch deliveryLatch;
         private final ConcurrentLinkedQueue<Long> connectionLatenciesNanos =
                 new ConcurrentLinkedQueue<>();
         private final ConcurrentLinkedQueue<Long> deliveryLatenciesNanos =
@@ -350,6 +363,11 @@ class ChatLoadTest {
                 Executors.newSingleThreadScheduledExecutor();
         private long startedAtNanos;
         private long finishedAtNanos;
+
+        private LoadMetrics(int expectedDeliveryCount) {
+            this.expectedDeliveryCount = expectedDeliveryCount;
+            this.deliveryLatch = new CountDownLatch(expectedDeliveryCount);
+        }
 
         void start() {
             startedAtNanos = System.nanoTime();
@@ -408,12 +426,15 @@ class ChatLoadTest {
 
         void log(long aliveConnections) {
             LOGGER.info(
-                    "CHAT_LOAD_RESULT users={} alive={} expectedDeliveries={} actualDeliveries={} "
+                    "CHAT_LOAD_RESULT stage={} users={} rounds={} alive={} "
+                            + "expectedDeliveries={} actualDeliveries={} "
                             + "connectionP95Ms={} deliveryP95Ms={} deliveryP99Ms={} "
                             + "maxHeapMb={} maxProcessCpuPercent={} transportErrors={} elapsedMs={}",
-                    USER_COUNT,
+                    SCENARIO.stageName(),
+                    SCENARIO.userCount(),
+                    SCENARIO.roundCount(),
                     aliveConnections,
-                    EXPECTED_DELIVERY_COUNT,
+                    expectedDeliveryCount,
                     deliveryCount(),
                     percentileMillis(connectionLatenciesNanos, PERCENTILE_95),
                     percentileMillis(deliveryLatenciesNanos, PERCENTILE_95),
@@ -448,6 +469,48 @@ class ChatLoadTest {
         @Override
         public void close() {
             sampler.shutdownNow();
+        }
+    }
+
+    private enum LoadScenario {
+        BASELINE(100, 1, 0),
+        TARGET(200, 1, 0),
+        HIGH(300, 1, 0),
+        SUSTAINED(200, 5, 2_000),
+        EXTREME(400, 1, 0);
+
+        private final int userCount;
+        private final int roundCount;
+        private final int roundIntervalMillis;
+
+        LoadScenario(int userCount, int roundCount, int roundIntervalMillis) {
+            this.userCount = userCount;
+            this.roundCount = roundCount;
+            this.roundIntervalMillis = roundIntervalMillis;
+        }
+
+        static LoadScenario from(String stageName) {
+            return valueOf(stageName.toUpperCase(Locale.ROOT));
+        }
+
+        String stageName() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+
+        int userCount() {
+            return userCount;
+        }
+
+        int roundCount() {
+            return roundCount;
+        }
+
+        int roundIntervalMillis() {
+            return roundIntervalMillis;
+        }
+
+        int expectedDeliveryCount() {
+            return Math.multiplyExact(Math.multiplyExact(userCount, userCount), roundCount);
         }
     }
 }

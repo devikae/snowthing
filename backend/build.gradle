@@ -76,6 +76,7 @@ tasks.named('test') {
         }
     }
     systemProperty 'spring.profiles.active', 'test'
+    systemProperty 'chat.load.stage', project.findProperty('chatLoadStage') ?: 'target'
     // 대규모 MySQL Seed 테스트는 일반 단위·통합 테스트와 별도 실행한다.
     // 필요할 때만 ./gradlew test -PincludeBenchmark 로 명시적으로 포함한다.
 }
