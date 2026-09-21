@@ -38,6 +38,7 @@ import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.testsupport.MySqlTestProperties;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -46,31 +47,7 @@ class CommentUpdateTest {
 
     @DynamicPropertySource
     static void useRealMySql(DynamicPropertyRegistry registry) {
-        String testDbUrl = System.getenv("SNOWTHING_TEST_DB_URL");
-        if (testDbUrl == null || testDbUrl.isBlank()) {
-            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
-        }
-        registry.add("spring.datasource.url", () -> testDbUrl);
-        registry.add(
-                "spring.datasource.username",
-                () -> requiredEnvironmentVariable("SNOWTHING_TEST_DB_USERNAME"));
-        registry.add(
-                "spring.datasource.password",
-                () -> requiredEnvironmentVariable("SNOWTHING_TEST_DB_PASSWORD"));
-        registry.add("spring.datasource.driver-class-name", () -> "com.mysql.cj.jdbc.Driver");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-        registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.MySQLDialect");
-        registry.add(
-                "spring.jpa.properties.hibernate.dialect",
-                () -> "org.hibernate.dialect.MySQLDialect");
-    }
-
-    private static String requiredEnvironmentVariable(String name) {
-        String value = System.getenv(name);
-        if (value == null || value.isBlank()) {
-            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
-        }
-        return value;
+        MySqlTestProperties.register(registry);
     }
 
     @Autowired private CommentService commentService;

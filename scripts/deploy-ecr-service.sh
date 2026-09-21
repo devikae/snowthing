@@ -4,6 +4,26 @@ set -euo pipefail
 SERVICE="${1:?service is required}"
 IMAGE_URI="${2:?image URI is required}"
 AWS_REGION="${3:?AWS region is required}"
+CHAT_CONNECTIONS_PER_IP=5
+CHAT_HANDSHAKES_PER_SECOND=3
+CHAT_HANDSHAKE_BURST=6
+CLOUDFLARE_IPV4_RANGES=(
+  "173.245.48.0/20"
+  "103.21.244.0/22"
+  "103.22.200.0/22"
+  "103.31.4.0/22"
+  "141.101.64.0/18"
+  "108.162.192.0/18"
+  "190.93.240.0/20"
+  "188.114.96.0/20"
+  "197.234.240.0/22"
+  "198.41.128.0/17"
+  "162.158.0.0/15"
+  "104.16.0.0/13"
+  "104.24.0.0/14"
+  "172.64.0.0/13"
+  "131.0.72.0/22"
+)
 
 case "$SERVICE" in
   backend)
@@ -32,7 +52,7 @@ fi
 REGISTRY="${IMAGE_URI%%/*}"
 PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || true)"
 
-configure_nginx_upload_limit() {
+configure_nginx_request_limits() {
   local config_path backup_path
   config_path="/etc/nginx/conf.d/snowthing-upload-limit.conf"
   backup_path=""
@@ -42,11 +62,29 @@ configure_nginx_upload_limit() {
     cp "$config_path" "$backup_path"
   fi
 
-  printf '%s\n' 'client_max_body_size 6m;' > "$config_path"
+  {
+    printf '%s\n' 'client_max_body_size 6m;'
+    for cloudflare_range in "${CLOUDFLARE_IPV4_RANGES[@]}"; do
+      printf 'set_real_ip_from %s;\n' "$cloudflare_range"
+    done
+    printf '%s\n' \
+      'real_ip_header CF-Connecting-IP;' \
+      'real_ip_recursive on;' \
+      'map $uri $snowthing_chat_limit_key {' \
+      '  default "";' \
+      '  ~^/ws-chat $binary_remote_addr;' \
+      '}' \
+      'limit_conn_zone $snowthing_chat_limit_key zone=snowthing_chat_connections:10m;' \
+      'limit_req_zone $snowthing_chat_limit_key zone=snowthing_chat_handshakes:10m rate='"${CHAT_HANDSHAKES_PER_SECOND}"'r/s;' \
+      'limit_conn snowthing_chat_connections '"${CHAT_CONNECTIONS_PER_IP}"';' \
+      'limit_conn_status 429;' \
+      'limit_req zone=snowthing_chat_handshakes burst='"${CHAT_HANDSHAKE_BURST}"' nodelay;' \
+      'limit_req_status 429;'
+  } > "$config_path"
   if nginx -t; then
     systemctl reload nginx
     [[ -n "$backup_path" ]] && rm -f "$backup_path"
-    echo "Nginx multipart request limit configured: 6m"
+    echo "Nginx upload, trusted proxy, and live chat limits configured"
     return 0
   fi
 
@@ -57,7 +95,7 @@ configure_nginx_upload_limit() {
     rm -f "$config_path"
   fi
   nginx -t || true
-  echo "Failed to configure Nginx multipart request limit" >&2
+  echo "Failed to configure Nginx request limits" >&2
   return 1
 }
 
@@ -79,6 +117,10 @@ check_health() {
 prepare_diagnostic_directory() {
   install -d -m 0700 /var/log/snowthing-deploy
   find /var/log/snowthing-deploy -type f -name '*.log' -mtime +14 -delete
+}
+
+prepare_chat_audit_directory() {
+  install -d -o 1001 -g 1001 -m 0700 /var/log/snowthing-chat
 }
 
 collect_diagnostics() {
@@ -110,7 +152,8 @@ collect_diagnostics() {
 echo "ECR 로그인 및 digest 이미지 pull"
 prepare_diagnostic_directory
 if [[ "$SERVICE" == "backend" ]]; then
-  configure_nginx_upload_limit
+  configure_nginx_request_limits
+  prepare_chat_audit_directory
 fi
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$REGISTRY"

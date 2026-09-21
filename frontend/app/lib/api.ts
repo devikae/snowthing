@@ -37,4 +37,7 @@ export const API_ENDPOINTS = {
       }`,
     delete: (commentId: string) => `${API_V1_URL}/comments/${commentId}`,
   },
+  chat: {
+    recent: `${API_V1_URL}/chat/recent`,
+  },
 } as const;

@@ -32,6 +32,16 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     COMMENT_UPDATE_CONFLICT(
             HttpStatus.CONFLICT, "COMMENT_006", "다른 요청에서 댓글을 먼저 수정했습니다. 최신 댓글을 다시 확인해 주세요."),
+    CHAT_EXTERNAL_LINK_FORBIDDEN(
+            HttpStatus.BAD_REQUEST, "CHAT_001", "외부 링크 및 메신저 연락처는 전송할 수 없습니다."),
+    CHAT_DUPLICATE_MESSAGE(
+            HttpStatus.TOO_MANY_REQUESTS, "CHAT_002", "동일한 메시지를 연속으로 보낼 수 없습니다 (5초간 대기)."),
+    CHAT_BURST_RATE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "CHAT_003", "메시지 전송 속도가 너무 빠릅니다. 잠시 후 다시 시도해 주세요."),
+    CHAT_MESSAGE_EMPTY(HttpStatus.BAD_REQUEST, "CHAT_004", "공백 메시지는 전송할 수 없습니다."),
+    CHAT_MESSAGE_TOO_LONG(HttpStatus.BAD_REQUEST, "CHAT_005", "메시지는 최대 100자까지 작성할 수 있습니다."),
+    CHAT_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "CHAT_006", "로그인 후 라이브톡에 참여할 수 있습니다."),
+    CHAT_KILL_SWITCH_ACTIVE(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_007", "현재 라이브톡 점검 중입니다."),
     INVALID_FILE_TYPE(
             HttpStatus.BAD_REQUEST, "FILE_001", "지원하지 않는 파일 형식입니다. JPG, PNG, WEBP 이미지만 업로드 가능합니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_002", "파일 크기는 최대 5MB까지 업로드 가능합니다."),

@@ -13,7 +13,11 @@ services:
       - SNOWTHING_DB_PASSWORD=${SNOWTHING_DB_PASSWORD:-}
       - SNOWTHING_S3_BUCKET=${SNOWTHING_S3_BUCKET:-snowthing-media-00001}
       - SNOWTHING_IMAGE_BASE_URL=${SNOWTHING_IMAGE_BASE_URL:-https://images.snowthing.org}
+      - SNOWTHING_CHAT_AUDIT_LOG_PATH=/var/log/snowthing-chat/chat_audit.log
+      - SNOWTHING_CHAT_MAX_CONNECTIONS=${SNOWTHING_CHAT_MAX_CONNECTIONS:-500}
       - TZ=Asia/Seoul
+    volumes:
+      - /var/log/snowthing-chat:/var/log/snowthing-chat
 
   frontend:
     image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:latest}

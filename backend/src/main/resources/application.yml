@@ -20,9 +20,15 @@ spring:
       - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
 
 logging:
+  chat-audit:
+    path: ${SNOWTHING_CHAT_AUDIT_LOG_PATH:logs/chat_audit.log}
   level:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
+
+snowthing:
+  chat:
+    max-connections: ${SNOWTHING_CHAT_MAX_CONNECTIONS:500}
 
 server:
   servlet:

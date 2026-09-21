@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,17 +25,24 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.global.config.websocket.ChatConnectionRegistry;
+import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
 
+import lombok.RequiredArgsConstructor;
+
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private static final String JSON_CONTENT_TYPE = "application/json;charset=UTF-8";
     private static final String LOGOUT_SUCCESS_MESSAGE = "LOGOUT_SUCCESS";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
+    private final ChatConnectionRegistry chatConnectionRegistry;
 
     @Bean
     public ObjectMapper objectMapper() {
@@ -80,7 +88,8 @@ public class SecurityConfig {
                 .csrf(
                         csrf ->
                                 csrf.csrfTokenRepository(
-                                        CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                                                CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                        .ignoringRequestMatchers("/ws-chat/**"))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .securityContext(
@@ -96,9 +105,21 @@ public class SecurityConfig {
                 .logout(
                         logout ->
                                 logout.logoutUrl("/api/v1/auth/logout")
-                                        .invalidateHttpSession(true)
+                                        .invalidateHttpSession(false)
                                         .clearAuthentication(true)
                                         .deleteCookies("JSESSIONID")
+                                        .addLogoutHandler(
+                                                (request, response, authentication) -> {
+                                                    HttpSession session = request.getSession(false);
+                                                    if (session != null) {
+                                                        chatConnectionRegistry
+                                                                .disconnectHttpSession(
+                                                                        session.getId());
+                                                        chatSessionRevocationRegistry.revoke(
+                                                                session.getId());
+                                                        session.invalidate();
+                                                    }
+                                                })
                                         .logoutSuccessHandler(
                                                 (request, response, authentication) -> {
                                                     response.setStatus(HttpServletResponse.SC_OK);
@@ -152,7 +173,10 @@ public class SecurityConfig {
                                                 "/api/comments",
                                                 "/api/comments/**",
                                                 "/api/v1/comments",
-                                                "/api/v1/comments/**")
+                                                "/api/v1/comments/**",
+                                                "/ws-chat",
+                                                "/ws-chat/**",
+                                                "/api/v1/chat/**")
                                         .permitAll()
                                         .requestMatchers("/api/admin/**", "/api/v1/admin/**")
                                         .hasRole("ADMIN")

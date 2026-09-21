@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Footer, TopNav } from "./components/SiteChrome";
+import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
+import { API_ENDPOINTS } from "./lib/api";
 
 const HERO_IMAGES = [
   "https://lh3.googleusercontent.com/aida/AEtjO1UbsQy3vUnB80P1wDDnbGosvZS9vqvYFfKYsbt-ATgRpqmc2zAPzC52mv7kE-dFt3s-FEwC34VCTJRYlYi_Rv20X4gbV1Ot4EXHI4_0yNB7xgvC-4jj_0S5zRoyhDgx6tmmOf3WlnzXxe1_njPrVcsEQvpsjpP-uLoumLkQrGk_Sl87eNShpSVr4YpqH1lzrGDTFYJBa1ek0ZngAq1VNj9Hp9K8uVOjTkHDEFp6cfh7IlqT2pMxpgODiMr9",
@@ -46,7 +48,19 @@ const gearItems = [
 
 export default function HomePage() {
   const [hero, setHero] = useState(0);
+  const [profile, setProfile] = useState<MemberProfile | null>(null);
   const resortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
+        setProfile(response.ok ? await response.json() : null);
+      } catch {
+        setProfile(null);
+      }
+    })();
+  }, []);
 
   return (
     <div className="community-page">
@@ -65,6 +79,10 @@ export default function HomePage() {
           <button type="button" className="hero-arrow next" aria-label="다음 배너" onClick={() => setHero((hero + 1) % HERO_IMAGES.length)}>›</button>
           <span className="hero-count"><b>{hero + 1}</b> / {HERO_IMAGES.length}</span>
         </section>
+
+        <div className="mt-4 mb-2">
+          <LiveChatSection currentMember={profile} />
+        </div>
 
         <section className="panel resort-panel">
           <div className="panel-heading">
