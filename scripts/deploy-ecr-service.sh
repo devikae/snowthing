@@ -11,6 +11,8 @@ NGINX_MANAGED_CONFIG_PATH="/etc/nginx/conf.d/snowthing-upload-limit.conf"
 NGINX_MAIN_CONFIG_PATH="/etc/nginx/nginx.conf"
 NGINX_CONF_D_PATH="/etc/nginx/conf.d"
 NGINX_SITES_ENABLED_PATH="/etc/nginx/sites-enabled"
+NGINX_WEBSOCKET_SNIPPET_PATH="/etc/nginx/snippets/snowthing-websocket.conf"
+NGINX_WEBSOCKET_INCLUDE="include /etc/nginx/snippets/snowthing-websocket.conf;"
 CLOUDFLARE_IPV4_RANGES=(
   "173.245.48.0/20"
   "103.21.244.0/22"
@@ -128,6 +130,126 @@ nginx_directive_exists_outside_managed_file() {
       "$NGINX_CONF_D_PATH" "$NGINX_SITES_ENABLED_PATH" 2>/dev/null
 }
 
+configure_nginx_websocket_proxy() {
+  local candidate_path server_config_path server_backup_path snippet_backup_path rendered_config_path
+  server_config_path=""
+  server_backup_path=""
+  snippet_backup_path=""
+
+  while IFS= read -r candidate_path; do
+    if grep -Eq '^[[:space:]]*server_name[[:space:]].*snowthing\.org' "$candidate_path" \
+      && grep -Eq 'proxy_pass[[:space:]]+http://127\.0\.0\.1:3000|listen[[:space:]].*443' "$candidate_path"; then
+      server_config_path="$(readlink -f "$candidate_path")"
+      break
+    fi
+  done < <(find "$NGINX_SITES_ENABLED_PATH" "$NGINX_CONF_D_PATH" \
+    -maxdepth 1 -type f -o -type l 2>/dev/null | sort)
+
+  if [[ -z "$server_config_path" ]]; then
+    echo "Unable to find the Nginx server block for snowthing.org" >&2
+    return 1
+  fi
+
+  if grep -Eq '^[[:space:]]*location[[:space:]]+(/ws-chat|\^~[[:space:]]+/ws-chat)' "$server_config_path"; then
+    echo "Nginx WebSocket proxy is already configured"
+    return 0
+  fi
+
+  install -d -m 0755 "$(dirname "$NGINX_WEBSOCKET_SNIPPET_PATH")"
+  server_backup_path="$(mktemp)"
+  cp "$server_config_path" "$server_backup_path"
+  if [[ -f "$NGINX_WEBSOCKET_SNIPPET_PATH" ]]; then
+    snippet_backup_path="$(mktemp)"
+    cp "$NGINX_WEBSOCKET_SNIPPET_PATH" "$snippet_backup_path"
+  fi
+
+  cat > "$NGINX_WEBSOCKET_SNIPPET_PATH" <<'EOF'
+location /ws-chat {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_buffering off;
+}
+EOF
+
+  rendered_config_path="$(mktemp)"
+  if ! awk -v include_line="    $NGINX_WEBSOCKET_INCLUDE" '
+    function brace_delta(line, opened, closed) {
+      opened = gsub(/\{/, "{", line)
+      closed = gsub(/\}/, "}", line)
+      return opened - closed
+    }
+    /^[[:space:]]*server[[:space:]]*\{/ && !in_server {
+      in_server = 1
+      depth = 0
+      has_domain = 0
+      serves_https_or_frontend = 0
+      has_include = 0
+    }
+    {
+      if (in_server) {
+        if ($0 ~ /^[[:space:]]*server_name[[:space:]].*snowthing\.org/) has_domain = 1
+        if ($0 ~ /listen[[:space:]].*443/ || $0 ~ /proxy_pass[[:space:]]+http:\/\/127\.0\.0\.1:3000/) serves_https_or_frontend = 1
+        if (index($0, include_line) > 0) has_include = 1
+        depth += brace_delta($0)
+        if (depth == 0) {
+          if (has_domain && serves_https_or_frontend && !has_include) {
+            print include_line
+            inserted = 1
+          }
+          if (has_domain && serves_https_or_frontend && has_include) {
+            target_already_configured = 1
+          }
+          in_server = 0
+        }
+      }
+      print
+    }
+    END {
+      if (!inserted && !target_already_configured) exit 42
+    }
+  ' "$server_config_path" > "$rendered_config_path"; then
+    rm -f "$rendered_config_path"
+    restore_nginx_websocket_config "$server_config_path" "$server_backup_path" "$snippet_backup_path"
+    echo "Unable to add the WebSocket include to the snowthing.org HTTPS server block" >&2
+    return 1
+  fi
+
+  cp "$rendered_config_path" "$server_config_path"
+  rm -f "$rendered_config_path"
+  if nginx -t; then
+    systemctl reload nginx
+    rm -f "$server_backup_path"
+    [[ -n "$snippet_backup_path" ]] && rm -f "$snippet_backup_path"
+    echo "Nginx WebSocket proxy configured"
+    return 0
+  fi
+
+  restore_nginx_websocket_config "$server_config_path" "$server_backup_path" "$snippet_backup_path"
+  nginx -t || true
+  echo "Failed to configure the Nginx WebSocket proxy" >&2
+  return 1
+}
+
+restore_nginx_websocket_config() {
+  local server_config_path="$1" server_backup_path="$2" snippet_backup_path="$3"
+  cp "$server_backup_path" "$server_config_path"
+  rm -f "$server_backup_path"
+  if [[ -n "$snippet_backup_path" ]]; then
+    cp "$snippet_backup_path" "$NGINX_WEBSOCKET_SNIPPET_PATH"
+    rm -f "$snippet_backup_path"
+  else
+    rm -f "$NGINX_WEBSOCKET_SNIPPET_PATH"
+  fi
+}
+
 check_health() {
   local attempt status
   for attempt in $(seq 1 12); do
@@ -182,6 +304,7 @@ echo "ECR 로그인 및 digest 이미지 pull"
 prepare_diagnostic_directory
 if [[ "$SERVICE" == "backend" ]]; then
   configure_nginx_request_limits
+  configure_nginx_websocket_proxy
   prepare_chat_audit_directory
 fi
 aws ecr get-login-password --region "$AWS_REGION" \
