@@ -7,6 +7,10 @@ AWS_REGION="${3:?AWS region is required}"
 CHAT_CONNECTIONS_PER_IP=5
 CHAT_HANDSHAKES_PER_SECOND=3
 CHAT_HANDSHAKE_BURST=6
+NGINX_MANAGED_CONFIG_PATH="/etc/nginx/conf.d/snowthing-upload-limit.conf"
+NGINX_MAIN_CONFIG_PATH="/etc/nginx/nginx.conf"
+NGINX_CONF_D_PATH="/etc/nginx/conf.d"
+NGINX_SITES_ENABLED_PATH="/etc/nginx/sites-enabled"
 CLOUDFLARE_IPV4_RANGES=(
   "173.245.48.0/20"
   "103.21.244.0/22"
@@ -53,9 +57,18 @@ REGISTRY="${IMAGE_URI%%/*}"
 PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || true)"
 
 configure_nginx_request_limits() {
-  local config_path backup_path
-  config_path="/etc/nginx/conf.d/snowthing-upload-limit.conf"
+  local config_path backup_path real_ip_header_exists real_ip_recursive_exists
+  config_path="$NGINX_MANAGED_CONFIG_PATH"
   backup_path=""
+  real_ip_header_exists=false
+  real_ip_recursive_exists=false
+
+  if nginx_directive_exists_outside_managed_file 'real_ip_header'; then
+    real_ip_header_exists=true
+  fi
+  if nginx_directive_exists_outside_managed_file 'real_ip_recursive'; then
+    real_ip_recursive_exists=true
+  fi
 
   if [[ -f "$config_path" ]]; then
     backup_path="$(mktemp)"
@@ -67,9 +80,13 @@ configure_nginx_request_limits() {
     for cloudflare_range in "${CLOUDFLARE_IPV4_RANGES[@]}"; do
       printf 'set_real_ip_from %s;\n' "$cloudflare_range"
     done
+    if [[ "$real_ip_header_exists" == false ]]; then
+      printf '%s\n' 'real_ip_header CF-Connecting-IP;'
+    fi
+    if [[ "$real_ip_recursive_exists" == false ]]; then
+      printf '%s\n' 'real_ip_recursive on;'
+    fi
     printf '%s\n' \
-      'real_ip_header CF-Connecting-IP;' \
-      'real_ip_recursive on;' \
       'map $uri $snowthing_chat_limit_key {' \
       '  default "";' \
       '  ~^/ws-chat $binary_remote_addr;' \
@@ -97,6 +114,18 @@ configure_nginx_request_limits() {
   nginx -t || true
   echo "Failed to configure Nginx request limits" >&2
   return 1
+}
+
+nginx_directive_exists_outside_managed_file() {
+  local directive="$1" managed_filename
+  managed_filename="$(basename "$NGINX_MANAGED_CONFIG_PATH")"
+
+  grep -Eq "^[[:space:]]*${directive}[[:space:]]" "$NGINX_MAIN_CONFIG_PATH" \
+    || grep -R -E -q \
+      --include='*.conf' \
+      --exclude="$managed_filename" \
+      "^[[:space:]]*${directive}[[:space:]]" \
+      "$NGINX_CONF_D_PATH" "$NGINX_SITES_ENABLED_PATH" 2>/dev/null
 }
 
 check_health() {
