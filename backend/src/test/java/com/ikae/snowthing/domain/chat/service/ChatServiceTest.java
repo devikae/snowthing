@@ -313,9 +313,9 @@ class ChatServiceTest {
                                 }));
             }
 
-            assertThat(ready.await(CONCURRENT_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
-            start.countDown();
             try {
+                assertThat(ready.await(CONCURRENT_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
+                start.countDown();
                 List<ErrorCode> errorCodes =
                         results.stream()
                                 .map(
@@ -333,6 +333,7 @@ class ChatServiceTest {
                         .containsExactlyInAnyOrder(null, ErrorCode.CHAT_DUPLICATE_MESSAGE);
                 assertThat(chatRecentHistoryBuffer.getRecentMessages()).hasSize(1);
             } finally {
+                start.countDown();
                 executor.shutdownNow();
             }
         }

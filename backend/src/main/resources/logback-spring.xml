@@ -19,6 +19,7 @@
             <fileNamePattern>${CHAT_AUDIT_LOG_PATH}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
             <maxFileSize>100MB</maxFileSize>
             <maxHistory>100</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
@@ -26,7 +27,7 @@
     <appender name="ASYNC_CHAT_AUDIT" class="ch.qos.logback.classic.AsyncAppender">
         <queueSize>1024</queueSize>
         <discardingThreshold>0</discardingThreshold>
-        <neverBlock>false</neverBlock>
+        <neverBlock>true</neverBlock>
         <appender-ref ref="CHAT_AUDIT_FILE"/>
     </appender>
 

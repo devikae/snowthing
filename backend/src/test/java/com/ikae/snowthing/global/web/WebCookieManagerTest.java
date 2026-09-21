@@ -74,11 +74,12 @@ class WebCookieManagerTest {
     }
 
     @Test
-    @DisplayName("X-Forwarded-For 헤더가 여러 IP를 가지면 첫 번째 IP를 클라이언트 IP로 사용한다")
-    void resolve_withForwardedFor_usesFirstIp() {
+    @DisplayName("신뢰 프록시의 전달 체인은 오른쪽부터 확인해 실제 클라이언트 IP를 사용한다")
+    void resolve_withForwardedFor_usesRightmostUntrustedIp() {
         ClientIpResolver resolver = new ClientIpResolver();
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Forwarded-For", "203.0.113.10, 10.0.0.1");
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Forwarded-For", "198.51.100.99, 203.0.113.10, 127.0.0.1");
 
         String ip = resolver.resolve(request);
 
@@ -90,6 +91,7 @@ class WebCookieManagerTest {
     void resolve_withBlankFirstForwardedFor_usesFirstValidIp() {
         ClientIpResolver resolver = new ClientIpResolver();
         MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
         request.addHeader("X-Forwarded-For", ", 203.0.113.10");
 
         String ip = resolver.resolve(request);
@@ -102,11 +104,26 @@ class WebCookieManagerTest {
     void resolve_withRealIp_prefersTrustedProxyValue() {
         ClientIpResolver resolver = new ClientIpResolver();
         MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
         request.addHeader("X-Real-IP", "203.0.113.20");
         request.addHeader("X-Forwarded-For", "198.51.100.99, 203.0.113.20");
 
         String ip = resolver.resolve(request);
 
         assertThat(ip).isEqualTo("203.0.113.20");
+    }
+
+    @Test
+    @DisplayName("신뢰하지 않는 직접 요청은 전달 헤더를 무시한다")
+    void resolve_withUntrustedRemoteAddress_ignoresForwardedHeaders() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("198.51.100.10");
+        request.addHeader("X-Real-IP", "203.0.113.20");
+        request.addHeader("X-Forwarded-For", "203.0.113.30");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("198.51.100.10");
     }
 }

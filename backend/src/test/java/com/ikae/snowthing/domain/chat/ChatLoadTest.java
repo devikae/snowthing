@@ -42,6 +42,7 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -56,6 +57,7 @@ import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.testsupport.MySqlTestProperties;
 
 @Tag("benchmark")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -73,6 +75,8 @@ class ChatLoadTest {
     private static final int SUBSCRIPTION_STABILIZATION_SECONDS = 2;
     private static final int DELIVERY_TIMEOUT_SECONDS = 60;
     private static final int HEARTBEAT_OBSERVATION_SECONDS = 12;
+    private static final long HEARTBEAT_INTERVAL_MILLIS = 10_000L;
+    private static final int HEARTBEAT_SCHEDULER_POOL_SIZE = 1;
     private static final int METRIC_SAMPLE_INTERVAL_MILLIS = 100;
     private static final int COOKIE_SPLIT_LIMIT = 2;
     private static final int PERCENTILE_95 = 95;
@@ -86,21 +90,7 @@ class ChatLoadTest {
 
     @DynamicPropertySource
     static void configureMySql(DynamicPropertyRegistry registry) {
-        registry.add(
-                "spring.datasource.url",
-                () ->
-                        environmentOrDefault(
-                                "SNOWTHING_TEST_DB_URL",
-                                "jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"));
-        registry.add(
-                "spring.datasource.username",
-                () -> environmentOrDefault("SNOWTHING_TEST_DB_USERNAME", "snowuser"));
-        registry.add(
-                "spring.datasource.password",
-                () -> environmentOrDefault("SNOWTHING_TEST_DB_PASSWORD", "snowthing_pass_2026!"));
-        registry.add("spring.datasource.driver-class-name", () -> "com.mysql.cj.jdbc.Driver");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-        registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.MySQLDialect");
+        MySqlTestProperties.register(registry);
         registry.add("snowthing.chat.max-connections", () -> SERVER_MAX_CONNECTIONS);
     }
 
@@ -111,6 +101,7 @@ class ChatLoadTest {
     @Autowired private MemberRepository memberRepository;
 
     private WebSocketStompClient stompClient;
+    private ThreadPoolTaskScheduler heartbeatScheduler;
     private final List<StompSession> sessions = new ArrayList<>();
 
     @BeforeEach
@@ -130,6 +121,13 @@ class ChatLoadTest {
 
         stompClient = new WebSocketStompClient(new StandardWebSocketClient());
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        heartbeatScheduler = new ThreadPoolTaskScheduler();
+        heartbeatScheduler.setPoolSize(HEARTBEAT_SCHEDULER_POOL_SIZE);
+        heartbeatScheduler.setThreadNamePrefix("chat-load-heartbeat-");
+        heartbeatScheduler.initialize();
+        stompClient.setTaskScheduler(heartbeatScheduler);
+        stompClient.setDefaultHeartbeat(
+                new long[] {HEARTBEAT_INTERVAL_MILLIS, HEARTBEAT_INTERVAL_MILLIS});
     }
 
     @AfterEach
@@ -141,6 +139,10 @@ class ChatLoadTest {
         }
         if (stompClient != null) {
             stompClient.stop();
+        }
+        if (heartbeatScheduler != null) {
+            heartbeatScheduler.shutdown();
+            heartbeatScheduler = null;
         }
         memberRepository.deleteAll();
     }
@@ -336,11 +338,6 @@ class ChatLoadTest {
 
     private static String message(int round, int index) {
         return "load-message-" + round + "-" + index;
-    }
-
-    private static String environmentOrDefault(String name, String defaultValue) {
-        String value = System.getenv(name);
-        return value == null || value.isBlank() ? defaultValue : value;
     }
 
     private static final class LoadMetrics implements AutoCloseable {

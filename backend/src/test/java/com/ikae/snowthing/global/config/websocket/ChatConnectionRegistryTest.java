@@ -57,6 +57,20 @@ class ChatConnectionRegistryTest {
     }
 
     @Test
+    @DisplayName("익명 연결을 해제하면 전체 연결 제한에서 자리가 반환된다")
+    void unregisterAnonymousSessionReleasesServerCapacity() {
+        ChatConnectionRegistry registry = new ChatConnectionRegistry(MAX_CONNECTIONS);
+        registry.register(anonymousSession(FIRST_SESSION_ID));
+        registry.register(anonymousSession(SECOND_SESSION_ID));
+
+        registry.unregister(FIRST_SESSION_ID);
+        RegistrationResult result = registry.register(anonymousSession(THIRD_SESSION_ID));
+
+        assertThat(result.accepted()).isTrue();
+        assertThat(registry.connectionCount()).isEqualTo(MAX_CONNECTIONS);
+    }
+
+    @Test
     @DisplayName("서버가 가득 차도 이미 연결된 회원의 새 연결은 기존 연결과 교체된다")
     void existingMemberCanReplaceConnectionAtCapacity() {
         ChatConnectionRegistry registry = new ChatConnectionRegistry(MAX_CONNECTIONS);

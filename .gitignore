@@ -3,6 +3,7 @@
 build/
 backend/.gradle/
 backend/build/
+backend/logs/
 *.log
 !backend/gradle/wrapper/gradle-wrapper.jar
 

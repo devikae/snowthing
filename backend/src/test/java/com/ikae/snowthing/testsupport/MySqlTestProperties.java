@@ -2,13 +2,7 @@ package com.ikae.snowthing.testsupport;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 
-import com.ikae.snowthing.global.error.ErrorCode;
-import com.ikae.snowthing.global.exception.CustomAuthException;
-
 public final class MySqlTestProperties {
-
-    public static final String DEFAULT_TEST_DB_URL =
-            "jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul";
 
     private static final String TEST_DB_URL = "SNOWTHING_TEST_DB_URL";
     private static final String TEST_DB_USERNAME = "SNOWTHING_TEST_DB_USERNAME";
@@ -22,7 +16,6 @@ public final class MySqlTestProperties {
     public static void register(DynamicPropertyRegistry registry) {
         String configuredUrl = System.getenv(TEST_DB_URL);
         if (configuredUrl == null || configuredUrl.isBlank()) {
-            registry.add("spring.datasource.url", () -> DEFAULT_TEST_DB_URL);
             return;
         }
 
@@ -40,7 +33,12 @@ public final class MySqlTestProperties {
     private static String requiredEnvironmentVariable(String name) {
         String value = System.getenv(name);
         if (value == null || value.isBlank()) {
-            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
+            throw new IllegalStateException(
+                    name
+                            + " is required when "
+                            + TEST_DB_URL
+                            + " is set. "
+                            + "Configure all test database environment variables together.");
         }
         return value;
     }
