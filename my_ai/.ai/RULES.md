@@ -165,5 +165,17 @@ AI는 사용자의 명시적인 승인 없이 프로젝트 파일을 직접 수�
 - DTO: `skills/backend/dto.md`
 - 예외 처리: `skills/backend/exception.md`
 - 계층 구조: `skills/backend/layered-architecture.md`
+- 배포·인프라 변경: `skills/infrastructure/deployment-safety.md`
 
 해당 작업과 무관한 Skill은 억지로 적용하지 않는다.
+
+## 13. 배포·파일·외부 저장소 재발 방지 규칙
+
+- 인증이 필요한 응답에 `Cache-Control: public`을 적용하지 않는다. 공개 캐시를 쓰려면 데이터 공개 범위와 인증 필요 여부부터 일치시킨다.
+- S3 객체 키를 클라이언트 입력으로 받을 때 `..` 차단만으로 경계를 만들지 않는다. 허용 prefix, 서버 생성 키, 소유권 검사, IAM resource 범위를 함께 제한한다.
+- 외부 객체나 파일을 `readAllBytes()`로 읽기 전에 최대 크기와 동시 요청 메모리를 계산한다. 큰 응답은 스트리밍 또는 CDN 직접 전달을 우선하고, 모든 `Closeable`은 try-with-resources로 닫는다.
+- 파일 업로드 제한은 서비스 상수만 두지 않는다. 브라우저·CDN·Nginx·Spring multipart parser·서비스 검증의 제한과 오류 응답을 함께 맞춘다.
+- CI가 만든 이미지와 서버가 사용하는 Compose·배포 스크립트는 동일 commit SHA로 고정한다. 브랜치 HEAD를 배포 기준으로 사용하지 않는다.
+- ECR 태그 삭제는 사용자가 선택한 정확한 태그만 대상으로 한다. 같은 digest라는 이유로 다른 commit의 release 태그를 일괄 삭제하지 않는다.
+- 운영 장애 로그 원문을 SSM·CI stdout에 그대로 출력하지 않는다. 서버 제한 경로에 최소 권한과 보관 기간을 적용하고 CI에는 비민감 요약만 남긴다.
+- 운영 DB migration은 일반 앱 계정의 DDL 권한으로 실행하지 않는다. 별도 migration 주체·승인·실패 차단·expand/contract·복원 검증을 배포 전에 설계한다.

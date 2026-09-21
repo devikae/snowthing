@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
@@ -19,6 +20,19 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
+        ErrorCode errorCode =
+                e.getErrorCode() != null ? e.getErrorCode() : ErrorCode.INTERNAL_SERVER_ERROR;
+        return ResponseEntity.status(errorCode.getStatus()).body(ErrorResponse.from(errorCode));
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
+        return ResponseEntity.status(e.getErrorCode().getStatus())
+                .body(ErrorResponse.from(e.getErrorCode()));
+    }
 
     @ExceptionHandler(CustomAuthException.class)
     public ResponseEntity<ErrorResponse> handleCustomAuthException(CustomAuthException e) {
@@ -74,6 +88,14 @@ public class GlobalExceptionHandler {
         log.warn("요청 본문을 읽을 수 없습니다: {}", e.getMessage());
         return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException e) {
+        log.warn("Multipart upload size exceeded: {}", e.getMessage());
+        return ResponseEntity.status(ErrorCode.FILE_SIZE_EXCEEDED.getStatus())
+                .body(ErrorResponse.from(ErrorCode.FILE_SIZE_EXCEEDED));
     }
 
     @ExceptionHandler(Exception.class)

@@ -11,6 +11,9 @@ export const API_ENDPOINTS = {
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
   },
+  images: {
+    upload: `${API_V1_URL}/images`,
+  },
   master: {
     resorts: `${API_V1_URL}/master/resorts`,
     ridingStyles: `${API_V1_URL}/master/riding-styles`,
@@ -34,5 +37,8 @@ export const API_ENDPOINTS = {
         cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`
       }`,
     delete: (commentId: string) => `${API_V1_URL}/comments/${commentId}`,
+  },
+  chat: {
+    recent: `${API_V1_URL}/chat/recent`,
   },
 } as const;

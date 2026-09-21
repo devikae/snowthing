@@ -89,17 +89,68 @@ class MemberControllerTest {
     }
 
     @Test
-    @DisplayName("비밀번호 길이가 짧은 요청 시 400 Bad Request 에러가 발생해야 한다")
+    @DisplayName("회원가입 비밀번호가 8자 미만이면 400 Bad Request를 반환한다")
     void signUp_ShortPassword_Returns400() throws Exception {
         // given
         MemberSignUpRequest request =
                 MemberSignUpRequest.builder()
                         .email("valid@snowthing.com")
-                        .password("123") // 4자 미만 (3자)
+                        .password("Ab1!")
                         .nickname("정상닉네임")
                         .build();
 
         // when & then
+        mockMvc.perform(
+                        post("/api/v1/members")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("회원가입 비밀번호에 영문 대문자가 없으면 400 Bad Request를 반환한다")
+    void signUp_PasswordWithoutUppercase_Returns400() throws Exception {
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("valid@snowthing.com")
+                        .password("password123!")
+                        .nickname("정상닉네임")
+                        .build();
+
+        mockMvc.perform(
+                        post("/api/v1/members")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("회원가입 비밀번호에 특수문자가 없으면 400 Bad Request를 반환한다")
+    void signUp_PasswordWithoutSpecialCharacter_Returns400() throws Exception {
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("valid@snowthing.com")
+                        .password("Password123")
+                        .nickname("정상닉네임")
+                        .build();
+
+        mockMvc.perform(
+                        post("/api/v1/members")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("숫자로만 구성된 123123은 회원가입 비밀번호로 허용하지 않는다")
+    void signUp_NumericOnlyPassword_Returns400() throws Exception {
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("valid@snowthing.com")
+                        .password("123123")
+                        .nickname("정상닉네임")
+                        .build();
+
         mockMvc.perform(
                         post("/api/v1/members")
                                 .contentType(MediaType.APPLICATION_JSON)

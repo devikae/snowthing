@@ -24,6 +24,7 @@ import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.MemberService;
+import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -36,6 +37,8 @@ class AuthControllerTest {
     @Autowired private MemberService memberService;
 
     @Autowired private MemberRepository memberRepository;
+
+    @Autowired private ChatSessionRevocationRegistry chatSessionRevocationRegistry;
 
     @Autowired
     private com.ikae.snowthing.domain.member.repository.MemberResortRepository
@@ -166,6 +169,8 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("LOGOUT_SUCCESS"));
+
+        assertThat(chatSessionRevocationRegistry.isRevoked(session.getId())).isTrue();
 
         MockHttpSession emptySession = new MockHttpSession();
         mockMvc.perform(get("/api/v1/members/me").session(emptySession))

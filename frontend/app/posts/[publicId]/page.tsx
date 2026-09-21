@@ -343,6 +343,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     }
   };
 
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setReactionMsg("게시글 주소를 복사했습니다.");
+    } catch {
+      setReactionMsg("주소를 복사하지 못했습니다.");
+    }
+  };
+
   const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
 
   const handleCreateComment = async (parentId: string | null) => {
@@ -569,38 +578,38 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   return (
     <div className="min-h-screen bg-[var(--snow-background)]">
       <TopNav active="posts" />
-      <main className="snow-container px-5 py-8 lg:px-8 lg:py-10">
-        <div className="mx-auto max-w-4xl">
-          <article className="snow-card bg-white p-6 md:p-8">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <span className="snow-chip snow-chip-dark">{post.categoryName}</span>
-              <span className="font-mono text-xs text-[var(--snow-muted)]">{new Date(post.createdAt).toLocaleString()}</span>
+      <main className="post-detail-page community-container">
+        <div className="post-detail-toolbar">
+          <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link>
+          <button type="button" onClick={() => window.location.reload()} aria-label="새로고침"><span className="material-symbols-outlined">refresh</span></button>
+        </div>
+        <div className="post-detail-layout">
+          <div className="post-detail-primary">
+          <article className="post-detail-card">
+            <div className="post-detail-meta-top">
+              <span>#{post.categoryName}</span>
+              <div><span className="material-symbols-outlined">visibility</span>{post.viewCount}<span className="material-symbols-outlined">chat_bubble</span>{post.commentCount}<span className="material-symbols-outlined">thumb_up</span>{post.likeCount}</div>
             </div>
 
-            <h1 className="text-4xl font-extrabold leading-tight text-black">{post.title}</h1>
+            <h1>{post.title}</h1>
 
-            <div className="mt-6 flex flex-wrap items-center gap-4 border-y border-[var(--snow-border)] py-4 font-mono text-xs text-[var(--snow-muted)]">
-              <span>
-                작성자 <strong className="text-black">{post.writer.nickname}</strong>
-              </span>
-              <span>조회 {post.viewCount}</span>
-              <span>댓글 {post.commentCount}</span>
-              <span>추천 {post.likeCount}</span>
-              <span>비추천 {post.dislikeCount}</span>
+            <div className="post-detail-author">
+              <span className="material-symbols-outlined">{post.isAnonymous ? "theater_comedy" : "person"}</span>
+              <div><strong>{post.writer.nickname}</strong><small>작성 {new Date(post.createdAt).toLocaleString()}</small></div>
               {(() => {
                 const canEdit = Boolean(post.isAnonymous || post.categoryCode === "ANONYMOUS" || (currentUserPublicId && post.writer?.publicId === currentUserPublicId));
                 const canDelete = Boolean(isAdmin || canEdit);
                 if (!canEdit && !canDelete) return null;
 
                 return (
-                  <div className="ml-auto flex items-center gap-3 font-bold">
+                  <div className="post-detail-owner-actions">
                     {canEdit && (
-                      <Link href={`/posts/${publicId}/edit`} className="text-black hover:underline">
+                      <Link href={`/posts/${publicId}/edit`}>
                         수정
                       </Link>
                     )}
                     {canDelete && (
-                      <button onClick={handleOpenDeleteModal} className="text-[#dc2626] hover:underline">
+                      <button onClick={handleOpenDeleteModal}>
                         삭제
                       </button>
                     )}
@@ -609,77 +618,60 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
               })()}
             </div>
 
-            <div className="mt-8 border-t border-b border-[var(--snow-border)] py-6">
+            <div className="post-detail-content">
               <ToastViewer content={post.content} />
             </div>
 
             {post.images?.length > 0 && (
-              <div className="mt-8 grid gap-4">
+              <div className="post-detail-images">
                 {post.images.map((imageUrl) => (
-                  <img key={imageUrl} src={imageUrl} alt="첨부 이미지" className="w-full rounded border border-[var(--snow-border)] object-cover grayscale" />
+                  <img key={imageUrl} src={imageUrl} alt="첨부 이미지" />
                 ))}
               </div>
             )}
 
-            <div className="mt-8 flex flex-col items-center gap-3 border-t border-[var(--snow-border)] pt-6">
-              <div className="flex flex-wrap justify-center gap-3">
-                <button onClick={() => handleReaction("LIKE")} className="snow-btn-secondary">
+            <div className="post-detail-reactions">
+              <div>
+                <button onClick={() => handleReaction("LIKE")} className="active">
                   <span className="material-symbols-outlined text-[17px]">thumb_up</span>
                   추천 {post.likeCount}
                 </button>
-                <button onClick={() => handleReaction("DISLIKE")} className="snow-btn-secondary">
+                <button onClick={() => handleReaction("DISLIKE")}>
                   <span className="material-symbols-outlined text-[17px]">thumb_down</span>
                   비추천 {post.dislikeCount}
                 </button>
+                <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined">share</span>공유</button>
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
             </div>
           </article>
 
-          <section className="snow-card mt-8 bg-white p-6 md:p-8">
-            <h2 className="mb-6 flex items-center gap-2 text-2xl font-extrabold text-black">
-              <span className="material-symbols-outlined">chat_bubble</span>
-              댓글 {totalCommentCount}
-            </h2>
+          <section className="post-comments-card">
+            <header><h2>{isAnonymousPost ? "익명 댓글" : "댓글"} <span>{totalCommentCount}</span></h2></header>
 
-            <div className="mb-7 border-b border-[var(--snow-border)] pb-7">
+            <div className="post-comment-compose">
+              {isAnonymousPost && (
+                <div className="post-comment-identity">
+                  <span><span className="material-symbols-outlined">theater_comedy</span>익명</span>
+                  {!currentUserPublicId && <input type="password" placeholder="****" value={commentAnonPassword} onChange={(event) => setCommentAnonPassword(event.target.value)} />}
+                </div>
+              )}
               <textarea
                 rows={3}
                 placeholder={isAnonymousPost ? "익명으로 댓글을 작성해보세요." : currentUserPublicId ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
-                className="snow-textarea min-h-[110px]"
+                className="post-comment-textarea"
               />
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                {isAnonymousPost ? (
-                  <div className="flex items-center gap-2">
-                    <span className="snow-chip snow-chip-dark text-xs">익명</span>
-                    {!currentUserPublicId && (
-                      <input
-                        type="password"
-                        placeholder="익명 비밀번호 입력"
-                        value={commentAnonPassword}
-                        onChange={(event) => setCommentAnonPassword(event.target.value)}
-                        className="snow-input sm:w-52"
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    {!currentUserPublicId && (
-                      <span className="text-xs text-[var(--snow-muted)]">
-                        * 댓글 작성을 위해 로그인이 필요합니다.
-                      </span>
-                    )}
-                  </div>
-                )}
-                <button disabled={submittingComment} onClick={() => void handleCreateComment(null)} className="snow-btn-primary sm:ml-auto">
-                  댓글 등록
+              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">댓글 작성을 위해 로그인이 필요합니다.</span>}
+              <div className="post-comment-submit-row">
+                <button disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
+                  댓글 등록 <span className="material-symbols-outlined">send</span>
                 </button>
               </div>
             </div>
 
-            <div className="grid gap-4">
+            <div className="post-comment-list">
               {isLoadingComments ? (
                 <p role="status" className="py-8 text-center text-sm text-[var(--snow-muted)]">
                   댓글을 불러오는 중입니다.
@@ -738,7 +730,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             </div>
 
             {!isLoadingComments && !commentLoadError && hasNextComments && (
-              <div className="mt-6 grid gap-2">
+              <div className="post-comments-more">
                 {loadMoreCommentError && (
                   <p role="alert" className="text-center text-sm text-red-600">
                     {loadMoreCommentError}
@@ -748,7 +740,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                   type="button"
                   disabled={isLoadingMoreComments}
                   onClick={() => void handleLoadMoreComments()}
-                  className="snow-btn-secondary w-full"
+                  className="post-comments-more-button"
                 >
                   {isLoadingMoreComments
                     ? "댓글을 불러오는 중..."
@@ -759,6 +751,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
               </div>
             )}
           </section>
+          </div>
+          <aside className="post-detail-sidebar">
+            <section className="detail-carpool-card">
+              <header><h2><span className="material-symbols-outlined">directions_car</span>실시간 카풀/동행</h2><small>전체보기</small></header>
+              <article><div><b>모집중 2석</b><time>내일(토) 05:30</time></div><strong>잠실역 <span>→</span> 휘닉스파크</strong><p>카니발 4세대 · 보드백 수납 가능 <b>15,000원</b></p></article>
+              <article><div><b>모집중 1석</b><time>일요일 17:00</time></div><strong>하이원 밸리 <span>→</span> 신분당 판교역</strong><p>쏘렌토 하이브리드 · 비흡연 <b>18,000원</b></p></article>
+            </section>
+            <p>카풀·동행 영역은 현재 화면 구성을 위한 예시입니다.</p>
+          </aside>
         </div>
       </main>
 
