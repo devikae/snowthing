@@ -145,22 +145,4 @@ public class PostController {
         return ResponseEntity.ok(
                 reactionService.remove(publicId, type, userDetails, clientIp, anonymousVoterId));
     }
-
-    @Deprecated(forRemoval = true)
-    @PostMapping("/{publicId}/reactions")
-    public ResponseEntity<ReactionResponse> toggleReaction(
-            @PathVariable String publicId,
-            @Valid @RequestBody PostReactionRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
-        String clientIp = clientIpResolver.resolve(httpRequest);
-        String anonymousVoterId =
-                userDetails == null
-                        ? anonymousVoterCookieManager.getOrCreate(httpRequest, httpResponse)
-                        : null;
-        return ResponseEntity.ok(
-                reactionService.toggle(
-                        publicId, request.type(), userDetails, clientIp, anonymousVoterId));
-    }
 }

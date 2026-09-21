@@ -88,35 +88,6 @@ public class ReactionService {
         return response(post.getId(), type, false, deleted == SINGLE_ROW_AFFECTED);
     }
 
-    @Transactional
-    public ReactionResponse toggle(
-            String publicId,
-            ReactionType type,
-            CustomUserDetails userDetails,
-            String clientIp,
-            String anonymousVoterId) {
-        Post post = findAvailablePost(publicId);
-        ReactionActor actor = resolveActor(userDetails, clientIp, anonymousVoterId);
-        if (containsReaction(post.getId(), actor, type)) {
-            lockReactionCounter(post.getId());
-            int deleted = deleteReaction(post.getId(), actor, type);
-            if (deleted == SINGLE_ROW_AFFECTED) {
-                decreaseCount(post.getId(), type);
-                eventPublisher.publishEvent(new PostReactionEvent(post.getId(), type));
-            }
-            return response(post.getId(), type, false, deleted == SINGLE_ROW_AFFECTED);
-        }
-
-        increaseCount(post.getId(), type);
-        int inserted = insertReaction(post.getId(), actor, type);
-        if (inserted == SINGLE_ROW_AFFECTED) {
-            eventPublisher.publishEvent(new PostReactionEvent(post.getId(), type));
-        } else {
-            decreaseCount(post.getId(), type);
-        }
-        return response(post.getId(), type, true, inserted == SINGLE_ROW_AFFECTED);
-    }
-
     public Set<ReactionType> findActiveTypes(
             String publicId, CustomUserDetails userDetails, String anonymousVoterId) {
         Post post = findAvailablePost(publicId);
@@ -216,16 +187,6 @@ public class ReactionService {
                 ? reactionRepository.deleteMemberReaction(postId, actor.memberId(), type)
                 : reactionRepository.deleteAnonymousReaction(
                         postId, actor.anonymousVoterId(), type);
-    }
-
-    private boolean containsReaction(Long postId, ReactionActor actor, ReactionType type) {
-        return actor.isMember()
-                ? reactionRepository.existsByPostIdAndMemberIdAndType(
-                        postId, actor.memberId(), type)
-                : reactionRepository
-                        .findByPostIdAndAnonymousVoterIdAndType(
-                                postId, actor.anonymousVoterId(), type)
-                        .isPresent();
     }
 
     private void increaseCount(Long postId, ReactionType type) {

@@ -27,10 +27,8 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.dto.PostDeleteRequest;
-import com.ikae.snowthing.domain.post.dto.PostReactionRequest;
 import com.ikae.snowthing.domain.post.dto.PostResponse;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
-import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -487,9 +485,8 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName(
-            "POST /api/v1/posts/{publicId}/reactions - 비로그인 익명 사용자는 anonymous_voter_id 쿠키로 추천을 토글한다")
-    void reactToPost_anonymousUser_usesAnonymousVoterCookie() throws Exception {
+    @DisplayName("PUT과 DELETE 반응 API는 같은 익명 사용자 쿠키로 추천을 생성하고 취소한다")
+    void reactionCommands_anonymousUser_useSameAnonymousVoterCookie() throws Exception {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()
@@ -500,17 +497,14 @@ class PostControllerTest {
                                 .build(),
                         userDetails,
                         "127.0.0.1");
-        PostReactionRequest request = new PostReactionRequest(ReactionType.LIKE);
-
         SecurityContextHolder.clearContext();
 
         var firstResult =
                 mockMvc.perform(
-                                post("/api/v1/posts/" + post.publicId() + "/reactions")
+                                put("/api/v1/posts/" + post.publicId() + "/reaction")
                                         .with(csrf())
                                         .with(anonymous())
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
+                                        .queryParam("type", LIKE_REACTION_PARAM))
                         .andExpect(status().isOk())
                         .andExpect(
                                 cookie().exists(
@@ -526,12 +520,11 @@ class PostControllerTest {
                         .getCookie(AnonymousVoterCookieManager.ANONYMOUS_VOTER_COOKIE_NAME);
 
         mockMvc.perform(
-                        post("/api/v1/posts/" + post.publicId() + "/reactions")
+                        delete("/api/v1/posts/" + post.publicId() + "/reaction")
                                 .with(csrf())
                                 .with(anonymous())
                                 .cookie(anonymousVoterCookie)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+                                .queryParam("type", LIKE_REACTION_PARAM))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false))
                 .andExpect(jsonPath("$.likeCount").value(0));
