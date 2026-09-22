@@ -3,6 +3,7 @@
   - 롤백 불변식 자체는 동일하므로 테스트가 특정 구현 예외(`JpaSystemException`)에 결합되지 않도록 `DataAccessException`으로 검증 범위를 조정했습니다.
   - CI MySQL에서 트리거 생성 구문이 실패하는 차이까지 확인해 `BEGIN ... SIGNAL ... END` 블록으로 명시했습니다.
   - 로컬 `ReactionConcurrencyIntegrationTest` 8개가 통과했으며, 변경 커밋 `6a58801`을 PR 브랜치에 푸시했습니다. CI 재실행 결과를 확인 중입니다.
+  - CI 서비스 MySQL에도 `log_bin_trust_function_creators` 설정 단계를 추가한 뒤 Java CI 전체가 성공했습니다(`35675963055`).
 
 - **실시간 라이브톡 구현 및 최근 30개 대화 복원 (2026-09-20)**:
   - 작업 브랜치: feature/live-chat
