@@ -1517,3 +1517,8 @@
   - 프런트엔드와 백엔드의 WebSocket 경로는 `/ws-chat`으로 일치하므로, 운영 Nginx에 해당 경로의 Upgrade 프록시가 빠진 것을 원인으로 판단했습니다.
   - 배포 스크립트가 `snowthing.org`의 HTTPS 서버 블록을 찾아 WebSocket 프록시 설정을 한 번만 삽입하도록 보완했습니다. 신규 설정은 백엔드 `127.0.0.1:8080`으로 전달하고 Upgrade 헤더, 원본 호스트·IP·프로토콜, 장시간 연결 타임아웃과 버퍼링 비활성화를 적용합니다.
   - 기존 Nginx 서버 설정과 관리 스니펫을 먼저 백업하고, `nginx -t`가 실패하면 두 파일을 모두 원복하도록 구성했습니다.
+- **Sprint 05 PR #26 CodeRabbit 리뷰 반영 (2026-09-21)**:
+  - 관리자에게 허용된 HIDDEN·BLOCKED·DRAFT 게시글 상세 조회가 반응 상태 조회에서 다시 차단되지 않도록, 상세 조회용 반응 조회와 추천 명령의 게시글 상태 검증을 분리했습니다.
+  - `INSERT IGNORE`를 `INSERT ... ON DUPLICATE KEY UPDATE`의 no-op 방식으로 교체하고, 신규 1건·중복 0건의 affected-row 계약을 위해 local·docker·test·prod JDBC 설정에 `useAffectedRows=true`를 적용했습니다.
+  - 저장 카운터가 이미 0인 불일치 상태에서도 추천 취소가 row를 삭제해 정합성을 회복하도록 했습니다. 이 예외 처리는 삭제 경로에만 적용하며, 추천 생성 보상 실패는 계속 예외로 처리합니다.
+  - 동시 부하 테스트에만 `benchmark` 태그를 남기고 롤백·UNIQUE·CHECK·affected-row·불일치 복구 테스트는 일반 CI에서 실행되도록 분리했습니다.

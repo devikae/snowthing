@@ -25,6 +25,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -45,7 +46,6 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@Tag("benchmark")
 @SpringBootTest
 @ActiveProfiles({"test", "concurrency"})
 class ReactionConcurrencyIntegrationTest {
@@ -115,8 +115,13 @@ class ReactionConcurrencyIntegrationTest {
     @AfterEach
     void tearDown() {
         dropFailureTriggers();
+        reactionRepository.deleteAllInBatch();
+        postRepository.deleteAllInBatch();
+        categoryRepository.deleteAllInBatch();
+        memberRepository.deleteAllInBatch();
     }
 
+    @Tag("benchmark")
     @RepeatedTest(REPEAT_COUNT)
     @DisplayName("서로 다른 100명이 동시에 추천해도 row 수와 likeCount는 100으로 일치한다")
     void differentMembers_concurrentPut_preservesInvariant() throws Exception {
@@ -137,6 +142,7 @@ class ReactionConcurrencyIntegrationTest {
         assertInvariant(CONCURRENT_REQUESTS);
     }
 
+    @Tag("benchmark")
     @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 사용자의 PUT 100건은 추천 row와 likeCount를 1로 유지한다")
     void sameMember_concurrentPut_isIdempotent() throws Exception {
@@ -161,6 +167,7 @@ class ReactionConcurrencyIntegrationTest {
         assertInvariant(EXPECTED_SINGLE_REACTION);
     }
 
+    @Tag("benchmark")
     @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 사용자의 DELETE 100건은 최종 상태를 미추천으로 유지한다")
     void sameMember_concurrentDelete_isIdempotent() throws Exception {
@@ -187,6 +194,7 @@ class ReactionConcurrencyIntegrationTest {
         assertInvariant(EXPECTED_NO_REACTION);
     }
 
+    @Tag("benchmark")
     @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 사용자의 추천과 취소가 동시에 발생해도 row 수와 likeCount는 일치한다")
     void sameMember_mixedPutAndDelete_preservesInvariant() throws Exception {
@@ -220,6 +228,7 @@ class ReactionConcurrencyIntegrationTest {
         assertInvariant(rowCount);
     }
 
+    @Tag("benchmark")
     @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 익명 사용자의 PUT 100건은 추천 row와 likeCount를 1로 유지한다")
     void sameAnonymousVoter_concurrentPut_isIdempotent() throws Exception {
@@ -240,6 +249,7 @@ class ReactionConcurrencyIntegrationTest {
         assertInvariant(EXPECTED_SINGLE_REACTION);
     }
 
+    @Tag("benchmark")
     @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 익명 사용자의 DELETE 100건은 최종 상태를 미추천으로 유지한다")
     void sameAnonymousVoter_concurrentDelete_isIdempotent() throws Exception {
@@ -263,6 +273,7 @@ class ReactionConcurrencyIntegrationTest {
         assertInvariant(EXPECTED_NO_REACTION);
     }
 
+    @Tag("benchmark")
     @RepeatedTest(REPEAT_COUNT)
     @DisplayName("동일 익명 사용자의 추천과 취소가 동시에 발생해도 row 수와 likeCount는 일치한다")
     void sameAnonymousVoter_mixedPutAndDelete_preservesInvariant() throws Exception {
@@ -331,6 +342,57 @@ class ReactionConcurrencyIntegrationTest {
                 .isInstanceOf(JpaSystemException.class);
 
         assertInvariant(EXPECTED_SINGLE_REACTION);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("중복 추천 INSERT는 신규 1건, 중복 0건의 affected-row 계약을 지킨다")
+    void duplicateInsert_returnsZeroAffectedRows() {
+        Member member = members.getFirst();
+
+        int memberInserted =
+                reactionRepository.insertMemberReaction(
+                        post.getId(), member.getId(), DEFAULT_CLIENT_IP, ReactionType.LIKE.name());
+        int memberDuplicate =
+                reactionRepository.insertMemberReaction(
+                        post.getId(), member.getId(), DEFAULT_CLIENT_IP, ReactionType.LIKE.name());
+        int anonymousInserted =
+                reactionRepository.insertAnonymousReaction(
+                        post.getId(),
+                        ANONYMOUS_VOTER_ID,
+                        DEFAULT_CLIENT_IP,
+                        ReactionType.DISLIKE.name());
+        int anonymousDuplicate =
+                reactionRepository.insertAnonymousReaction(
+                        post.getId(),
+                        ANONYMOUS_VOTER_ID,
+                        DEFAULT_CLIENT_IP,
+                        ReactionType.DISLIKE.name());
+
+        assertThat(memberInserted).isEqualTo(EXPECTED_SINGLE_REACTION);
+        assertThat(memberDuplicate).isZero();
+        assertThat(anonymousInserted).isEqualTo(EXPECTED_SINGLE_REACTION);
+        assertThat(anonymousDuplicate).isZero();
+    }
+
+    @Test
+    @DisplayName("저장 카운터가 이미 0이어도 추천 취소는 row를 삭제해 정합성을 복구한다")
+    void remove_whenStoredCountIsZero_repairsInvariant() {
+        reactionService.apply(
+                post.getPublicId(), ReactionType.LIKE, users.getFirst(), DEFAULT_CLIENT_IP, null);
+        jdbcTemplate.update(UPDATE_LIKE_COUNT_SQL, EXPECTED_NO_REACTION, post.getId());
+
+        ReactionResponse response =
+                reactionService.remove(
+                        post.getPublicId(),
+                        ReactionType.LIKE,
+                        users.getFirst(),
+                        DEFAULT_CLIENT_IP,
+                        null);
+
+        assertThat(response.changed()).isTrue();
+        assertThat(response.active()).isFalse();
+        assertInvariant(EXPECTED_NO_REACTION);
     }
 
     @Test

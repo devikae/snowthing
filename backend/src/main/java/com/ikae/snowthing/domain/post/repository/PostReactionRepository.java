@@ -15,7 +15,7 @@ public interface PostReactionRepository extends JpaRepository<PostReaction, Long
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             value =
-                    "INSERT IGNORE INTO post_reaction (post_id, member_id, writer_ip, anonymous_voter_id, type, created_at, updated_at) VALUES (:postId, :memberId, :writerIp, NULL, :type, NOW(), NOW())",
+                    "INSERT INTO post_reaction (post_id, member_id, writer_ip, anonymous_voter_id, type, created_at, updated_at) VALUES (:postId, :memberId, :writerIp, NULL, :type, NOW(), NOW()) ON DUPLICATE KEY UPDATE reaction_id = reaction_id",
             nativeQuery = true)
     int insertMemberReaction(
             @Param("postId") Long postId,
@@ -26,7 +26,7 @@ public interface PostReactionRepository extends JpaRepository<PostReaction, Long
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             value =
-                    "INSERT IGNORE INTO post_reaction (post_id, member_id, writer_ip, anonymous_voter_id, type, created_at, updated_at) VALUES (:postId, NULL, :writerIp, :anonymousVoterId, :type, NOW(), NOW())",
+                    "INSERT INTO post_reaction (post_id, member_id, writer_ip, anonymous_voter_id, type, created_at, updated_at) VALUES (:postId, NULL, :writerIp, :anonymousVoterId, :type, NOW(), NOW()) ON DUPLICATE KEY UPDATE reaction_id = reaction_id",
             nativeQuery = true)
     int insertAnonymousReaction(
             @Param("postId") Long postId,

@@ -81,7 +81,7 @@ public class ReactionService {
         lockReactionCounter(post.getId());
         int deleted = deleteReaction(post.getId(), actor, type);
         if (deleted == SINGLE_ROW_AFFECTED) {
-            decreaseCount(post.getId(), type);
+            decreaseCount(post.getId(), type, true);
             eventPublisher.publishEvent(new PostReactionEvent(post.getId(), type));
         }
 
@@ -90,7 +90,7 @@ public class ReactionService {
 
     public Set<ReactionType> findActiveTypes(
             String publicId, CustomUserDetails userDetails, String anonymousVoterId) {
-        Post post = findAvailablePost(publicId);
+        Post post = findPost(publicId);
         if (userDetails != null) {
             Member member = findMember(userDetails);
             return Set.copyOf(
@@ -146,14 +146,17 @@ public class ReactionService {
     }
 
     private Post findAvailablePost(String publicId) {
-        Post post =
-                postRepository
-                        .findByPublicId(publicId)
-                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        Post post = findPost(publicId);
         if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
         return post;
+    }
+
+    private Post findPost(String publicId) {
+        return postRepository
+                .findByPublicId(publicId)
+                .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
     }
 
     private ReactionActor resolveActor(
@@ -198,10 +201,18 @@ public class ReactionService {
     }
 
     private void decreaseCount(Long postId, ReactionType type) {
+        decreaseCount(postId, type, false);
+    }
+
+    private void decreaseCount(Long postId, ReactionType type, boolean allowZeroRows) {
         int updated =
                 type == ReactionType.LIKE
                         ? postRepository.decreaseLikeCount(postId)
                         : postRepository.decreaseDislikeCount(postId);
+        if (allowZeroRows && updated == 0) {
+            log.warn("추천 카운터 감소 대상 없음 - postId: {}, type: {}. 정합성 확인이 필요합니다.", postId, type);
+            return;
+        }
         validateSinglePostUpdated(updated);
     }
 

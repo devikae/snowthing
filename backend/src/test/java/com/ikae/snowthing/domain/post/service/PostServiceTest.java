@@ -599,6 +599,10 @@ class PostServiceTest {
             CustomUserDetails adminDetails = new CustomUserDetails(admin);
             var adminDetail =
                     postService.getPostDetail(hiddenPost.getPublicId(), adminDetails, false);
+            assertThat(
+                            reactionService.findActiveTypes(
+                                    hiddenPost.getPublicId(), adminDetails, null))
+                    .isEmpty();
             assertThat(adminDetail.title()).isEqualTo("숨김 글");
 
             // 3. 추천 시도 -> 404
