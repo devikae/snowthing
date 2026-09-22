@@ -52,6 +52,12 @@ jobs:
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
+      - name: Allow test triggers in MySQL
+        env:
+          MYSQL_ROOT_PASSWORD: snowthing_root_2026!
+        run: |
+          mysql --protocol=TCP -h 127.0.0.1 -P 3306 -uroot -p"$MYSQL_ROOT_PASSWORD" \
+            -e "SET GLOBAL log_bin_trust_function_creators = 1;"
       - run: ./gradlew spotlessCheck
       - run: ./gradlew test build -x spotlessCheck
 
