@@ -1,3 +1,8 @@
+- **Sprint 05 PR #26 CI 테스트 보정 (2026-09-22)**:
+  - GitHub Actions MySQL 환경에서 트리거가 발생시킨 JDBC 예외가 로컬과 다른 Spring 예외 타입으로 포장되는 차이를 확인했습니다.
+  - 롤백 불변식 자체는 동일하므로 테스트가 특정 구현 예외(`JpaSystemException`)에 결합되지 않도록 `DataAccessException`으로 검증 범위를 조정했습니다.
+  - 로컬 `ReactionConcurrencyIntegrationTest` 8개가 모두 통과했으며, 변경 커밋 `505820a`를 PR 브랜치에 푸시했습니다. CI 재실행 결과를 확인 중입니다.
+
 - **실시간 라이브톡 구현 및 최근 30개 대화 복원 (2026-09-20)**:
   - 작업 브랜치: feature/live-chat
   - 상태: 구현 및 로컬 검증 완료
