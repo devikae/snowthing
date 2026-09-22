@@ -577,18 +577,18 @@ class ReactionConcurrencyIntegrationTest {
         jdbcTemplate.execute(
                 "CREATE TRIGGER "
                         + INSERT_FAILURE_TRIGGER
-                        + " BEFORE INSERT ON post_reaction FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '"
+                        + " BEFORE INSERT ON post_reaction FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '"
                         + TRIGGER_FAILURE_MESSAGE
-                        + "'");
+                        + "'; END");
     }
 
     private void createCounterFailureTrigger() {
         jdbcTemplate.execute(
                 "CREATE TRIGGER "
                         + COUNTER_FAILURE_TRIGGER
-                        + " BEFORE UPDATE ON post FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '"
+                        + " BEFORE UPDATE ON post FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '"
                         + TRIGGER_FAILURE_MESSAGE
-                        + "'");
+                        + "'; END");
     }
 
     private void dropFailureTriggers() {
