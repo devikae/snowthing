@@ -27,10 +27,8 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.dto.PostDeleteRequest;
-import com.ikae.snowthing.domain.post.dto.PostReactionRequest;
 import com.ikae.snowthing.domain.post.dto.PostResponse;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
-import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -40,6 +38,8 @@ import com.ikae.snowthing.global.web.AnonymousVoterCookieManager;
 @AutoConfigureMockMvc
 @Transactional
 class PostControllerTest {
+
+    private static final String LIKE_REACTION_PARAM = "LIKE";
 
     @Autowired private MockMvc mockMvc;
 
@@ -263,6 +263,62 @@ class PostControllerTest {
     }
 
     @Test
+    @DisplayName("응답 유실을 가정해 PUT/DELETE를 재전송해도 최종 추천 상태가 유지된다")
+    void reactionCommands_networkRetryIsIdempotent() throws Exception {
+        PostResponse post =
+                postService.createPost(
+                        PostCreateRequest.builder()
+                                .categoryCode("FREE")
+                                .title("멱등 추천 API 테스트")
+                                .content("본문")
+                                .isAnonymous(false)
+                                .build(),
+                        userDetails,
+                        "127.0.0.1");
+        String endpoint = "/api/v1/posts/" + post.publicId() + "/reaction";
+
+        mockMvc.perform(
+                        put(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.changed").value(true))
+                .andExpect(jsonPath("$.likeCount").value(1));
+
+        mockMvc.perform(
+                        put(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.changed").value(false))
+                .andExpect(jsonPath("$.likeCount").value(1));
+
+        mockMvc.perform(
+                        delete(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.changed").value(true))
+                .andExpect(jsonPath("$.likeCount").value(0));
+
+        mockMvc.perform(
+                        delete(endpoint)
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.changed").value(false))
+                .andExpect(jsonPath("$.likeCount").value(0));
+    }
+
+    @Test
     @DisplayName(
             "DELETE /api/v1/posts/{publicId} - 비회원 익명글에 올바른 비밀번호를 Request Body로 전송 시 삭제 200 OK")
     void deletePost_anonymous_success_withRequestBody() throws Exception {
@@ -429,9 +485,8 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName(
-            "POST /api/v1/posts/{publicId}/reactions - 비로그인 익명 사용자는 anonymous_voter_id 쿠키로 추천을 토글한다")
-    void reactToPost_anonymousUser_usesAnonymousVoterCookie() throws Exception {
+    @DisplayName("PUT과 DELETE 반응 API는 같은 익명 사용자 쿠키로 추천을 생성하고 취소한다")
+    void reactionCommands_anonymousUser_useSameAnonymousVoterCookie() throws Exception {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()
@@ -442,23 +497,20 @@ class PostControllerTest {
                                 .build(),
                         userDetails,
                         "127.0.0.1");
-        PostReactionRequest request = new PostReactionRequest(ReactionType.LIKE);
-
         SecurityContextHolder.clearContext();
 
         var firstResult =
                 mockMvc.perform(
-                                post("/api/v1/posts/" + post.publicId() + "/reactions")
+                                put("/api/v1/posts/" + post.publicId() + "/reaction")
                                         .with(csrf())
                                         .with(anonymous())
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
+                                        .queryParam("type", LIKE_REACTION_PARAM))
                         .andExpect(status().isOk())
                         .andExpect(
                                 cookie().exists(
                                                 AnonymousVoterCookieManager
                                                         .ANONYMOUS_VOTER_COOKIE_NAME))
-                        .andExpect(jsonPath("$.isToggledOn").value(true))
+                        .andExpect(jsonPath("$.active").value(true))
                         .andExpect(jsonPath("$.likeCount").value(1))
                         .andReturn();
 
@@ -468,14 +520,13 @@ class PostControllerTest {
                         .getCookie(AnonymousVoterCookieManager.ANONYMOUS_VOTER_COOKIE_NAME);
 
         mockMvc.perform(
-                        post("/api/v1/posts/" + post.publicId() + "/reactions")
+                        delete("/api/v1/posts/" + post.publicId() + "/reaction")
                                 .with(csrf())
                                 .with(anonymous())
                                 .cookie(anonymousVoterCookie)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+                                .queryParam("type", LIKE_REACTION_PARAM))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isToggledOn").value(false))
+                .andExpect(jsonPath("$.active").value(false))
                 .andExpect(jsonPath("$.likeCount").value(0));
     }
 

@@ -53,7 +53,7 @@ class WebSocketChatIntegrationTest {
         String testDbUrl = System.getenv("SNOWTHING_TEST_DB_URL");
         if (testDbUrl == null || testDbUrl.isBlank()) {
             testDbUrl =
-                    "jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul";
+                    "jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&useAffectedRows=true";
         }
         String user = System.getenv("SNOWTHING_TEST_DB_USERNAME");
         if (user == null || user.isBlank()) {

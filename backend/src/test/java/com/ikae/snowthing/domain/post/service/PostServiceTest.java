@@ -34,6 +34,8 @@ class PostServiceTest {
 
     @Autowired private PostService postService;
 
+    @Autowired private ReactionService reactionService;
+
     @Autowired private PostRepository postRepository;
 
     @Autowired private PostCategoryRepository categoryRepository;
@@ -387,8 +389,8 @@ class PostServiceTest {
     class ReactionTest {
 
         @Test
-        @DisplayName("추천/비추천 클릭 시 토글(ON/OFF) 동작하며 카운트가 +1, -1로 정상 갱신된다.")
-        void reactToPost_toggle_success() {
+        @DisplayName("추천 생성과 취소를 분리해 호출하면 카운트가 +1, -1로 갱신된다.")
+        void reactToPost_applyAndRemove_success() {
             PostResponse post =
                     postService.createPost(
                             PostCreateRequest.builder()
@@ -400,30 +402,30 @@ class PostServiceTest {
                             userDetails1,
                             "127.0.0.1");
 
-            // 1회 클릭: Toggle ON (+1)
-            ReactionToggleResponse res1 =
-                    postService.reactToPost(
+            // 추천 활성화 (+1)
+            ReactionResponse res1 =
+                    reactionService.apply(
                             post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
-            assertThat(res1.isToggledOn()).isTrue();
+            assertThat(res1.active()).isTrue();
             assertThat(res1.likeCount()).isEqualTo(1);
 
-            // 2회 클릭: Toggle OFF (-1)
-            ReactionToggleResponse res2 =
-                    postService.reactToPost(
+            // 추천 취소 (-1)
+            ReactionResponse res2 =
+                    reactionService.remove(
                             post.publicId(), ReactionType.LIKE, userDetails1, "127.0.0.1", null);
-            assertThat(res2.isToggledOn()).isFalse();
+            assertThat(res2.active()).isFalse();
             assertThat(res2.likeCount()).isEqualTo(0);
 
-            // 추천과 비추천은 독립 투표 가능 (비추천 1회 클릭 ON)
-            ReactionToggleResponse res3 =
-                    postService.reactToPost(
+            // 추천과 비추천은 독립적으로 활성화할 수 있다.
+            ReactionResponse res3 =
+                    reactionService.apply(
                             post.publicId(), ReactionType.DISLIKE, userDetails1, "127.0.0.1", null);
-            assertThat(res3.isToggledOn()).isTrue();
+            assertThat(res3.active()).isTrue();
             assertThat(res3.dislikeCount()).isEqualTo(1);
         }
 
         @Test
-        @DisplayName("비로그인 익명 사용자도 anonymousVoterId 기반으로 추천/비추천 토글을 수행하며 DB에 정상 저장/삭제된다.")
+        @DisplayName("비로그인 익명 사용자도 anonymousVoterId 기반으로 추천을 생성하고 취소한다.")
         void reactToPost_anonymousVoter_success() {
             PostResponse post =
                     postService.createPost(
@@ -436,11 +438,11 @@ class PostServiceTest {
                             userDetails1,
                             "127.0.0.1");
 
-            // 1. 비로그인 익명 사용자 1회 추천 (Toggle ON)
-            ReactionToggleResponse res1 =
-                    postService.reactToPost(
+            // 1. 비로그인 익명 사용자 추천 활성화
+            ReactionResponse res1 =
+                    reactionService.apply(
                             post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1");
-            assertThat(res1.isToggledOn()).isTrue();
+            assertThat(res1.active()).isTrue();
             assertThat(res1.likeCount()).isEqualTo(1);
 
             // DB 물리 저장 검증 (member_id IS NULL, anonymous_voter_id = 'anon-voter-1', writer_ip =
@@ -458,11 +460,11 @@ class PostServiceTest {
             assertThat(rawReaction[2]).isEqualTo("10.0.0.1");
             assertThat(rawReaction[3]).isEqualTo("LIKE");
 
-            // 2. 비로그인 익명 사용자 재클릭 (Toggle OFF)
-            ReactionToggleResponse res2 =
-                    postService.reactToPost(
+            // 2. 비로그인 익명 사용자 추천 취소
+            ReactionResponse res2 =
+                    reactionService.remove(
                             post.publicId(), ReactionType.LIKE, null, "10.0.0.1", "anon-voter-1");
-            assertThat(res2.isToggledOn()).isFalse();
+            assertThat(res2.active()).isFalse();
             assertThat(res2.likeCount()).isEqualTo(0);
 
             // DB 물리 삭제 검증
@@ -597,12 +599,16 @@ class PostServiceTest {
             CustomUserDetails adminDetails = new CustomUserDetails(admin);
             var adminDetail =
                     postService.getPostDetail(hiddenPost.getPublicId(), adminDetails, false);
+            assertThat(
+                            reactionService.findActiveTypes(
+                                    hiddenPost.getPublicId(), adminDetails, null))
+                    .isEmpty();
             assertThat(adminDetail.title()).isEqualTo("숨김 글");
 
             // 3. 추천 시도 -> 404
             assertThatThrownBy(
                             () ->
-                                    postService.reactToPost(
+                                    reactionService.apply(
                                             hiddenPost.getPublicId(),
                                             ReactionType.LIKE,
                                             userDetails2,
@@ -665,7 +671,7 @@ class PostServiceTest {
             postService.getPostDetail(created.publicId(), userDetails1, true);
 
             // 3. 추천수 증가 발생
-            postService.reactToPost(
+            reactionService.apply(
                     created.publicId(), ReactionType.LIKE, userDetails2, "127.0.0.1", null);
 
             entityManager.flush();

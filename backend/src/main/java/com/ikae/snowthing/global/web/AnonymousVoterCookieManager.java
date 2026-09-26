@@ -1,5 +1,6 @@
 package com.ikae.snowthing.global.web;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.servlet.http.Cookie;
@@ -28,6 +29,14 @@ public class AnonymousVoterCookieManager {
         newCookie.setHttpOnly(true);
         response.addCookie(newCookie);
         return voterId;
+    }
+
+    public Optional<String> find(HttpServletRequest request) {
+        Cookie cookie = findCookie(request, ANONYMOUS_VOTER_COOKIE_NAME);
+        if (cookie == null || cookie.getValue() == null || cookie.getValue().isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.of(cookie.getValue());
     }
 
     private Cookie findCookie(HttpServletRequest request, String name) {

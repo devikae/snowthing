@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.Check;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -26,6 +27,7 @@ import lombok.NoArgsConstructor;
         sql =
                 "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW() WHERE post_id = ?")
 @SQLRestriction("is_deleted = false")
+@Check(constraints = "like_count >= 0 AND dislike_count >= 0")
 public class Post extends BaseTimeEntity {
 
     @Id

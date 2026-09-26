@@ -2,9 +2,7 @@ package com.ikae.snowthing.domain.post.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,9 +17,7 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.*;
-import com.ikae.snowthing.domain.post.event.PostReactionEvent;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
-import com.ikae.snowthing.domain.post.repository.PostReactionRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
@@ -48,10 +44,8 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PostCategoryRepository categoryRepository;
-    private final PostReactionRepository reactionRepository;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ApplicationEventPublisher eventPublisher;
     private final ImageUrlResolver imageUrlResolver;
 
     @Transactional
@@ -233,84 +227,6 @@ public class PostService {
         post.softDelete();
     }
 
-    @Transactional
-    public ReactionToggleResponse reactToPost(
-            String publicId,
-            ReactionType type,
-            CustomUserDetails userDetails,
-            String clientIp,
-            String anonymousVoterId) {
-        Post post =
-                postRepository
-                        .findByPublicId(publicId)
-                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
-
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
-            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
-        }
-
-        Member member = resolveMember(userDetails);
-        ReactionActor actor =
-                member != null
-                        ? ReactionActor.member(member.getId(), resolveWriterIp(clientIp))
-                        : ReactionActor.anonymous(
-                                resolveAnonymousVoterId(anonymousVoterId),
-                                resolveWriterIp(clientIp));
-
-        Optional<PostReaction> existing = findExistingReaction(post.getId(), actor, type);
-
-        boolean isToggledOn;
-        int likeCount = post.getLikeCount();
-        int dislikeCount = post.getDislikeCount();
-        if (existing.isPresent()) {
-            // TOGGLE OFF -> 기존 투표 레코드 삭제 및 해당 카운트 차감
-            reactionRepository.delete(existing.get());
-            if (type == ReactionType.LIKE) {
-                postRepository.decreaseLikeCount(post.getId());
-                likeCount = Math.max(0, likeCount - 1);
-            } else {
-                postRepository.decreaseDislikeCount(post.getId());
-                dislikeCount = Math.max(0, dislikeCount - 1);
-            }
-            isToggledOn = false;
-        } else {
-            // TOGGLE ON -> 신규 투표 레코드 추가 및 해당 카운트 증가
-            PostReaction reaction =
-                    PostReaction.builder()
-                            .post(post)
-                            .member(member)
-                            .writerIp(actor.writerIp())
-                            .anonymousVoterId(actor.anonymousVoterId())
-                            .type(type)
-                            .build();
-            reactionRepository.save(reaction);
-
-            if (type == ReactionType.LIKE) {
-                postRepository.increaseLikeCount(post.getId());
-                likeCount++;
-            } else {
-                postRepository.increaseDislikeCount(post.getId());
-                dislikeCount++;
-            }
-            isToggledOn = true;
-        }
-
-        eventPublisher.publishEvent(new PostReactionEvent(post.getId(), type));
-
-        String msg =
-                isToggledOn
-                        ? (type == ReactionType.LIKE ? "추천했습니다!" : "비추천했습니다!")
-                        : (type == ReactionType.LIKE ? "추천을 취소했습니다." : "비추천을 취소했습니다.");
-
-        return ReactionToggleResponse.builder()
-                .isToggledOn(isToggledOn)
-                .type(type.name())
-                .likeCount(likeCount)
-                .dislikeCount(dislikeCount)
-                .message(msg)
-                .build();
-    }
-
     private void validateEditPermission(
             Post post, String anonymousPassword, CustomUserDetails userDetails) {
         if (post.isAnonymous()) {
@@ -364,30 +280,6 @@ public class PostService {
                 throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
             }
         }
-    }
-
-    private Member resolveMember(CustomUserDetails userDetails) {
-        if (userDetails == null) {
-            return null;
-        }
-        return memberRepository.findByPublicId(userDetails.getPublicId()).orElse(null);
-    }
-
-    private Optional<PostReaction> findExistingReaction(
-            Long postId, ReactionActor actor, ReactionType type) {
-        if (actor.isMember()) {
-            return reactionRepository.findByPostIdAndMemberIdAndType(
-                    postId, actor.memberId(), type);
-        }
-        return reactionRepository.findByPostIdAndAnonymousVoterIdAndType(
-                postId, actor.anonymousVoterId(), type);
-    }
-
-    private String resolveAnonymousVoterId(String anonymousVoterId) {
-        if (anonymousVoterId == null || anonymousVoterId.isBlank()) {
-            throw new CustomAuthException(ErrorCode.INVALID_INPUT);
-        }
-        return anonymousVoterId;
     }
 
     private String resolveWriterIp(String clientIp) {

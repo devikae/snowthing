@@ -24,7 +24,8 @@ export const API_ENDPOINTS = {
     detail: (publicId: string) => `${API_V1_URL}/posts/${publicId}`,
     update: (publicId: string) => `${API_V1_URL}/posts/${publicId}`,
     delete: (publicId: string) => `${API_V1_URL}/posts/${publicId}`,
-    reactions: (publicId: string) => `${API_V1_URL}/posts/${publicId}/reactions`,
+    reaction: (publicId: string, type: "LIKE" | "DISLIKE") =>
+      `${API_V1_URL}/posts/${publicId}/reaction?type=${type}`,
     comments: (publicId: string, cursor?: string | null, size = 20) =>
       `${API_V1_URL}/posts/${publicId}/comments?${
         cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`

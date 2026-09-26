@@ -60,7 +60,7 @@ jobs:
     env:
       SNOWTHING_DB_USERNAME: snowuser
       SNOWTHING_DB_PASSWORD: snowthing_pass_2026!
-      SNOWTHING_TEST_DB_URL: jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+      SNOWTHING_TEST_DB_URL: jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&useAffectedRows=true
       SNOWTHING_TEST_DB_USERNAME: snowuser
       SNOWTHING_TEST_DB_PASSWORD: snowthing_pass_2026!
 
@@ -86,6 +86,19 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Allow test triggers in MySQL
+        env:
+          MYSQL_ROOT_PASSWORD: snowthing_root_2026!
+        run: |
+          mysql --protocol=TCP -h 127.0.0.1 -P 3306 -uroot -p"$MYSQL_ROOT_PASSWORD" \
+            -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+
+      - name: Verify production migration 003 from the existing schema
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-003.sh
+          scripts/verify-production-migration-003.sh
 
       - name: Build and Test with Gradle
         run: ./gradlew test build -x spotlessCheck

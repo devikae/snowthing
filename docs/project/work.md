@@ -1,3 +1,10 @@
+- **Sprint 05 PR #26 CI 테스트 보정 (2026-09-22)**:
+  - GitHub Actions MySQL 환경에서 트리거가 발생시킨 JDBC 예외가 로컬과 다른 Spring 예외 타입으로 포장되는 차이를 확인했습니다.
+  - 롤백 불변식 자체는 동일하므로 테스트가 특정 구현 예외(`JpaSystemException`)에 결합되지 않도록 `DataAccessException`으로 검증 범위를 조정했습니다.
+  - CI MySQL에서 트리거 생성 구문이 실패하는 차이까지 확인해 `BEGIN ... SIGNAL ... END` 블록으로 명시했습니다.
+  - 로컬 `ReactionConcurrencyIntegrationTest` 8개가 통과했으며, 변경 커밋 `6a58801`을 PR 브랜치에 푸시했습니다. CI 재실행 결과를 확인 중입니다.
+  - CI 서비스 MySQL에도 `log_bin_trust_function_creators` 설정 단계를 추가한 뒤 Java CI 전체가 성공했습니다(`35675963055`).
+
 - **실시간 라이브톡 구현 및 최근 30개 대화 복원 (2026-09-20)**:
   - 작업 브랜치: feature/live-chat
   - 상태: 구현 및 로컬 검증 완료
@@ -1486,6 +1493,28 @@
   - 감사 로그 비동기 큐가 요청 처리를 막지 않도록 변경하고, EC2 디스크 보호를 위한 2GB 전체 상한을 추가했습니다. 100일 보관과 용량 상한의 우선순위 및 외부 보관 필요성을 설계 문서에 기록했습니다.
   - 부하 테스트 클라이언트에 10초 STOMP heartbeat 스케줄러를 실제 연결하고 종료 시 정리하도록 보완했습니다.
   - 동시성 테스트의 시작 신호를 `finally`에서도 해제해 준비 단계 실패 시 작업 스레드가 남지 않게 했으며, 공통 MySQL 테스트 설정은 환경변수 전체가 제공된 경우에만 덮어쓰도록 정리했습니다.
+- **Sprint 05 추천 동시성 제어 및 멱등 API 구현 (2026-09-19)**:
+  - `feature/sprint05-reaction/comment-count-concurrency` 브랜치에서 Read-Modify-Write Lost Update를 MySQL 8.0.46과 100개 동시 트랜잭션으로 세 번 재현했습니다. 추천 row는 매번 100개였지만 카운터는 1로 남았습니다.
+  - 같은 조건에서 원자적 UPDATE, 낙관적 락, 비관적 락을 세 번 비교했습니다. 세 후보 모두 정합성을 지켰지만 낙관적 락은 회당 약 4,950회 재시도와 2.84~3.00초가 필요했고, 원자적 UPDATE와 비관적 락은 약 0.44~0.48초였습니다.
+  - 추천 row INSERT 후 카운터 UPDATE 순서에서 외래키 공유 락의 배타 락 승격으로 deadlock이 발생하는 것을 확인했습니다. 게시글 row를 먼저 확보한 뒤 `post_reaction`을 변경하도록 락 순서를 통일했습니다.
+  - `PUT/DELETE /api/v1/posts/{publicId}/reaction` 멱등 명령을 추가하고 LIKE·DISLIKE에 같은 원자적 카운터·UNIQUE·트랜잭션 구조를 적용했습니다.
+  - 실제 `post`·`post_reaction`에서 서로 다른 100명 추천, 동일 사용자 PUT/DELETE 100건, 추천·취소 경합, 중간 예외 롤백, UNIQUE, 음수 CHECK, 불일치 탐지와 reconciliation을 검증했습니다.
+  - `docs/conception/sprint05/ADR-003 추천 동시성.md`와 관련 API·ERD·아키텍처 문서를 현행화했습니다. 학습 문서는 `docs/study/sprint05/추천 동시성과 멱등성 학습.md`에 작성했으며 Git 추적 대상에서 제외합니다.
+  - 회원·익명 PUT/DELETE/혼합 요청을 각각 세 번 반복했고 요청 100건 성공, 오류 0건, 추천 row 수와 `like_count` 일치를 확인했습니다.
+  - 외부 호환 대상이 없는 기존 `POST /api/v1/posts/{publicId}/reactions` 토글 API와 관련 서비스·DTO·쿼리를 제거했습니다. 화면은 활성 상태에 따라 PUT 또는 DELETE를 선택해 생성과 취소를 지원합니다.
+  - 존재하지 않는 API의 `NoResourceFoundException`이 전역 예외 처리기에서 500으로 변환되는 기존 문제는 후속 오류 응답 정리 대상으로 남겼습니다.
+- **Sprint 05 추천 동시성과 멱등성 학습 문서 보강 (2026-09-21)**:
+  1. **학습 문서 (`docs/study/sprint05/추천 동시성과 멱등성 학습.md`) 8번 섹션 보강**:
+     - 외래키 무결성 검증 시 InnoDB가 부모 row에 설정하는 공유 락과 카운터 UPDATE의 배타 락 사이에서 발생하는 락 승격 데드락을 실행 순서로 정리했습니다.
+     - 추천 등록은 부모 row 카운터 원자적 UPDATE로 배타 락을 먼저 확보한 뒤 자식 row를 저장하고, 추천 취소도 같은 락 순서를 사용하도록 설명했습니다.
+     - 단일 SQL의 원자성과 전체 트랜잭션의 데드락 안전성이 서로 다른 문제라는 점을 추가했습니다.
+  2. **원자적 UPDATE 구현의 난점 보강**:
+     - 비관적 락과 원자적 UPDATE를 구현 난이도, 락 점유 시간, 처리량, 데드락 위험 관점에서 비교했습니다.
+     - JPA 1차 캐시 정리, 카운터 음수 방지와 DB CHECK 제약, `INSERT IGNORE`의 MySQL 종속성을 구현 시 주의할 점으로 정리했습니다.
+- **Sprint 05 브랜치 최신 main 동기화 (2026-09-21)**:
+  - 최신 `origin/main`을 병합하고 Sprint 05의 추천 토글 제거·멱등 PUT/DELETE 구조와 main의 S3/CloudFront 이미지 URL 변환을 함께 유지하도록 `PostService` 충돌을 해결했습니다.
+  - `docs/project/work.md`는 main의 최신 배포·라이브톡 기록을 기준으로 Sprint 05 구현 및 학습 보강 기록을 합쳤습니다.
+  - 백엔드 219개 테스트와 Spotless 검사, 프론트엔드 Next.js 운영 빌드를 통과했습니다.
 - **라이브톡 백엔드 운영 배포 실패 원인 수정 (2026-09-21)**:
   - PR #22 병합 뒤 프론트엔드 배포는 성공했지만 백엔드 배포는 Nginx의 `real_ip_header` 중복 선언으로 `nginx -t`가 실패해 이전 백엔드가 계속 실행 중인 것을 확인했습니다.
   - 배포 스크립트가 관리 파일 바깥의 `real_ip_header`, `real_ip_recursive` 선언을 먼저 탐지하고, 이미 설정된 서버에서는 중복으로 생성하지 않도록 변경했습니다.
@@ -1495,3 +1524,41 @@
   - 프런트엔드와 백엔드의 WebSocket 경로는 `/ws-chat`으로 일치하므로, 운영 Nginx에 해당 경로의 Upgrade 프록시가 빠진 것을 원인으로 판단했습니다.
   - 배포 스크립트가 `snowthing.org`의 HTTPS 서버 블록을 찾아 WebSocket 프록시 설정을 한 번만 삽입하도록 보완했습니다. 신규 설정은 백엔드 `127.0.0.1:8080`으로 전달하고 Upgrade 헤더, 원본 호스트·IP·프로토콜, 장시간 연결 타임아웃과 버퍼링 비활성화를 적용합니다.
   - 기존 Nginx 서버 설정과 관리 스니펫을 먼저 백업하고, `nginx -t`가 실패하면 두 파일을 모두 원복하도록 구성했습니다.
+- **Sprint 05 PR #26 CodeRabbit 리뷰 반영 (2026-09-21)**:
+  - 관리자에게 허용된 HIDDEN·BLOCKED·DRAFT 게시글 상세 조회가 반응 상태 조회에서 다시 차단되지 않도록, 상세 조회용 반응 조회와 추천 명령의 게시글 상태 검증을 분리했습니다.
+  - `INSERT IGNORE`를 `INSERT ... ON DUPLICATE KEY UPDATE`의 no-op 방식으로 교체하고, 신규 1건·중복 0건의 affected-row 계약을 위해 local·docker·test·prod JDBC 설정에 `useAffectedRows=true`를 적용했습니다.
+  - 저장 카운터가 이미 0인 불일치 상태에서도 추천 취소가 row를 삭제해 정합성을 회복하도록 했습니다. 이 예외 처리는 삭제 경로에만 적용하며, 추천 생성 보상 실패는 계속 예외로 처리합니다.
+  - 동시 부하 테스트에만 `benchmark` 태그를 남기고 롤백·UNIQUE·CHECK·affected-row·불일치 복구 테스트는 일반 CI에서 실행되도록 분리했습니다.
+
+## Sprint 05 PR #26 협업자 리뷰 후속 작업
+
+- 상태: DONE
+- 시작일: 2026-09-26
+
+### 계획
+- 동시 DELETE 응답이 MySQL REPEATABLE READ의 이전 스냅샷이 아니라 현재 추천 카운터를 반환하도록 조회 방식을 보강합니다.
+- 기존 운영 스키마의 추천 카운터를 보정하고 CHECK 제약을 추가하는 버전 마이그레이션을 준비합니다.
+- 마이그레이션 checksum과 적용 이력을 관리하고, 실패 시 백엔드 배포를 차단합니다.
+
+### 완료
+- 추천 명령 응답 카운터를 `SELECT ... FOR UPDATE` projection으로 조회하도록 변경했습니다.
+- 두 DELETE가 경합하는 동안 두 응답과 최종 DB 카운터가 모두 0인지 확인하는 기본 CI 통합 테스트를 추가했습니다.
+- `003_migration_post_reaction_count_checks.sql`과 migration runner, 기존 스키마 기반 검증 스크립트를 추가했습니다.
+- 백엔드 배포 전에 전용 migration 환경을 읽어 version SQL을 실행하도록 연결했습니다.
+
+### 남은 작업
+- 운영 배포 전 외부 환경 준비 항목을 확인합니다.
+
+### 이슈
+- 실제 운영 적용 전 EC2의 migration 환경 파일, MySQL client, RDS IAM migration 계정과 GitHub `production-migration` Environment 필수 승인자 설정이 필요합니다.
+
+### 결정 필요
+- 없음. 구현 범위는 사용자 승인 계획을 따릅니다.
+
+### 검증
+- `./gradlew.bat spotlessCheck`를 통과했습니다.
+- 신규 동시 DELETE 응답 정합성 테스트를 단독 실행해 통과했습니다.
+- `./gradlew.bat test build -x spotlessCheck` 전체 빌드를 통과했습니다. 기존 Hibernate 종료 시 외래 키 제거 경고는 남지만 테스트와 빌드 결과는 성공입니다.
+- MySQL 8.0의 기존 운영 초기 스키마에서 `003`을 적용해 불일치 카운터 보정, 두 CHECK 이름, `SHOW CREATE TABLE`, 음수 UPDATE 오류 3819, migration history 1건 기록을 확인했습니다.
+- migration runner를 다시 실행해 checksum이 같은 적용 완료 버전을 건너뛰는 것을 확인했습니다.
+- 두 셸 스크립트의 Bash 문법 검사를 통과했습니다.
