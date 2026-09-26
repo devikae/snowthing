@@ -94,5 +94,11 @@ jobs:
           mysql --protocol=TCP -h 127.0.0.1 -P 3306 -uroot -p"$MYSQL_ROOT_PASSWORD" \
             -e "SET GLOBAL log_bin_trust_function_creators = 1;"
 
+      - name: Verify production migration 003 from the existing schema
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-003.sh
+          scripts/verify-production-migration-003.sh
+
       - name: Build and Test with Gradle
         run: ./gradlew test build -x spotlessCheck

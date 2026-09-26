@@ -230,7 +230,7 @@ public class ReactionService {
 
     private ReactionResponse response(
             Long postId, ReactionType type, boolean active, boolean changed) {
-        PostRepository.ReactionCounts counts = findCounts(postId);
+        PostRepository.ReactionCounts counts = findCurrentCounts(postId);
         return new ReactionResponse(
                 active,
                 type,
@@ -243,6 +243,12 @@ public class ReactionService {
     private PostRepository.ReactionCounts findCounts(Long postId) {
         return postRepository
                 .findReactionCountsById(postId)
+                .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+    }
+
+    private PostRepository.ReactionCounts findCurrentCounts(Long postId) {
+        return postRepository
+                .findReactionCountsByIdForUpdate(postId)
                 .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
     }
 

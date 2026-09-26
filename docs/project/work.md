@@ -1529,3 +1529,36 @@
   - `INSERT IGNORE`를 `INSERT ... ON DUPLICATE KEY UPDATE`의 no-op 방식으로 교체하고, 신규 1건·중복 0건의 affected-row 계약을 위해 local·docker·test·prod JDBC 설정에 `useAffectedRows=true`를 적용했습니다.
   - 저장 카운터가 이미 0인 불일치 상태에서도 추천 취소가 row를 삭제해 정합성을 회복하도록 했습니다. 이 예외 처리는 삭제 경로에만 적용하며, 추천 생성 보상 실패는 계속 예외로 처리합니다.
   - 동시 부하 테스트에만 `benchmark` 태그를 남기고 롤백·UNIQUE·CHECK·affected-row·불일치 복구 테스트는 일반 CI에서 실행되도록 분리했습니다.
+
+## Sprint 05 PR #26 협업자 리뷰 후속 작업
+
+- 상태: DONE
+- 시작일: 2026-09-26
+
+### 계획
+- 동시 DELETE 응답이 MySQL REPEATABLE READ의 이전 스냅샷이 아니라 현재 추천 카운터를 반환하도록 조회 방식을 보강합니다.
+- 기존 운영 스키마의 추천 카운터를 보정하고 CHECK 제약을 추가하는 버전 마이그레이션을 준비합니다.
+- 마이그레이션 checksum과 적용 이력을 관리하고, 실패 시 백엔드 배포를 차단합니다.
+
+### 완료
+- 추천 명령 응답 카운터를 `SELECT ... FOR UPDATE` projection으로 조회하도록 변경했습니다.
+- 두 DELETE가 경합하는 동안 두 응답과 최종 DB 카운터가 모두 0인지 확인하는 기본 CI 통합 테스트를 추가했습니다.
+- `003_migration_post_reaction_count_checks.sql`과 migration runner, 기존 스키마 기반 검증 스크립트를 추가했습니다.
+- 백엔드 배포 전에 전용 migration 환경을 읽어 version SQL을 실행하도록 연결했습니다.
+
+### 남은 작업
+- 운영 배포 전 외부 환경 준비 항목을 확인합니다.
+
+### 이슈
+- 실제 운영 적용 전 EC2의 migration 환경 파일, MySQL client, RDS IAM migration 계정과 GitHub `production-migration` Environment 필수 승인자 설정이 필요합니다.
+
+### 결정 필요
+- 없음. 구현 범위는 사용자 승인 계획을 따릅니다.
+
+### 검증
+- `./gradlew.bat spotlessCheck`를 통과했습니다.
+- 신규 동시 DELETE 응답 정합성 테스트를 단독 실행해 통과했습니다.
+- `./gradlew.bat test build -x spotlessCheck` 전체 빌드를 통과했습니다. 기존 Hibernate 종료 시 외래 키 제거 경고는 남지만 테스트와 빌드 결과는 성공입니다.
+- MySQL 8.0의 기존 운영 초기 스키마에서 `003`을 적용해 불일치 카운터 보정, 두 CHECK 이름, `SHOW CREATE TABLE`, 음수 UPDATE 오류 3819, migration history 1건 기록을 확인했습니다.
+- migration runner를 다시 실행해 checksum이 같은 적용 완료 버전을 건너뛰는 것을 확인했습니다.
+- 두 셸 스크립트의 Bash 문법 검사를 통과했습니다.

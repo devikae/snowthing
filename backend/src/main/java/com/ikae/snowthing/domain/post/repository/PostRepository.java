@@ -81,6 +81,12 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
             "SELECT p.likeCount AS likeCount, p.dislikeCount AS dislikeCount FROM Post p WHERE p.id = :postId")
     Optional<ReactionCounts> findReactionCountsById(@Param("postId") Long postId);
 
+    @Query(
+            value =
+                    "SELECT p.like_count AS likeCount, p.dislike_count AS dislikeCount FROM post p WHERE p.post_id = :postId FOR UPDATE",
+            nativeQuery = true)
+    Optional<ReactionCounts> findReactionCountsByIdForUpdate(@Param("postId") Long postId);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             value =

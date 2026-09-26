@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -69,6 +70,7 @@ class ReactionConcurrencyIntegrationTest {
     private static final String PASSWORD_PLACEHOLDER = "encoded-password";
     private static final String INSERT_FAILURE_TRIGGER = "trg_reaction_insert_failure";
     private static final String COUNTER_FAILURE_TRIGGER = "trg_reaction_counter_failure";
+    private static final String SLOW_DELETE_TRIGGER = "trg_reaction_slow_delete";
     private static final String TRIGGER_FAILURE_MESSAGE = "forced reaction test failure";
     private static final String START_BARRIER_TIMEOUT_MESSAGE = "동시성 테스트 시작 장벽 대기 시간이 초과됐습니다.";
     private static final String START_BARRIER_INTERRUPTED_MESSAGE = "동시성 테스트 시작 장벽 대기가 중단됐습니다.";
@@ -190,6 +192,44 @@ class ReactionConcurrencyIntegrationTest {
         assertThat(result.errors()).isZero();
         assertThat(result.successes()).isEqualTo(CONCURRENT_REQUESTS);
         assertThat(result.changed()).isEqualTo(EXPECTED_SINGLE_REACTION);
+        assertInvariant(EXPECTED_NO_REACTION);
+    }
+
+    @Test
+    @DisplayName("동시에 들어온 추천 취소 응답은 모두 현재 카운터 0을 반환한다")
+    void sameMember_concurrentDelete_returnsCurrentCounts() throws Exception {
+        CustomUserDetails sameUser = users.getFirst();
+        reactionService.apply(
+                post.getPublicId(), ReactionType.LIKE, sameUser, DEFAULT_CLIENT_IP, null);
+        createSlowDeleteTrigger();
+
+        ConcurrentResult result =
+                executeConcurrentCommands(
+                        List.of(
+                                () ->
+                                        reactionService.remove(
+                                                post.getPublicId(),
+                                                ReactionType.LIKE,
+                                                sameUser,
+                                                DEFAULT_CLIENT_IP,
+                                                null),
+                                () ->
+                                        reactionService.remove(
+                                                post.getPublicId(),
+                                                ReactionType.LIKE,
+                                                sameUser,
+                                                DEFAULT_CLIENT_IP,
+                                                null)));
+
+        assertThat(result.errors()).isZero();
+        assertThat(result.changed()).isEqualTo(EXPECTED_SINGLE_REACTION);
+        assertThat(result.responses())
+                .hasSize(2)
+                .allSatisfy(
+                        response -> {
+                            assertThat(response.active()).isFalse();
+                            assertThat(response.likeCount()).isZero();
+                        });
         assertInvariant(EXPECTED_NO_REACTION);
     }
 
@@ -513,6 +553,7 @@ class ReactionConcurrencyIntegrationTest {
         CountDownLatch startBarrier = new CountDownLatch(1);
         AtomicInteger errors = new AtomicInteger();
         AtomicInteger changed = new AtomicInteger();
+        List<ReactionResponse> responses = Collections.synchronizedList(new ArrayList<>());
         List<Future<?>> futures = new ArrayList<>();
 
         for (ReactionCommand command : commands) {
@@ -523,6 +564,7 @@ class ReactionConcurrencyIntegrationTest {
                                 await(startBarrier);
                                 try {
                                     ReactionResponse response = command.execute();
+                                    responses.add(response);
                                     if (response.changed()) {
                                         changed.incrementAndGet();
                                     }
@@ -546,7 +588,11 @@ class ReactionConcurrencyIntegrationTest {
         long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
         ConcurrentResult result =
                 new ConcurrentResult(
-                        changed.get(), commands.size() - errors.get(), errors.get(), elapsedMillis);
+                        changed.get(),
+                        commands.size() - errors.get(),
+                        errors.get(),
+                        elapsedMillis,
+                        responses);
         log.info(
                 "추천 동시성 검증 - requests: {}, successes: {}, errors: {}, changed: {}, elapsedMs: {}",
                 commands.size(),
@@ -591,9 +637,17 @@ class ReactionConcurrencyIntegrationTest {
                         + "'; END");
     }
 
+    private void createSlowDeleteTrigger() {
+        jdbcTemplate.execute(
+                "CREATE TRIGGER "
+                        + SLOW_DELETE_TRIGGER
+                        + " BEFORE DELETE ON post_reaction FOR EACH ROW DO SLEEP(1)");
+    }
+
     private void dropFailureTriggers() {
         jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + INSERT_FAILURE_TRIGGER);
         jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + COUNTER_FAILURE_TRIGGER);
+        jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + SLOW_DELETE_TRIGGER);
     }
 
     private void await(CountDownLatch barrier) {
@@ -617,5 +671,14 @@ class ReactionConcurrencyIntegrationTest {
         ReactionResponse execute(CustomUserDetails user);
     }
 
-    private record ConcurrentResult(int changed, int successes, int errors, long elapsedMillis) {}
+    private record ConcurrentResult(
+            int changed,
+            int successes,
+            int errors,
+            long elapsedMillis,
+            List<ReactionResponse> responses) {
+        private ConcurrentResult {
+            responses = List.copyOf(responses);
+        }
+    }
 }
