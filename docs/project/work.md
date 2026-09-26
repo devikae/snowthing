@@ -1545,6 +1545,7 @@
 - 두 DELETE가 경합하는 동안 두 응답과 최종 DB 카운터가 모두 0인지 확인하는 기본 CI 통합 테스트를 추가했습니다.
 - `003_migration_post_reaction_count_checks.sql`과 migration runner, 기존 스키마 기반 검증 스크립트를 추가했습니다.
 - 백엔드 배포 전에 전용 migration 환경을 읽어 version SQL을 실행하도록 연결했습니다.
+- 실제 EC2의 기존 `DB_*` 환경변수 계약도 runner가 직접 지원하도록 호환 계층을 추가하고, DDL 전 `SELECT 1` 연결 검증을 넣었습니다.
 
 ### 남은 작업
 - 운영 배포 전 외부 환경 준비 항목을 확인합니다.
@@ -1562,3 +1563,4 @@
 - MySQL 8.0의 기존 운영 초기 스키마에서 `003`을 적용해 불일치 카운터 보정, 두 CHECK 이름, `SHOW CREATE TABLE`, 음수 UPDATE 오류 3819, migration history 1건 기록을 확인했습니다.
 - migration runner를 다시 실행해 checksum이 같은 적용 완료 버전을 건너뛰는 것을 확인했습니다.
 - 두 셸 스크립트의 Bash 문법 검사를 통과했습니다.
+- EC2 터미널에서 IAM 토큰을 생성하고 `snowthing_migrator`로 운영 RDS `SELECT 1` 연결에 성공했습니다. 이 확인 과정에서는 DDL이나 데이터 변경을 실행하지 않았습니다.
