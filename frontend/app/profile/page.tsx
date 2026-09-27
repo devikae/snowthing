@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Footer, TopNav } from "../components/SiteChrome";
@@ -15,75 +16,60 @@ const demoPhotos = [
 export default function ProfilePage() {
   const [photoIndex, setPhotoIndex] = useState(0);
 
-  const handleNextPhoto = () => {
-    setPhotoIndex((current) => (current + 1) % demoPhotos.length);
-  };
-
-  const handlePrevPhoto = () => {
-    setPhotoIndex((current) => (current - 1 + demoPhotos.length) % demoPhotos.length);
-  };
+  const handleNextPhoto = () => setPhotoIndex((current) => (current + 1) % demoPhotos.length);
+  const handlePrevPhoto = () => setPhotoIndex((current) => (current - 1 + demoPhotos.length) % demoPhotos.length);
 
   return (
-    <div className="min-h-screen bg-[var(--snow-background)]">
+    <div className="community-page">
       <TopNav active="profile" />
-      <main className="snow-container px-5 py-8 lg:px-8 lg:py-10">
-        <section className="mx-auto max-w-5xl">
-          <div className="mb-8 border-b-2 border-black pb-5">
-            <span className="snow-label">Rider Identity</span>
-            <h1 className="mt-2 text-4xl font-extrabold italic text-black">RIDER CARD & GALLERY</h1>
-            <p className="mt-3 text-[var(--snow-muted)]">라이더 명함과 5장 갤러리 프로필 예시입니다.</p>
-          </div>
+      <main className="community-container py-4 pb-12">
+        <section className="mx-auto max-w-6xl">
+          <header className="mb-4">
+            <h1 className="m-0 text-xl font-extrabold tracking-[-0.03em] text-slate-900">내 프로필</h1>
+            <p className="mt-1.5 text-sm text-slate-500">라이딩 정보와 사진을 한곳에서 관리할 수 있습니다.</p>
+          </header>
 
-          <div className="snow-card grid gap-8 bg-white p-6 md:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] md:p-8">
+          <div className="grid gap-6 rounded-xl border border-slate-200 bg-white p-5 shadow-[0_4px_16px_rgba(15,41,66,0.055)] md:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] md:p-6">
             <div>
-              <div className="relative aspect-[4/3] overflow-hidden rounded border border-[var(--snow-border)] bg-black">
-                <img src={demoPhotos[photoIndex]} alt={`라이더 갤러리 ${photoIndex + 1}`} className="h-full w-full object-cover grayscale" />
-                <div className="absolute left-3 top-3 bg-black px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-white">
-                  {photoIndex + 1} / {demoPhotos.length}
-                </div>
-                <button onClick={handlePrevPhoto} className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded bg-white text-black">
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100">
+                <Image src={demoPhotos[photoIndex]} alt={`라이더 갤러리 ${photoIndex + 1}`} fill sizes="(max-width: 768px) 100vw, 55vw" className="object-cover" unoptimized />
+                <span className="absolute left-3 top-3 rounded-md bg-slate-950/80 px-2.5 py-1 text-xs font-bold text-white">{photoIndex + 1} / {demoPhotos.length}</span>
+                <button type="button" onClick={handlePrevPhoto} aria-label="이전 사진" className="absolute left-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg bg-white/95 text-slate-700 shadow-sm hover:text-sky-700">
+                  <span className="material-symbols-outlined text-[19px]">chevron_left</span>
                 </button>
-                <button onClick={handleNextPhoto} className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded bg-white text-black">
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                <button type="button" onClick={handleNextPhoto} aria-label="다음 사진" className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg bg-white/95 text-slate-700 shadow-sm hover:text-sky-700">
+                  <span className="material-symbols-outlined text-[19px]">chevron_right</span>
                 </button>
               </div>
+
               <div className="mt-3 grid grid-cols-5 gap-2">
                 {demoPhotos.map((photo, index) => (
-                  <button key={photo} onClick={() => setPhotoIndex(index)} className={`aspect-square overflow-hidden rounded border-2 ${photoIndex === index ? "border-black" : "border-transparent opacity-60"}`}>
-                    <img src={photo} alt="" className="h-full w-full object-cover grayscale" />
+                  <button key={photo} type="button" onClick={() => setPhotoIndex(index)} aria-label={`${index + 1}번 사진 보기`} className={`relative aspect-square overflow-hidden rounded-lg border-2 ${photoIndex === index ? "border-sky-600" : "border-transparent opacity-65 hover:opacity-100"}`}>
+                    <Image src={photo} alt="" fill sizes="120px" className="object-cover" unoptimized />
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="flex flex-col justify-between gap-8">
+            <div className="flex flex-col justify-between gap-8 py-1">
               <div>
-                <div className="mb-5 flex items-center justify-between gap-3">
-                  <span className="snow-chip snow-chip-green">Snowboarder Card</span>
-                  <span className="snow-label">Sample Profile</span>
-                </div>
-                <h2 className="text-4xl font-extrabold text-black">카빙하는 보더</h2>
-                <p className="mt-4 text-lg leading-8 text-[var(--snow-ink-soft)]">
-                  휘닉스파크와 용평을 주로 다니며 주말마다 카빙 연습을 하는 라이더입니다.
-                </p>
+                <h2 className="text-2xl font-extrabold tracking-[-0.03em] text-slate-900">카빙하는 보더</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">휘팍과 용평을 주로 다니며 주말마다 카빙 연습을 하는 라이더입니다.</p>
 
-                <div className="mt-8 grid grid-cols-2 gap-4 border-t border-[var(--snow-border)] pt-6">
-                  <Spec label="Base" value="휘닉스파크, 용평" />
-                  <Spec label="Region" value="서울 송파구" />
-                  <Spec label="Style" value="카빙, 트릭" />
-                  <Spec label="Level" value="중급" />
-                </div>
+                <dl className="mt-6 grid grid-cols-2 gap-3">
+                  <Spec label="베이스 리조트" value="휘팍, 용평" />
+                  <Spec label="활동 지역" value="서울 송파구" />
+                  <Spec label="라이딩 스타일" value="카빙, 트릭" />
+                  <Spec label="레벨" value="중급" />
+                </dl>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <button className="snow-btn-primary flex-1">
-                  <span className="material-symbols-outlined text-[17px]">mail</span>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button type="button" className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-[#0f2942] px-4 text-sm font-extrabold text-white hover:bg-sky-700">
+                  <span className="material-symbols-outlined text-[18px]">mail</span>
                   쪽지 보내기
                 </button>
-                <Link href="/" className="snow-btn-secondary">
-                  프로필 수정
-                </Link>
+                <Link href="/profile" className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:border-sky-300 hover:bg-sky-50">프로필 수정</Link>
               </div>
             </div>
           </div>
@@ -96,9 +82,9 @@ export default function ProfilePage() {
 
 function Spec({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <span className="snow-label block">{label}</span>
-      <span className="mt-1 block font-bold text-black">{value}</span>
+    <div className="rounded-lg bg-slate-50 p-3">
+      <dt className="text-xs font-bold text-slate-400">{label}</dt>
+      <dd className="mt-1.5 text-sm font-extrabold text-slate-700">{value}</dd>
     </div>
   );
 }

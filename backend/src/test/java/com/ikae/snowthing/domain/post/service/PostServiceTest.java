@@ -539,7 +539,8 @@ class PostServiceTest {
 
             // Offset 목록 조회 검증
             PostSearchRequest offsetReq =
-                    new PostSearchRequest("FREE", null, null, null, SortType.LATEST, 1, null, 10);
+                    new PostSearchRequest(
+                            "FREE", null, null, null, PostViewType.DEFAULT, 1, null, 10);
             var offsetResult = postService.searchPostsByOffset(offsetReq);
             List<String> offsetTitles =
                     offsetResult.content().stream()
@@ -552,7 +553,7 @@ class PostServiceTest {
             // Cursor 목록 조회 검증
             PostSearchRequest cursorReq =
                     new PostSearchRequest(
-                            "FREE", null, null, null, SortType.LATEST, null, null, 10);
+                            "FREE", null, null, null, PostViewType.DEFAULT, null, null, 10);
             var cursorResult = postService.searchPostsByCursor(cursorReq);
             List<String> cursorTitles =
                     cursorResult.content().stream()

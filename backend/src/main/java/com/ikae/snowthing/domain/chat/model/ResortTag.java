@@ -6,11 +6,14 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum ResortTag {
-    PHOENIX("휘닉스", "휘팍"),
+    PHOENIX("휘팍", "휘팍"),
     VIVALDI("비발디", "비발"),
     HIGH1("하이원", "하이"),
     YONGPYONG("용평", "용평"),
     WELLI_HILLI("웰팍", "웰팍"),
+    MUJU("무주", "무주"),
+    JISAN("지산", "지산"),
+    KONJIAM("곤지암", "곤지"),
     ETC("기타", "기타");
 
     private final String koreanName;

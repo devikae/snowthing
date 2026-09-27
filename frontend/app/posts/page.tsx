@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav, type ActiveNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
@@ -25,9 +26,6 @@ interface PostItem {
 
 interface BoardConfig {
   name: string;
-  icon: string;
-  badge?: string;
-  writeLabel: string;
   navKey: ActiveNav;
   notices: { label: string; title: string; date: string; views: string }[];
   topics: string[];
@@ -37,7 +35,7 @@ const categories = [
   { code: "", name: "전체글" },
   { code: "FREE", name: "자유게시판" },
   { code: "ANONYMOUS", name: "익명게시판" },
-  { code: "QNA", name: "장비·테크닉" },
+  { code: "QNA", name: "장비 후기" },
   { code: "FOOD", name: "리조트 맛집" },
 ];
 
@@ -47,14 +45,14 @@ const defaultNotices = [
 ];
 
 const boardConfigs: Record<string, BoardConfig> = {
-  "": { name: "전체 게시판", icon: "view_list", writeLabel: "글쓰기", navKey: "posts", notices: defaultNotices, topics: ["휘팍 챔피언 설질", "야간 고글 추천", "시즌권 양도", "초보 데크 선택", "강원권 교통"] },
-  FREE: { name: "자유게시판", icon: "forum", writeLabel: "자유글 쓰기", navKey: "free", notices: defaultNotices, topics: ["첫 보딩 후기", "시즌방 생활", "주말 원정", "라이딩 영상", "보드복 추천"] },
-  ANONYMOUS: { name: "익명게시판", icon: "theater_comedy", badge: "REAL ANONYMOUS", writeLabel: "익명 글쓰기", navKey: "anonymous", notices: [
+  "": { name: "전체 게시판", navKey: "posts", notices: defaultNotices, topics: ["휘팍 챔피언 설질", "야간 고글 추천", "시즌권 양도", "초보 데크 선택", "강원권 교통"] },
+  FREE: { name: "자유게시판", navKey: "free", notices: defaultNotices, topics: ["첫 보딩 후기", "시즌방 생활", "주말 원정", "라이딩 영상", "보드복 추천"] },
+  ANONYMOUS: { name: "익명게시판", navKey: "anonymous", notices: [
     { label: "공지", title: "익명게시판 내 특정인 저격, 허위 사실 유포 및 연락처 공유 시 제재 안내", date: "24.12.15", views: "1.2만" },
     { label: "필독", title: "익명성은 타인을 공격할 권리가 아닙니다. 익명게시판 이용 가이드", date: "24.12.20", views: "8,490" },
   ], topics: ["셔틀버스 매너", "휘팍 실시간 파우더", "시즌방 비용 정산", "데크 구매 고민", "복귀길 정체"] },
-  QNA: { name: "장비·테크닉", icon: "snowboarding", writeLabel: "질문 쓰기", navKey: "gear", notices: defaultNotices, topics: ["부츠 열성형", "바인딩 각도", "엣지 튜닝", "입문 데크", "카빙 자세"] },
-  FOOD: { name: "리조트 맛집", icon: "restaurant", writeLabel: "맛집 공유", navKey: "posts", notices: defaultNotices, topics: ["용평 아침식사", "휘팍 국밥", "하이원 야식", "비발디 카페", "웰리힐리 맛집"] },
+  QNA: { name: "장비 후기", navKey: "gear", notices: defaultNotices, topics: ["부츠 열성형", "바인딩 각도", "엣지 튜닝", "입문 데크", "카빙 자세"] },
+  FOOD: { name: "리조트 맛집", navKey: "food", notices: defaultNotices, topics: ["용평 아침식사", "휘팍 국밥", "하이원 야식", "비발디 카페", "웰리힐리 맛집"] },
 };
 
 const carpools = [
@@ -67,6 +65,7 @@ function PostListContent() {
   const searchParams = useSearchParams();
   const categoryCode = searchParams.get("category")?.toUpperCase() ?? "";
   const currentCategory = boardConfigs[categoryCode] ? categoryCode : "";
+  const currentView = searchParams.get("view")?.toLowerCase() === "best" ? "best" : "";
   const page = Math.max(0, Number(searchParams.get("page") ?? "1") - 1 || 0);
   const keywordFromUrl = searchParams.get("keyword") ?? "";
   const config = boardConfigs[currentCategory];
@@ -83,6 +82,7 @@ function PostListContent() {
     try {
       const params = new URLSearchParams({ page: String(page + 1), size: "10" });
       if (currentCategory) params.set("categoryCode", currentCategory);
+      if (currentView === "best") params.set("viewType", "BEST");
       if (keywordFromUrl.trim()) params.set("keyword", keywordFromUrl.trim());
       const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
       if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
@@ -96,7 +96,7 @@ function PostListContent() {
     } finally {
       setLoading(false);
     }
-  }, [currentCategory, keywordFromUrl, page]);
+  }, [currentCategory, currentView, keywordFromUrl, page]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void fetchPosts(), 0);
@@ -108,12 +108,14 @@ function PostListContent() {
     return Array.from({ length: Math.min(5, totalPages) }, (_, index) => start + index);
   }, [page, totalPages]);
 
-  const moveTo = (next: { category?: string; page?: number; keyword?: string }) => {
+  const moveTo = (next: { category?: string; page?: number; keyword?: string; view?: string }) => {
     const params = new URLSearchParams();
     const category = next.category ?? currentCategory;
     const nextPage = next.page ?? page;
     const keyword = next.keyword ?? keywordFromUrl;
+    const view = next.view ?? currentView;
     if (category) params.set("category", category);
+    if (view) params.set("view", view);
     if (nextPage > 0) params.set("page", String(nextPage + 1));
     if (keyword.trim()) params.set("keyword", keyword.trim());
     router.push(`/posts${params.size ? `?${params}` : ""}`);
@@ -136,21 +138,12 @@ function PostListContent() {
 
   return (
     <div className="community-page">
-      <TopNav active={config.navKey} />
+      <TopNav active={currentView === "best" ? "best" : config.navKey} />
       <main className="community-container board-page">
-        <section className="board-identity">
-          <div className="board-identity-copy">
-            <span className="board-icon material-symbols-outlined">{config.icon}</span>
-            <div className="board-title-line"><h1>{config.name}</h1>{config.badge && <span className="anonymous-badge"><i />{config.badge}</span>}</div>
-          </div>
-          <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`} className="board-write-button"><span className="material-symbols-outlined">edit</span>{config.writeLabel}</Link>
-        </section>
-
         <div className="board-layout">
           <section className="board-primary">
             <nav className="board-filter-panel" aria-label="게시판 선택">
-              <div className="board-category-tabs">{categories.map((category) => <button key={category.code} type="button" className={currentCategory === category.code ? "active" : ""} onClick={() => moveTo({ category: category.code, page: 0, keyword: "" })}>{category.name}</button>)}</div>
-              <div className="board-sort"><button className="active">최신순</button><i /><button disabled title="정렬 API 연결 후 사용할 수 있습니다.">추천순</button><i /><button disabled title="정렬 API 연결 후 사용할 수 있습니다.">댓글순</button><i /><button disabled title="정렬 API 연결 후 사용할 수 있습니다.">조회순</button></div>
+              <div className="board-category-tabs">{categories.map((category) => <button key={category.code} type="button" className={currentCategory === category.code && !currentView ? "active" : ""} onClick={() => moveTo({ category: category.code, page: 0, keyword: "", view: "" })}>{category.name}</button>)}</div>
             </nav>
 
             <section className="board-notices" aria-label="게시판 공지">
@@ -165,16 +158,18 @@ function PostListContent() {
                   const unavailable = post.isDeleted || post.status === "DELETED" || post.status === "BLOCKED";
                   const title = post.status === "BLOCKED" ? "[차단된 게시글입니다]" : post.isDeleted || post.status === "DELETED" ? "[삭제된 게시글입니다]" : post.title;
                   return <Link key={post.publicId} href={`/posts/${post.publicId}`} onClick={(event) => handlePostClick(event, post)} className={`board-post-row ${unavailable ? "unavailable" : ""}`}>
-                    <span className={`board-vote ${post.likeCount >= 50 ? "hot" : ""}`}><span className="material-symbols-outlined">arrow_drop_up</span><b>{post.likeCount}</b></span>
-                    <div className="board-post-copy"><div className="board-post-title"><span>{post.categoryName}</span>{post.likeCount >= 50 && <em>HOT</em>}<strong>{title}</strong>{post.commentCount > 0 && <b>[{post.commentCount}]</b>}{post.hasImage && <span className="material-symbols-outlined image-mark">image</span>}</div><p><b>{post.writerNickname}</b><span>•</span><time>{new Date(post.createdAt).toLocaleDateString("ko-KR")}</time><span>•</span><span>조회 {post.viewCount.toLocaleString()}</span></p></div>
-                    {post.thumbnailImageUrl && <img src={post.thumbnailImageUrl} alt="" />}
+                    <div className="board-post-copy"><div className="board-post-title">{!currentCategory && <span>{post.categoryCode === "QNA" ? "장비 후기" : post.categoryName}</span>}{post.likeCount >= 50 && <em>HOT</em>}<strong>{title}</strong>{post.commentCount > 0 && <b>[{post.commentCount}]</b>}{post.hasImage && <span className="material-symbols-outlined image-mark">image</span>}</div><p><b>{post.writerNickname}</b><span>•</span><time>{new Date(post.createdAt).toLocaleDateString("ko-KR")}</time><span>•</span><span>조회 {post.viewCount.toLocaleString()}</span></p></div>
+                    {post.thumbnailImageUrl && <Image src={post.thumbnailImageUrl} alt="" width={58} height={52} unoptimized />}
                   </Link>;
                 })}
             </section>
 
             <div className="board-navigation">
               <nav className="board-pagination" aria-label="페이지 이동"><button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })}><span className="material-symbols-outlined">chevron_left</span></button>{visiblePages.map((pageNumber) => <button key={pageNumber} className={page === pageNumber ? "current" : ""} onClick={() => moveTo({ page: pageNumber })}>{pageNumber + 1}</button>)}{totalPages > 6 && <><span>…</span><button onClick={() => moveTo({ page: totalPages - 1 })}>{totalPages}</button></>}<button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })}><span className="material-symbols-outlined">chevron_right</span></button></nav>
-              <form className="board-search" onSubmit={handleSearch}><select aria-label="검색 범위"><option>제목+내용</option></select><input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder={`${config.name} 내 검색`} /><button>검색</button></form>
+              <div className="board-navigation-actions">
+                <form className="board-search" onSubmit={handleSearch}><select aria-label="검색 범위"><option>제목+내용</option></select><input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder={`${config.name} 내 검색`} /><button>검색</button></form>
+                <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`} className="board-write-button"><span className="material-symbols-outlined">edit</span>글쓰기</Link>
+              </div>
             </div>
           </section>
 

@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
 import { API_ENDPOINTS } from "./lib/api";
+import { RESORT_MAP, RESORT_OPTIONS } from "./lib/resortTags";
+import { formatKoreanCalendarDate, RESORT_REPORT_PREVIEWS } from "./lib/resortReports";
 
 const HERO_IMAGES = [
   "https://lh3.googleusercontent.com/aida/AEtjO1UbsQy3vUnB80P1wDDnbGosvZS9vqvYFfKYsbt-ATgRpqmc2zAPzC52mv7kE-dFt3s-FEwC34VCTJRYlYi_Rv20X4gbV1Ot4EXHI4_0yNB7xgvC-4jj_0S5zRoyhDgx6tmmOf3WlnzXxe1_njPrVcsEQvpsjpP-uLoumLkQrGk_Sl87eNShpSVr4YpqH1lzrGDTFYJBa1ek0ZngAq1VNj9Hp9K8uVOjTkHDEFp6cfh7IlqT2pMxpgODiMr9",
@@ -20,21 +23,38 @@ const resorts = [
   { name: "지산 포레스트", status: "야간운영", temp: "-1.5°C", open: "6 / 7면", detail: "", snow: "인공설 압설 (슬러시 약간)", crowd: "혼잡 (대기 10분)", slopes: "1/2/3번 슬로프", tone: "busy" },
 ];
 
-const posts = [
-  { vote: 88, category: "휘팍", title: "오늘 챔피언 실시간 설질 뜸 (감자 없음, 찹쌀떡 파우더)", comments: 42, author: "파우더헌터_민우", time: "18분 전", views: "1,840", hot: true, image: HERO_IMAGES[1] },
-  { vote: 54, category: "장비/리뷰", title: "2425 살로몬 하이랜드 바인딩 세팅값 +21/-6 후기", comments: 31, author: "카빙마스터99", time: "42분 전", views: "1,209", image: HERO_IMAGES[0] },
-  { vote: 37, category: "팁/강좌", title: "야간 하이원 아폴로 렌즈 클리어 vs 옐로우 실착 비교", comments: 19, author: "설원산책러", time: "1시간 전", views: "892", image: HERO_IMAGES[1] },
-  { vote: 112, category: "안전주의", title: "웰팍 C3 슬로프 모글밭 됐네요 안전 라이딩 하세요", comments: 65, author: "둔내패트롤조언자", time: "2시간 전", views: "3,410", hot: true },
-  { vote: 18, category: "묻고답하기", title: "오가사카 FC-S 160 vs 에이펙스 티탄날 고민입니다", comments: 24, author: "해머초보7년차", time: "3시간 전", views: "740" },
-  { vote: 22, category: "자유게시판", title: "초보자 엉덩이 보호대 플렉시 지폼 vs 파워텍터 추천", comments: 16, author: "안전라이더Kim", time: "3시간 전", views: "980" },
-  { vote: 41, category: "자유게시판", title: "주말 강원도권 고속도로 제설 상황 및 미시령 터널 소통 원활합니다", comments: 13, author: "용평지박령", time: "4시간 전", views: "1,120" },
+interface HomePost {
+  publicId: string;
+  categoryName: string;
+  categoryCode: string;
+  title: string;
+  writerNickname: string;
+  thumbnailImageUrl: string | null;
+  hasImage: boolean;
+  viewCount: number;
+  commentCount: number;
+  createdAt: string;
+}
+
+type HomeFeedKey = "all" | "popular" | "free" | "anonymous" | "gear";
+
+interface HomeFeedTab {
+  key: HomeFeedKey;
+  label: string;
+  moreHref: string;
+  query: Record<string, string>;
+}
+
+const HOME_FEED_TABS: HomeFeedTab[] = [
+  { key: "all", label: "전체글", moreHref: "/posts", query: {} },
+  { key: "popular", label: "실시간 베스트", moreHref: "/posts?view=best", query: { viewType: "BEST" } },
+  { key: "free", label: "자유게시판", moreHref: "/posts?category=FREE", query: { categoryCode: "FREE" } },
+  { key: "anonymous", label: "익명게시판", moreHref: "/posts?category=ANONYMOUS", query: { categoryCode: "ANONYMOUS" } },
+  { key: "gear", label: "장비 후기", moreHref: "/posts?category=QNA", query: { categoryCode: "QNA" } },
 ];
 
-const anonymousPosts = [
-  { author: "익명보더", vote: 45, title: "솔직히 주말에 셔틀버스 안에서 냄새나는 장비 방치 좀 하지 맙시다", body: "젖은 부츠랑 땀 찬 장갑 통로 바닥에 굴러다니는데 매너 좀 지키세요." },
-  { author: "시즌방총무", vote: 92, title: "시즌방 3년 차가 털어놓는 시즌방 빌런 유형 TOP 5", body: "1위: 장보기 비용 정산 담당 가족 셀프 리포트부터 시작합니다." },
-  { author: "익명라이더", vote: 28, title: "곤돌라 같이 타고 올라가다가 데크 그래픽으로 말 튼 번호 땄다", body: "서로 같은 라인 타는 거 보고 정상 휴게소에서 커피 한잔하자고 함." },
-];
+const emptyFeeds: Record<HomeFeedKey, HomePost[]> = { all: [], popular: [], free: [], anonymous: [], gear: [] };
+const emptyFeedErrors: Record<HomeFeedKey, boolean> = { all: false, popular: false, free: false, anonymous: false, gear: false };
 
 const carpools = [
   { from: "서울 사당", to: "하이원", date: "12/28(토) 05:00 출발", price: "기름/톨비 N빵", seat: "2석 남음", note: "루프박스 데크 4장 적재 가능 · 비흡연" },
@@ -49,7 +69,15 @@ const gearItems = [
 export default function HomePage() {
   const [hero, setHero] = useState(0);
   const [profile, setProfile] = useState<MemberProfile | null>(null);
+  const [activeFeed, setActiveFeed] = useState<HomeFeedKey>("all");
+  const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(emptyFeeds);
+  const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
+  const [feedsLoading, setFeedsLoading] = useState(true);
+  const [snowReportResort, setSnowReportResort] = useState("PHOENIX");
+  const [snowReportContent, setSnowReportContent] = useState("");
+  const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const resortRef = useRef<HTMLDivElement>(null);
+  const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
 
   useEffect(() => {
     void (async () => {
@@ -62,12 +90,63 @@ export default function HomePage() {
     })();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const results = await Promise.allSettled(
+        HOME_FEED_TABS.map(async (tab) => {
+          const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+          const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
+          if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
+          const data = await response.json();
+          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 10) : [] };
+        }),
+      );
+
+      if (cancelled) return;
+
+      const nextFeeds = { ...emptyFeeds };
+      const nextErrors = { ...emptyFeedErrors };
+      results.forEach((result, index) => {
+        const key = HOME_FEED_TABS[index].key;
+        if (result.status === "fulfilled") nextFeeds[key] = result.value.posts;
+        else nextErrors[key] = true;
+      });
+      setFeeds(nextFeeds);
+      setFeedErrors(nextErrors);
+      setFeedsLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setKoreanToday(formatKoreanCalendarDate(new Date())), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const retryFeed = async (tab: HomeFeedTab) => {
+    setFeedErrors((current) => ({ ...current, [tab.key]: false }));
+    const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+    try {
+      const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
+      if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
+      const data = await response.json();
+      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 10) : [] }));
+    } catch {
+      setFeedErrors((current) => ({ ...current, [tab.key]: true }));
+    }
+  };
+
   return (
     <div className="community-page">
       <TopNav active="home" />
       <main className="community-container home-main">
         <section className="hero-banner" aria-label="시즌 이벤트 프로모션">
-          <img src={HERO_IMAGES[hero]} alt="파우더 슬로프를 라이딩하는 스노보더" />
+          <Image src={HERO_IMAGES[hero]} alt="파우더 슬로프를 라이딩하는 스노보더" fill sizes="(max-width: 1280px) 100vw, 1280px" priority unoptimized />
           <div className="hero-shade" />
           <div className="hero-copy">
             <div className="hero-eyebrow"><span>SEASON EVENT</span><b>24/25 얼리버드 기획전</b></div>
@@ -103,43 +182,58 @@ export default function HomePage() {
         <div className="home-content-grid">
           <section className="home-feed">
             <div className="panel post-board">
-              <div className="board-tabs"><div><button className="active">전체글</button><button>실시간 베스트</button><button>자유게시판</button><button>장비·왁싱</button><button>슬로프 갤러리</button><button>묻고답하기</button></div><select aria-label="게시글 정렬"><option>최신순</option><option>추천순</option><option>댓글순</option></select></div>
+              <nav className="board-tabs" aria-label="홈 게시판 선택">
+                <div>{HOME_FEED_TABS.map((tab) => <button key={tab.key} type="button" className={activeFeed === tab.key ? "active" : ""} onClick={() => setActiveFeed(tab.key)}>{tab.label}</button>)}</div>
+                <Link href={activeFeedConfig.moreHref} className="board-tabs-more">더보기 ›</Link>
+              </nav>
               <div className="compact-post-list">
-                {posts.map((post) => (
-                  <Link href="/posts" className={post.category === "안전주의" ? "compact-post warning" : "compact-post"} key={post.title}>
-                    <span className={post.hot ? "vote hot" : "vote"}>▲ {post.vote}</span>
-                    <div className="post-summary"><div><b className={post.category === "안전주의" ? "category danger" : "category"}>[{post.category}]</b><strong>{post.title}</strong><em>[{post.comments}]</em>{post.image && <small>사진</small>}</div><p><b>{post.author}</b><span>·</span><span>{post.time}</span><span>·</span><span>조회 {post.views}</span></p></div>
-                    {post.image && <img src={post.image} alt="" />}
-                  </Link>
-                ))}
+                {feedsLoading ? <div className="home-feed-state"><span className="material-symbols-outlined spin">progress_activity</span><strong>게시글을 불러오는 중입니다.</strong></div>
+                  : feedErrors[activeFeed] ? <div className="home-feed-state error"><span className="material-symbols-outlined">cloud_off</span><strong>게시글을 불러오지 못했습니다.</strong><button type="button" onClick={() => void retryFeed(activeFeedConfig)}>다시 시도</button></div>
+                  : feeds[activeFeed].length === 0 ? <div className="home-feed-state"><span className="material-symbols-outlined">edit_note</span><strong>등록된 게시글이 없습니다.</strong></div>
+                  : feeds[activeFeed].map((post) => (
+                    <Link href={`/posts/${post.publicId}`} className="compact-post" key={post.publicId}>
+                      <div className="post-summary"><div>{(activeFeed === "all" || activeFeed === "popular") && <b className="category">[{post.categoryCode === "QNA" ? "장비 후기" : post.categoryName}]</b>}<strong>{post.title}</strong>{post.commentCount > 0 && <em>[{post.commentCount}]</em>}{post.hasImage && <small>사진</small>}</div><p><b>{post.writerNickname}</b><span>·</span><time>{new Date(post.createdAt).toLocaleDateString("ko-KR")}</time><span>·</span><span>조회 {post.viewCount.toLocaleString()}</span></p></div>
+                      {post.thumbnailImageUrl && <Image src={post.thumbnailImageUrl} alt="" width={64} height={44} unoptimized />}
+                    </Link>
+                  ))}
               </div>
-              <div className="board-footer"><div className="pagination"><button className="current">1</button><button>2</button><button>3</button><button>4</button><button>5</button><span>…</span><button>다음 ›</button></div><form onSubmit={(event) => event.preventDefault()}><input placeholder="게시판 내 검색"/><button>검색</button></form></div>
             </div>
 
             <section className="panel technique-panel">
               <div className="mini-heading"><h2><i />장비 관리 &amp; 왁싱 핫클립</h2><Link href="/posts?category=QNA">더보기 ›</Link></div>
               <div className="technique-grid">
-                <Link href="/posts"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbp7QUQV_wwAbh0m-xJVicOCADfBGbw42xSkNMgZvcsBs5Unb35kdxi5fefIb-tXBvBMUl6rncUTNmIYxNg-81L6a_EQpSVrRR6cgS18D6sKJG7DetKGDCG14GXTKugzgnj3yCuIK9wfW0wmA5zCB8tsnMmeC0WJn1q0-dMH1EVa344m4jnhuPEXknzEtKdfuVmETtjLCc3EWh3PhfyXKLnQavY-ytAeHb0I4x8BzOJPAWAw9oAD7nKw" alt="스노보드 정비"/><div><strong>영하 10도 이하 극저온 핫왁싱 블렌딩 및 스크래핑 정석</strong><span>추천 76 · 댓글 28</span></div></Link>
-                <Link href="/posts"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGv-BInEpAeyLpvevZNGu1lq_lcRmTxFguVxcRASFgYmnv_oLNeZCjBRGEgYb22037ZT8d2lXjKhMK1Mlr8d8rcgG_5kCbDXQpG2uJNWgyoVor5Aww4XTiXgu4XJjEYIIq-kNaHNAVhxf6frb8EOxL07nX8Jn5hD6QG6m3o2lPtHHottuKmDARxbHW9jvda6R4sMRQDZHQ8Y0PgkA_5ffFwJowOx8X_ahk0fxsVj61cfGO3PNwZjyTqg" alt="스노보드 엣지"/><div><strong>사이드 88도 베이스 1도 엣지 홈 다이아몬드 스톤 피니싱 후기</strong><span>추천 49 · 댓글 15</span></div></Link>
+                <Link href="/posts"><Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbp7QUQV_wwAbh0m-xJVicOCADfBGbw42xSkNMgZvcsBs5Unb35kdxi5fefIb-tXBvBMUl6rncUTNmIYxNg-81L6a_EQpSVrRR6cgS18D6sKJG7DetKGDCG14GXTKugzgnj3yCuIK9wfW0wmA5zCB8tsnMmeC0WJn1q0-dMH1EVa344m4jnhuPEXknzEtKdfuVmETtjLCc3EWh3PhfyXKLnQavY-ytAeHb0I4x8BzOJPAWAw9oAD7nKw" alt="스노보드 정비" width={58} height={58} unoptimized/><div><strong>영하 10도 이하 극저온 핫왁싱 블렌딩 및 스크래핑 정석</strong><span>추천 76 · 댓글 28</span></div></Link>
+                <Link href="/posts"><Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGv-BInEpAeyLpvevZNGu1lq_lcRmTxFguVxcRASFgYmnv_oLNeZCjBRGEgYb22037ZT8d2lXjKhMK1Mlr8d8rcgG_5kCbDXQpG2uJNWgyoVor5Aww4XTiXgu4XJjEYIIq-kNaHNAVhxf6frb8EOxL07nX8Jn5hD6QG6m3o2lPtHHottuKmDARxbHW9jvda6R4sMRQDZHQ8Y0PgkA_5ffFwJowOx8X_ahk0fxsVj61cfGO3PNwZjyTqg" alt="스노보드 엣지" width={58} height={58} unoptimized/><div><strong>사이드 88도 베이스 1도 엣지 홈 다이아몬드 스톤 피니싱 후기</strong><span>추천 49 · 댓글 15</span></div></Link>
               </div>
             </section>
           </section>
 
           <aside className="home-sidebar">
-            <section className="panel anonymous-widget">
-              <div className="mini-heading"><h2><span>HOT</span>익명게시판</h2><Link href="/posts?category=ANONYMOUS">전체보기 ›</Link></div>
-              <div>{anonymousPosts.map((post) => <Link href="/posts?category=ANONYMOUS" key={post.title}><p><b>{post.author}</b><em>추천 {post.vote}</em></p><strong>{post.title}</strong><span>{post.body}</span></Link>)}</div>
-              <form onSubmit={(event) => event.preventDefault()}><input placeholder="익명으로 글 남기기..."/><button>등록</button></form>
+            <section className="panel snow-report-widget">
+              <div className="mini-heading"><h2>❄️ 오늘의 설질 <span>| {koreanToday}</span></h2><Link href="/resort-reports">더보기 ›</Link></div>
+              <form className="snow-report-compose" onSubmit={(event) => event.preventDefault()}>
+                <select value={snowReportResort} onChange={(event) => setSnowReportResort(event.target.value)} aria-label="리조트 선택">
+                  {RESORT_OPTIONS.filter((option) => option.value).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder="오늘 설질을 한 줄로 알려주세요" aria-label="설질 제보 내용" />
+                <button type="submit" disabled={!snowReportContent.trim()}>등록</button>
+              </form>
+              <div className="snow-report-list">
+                {RESORT_REPORT_PREVIEWS.map((report) => {
+                  const resort = RESORT_MAP[report.resortCode];
+                  return <article key={report.id}><span className={`snow-report-tag ${resort.markerClass}`}>{resort.koreanName}</span><strong>{report.content}</strong><time>{report.time}</time></article>;
+                })}
+              </div>
             </section>
 
             <section className="panel carpool-widget" id="carpool">
-              <div className="mini-heading"><h2><span className="blue">실시간</span>급구! 카풀 &amp; 동행</h2><Link href="#carpool">+ 등록</Link></div>
+              <div className="mini-heading"><h2>급구! 카풀 &amp; 동행</h2><Link href="#carpool">+ 등록</Link></div>
               <div>{carpools.map((item) => <article key={item.from}><header><strong>{item.from} <i>→</i> <em>{item.to}</em></strong><span>{item.seat}</span></header><p><b>{item.date}</b><strong>{item.price}</strong></p><footer><span>{item.note}</span><a href="#carpool">신청 ›</a></footer></article>)}</div>
             </section>
 
             <section className="panel market-widget" id="market">
-              <div className="mini-heading"><h2>중고장터 실시간 매물</h2><Link href="#market">장터 바로가기 ›</Link></div>
-              <div className="market-grid">{gearItems.map((item) => <a href="#market" key={item.title}><div><img src={item.image} alt={item.title}/><span>판매중</span></div><strong>{item.title}</strong><b>{item.price}</b><small>{item.note}</small></a>)}</div>
+              <div className="mini-heading"><h2>중고장터</h2><Link href="#market">장터 바로가기 ›</Link></div>
+              <div className="market-grid">{gearItems.map((item) => <a href="#market" key={item.title}><div><Image src={item.image} alt={item.title} width={240} height={178} unoptimized/><span>판매중</span></div><strong>{item.title}</strong><b>{item.price}</b><small>{item.note}</small></a>)}</div>
             </section>
           </aside>
         </div>

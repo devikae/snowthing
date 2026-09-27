@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
@@ -86,16 +87,6 @@ function PostCreateForm() {
   }, [searchParams, router]);
 
   const isAnonCategory = categoryCode === "ANONYMOUS";
-  const isCategoryLocked = searchParams.has("category");
-
-  const handleCategoryChange = (newCategory: string) => {
-    if (newCategory !== "ANONYMOUS" && !userProfile) {
-      alert("자유/Q&A/맛집 게시판 글쓰기는 로그인이 필요합니다.");
-      router.push("/login?redirect=/posts/create");
-      return;
-    }
-    setCategoryCode(newCategory);
-  };
 
   const handleImageUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -186,13 +177,12 @@ function PostCreateForm() {
     );
   }
 
-  const boardName = categoryCode === "ANONYMOUS" ? "익명게시판" : categoryCode === "QNA" ? "장비·테크닉" : categoryCode === "FOOD" ? "리조트 맛집" : "자유게시판";
+  const boardName = categoryCode === "ANONYMOUS" ? "익명게시판" : categoryCode === "QNA" ? "장비 후기" : categoryCode === "FOOD" ? "리조트 맛집" : "자유게시판";
 
   return (
     <main className="compose-page community-container">
       <header className="compose-heading">
-        <span className="compose-heading-icon material-symbols-outlined">edit_square</span>
-        <h1>{boardName} 글쓰기</h1>
+        <h1>{boardName}</h1>
       </header>
 
       <div className="compose-layout">
@@ -203,28 +193,9 @@ function PostCreateForm() {
           </div>
         )}
 
-        <section className="compose-section">
-          <label htmlFor="post-category" className="compose-label">주제 분류 <b>*필수선택</b></label>
-          <select
-            id="post-category"
-            value={categoryCode}
-            disabled={isCategoryLocked}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="compose-select"
-          >
-            <option value="FREE">자유게시판</option>
-            <option value="ANONYMOUS">익명 게시판</option>
-            <option value="QNA">장비 Q&A</option>
-            <option value="FOOD">리조트 맛집</option>
-          </select>
-          {isCategoryLocked && (
-            <p className="compose-help">현재 게시판으로 작성 위치가 고정되어 있습니다.</p>
-          )}
-        </section>
-
-        <section className="compose-author-box">
+        <section className="compose-author-row">
           <div className="compose-author">
-            <span className="material-symbols-outlined">{isAnonCategory ? "theater_comedy" : "person"}</span>
+            <span>작성자</span>
             <strong>{isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자"}</strong>
           </div>
           {isAnonCategory && !userProfile && (
@@ -278,7 +249,7 @@ function PostCreateForm() {
                   : "JPG, PNG, WebP 이미지 1개를 첨부할 수 있습니다."}
           </p>
           {imagePreviewUrl && (
-            <img src={imagePreviewUrl} alt="첨부 이미지 미리보기" className="mt-3 max-h-64 rounded-xl object-contain" />
+            <Image src={imagePreviewUrl} alt="첨부 이미지 미리보기" width={800} height={256} unoptimized className="mt-3 max-h-64 w-auto rounded-xl object-contain" />
           )}
         </section>
 

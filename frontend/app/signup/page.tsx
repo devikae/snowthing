@@ -32,7 +32,6 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [nickname, setNickname] = useState("");
-  const [bio, setBio] = useState("");
   const [departureRegion, setDepartureRegion] = useState("");
   const [resorts, setResorts] = useState<ResortMaster[]>([]);
   const [ridingStyles, setRidingStyles] = useState<RidingStyleMaster[]>([]);
@@ -108,7 +107,6 @@ export default function SignUpPage() {
           email,
           password,
           nickname,
-          bio,
           departureRegion,
           resortIds: selectedResortIds,
           ridingStyleIds: selectedStyleIds,
@@ -143,35 +141,33 @@ export default function SignUpPage() {
     <div className="min-h-screen bg-[var(--snow-background)]">
       <TopNav active="signup" />
       <main className="snow-container px-5 py-10 lg:px-8">
-        <section className="mx-auto max-w-3xl">
-          <div className="mb-7 border-b-2 border-black pb-5 text-center">
-            <span className="snow-chip snow-chip-dark mb-4">Snowthing Join</span>
-            <h1 className="text-4xl font-extrabold italic text-black">회원가입</h1>
-            <p className="mt-3 text-[var(--snow-muted)]">라이딩 성향과 선호 리조트를 함께 등록합니다.</p>
-          </div>
+        <section className="mx-auto max-w-2xl">
+          <header className="mb-6 text-center">
+            <h1 className="text-3xl font-extrabold tracking-[-0.04em] text-[var(--snow-ink)]">회원가입</h1>
+          </header>
 
-          <form onSubmit={handleSubmit} className="snow-card grid gap-6 bg-white p-6 md:p-8">
+          <form onSubmit={handleSubmit} className="snow-card grid gap-7 bg-white p-6 md:p-8">
             {errorMsg && <div className="rounded border border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-semibold text-[#dc2626]">{errorMsg}</div>}
 
             <div className="grid gap-5 md:grid-cols-2">
               <label className="grid gap-2 md:col-span-2">
-                <span className="snow-label">Email</span>
+                <RequiredLabel>이메일</RequiredLabel>
                 <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@snowthing.com" className="snow-input" required />
               </label>
 
               <label className="grid gap-2">
-                <span className="snow-label">Password</span>
+                <RequiredLabel>비밀번호</RequiredLabel>
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" className="snow-input" autoComplete="new-password" minLength={8} required />
               </label>
 
               <label className="grid gap-2">
-                <span className="snow-label">Confirm</span>
+                <RequiredLabel>비밀번호 확인</RequiredLabel>
                 <input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="비밀번호 확인" className="snow-input" autoComplete="new-password" minLength={8} required />
               </label>
             </div>
 
             {password.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 border-t border-[var(--snow-border)] pt-4">
                 <span className={`snow-chip ${isLengthValid ? "snow-chip-green" : ""}`}>8자 이상</span>
                 <span className={`snow-chip ${hasUppercase ? "snow-chip-green" : ""}`}>대문자 포함</span>
                 <span className={`snow-chip ${hasSpecialChar ? "snow-chip-green" : ""}`}>특수문자 포함</span>
@@ -181,22 +177,17 @@ export default function SignUpPage() {
 
             <div className="grid gap-5 md:grid-cols-2">
               <label className="grid gap-2">
-                <span className="snow-label">Nickname</span>
+                <RequiredLabel>닉네임</RequiredLabel>
                 <input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="닉네임" className="snow-input" required />
               </label>
               <label className="grid gap-2">
-                <span className="snow-label">Departure Region</span>
+                <OptionalLabel>출발 지역</OptionalLabel>
                 <input value={departureRegion} onChange={(event) => setDepartureRegion(event.target.value)} placeholder="서울 송파구" className="snow-input" />
               </label>
             </div>
 
-            <label className="grid gap-2">
-              <span className="snow-label">Bio</span>
-              <input value={bio} onChange={(event) => setBio(event.target.value)} placeholder="자기소개 한 줄" className="snow-input" />
-            </label>
-
-            <SelectionGrid title="Base Resorts" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={handleResortToggle} />
-            <SelectionGrid title="Riding Styles" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={handleStyleToggle} />
+            <SelectionGrid title="선호 리조트" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={handleResortToggle} />
+            <SelectionGrid title="라이딩 성향" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={handleStyleToggle} />
 
             <button type="submit" className="snow-btn-primary w-full" disabled={loading || !isPasswordComplexityValid || !isPasswordMatch}>
               {loading ? "가입 처리 중" : "회원가입 완료"}
@@ -216,6 +207,14 @@ export default function SignUpPage() {
   );
 }
 
+function RequiredLabel({ children }: { children: React.ReactNode }) {
+  return <span className="snow-label flex items-center gap-1">{children}<b className="text-rose-500" aria-hidden="true">*</b></span>;
+}
+
+function OptionalLabel({ children }: { children: React.ReactNode }) {
+  return <span className="snow-label flex items-center gap-2">{children}<small className="font-normal normal-case tracking-normal text-[var(--snow-muted)]">선택</small></span>;
+}
+
 function SelectionGrid({
   title,
   items,
@@ -229,7 +228,9 @@ function SelectionGrid({
 }) {
   return (
     <fieldset className="grid gap-3">
-      <legend className="snow-label">{title}</legend>
+      <legend className="snow-label mb-1">
+        <span className="flex items-center gap-2">{title}<small className="font-normal normal-case tracking-normal text-[var(--snow-muted)]">선택</small></span>
+      </legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {items.length === 0 ? (
           <p className="text-sm text-[var(--snow-muted)]">선택 항목을 불러오는 중입니다.</p>
@@ -239,11 +240,11 @@ function SelectionGrid({
             return (
               <label
                 key={item.id}
-                className={`flex items-center gap-2 rounded border px-3 py-3 text-sm font-semibold ${
-                  checked ? "border-black bg-[var(--snow-surface-low)] text-black" : "border-[var(--snow-border)] bg-white text-[var(--snow-ink-soft)]"
+                className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                  checked ? "border-sky-500 bg-sky-50 text-sky-800" : "border-[var(--snow-border)] bg-white text-[var(--snow-ink-soft)] hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                <input type="checkbox" checked={checked} onChange={() => onToggle(item.id)} />
+                <input type="checkbox" checked={checked} onChange={() => onToggle(item.id)} className="h-4 w-4 accent-sky-700" />
                 {item.label}
               </label>
             );

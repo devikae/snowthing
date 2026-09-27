@@ -101,7 +101,7 @@ content-type:application/json
 #### Request Payload Specification
 | 필드명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :---: | :---: | :--- | :--- |
-| `resortTag` | String | 선택 (Nullable) | `PHOENIX`, `VIVALDI`, `HIGH1`, `YONGPYONG`, `WELLI_HILLI`, `ETC` 중 1개 또는 `null`/빈값 | 슬로프 제보 대상 리조트 코드. 미선택 시 일반 잡담 |
+| `resortTag` | String | 선택 (Nullable) | `PHOENIX`, `VIVALDI`, `HIGH1`, `YONGPYONG`, `WELLI_HILLI`, `MUJU`, `JISAN`, `KONJIAM`, `ETC` 중 1개 또는 `null`/빈값 | 슬로프 제보 대상 리조트 코드. 미선택 시 일반 잡담 |
 | `content` | String | **필수** | 1자 이상 100자 이하, 공백만으로 구성 불가 | 대화 본문 |
 
 ---
@@ -155,13 +155,30 @@ const isMine = Boolean(currentMember && message.sender.publicId === currentMembe
    - 배치: 우측 정렬 (`justify-end`, `ml-auto`)
    - 스타일: 연한 하늘색 말풍선 (`bg-sky-50 text-sky-950 border border-sky-100 rounded-2xl rounded-tr-sm`)
    - 프로필/닉네임: 생략하여 본인 발언임을 직관적으로 표현
+   - 태그: 말풍선 위에 선택한 리조트 컬러 뱃지를 표시하고, 미선택 메시지는 `일반` 뱃지를 표시하여 발신자가 전송 맥락을 확인할 수 있도록 함
    - 시간: 말풍선 좌측 하단에 상대 시간(`방금`, `N분 전`) 표기
 2. **`isMine === false` (타인 메시지)**:
    - 배치: 좌측 정렬 (`justify-start`, `mr-auto`)
    - 스타일: 깔끔한 흰색 말풍선 (`bg-white text-slate-800 border border-slate-200 rounded-2xl rounded-tl-sm`)
-   - 아바타: `resortTag`가 존재할 경우 해당 리조트 2글자 약칭(`휘팍`, `비발`, `용평`, `하이`, `웰팍`, `기타`) 원형 아바타 노출. 잡담(`resortTag == null`)일 경우 기본 사용자 아이콘 노출
-   - 상단 헤더: `닉네임` + 리조트 컬러 뱃지 (`휘닉스`, `비발디` 등, 잡담 시 뱃지 생략)
+   - 아바타: `resortTag`가 존재할 경우 해당 리조트 약칭(`휘팍`, `비발`, `용평`, `하이`, `웰팍`, `무주`, `지산`, `곤지`, `기타`) 원형 아바타 노출. 잡담(`resortTag == null`)일 경우 기본 사용자 아이콘 노출
+   - 상단 헤더: `닉네임` + 리조트 컬러 뱃지 (`휘팍`, `비발디`, `무주`, `지산`, `곤지암` 등, 잡담 시 뱃지 생략)
    - 시간: 말풍선 우측 하단에 상대 시간 표기
+
+#### 리조트 라벨 색상
+라벨은 흰색 배경과 Slate 600 글자를 공통으로 사용하고, 리조트별 색상은 라벨 왼쪽의 작은 원형 표시점에만 적용한다.
+
+| 구분 | 표시점 색상 |
+| :--- | :--- |
+| 일반 | Slate 400 |
+| 휘팍 | `#3f6f8f` |
+| 비발디 | `#555246` |
+| 하이원 | `#6c4c99` |
+| 용평 | `#d75a91` |
+| 웰팍 | `#106962` |
+| 무주 | `#2563eb` |
+| 지산 | `#f2b335` |
+| 곤지암 | 검정 |
+| 기타 | `#9a3412` |
 
 ---
 
