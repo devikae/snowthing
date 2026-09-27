@@ -3,7 +3,6 @@ package com.ikae.snowthing.domain.post.repository;
 import static com.ikae.snowthing.domain.post.entity.QPost.post;
 import static com.ikae.snowthing.domain.post.entity.QPostCategory.postCategory;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Repository;
@@ -11,8 +10,8 @@ import org.springframework.util.StringUtils;
 
 import com.ikae.snowthing.domain.post.dto.PostListResponse;
 import com.ikae.snowthing.domain.post.dto.PostSearchRequest;
+import com.ikae.snowthing.domain.post.dto.PostViewType;
 import com.ikae.snowthing.domain.post.dto.SearchType;
-import com.ikae.snowthing.domain.post.dto.SortType;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse.PageInfo;
@@ -27,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class PostRepositoryCustomImpl implements PostRepositoryCustom {
+
+    private static final int BEST_MINIMUM_LIKE_COUNT = 30;
 
     private final JPAQueryFactory queryFactory;
 
@@ -44,6 +45,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
+                                bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 post.status.eq(
                                         com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL),
@@ -66,11 +68,12 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
+                                bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 post.status.eq(
                                         com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL),
                                 post.isDeleted.isFalse())
-                        .orderBy(getSortOrders(request.sortType()))
+                        .orderBy(getLatestSortOrders())
                         .offset(offset)
                         .limit(size)
                         .fetch();
@@ -84,7 +87,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .leftJoin(post.member)
                         .fetchJoin()
                         .where(post.id.in(postIds))
-                        .orderBy(getSortOrders(request.sortType()))
+                        .orderBy(getLatestSortOrders())
                         .fetch();
 
         List<PostListResponse> content = posts.stream().map(PostListResponse::from).toList();
@@ -110,12 +113,13 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .fetchJoin()
                         .where(
                                 categoryEq(request.categoryCode()),
+                                bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
-                                cursorCondition(request.sortType(), cursorValue),
+                                cursorCondition(cursorValue),
                                 post.status.eq(
                                         com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL),
                                 post.isDeleted.isFalse())
-                        .orderBy(getSortOrders(request.sortType()))
+                        .orderBy(getLatestSortOrders())
                         .limit(size + 1)
                         .fetch();
 
@@ -144,6 +148,11 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         return postCategory.code.equalsIgnoreCase(categoryCode);
     }
 
+    private BooleanExpression bestEligibility(PostViewType viewType) {
+        if (viewType != PostViewType.BEST) return null;
+        return post.likeCount.goe(BEST_MINIMUM_LIKE_COUNT);
+    }
+
     private BooleanExpression searchCondition(SearchType type, String keyword) {
         if (!StringUtils.hasText(keyword) || type == null) return null;
         return switch (type) {
@@ -157,29 +166,13 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         };
     }
 
-    private BooleanExpression cursorCondition(SortType sortType, CursorValue cursor) {
+    private BooleanExpression cursorCondition(CursorValue cursor) {
         if (cursor == null || cursor.id() == null) return null;
 
-        if (sortType == SortType.POPULAR) {
-            // 인기순 복합 커서: (likeCount < lastLike) OR (likeCount == lastLike AND id < lastId)
-            return post.likeCount
-                    .lt(cursor.likeCount().intValue())
-                    .or(
-                            post.likeCount
-                                    .eq(cursor.likeCount().intValue())
-                                    .and(post.id.lt(cursor.id())));
-        } else {
-            // 최신순 커서: id < lastId
-            return post.id.lt(cursor.id());
-        }
+        return post.id.lt(cursor.id());
     }
 
-    private OrderSpecifier<?>[] getSortOrders(SortType sortType) {
-        List<OrderSpecifier<?>> orders = new ArrayList<>();
-        if (sortType == SortType.POPULAR) {
-            orders.add(post.likeCount.desc());
-        }
-        orders.add(post.id.desc());
-        return orders.toArray(new OrderSpecifier<?>[0]);
+    private OrderSpecifier<?>[] getLatestSortOrders() {
+        return new OrderSpecifier<?>[] {post.id.desc()};
     }
 }

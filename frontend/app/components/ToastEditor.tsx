@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
-// @ts-ignore
+// @ts-expect-error -- Toast UI Editor 3.2.2의 타입 선언이 package.json exports를 통해 노출되지 않습니다.
 import Editor from "@toast-ui/editor";
 
 export interface ToastEditorHandle {
@@ -49,7 +49,7 @@ export const ToastEditor = forwardRef<ToastEditorHandle, ToastEditorProps>(
       return () => {
         editor.destroy();
       };
-    }, []);
+    }, [height, initialValue, onChange]);
 
     useImperativeHandle(ref, () => ({
       getInstance: () => editorRef.current!,

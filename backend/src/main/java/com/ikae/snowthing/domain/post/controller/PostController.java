@@ -69,12 +69,12 @@ public class PostController {
                     @RequestParam(required = false) Long resortId,
                     @RequestParam(required = false) SearchType searchType,
                     @RequestParam(required = false) String keyword,
-                    @RequestParam(required = false) SortType sortType,
+                    @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false, defaultValue = "1") Integer page,
                     @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size) {
         PostSearchRequest request =
                 new PostSearchRequest(
-                        categoryCode, resortId, searchType, keyword, sortType, page, null, size);
+                        categoryCode, resortId, searchType, keyword, viewType, page, null, size);
         return ResponseEntity.ok(postService.searchPostsByOffset(request));
     }
 
@@ -85,12 +85,12 @@ public class PostController {
                     @RequestParam(required = false) Long resortId,
                     @RequestParam(required = false) SearchType searchType,
                     @RequestParam(required = false) String keyword,
-                    @RequestParam(required = false) SortType sortType,
+                    @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false) String cursor,
                     @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size) {
         PostSearchRequest request =
                 new PostSearchRequest(
-                        categoryCode, resortId, searchType, keyword, sortType, null, cursor, size);
+                        categoryCode, resortId, searchType, keyword, viewType, null, cursor, size);
         return ResponseEntity.ok(postService.searchPostsByCursor(request));
     }
 

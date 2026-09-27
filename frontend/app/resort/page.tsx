@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Footer, TopNav } from "../components/SiteChrome";
 
 interface ResortStatusItem {
@@ -15,7 +14,7 @@ interface ResortStatusItem {
   crowded: boolean;
 }
 
-const resortsData: ResortStatusItem[] = [
+const resorts: ResortStatusItem[] = [
   { id: 1, name: "휘닉스파크", region: "강원 평창", weather: "맑음", temp: "-4°C", slopeStatus: "12 / 14 슬로프 운영", liftStatus: "보통", updatedAt: "10분 전", crowded: false },
   { id: 2, name: "용평 리조트", region: "강원 평창", weather: "구름 조금", temp: "-6°C", slopeStatus: "20 / 28 슬로프 운영", liftStatus: "혼잡", updatedAt: "5분 전", crowded: true },
   { id: 3, name: "하이원 리조트", region: "강원 정선", weather: "눈", temp: "-8°C", slopeStatus: "15 / 18 슬로프 운영", liftStatus: "원활", updatedAt: "15분 전", crowded: false },
@@ -24,37 +23,37 @@ const resortsData: ResortStatusItem[] = [
 ];
 
 export default function ResortStatusPage() {
-  const [resorts] = useState<ResortStatusItem[]>(resortsData);
-
   return (
-    <div className="min-h-screen bg-[var(--snow-background)]">
+    <div className="community-page">
       <TopNav active="resort" />
-      <main className="snow-container px-5 py-8 lg:px-8 lg:py-10">
-        <section className="mb-8 border-b-2 border-black pb-5">
-          <span className="snow-label">Field Monitor</span>
-          <h1 className="mt-2 text-4xl font-extrabold italic text-black">RESORT LIVE STATUS</h1>
-          <p className="mt-3 max-w-3xl text-[var(--snow-muted)]">주요 리조트의 날씨, 슬로프, 리프트 혼잡도를 한눈에 확인합니다.</p>
-        </section>
+      <main className="community-container py-4 pb-12">
+        <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="m-0 text-xl font-extrabold tracking-[-0.03em] text-slate-900">리조트 현황</h1>
+            <p className="mt-1.5 text-sm text-slate-500">주요 리조트의 날씨와 슬로프 운영, 리프트 대기 상태를 확인할 수 있습니다.</p>
+          </div>
+          <span className="text-xs font-semibold text-slate-400">최근 제보 기준</span>
+        </header>
 
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {resorts.map((item) => (
-            <article key={item.id} className="snow-card snow-card-hover bg-white p-6">
-              <div className="mb-5 flex items-start justify-between gap-4">
+            <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_4px_16px_rgba(15,41,66,0.055)] transition hover:border-sky-200">
+              <header className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
                 <div>
-                  <span className="snow-chip">{item.region}</span>
-                  <h2 className="mt-3 text-2xl font-extrabold text-black">{item.name}</h2>
+                  <span className="inline-flex rounded-md bg-sky-50 px-2 py-1 text-xs font-bold text-sky-700">{item.region}</span>
+                  <h2 className="mt-2.5 text-lg font-extrabold tracking-[-0.025em] text-slate-900">{item.name}</h2>
                 </div>
-                <span className="font-mono text-xs text-[var(--snow-muted)]">{item.updatedAt}</span>
-              </div>
+                <time className="pt-1 text-xs text-slate-400">{item.updatedAt}</time>
+              </header>
 
-              <div className="grid grid-cols-2 gap-4 border-y border-[var(--snow-border)] py-5">
-                <Info label="Weather" value={`${item.weather} / ${item.temp}`} />
-                <Info label="Slope" value={item.slopeStatus} />
-              </div>
+              <dl className="grid grid-cols-2 gap-4 border-b border-slate-100 py-4">
+                <Info label="날씨" value={`${item.weather} · ${item.temp}`} />
+                <Info label="슬로프 운영" value={item.slopeStatus} />
+              </dl>
 
-              <div className="mt-5 flex items-center justify-between">
-                <span className="snow-label">Lift Queue</span>
-                <span className={`snow-chip ${item.crowded ? "bg-[#fef2f2] text-[#dc2626]" : "snow-chip-green"}`}>{item.liftStatus}</span>
+              <div className="flex items-center justify-between pt-4">
+                <span className="text-xs font-bold text-slate-500">리프트 대기</span>
+                <span className={`rounded-md px-2 py-1 text-xs font-extrabold ${item.crowded ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{item.liftStatus}</span>
               </div>
             </article>
           ))}
@@ -68,8 +67,8 @@ export default function ResortStatusPage() {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="snow-label block">{label}</span>
-      <p className="mt-1 text-sm font-bold leading-6 text-black">{value}</p>
+      <dt className="text-xs font-bold text-slate-400">{label}</dt>
+      <dd className="mt-1.5 text-sm font-bold leading-6 text-slate-700">{value}</dd>
     </div>
   );
 }

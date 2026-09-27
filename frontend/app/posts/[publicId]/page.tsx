@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
@@ -587,7 +588,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           <div className="post-detail-primary">
           <article className="post-detail-card">
             <div className="post-detail-meta-top">
-              <span>#{post.categoryName}</span>
+              <span>#{post.categoryCode === "QNA" ? "장비 후기" : post.categoryName}</span>
               <div><span className="material-symbols-outlined">visibility</span>{post.viewCount}<span className="material-symbols-outlined">chat_bubble</span>{post.commentCount}<span className="material-symbols-outlined">thumb_up</span>{post.likeCount}</div>
             </div>
 
@@ -625,7 +626,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             {post.images?.length > 0 && (
               <div className="post-detail-images">
                 {post.images.map((imageUrl) => (
-                  <img key={imageUrl} src={imageUrl} alt="첨부 이미지" />
+                  <Image key={imageUrl} src={imageUrl} alt="첨부 이미지" width={1200} height={900} unoptimized />
                 ))}
               </div>
             )}

@@ -1,12 +1,60 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 
-export type ActiveNav = "home" | "posts" | "free" | "anonymous" | "gear" | "resort" | "profile" | "login" | "signup";
+type ThemeSetting = "light" | "dark";
+
+const THEME_STORAGE_KEY = "snowthing-theme";
+const themeMeta: Record<ThemeSetting, { icon: string; label: string }> = {
+  light: { icon: "light_mode", label: "라이트 모드" },
+  dark: { icon: "dark_mode", label: "다크 모드" },
+};
+
+function applyTheme(setting: ThemeSetting) {
+  document.documentElement.dataset.theme = setting;
+}
+
+function ThemeToggle() {
+  const [setting, setSetting] = useState<ThemeSetting>("light");
+
+  useEffect(() => {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    const initialSetting: ThemeSetting = saved === "light" || saved === "dark"
+      ? saved
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    applyTheme(initialSetting);
+    const syncButton = window.setTimeout(() => setSetting(initialSetting), 0);
+    return () => window.clearTimeout(syncButton);
+  }, []);
+
+  const handleToggle = () => {
+    const nextSetting: ThemeSetting = setting === "light" ? "dark" : "light";
+    setSetting(nextSetting);
+    applyTheme(nextSetting);
+    localStorage.setItem(THEME_STORAGE_KEY, nextSetting);
+  };
+
+  const nextSetting: ThemeSetting = setting === "light" ? "dark" : "light";
+
+  return (
+    <button
+      type="button"
+      className="header-theme-toggle"
+      onClick={handleToggle}
+      aria-label={`현재 테마: ${themeMeta[setting].label}. ${themeMeta[nextSetting].label}로 변경`}
+      title={`테마: ${themeMeta[setting].label}`}
+    >
+      <span className="material-symbols-outlined" aria-hidden="true">{themeMeta[setting].icon}</span>
+    </button>
+  );
+}
+
+export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "resort" | "profile" | "login" | "signup";
 
 interface MemberUser {
   publicId: string;
@@ -21,30 +69,24 @@ interface NavItem {
   key: string;
 }
 
-const navItems: NavItem[] = [
+const boardItems: NavItem[] = [
   { href: "/posts", label: "전체글", key: "posts" },
-  { href: "/posts?sort=popular", label: "실시간 베스트", key: "best" },
+  { href: "/posts?view=best", label: "실시간 베스트", key: "best" },
   { href: "/posts?category=FREE", label: "자유게시판", key: "free" },
   { href: "/posts?category=ANONYMOUS", label: "익명게시판", key: "anonymous" },
-  { href: "/resort", label: "실시간 설질/웹캠", key: "resort" },
-  { href: "/posts?category=QNA", label: "장비·테크닉", key: "gear" },
-  { href: "/#carpool", label: "카풀/동행", key: "carpool" },
-  { href: "/#market", label: "중고장터", key: "market" },
+  { href: "/posts?category=QNA", label: "장비 후기", key: "gear" },
+  { href: "/posts?category=FOOD", label: "리조트 맛집", key: "food" },
 ];
-
-const mobileItems = [
-  { href: "/", label: "홈", icon: "home", key: "home" },
-  { href: "/posts?sort=popular", label: "베스트", icon: "local_fire_department", key: "best" },
-  { href: "/resort", label: "실시간 설질", icon: "ac_unit", key: "resort" },
-  { href: "/#carpool", label: "카풀", icon: "directions_car", key: "carpool" },
-  { href: "/posts?category=ANONYMOUS", label: "익명", icon: "forum", key: "anonymous" },
-] as const;
 
 export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const router = useRouter();
   const [user, setUser] = useState<MemberUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const boardActive = ["posts", "best", "free", "anonymous", "gear", "food"].includes(active);
+  const isBoardItemActive = (key: string) => active === key;
 
   useEffect(() => {
     void (async () => {
@@ -76,78 +118,84 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
 
   return (
     <>
-      <div className="community-notice">
-        <div className="community-container community-notice-inner">
-          <div className="community-notice-message">
-            <span className="notice-badge">공지</span>
-            <span className="truncate">24/25 시즌방 인원 구인 및 리조트 실시간 슬로프 제보 게시판 이용 수칙 안내</span>
-          </div>
-          <div className="community-notice-links">
-            <span>강원권 야간 정설 완료</span><i />
-            <Link href="/resort">실시간 웹캠 센터</Link><i />
-            <Link href="/login">출석체크</Link>
-          </div>
-        </div>
-      </div>
-
       <header className="community-header">
         <div className="community-container community-header-inner">
           <div className="community-header-left">
             <Link href="/" aria-label="Snowthing 홈" className="alpine-logo">
-              <span className="alpine-logo-mark"><i /><i /><i /></span>
               <span>SnowThing</span>
             </Link>
             <nav className="community-main-nav" aria-label="메인 메뉴">
-              {navItems.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className={active === item.key ? "nav-active" : ""}
-                  aria-current={active === item.key ? "page" : undefined}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              <details className="header-board-menu">
+                <summary className={boardActive ? "nav-active" : ""}>
+                  게시판
+                  <span className="material-symbols-outlined">keyboard_arrow_down</span>
+                </summary>
+                <div className="header-board-dropdown">
+                  {boardItems.map((item) => (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={isBoardItemActive(item.key) ? "nav-active" : ""}
+                      aria-current={isBoardItemActive(item.key) ? "page" : undefined}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </details>
+              <Link href="/resort" className={active === "resort" ? "nav-active" : ""} aria-current={active === "resort" ? "page" : undefined}>
+                리조트
+              </Link>
             </nav>
           </div>
 
           <div className="community-header-actions">
-            <form className="header-search" onSubmit={handleSearch}>
-              <span className="material-symbols-outlined">search</span>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="슬로프, 장비, 카풀 검색" aria-label="통합 검색" />
+            <ThemeToggle />
+            <form className={`header-search${searchOpen ? " open" : ""}`} onSubmit={handleSearch}>
+              <button type="button" onClick={() => setSearchOpen((open) => !open)} aria-label={searchOpen ? "검색 닫기" : "검색 열기"} aria-expanded={searchOpen}>
+                <span className="material-symbols-outlined">search</span>
+              </button>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
             </form>
-            <Link href="/posts/create" className="header-write-button">
-              <span className="material-symbols-outlined">edit</span><span>글쓰기</span>
-            </Link>
-            <button type="button" className="header-icon-button" aria-label="알림">
-              <span className="material-symbols-outlined">notifications</span><i />
-            </button>
             {!loading && (user ? (
               <div className="header-profile-wrap">
                 <Link href="/profile" className="header-profile" title={`${user.nickname} 프로필`}>
-                  {user.profileImageUrl ? <img src={user.profileImageUrl} alt="" /> : <span>{user.nickname.slice(0, 1)}</span>}
+                  <Image
+                    src={user.profileImageUrl || "/images/default-profile-avatar.png"}
+                    alt=""
+                    width={30}
+                    height={30}
+                    unoptimized={Boolean(user.profileImageUrl)}
+                    className={user.profileImageUrl ? undefined : "header-default-profile"}
+                  />
                 </Link>
                 <button type="button" onClick={handleLogout} className="header-logout">로그아웃</button>
               </div>
             ) : (
-              <Link href="/login" className="header-login">로그인</Link>
+              <Link href="/login" className="header-login" aria-label="로그인" title="로그인"><span className="material-symbols-outlined">person</span></Link>
             ))}
+            <button type="button" className="header-menu-button" onClick={() => setMobileOpen((open) => !open)} aria-label={mobileOpen ? "메뉴 닫기" : "메뉴 열기"} aria-expanded={mobileOpen}>
+              <span className="material-symbols-outlined">{mobileOpen ? "close" : "menu"}</span>
+            </button>
+          </div>
+        </div>
+        <div className={`community-mobile-panel${mobileOpen ? " open" : ""}`}>
+          <div className="community-container">
+            <form className="mobile-header-search" onSubmit={handleSearch}>
+              <span className="material-symbols-outlined">search</span>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" />
+              <button type="submit">검색</button>
+            </form>
+            <nav aria-label="모바일 메뉴">
+              <strong>게시판</strong>
+              {boardItems.map((item) => (
+                <Link key={item.key} href={item.href} className={isBoardItemActive(item.key) ? "active" : ""} onClick={() => setMobileOpen(false)}>{item.label}</Link>
+              ))}
+              <Link href="/resort" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>리조트</Link>
+            </nav>
           </div>
         </div>
       </header>
-
-      <nav className="community-mobile-nav" aria-label="모바일 메뉴">
-        {mobileItems.map((item) => (
-          <Link
-            key={item.key}
-            href={item.href}
-            className={active === item.key ? "active" : ""}
-            aria-current={active === item.key ? "page" : undefined}
-          >
-            <span className="material-symbols-outlined">{item.icon}</span><span>{item.label}</span>
-          </Link>
-        ))}
-      </nav>
     </>
   );
 }
@@ -160,7 +208,7 @@ export function Footer() {
   return (
     <footer className="community-footer">
       <div className="community-container community-footer-inner">
-        <div className="community-footer-brand"><span className="alpine-logo-mark small"><i /><i /><i /></span><strong>SNOWTHING</strong><span>대한민국 스노보드 &amp; 스키 커뮤니티</span></div>
+        <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>Winter Sports Community</span></div>
         <nav><Link href="/">이용약관</Link><Link href="/">개인정보처리방침</Link><Link href="/">게시판 운영원칙</Link><Link href="/">고객센터</Link></nav>
       </div>
       <div className="community-container community-copyright">Copyright © SNOWTHING Alpine Community. All rights reserved.</div>

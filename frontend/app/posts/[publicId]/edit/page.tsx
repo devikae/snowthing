@@ -29,7 +29,7 @@ interface PostDetail {
 const categoryOptions = [
   { value: "FREE", label: "자유 게시판" },
   { value: "ANONYMOUS", label: "익명 게시판" },
-  { value: "QNA", label: "장비 Q&A" },
+  { value: "QNA", label: "장비 후기" },
   { value: "FOOD", label: "리조트 맛집" },
 ];
 

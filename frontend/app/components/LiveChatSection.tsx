@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Client } from "@stomp/stompjs";
 import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
+import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
 
 export interface MemberProfile {
   publicId: string;
@@ -30,69 +31,6 @@ interface ChatError {
   message: string;
   timestamp: string;
 }
-
-interface ResortMeta {
-  code: string;
-  koreanName: string;
-  shortName: string;
-  badgeClass: string;
-  avatarClass: string;
-}
-
-const RESORT_MAP: Record<string, ResortMeta> = {
-  PHOENIX: {
-    code: "PHOENIX",
-    koreanName: "휘닉스",
-    shortName: "휘팍",
-    badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
-    avatarClass: "bg-sky-100 text-sky-700 border-sky-300",
-  },
-  VIVALDI: {
-    code: "VIVALDI",
-    koreanName: "비발디",
-    shortName: "비발",
-    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
-    avatarClass: "bg-amber-100 text-amber-800 border-amber-300",
-  },
-  HIGH1: {
-    code: "HIGH1",
-    koreanName: "하이원",
-    shortName: "하이",
-    badgeClass: "bg-teal-50 text-teal-700 border-teal-200",
-    avatarClass: "bg-teal-100 text-teal-800 border-teal-300",
-  },
-  YONGPYONG: {
-    code: "YONGPYONG",
-    koreanName: "용평",
-    shortName: "용평",
-    badgeClass: "bg-rose-50 text-rose-700 border-rose-200",
-    avatarClass: "bg-rose-100 text-rose-700 border-rose-300",
-  },
-  WELLI_HILLI: {
-    code: "WELLI_HILLI",
-    koreanName: "웰팍",
-    shortName: "웰팍",
-    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    avatarClass: "bg-emerald-100 text-emerald-700 border-emerald-300",
-  },
-  ETC: {
-    code: "ETC",
-    koreanName: "기타",
-    shortName: "기타",
-    badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
-    avatarClass: "bg-slate-200 text-slate-700 border-slate-300",
-  },
-};
-
-const RESORT_OPTIONS = [
-  { value: "", label: "일반" },
-  { value: "PHOENIX", label: "휘닉스" },
-  { value: "VIVALDI", label: "비발디" },
-  { value: "HIGH1", label: "하이원" },
-  { value: "YONGPYONG", label: "용평" },
-  { value: "WELLI_HILLI", label: "웰팍" },
-  { value: "ETC", label: "기타" },
-];
 
 const LOCAL_STORAGE_TAG_KEY = "snowthing_chat_resort";
 const MAX_DOM_MESSAGES = 100;
@@ -137,7 +75,16 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputContent, setInputContent] = useState("");
-  const [selectedResort, setSelectedResort] = useState<string>("");
+  const [selectedResort, setSelectedResort] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_TAG_KEY);
+      return saved && RESORT_MAP[saved] ? saved : "";
+    } catch {
+      return "";
+    }
+  });
   const [isConnected, setIsConnected] = useState(false);
   const [toastError, setToastError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -147,19 +94,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const isAtBottomRef = useRef<boolean>(true);
 
-  // 1. 브라우저 localStorage에서 리조트 태그 복원
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_TAG_KEY);
-      if (saved && RESORT_MAP[saved]) {
-        setSelectedResort(saved);
-      }
-    } catch {
-      // localStorage 접근 불가 환경 대비
-    }
-  }, []);
-
-  // 2. 리조트 태그 변경 핸들러
+  // 1. 리조트 태그 변경 핸들러
   const handleResortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedResort(value);
@@ -174,7 +109,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     }
   };
 
-  // 3. 스크롤 위치 감지 (Scroll Anchoring)
+  // 2. 스크롤 위치 감지 (Scroll Anchoring)
   const handleScroll = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -347,7 +282,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="bg-slate-50 border border-slate-100 rounded-lg p-3 h-64 overflow-y-auto space-y-3.5 text-xs select-text"
+          className="live-chat-feed"
         >
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs gap-1">
@@ -358,45 +293,17 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             messages.map((msg) => {
               const isMine = Boolean(currentMember && msg.sender.publicId === currentMember.publicId);
               const resort = msg.resortTag ? RESORT_MAP[msg.resortTag] : null;
-
-              if (isMine) {
-                // 내 메시지: 우측 정렬, 하늘색 말풍선
-                return (
-                  <div key={msg.messageId} className="flex justify-end items-end gap-1.5">
-                    <span className="text-[10px] text-slate-400 font-mono shrink-0 mb-0.5">
-                      {formatRelativeTime(msg.sentAt)}
-                    </span>
-                    <div className="bg-sky-50 text-sky-950 border border-sky-100 rounded-2xl rounded-tr-xs px-3.5 py-2 text-xs max-w-[80%] break-words shadow-2xs">
-                      {msg.content}
-                    </div>
-                  </div>
-                );
-              }
-
-              // 타인 메시지: 좌측 정렬, 닉네임 + 리조트 직사각형 뱃지(선택 시) + 흰색 말풍선
               return (
-                <div key={msg.messageId} className="flex flex-col items-start max-w-[88%]">
-                  {/* 닉네임 및 리조트 뱃지 (리조트 선택 시에만 뱃지 표기, 일반 잡담은 닉네임만 단독 표기) */}
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="font-bold text-slate-800 text-[11px] truncate">
-                      {msg.sender.nickname}
+                <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
+                  <div className="live-chat-message-meta">
+                    {!isMine && <strong>{msg.sender.nickname}</strong>}
+                    <span className="live-chat-message-tag">
+                      <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
+                      {resort ? resort.koreanName : "일반"}
                     </span>
-                    {resort && (
-                      <span
-                        className={`px-1.5 py-0.5 rounded-xs text-[10px] font-bold border shrink-0 ${resort.badgeClass}`}
-                      >
-                        {resort.koreanName}
-                      </span>
-                    )}
+                    <time>{formatRelativeTime(msg.sentAt)}</time>
                   </div>
-                  <div className="flex items-end gap-1.5">
-                    <div className="bg-white text-slate-800 border border-slate-200/90 rounded-2xl rounded-tl-xs px-3.5 py-2 text-xs break-words shadow-2xs">
-                      {msg.content}
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-mono shrink-0 mb-0.5">
-                      {formatRelativeTime(msg.sentAt)}
-                    </span>
-                  </div>
+                  <div className="live-chat-message-bubble">{msg.content}</div>
                 </div>
               );
             })
@@ -429,13 +336,13 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       </div>
 
       {/* 하단 입력 폼 바 */}
-      <form onSubmit={handleSubmit} className="pt-2 border-t border-slate-100 flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="live-chat-compose">
         {/* 리조트 태그 드롭다운 (비로그인 시 일반 고정 잠금) */}
         <select
           value={currentMember ? selectedResort : ""}
           onChange={handleResortChange}
           disabled={!currentMember}
-          className="text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-2 outline-none text-slate-700 font-semibold focus:border-sky-500 transition-colors shrink-0 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+          className="live-chat-compose-select"
         >
           {RESORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -463,10 +370,10 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             }}
             placeholder={
               currentMember
-                ? "실시간 슬로프 상황이나 잡담을 나눠보세요... (최대 100자)"
+                ? "메세지를 입력하세요"
                 : "로그인하고 라이브톡에 참여해보세요"
             }
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-sky-600 transition-all placeholder:text-slate-400 cursor-text"
+            className="live-chat-compose-input"
           />
         </div>
 
@@ -474,7 +381,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         <button
           type="submit"
           disabled={Boolean(currentMember && !inputContent.trim())}
-          className="px-4 py-2 bg-[#0f2942] hover:bg-sky-700 text-white font-bold rounded-md text-xs shrink-0 transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 cursor-pointer"
+          className="live-chat-compose-submit"
         >
           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
