@@ -180,14 +180,14 @@ export default function HomePage() {
         <section className="panel resort-panel">
           <div className="panel-heading">
             <h2><span className="status-pulse" />전국 주요 스키장 실시간 슬로프 &amp; 설질 현황 <small>(10분 주기 갱신)</small></h2>
-            <div><Link href="/resort">캠 전체보기 ›</Link><button onClick={() => resortRef.current?.scrollBy({ left: -280, behavior: "smooth" })}>‹</button><button onClick={() => resortRef.current?.scrollBy({ left: 280, behavior: "smooth" })}>›</button></div>
+            <div><Link href="/resort-cam">슬로프캠 전체보기 ›</Link><button onClick={() => resortRef.current?.scrollBy({ left: -280, behavior: "smooth" })}>‹</button><button onClick={() => resortRef.current?.scrollBy({ left: 280, behavior: "smooth" })}>›</button></div>
           </div>
           <div className="resort-scroller" ref={resortRef}>
             {resorts.map((resort) => (
               <article className="resort-card" key={resort.name}>
                 <header><strong>{resort.name}</strong><span className={`operation ${resort.tone}`}>{resort.status}</span><b>{resort.temp}</b></header>
                 <dl><div><dt>슬로프 오픈</dt><dd>{resort.open} <em>{resort.detail && `(${resort.detail})`}</em></dd></div><div><dt>신설 / 설질</dt><dd>{resort.snow}</dd></div><div><dt>리프트 혼잡도</dt><dd><span className={`crowd ${resort.tone}`}>{resort.crowd}</span></dd></div></dl>
-                <footer><span>{resort.slopes}</span><Link href="/resort">웹캠 보기 ›</Link></footer>
+                <footer><span>{resort.slopes}</span><Link href="/resort-cam">웹캠 보기 ›</Link></footer>
               </article>
             ))}
           </div>

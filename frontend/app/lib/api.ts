@@ -41,6 +41,9 @@ export const API_ENDPOINTS = {
   chat: {
     recent: `${API_V1_URL}/chat/recent`,
   },
+  resortCams: {
+    list: `${API_V1_URL}/resort-cams`,
+  },
   market: {
     categories: `${API_V1_URL}/market/categories`,
     preview: `${API_V1_URL}/market-listings/preview`,

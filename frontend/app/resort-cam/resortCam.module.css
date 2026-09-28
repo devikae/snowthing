@@ -1,0 +1,733 @@
+/* ==========================================================================
+   Resort Live Cam Page Styles
+   ========================================================================== */
+
+.page {
+  width: min(100% - 32px, 1280px);
+  margin: 0 auto;
+  padding: 20px 0 56px;
+}
+
+/* 상단 서브 탭 (실시간 현황 vs 슬로프캠) */
+.topTabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--snow-border, #e2e8f0);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+
+.topTabsLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tabActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--alpine-navy, #0f2942);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 750;
+  box-shadow: 0 2px 6px rgba(15, 41, 66, 0.12);
+}
+
+.tabActive span {
+  font-size: 17px;
+  color: #38bdf8;
+}
+
+.tabInactive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  background: var(--snow-canvas, #ffffff);
+  color: var(--snow-ink-soft, #475569);
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.16s ease;
+}
+
+.tabInactive:hover {
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.tabInactive span {
+  font-size: 17px;
+}
+
+.autoRefreshNote {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--snow-faint, #94a3b8);
+}
+
+/* 인트로 헤더 */
+.intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.introIcon {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.introIcon span {
+  font-size: 26px;
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.intro h1 {
+  margin: 0;
+  color: var(--snow-ink, #0f172a);
+  font-size: 24px;
+  font-weight: 850;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+}
+
+.introCopy {
+  margin: 4px 0 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+}
+
+/* 리조트 선택 스크롤러 */
+.resortNav {
+  overflow: hidden;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #ffffff);
+  box-shadow: 0 2px 8px rgba(15, 41, 66, 0.04);
+}
+
+.resortNavTrack {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+
+.resortTab {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: var(--snow-ink-soft, #475569);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: center;
+  transition: all 0.16s ease;
+}
+
+.resortTab:hover {
+  background: var(--snow-surface-low, #f8fafc);
+  color: var(--snow-ink, #0f172a);
+}
+
+.resortActive {
+  background: var(--alpine-navy, #0f2942) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(15, 41, 66, 0.16);
+}
+
+.tabName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.countBadge {
+  color: var(--snow-faint, #94a3b8);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.resortActive .countBadge {
+  color: #93c5fd;
+}
+
+/* 리조트 본문 섹션 */
+.resortSection {
+  margin-top: 18px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--snow-canvas, #ffffff);
+  padding: 22px;
+  box-shadow: 0 4px 16px rgba(15, 41, 66, 0.04);
+}
+
+.resortHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--snow-border, #f1f5f9);
+}
+
+.resortMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.metaRegion,
+.metaCount {
+  border-radius: 5px;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.liveMeta {
+  border-radius: 5px;
+  background: #ecfdf5;
+  padding: 3px 8px;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.officialMeta {
+  border-radius: 5px;
+  background: #f0f9ff;
+  padding: 3px 8px;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.resortHeader h2 {
+  margin: 0;
+  color: var(--snow-ink, #0f172a);
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+}
+
+.headerDescription {
+  margin: 5px 0 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+}
+
+.backLink {
+  display: inline-flex;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--snow-border, #cbd5e1);
+  border-radius: 8px;
+  padding: 0 13px;
+  color: var(--snow-ink-soft, #475569);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.16s ease;
+}
+
+.backLink:hover {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.backLink span {
+  font-size: 18px;
+}
+
+/* 카메라 그리드 레이아웃 */
+.cameraGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.singleGrid {
+  width: min(100%, 960px);
+  margin: 0 auto;
+}
+
+.cameraCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.cameraCard:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+}
+
+.cardHeader {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px 8px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fcfdfe;
+}
+
+.cardHeaderLeft {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardHeader h3 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--snow-ink, #0f172a);
+  font-size: 14px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusLive {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  background: #e0f2fe;
+  padding: 3px 6px;
+  color: #0369a1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.statusOfficial {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  background: #f1f5f9;
+  padding: 3px 6px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.expandButton {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  color: #64748b;
+  transition: all 0.16s ease;
+}
+
+.expandButton:hover {
+  background: #f1f5f9;
+  color: #0284c7;
+}
+
+.expandButton span {
+  font-size: 18px;
+}
+
+/* 비디오 플레이어 컨테이너 (16:9 고정) */
+.playerContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #090d12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.videoElement,
+.iframeElement {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: cover;
+}
+
+/* 로딩 스피너 오버레이 */
+.loadingOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(9, 13, 18, 0.7);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 5;
+}
+
+.loadingOverlay span:first-child {
+  font-size: 32px;
+  color: #38bdf8;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 재생 커버 (클릭 시 재생) */
+.playCover {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.playCover:hover {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.75) 100%);
+}
+
+.playCover span:first-child {
+  font-size: 48px;
+  color: #38bdf8;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+  transition: transform 0.16s ease;
+}
+
+.playCover:hover span:first-child {
+  transform: scale(1.1);
+}
+
+.playText {
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.playSubText {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* 현지 스트림 준비 중 / 비시즌 대기 카드 (16:9 비율 유지) */
+.offlineCard {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+  text-align: center;
+  box-sizing: border-box;
+  gap: 8px;
+}
+
+.offlineIconBox {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
+.offlineIconBox span {
+  font-size: 24px;
+}
+
+.offlineText h4 {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.offlineText p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+  max-width: 280px;
+  line-height: 1.45;
+}
+
+.officialSiteBtn {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 6px 12px;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.16s ease;
+}
+
+.officialSiteBtn:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.officialSiteBtn span {
+  font-size: 14px;
+}
+
+/* 에러 상태 오버레이 */
+.errorOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #0f172a;
+  color: #cbd5e1;
+  padding: 20px;
+  text-align: center;
+}
+
+.errorOverlay .errorIcon {
+  font-size: 36px;
+  color: #f43f5e;
+}
+
+.errorTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.errorDesc {
+  font-size: 11px;
+  color: #94a3b8;
+  max-width: 280px;
+  line-height: 1.4;
+}
+
+.errorActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.retryButton,
+.fallbackLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.retryButton {
+  background: #334155;
+  color: #ffffff;
+}
+
+.retryButton:hover {
+  background: #475569;
+}
+
+.retryButton span {
+  font-size: 14px;
+}
+
+.fallbackLink {
+  background: #0284c7;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.fallbackLink:hover {
+  background: #0369a1;
+}
+
+.newTabLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #334155;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.newTabLink:hover {
+  background: #475569;
+  color: #ffffff;
+}
+
+.newTabLink span {
+  font-size: 16px;
+}
+
+/* Empty State */
+.empty {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #ffffff);
+  color: var(--snow-muted, #64748b);
+}
+
+.empty span {
+  font-size: 40px;
+  color: #94a3b8;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sourceNotice {
+  margin: 16px 4px 0;
+  color: var(--snow-faint, #94a3b8);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* 반응형 미디어 쿼리 */
+@media (min-width: 1400px) {
+  .cameraGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    width: 100%;
+    padding: 14px 12px 40px;
+  }
+  .topTabs {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .intro {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .introIcon {
+    width: 42px;
+    height: 42px;
+  }
+  .intro h1 {
+    font-size: 20px;
+  }
+  .introCopy {
+    display: none;
+  }
+  .resortSection {
+    padding: 14px 10px;
+  }
+  .cameraGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .resortHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .resortNavTrack {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    padding: 6px;
+  }
+  .resortTab {
+    min-height: 38px;
+    padding: 4px 2px;
+    font-size: 11px;
+    gap: 3px;
+  }
+  .countBadge {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .resortNavTrack {
+    gap: 3px;
+    padding: 4px;
+  }
+  .resortTab {
+    min-height: 36px;
+    padding: 3px 1px;
+    font-size: 10px;
+    letter-spacing: -0.03em;
+  }
+}

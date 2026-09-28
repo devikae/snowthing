@@ -1,9 +1,11 @@
 package com.ikae.snowthing.global.config;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @Profile("local")
+@Order(1)
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
@@ -60,15 +63,36 @@ public class DataInitializer implements CommandLineRunner {
                             .build());
         }
 
-        if (resortRepository.count() == 0) {
-            resortRepository.saveAll(
-                    List.of(
-                            Resort.builder().name("휘닉스파크").regionName("강원 평창").build(),
-                            Resort.builder().name("하이원리조트").regionName("강원 정선").build(),
-                            Resort.builder().name("모나용평").regionName("강원 평창").build(),
-                            Resort.builder().name("비발디파크").regionName("강원 홍천").build(),
-                            Resort.builder().name("웰리힐리파크").regionName("강원 횡성").build(),
-                            Resort.builder().name("지산리조트").regionName("경기 이천").build()));
+        List<Resort> targetResorts =
+                List.of(
+                        resort("PHOENIX", "휘닉스파크", "강원 평창", 1),
+                        resort("VIVALDI", "비발디파크", "강원 홍천", 2),
+                        resort("HIGH1", "하이원리조트", "강원 정선", 3),
+                        resort("YONGPYONG", "모나용평", "강원 평창", 4),
+                        resort("WELLI_HILLI", "웰리힐리파크", "강원 횡성", 5),
+                        resort("JISAN", "지산리조트", "경기 이천", 6),
+                        resort("KONJIAM", "곤지암리조트", "경기 광주", 7),
+                        resort("MUJU", "무주덕유산리조트", "전북 무주", 8),
+                        resort("EDEN_VALLEY", "에덴밸리리조트", "경남 양산", 9),
+                        resort("ELYSIAN", "엘리시안 강촌", "강원 춘천", 10),
+                        resort("ALPENSIA", "알펜시아리조트", "강원 평창", 11),
+                        resort("OAK_VALLEY", "오크밸리", "강원 원주", 12),
+                        resort("O2_RESORT", "오투리조트", "강원 태백", 13));
+
+        for (Resort target : targetResorts) {
+            Optional<Resort> byCode = resortRepository.findByCode(target.getCode());
+            if (byCode.isPresent()) {
+                continue;
+            }
+            Optional<Resort> byName = resortRepository.findByName(target.getName());
+            if (byName.isPresent()) {
+                Resort existing = byName.get();
+                existing.updateMetadata(
+                        target.getCode(), target.getDisplayOrder(), target.isActive());
+                resortRepository.save(existing);
+            } else {
+                resortRepository.save(target);
+            }
         }
 
         if (ridingStyleRepository.count() == 0) {
@@ -169,6 +193,16 @@ public class DataInitializer implements CommandLineRunner {
                 .code(code)
                 .name(name)
                 .sortOrder(sortOrder)
+                .active(true)
+                .build();
+    }
+
+    private Resort resort(String code, String name, String regionName, int displayOrder) {
+        return Resort.builder()
+                .code(code)
+                .name(name)
+                .regionName(regionName)
+                .displayOrder(displayOrder)
                 .active(true)
                 .build();
     }

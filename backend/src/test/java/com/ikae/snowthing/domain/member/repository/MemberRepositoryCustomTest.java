@@ -36,7 +36,14 @@ class MemberRepositoryCustomTest {
                                 .bio("스노우보더")
                                 .build());
 
-        Resort resort = Resort.builder().name("테스트하이원").regionName("강원 정선").build();
+        Resort resort =
+                Resort.builder()
+                        .code("TEST_HIGH1")
+                        .name("테스트하이원")
+                        .regionName("강원 정선")
+                        .displayOrder(1)
+                        .active(true)
+                        .build();
         entityManager.persist(resort);
         RidingStyle style = RidingStyle.builder().styleName("테스트파크").description("기물").build();
         entityManager.persist(style);
@@ -74,9 +81,23 @@ class MemberRepositoryCustomTest {
                                 .bio("올라운더")
                                 .build());
 
-        Resort resort1 = Resort.builder().name("테스트용평").regionName("강원 평창").build();
+        Resort resort1 =
+                Resort.builder()
+                        .code("TEST_YONGPYONG")
+                        .name("테스트용평")
+                        .regionName("강원 평창")
+                        .displayOrder(1)
+                        .active(true)
+                        .build();
         entityManager.persist(resort1);
-        Resort resort2 = Resort.builder().name("테스트휘닉스").regionName("강원 평창").build();
+        Resort resort2 =
+                Resort.builder()
+                        .code("TEST_PHOENIX")
+                        .name("테스트휘닉스")
+                        .regionName("강원 평창")
+                        .displayOrder(2)
+                        .active(true)
+                        .build();
         entityManager.persist(resort2);
 
         RidingStyle style1 = RidingStyle.builder().styleName("테스트라이딩").description("카빙").build();
