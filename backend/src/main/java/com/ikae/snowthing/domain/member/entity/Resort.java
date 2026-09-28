@@ -41,4 +41,10 @@ public class Resort {
         this.displayOrder = displayOrder;
         this.active = active;
     }
+
+    public void updateMetadata(String code, int displayOrder, boolean active) {
+        this.code = code;
+        this.displayOrder = displayOrder;
+        this.active = active;
+    }
 }

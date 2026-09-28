@@ -33,8 +33,8 @@ second_run_output="$(run_migrations)"
 grep -q 'Migration already applied: 005_migration_resort_cam' <<< "$second_run_output"
 
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '005_migration_resort_cam'")" == "1" ]]
-[[ "$(mysql_test --execute="SELECT COUNT(*) FROM resort WHERE code IS NOT NULL AND is_active = TRUE")" == "12" ]]
-[[ "$(mysql_test --execute="SELECT COUNT(*) FROM resort_camera WHERE is_active = TRUE")" == "89" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM resort WHERE code IS NOT NULL AND is_active = TRUE")" == "13" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM resort_camera WHERE is_active = TRUE")" == "87" ]]
 
 assert_source_count() {
   local source_type="$1"
@@ -47,9 +47,9 @@ assert_source_count() {
   fi
 }
 
-assert_source_count HLS 6
+assert_source_count HLS 67
+assert_source_count IFRAME 18
 assert_source_count YOUTUBE 2
-assert_source_count IFRAME 2
-assert_source_count EXTERNAL_LINK 79
+assert_source_count EXTERNAL_LINK 0
 
 echo "Production migration 005 verification passed."

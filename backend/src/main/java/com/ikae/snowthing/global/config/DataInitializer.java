@@ -1,6 +1,7 @@
 package com.ikae.snowthing.global.config;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -75,10 +76,21 @@ public class DataInitializer implements CommandLineRunner {
                         resort("EDEN_VALLEY", "에덴밸리리조트", "경남 양산", 9),
                         resort("ELYSIAN", "엘리시안 강촌", "강원 춘천", 10),
                         resort("ALPENSIA", "알펜시아리조트", "강원 평창", 11),
-                        resort("OAK_VALLEY", "오크밸리", "강원 원주", 12));
+                        resort("OAK_VALLEY", "오크밸리", "강원 원주", 12),
+                        resort("O2_RESORT", "오투리조트", "강원 태백", 13));
 
         for (Resort target : targetResorts) {
-            if (resortRepository.findByCode(target.getCode()).isEmpty()) {
+            Optional<Resort> byCode = resortRepository.findByCode(target.getCode());
+            if (byCode.isPresent()) {
+                continue;
+            }
+            Optional<Resort> byName = resortRepository.findByName(target.getName());
+            if (byName.isPresent()) {
+                Resort existing = byName.get();
+                existing.updateMetadata(
+                        target.getCode(), target.getDisplayOrder(), target.isActive());
+                resortRepository.save(existing);
+            } else {
                 resortRepository.save(target);
             }
         }

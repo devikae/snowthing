@@ -523,7 +523,7 @@ export const FALLBACK_RESORTS: ResortCameraGroup[] = [
         code: "CAM_09",
         name: "클래식",
         sourceType: "IFRAME",
-        sourceUrl: "/vivaldi.html?channel=10&serial=TD0314A17496&autoplay=true",
+        sourceUrl: "/vivaldi.html?channel=10&serial=TW0014A15451&autoplay=true",
         externalPageUrl: "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
         displayOrder: 9,
       },

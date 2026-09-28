@@ -1,3 +1,19 @@
+- **슬로프캠 백엔드 CI 통과 및 CodeRabbit 피드백 전수 조치 (2026-09-29)**:
+  - 상태: 구현, 테스트 통과, DB/시드/CI스크립트 동기화 완료
+  - 내용:
+    - **CI 실패 원인 해결 (`scripts/verify-production-migration-005.sh`)**:
+      - 검증 기대값을 실제 마스터 데이터 기준(13개 리조트, 87개 카메라, HLS: 67, IFRAME: 18, YOUTUBE: 2, EXTERNAL_LINK: 0)으로 보정.
+    - **프로덕션 마이그레이션 SQL 보강 (`005_migration_resort_cam.sql`)**:
+      - 누락되었던 오투리조트(`O2_RESORT`) 1건 및 카메라 8건 DDL/DML 추가.
+      - 비발디파크 `CAM_09`(클래식)의 시리얼을 `TD0314A17496`에서 대명소노 공식 실측 시리얼인 `TW0014A15451`로 교정하여 `CAM_10`(레게)와의 스트림 중복 문제 해결 (프론트엔드 `fallback-data.ts` 동시 반영).
+    - **로컬 시드 데이터 정합성 보장 (`resort-cameras-local.json`)**:
+      - 예전 더미 데이터로 방치되었던 로컬 시드 JSON을 프로덕션 87개 카메라 마스터 스펙과 100% 일치하도록 전면 동기화.
+    - **DataInitializer 멱등성 및 고유키 충돌 방지 보강 (`DataInitializer.java`)**:
+      - `targetResorts`에 `O2_RESORT` 추가.
+      - `findByCode()`가 비어있을 때 `findByName()`으로 기존 행을 조회하여 메타데이터를 갱신(Update)하도록 하여 로컬 DB 재부팅 시 `name` UNIQUE 제약 충돌 방지.
+    - **빌드 및 테스트 검증**:
+      - 백엔드 `./gradlew spotlessCheck test` 전체 통과 및 프론트엔드 `npm run build` 성공.
+
 - **슬로프캠 스트림 연동 및 뷰어 UI 개편 PR #30 생성 (2026-09-29)**:
   - 상태: PR 생성 완료 (`feature/resort-cam` ➔ `main`)
   - PR URL: https://github.com/devikae/snowthing/pull/30

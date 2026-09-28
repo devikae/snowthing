@@ -22,7 +22,8 @@ INSERT INTO `resort` (`code`, `name`, `region`, `display_order`, `is_active`) VA
 ('EDEN_VALLEY', '에덴밸리리조트', '경남 양산', 9, TRUE),
 ('ELYSIAN', '엘리시안 강촌', '강원 춘천', 10, TRUE),
 ('ALPENSIA', '알펜시아리조트', '강원 평창', 11, TRUE),
-('OAK_VALLEY', '오크밸리', '강원 원주', 12, TRUE) 
+('OAK_VALLEY', '오크밸리', '강원 원주', 12, TRUE),
+('O2_RESORT', '오투리조트', '강원 태백', 13, TRUE) 
 ON DUPLICATE KEY UPDATE
     `code` = VALUES(`code`),
     `region` = VALUES(`region`),
@@ -73,7 +74,7 @@ SELECT r.resort_id, 'CAM_05', '재즈 하단', 'IFRAME', '/vivaldi.html?channel=
 SELECT r.resort_id, 'CAM_06', '테크노 상단', 'IFRAME', '/vivaldi.html?channel=2&serial=XU0121A37904&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 6, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
 SELECT r.resort_id, 'CAM_07', '테크노 하단', 'IFRAME', '/vivaldi.html?channel=5&serial=XU0121A37904&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 7, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
 SELECT r.resort_id, 'CAM_08', '블루스', 'IFRAME', '/vivaldi.html?channel=4&serial=TW0014A15451&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 8, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
-SELECT r.resort_id, 'CAM_09', '클래식', 'IFRAME', '/vivaldi.html?channel=10&serial=TD0314A17496&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 9, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
+SELECT r.resort_id, 'CAM_09', '클래식', 'IFRAME', '/vivaldi.html?channel=10&serial=TW0014A15451&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 9, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
 SELECT r.resort_id, 'CAM_10', '레게', 'IFRAME', '/vivaldi.html?channel=10&serial=TD0314A17496&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 10, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
 SELECT r.resort_id, 'CAM_11', '펑키 상단', 'IFRAME', '/vivaldi.html?channel=5&serial=TW0014A15451&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 11, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
 SELECT r.resort_id, 'CAM_12', '펑키 하단', 'IFRAME', '/vivaldi.html?channel=8&serial=XU0121A37904&autoplay=true', 'https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S', 12, TRUE FROM resort r WHERE r.code = 'VIVALDI' UNION ALL
@@ -132,4 +133,12 @@ SELECT r.resort_id, 'CAM_09', '폴카', 'HLS', '/api/muju-stream/09/playlist.m3u
 SELECT r.resort_id, 'CAM_10', '실크로드, 미뉴에트 하단', 'HLS', '/api/muju-stream/10/playlist.m3u8', 'http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=10', 10, TRUE FROM resort r WHERE r.code = 'MUJU' UNION ALL
 SELECT r.resort_id, 'CAM_11', '커넥션', 'HLS', '/api/muju-stream/11/playlist.m3u8', 'http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=11', 11, TRUE FROM resort r WHERE r.code = 'MUJU' UNION ALL
 SELECT r.resort_id, 'CAM_01', '베이직', 'IFRAME', 'https://rtsp.me/embed/2kTsKt35/', NULL, 1, TRUE FROM resort r WHERE r.code = 'EDEN_VALLEY' UNION ALL
-SELECT r.resort_id, 'CAM_02', '슬로프 광장', 'IFRAME', 'https://rtsp.me/embed/ry9aTdQh', NULL, 2, TRUE FROM resort r WHERE r.code = 'EDEN_VALLEY';
+SELECT r.resort_id, 'CAM_02', '슬로프 광장', 'IFRAME', 'https://rtsp.me/embed/ry9aTdQh', NULL, 2, TRUE FROM resort r WHERE r.code = 'EDEN_VALLEY' UNION ALL
+SELECT r.resort_id, 'CAM_01', '스키하우스', 'HLS', '/api/o2-stream/cam0.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 1, TRUE FROM resort r WHERE r.code = 'O2_RESORT' UNION ALL
+SELECT r.resort_id, 'CAM_02', '오렌지', 'HLS', '/api/o2-stream/cam1.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 2, TRUE FROM resort r WHERE r.code = 'O2_RESORT' UNION ALL
+SELECT r.resort_id, 'CAM_03', '버금마루', 'HLS', '/api/o2-stream/cam2.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 3, TRUE FROM resort r WHERE r.code = 'O2_RESORT' UNION ALL
+SELECT r.resort_id, 'CAM_04', '으뜸마루', 'HLS', '/api/o2-stream/cam3.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 4, TRUE FROM resort r WHERE r.code = 'O2_RESORT' UNION ALL
+SELECT r.resort_id, 'CAM_05', '글로리2 상단', 'HLS', '/api/o2-stream/cam20.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 5, TRUE FROM resort r WHERE r.code = 'O2_RESORT' UNION ALL
+SELECT r.resort_id, 'CAM_06', '글로리3 상단', 'HLS', '/api/o2-stream/cam21.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 6, TRUE FROM resort r WHERE r.code = 'O2_RESORT' UNION ALL
+SELECT r.resort_id, 'CAM_07', '드림2 상단', 'HLS', '/api/o2-stream/cam22.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 7, TRUE FROM resort r WHERE r.code = 'O2_RESORT' UNION ALL
+SELECT r.resort_id, 'CAM_08', '글로리3', 'HLS', '/api/o2-stream/cam23.m3u8', 'https://www.o2resort.com/ski/webcam.asp', 8, TRUE FROM resort r WHERE r.code = 'O2_RESORT';
