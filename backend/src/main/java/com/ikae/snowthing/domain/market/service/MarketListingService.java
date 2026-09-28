@@ -214,7 +214,7 @@ public class MarketListingService {
     public void delete(String publicId, CustomUserDetails userDetails) {
         MarketListing listing =
                 marketListingRepository
-                        .findDetailByPostPublicId(publicId)
+                        .findForUpdateByPostPublicId(publicId)
                         .orElseThrow(() -> new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND));
         if (!isWriter(listing.getPost(), userDetails) && !isAdmin(userDetails)) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
@@ -233,7 +233,7 @@ public class MarketListingService {
         }
         MarketListing listing =
                 marketListingRepository
-                        .findDetailByPostPublicId(publicId)
+                        .findForUpdateByPostPublicId(publicId)
                         .orElseThrow(() -> new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND));
         listing.getPost().changeStatus(status);
     }
