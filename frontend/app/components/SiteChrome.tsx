@@ -54,7 +54,7 @@ function ThemeToggle() {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "resort" | "profile" | "login" | "signup";
+export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "market" | "resort" | "profile" | "login" | "signup";
 
 interface MemberUser {
   publicId: string;
@@ -146,6 +146,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/resort" className={active === "resort" ? "nav-active" : ""} aria-current={active === "resort" ? "page" : undefined}>
                 리조트
               </Link>
+              <Link href="/market" className={active === "market" ? "nav-active" : ""} aria-current={active === "market" ? "page" : undefined}>
+                중고장터
+              </Link>
             </nav>
           </div>
 
@@ -192,6 +195,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                 <Link key={item.key} href={item.href} className={isBoardItemActive(item.key) ? "active" : ""} onClick={() => setMobileOpen(false)}>{item.label}</Link>
               ))}
               <Link href="/resort" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>리조트</Link>
+              <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
             </nav>
           </div>
         </div>

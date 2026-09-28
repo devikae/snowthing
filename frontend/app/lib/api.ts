@@ -41,4 +41,14 @@ export const API_ENDPOINTS = {
   chat: {
     recent: `${API_V1_URL}/chat/recent`,
   },
+  market: {
+    categories: `${API_V1_URL}/market/categories`,
+    preview: `${API_V1_URL}/market-listings/preview`,
+    list: `${API_V1_URL}/market-listings`,
+    create: `${API_V1_URL}/market-listings`,
+    detail: (publicId: string) => `${API_V1_URL}/market-listings/${publicId}`,
+    update: (publicId: string) => `${API_V1_URL}/market-listings/${publicId}`,
+    delete: (publicId: string) => `${API_V1_URL}/market-listings/${publicId}`,
+    tradeStatus: (publicId: string) => `${API_V1_URL}/market-listings/${publicId}/trade-status`,
+  },
 } as const;

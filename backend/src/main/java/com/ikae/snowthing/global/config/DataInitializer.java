@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.ikae.snowthing.domain.market.entity.MarketCategory;
+import com.ikae.snowthing.domain.market.repository.MarketCategoryRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.entity.RidingStyle;
@@ -30,6 +32,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ResortRepository resortRepository;
     private final RidingStyleRepository ridingStyleRepository;
     private final PostCategoryRepository categoryRepository;
+    private final MarketCategoryRepository marketCategoryRepository;
     private final PostRepository postRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -107,6 +110,24 @@ public class DataInitializer implements CommandLineRunner {
                             PostCategory.builder().name("맛집게시판").code("FOOD").build()));
         }
 
+        if (categoryRepository.findByCode("MARKET").isEmpty()) {
+            categoryRepository.save(PostCategory.builder().name("중고장터").code("MARKET").build());
+        }
+
+        if (marketCategoryRepository.count() == 0) {
+            marketCategoryRepository.saveAll(
+                    List.of(
+                            marketCategory("SNOWBOARD", "스노보드", 1),
+                            marketCategory("SKI", "스키", 2),
+                            marketCategory("BINDING", "바인딩", 3),
+                            marketCategory("BOOTS", "부츠", 4),
+                            marketCategory("APPAREL", "의류", 5),
+                            marketCategory("PROTECTIVE_GEAR", "보호장비", 6),
+                            marketCategory("ACCESSORY", "액세서리", 7),
+                            marketCategory("PASS", "시즌권·이용권", 8),
+                            marketCategory("OTHER", "기타", 9)));
+        }
+
         if (postRepository.count() == 0) {
             PostCategory freeCat = categoryRepository.findByCode("FREE").orElse(null);
             PostCategory anonCat = categoryRepository.findByCode("ANONYMOUS").orElse(null);
@@ -141,5 +162,14 @@ public class DataInitializer implements CommandLineRunner {
                 }
             }
         }
+    }
+
+    private MarketCategory marketCategory(String code, String name, int sortOrder) {
+        return MarketCategory.builder()
+                .code(code)
+                .name(name)
+                .sortOrder(sortOrder)
+                .active(true)
+                .build();
     }
 }

@@ -7,6 +7,7 @@ import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
+import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
@@ -23,6 +24,7 @@ class CommentCommandService {
     private static final long MAX_REPLY_COUNT = 100L;
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    private final MarketListingRepository marketListingRepository;
 
     @Transactional
     CommentResponse createComment(
@@ -38,6 +40,14 @@ class CommentCommandService {
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
         if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+        }
+        if (marketListingRepository.existsByPostId(post.getId())) {
+            if (userDetails == null) {
+                throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+            }
+            if (request.isAnonymous()) {
+                throw new CustomAuthException(ErrorCode.MARKET_ANONYMOUS_COMMENT_NOT_ALLOWED);
+            }
         }
         Comment parent = null;
         if (request.parentId() != null) {

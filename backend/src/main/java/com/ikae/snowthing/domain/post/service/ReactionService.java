@@ -7,6 +7,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.ReactionCountMismatch;
@@ -45,6 +46,7 @@ public class ReactionService {
     private final PostRepository postRepository;
     private final PostReactionRepository reactionRepository;
     private final MemberRepository memberRepository;
+    private final MarketListingRepository marketListingRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -154,9 +156,14 @@ public class ReactionService {
     }
 
     private Post findPost(String publicId) {
-        return postRepository
-                .findByPublicId(publicId)
-                .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        Post post =
+                postRepository
+                        .findByPublicId(publicId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        if (marketListingRepository.existsByPostId(post.getId())) {
+            throw new CustomAuthException(ErrorCode.MARKET_REACTION_NOT_ALLOWED);
+        }
+        return post;
     }
 
     private ReactionActor resolveActor(

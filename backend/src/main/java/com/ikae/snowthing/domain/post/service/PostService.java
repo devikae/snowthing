@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PostService {
 
     private static final String ANONYMOUS_CATEGORY_CODE = "ANONYMOUS";
+    private static final String MARKET_CATEGORY_CODE = "MARKET";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
     private static final int MAX_OFFSET_PAGE = 100;
@@ -56,6 +57,7 @@ public class PostService {
                         .findByCode(request.categoryCode())
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+        rejectMarketCategory(category);
 
         Member member = null;
         String encodedPassword = null;
@@ -118,6 +120,7 @@ public class PostService {
         if (post.isDeleted()) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
+        rejectMarketPost(post);
 
         if (post.getStatus() != PostStatus.NORMAL) {
             if (!isAdmin(userDetails)) {
@@ -202,6 +205,8 @@ public class PostService {
                         .findByCode(request.categoryCode())
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+        rejectMarketPost(post);
+        rejectMarketCategory(category);
 
         post.update(request.title(), request.content(), category);
         post.replaceImages(toPostImages(request.imageUrls()));
@@ -219,6 +224,7 @@ public class PostService {
         if (post.isDeleted()) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
+        rejectMarketPost(post);
 
         boolean isAdmin = isAdmin(userDetails);
 
@@ -284,6 +290,18 @@ public class PostService {
 
     private String resolveWriterIp(String clientIp) {
         return clientIp != null && !clientIp.isBlank() ? clientIp : DEFAULT_WRITER_IP;
+    }
+
+    private void rejectMarketPost(Post post) {
+        if (MARKET_CATEGORY_CODE.equalsIgnoreCase(post.getCategory().getCode())) {
+            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    private void rejectMarketCategory(PostCategory category) {
+        if (MARKET_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+            throw new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND);
+        }
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {
