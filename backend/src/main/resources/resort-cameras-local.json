@@ -1,0 +1,803 @@
+[
+  {
+    "resortCode": "KONJIAM",
+    "code": "CAM_01",
+    "name": "정상 휴게소",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://m.konjiamresort.co.kr/ski/skiLveCam.dev",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "KONJIAM",
+    "code": "CAM_02",
+    "name": "정상부 슬로프 (씽큐, 그램)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://m.konjiamresort.co.kr/ski/skiLveCam.dev",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "KONJIAM",
+    "code": "CAM_03",
+    "name": "중간 슬로프 (와이낫 상단)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://m.konjiamresort.co.kr/ski/skiLveCam.dev",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "KONJIAM",
+    "code": "CAM_04",
+    "name": "초중급 베이스 (휘센)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://m.konjiamresort.co.kr/ski/skiLveCam.dev",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "KONJIAM",
+    "code": "CAM_05",
+    "name": "중상급 베이스 (와이낫, CNP)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://m.konjiamresort.co.kr/ski/skiLveCam.dev",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "JISAN",
+    "code": "CAM_01",
+    "name": "레몬 탑승장",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.jisanresort.co.kr/m/ski/slopes/webcam.asp",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "JISAN",
+    "code": "CAM_02",
+    "name": "오렌지 / 뉴오렌지 탑승장",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.jisanresort.co.kr/m/ski/slopes/webcam.asp",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "JISAN",
+    "code": "CAM_03",
+    "name": "5번 / 6번 슬로프",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.jisanresort.co.kr/m/ski/slopes/webcam.asp",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "JISAN",
+    "code": "CAM_04",
+    "name": "블루 탑승장",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.jisanresort.co.kr/m/ski/slopes/webcam.asp",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "JISAN",
+    "code": "CAM_05",
+    "name": "실버 탑승장",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.jisanresort.co.kr/m/ski/slopes/webcam.asp",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "ELYSIAN",
+    "code": "CAM_01",
+    "name": "실시간 영상",
+    "sourceType": "YOUTUBE",
+    "sourceUrl": "https://www.youtube.com/embed/O6_8VBu4FSA",
+    "externalPageUrl": "https://www.youtube.com/@11-lf8zw/streams",
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_01",
+    "name": "슬로프 전경",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_02",
+    "name": "발라드 상단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_03",
+    "name": "발라드 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_04",
+    "name": "재즈 상단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_05",
+    "name": "재즈 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_06",
+    "name": "테크노 상단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 6
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_07",
+    "name": "테크노 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 7
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_08",
+    "name": "블루스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 8
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_09",
+    "name": "클래식",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 9
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_10",
+    "name": "레게",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 10
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_11",
+    "name": "펑키 상단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 11
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_12",
+    "name": "펑키 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 12
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_13",
+    "name": "힙합",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 13
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_14",
+    "name": "스키월드 정상",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 14
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_15",
+    "name": "스노위랜드1",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 15
+  },
+  {
+    "resortCode": "VIVALDI",
+    "code": "CAM_16",
+    "name": "스노위랜드2",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S",
+    "externalPageUrl": null,
+    "displayOrder": 16
+  },
+  {
+    "resortCode": "OAK_VALLEY",
+    "code": "CAM_01",
+    "name": "베이스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://app.oakvalley.co.kr/mobileapp/reserve/ski/webcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "OAK_VALLEY",
+    "code": "CAM_02",
+    "name": "I 슬로프",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://app.oakvalley.co.kr/mobileapp/reserve/ski/webcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "OAK_VALLEY",
+    "code": "CAM_03",
+    "name": "G 슬로프 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://app.oakvalley.co.kr/mobileapp/reserve/ski/webcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "OAK_VALLEY",
+    "code": "CAM_04",
+    "name": "F 슬로프 상단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://app.oakvalley.co.kr/mobileapp/reserve/ski/webcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "OAK_VALLEY",
+    "code": "CAM_05",
+    "name": "플라워 휴게소",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://app.oakvalley.co.kr/mobileapp/reserve/ski/webcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "code": "CAM_01",
+    "name": "알파",
+    "sourceType": "HLS",
+    "sourceUrl": "https://live.wellihillipark.com/wellihillipark/_definst_/cam02.stream/playlist.m3u8",
+    "externalPageUrl": "https://m.wellihillipark.com/customer/webcam",
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "code": "CAM_02",
+    "name": "베이스",
+    "sourceType": "HLS",
+    "sourceUrl": "https://live.wellihillipark.com/wellihillipark/_definst_/cam03.stream/playlist.m3u8",
+    "externalPageUrl": "https://m.wellihillipark.com/customer/webcam",
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "code": "CAM_03",
+    "name": "슬로프 광장 / 전경",
+    "sourceType": "HLS",
+    "sourceUrl": "https://live.wellihillipark.com/wellihillipark/_definst_/cam04.stream/playlist.m3u8",
+    "externalPageUrl": "https://m.wellihillipark.com/customer/webcam",
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "code": "CAM_04",
+    "name": "정상 광장",
+    "sourceType": "HLS",
+    "sourceUrl": "https://live.wellihillipark.com/wellihillipark/_definst_/cam05.stream/playlist.m3u8",
+    "externalPageUrl": "https://m.wellihillipark.com/customer/webcam",
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "code": "CAM_05",
+    "name": "슬로프 전경",
+    "sourceType": "HLS",
+    "sourceUrl": "https://live.wellihillipark.com/wellihillipark/_definst_/cam06.stream/playlist.m3u8",
+    "externalPageUrl": "https://m.wellihillipark.com/customer/webcam",
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "code": "CAM_06",
+    "name": "워터플래닛",
+    "sourceType": "HLS",
+    "sourceUrl": "https://live.wellihillipark.com/wellihillipark/_definst_/cam07.stream/playlist.m3u8",
+    "externalPageUrl": "https://m.wellihillipark.com/customer/webcam",
+    "displayOrder": 6
+  },
+  {
+    "resortCode": "PHOENIX",
+    "code": "CAM_01",
+    "name": "호크 / 스패로우",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "PHOENIX",
+    "code": "CAM_02",
+    "name": "도도",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "PHOENIX",
+    "code": "CAM_03",
+    "name": "불새마루",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "PHOENIX",
+    "code": "CAM_04",
+    "name": "베이스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "PHOENIX",
+    "code": "CAM_05",
+    "name": "펭귄",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "PHOENIX",
+    "code": "CAM_06",
+    "name": "스노우 빌리지",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
+    "externalPageUrl": null,
+    "displayOrder": 6
+  },
+  {
+    "resortCode": "PHOENIX",
+    "code": "CAM_07",
+    "name": "몽블랑 정상",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
+    "externalPageUrl": null,
+    "displayOrder": 7
+  },
+  {
+    "resortCode": "ALPENSIA",
+    "code": "CAM_01",
+    "name": "알펜시아 리조트 라이브캠",
+    "sourceType": "YOUTUBE",
+    "sourceUrl": "https://www.youtube.com/embed/I3azd8f2HhM",
+    "externalPageUrl": "https://www.alpensia.com/guide/web-cam.do",
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_01",
+    "name": "발왕산 氣 스카이워크",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_02",
+    "name": "발왕산 천년주목숲길",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_03",
+    "name": "베이스 전경 / 레드 슬로프",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_04",
+    "name": "모나 용평 진입로",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_05",
+    "name": "옐로우 슬로프",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_06",
+    "name": "핑크 슬로프",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 6
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_07",
+    "name": "메가그린 슬로프",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 7
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_08",
+    "name": "골드 베이스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 8
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_09",
+    "name": "골드 정상",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 9
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_10",
+    "name": "레인보우 전경",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 10
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_11",
+    "name": "레인보우 파라다이스 입구",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 11
+  },
+  {
+    "resortCode": "YONGPYONG",
+    "code": "CAM_12",
+    "name": "피크 아일랜드",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.yongpyong.co.kr/kor/guide/realTimeNews/ypResortWebcam.do",
+    "externalPageUrl": null,
+    "displayOrder": 12
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_01",
+    "name": "하이원탑 (제우스1 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=1",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_02",
+    "name": "하이원탑 (헤라2 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=2",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_03",
+    "name": "하이원탑 (아폴로1 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=3",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_04",
+    "name": "마운틴허브 (스노우월드 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=4",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_05",
+    "name": "마운틴허브 (아폴로3 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=5",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_06",
+    "name": "마운틴허브 (아테나2 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=6",
+    "externalPageUrl": null,
+    "displayOrder": 6
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_07",
+    "name": "마운틴 베이스 (아테나 리프트)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=7",
+    "externalPageUrl": null,
+    "displayOrder": 7
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_08",
+    "name": "아테나2 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=8",
+    "externalPageUrl": null,
+    "displayOrder": 8
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_09",
+    "name": "밸리탑 (빅토리아1 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=9",
+    "externalPageUrl": null,
+    "displayOrder": 9
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_10",
+    "name": "제우스2 합류구간",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=10",
+    "externalPageUrl": null,
+    "displayOrder": 10
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_11",
+    "name": "밸리허브 (헤라 리프트 입구)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=11",
+    "externalPageUrl": null,
+    "displayOrder": 11
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_12",
+    "name": "밸리허브 (아폴로3 합류)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=12",
+    "externalPageUrl": null,
+    "displayOrder": 12
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_13",
+    "name": "밸리허브 (제우스3)",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=13",
+    "externalPageUrl": null,
+    "displayOrder": 13
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_14",
+    "name": "제우스3 중단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=14",
+    "externalPageUrl": null,
+    "displayOrder": 14
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_15",
+    "name": "아폴로4 중단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=15",
+    "externalPageUrl": null,
+    "displayOrder": 15
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_16",
+    "name": "아폴로 베이스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=16",
+    "externalPageUrl": null,
+    "displayOrder": 16
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_17",
+    "name": "제우스3 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=17",
+    "externalPageUrl": null,
+    "displayOrder": 17
+  },
+  {
+    "resortCode": "HIGH1",
+    "code": "CAM_18",
+    "name": "밸리 베이스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=18",
+    "externalPageUrl": null,
+    "displayOrder": 18
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_01",
+    "name": "설천봉 정상",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=07",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_02",
+    "name": "설천 상단 슬로프",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=06",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_03",
+    "name": "모차르트, 미뉴에트",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=08",
+    "externalPageUrl": null,
+    "displayOrder": 3
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_04",
+    "name": "폴카",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=09",
+    "externalPageUrl": null,
+    "displayOrder": 4
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_05",
+    "name": "실크로드, 미뉴에트 하단",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=10",
+    "externalPageUrl": null,
+    "displayOrder": 5
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_06",
+    "name": "만선봉 정상",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=02",
+    "externalPageUrl": null,
+    "displayOrder": 6
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_07",
+    "name": "하이디하우스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=03",
+    "externalPageUrl": null,
+    "displayOrder": 7
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_08",
+    "name": "서역기행, 썬다운",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=04",
+    "externalPageUrl": null,
+    "displayOrder": 8
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_09",
+    "name": "커넥션",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=11",
+    "externalPageUrl": null,
+    "displayOrder": 9
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_10",
+    "name": "설천하우스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=05",
+    "externalPageUrl": null,
+    "displayOrder": 10
+  },
+  {
+    "resortCode": "MUJU",
+    "code": "CAM_11",
+    "name": "만선하우스",
+    "sourceType": "EXTERNAL_LINK",
+    "sourceUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=01",
+    "externalPageUrl": null,
+    "displayOrder": 11
+  },
+  {
+    "resortCode": "EDEN_VALLEY",
+    "code": "CAM_01",
+    "name": "베이직",
+    "sourceType": "IFRAME",
+    "sourceUrl": "https://rtsp.me/embed/2kTsKt35/",
+    "externalPageUrl": null,
+    "displayOrder": 1
+  },
+  {
+    "resortCode": "EDEN_VALLEY",
+    "code": "CAM_02",
+    "name": "슬로프 광장",
+    "sourceType": "IFRAME",
+    "sourceUrl": "https://rtsp.me/embed/ry9aTdQh",
+    "externalPageUrl": null,
+    "displayOrder": 2
+  }
+]

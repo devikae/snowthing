@@ -1,3 +1,75 @@
+- **슬로프캠(리조트캠) 오투리조트(강원 태백) 8개소 신규 추가 및 2줄 그리드(7열×2행) 확장 (2026-09-29)**:
+  - 상태: 구현 및 DB/프론트엔드 반영, HLS 프록시 라우트 신설, 빌드 검증 완료
+  - 내용:
+    - **오투리조트 (`O2_RESORT`, 8개소) 실시간 HLS 스트리밍 구축**:
+      - 오투리조트 원본 서버(`http://118.46.149.144:8080/ramdisk/`)의 비암호화 HTTP 및 CORS 누락 문제를 해결하기 위해 Next.js 스트림 프록시 라우트(`frontend/app/api/o2-stream/[file]/route.ts`) 신설.
+      - 2초 램디스크 청크 기반 초저지연 HLS 스트리밍 실측 검증(200 OK, `video/MP2T` 정상 수신).
+      - 스키하우스, 오렌지, 버금마루, 으뜸마루, 글로리2 상단, 글로리3 상단, 드림2 상단, 글로리3 총 8개 채널 인라인 실시간 송출.
+    - **리조트 선택 탭 2줄 유지 레이아웃 확장 (7열×2행)**:
+      - 오투리조트 추가로 전국 총 13개 스키장이 됨에 따라 탭 그리드를 `grid-template-columns: repeat(7, minmax(0, 1fr))`로 확장하여 가로 스크롤 없이 정확히 2줄(1줄 7개, 2줄 6개)을 유지.
+    - **DB 및 정적 Fallback 데이터 무손실(UTF-8) 동기화**:
+      - `resort` 테이블에 `O2_RESORT` (강원 태백, display_order: 13) 및 `resort_camera` 테이블에 8개 카메라 등록 완료.
+      - `fallback-data.ts` 정합성 동기화 및 Next.js 16 프로덕션 빌드 통과(`npm run build` 검증 완료).
+
+- **슬로프캠(리조트캠) 비발디파크 WESP 정품 스트리밍 엔진 교체 및 슬로프캠 전 채널 자동재생 확장 (2026-09-29)**:
+  - 상태: 구현 및 빌드 검증 완료
+  - 내용:
+    - **비발디파크 (`VIVALDI`) WESP 정품 스트리밍 엔진 전면 교체**:
+      - 기존 가짜 자체 제작 SDK(`vivaldi.js`)의 PBKDF2 암호화 검증 실패 및 소켓 연결 불능 결함을 해결.
+      - 검증된 대명소노그룹 정품 WESP WebSocket SDK 번들(`frontend/public/vivaldi.js` 및 `vivaldi.html`)로 전면 교체.
+      - `CameraPlayer.tsx` 내 IFRAME `sandbox` 속성으로 인해 WESP 바이너리 WebSocket 연결이 차단되던 보안 제약을 제거(`allow="autoplay; fullscreen"` 적용).
+    - **슬로프캠 전 채널 끊김 없는 자동 재생(Auto-play) 지원**:
+      - 기존 뷰포트 내 상위 6개 카메라로 제한되던 `autoPlayCodes.slice(0, 6)` 제약을 해제하여 16개 전체 카메라가 스크롤 시 자동 송출되도록 개선.
+      - 모바일 환경(`min-width: 768px` 미만)에서 `desktop` 플래그로 인해 비디오가 검은 커버로 멈춰 있던 조건을 제거하여 모바일/PC 모두 화면에 들어오면 즉시 자동 스트리밍 시작.
+    - Next.js 16 프로덕션 빌드 통과(`npm run build` 검증 완료).
+
+- **슬로프캠(리조트캠) 리조트 선택 탭 가로 스크롤 제거 및 2줄 그리드(6열×2행) 개편 및 LIVE 마크 전면 제거 (2026-09-28)**:
+  - 상태: 구현 및 빌드 검증 완료
+  - 내용:
+    - **가로 스크롤 UX 제거 및 한눈에 보기 지원**:
+      - 기존의 가로 스크롤 방식(`.resortNavTrack { overflow-x: auto }`)을 전면 제거.
+      - 전국 12개 스키장 리조트가 스크롤 없이 한눈에 들어오도록 `grid-template-columns: repeat(6, minmax(0, 1fr))` 2줄 그리드 구조로 개편.
+    - **녹색 LIVE 마크 및 상태 태그 전면 제거**:
+      - 리조트 선택 탭 내 녹색 `LIVE` 배지(`liveBadge`) 제거하여 2줄 그리드 내 텍스트 공간 확보 및 시각적 노이즈 제거.
+      - 개별 카메라 카드 헤더의 `statusLive` 배지 제거하여 카메라 타이틀 중심의 정돈된 카드 헤더 구성.
+    - **컴팩트 버튼 가독성 및 반응형 모바일 최적화**:
+      - 각 탭 내 텍스트 중앙 정렬(`justify-content: center`) 및 텍스트 오버플로우 방지(`tabName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`).
+      - 모바일(768px 이하 및 480px 이하)에서도 2줄 그리드가 깨지지 않고 터치하기 편하도록 패딩, 폰트 크기 반응형 최적화.
+    - Next.js 16 프로덕션 빌드 통과(`npm run build` 검증 완료).
+
+- **슬로프캠(리조트캠) 하이원 15개소 및 모나용평 5개소 실시간 HLS 라이브 스트림 연동 정상화 (2026-09-28)**:
+  - 상태: 구현 및 DB/프론트엔드 반영, HLS 프록시 라우트 신설, 빌드 검증 완료
+  - 내용:
+    - **하이원 리조트 (HIGH1)**:
+      - 기존 외부 링크(`EXTERNAL_LINK`) 형태에서 인라인 실시간 HLS 스트림(`/api/high1-stream/{ch}/playlist.m3u8`)으로 전면 전환.
+      - 하이원 Wowza 서버 원본(`http://59.30.12.195:1935`)의 HTTP Mixed Content 및 브라우저 보안 정책을 해결하기 위해 Next.js 스트림 프록시 라우트(`frontend/app/api/high1-stream/[ch]/[file]/route.ts`) 신설.
+      - 마스터 플레이리스트, 청크리스트, TS 세그먼트까지 `video/MP2T` 1080p 고화질 무제한 스트리밍 파이프라인 실측 검증(200 OK).
+      - 하이원탑(제우스1, 헤라2), 마운틴허브(스노우월드, 아폴로3, 아테나2), 마운틴 베이스, 아테나2 하단, 밸리허브(헤라, 아폴로3, 제우스3), 제우스3 중/하단, 아폴로4 중단, 아폴로 베이스, 밸리 베이스 총 15개 채널 전면 송출.
+    - **모나용평 (YONGPYONG)**:
+      - 기존 구 엔드포인트(`Ycam1/...`)의 `401 Unauthorized` 차단 문제를 공식 KT CDN 신규 엔드포인트(`https://live.yongpyong.co.kr/cam{XX}/index.m3u8`)로 전면 교체하여 해결.
+      - 발왕산 氣 스카이워크, 발왕산 천년주목숲길, 옐로우 슬로프, 베이스 전경/레드 슬로프, 모나용평 진입로 총 5개 채널 `200 OK` 및 `CORS: *` 즉각 인라인 재생 지원.
+    - **DB 및 정적 Fallback 데이터 동기화**:
+      - `frontend/app/resort-cam/fallback-data.ts` 및 MySQL `resort_camera` 테이블 내 하이원 15건, 모나용평 5건 무손실(UTF-8) 갱신 완료.
+      - Next.js 16 프로덕션 빌드 통과(`npm run build` 검증 완료).
+
+- **슬로프캠(리조트캠) 곤지암, 비발디파크, 무주덕유산리조트 실시간 스트림 연동 및 인라인 재생 정상화 (2026-09-28)**:
+  - 상태: 구현 및 DB/프론트엔드 반영, 빌드 검증 완료
+  - 내용:
+    - **곤지암 리조트 (KONJIAM)**:
+      - 기존 외부 링크(`EXTERNAL_LINK`) 형태에서 유효 SSL 도메인(`video.fpkorea.com`)의 HLS 실시간 스트림(`cam01` ~ `cam05`)으로 전면 교체.
+      - 기존 `konjiam.live.cdn.cloudn.co.kr`의 SSL 인증서 도메인 불일치(`NET::ERR_CERT_COMMON_NAME_INVALID`) 원인을 밝혀내고 정식 인증서 도메인(`video.fpkorea.com`, CORS `*` 허용)으로 교체하여 브라우저 보안 차단 해결.
+      - 5개 카메라(정상 휴게소, 정상부 슬로프, 초중급 베이스, 중상급 베이스, 중간 슬로프) 모두 `200 OK` 1080p HLS 스트림 즉시 재생.
+    - **비발디파크 (VIVALDI)**:
+      - WESP 전용 WebSocket 바이너리 스트리밍 클라이언트(`frontend/public/vivaldi.js`) 및 경량 임베드 뷰어(`frontend/public/vivaldi.html`) 구축.
+      - 16개 슬로프 카메라(슬로프 전경, 발라드 상/하단, 재즈 상/하단, 테크노 상/하단, 블루스, 클래식, 레게, 펑키 상/하단, 힙합, 스키월드 정상, 스노위랜드 1/2)를 전용 IFRAME(`sourceType: "IFRAME"`)으로 매핑하여 외부 사이트 메뉴 찌그러짐 없이 순수 16:9 슬로프 영상으로 즉각 재생되도록 개선.
+    - **무주덕유산리조트 (MUJU)**:
+      - 무주 원본 CDN의 인증서 만료(`certificate has expired`), Mixed Content 및 토큰 인증(`?e=...&h=...`) 문제를 해결하기 위해 Next.js 실시간 프록시 엔드포인트(`frontend/app/api/muju-stream/[cam]/[file]/route.ts`) 구현.
+      - 무주 공식 팝업에서 실시간 토큰을 동적으로 파싱/캐싱(60초)하고, m3u8 플레이리스트 및 TS 비디오 청크를 브라우저에 안전하게 스트리밍 중계.
+      - 11개 슬로프 카메라(만선하우스, 설천하우스, 설천봉 정상, 서역기행 등)를 HLS(`/api/muju-stream/...`)로 전면 교체하여 30초 재생 제한 없이 무제한 인라인 시청 지원.
+    - **DB 및 정적 Fallback 데이터 정합성 보장**:
+      - `frontend/app/resort-cam/fallback-data.ts` 및 로컬 MySQL `snowthing` 데이터베이스 `resort_camera` 테이블 내 곤지암 5건, 비발디 16건, 무주 11건의 `source_type`과 `source_url`을 UTF-8 무손실 동기화 완료.
+      - Next.js 16 프로덕션 빌드 통과(`npm run build` 성공).
+
 - **Sprint 05 PR #26 CI 테스트 보정 (2026-09-22)**:
   - GitHub Actions MySQL 환경에서 트리거가 발생시킨 JDBC 예외가 로컬과 다른 Spring 예외 타입으로 포장되는 차이를 확인했습니다.
   - 롤백 불변식 자체는 동일하므로 테스트가 특정 구현 예외(`JpaSystemException`)에 결합되지 않도록 `DataAccessException`으로 검증 범위를 조정했습니다.
@@ -1681,3 +1753,42 @@
 - 백엔드 CI와 배포 전 CI에 `004` 중고장터 마이그레이션 검증 단계를 추가했습니다.
 - CodeRabbit 지적 사항 반영 후 `./gradlew.bat spotlessCheck test`를 다시 실행해 포맷 검사와 백엔드 전체 테스트를 통과했습니다.
 - 로컬 Windows 환경에는 Bash 실행 파일이 없어 `verify-production-migration-004.sh`의 구문 검사는 실행하지 못했으며, PR의 Linux CI에서 검증합니다.
+
+## 리조트캠 설계
+
+- 상태: IN PROGRESS
+- 시작일: 2026-09-28
+
+### 완료
+
+- 최신 `origin/main`에서 `feature/resort-cam` 브랜치를 생성했습니다.
+- 리조트캠 설계 문서를 관리할 `docs/conception/003_resort_cam` 폴더를 생성했습니다.
+- `docs/conception/003_resort_cam`에 요구사항, 도메인 모델, ERD, 공개 API, 외부 영상 정책, 테스트 계획, 프런트엔드 명세, 구현 계획, ADR과 결정 요구 문서를 작성했습니다.
+- 기존 `Resort`를 확장하고 `ResortCamera`를 N:1로 연결하며, HLS·YouTube·iframe·외부 링크를 재생 유형으로 구분하도록 설계했습니다.
+- 비발디를 포함한 국내 12개 리조트, 리조트 전체 보기와 개별 카메라 경로, PC 가시 영역 최대 6개 자동재생과 모바일 선택 재생 정책을 확정했습니다.
+- 영상은 브라우저가 원본에 직접 연결하고 SnowThing 서버는 저장·프록시·재송출하지 않도록 경계를 정했습니다.
+- 관리자 화면·관리 API·즐겨찾기·4분할·날씨·자동 상태 점검은 후속 범위로 분리했습니다.
+- 기존 6개 리조트의 PK와 회원 선호 FK를 유지하면서 코드·표시 순서·활성 상태를 백필하고, 신규 6개 리조트와 카메라 89개를 추가하는 `005_migration_resort_cam.sql`을 작성했습니다.
+- 89개 원본 후보를 실측해 1차 활성 유형을 HLS 6개, YouTube 2개, iframe 2개, 외부 링크 79개로 분류했습니다. HTTP 전용·만료 토큰 의존 소스뿐 아니라 비시즌 확인에서 404·401·502·timeout이 발생한 원본도 내부 오류 카드 대신 공식 페이지 이동으로 보수적으로 처리했습니다.
+- `ResortCamera` 도메인과 공개 조회 API `GET /api/v1/resort-cams`를 구현하고, 활성 데이터 정렬·빈 리조트 제외·응답 컬렉션 방어적 복사를 적용했습니다.
+- 로컬 프로필에서는 12개 리조트와 카메라 89개를 초기화하도록 별도 시드 초기화기를 추가했습니다.
+- `/resort-cam`, 리조트별 전체 화면, 개별 카메라 화면을 구현하고 기존 `/resort`는 새 화면으로 리다이렉트했습니다.
+- PC에서는 화면에 들어온 카메라 중 최대 6개 후보만 자동 재생하고, 모바일에서는 사용자가 누른 영상만 재생하도록 구성했습니다.
+- HLS·YouTube·iframe·외부 링크 렌더러와 재시도·원본 페이지 이동 UI를 구현하고, 리조트 전환 시 HLS 자원을 정리하도록 구성했습니다.
+- 상단 메뉴와 홈의 웹캠 링크를 `/resort-cam`으로 변경했습니다.
+- `005` 운영 마이그레이션의 이력·리조트 12개·카메라 89개·소스 유형을 검증하는 스크립트를 추가하고 CI 및 배포 전 검증 단계에 연결했습니다.
+
+### 이슈
+
+- 구현 전에 카메라별 HTTPS·CORS·CSP·Referer 호환성을 SnowThing Origin에서 확인하고, 호환되지 않는 소스는 `EXTERNAL_LINK`로 처리해야 합니다.
+- 기존 운영 DB의 회원 선호 리조트 FK를 유지하면서 `resort.code`를 채워야 하므로 운영 마이그레이션은 단계적 백필 후 `NOT NULL`·UNIQUE를 적용해야 합니다.
+- 외부 영상 제공처의 CORS·CSP·Referer 정책은 예고 없이 바뀔 수 있으므로 내부 재생 성공을 영구 보장할 수 없습니다. 실패 카드의 원본 페이지 이동 경로를 유지해야 합니다.
+
+### 검증
+
+- `./gradlew.bat spotlessApply test`로 리조트캠 단위 테스트와 기존 백엔드 전체 테스트를 통과했습니다.
+- 테스트 종료 시 기존 Hibernate 스키마 정리 과정의 외래 키 제거 경고가 출력되지만 테스트 결과는 성공입니다.
+- `npm run lint`를 오류와 경고 없이 통과했습니다.
+- `npm run build`로 리조트캠 전체·리조트별·개별 카메라 동적 라우트를 포함한 production build를 통과했습니다.
+- Docker MySQL 8 임시 DB에서 `003`·`004`·`005` 마이그레이션 최초 적용과 재실행 이력, 활성 리조트 12개, 카메라 89개, 4개 소스 유형을 검증했습니다. 검증용 DB는 완료 후 삭제했습니다.
+- 별도 검증 DB와 백엔드 포트에서 비로그인 `GET /api/v1/resort-cams`가 200으로 리조트 12개와 카메라 89개를 반환하는지 확인하고 검증 환경을 정리했습니다.

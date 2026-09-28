@@ -24,9 +24,21 @@ public class Resort {
     @Column(name = "region", nullable = false, length = 50)
     private String regionName;
 
+    @Column(name = "code", nullable = false, length = 30, unique = true)
+    private String code;
+
+    @Column(name = "display_order", nullable = false)
+    private int displayOrder;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
+
     @Builder
-    public Resort(String name, String regionName) {
+    public Resort(String name, String regionName, String code, int displayOrder, boolean active) {
         this.name = name;
         this.regionName = regionName;
+        this.code = code;
+        this.displayOrder = displayOrder;
+        this.active = active;
     }
 }

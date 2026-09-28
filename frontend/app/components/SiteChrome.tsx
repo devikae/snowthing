@@ -143,8 +143,8 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                   ))}
                 </div>
               </details>
-              <Link href="/resort" className={active === "resort" ? "nav-active" : ""} aria-current={active === "resort" ? "page" : undefined}>
-                리조트
+              <Link href="/resort-cam" className={active === "resort" ? "nav-active" : ""} aria-current={active === "resort" ? "page" : undefined}>
+                슬로프캠
               </Link>
               <Link href="/market" className={active === "market" ? "nav-active" : ""} aria-current={active === "market" ? "page" : undefined}>
                 중고장터
@@ -194,7 +194,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               {boardItems.map((item) => (
                 <Link key={item.key} href={item.href} className={isBoardItemActive(item.key) ? "active" : ""} onClick={() => setMobileOpen(false)}>{item.label}</Link>
               ))}
-              <Link href="/resort" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>리조트</Link>
+              <Link href="/resort-cam" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>슬로프캠</Link>
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
             </nav>
           </div>

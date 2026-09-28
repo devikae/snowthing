@@ -64,8 +64,11 @@ class MemberProfileUpdateIntegrationTest {
                                 () ->
                                         resortRepository.save(
                                                 Resort.builder()
+                                                        .code("PHOENIX")
                                                         .name("휘닉스파크")
                                                         .regionName("강원 평창")
+                                                        .displayOrder(1)
+                                                        .active(true)
                                                         .build()));
         Resort r2 =
                 resortRepository
@@ -74,8 +77,11 @@ class MemberProfileUpdateIntegrationTest {
                                 () ->
                                         resortRepository.save(
                                                 Resort.builder()
+                                                        .code("HIGH1")
                                                         .name("하이원리조트")
                                                         .regionName("강원 정선")
+                                                        .displayOrder(2)
+                                                        .active(true)
                                                         .build()));
         resortId1 = r1.getId();
         resortId2 = r2.getId();

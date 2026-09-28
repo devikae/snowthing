@@ -29,28 +29,46 @@ class MasterDataControllerTest {
             resortRepository.saveAll(
                     java.util.List.of(
                             com.ikae.snowthing.domain.member.entity.Resort.builder()
+                                    .code("PHOENIX")
                                     .name("휘닉스파크")
                                     .regionName("강원 평창")
+                                    .displayOrder(1)
+                                    .active(true)
                                     .build(),
                             com.ikae.snowthing.domain.member.entity.Resort.builder()
+                                    .code("HIGH1")
                                     .name("하이원리조트")
                                     .regionName("강원 정선")
+                                    .displayOrder(2)
+                                    .active(true)
                                     .build(),
                             com.ikae.snowthing.domain.member.entity.Resort.builder()
+                                    .code("YONGPYONG")
                                     .name("모나용평")
                                     .regionName("강원 평창")
+                                    .displayOrder(3)
+                                    .active(true)
                                     .build(),
                             com.ikae.snowthing.domain.member.entity.Resort.builder()
+                                    .code("VIVALDI")
                                     .name("비발디파크")
                                     .regionName("강원 홍천")
+                                    .displayOrder(4)
+                                    .active(true)
                                     .build(),
                             com.ikae.snowthing.domain.member.entity.Resort.builder()
+                                    .code("WELLI_HILLI")
                                     .name("웰리힐리파크")
                                     .regionName("강원 횡성")
+                                    .displayOrder(5)
+                                    .active(true)
                                     .build(),
                             com.ikae.snowthing.domain.member.entity.Resort.builder()
+                                    .code("JISAN")
                                     .name("지산리조트")
                                     .regionName("경기 이천")
+                                    .displayOrder(6)
+                                    .active(true)
                                     .build()));
         }
         if (ridingStyleRepository.count() == 0) {
