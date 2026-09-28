@@ -28,6 +28,23 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "COMMENT_004", "루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "COMMON_002", "페이지 크기는 1 이상 100 이하이어야 합니다."),
+    MARKET_LISTING_NOT_FOUND(HttpStatus.NOT_FOUND, "MARKET_001", "존재하지 않거나 조회할 수 없는 중고장터 판매글입니다."),
+    MARKET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "MARKET_002", "존재하지 않는 중고장터 상품 분류입니다."),
+    MARKET_CATEGORY_INACTIVE(HttpStatus.BAD_REQUEST, "MARKET_003", "현재 선택할 수 없는 중고장터 상품 분류입니다."),
+    MARKET_INVALID_PRICE(HttpStatus.BAD_REQUEST, "MARKET_004", "중고장터 가격과 무료 나눔 설정을 확인해 주세요."),
+    MARKET_IMAGE_LIMIT_EXCEEDED(
+            HttpStatus.BAD_REQUEST, "MARKET_005", "중고장터 이미지는 최대 5장까지 등록할 수 있습니다."),
+    MARKET_LISTING_UPDATE_CONFLICT(
+            HttpStatus.CONFLICT, "MARKET_006", "다른 화면에서 판매글이 먼저 수정됐습니다. 최신 내용을 다시 확인해 주세요."),
+    MARKET_REACTION_NOT_ALLOWED(
+            HttpStatus.BAD_REQUEST, "MARKET_007", "중고장터 판매글은 추천과 비추천을 지원하지 않습니다."),
+    MARKET_ANONYMOUS_COMMENT_NOT_ALLOWED(
+            HttpStatus.BAD_REQUEST, "MARKET_008", "중고장터 댓글은 익명으로 작성할 수 없습니다."),
+    MARKET_INVALID_TRADE_STATUS(HttpStatus.BAD_REQUEST, "MARKET_009", "지원하지 않는 중고장터 거래 상태입니다."),
+    MARKET_INVALID_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST, "MARKET_010", "중고장터 페이지 크기는 1 이상 50 이하이어야 합니다."),
+    MARKET_PAGE_LIMIT_EXCEEDED(
+            HttpStatus.BAD_REQUEST, "MARKET_011", "중고장터는 최대 100페이지까지 조회할 수 있습니다."),
     COMMENT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     COMMENT_UPDATE_CONFLICT(

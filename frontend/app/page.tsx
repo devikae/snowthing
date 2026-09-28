@@ -61,10 +61,10 @@ const carpools = [
   { from: "경기 분당(서현)", to: "휘닉스파크", date: "12/28(토) 18:00 야간", price: "편도 1.5만원", seat: "1석 남음", note: "SUV 4륜 운행 · 장비 실어드립니다" },
 ];
 
-const gearItems = [
-  { title: "버튼 스텝온 포토 270", price: "220,000원", note: "휘팍 직거래 가능", image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBWec9rQzVJ3kYEXI-fsoR63FF7wuSFgqNUS8T0VmDNiZ8-QjTufr_5psAgEV_2uHBFUeRwSn6wvt-RapWGnaW3xcep_v7VAT0xpFiwRV1Jjof4wgDQBk2cO1e_5qbwpISaipedws-0etM9Ve3aDtjwvEJLve_GiH_maY3rfjkyLqNO3GH2hmLV5yYpFoHsZMdZYl2AYZl0XizOc_0oluIr5SIoX34Rg0BUruWSAPc_itY7_kEvwhJwYw" },
-  { title: "스미스 4D MAG 고글", price: "180,000원", note: "렌즈 2종 · 상태 S급", image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDRFUeNNwG_jiLzZL8yhifJtFTGjEduHPIXrXgOtSXheWa1zJRqPTOsMmqSwMN5SwLCE9ObUY4CIcE8ZeodhrmbwAzIK2WBoxo7RZIcI2lqj-GeL2msYYbGTBv4R0skSaz9TL0ZippD8Aw4j_aOdVYd4ppFqmQe258KGppZR0DGxvTSNS0wrnh_-Yoc0t15VRs36PZCydGyPl56-ky_C8vjPtH39jzaKEQYDMiSBD3pBMMadCkT48BxSQ" },
-];
+interface MarketPreviewItem {
+  publicId: string;
+  thumbnailImageUrl: string | null;
+}
 
 export default function HomePage() {
   const [hero, setHero] = useState(0);
@@ -73,6 +73,7 @@ export default function HomePage() {
   const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(emptyFeeds);
   const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
   const [feedsLoading, setFeedsLoading] = useState(true);
+  const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
   const [snowReportResort, setSnowReportResort] = useState("PHOENIX");
   const [snowReportContent, setSnowReportContent] = useState("");
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
@@ -121,6 +122,19 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.market.preview, { credentials: "include" });
+        if (!response.ok) return;
+        const data: { items?: MarketPreviewItem[] } = await response.json();
+        setMarketPreviews(Array.isArray(data.items) ? data.items.slice(0, 4) : []);
+      } catch {
+        setMarketPreviews([]);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -232,8 +246,12 @@ export default function HomePage() {
             </section>
 
             <section className="panel market-widget" id="market">
-              <div className="mini-heading"><h2>중고장터</h2><Link href="#market">장터 바로가기 ›</Link></div>
-              <div className="market-grid">{gearItems.map((item) => <a href="#market" key={item.title}><div><Image src={item.image} alt={item.title} width={240} height={178} unoptimized/><span>판매중</span></div><strong>{item.title}</strong><b>{item.price}</b><small>{item.note}</small></a>)}</div>
+              <div className="mini-heading"><h2>중고장터</h2><Link href="/market">장터 바로가기 ›</Link></div>
+              {marketPreviews.length > 0 ? <div className="market-grid market-preview-grid">{marketPreviews.map((item) => {
+                const detailHref = `/market/${item.publicId}`;
+                const href = profile ? detailHref : `/login?returnUrl=${encodeURIComponent(detailHref)}`;
+                return <Link href={href} key={item.publicId} aria-label="중고장터 판매글 보기"><div>{item.thumbnailImageUrl ? <Image src={item.thumbnailImageUrl} alt="" width={240} height={178} unoptimized /> : <span className="market-image-placeholder material-symbols-outlined">inventory_2</span>}</div></Link>;
+              })}</div> : <div className="market-preview-empty"><span className="material-symbols-outlined">inventory_2</span><p>등록된 판매 상품이 없습니다.</p></div>}
             </section>
           </aside>
         </div>

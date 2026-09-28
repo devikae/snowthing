@@ -3,7 +3,7 @@
 - **문서 번호**: `POLICY-WS-LIVECHAT`
 - **상태**: `Accepted`
 - **최종 수정일**: 2026-09-20
-- **기반 문서**: `docs/conception/live_chat/ADR-101 라이브챗 기술결정.md`, `docs/project/design/live_chat/code.html`
+- **기반 문서**: `docs/conception/001_live_chat/ADR-101 라이브챗 기술결정.md`, `docs/project/design/live_chat/code.html`
 
 본 문서는 Snowthing 메인 화면에 제공되는 실시간 라이브톡(`⚡ 라이브톡`)의 채널 구조, 이용 권한, 작성 제한, UI 렌더링, 컴플라이언스 및 법적 로그 보관 정책을 정의한 공식 명세서이다.
 

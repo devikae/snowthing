@@ -11,6 +11,7 @@ import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom.ReplyStats;
+import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
@@ -35,6 +36,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
+    private final MarketListingRepository marketListingRepository;
     private final PasswordEncoder passwordEncoder;
     private final CommentCommandService commentCommandService;
 
@@ -43,6 +45,11 @@ public class CommentService {
             CommentCreateRequest request,
             CustomUserDetails userDetails,
             String clientIp) {
+        Post targetPost =
+                postRepository
+                        .findByPublicId(postPublicId)
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        validateMarketAccess(targetPost, userDetails, request.isAnonymous());
         Member member = null;
         String encodedPassword = null;
 
@@ -99,6 +106,7 @@ public class CommentService {
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
         validatePostVisibility(post);
+        validateMarketAccess(post, userDetails, false);
 
         if (cursor != null && !commentRepository.existsRootCursor(post.getId(), cursor)) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
@@ -154,6 +162,7 @@ public class CommentService {
                         .findById(root.getPost().getId())
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
         validatePostVisibility(post);
+        validateMarketAccess(post, userDetails, false);
 
         if (root.getParent() != null) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
@@ -203,6 +212,7 @@ public class CommentService {
         if (comment.isDeleted()) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
+        validateMarketAccess(comment.getPost(), userDetails, false);
 
         validateUpdatePermission(comment, request.anonymousPassword(), userDetails);
 
@@ -244,6 +254,7 @@ public class CommentService {
         if (comment.isDeleted()) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
+        validateMarketAccess(comment.getPost(), userDetails, false);
 
         validateDeletePermission(comment, anonymousPassword, userDetails);
 
@@ -277,6 +288,19 @@ public class CommentService {
     private boolean isWriter(Comment comment, CustomUserDetails userDetails) {
         return userDetails != null
                 && comment.getMember().getPublicId().equals(userDetails.getPublicId());
+    }
+
+    private void validateMarketAccess(
+            Post post, CustomUserDetails userDetails, boolean anonymousRequested) {
+        if (!marketListingRepository.existsByPostId(post.getId())) {
+            return;
+        }
+        if (userDetails == null) {
+            throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        if (anonymousRequested) {
+            throw new CustomAuthException(ErrorCode.MARKET_ANONYMOUS_COMMENT_NOT_ALLOWED);
+        }
     }
 
     private boolean hasAnonymousPassword(String anonymousPassword) {

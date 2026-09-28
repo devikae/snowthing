@@ -40,15 +40,15 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
     Optional<Post> findWithMemberAndCategoryByPublicId(@Param("publicId") String publicId);
 
     @Query(
-            "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.category.code = :categoryCode AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
+            "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.category.code = :categoryCode AND p.category.code <> 'MARKET' AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
     Page<Post> findByCategoryCodeWithMemberAndCategory(
             @Param("categoryCode") String categoryCode, Pageable pageable);
 
     @Query(
             value =
-                    "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false",
+                    "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.category.code <> 'MARKET' AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false",
             countQuery =
-                    "SELECT COUNT(p) FROM Post p WHERE p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
+                    "SELECT COUNT(p) FROM Post p WHERE p.category.code <> 'MARKET' AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
     Page<Post> findAllWithMemberAndCategory(Pageable pageable);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)

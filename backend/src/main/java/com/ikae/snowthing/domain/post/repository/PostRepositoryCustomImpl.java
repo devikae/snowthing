@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class PostRepositoryCustomImpl implements PostRepositoryCustom {
 
     private static final int BEST_MINIMUM_LIKE_COUNT = 30;
+    private static final String MARKET_CATEGORY_CODE = "MARKET";
 
     private final JPAQueryFactory queryFactory;
 
@@ -45,6 +46,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
+                                marketExcluded(),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 post.status.eq(
@@ -68,6 +70,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
+                                marketExcluded(),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 post.status.eq(
@@ -113,6 +116,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .fetchJoin()
                         .where(
                                 categoryEq(request.categoryCode()),
+                                marketExcluded(),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 cursorCondition(cursorValue),
@@ -146,6 +150,10 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
     private BooleanExpression categoryEq(String categoryCode) {
         if (!StringUtils.hasText(categoryCode)) return null;
         return postCategory.code.equalsIgnoreCase(categoryCode);
+    }
+
+    private BooleanExpression marketExcluded() {
+        return postCategory.code.ne(MARKET_CATEGORY_CODE);
     }
 
     private BooleanExpression bestEligibility(PostViewType viewType) {

@@ -43,7 +43,8 @@ export default function LoginPage() {
         throw new Error(errorData.message || errorData.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
       }
 
-      router.push("/");
+      const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
+      router.push(returnUrl?.startsWith("/") && !returnUrl.startsWith("//") ? returnUrl : "/");
     } catch (error) {
       setErrorMsg(getErrorMessage(error));
     } finally {

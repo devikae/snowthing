@@ -4,7 +4,7 @@
 - **상태**: `Accepted`
 - **최종 수정일**: 2026-09-20
 - **대상 패키지**: `com.ikae.snowthing.domain.chat`, `com.ikae.snowthing.global.config.websocket`
-- **기반 문서**: `docs/conception/live_chat/ADR-101 라이브챗 기술결정.md`, `docs/conception/live_chat/chat_policy.md`, `media_1789831353588.png`
+- **기반 문서**: `docs/conception/001_live_chat/ADR-101 라이브챗 기술결정.md`, `docs/conception/001_live_chat/chat_policy.md`, `media_1789831353588.png`
 
 ---
 
