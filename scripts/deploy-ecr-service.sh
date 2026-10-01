@@ -56,7 +56,46 @@ if [[ ! "$IMAGE_URI" =~ @sha256:[0-9a-f]{64}$ ]]; then
 fi
 
 REGISTRY="${IMAGE_URI%%/*}"
+IMAGE_REPOSITORY="${IMAGE_URI%@sha256:*}"
 PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+PREVIOUS_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$PREVIOUS_IMAGE" 2>/dev/null || true)"
+
+cleanup_service_images() {
+  local current_image_id repository digest image_id repository_digest
+  local removed_count=0
+
+  current_image_id="$(docker image inspect --format '{{.Id}}' "$IMAGE_URI" 2>/dev/null || true)"
+  if [[ -z "$current_image_id" ]]; then
+    echo "이미지 정리 건너뜀: 현재 배포 이미지 ID를 확인할 수 없습니다." >&2
+    return 1
+  fi
+
+  echo "Docker 이미지 정리 전 사용량"
+  docker system df || true
+
+  while read -r repository digest image_id; do
+    [[ "$repository" == "$IMAGE_REPOSITORY" ]] || continue
+    [[ "$digest" != "<none>" ]] || continue
+    [[ "$image_id" != "$current_image_id" ]] || continue
+    [[ -z "$PREVIOUS_IMAGE_ID" || "$image_id" != "$PREVIOUS_IMAGE_ID" ]] || continue
+
+    repository_digest="${repository}@${digest}"
+    if docker image rm "$repository_digest"; then
+      removed_count=$((removed_count + 1))
+    else
+      echo "오래된 이미지 삭제 실패, 배포는 유지합니다: $repository_digest" >&2
+    fi
+  done < <(docker image ls --digests --no-trunc --format '{{.Repository}} {{.Digest}} {{.ID}}' | sort -u)
+
+  if ! docker builder prune -af; then
+    echo "Docker 빌드 캐시 정리에 실패했지만 배포는 유지합니다." >&2
+  fi
+
+  echo "$SERVICE 오래된 로컬 이미지 ${removed_count}개 정리 완료"
+  echo "보호 이미지: current=$current_image_id previous=${PREVIOUS_IMAGE_ID:-none}"
+  echo "Docker 이미지 정리 후 사용량"
+  docker system df || true
+}
 
 configure_nginx_request_limits() {
   local config_path backup_path real_ip_header_exists real_ip_recursive_exists
@@ -317,6 +356,9 @@ if env "$IMAGE_VARIABLE=$IMAGE_URI" docker compose \
   -f compose.prod.yml \
   up -d --no-build "$SERVICE" && check_health; then
   echo "$SERVICE 배포 성공: $IMAGE_URI"
+  if ! cleanup_service_images; then
+    echo "Docker 이미지 자동 정리를 완료하지 못했지만 성공한 배포는 유지합니다." >&2
+  fi
   exit 0
 fi
 
