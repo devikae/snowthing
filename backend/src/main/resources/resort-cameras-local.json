@@ -346,7 +346,7 @@
     "code": "CAM_01",
     "name": "호크 / 스패로우",
     "sourceType": "HLS",
-    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/yh_02.m3u8",
+    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/yh_02_02.m3u8",
     "externalPageUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
     "displayOrder": 1
   },
@@ -355,7 +355,7 @@
     "code": "CAM_02",
     "name": "도도",
     "sourceType": "HLS",
-    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/sp_01.m3u8",
+    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/sp_01_01.m3u8",
     "externalPageUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
     "displayOrder": 2
   },
@@ -364,7 +364,7 @@
     "code": "CAM_03",
     "name": "불새마루",
     "sourceType": "HLS",
-    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/ht_01.m3u8",
+    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/ht_01_01.m3u8",
     "externalPageUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
     "displayOrder": 3
   },
@@ -373,7 +373,7 @@
     "code": "CAM_04",
     "name": "베이스",
     "sourceType": "HLS",
-    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/bc_02.m3u8",
+    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/bc_02_01.m3u8",
     "externalPageUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
     "displayOrder": 4
   },
@@ -391,7 +391,7 @@
     "code": "CAM_06",
     "name": "스노우 빌리지",
     "sourceType": "HLS",
-    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/yh_01.m3u8",
+    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/yh_01_01.m3u8",
     "externalPageUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
     "displayOrder": 6
   },
@@ -400,7 +400,7 @@
     "code": "CAM_07",
     "name": "몽블랑 정상",
     "sourceType": "HLS",
-    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/mb_03.m3u8",
+    "sourceUrl": "https://streaming.phoenixhnr.co.kr/hls/mb_03_02.m3u8",
     "externalPageUrl": "https://phoenixhnr.co.kr/page/pyeongchang/guide/operation/sketchMovie",
     "displayOrder": 7
   },
@@ -463,7 +463,7 @@
     "code": "CAM_01",
     "name": "하이원탑 (제우스1 입구)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/1/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/1/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=1",
     "displayOrder": 1
   },
@@ -472,7 +472,7 @@
     "code": "CAM_02",
     "name": "하이원탑 (헤라2 입구)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/2/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/2/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=2",
     "displayOrder": 2
   },
@@ -481,7 +481,7 @@
     "code": "CAM_03",
     "name": "마운틴허브 (스노우월드 입구)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/4/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/4/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=4",
     "displayOrder": 3
   },
@@ -490,7 +490,7 @@
     "code": "CAM_04",
     "name": "마운틴허브 (아폴로3 입구)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/5/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/5/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=5",
     "displayOrder": 4
   },
@@ -499,7 +499,7 @@
     "code": "CAM_05",
     "name": "마운틴허브 (아테나2 입구)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/6/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/6/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=6",
     "displayOrder": 5
   },
@@ -508,7 +508,7 @@
     "code": "CAM_06",
     "name": "마운틴 베이스 (아테나 리프트)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/7/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/7/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=7",
     "displayOrder": 6
   },
@@ -517,7 +517,7 @@
     "code": "CAM_07",
     "name": "아테나2 하단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/8/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/8/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=8",
     "displayOrder": 7
   },
@@ -526,7 +526,7 @@
     "code": "CAM_08",
     "name": "밸리허브 (헤라 리프트 입구)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/11/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/11/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=11",
     "displayOrder": 8
   },
@@ -535,7 +535,7 @@
     "code": "CAM_09",
     "name": "밸리허브 (아폴로3 합류)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/12/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/12/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=12",
     "displayOrder": 9
   },
@@ -544,7 +544,7 @@
     "code": "CAM_10",
     "name": "밸리허브 (제우스3)",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/13/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/13/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=13",
     "displayOrder": 10
   },
@@ -553,7 +553,7 @@
     "code": "CAM_11",
     "name": "제우스3 중단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/14/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/14/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=14",
     "displayOrder": 11
   },
@@ -562,7 +562,7 @@
     "code": "CAM_12",
     "name": "아폴로4 중단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/15/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/15/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=15",
     "displayOrder": 12
   },
@@ -571,7 +571,7 @@
     "code": "CAM_13",
     "name": "아폴로 베이스",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/16/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/16/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=16",
     "displayOrder": 13
   },
@@ -580,7 +580,7 @@
     "code": "CAM_14",
     "name": "제우스3 하단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/17/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/17/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=17",
     "displayOrder": 14
   },
@@ -589,7 +589,7 @@
     "code": "CAM_15",
     "name": "밸리 베이스",
     "sourceType": "HLS",
-    "sourceUrl": "/api/high1-stream/18/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/high1/18/playlist.m3u8",
     "externalPageUrl": "https://www.high1.com/webcam/pop_webcam.do?ch=18",
     "displayOrder": 15
   },
@@ -598,7 +598,7 @@
     "code": "CAM_01",
     "name": "만선하우스",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/01/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/01/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=01",
     "displayOrder": 1
   },
@@ -607,7 +607,7 @@
     "code": "CAM_02",
     "name": "만선봉 정상",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/02/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/02/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=02",
     "displayOrder": 2
   },
@@ -616,7 +616,7 @@
     "code": "CAM_03",
     "name": "하이디하우스",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/03/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/03/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=03",
     "displayOrder": 3
   },
@@ -625,7 +625,7 @@
     "code": "CAM_04",
     "name": "서역기행, 썬다운",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/04/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/04/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=04",
     "displayOrder": 4
   },
@@ -634,7 +634,7 @@
     "code": "CAM_05",
     "name": "설천하우스",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/05/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/05/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=05",
     "displayOrder": 5
   },
@@ -643,7 +643,7 @@
     "code": "CAM_06",
     "name": "설천 상단 슬로프",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/06/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/06/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=06",
     "displayOrder": 6
   },
@@ -652,7 +652,7 @@
     "code": "CAM_07",
     "name": "설천봉 정상",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/07/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/07/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=07",
     "displayOrder": 7
   },
@@ -661,7 +661,7 @@
     "code": "CAM_08",
     "name": "모차르트, 미뉴에트",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/08/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/08/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=08",
     "displayOrder": 8
   },
@@ -670,7 +670,7 @@
     "code": "CAM_09",
     "name": "폴카",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/09/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/09/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=09",
     "displayOrder": 9
   },
@@ -679,7 +679,7 @@
     "code": "CAM_10",
     "name": "실크로드, 미뉴에트 하단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/10/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/10/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=10",
     "displayOrder": 10
   },
@@ -688,7 +688,7 @@
     "code": "CAM_11",
     "name": "커넥션",
     "sourceType": "HLS",
-    "sourceUrl": "/api/muju-stream/11/playlist.m3u8",
+    "sourceUrl": "/stream-proxy/muju/11/playlist.m3u8",
     "externalPageUrl": "http://www.mdysresort.com/guide/webcam_popup_jh.asp?cam_num=11",
     "displayOrder": 11
   },
@@ -715,7 +715,7 @@
     "code": "CAM_01",
     "name": "스키하우스",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam0.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam0.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 1
   },
@@ -724,7 +724,7 @@
     "code": "CAM_02",
     "name": "오렌지",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam1.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam1.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 2
   },
@@ -733,7 +733,7 @@
     "code": "CAM_03",
     "name": "버금마루",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam2.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam2.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 3
   },
@@ -742,7 +742,7 @@
     "code": "CAM_04",
     "name": "으뜸마루",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam3.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam3.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 4
   },
@@ -751,7 +751,7 @@
     "code": "CAM_05",
     "name": "글로리2 상단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam20.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam20.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 5
   },
@@ -760,7 +760,7 @@
     "code": "CAM_06",
     "name": "글로리3 상단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam21.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam21.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 6
   },
@@ -769,7 +769,7 @@
     "code": "CAM_07",
     "name": "드림2 상단",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam22.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam22.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 7
   },
@@ -778,7 +778,7 @@
     "code": "CAM_08",
     "name": "글로리3",
     "sourceType": "HLS",
-    "sourceUrl": "/api/o2-stream/cam23.m3u8",
+    "sourceUrl": "/stream-proxy/o2/cam23.m3u8",
     "externalPageUrl": "https://www.o2resort.com/ski/webcam.asp",
     "displayOrder": 8
   }
