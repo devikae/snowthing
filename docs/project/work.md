@@ -1,3 +1,20 @@
+- **슬로프캠 운영 환경 스트림 미출력 이슈 전수 조치 (2026-10-01)**:
+  - 상태: 구현, 빌드 검증, 마이그레이션 006 작성 완료
+  - 내용:
+    - **비발디파크 404 해결**: `frontend/Dockerfile`의 runner 스테이지에 `COPY --from=builder /app/public ./public` 추가하여 운영 컨테이너에 `vivaldi.html` 및 `vivaldi.js` 정적 에셋이 포함되도록 수정.
+    - **하이원·오투·무주 401 해결**: Nginx의 `/api/` ➔ 백엔드(8080) 라우팅 규칙과의 충돌을 피하기 위해 Next.js 스트림 프록시 라우트를 `/api/*-stream`에서 `/stream-proxy/*`(`high1`, `o2`, `muju`)로 분리 이동.
+    - **휘닉스파크 404 해결 및 006 마이그레이션**:
+      - `database/production/006_migration_fix_stream_proxy_path.sql` 신설:
+        - 휘닉스파크 6개소(호크, 도도, 불새마루, 베이스, 스노우빌리지, 몽블랑) `source_url`을 200 OK로 실제 송출 중인 최신 HLS 주소로 업데이트.
+        - 하이원, 오투, 무주의 `source_url`을 `/stream-proxy/...` 경로로 일괄 치환(`REPLACE`).
+        - 비발디 `CAM_09`(클래식) 정품 시리얼(`TW0014A15451`) 보정 보장.
+      - `scripts/verify-production-migration-006.sh` 작성 및 CI 워크플로우(`gradle.yml`, `deploy-backend.yml`) 연동.
+    - **프론트엔드 및 로컬 시드 정합성 동기화**:
+      - `fallback-data.ts` 및 `resort-cameras-local.json`의 스트림 URL을 `/stream-proxy/...` 및 최신 휘닉스파크 주소로 전면 동기화.
+    - **빌드 검증**:
+      - 프론트엔드 Turbopack 프로덕션 빌드(`npm run build`) 통과.
+      - 백엔드 컴파일 및 `spotlessCheck` 통과.
+
 - **슬로프캠 백엔드 CI 통과 및 CodeRabbit 피드백 전수 조치 (2026-09-29)**:
   - 상태: 구현, 테스트 통과, DB/시드/CI스크립트 동기화 완료
   - 내용:

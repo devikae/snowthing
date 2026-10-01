@@ -67,8 +67,9 @@ jobs:
       - name: Verify production migration 004 used market schema
         working-directory: ${{ github.workspace }}
         run: |
-          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-005.sh
+          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-005.sh scripts/verify-production-migration-006.sh
           scripts/verify-production-migration-005.sh
+          scripts/verify-production-migration-006.sh
       - run: ./gradlew spotlessCheck
       - run: ./gradlew test build -x spotlessCheck
 
