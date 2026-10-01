@@ -371,7 +371,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       if (!currentUserPublicId) {
         const pwd = parentId ? replyAnonPassword : commentAnonPassword;
         if (!pwd.trim()) {
-          alert("익명 댓글 삭제를 위한 비밀번호를 입력해주세요.");
+          alert("비밀번호를 입력해주세요.");
           return;
         }
         anonymousPassword = pwd.trim();
@@ -648,25 +648,30 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           </article>
 
           <section className="post-comments-card">
-            <header><h2>{isAnonymousPost ? "익명 댓글" : "댓글"} <span>{totalCommentCount}</span></h2></header>
+            <header><h2>댓글 <span>{totalCommentCount}</span></h2></header>
 
             <div className="post-comment-compose">
-              {isAnonymousPost && (
-                <div className="post-comment-identity">
-                  <span><span className="material-symbols-outlined">theater_comedy</span>익명</span>
-                  {!currentUserPublicId && <input type="password" placeholder="****" value={commentAnonPassword} onChange={(event) => setCommentAnonPassword(event.target.value)} />}
-                </div>
-              )}
               <textarea
                 rows={3}
-                placeholder={isAnonymousPost ? "익명으로 댓글을 작성해보세요." : currentUserPublicId ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
+                placeholder={isAnonymousPost || currentUserPublicId ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
                 className="post-comment-textarea"
               />
               {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">댓글 작성을 위해 로그인이 필요합니다.</span>}
-              <div className="post-comment-submit-row">
-                <button disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
+              <div className="post-comment-compose-footer">
+                {isAnonymousPost && !currentUserPublicId && (
+                  <label className="post-comment-password">
+                    <span>비밀번호</span>
+                    <input
+                      type="password"
+                      placeholder="비밀번호를 입력하세요"
+                      value={commentAnonPassword}
+                      onChange={(event) => setCommentAnonPassword(event.target.value)}
+                    />
+                  </label>
+                )}
+                <button className="post-comment-submit-button" disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
                   댓글 등록 <span className="material-symbols-outlined">send</span>
                 </button>
               </div>
@@ -851,7 +856,7 @@ function CommentRow({
 
   return (
     <div>
-      <div className="border-b border-[var(--snow-border)] pb-4">
+      <div className="post-comment-item">
         <div className="flex items-center justify-between gap-3">
           <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
           <div className="flex items-center">
@@ -944,41 +949,31 @@ function CommentRow({
         )}
 
         {activeReplyParentId === item.commentId && (
-          <div className="mt-4 rounded border border-[var(--snow-border)] bg-[var(--snow-background)] p-4">
+          <div className="post-reply-compose">
             <textarea
               rows={2}
               value={replyText}
               onChange={(event) => setReplyText(event.target.value)}
-              placeholder={isAnonymousPost ? "익명으로 답글을 작성하세요." : currentUserPublicId ? "답글을 작성하세요." : "로그인 후 답글을 작성할 수 있습니다."}
-              className="snow-textarea min-h-[90px]"
+              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
+              className="post-comment-textarea"
             />
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {isAnonymousPost ? (
-                <div className="flex items-center gap-2">
-                  <span className="snow-chip snow-chip-dark text-xs">익명</span>
-                  {!currentUserPublicId && (
+            <div className="post-comment-compose-footer">
+              {isAnonymousPost && !currentUserPublicId && (
+                <label className="post-comment-password">
+                  <span>비밀번호</span>
                     <input
                       type="password"
-                      placeholder="익명 비밀번호"
+                      placeholder="비밀번호를 입력하세요"
                       value={replyAnonPassword}
                       onChange={(event) => setReplyAnonPassword(event.target.value)}
-                      className="snow-input sm:w-44"
                     />
-                  )}
-                </div>
-              ) : (
-                <div>
-                  {!currentUserPublicId && (
-                    <span className="text-xs text-[var(--snow-muted)]">
-                      * 답글 작성을 위해 로그인이 필요합니다.
-                    </span>
-                  )}
-                </div>
+                </label>
               )}
+              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
               <button
                 disabled={submittingComment}
                 onClick={() => void handleCreateComment(item.commentId)}
-                className="snow-btn-primary sm:ml-auto"
+                className="post-comment-submit-button"
               >
                 답글 등록
               </button>
@@ -1037,9 +1032,12 @@ function ReplyRow({
   const canDelete = canDeleteComment(item);
 
   return (
-    <div className="ml-5 border-l-2 border-black pl-5">
+    <div className="post-comment-reply">
       <div className="flex items-center justify-between gap-3">
-        <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
+        <div className="post-comment-reply-author">
+          <span className="material-symbols-outlined" aria-hidden="true">subdirectory_arrow_right</span>
+          <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
+        </div>
         <div className="flex items-center">
           <span className="font-mono text-xs text-[var(--snow-muted)]">
             {formatCommentDate(item.createdAt)}
