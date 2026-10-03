@@ -1890,3 +1890,4 @@
   - 설계 문서 8개를 `docs/conception/004_carpool/`에 작성했습니다. 코드 구현과 외부 API 계약 검증은 후속 단계입니다.
   - `CARPOOL` 기준데이터와 `CarpoolDetail` 1:1 엔티티·Repository, 초기 DDL 및 운영 migration `007_migration_carpool.sql`을 추가했습니다.
   - 백엔드 컴파일과 Spotless를 통과했으며, 생성·조회 API와 외부 API 연동은 다음 단계입니다.
+  - 비용 계산 순수 서비스와 ErrorCode를 추가하고, 운전자 포함 인원·연료비·통행료 계산 테스트를 통과했습니다.
