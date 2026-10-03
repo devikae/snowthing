@@ -131,7 +131,12 @@ public class DataInitializer implements CommandLineRunner {
                             PostCategory.builder().name("익명게시판").code("ANONYMOUS").build(),
                             PostCategory.builder().name("질문게시판").code("QNA").build(),
                             PostCategory.builder().name("장비VS").code("GEAR_VS").build(),
-                            PostCategory.builder().name("맛집게시판").code("FOOD").build()));
+                            PostCategory.builder().name("맛집게시판").code("FOOD").build(),
+                            PostCategory.builder().name("카풀·동행").code("CARPOOL").build()));
+        }
+
+        if (categoryRepository.findByCode("CARPOOL").isEmpty()) {
+            categoryRepository.save(PostCategory.builder().name("카풀·동행").code("CARPOOL").build());
         }
 
         if (categoryRepository.findByCode("MARKET").isEmpty()) {

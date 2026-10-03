@@ -1888,3 +1888,5 @@
   - 카카오모빌리티 경로 조회와 오피넷 유가 스냅샷을 사용하고, 유가·거리·통행료·계산 시각을 저장하도록 설계했습니다.
   - 연락처는 선택 입력이며 작성자가 동의한 경우에만 비회원에게 공개합니다.
   - 설계 문서 8개를 `docs/conception/004_carpool/`에 작성했습니다. 코드 구현과 외부 API 계약 검증은 후속 단계입니다.
+  - `CARPOOL` 기준데이터와 `CarpoolDetail` 1:1 엔티티·Repository, 초기 DDL 및 운영 migration `007_migration_carpool.sql`을 추가했습니다.
+  - 백엔드 컴파일과 Spotless를 통과했으며, 생성·조회 API와 외부 API 연동은 다음 단계입니다.
