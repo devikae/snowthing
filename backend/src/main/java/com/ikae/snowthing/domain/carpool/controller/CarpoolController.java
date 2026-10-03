@@ -1,13 +1,20 @@
 package com.ikae.snowthing.domain.carpool.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.carpool.dto.CarpoolCostPreviewRequest;
 import com.ikae.snowthing.domain.carpool.dto.CarpoolCostPreviewResponse;
+import com.ikae.snowthing.domain.carpool.dto.CarpoolCreateRequest;
+import com.ikae.snowthing.domain.carpool.dto.CarpoolResponse;
 import com.ikae.snowthing.domain.carpool.service.CarpoolCostCalculator;
+import com.ikae.snowthing.domain.carpool.service.CarpoolService;
+import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +22,9 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping({"/api/carpools", "/api/v1/carpools"})
 @RequiredArgsConstructor
 public class CarpoolController {
+
+    private final CarpoolService carpoolService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/cost-preview")
     public ResponseEntity<CarpoolCostPreviewResponse> previewCost(
@@ -27,5 +37,22 @@ public class CarpoolController {
                         request.tollFee(),
                         request.passengerCapacity());
         return ResponseEntity.ok(CarpoolCostPreviewResponse.from(calculation));
+    }
+
+    @PostMapping
+    public ResponseEntity<CarpoolResponse> create(
+            @Valid @RequestBody CarpoolCreateRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.status(201)
+                .body(
+                        carpoolService.create(
+                                request, userDetails, clientIpResolver.resolve(httpRequest)));
+    }
+
+    @GetMapping("/{publicId}")
+    public ResponseEntity<CarpoolResponse> find(
+            @PathVariable String publicId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(carpoolService.find(publicId, userDetails));
     }
 }

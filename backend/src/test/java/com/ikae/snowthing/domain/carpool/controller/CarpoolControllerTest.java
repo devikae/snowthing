@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.carpool.controller;
 
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -9,10 +10,16 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.ikae.snowthing.domain.carpool.service.CarpoolService;
+import com.ikae.snowthing.global.web.ClientIpResolver;
+
 class CarpoolControllerTest {
 
     private final MockMvc mockMvc =
-            MockMvcBuilders.standaloneSetup(new CarpoolController()).build();
+            MockMvcBuilders.standaloneSetup(
+                            new CarpoolController(
+                                    mock(CarpoolService.class), mock(ClientIpResolver.class)))
+                    .build();
 
     @Test
     void previewsCost() throws Exception {
