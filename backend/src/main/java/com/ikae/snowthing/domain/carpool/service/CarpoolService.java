@@ -2,6 +2,9 @@ package com.ikae.snowthing.domain.carpool.service;
 
 import java.time.LocalDateTime;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +18,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
+import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
@@ -29,6 +33,7 @@ public class CarpoolService {
 
     private static final String CARPOOL_CATEGORY_CODE = "CARPOOL";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final PostRepository postRepository;
     private final PostCategoryRepository categoryRepository;
@@ -114,6 +119,36 @@ public class CarpoolService {
         String contactInfo =
                 detail.isContactPublicToGuest() || isOwner ? detail.getContactInfo() : null;
         return CarpoolResponse.from(post, detail, contactInfo);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CarpoolResponse> findPage(int page, int size, CustomUserDetails userDetails) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
+        }
+        Page<CarpoolDetail> details =
+                carpoolDetailRepository.findByPostStatusAndPostIsDeletedFalse(
+                        PostStatus.NORMAL,
+                        PageRequest.of(
+                                page,
+                                size,
+                                Sort.by(Sort.Direction.DESC, "createdAt")
+                                        .and(Sort.by(Sort.Direction.DESC, "id"))));
+        return details.map(
+                detail -> {
+                    boolean isOwner =
+                            userDetails != null
+                                    && detail.getPost().getMember() != null
+                                    && detail.getPost()
+                                            .getMember()
+                                            .getPublicId()
+                                            .equals(userDetails.getPublicId());
+                    String contactInfo =
+                            detail.isContactPublicToGuest() || isOwner
+                                    ? detail.getContactInfo()
+                                    : null;
+                    return CarpoolResponse.from(detail.getPost(), detail, contactInfo);
+                });
     }
 
     private Member findMember(CustomUserDetails userDetails) {
