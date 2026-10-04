@@ -44,7 +44,7 @@ member (1) ─── (N) post (1) ─── (1) carpool_detail (N) ─── (1)
 | `equipment_load_available` | BOOLEAN NOT NULL DEFAULT FALSE | 장비 적재 가능 여부 |
 | `created_at`, `updated_at` | DATETIME NOT NULL | 감사 시각 |
 
-목록 쿼리는 `departure_at >= now` 조건과 `created_at DESC, post_id DESC` 정렬을 사용합니다. `010` 마이그레이션은 `(departure_at, created_at DESC, post_id DESC)` 복합 인덱스를 추가합니다. 첫 컬럼이 범위 조건이므로 MySQL이 뒤 정렬 컬럼까지 항상 정렬 제거에 쓰는 것은 아닙니다. 미래 일정 탐색 범위를 줄이는 것이 1차 목적이며, 운영 데이터가 늘면 `EXPLAIN ANALYZE`로 filesort와 스캔 행 수를 확인합니다.
+목록 쿼리는 `departure_at >= now` 조건과 `created_at DESC, post_id DESC` 정렬을 사용합니다. `010`의 `(departure_at, created_at DESC, post_id DESC)` 인덱스는 미래 일정 검색 범위를 줄이지만 첫 컬럼이 범위 조건이므로 뒤 컬럼이 정렬을 항상 제거하지는 않습니다. 최신순을 바꾸지 않고 정렬 경로도 선택할 수 있도록 `012`에서 `(created_at DESC, post_id DESC)` 인덱스를 별도로 추가합니다. 정렬 인덱스를 선택하면 출발일 조건은 잔여 조건으로 평가되므로, 운영 데이터에서는 `EXPLAIN ANALYZE`로 두 인덱스의 스캔 행 수와 filesort 여부를 비교합니다.
 
 ## 3. `resort` 추가 컬럼
 
@@ -53,4 +53,4 @@ member (1) ─── (N) post (1) ─── (1) carpool_detail (N) ─── (1)
 | `route_latitude` | DECIMAL(10,7) NULL | 검증된 스키장 진입 지점 위도 |
 | `route_longitude` | DECIMAL(10,7) NULL | 검증된 스키장 진입 지점 경도 |
 
-운영 DB는 `ddl-auto: validate`이므로 신규 테이블은 `007`, 비용 방식은 `008`, 장비 적재 여부는 `009`, 목록 인덱스와 13개 리조트 기준 좌표는 `010`, 유가 출처와 계산 당시 목적지 좌표 스냅샷은 `011` production migration으로 순서대로 반영합니다. 기존 마이그레이션은 체크섬이 기록되므로 수정하지 않습니다.
+운영 DB는 `ddl-auto: validate`이므로 신규 테이블은 `007`, 비용 방식은 `008`, 장비 적재 여부는 `009`, 미래 일정 검색 인덱스와 13개 리조트 기준 좌표는 `010`, 유가 출처와 계산 당시 목적지 좌표 스냅샷은 `011`, 최신순 정렬 인덱스는 `012` production migration으로 순서대로 반영합니다. 기존 마이그레이션은 체크섬이 기록되므로 수정하지 않습니다.

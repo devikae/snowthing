@@ -32,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CarpoolService {
 
+    private static final int MAX_PAGE_INDEX = 99;
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PostRepository postRepository;
@@ -86,6 +87,9 @@ public class CarpoolService {
     public Page<CarpoolSummaryResponse> findPage(int page, int size) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
+        }
+        if (page > MAX_PAGE_INDEX) {
+            throw new CustomAuthException(ErrorCode.CARPOOL_PAGE_LIMIT_EXCEEDED);
         }
         Page<CarpoolDetail> details =
                 carpoolDetailRepository

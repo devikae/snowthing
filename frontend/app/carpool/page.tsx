@@ -26,22 +26,26 @@ interface CarpoolPageResponse {
 }
 
 const PAGE_SIZE = 20;
+const MAX_PAGE = 100;
 
 function CarpoolList() {
   const searchParams = useSearchParams();
   const requestedPage = Number(searchParams.get("page") || "1");
-  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
+  const page = Number.isFinite(requestedPage) && requestedPage > 0
+    ? Math.min(Math.floor(requestedPage), MAX_PAGE)
+    : 1;
   const [data, setData] = useState<CarpoolPageResponse>({ content: [], totalElements: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const cappedTotalPages = Math.min(data.totalPages, MAX_PAGE);
   const visiblePages = useMemo(() => {
     const pageIndex = page - 1;
-    const start = Math.max(0, Math.min(pageIndex - 2, data.totalPages - 5));
+    const start = Math.max(0, Math.min(pageIndex - 2, cappedTotalPages - 5));
     return Array.from(
-      { length: Math.min(5, data.totalPages) },
+      { length: Math.min(5, cappedTotalPages) },
       (_, index) => start + index + 1,
     );
-  }, [data.totalPages, page]);
+  }, [cappedTotalPages, page]);
 
   useEffect(() => {
     void fetch(`${API_ENDPOINTS.carpool.list}?page=${page - 1}&size=${PAGE_SIZE}`, { credentials: "include" })
@@ -74,10 +78,10 @@ function CarpoolList() {
               <div className="carpool-card-cost"><small>예상 1인 비용</small><b>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</b><span>작성자 {item.writerName}</span></div>
             </Link>)}
     </section>
-    {data.totalPages > 1 && <nav className="carpool-pagination" aria-label="카풀 목록 페이지">
+    {cappedTotalPages > 1 && <nav className="carpool-pagination" aria-label="카풀 목록 페이지">
       <Link aria-disabled={page <= 1} className={page <= 1 ? "disabled" : ""} href={`/carpool?page=${Math.max(1, page - 1)}`}>이전</Link>
       {visiblePages.map((number) => <Link className={number === page ? "active" : ""} href={`/carpool?page=${number}`} key={number}>{number}</Link>)}
-      <Link aria-disabled={page >= data.totalPages} className={page >= data.totalPages ? "disabled" : ""} href={`/carpool?page=${Math.min(data.totalPages, page + 1)}`}>다음</Link>
+      <Link aria-disabled={page >= cappedTotalPages} className={page >= cappedTotalPages ? "disabled" : ""} href={`/carpool?page=${Math.min(cappedTotalPages, page + 1)}`}>다음</Link>
     </nav>}
   </>;
 }

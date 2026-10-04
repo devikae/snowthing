@@ -30,6 +30,25 @@ class CarpoolServiceTest {
     private static final String REQUESTER_PUBLIC_ID = "requester-public-id";
 
     @Test
+    void rejectsPageIndexBeyondOneHundredPages() {
+        PostRepository postRepository = mock(PostRepository.class);
+        CarpoolDetailRepository carpoolDetailRepository = mock(CarpoolDetailRepository.class);
+        CarpoolService service =
+                new CarpoolService(
+                        postRepository,
+                        carpoolDetailRepository,
+                        mock(CarpoolAutoCalculationService.class),
+                        mock(CarpoolWriterService.class));
+
+        assertThatThrownBy(() -> service.findPage(100, 20))
+                .isInstanceOf(CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CARPOOL_PAGE_LIMIT_EXCEEDED);
+
+        verifyNoInteractions(postRepository, carpoolDetailRepository);
+    }
+
+    @Test
     void rejectsNonOwnerBeforeCallingExternalCalculation() {
         PostRepository postRepository = mock(PostRepository.class);
         CarpoolAutoCalculationService calculationService =

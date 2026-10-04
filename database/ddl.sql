@@ -157,6 +157,7 @@ CREATE TABLE `carpool_detail` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_carpool_detail_departure_created_post` (`departure_at`, `created_at` DESC, `post_id` DESC),
+    INDEX `idx_carpool_detail_created_post` (`created_at` DESC, `post_id` DESC),
     CONSTRAINT `fk_carpool_detail_post` FOREIGN KEY (`post_id`) REFERENCES `post` (`post_id`) ON DELETE CASCADE,
     CONSTRAINT `fk_carpool_detail_resort` FOREIGN KEY (`destination_resort_id`) REFERENCES `resort` (`resort_id`),
     CONSTRAINT `chk_carpool_trip_type` CHECK (`trip_type` IN ('ONE_WAY', 'ROUND_TRIP')),

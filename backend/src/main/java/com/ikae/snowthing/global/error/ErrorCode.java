@@ -64,6 +64,8 @@ public enum ErrorCode {
             HttpStatus.SERVICE_UNAVAILABLE,
             "CARPOOL_009",
             "현재 유가를 조회할 수 없습니다. 리터당 유가를 직접 입력해 주세요."),
+    CARPOOL_PAGE_LIMIT_EXCEEDED(
+            HttpStatus.BAD_REQUEST, "CARPOOL_010", "카풀 목록은 최대 100페이지까지 조회할 수 있습니다."),
     COMMENT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     COMMENT_UPDATE_CONFLICT(
