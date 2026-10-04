@@ -49,11 +49,21 @@ public enum ErrorCode {
     INVALID_CARPOOL_VALUE(HttpStatus.BAD_REQUEST, "CARPOOL_002", "카풀 인원·연비·거리·통행료 값을 확인해 주세요."),
     CARPOOL_DETAIL_REQUIRED(HttpStatus.BAD_REQUEST, "CARPOOL_003", "카풀 상세 정보가 필요합니다."),
     ROUTE_CALCULATION_FAILED(
-            HttpStatus.BAD_REQUEST, "CARPOOL_004", "경로를 자동 계산하지 못했습니다. 거리와 통행료를 직접 입력해 주세요."),
+            HttpStatus.BAD_REQUEST, "CARPOOL_004", "경로를 자동 계산하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     FUEL_PRICE_PROVIDER_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE,
             "CARPOOL_005",
             "현재 유가 정보를 조회할 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    ROUTE_PROVIDER_NOT_CONFIGURED(
+            HttpStatus.SERVICE_UNAVAILABLE, "CARPOOL_006", "카카오 길찾기 API 설정이 완료되지 않았습니다."),
+    FUEL_PRICE_PROVIDER_NOT_CONFIGURED(
+            HttpStatus.SERVICE_UNAVAILABLE, "CARPOOL_007", "오피넷 유가 API 설정이 완료되지 않았습니다."),
+    CARPOOL_EXTERNAL_API_RATE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "CARPOOL_008", "경로·장소 조회 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    FUEL_PRICE_INPUT_REQUIRED(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "CARPOOL_009",
+            "현재 유가를 조회할 수 없습니다. 리터당 유가를 직접 입력해 주세요."),
     COMMENT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     COMMENT_UPDATE_CONFLICT(

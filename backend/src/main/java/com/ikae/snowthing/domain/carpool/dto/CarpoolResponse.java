@@ -14,6 +14,8 @@ public record CarpoolResponse(
         String writerName,
         String departureRegion,
         String meetingPlace,
+        BigDecimal departureLatitude,
+        BigDecimal departureLongitude,
         Long destinationResortId,
         String destinationResortName,
         CarpoolTripType tripType,
@@ -22,7 +24,9 @@ public record CarpoolResponse(
         int passengerCapacity,
         CarpoolFuelType fuelType,
         BigDecimal fuelEfficiency,
+        CarpoolCostMode costMode,
         BigDecimal fuelPrice,
+        CarpoolFuelPriceSource fuelPriceSource,
         LocalDateTime fuelPriceObservedAt,
         BigDecimal routeDistanceKm,
         int routeTollFee,
@@ -33,9 +37,12 @@ public record CarpoolResponse(
         LocalDateTime routeCalculatedAt,
         String contactInfo,
         boolean contactPublicToGuest,
+        boolean equipmentLoadAvailable,
+        boolean canManage,
         LocalDateTime createdAt) {
 
-    public static CarpoolResponse from(Post post, CarpoolDetail detail, String contactInfo) {
+    public static CarpoolResponse from(
+            Post post, CarpoolDetail detail, String contactInfo, boolean canManage) {
         String writerName = post.getMember() == null ? "익명보더" : post.getMember().getNickname();
         return new CarpoolResponse(
                 post.getPublicId(),
@@ -44,6 +51,8 @@ public record CarpoolResponse(
                 writerName,
                 detail.getDepartureRegion(),
                 detail.getMeetingPlace(),
+                canManage ? detail.getDepartureLatitude() : null,
+                canManage ? detail.getDepartureLongitude() : null,
                 detail.getDestinationResort().getId(),
                 detail.getDestinationResort().getName(),
                 detail.getTripType(),
@@ -52,7 +61,9 @@ public record CarpoolResponse(
                 detail.getPassengerCapacity(),
                 detail.getFuelType(),
                 detail.getFuelEfficiency(),
+                detail.getCostMode(),
                 detail.getFuelPrice(),
+                detail.getFuelPriceSource(),
                 detail.getFuelPriceObservedAt(),
                 detail.getRouteDistanceKm(),
                 detail.getRouteTollFee(),
@@ -63,6 +74,8 @@ public record CarpoolResponse(
                 detail.getRouteCalculatedAt(),
                 contactInfo,
                 detail.isContactPublicToGuest(),
+                detail.isEquipmentLoadAvailable(),
+                canManage,
                 post.getCreatedAt());
     }
 }

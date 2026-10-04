@@ -54,7 +54,7 @@ function ThemeToggle() {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "market" | "resort" | "profile" | "login" | "signup";
+export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "carpool" | "market" | "resort" | "profile" | "login" | "signup";
 
 interface MemberUser {
   publicId: string;
@@ -149,6 +149,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/market" className={active === "market" ? "nav-active" : ""} aria-current={active === "market" ? "page" : undefined}>
                 중고장터
               </Link>
+              <Link href="/carpool" className={active === "carpool" ? "nav-active" : ""} aria-current={active === "carpool" ? "page" : undefined}>
+                카풀·동행
+              </Link>
             </nav>
           </div>
 
@@ -196,6 +199,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               ))}
               <Link href="/resort-cam" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>슬로프캠</Link>
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
+              <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀·동행</Link>
             </nav>
           </div>
         </div>

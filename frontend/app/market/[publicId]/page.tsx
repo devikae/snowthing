@@ -237,17 +237,16 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
 
         <section className="market-description"><h2>상품 설명</h2><ToastViewer content={listing.content} /></section>
 
-        <section className="market-comments">
-          <h2>댓글 <span>{listing.commentCount}</span></h2>
-          <div className="market-comment-compose"><textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="판매자에게 궁금한 내용을 남겨보세요." /><button type="button" disabled={submitting || !comment.trim()} onClick={() => void createComment(null)}>등록</button></div>
-          <div className="market-comment-list">
+        <section className="market-comments post-comments-card unified-comments-card">
+          <header><h2>댓글 <span>{listing.commentCount}</span></h2></header>
+          <div className="post-comment-compose"><textarea className="post-comment-textarea" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="판매자에게 궁금한 내용을 남겨보세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !comment.trim()} onClick={() => void createComment(null)}>댓글 등록</button></div></div>
+          <div className="market-comment-list post-comment-list">
             {comments.length === 0 && <p className="market-comment-empty">아직 댓글이 없습니다.</p>}
-            {comments.map((item) => <div className="market-comment" key={item.commentId}>
-              <div><strong>{item.writer?.nickname ?? "탈퇴한 회원"}</strong><time>{formatDate(item.createdAt)}</time></div><p>{item.content}</p>
-              {!item.isDeleted && <button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button>}
-              {item.previewReplies.map((child) => <div className="market-comment-reply" key={child.commentId}><div><strong>{child.writer?.nickname ?? "탈퇴한 회원"}</strong><time>{formatDate(child.createdAt)}</time></div><p>{child.content}</p></div>)}
-              {item.hasMoreReplies && <button type="button" onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
-              {replyParentId === item.commentId && <div className="market-comment-compose reply"><textarea value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><button type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>등록</button></div>}
+            {comments.map((item) => <div className="market-comment post-comment-item" key={item.commentId}>
+              <div className="comment-youtube-row"><MarketCommentAvatar item={item} /><div className="comment-youtube-body"><header><strong>{item.writer?.nickname ?? "탈퇴한 회원"}</strong><time>{formatDate(item.createdAt)}</time></header><p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>{!item.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button></div>}</div></div>
+              <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><strong>{child.writer?.nickname ?? "탈퇴한 회원"}</strong><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p></div></div></div>)}</div>
+              {item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
+              {replyParentId === item.commentId && <div className="post-reply-compose"><textarea className="post-comment-textarea" value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div></div>}
             </div>)}
           </div>
           {hasNext && nextCursor && <button className="market-comments-more" type="button" onClick={() => void loadComments(nextCursor, true)}>댓글 더보기</button>}
@@ -255,5 +254,14 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
       </main>
       <Footer />
     </div>
+  );
+}
+
+function MarketCommentAvatar({ item }: { item: CommentItem }) {
+  const nickname = item.writer?.nickname ?? "탈퇴한 회원";
+  return item.writer?.profileImageUrl ? (
+    <Image className="comment-profile-avatar" src={item.writer.profileImageUrl} alt="" width={38} height={38} />
+  ) : (
+    <span className="comment-profile-avatar comment-profile-fallback" aria-hidden="true">{nickname.slice(0, 1)}</span>
   );
 }

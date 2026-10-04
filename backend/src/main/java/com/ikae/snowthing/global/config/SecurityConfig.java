@@ -156,7 +156,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         auth ->
                                 auth.requestMatchers(
-                                                HttpMethod.GET, "/api/v1/market-listings/preview")
+                                                HttpMethod.GET,
+                                                "/api/v1/market-listings/preview",
+                                                "/api/v1/carpools/**",
+                                                "/api/carpools/**")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/carpools/auto-preview",
+                                                "/api/carpools/auto-preview")
                                         .permitAll()
                                         .requestMatchers(
                                                 "/api/members",

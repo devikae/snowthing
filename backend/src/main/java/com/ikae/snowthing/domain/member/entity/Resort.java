@@ -1,5 +1,7 @@
 package com.ikae.snowthing.domain.member.entity;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 
 import lombok.AccessLevel;
@@ -33,18 +35,38 @@ public class Resort {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
+    @Column(name = "route_latitude", precision = 10, scale = 7)
+    private BigDecimal routeLatitude;
+
+    @Column(name = "route_longitude", precision = 10, scale = 7)
+    private BigDecimal routeLongitude;
+
     @Builder
-    public Resort(String name, String regionName, String code, int displayOrder, boolean active) {
+    public Resort(
+            String name,
+            String regionName,
+            String code,
+            int displayOrder,
+            boolean active,
+            BigDecimal routeLatitude,
+            BigDecimal routeLongitude) {
         this.name = name;
         this.regionName = regionName;
         this.code = code;
         this.displayOrder = displayOrder;
         this.active = active;
+        this.routeLatitude = routeLatitude;
+        this.routeLongitude = routeLongitude;
     }
 
     public void updateMetadata(String code, int displayOrder, boolean active) {
         this.code = code;
         this.displayOrder = displayOrder;
         this.active = active;
+    }
+
+    public void updateRouteCoordinate(BigDecimal routeLatitude, BigDecimal routeLongitude) {
+        this.routeLatitude = routeLatitude;
+        this.routeLongitude = routeLongitude;
     }
 }

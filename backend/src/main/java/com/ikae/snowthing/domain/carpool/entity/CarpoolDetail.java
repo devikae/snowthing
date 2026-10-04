@@ -45,6 +45,12 @@ public class CarpoolDetail extends BaseTimeEntity {
     @JoinColumn(name = "destination_resort_id", nullable = false)
     private Resort destinationResort;
 
+    @Column(name = "destination_latitude", nullable = false, precision = 10, scale = 7)
+    private BigDecimal destinationLatitude;
+
+    @Column(name = "destination_longitude", nullable = false, precision = 10, scale = 7)
+    private BigDecimal destinationLongitude;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "trip_type", nullable = false, length = 20)
     private CarpoolTripType tripType;
@@ -65,8 +71,16 @@ public class CarpoolDetail extends BaseTimeEntity {
     @Column(name = "fuel_efficiency", nullable = false, precision = 6, scale = 2)
     private BigDecimal fuelEfficiency;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cost_mode", nullable = false, length = 20)
+    private CarpoolCostMode costMode;
+
     @Column(name = "fuel_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal fuelPrice;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fuel_price_source", nullable = false, length = 20)
+    private CarpoolFuelPriceSource fuelPriceSource;
 
     @Column(name = "fuel_price_observed_at", nullable = false)
     private LocalDateTime fuelPriceObservedAt;
@@ -99,6 +113,9 @@ public class CarpoolDetail extends BaseTimeEntity {
     @Column(name = "contact_public_to_guest", nullable = false)
     private boolean contactPublicToGuest;
 
+    @Column(name = "equipment_load_available", nullable = false)
+    private boolean equipmentLoadAvailable;
+
     @Builder
     public CarpoolDetail(
             Post post,
@@ -107,13 +124,17 @@ public class CarpoolDetail extends BaseTimeEntity {
             BigDecimal departureLatitude,
             BigDecimal departureLongitude,
             Resort destinationResort,
+            BigDecimal destinationLatitude,
+            BigDecimal destinationLongitude,
             CarpoolTripType tripType,
             LocalDateTime departureAt,
             LocalDateTime returnAt,
             int passengerCapacity,
             CarpoolFuelType fuelType,
             BigDecimal fuelEfficiency,
+            CarpoolCostMode costMode,
             BigDecimal fuelPrice,
+            CarpoolFuelPriceSource fuelPriceSource,
             LocalDateTime fuelPriceObservedAt,
             BigDecimal routeDistanceKm,
             int routeTollFee,
@@ -123,20 +144,25 @@ public class CarpoolDetail extends BaseTimeEntity {
             CarpoolRouteSource routeSource,
             LocalDateTime routeCalculatedAt,
             String contactInfo,
-            boolean contactPublicToGuest) {
+            boolean contactPublicToGuest,
+            boolean equipmentLoadAvailable) {
         this.post = post;
         this.departureRegion = departureRegion;
         this.meetingPlace = meetingPlace;
         this.departureLatitude = departureLatitude;
         this.departureLongitude = departureLongitude;
         this.destinationResort = destinationResort;
+        this.destinationLatitude = destinationLatitude;
+        this.destinationLongitude = destinationLongitude;
         this.tripType = tripType;
         this.departureAt = departureAt;
         this.returnAt = returnAt;
         this.passengerCapacity = passengerCapacity;
         this.fuelType = fuelType;
         this.fuelEfficiency = fuelEfficiency;
+        this.costMode = costMode;
         this.fuelPrice = fuelPrice;
+        this.fuelPriceSource = fuelPriceSource;
         this.fuelPriceObservedAt = fuelPriceObservedAt;
         this.routeDistanceKm = routeDistanceKm;
         this.routeTollFee = routeTollFee;
@@ -147,5 +173,63 @@ public class CarpoolDetail extends BaseTimeEntity {
         this.routeCalculatedAt = routeCalculatedAt;
         this.contactInfo = contactInfo;
         this.contactPublicToGuest = contactPublicToGuest;
+        this.equipmentLoadAvailable = equipmentLoadAvailable;
+    }
+
+    public void update(
+            String departureRegion,
+            String meetingPlace,
+            BigDecimal departureLatitude,
+            BigDecimal departureLongitude,
+            Resort destinationResort,
+            BigDecimal destinationLatitude,
+            BigDecimal destinationLongitude,
+            CarpoolTripType tripType,
+            LocalDateTime departureAt,
+            LocalDateTime returnAt,
+            int passengerCapacity,
+            CarpoolFuelType fuelType,
+            BigDecimal fuelEfficiency,
+            CarpoolCostMode costMode,
+            BigDecimal fuelPrice,
+            CarpoolFuelPriceSource fuelPriceSource,
+            LocalDateTime fuelPriceObservedAt,
+            BigDecimal routeDistanceKm,
+            int routeTollFee,
+            int estimatedFuelCost,
+            int estimatedTotalCost,
+            int estimatedCostPerPerson,
+            CarpoolRouteSource routeSource,
+            LocalDateTime routeCalculatedAt,
+            String contactInfo,
+            boolean contactPublicToGuest,
+            boolean equipmentLoadAvailable) {
+        this.departureRegion = departureRegion;
+        this.meetingPlace = meetingPlace;
+        this.departureLatitude = departureLatitude;
+        this.departureLongitude = departureLongitude;
+        this.destinationResort = destinationResort;
+        this.destinationLatitude = destinationLatitude;
+        this.destinationLongitude = destinationLongitude;
+        this.tripType = tripType;
+        this.departureAt = departureAt;
+        this.returnAt = returnAt;
+        this.passengerCapacity = passengerCapacity;
+        this.fuelType = fuelType;
+        this.fuelEfficiency = fuelEfficiency;
+        this.costMode = costMode;
+        this.fuelPrice = fuelPrice;
+        this.fuelPriceSource = fuelPriceSource;
+        this.fuelPriceObservedAt = fuelPriceObservedAt;
+        this.routeDistanceKm = routeDistanceKm;
+        this.routeTollFee = routeTollFee;
+        this.estimatedFuelCost = estimatedFuelCost;
+        this.estimatedTotalCost = estimatedTotalCost;
+        this.estimatedCostPerPerson = estimatedCostPerPerson;
+        this.routeSource = routeSource;
+        this.routeCalculatedAt = routeCalculatedAt;
+        this.contactInfo = contactInfo;
+        this.contactPublicToGuest = contactPublicToGuest;
+        this.equipmentLoadAvailable = equipmentLoadAvailable;
     }
 }

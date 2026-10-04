@@ -12,18 +12,9 @@ interface CameraPlayerProps {
 
 export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [desktop, setDesktop] = useState(false);
   const [manualPlay, setManualPlay] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 768px)");
-    const sync = () => setDesktop(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
 
   const shouldLoad = focused || manualPlay || autoPlay;
   const officialUrl = camera.externalPageUrl || camera.sourceUrl || "";

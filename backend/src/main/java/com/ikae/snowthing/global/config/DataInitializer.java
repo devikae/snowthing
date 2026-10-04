@@ -1,5 +1,6 @@
 package com.ikae.snowthing.global.config;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,23 +66,27 @@ public class DataInitializer implements CommandLineRunner {
 
         List<Resort> targetResorts =
                 List.of(
-                        resort("PHOENIX", "휘닉스파크", "강원 평창", 1),
-                        resort("VIVALDI", "비발디파크", "강원 홍천", 2),
-                        resort("HIGH1", "하이원리조트", "강원 정선", 3),
-                        resort("YONGPYONG", "모나용평", "강원 평창", 4),
-                        resort("WELLI_HILLI", "웰리힐리파크", "강원 횡성", 5),
-                        resort("JISAN", "지산리조트", "경기 이천", 6),
-                        resort("KONJIAM", "곤지암리조트", "경기 광주", 7),
-                        resort("MUJU", "무주덕유산리조트", "전북 무주", 8),
-                        resort("EDEN_VALLEY", "에덴밸리리조트", "경남 양산", 9),
-                        resort("ELYSIAN", "엘리시안 강촌", "강원 춘천", 10),
-                        resort("ALPENSIA", "알펜시아리조트", "강원 평창", 11),
-                        resort("OAK_VALLEY", "오크밸리", "강원 원주", 12),
-                        resort("O2_RESORT", "오투리조트", "강원 태백", 13));
+                        resort("PHOENIX", "휘닉스파크", "강원 평창", 1, "37.5805715", "128.3224144"),
+                        resort("VIVALDI", "비발디파크", "강원 홍천", 2, "37.6450833", "127.6820210"),
+                        resort("HIGH1", "하이원리조트", "강원 정선", 3, "37.2040383", "128.8388351"),
+                        resort("YONGPYONG", "모나용평", "강원 평창", 4, "37.6457553", "128.6805217"),
+                        resort("WELLI_HILLI", "웰리힐리파크", "강원 횡성", 5, "37.4855523", "128.2477908"),
+                        resort("JISAN", "지산리조트", "경기 이천", 6, "37.2167759", "127.3451839"),
+                        resort("KONJIAM", "곤지암리조트", "경기 광주", 7, "37.3369199", "127.2935199"),
+                        resort("MUJU", "무주덕유산리조트", "전북 무주", 8, "35.8909032", "127.7368635"),
+                        resort("EDEN_VALLEY", "에덴밸리리조트", "경남 양산", 9, "35.4248266", "128.9852354"),
+                        resort("ELYSIAN", "엘리시안 강촌", "강원 춘천", 10, "37.8211533", "127.5889848"),
+                        resort("ALPENSIA", "알펜시아리조트", "강원 평창", 11, "37.6563744", "128.6733956"),
+                        resort("OAK_VALLEY", "오크밸리", "강원 원주", 12, "37.4031965", "127.8170565"),
+                        resort("O2_RESORT", "오투리조트", "강원 태백", 13, "37.1775331", "128.9480017"));
 
         for (Resort target : targetResorts) {
             Optional<Resort> byCode = resortRepository.findByCode(target.getCode());
             if (byCode.isPresent()) {
+                Resort existing = byCode.get();
+                existing.updateRouteCoordinate(
+                        target.getRouteLatitude(), target.getRouteLongitude());
+                resortRepository.save(existing);
                 continue;
             }
             Optional<Resort> byName = resortRepository.findByName(target.getName());
@@ -89,6 +94,8 @@ public class DataInitializer implements CommandLineRunner {
                 Resort existing = byName.get();
                 existing.updateMetadata(
                         target.getCode(), target.getDisplayOrder(), target.isActive());
+                existing.updateRouteCoordinate(
+                        target.getRouteLatitude(), target.getRouteLongitude());
                 resortRepository.save(existing);
             } else {
                 resortRepository.save(target);
@@ -202,13 +209,21 @@ public class DataInitializer implements CommandLineRunner {
                 .build();
     }
 
-    private Resort resort(String code, String name, String regionName, int displayOrder) {
+    private Resort resort(
+            String code,
+            String name,
+            String regionName,
+            int displayOrder,
+            String routeLatitude,
+            String routeLongitude) {
         return Resort.builder()
                 .code(code)
                 .name(name)
                 .regionName(regionName)
                 .displayOrder(displayOrder)
                 .active(true)
+                .routeLatitude(new BigDecimal(routeLatitude))
+                .routeLongitude(new BigDecimal(routeLongitude))
                 .build();
     }
 }
