@@ -1,0 +1,24 @@
+{
+  "documents": [
+    {
+      "address_name": "서울 강동구 천호동 455",
+      "category_group_code": "SW8",
+      "category_group_name": "지하철역",
+      "id": "21160571",
+      "place_name": "천호역 5호선",
+      "road_address_name": "서울 강동구 천호대로 997",
+      "x": "127.1234567",
+      "y": "37.5387654"
+    }
+  ],
+  "meta": {
+    "is_end": true,
+    "pageable_count": 1,
+    "same_name": {
+      "keyword": "천호역",
+      "region": [],
+      "selected_region": ""
+    },
+    "total_count": 1
+  }
+}

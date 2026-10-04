@@ -31,6 +31,16 @@ interface BoardConfig {
   topics: string[];
 }
 
+interface CarpoolSidebarItem {
+  publicId: string;
+  title: string;
+  departureRegion: string;
+  destinationResortName: string;
+  departureAt: string;
+  passengerCapacity: number;
+  estimatedCostPerPerson: number;
+}
+
 const categories = [
   { code: "", name: "전체글" },
   { code: "FREE", name: "자유게시판" },
@@ -55,11 +65,6 @@ const boardConfigs: Record<string, BoardConfig> = {
   FOOD: { name: "리조트 맛집", navKey: "food", notices: defaultNotices, topics: ["용평 아침식사", "휘팍 국밥", "하이원 야식", "비발디 카페", "웰리힐리 맛집"] },
 };
 
-const carpools = [
-  { from: "서울 사당", to: "하이원", date: "12/28(토) 05:00 출발", seat: "2석 남음", price: "기름/톨비 N빵" },
-  { from: "경기 분당(서현)", to: "휘닉스파크", date: "12/28(토) 18:00 야간", seat: "1석 남음", price: "편도 1.5만원" },
-];
-
 function PostListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,8 +80,9 @@ function PostListContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [carpools, setCarpools] = useState<CarpoolSidebarItem[]>([]);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(false);
     try {
@@ -84,24 +90,51 @@ function PostListContent() {
       if (currentCategory) params.set("categoryCode", currentCategory);
       if (currentView === "best") params.set("viewType", "BEST");
       if (keywordFromUrl.trim()) params.set("keyword", keywordFromUrl.trim());
-      const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
+      const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, {
+        credentials: "include",
+        signal,
+      });
       if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
       const data = await response.json();
+      if (signal?.aborted) return;
       setPosts(Array.isArray(data.content) ? data.content : []);
       setTotalPages(Math.max(1, data.pageInfo?.totalPages || 1));
     } catch (fetchError) {
+      if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
       console.error("게시글 목록 로드 실패:", fetchError);
       setPosts([]);
       setError(true);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [currentCategory, currentView, keywordFromUrl, page]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void fetchPosts(), 0);
-    return () => window.clearTimeout(timer);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => void fetchPosts(controller.signal), 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [fetchPosts]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((data: { content?: CarpoolSidebarItem[] }) =>
+        setCarpools(Array.isArray(data.content) ? data.content : []),
+      )
+      .catch((carpoolError) => {
+        if (!(carpoolError instanceof DOMException && carpoolError.name === "AbortError")) {
+          setCarpools([]);
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   const visiblePages = useMemo(() => {
     const start = Math.max(0, Math.min(page - 2, totalPages - 5));
@@ -175,7 +208,7 @@ function PostListContent() {
 
           <aside className="board-sidebar">
             <section className="board-widget topic-widget"><header><h2><span className="material-symbols-outlined">trending_up</span>{config.name} 실시간 핫 토픽</h2><small>10분 주기 갱신</small></header><ol>{config.topics.map((topic, index) => <li key={topic}><b>{index + 1}</b><Link href={`/posts${currentCategory ? `?category=${currentCategory}` : ""}`}>{topic}</Link><span>{index === 3 ? "NEW" : index < 2 ? `▲ ${42 - index * 24}` : "-"}</span></li>)}</ol></section>
-            <section className="board-widget board-carpool" id="carpool"><header><h2><em>실시간</em> 급구! 카풀 &amp; 동행</h2><Link href="/#carpool">+ 등록</Link></header><div>{carpools.map((item) => <article key={item.from}><div><strong>{item.from} <span>→</span> <em>{item.to}</em></strong><b>{item.seat}</b></div><p><span>{item.date}</span><strong>{item.price}</strong></p></article>)}</div></section>
+            <section className="board-widget board-carpool" id="carpool"><header><h2><em>실시간</em> 급구! 카풀 &amp; 동행</h2><Link href="/carpool/new">+ 등록</Link></header><div>{carpools.length === 0 ? <p className="board-carpool-empty">현재 모집 중인 카풀이 없습니다.</p> : carpools.map((item) => <Link href={`/carpool/${item.publicId}`} key={item.publicId}><article><div><strong>{item.departureRegion} <span>→</span> <em>{item.destinationResortName}</em></strong><b>모집 {item.passengerCapacity}명</b></div><p><span>{new Date(item.departureAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span><strong>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</strong></p></article></Link>)}</div></section>
           </aside>
         </div>
       </main>

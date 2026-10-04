@@ -29,6 +29,14 @@ logging:
 snowthing:
   chat:
     max-connections: ${SNOWTHING_CHAT_MAX_CONNECTIONS:500}
+  carpool:
+    external:
+      connect-timeout-millis: ${SNOWTHING_CARPOOL_CONNECT_TIMEOUT_MILLIS:2000}
+      read-timeout-millis: ${SNOWTHING_CARPOOL_READ_TIMEOUT_MILLIS:4000}
+      kakao:
+        rest-api-key: ${SNOWTHING_KAKAO_REST_API_KEY:}
+      opinet:
+        api-key: ${SNOWTHING_OPINET_API_KEY:}
 
 server:
   servlet:

@@ -126,4 +126,17 @@ class WebCookieManagerTest {
 
         assertThat(ip).isEqualTo("198.51.100.10");
     }
+
+    @Test
+    @DisplayName("Docker 사설망의 Nginx가 전달한 실제 클라이언트 IP를 사용한다")
+    void resolve_withDockerPrivateProxy_usesRealIp() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("172.18.0.1");
+        request.addHeader("X-Real-IP", "203.0.113.20");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("203.0.113.20");
+    }
 }

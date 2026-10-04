@@ -85,6 +85,16 @@ interface CommentUpdateResponse {
   updatedAt: string;
 }
 
+interface CarpoolSidebarItem {
+  publicId: string;
+  departureRegion: string;
+  destinationResortName: string;
+  departureAt: string;
+  passengerCapacity: number;
+  estimatedCostPerPerson: number;
+  equipmentLoadAvailable: boolean;
+}
+
 export default function PostDetailPage({ params }: { params: Promise<{ publicId: string }> }) {
   const router = useRouter();
   const { publicId } = use(params);
@@ -118,6 +128,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [submittingDeleteComment, setSubmittingDeleteComment] = useState(false);
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [carpools, setCarpools] = useState<CarpoolSidebarItem[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteModalConfig, setDeleteModalConfig] = useState({
     title: "게시글 삭제 확인",
@@ -312,6 +323,25 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
     return () => window.clearTimeout(timer);
   }, [fetchComments, publicId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setCarpools(Array.isArray(data.content) ? data.content : []);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) setCarpools([]);
+      });
+
+    return () => controller.abort();
+  }, []);
 
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
     try {
@@ -595,8 +625,19 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             <h1>{post.title}</h1>
 
             <div className="post-detail-author">
-              <span className="material-symbols-outlined">{post.isAnonymous ? "theater_comedy" : "person"}</span>
-              <div><strong>{post.writer.nickname}</strong><small>작성 {new Date(post.createdAt).toLocaleString()}</small></div>
+              {isAnonymousPost ? (
+                <span className="material-symbols-outlined post-detail-anonymous-avatar" aria-hidden="true">theater_comedy</span>
+              ) : (
+                <Image
+                  className="post-detail-author-avatar"
+                  src={post.writer.profileImageUrl || "/images/default-profile-avatar.png"}
+                  alt=""
+                  width={42}
+                  height={42}
+                  unoptimized={Boolean(post.writer.profileImageUrl)}
+                />
+              )}
+              <div><strong>{post.writer.nickname}</strong><small>{new Date(post.createdAt).toLocaleString("ko-KR")}</small></div>
               {(() => {
                 const canEdit = Boolean(post.isAnonymous || post.categoryCode === "ANONYMOUS" || (currentUserPublicId && post.writer?.publicId === currentUserPublicId));
                 const canDelete = Boolean(isAdmin || canEdit);
@@ -619,9 +660,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
               })()}
             </div>
 
-            <div className="post-detail-content">
-              <ToastViewer content={post.content} />
-            </div>
+            <section className="post-detail-content-panel" aria-label="게시글 내용">
+              <div className="post-detail-content">
+                <ToastViewer content={post.content} />
+              </div>
+            </section>
 
             {post.images?.length > 0 && (
               <div className="post-detail-images">
@@ -760,11 +803,18 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           </div>
           <aside className="post-detail-sidebar">
             <section className="detail-carpool-card">
-              <header><h2><span className="material-symbols-outlined">directions_car</span>실시간 카풀/동행</h2><small>전체보기</small></header>
-              <article><div><b>모집중 2석</b><time>내일(토) 05:30</time></div><strong>잠실역 <span>→</span> 휘닉스파크</strong><p>카니발 4세대 · 보드백 수납 가능 <b>15,000원</b></p></article>
-              <article><div><b>모집중 1석</b><time>일요일 17:00</time></div><strong>하이원 밸리 <span>→</span> 신분당 판교역</strong><p>쏘렌토 하이브리드 · 비흡연 <b>18,000원</b></p></article>
+              <header><h2><span className="material-symbols-outlined">directions_car</span>실시간 카풀/동행</h2><Link href="/carpool">전체보기</Link></header>
+              {carpools.length === 0 ? (
+                <p className="detail-carpool-empty">등록된 카풀 모집글이 없습니다.</p>
+              ) : carpools.map((item) => (
+                <article key={item.publicId}>
+                  <div><b>{item.passengerCapacity}명 모집</b><time>{new Date(item.departureAt).toLocaleString("ko-KR")}</time></div>
+                  <strong>{item.departureRegion} <span>→</span> {item.destinationResortName}</strong>
+                  <p><span>장비 적재 {item.equipmentLoadAvailable ? "가능" : "불가능"}</span><b>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원/인</b></p>
+                  <footer><Link href={`/carpool/${item.publicId}`}>자세히 보기 <span aria-hidden="true">›</span></Link></footer>
+                </article>
+              ))}
             </section>
-            <p>카풀·동행 영역은 현재 화면 구성을 위한 예시입니다.</p>
           </aside>
         </div>
       </main>
@@ -855,12 +905,15 @@ function CommentRow({
   };
 
   return (
-    <div>
-      <div className="post-comment-item">
-        <div className="flex items-center justify-between gap-3">
-          <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
-          <div className="flex items-center">
-            <span className="font-mono text-xs text-[var(--snow-muted)]">{formatCommentDate(item.createdAt)}</span>
+    <div className="post-comment-item">
+      <div className={`comment-youtube-row ${isAnonymousPost ? "anonymous-comment-row" : ""}`}>
+        {!isAnonymousPost && <CommentProfileAvatar item={item} />}
+        <div className="comment-youtube-body">
+          <header>
+            <strong className={item.isDeleted ? "deleted" : ""}>
+              {isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
+            </strong>
+            <time>{formatCommentDate(item.createdAt)}</time>
             {canDelete && (
               <CommentDeleteInline
                 comment={item}
@@ -874,43 +927,39 @@ function CommentRow({
                 onConfirm={() => void handleConfirmDeleteComment(item)}
               />
             )}
-          </div>
+          </header>
+          {isEditing ? (
+            <CommentEditForm
+              comment={item}
+              content={editCommentText}
+              setContent={setEditCommentText}
+              password={editCommentPassword}
+              setPassword={setEditCommentPassword}
+              error={editCommentError}
+              submitting={submittingEditComment}
+              requiresPassword={item.requiresPassword}
+              onCancel={handleCancelEditComment}
+              onSubmit={() => void handleUpdateComment(item)}
+            />
+          ) : (
+            <>
+              <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>
+              <div className="comment-youtube-actions">
+                <button type="button" onClick={toggleReplyEditor}>{activeReplyParentId === item.commentId ? "답글 취소" : "답글"}</button>
+                {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+              </div>
+            </>
+          )}
         </div>
-        {isEditing ? (
-          <CommentEditForm
-            comment={item}
-            content={editCommentText}
-            setContent={setEditCommentText}
-            password={editCommentPassword}
-            setPassword={setEditCommentPassword}
-            error={editCommentError}
-            submitting={submittingEditComment}
-            requiresPassword={item.requiresPassword}
-            onCancel={handleCancelEditComment}
-            onSubmit={() => void handleUpdateComment(item)}
-          />
-        ) : (
-          <>
-            <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
-            <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
-              <button onClick={toggleReplyEditor} className="text-black">
-                {activeReplyParentId === item.commentId ? "답글 취소" : "답글 쓰기"}
-              </button>
-              {canEdit && (
-                <button type="button" onClick={() => handleStartEditComment(item)} className="text-black">
-                  수정
-                </button>
-              )}
-            </div>
-          </>
-        )}
+      </div>
 
-        {item.previewReplies.length > 0 && (
-          <div className="mt-4 grid gap-4">
+      {item.previewReplies.length > 0 && (
+          <div className="comment-reply-list">
             {item.previewReplies.map((reply) => (
               <ReplyRow
                 key={reply.commentId}
                 item={reply}
+                isAnonymousPost={isAnonymousPost}
                 onReply={toggleReplyEditor}
                 isEditing={activeEditCommentId === reply.commentId}
                 editCommentText={editCommentText}
@@ -933,10 +982,10 @@ function CommentRow({
               />
             ))}
           </div>
-        )}
+      )}
 
-        {item.hasMoreReplies && (
-          <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
+      {item.hasMoreReplies && (
+          <div className="comment-reply-more">
             <button
               type="button"
               disabled={isLoadingReplies}
@@ -946,9 +995,9 @@ function CommentRow({
               {isLoadingReplies ? "답글을 불러오는 중..." : `답글 더보기 (총 ${item.replyCount}개)`}
             </button>
           </div>
-        )}
+      )}
 
-        {activeReplyParentId === item.commentId && (
+      {activeReplyParentId === item.commentId && (
           <div className="post-reply-compose">
             <textarea
               rows={2}
@@ -979,14 +1028,14 @@ function CommentRow({
               </button>
             </div>
           </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
 
 function ReplyRow({
   item,
+  isAnonymousPost,
   onReply,
   isEditing,
   editCommentText,
@@ -1008,6 +1057,7 @@ function ReplyRow({
   handleConfirmDeleteComment,
 }: {
   item: CommentItem;
+  isAnonymousPost: boolean;
   onReply: () => void;
   isEditing: boolean;
   editCommentText: string;
@@ -1033,15 +1083,15 @@ function ReplyRow({
 
   return (
     <div className="post-comment-reply">
-      <div className="flex items-center justify-between gap-3">
-        <div className="post-comment-reply-author">
-          <span className="material-symbols-outlined" aria-hidden="true">subdirectory_arrow_right</span>
-          <span className={`font-bold ${item.isDeleted ? "text-[var(--snow-faint)]" : "text-black"}`}>{getWriterName(item)}</span>
-        </div>
-        <div className="flex items-center">
-          <span className="font-mono text-xs text-[var(--snow-muted)]">
-            {formatCommentDate(item.createdAt)}
-          </span>
+      <div className={`comment-youtube-row ${isAnonymousPost ? "anonymous-comment-row" : ""}`}>
+        <span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>
+        {!isAnonymousPost && <CommentProfileAvatar item={item} />}
+        <div className="comment-youtube-body">
+          <header>
+            <strong className={item.isDeleted ? "deleted" : ""}>
+              {isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
+            </strong>
+            <time>{formatCommentDate(item.createdAt)}</time>
           {canDelete && (
             <CommentDeleteInline
               comment={item}
@@ -1055,37 +1105,37 @@ function ReplyRow({
               onConfirm={() => void handleConfirmDeleteComment(item)}
             />
           )}
+          </header>
+          {isEditing ? (
+            <CommentEditForm
+              comment={item}
+              content={editCommentText}
+              setContent={setEditCommentText}
+              password={editCommentPassword}
+              setPassword={setEditCommentPassword}
+              error={editCommentError}
+              submitting={submittingEditComment}
+              requiresPassword={item.requiresPassword}
+              onCancel={handleCancelEditComment}
+              onSubmit={() => void handleUpdateComment(item)}
+            />
+          ) : <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>}
+          {!item.isDeleted && !isEditing && <div className="comment-youtube-actions">
+            <button type="button" onClick={onReply}>답글</button>
+            {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+          </div>}
         </div>
       </div>
-      {isEditing ? (
-        <CommentEditForm
-          comment={item}
-          content={editCommentText}
-          setContent={setEditCommentText}
-          password={editCommentPassword}
-          setPassword={setEditCommentPassword}
-          error={editCommentError}
-          submitting={submittingEditComment}
-          requiresPassword={item.requiresPassword}
-          onCancel={handleCancelEditComment}
-          onSubmit={() => void handleUpdateComment(item)}
-        />
-      ) : (
-        <p className={`mt-2 leading-7 ${item.isDeleted ? "text-[var(--snow-faint)] italic" : "text-[var(--snow-ink-soft)]"}`}>{item.content}</p>
-      )}
-      {!item.isDeleted && !isEditing && (
-        <div className="mt-3 flex gap-4 font-mono text-xs font-bold uppercase tracking-[0.06em]">
-          <button type="button" onClick={onReply} className="text-black">
-            답글 쓰기
-          </button>
-          {canEdit && (
-            <button type="button" onClick={() => handleStartEditComment(item)} className="text-black">
-              수정
-            </button>
-          )}
-        </div>
-      )}
     </div>
+  );
+}
+
+function CommentProfileAvatar({ item }: { item: CommentItem }) {
+  const name = getWriterName(item);
+  return item.writer?.profileImageUrl ? (
+    <Image className="comment-profile-avatar" src={item.writer.profileImageUrl} alt="" width={38} height={38} />
+  ) : (
+    <span className="comment-profile-avatar comment-profile-fallback" aria-hidden="true">{name.slice(0, 1)}</span>
   );
 }
 

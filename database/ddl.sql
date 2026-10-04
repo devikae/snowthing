@@ -13,6 +13,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS `comment`;
 DROP TABLE IF EXISTS `post_reaction`;
+DROP TABLE IF EXISTS `carpool_detail`;
 DROP TABLE IF EXISTS `post_image`;
 DROP TABLE IF EXISTS `post`;
 DROP TABLE IF EXISTS `post_category`;
@@ -57,7 +58,9 @@ CREATE TABLE `member` (
 CREATE TABLE `resort` (
     `resort_id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '리조트 고유 식별자',
     `name` VARCHAR(50) NOT NULL COMMENT '스키장 이름',
-    `region` VARCHAR(50) NOT NULL COMMENT '소재 지역'
+    `region` VARCHAR(50) NOT NULL COMMENT '소재 지역',
+    `route_latitude` DECIMAL(10,7) NULL COMMENT '카풀 경로 계산용 검증 목적지 위도',
+    `route_longitude` DECIMAL(10,7) NULL COMMENT '카풀 경로 계산용 검증 목적지 경도'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='리조트 마스터';
 
 -- 4. 회원-리조트 N:M 중계 테이블
@@ -121,7 +124,61 @@ CREATE TABLE `post` (
     CONSTRAINT `chk_post_dislike_count_non_negative` CHECK (`dislike_count` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='게시글';
 
--- 9. 게시글 첨부 이미지 테이블 (1:N)
+-- 9. 카풀 모집글 상세 (Post와 1:1)
+CREATE TABLE `carpool_detail` (
+    `post_id` BIGINT NOT NULL PRIMARY KEY COMMENT '카풀 게시글 ID',
+    `departure_region` VARCHAR(100) NOT NULL COMMENT '출발 지역',
+    `meeting_place` VARCHAR(200) NOT NULL COMMENT '집결지',
+    `departure_latitude` DECIMAL(10,7) NULL COMMENT '경로 계산용 출발 위도',
+    `departure_longitude` DECIMAL(10,7) NULL COMMENT '경로 계산용 출발 경도',
+    `destination_resort_id` BIGINT NOT NULL COMMENT '도착 리조트 ID',
+    `destination_latitude` DECIMAL(10,7) NOT NULL COMMENT '계산 당시 도착지 위도 스냅샷',
+    `destination_longitude` DECIMAL(10,7) NOT NULL COMMENT '계산 당시 도착지 경도 스냅샷',
+    `trip_type` VARCHAR(20) NOT NULL COMMENT '편도/왕복',
+    `departure_at` DATETIME NOT NULL COMMENT '출발 예정 시각',
+    `return_at` DATETIME NULL COMMENT '왕복 복귀 예정 시각',
+    `passenger_capacity` INT NOT NULL COMMENT '운전자 제외 모집 인원',
+    `fuel_type` VARCHAR(30) NOT NULL COMMENT '연료 종류',
+    `fuel_efficiency` DECIMAL(6,2) NOT NULL COMMENT '차량 연비 km/L',
+    `cost_mode` VARCHAR(20) NOT NULL DEFAULT 'AUTO' COMMENT '자동 계산/1인 금액 직접 입력',
+    `fuel_price` DECIMAL(10,2) NOT NULL COMMENT '계산에 사용한 유가',
+    `fuel_price_source` VARCHAR(20) NOT NULL DEFAULT 'OPINET' COMMENT '유가 출처',
+    `fuel_price_observed_at` DATETIME NOT NULL COMMENT '유가 조회 시각',
+    `route_distance_km` DECIMAL(8,2) NOT NULL COMMENT '최종 적용 거리',
+    `route_toll_fee` INT NOT NULL COMMENT '최종 적용 통행료',
+    `estimated_fuel_cost` INT NOT NULL COMMENT '예상 연료비',
+    `estimated_total_cost` INT NOT NULL COMMENT '예상 총비용',
+    `estimated_cost_per_person` INT NOT NULL COMMENT '운전자 포함 1인 예상 비용',
+    `route_source` VARCHAR(20) NOT NULL COMMENT '경로 계산 출처',
+    `route_calculated_at` DATETIME NULL COMMENT '경로 계산 시각',
+    `contact_info` VARCHAR(500) NULL COMMENT '외부 연락 수단',
+    `contact_public_to_guest` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '비회원 공개 동의',
+    `equipment_load_available` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '장비 적재 가능 여부',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_carpool_detail_departure_created_post` (`departure_at`, `created_at` DESC, `post_id` DESC),
+    INDEX `idx_carpool_detail_created_post` (`created_at` DESC, `post_id` DESC),
+    CONSTRAINT `fk_carpool_detail_post` FOREIGN KEY (`post_id`) REFERENCES `post` (`post_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_carpool_detail_resort` FOREIGN KEY (`destination_resort_id`) REFERENCES `resort` (`resort_id`),
+    CONSTRAINT `chk_carpool_trip_type` CHECK (`trip_type` IN ('ONE_WAY', 'ROUND_TRIP')),
+    CONSTRAINT `chk_carpool_fuel_type` CHECK (`fuel_type` IN ('GASOLINE', 'DIESEL', 'LPG', 'HYBRID_GASOLINE')),
+    CONSTRAINT `chk_carpool_route_source` CHECK (`route_source` IN ('KAKAO', 'MANUAL')),
+    CONSTRAINT `chk_carpool_fuel_price_source` CHECK (`fuel_price_source` IN ('OPINET', 'CACHE', 'USER_INPUT')),
+    CONSTRAINT `chk_carpool_passenger_capacity` CHECK (`passenger_capacity` > 0),
+    CONSTRAINT `chk_carpool_fuel_efficiency` CHECK (`fuel_efficiency` > 0),
+    CONSTRAINT `chk_carpool_fuel_price` CHECK (`fuel_price` >= 0),
+    CONSTRAINT `chk_carpool_distance` CHECK (`route_distance_km` > 0),
+    CONSTRAINT `chk_carpool_toll_fee` CHECK (`route_toll_fee` >= 0),
+    CONSTRAINT `chk_carpool_estimated_fuel_cost` CHECK (`estimated_fuel_cost` >= 0),
+    CONSTRAINT `chk_carpool_estimated_total_cost` CHECK (`estimated_total_cost` >= 0),
+    CONSTRAINT `chk_carpool_estimated_cost_per_person` CHECK (`estimated_cost_per_person` >= 0),
+    CONSTRAINT `chk_carpool_round_trip_return` CHECK (
+        (`trip_type` = 'ONE_WAY' AND `return_at` IS NULL)
+        OR (`trip_type` = 'ROUND_TRIP' AND `return_at` > `departure_at`)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='카풀 모집글 상세';
+
+-- 10. 게시글 첨부 이미지 테이블 (1:N)
 CREATE TABLE `post_image` (
     `image_id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '이미지 고유 식별자',
     `post_id` BIGINT NOT NULL COMMENT '게시글 ID',

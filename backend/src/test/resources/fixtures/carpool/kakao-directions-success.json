@@ -1,0 +1,28 @@
+{
+  "trans_id": "example-transaction-id",
+  "routes": [
+    {
+      "result_code": 0,
+      "result_msg": "길찾기 성공",
+      "summary": {
+        "origin": {
+          "name": "천호역",
+          "x": 127.1234567,
+          "y": 37.5387654
+        },
+        "destination": {
+          "name": "휘닉스파크",
+          "x": 128.3277777,
+          "y": 37.5805555
+        },
+        "distance": 190000,
+        "duration": 10800,
+        "fare": {
+          "taxi": 155000,
+          "toll": 12000
+        }
+      },
+      "sections": []
+    }
+  ]
+}

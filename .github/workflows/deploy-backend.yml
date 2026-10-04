@@ -70,6 +70,12 @@ jobs:
           chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-005.sh scripts/verify-production-migration-006.sh
           scripts/verify-production-migration-005.sh
           scripts/verify-production-migration-006.sh
+
+      - name: Verify production migrations 007-012 used carpool schema
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-007-012.sh
+          scripts/verify-production-migration-007-012.sh
       - run: ./gradlew spotlessCheck
       - run: ./gradlew test build -x spotlessCheck
 

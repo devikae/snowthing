@@ -56,10 +56,15 @@ const HOME_FEED_TABS: HomeFeedTab[] = [
 const emptyFeeds: Record<HomeFeedKey, HomePost[]> = { all: [], popular: [], free: [], anonymous: [], gear: [] };
 const emptyFeedErrors: Record<HomeFeedKey, boolean> = { all: false, popular: false, free: false, anonymous: false, gear: false };
 
-const carpools = [
-  { from: "서울 사당", to: "하이원", date: "12/28(토) 05:00 출발", price: "기름/톨비 N빵", seat: "2석 남음", note: "루프박스 데크 4장 적재 가능 · 비흡연" },
-  { from: "경기 분당(서현)", to: "휘닉스파크", date: "12/28(토) 18:00 야간", price: "편도 1.5만원", seat: "1석 남음", note: "SUV 4륜 운행 · 장비 실어드립니다" },
-];
+interface HomeCarpoolItem {
+  publicId: string;
+  departureRegion: string;
+  destinationResortName: string;
+  departureAt: string;
+  passengerCapacity: number;
+  estimatedCostPerPerson: number;
+  equipmentLoadAvailable: boolean;
+}
 
 interface MarketPreviewItem {
   publicId: string;
@@ -74,6 +79,7 @@ export default function HomePage() {
   const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
   const [feedsLoading, setFeedsLoading] = useState(true);
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
+  const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
   const [snowReportResort, setSnowReportResort] = useState("PHOENIX");
   const [snowReportContent, setSnowReportContent] = useState("");
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
@@ -89,6 +95,13 @@ export default function HomePage() {
         setProfile(null);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    void fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((data) => setCarpools(Array.isArray(data.content) ? data.content : []))
+      .catch(() => setCarpools([]));
   }, []);
 
   useEffect(() => {
@@ -241,8 +254,9 @@ export default function HomePage() {
             </section>
 
             <section className="panel carpool-widget" id="carpool">
-              <div className="mini-heading"><h2>급구! 카풀 &amp; 동행</h2><Link href="#carpool">+ 등록</Link></div>
-              <div>{carpools.map((item) => <article key={item.from}><header><strong>{item.from} <i>→</i> <em>{item.to}</em></strong><span>{item.seat}</span></header><p><b>{item.date}</b><strong>{item.price}</strong></p><footer><span>{item.note}</span><a href="#carpool">신청 ›</a></footer></article>)}</div>
+              <div className="mini-heading"><h2>카풀 &amp; 동행</h2><Link href="/carpool/new">+ 등록</Link></div>
+              <div>{carpools.length === 0 ? <p className="carpool-widget-empty">등록된 카풀 모집글이 없습니다.</p> : carpools.map((item) => <article key={item.publicId}><header><strong>{item.departureRegion} <i>→</i> <em>{item.destinationResortName}</em></strong><span>{item.passengerCapacity}명 모집</span></header><p><b>{new Date(item.departureAt).toLocaleString("ko-KR")}</b><strong>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원/인</strong></p><footer><span>장비 적재 {item.equipmentLoadAvailable ? "가능" : "불가능"}</span><Link href={`/carpool/${item.publicId}`}>자세히 ›</Link></footer></article>)}</div>
+              <Link className="carpool-widget-more" href="/carpool">카풀 모집글 전체보기</Link>
             </section>
 
             <section className="panel market-widget" id="market">

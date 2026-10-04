@@ -1,0 +1,201 @@
+.carpool-form select {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #dbe3ed;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 0 12px;
+  color: #1e293b;
+  font: inherit;
+  font-size: 13px;
+  outline: 0;
+}
+
+.carpool-form select:focus {
+  border-color: #38a3d1;
+  box-shadow: 0 0 0 3px rgba(56, 163, 209, 0.12);
+}
+
+.carpool-place-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 8px;
+}
+
+.kakao-map-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.kakao-map {
+  width: 100%;
+  height: 320px;
+  overflow: hidden;
+  border: 1px solid #dbe3ed;
+  border-radius: 9px;
+  background: #eef4f8;
+}
+
+.kakao-map-hint,
+.kakao-map-message,
+.carpool-selected-place {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.kakao-map-message {
+  color: #dc2626;
+}
+
+.carpool-time-selects {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 6px;
+}
+
+.carpool-selected-place strong {
+  color: #0f2942;
+}
+
+.carpool-place-search button,
+.carpool-cost-button {
+  border: 1px solid #0284c7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 13px;
+  color: #0369a1;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.carpool-place-search button:disabled,
+.carpool-cost-button:disabled,
+.carpool-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.carpool-cost-button {
+  width: fit-content;
+}
+
+.carpool-place-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.carpool-place-results button {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+  text-align: left;
+}
+
+.carpool-place-results button.selected {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.08);
+}
+
+.carpool-place-results strong {
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carpool-place-results span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carpool-preview-result {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  border: 1px solid #bae6fd;
+  border-radius: 9px;
+  background: #f0f9ff;
+  padding: 13px;
+}
+
+.carpool-preview-result div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.carpool-preview-result span,
+.carpool-preview-result small {
+  color: #64748b;
+  font-size: 10px;
+}
+
+.carpool-preview-result b,
+.carpool-preview-result strong {
+  color: #0f2942;
+  font-size: 15px;
+}
+
+.carpool-manual-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid #f59e0b;
+  border-radius: 9px;
+  background: #fffbeb;
+  padding: 14px;
+}
+
+.carpool-manual-fallback > strong {
+  color: #92400e;
+  font-size: 13px;
+}
+
+.carpool-manual-fallback > p {
+  margin: 0;
+  color: #78350f;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+html[data-theme="dark"] .carpool-form select,
+html[data-theme="dark"] .carpool-place-results button,
+html[data-theme="dark"] .carpool-place-search button,
+html[data-theme="dark"] .carpool-cost-button {
+  border-color: var(--snow-border);
+  background: var(--snow-background);
+  color: var(--snow-ink);
+}
+
+html[data-theme="dark"] .carpool-place-results button.selected,
+html[data-theme="dark"] .carpool-preview-result,
+html[data-theme="dark"] .carpool-manual-fallback {
+  border-color: #075985;
+  background: #082f49;
+}
+
+@media (max-width: 640px) {
+  .carpool-place-results,
+  .carpool-preview-result {
+    grid-template-columns: 1fr;
+  }
+
+  .kakao-map {
+    height: 260px;
+  }
+}

@@ -54,4 +54,13 @@ export const API_ENDPOINTS = {
     delete: (publicId: string) => `${API_V1_URL}/market-listings/${publicId}`,
     tradeStatus: (publicId: string) => `${API_V1_URL}/market-listings/${publicId}/trade-status`,
   },
+  carpool: {
+    list: `${API_V1_URL}/carpools`,
+    detail: (publicId: string) => `${API_V1_URL}/carpools/${publicId}`,
+    create: `${API_V1_URL}/carpools`,
+    update: (publicId: string) => `${API_V1_URL}/carpools/${publicId}`,
+    delete: (publicId: string) => `${API_V1_URL}/carpools/${publicId}`,
+    autoPreview: `${API_V1_URL}/carpools/auto-preview`,
+    places: (query: string) => `${API_V1_URL}/carpools/places?query=${encodeURIComponent(query)}`,
+  },
 } as const;

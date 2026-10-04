@@ -73,13 +73,18 @@ jobs:
           REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY }}
           COMMIT_SHA: ${{ github.sha }}
           API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          KAKAO_MAP_APP_KEY: ${{ vars.NEXT_PUBLIC_KAKAO_MAP_APP_KEY }}
         run: |
           set -euo pipefail
           if [[ ! "$API_BASE_URL" =~ ^https://[^[:space:]]+$ ]]; then
             echo "NEXT_PUBLIC_API_BASE_URL은 https://로 시작하는 완전한 URL이어야 합니다." >&2
             exit 2
           fi
-          CONFIG_FINGERPRINT=$(printf '%s' "$API_BASE_URL" | sha256sum | cut -c1-12)
+          if [ -z "$KAKAO_MAP_APP_KEY" ]; then
+            echo "NEXT_PUBLIC_KAKAO_MAP_APP_KEY가 설정되지 않았습니다." >&2
+            exit 2
+          fi
+          CONFIG_FINGERPRINT=$(printf '%s' "$API_BASE_URL|$KAKAO_MAP_APP_KEY" | sha256sum | cut -c1-12)
           IMAGE_VERSION="${COMMIT_SHA}-${CONFIG_FINGERPRINT}"
           CANDIDATE_TAG="candidate-${IMAGE_VERSION}"
           RELEASE_TAG="release-${IMAGE_VERSION}"
@@ -88,7 +93,7 @@ jobs:
           elif aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$CANDIDATE_TAG" >/dev/null 2>&1; then
             SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
           else
-            docker build --build-arg NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL" --tag "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG" ./frontend
+            docker build --build-arg NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL" --build-arg NEXT_PUBLIC_KAKAO_MAP_APP_KEY="$KAKAO_MAP_APP_KEY" --tag "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG" ./frontend
             docker push "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG"
             SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
           fi
