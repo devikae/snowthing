@@ -1968,3 +1968,28 @@
 - 작성·수정 화면은 장애 오류 코드에 따라 경로 또는 유가 수동 입력 영역을 열고, 상세 화면은 자동·수동 경로와 오피넷·캐시·사용자 입력 유가를 구분해 표시한다.
 - 수동 경로의 거리·통행료와 사용자 입력 유가는 프런트 입력 범위에만 의존하지 않고 백엔드에서 각각 `1~2,000km`, `0~20,000원`, `1,000~3,000원/L`로 다시 검증한다. 관련 단위·계약 테스트, 백엔드 전체 테스트와 Spotless, 프런트엔드 ESLint와 production build, Docker MySQL 8의 `001~012` 순차 마이그레이션 검증을 모두 통과했다.
 - 카풀 목록의 최신 등록순을 유지하면서 정렬 비용을 줄일 수 있도록 기존 `010`은 수정하지 않고 `012_migration_carpool_latest_sort_index.sql`에 `(created_at DESC, post_id DESC)` 인덱스를 추가했다. 미래 출발일 조건용 인덱스와 최신순 정렬용 인덱스 중 어떤 실행 계획이 유리한지는 운영 데이터 분포에 따라 달라지므로 `EXPLAIN ANALYZE`로 확인한다. 0부터 시작하는 페이지는 `0~99`로 제한하고 프런트 페이지 이동도 최대 100페이지로 맞춰 깊은 OFFSET 요청을 차단했다.
+- **이메일 인증 회원가입 및 비밀번호 재설정 (2026-10-04)**
+  - 병합된 `main`에서 `feature/email-verification-password-reset` 브랜치를 분리했습니다.
+  - 가입 전 이메일 중복 확인, SES 인증번호 발송, 6자리 번호 확인, 15분짜리 일회용 가입 토큰 검증을 연결했습니다.
+  - 인증번호는 원문 대신 HMAC-SHA256으로 저장하며 5분 만료, 60초 재전송 제한, 이메일당 시간당 5회, IP당 시간당 20회, 오입력 5회 제한을 적용했습니다.
+  - 비밀번호 재설정은 계정 존재 여부를 같은 응답으로 숨기고, 성공 시 BCrypt 비밀번호 변경과 `email_verified_at` 기록을 한 트랜잭션으로 처리합니다.
+  - 비밀번호 변경 후 회원의 기존 HTTP 세션과 라이브톡 연결을 종료하며, 세션 만료 시 인메모리 레지스트리도 정리되도록 보완했습니다.
+  - `013_migration_email_verification.sql`에 회원 인증 일시와 이메일 인증 상태 테이블·인덱스를 추가하고 배포 CI의 마이그레이션 검증 범위를 `007~013`으로 확장했습니다.
+  - 만료된 인증 데이터는 만료 시각으로부터 24시간 후 매일 04:20에 자동 삭제하도록 구성했습니다.
+  - 회원가입 화면에 이메일 인증 단계를 추가하고 로그인 화면에서 비밀번호 재설정 화면으로 진입할 수 있도록 연결했습니다.
+  - 운영 컨테이너에 SES 리전·발신자·Configuration Set·HMAC 비밀값 환경변수를 전달하고, 애플리케이션은 EC2 역할 자격 증명으로 SES v2 API를 호출하도록 구성했습니다.
+  - 백엔드 전체 테스트와 Spotless, 프론트엔드 ESLint와 프로덕션 빌드를 통과했습니다. MySQL 8 임시 스키마에서 `001~013` 순차 적용과 `013` 컬럼·테이블·인덱스를 확인했습니다.
+  - 남은 운영 작업: SES 도메인 DKIM 검증, Production access 승인, EC2 역할의 `ses:SendEmail`, Configuration Set 및 `/etc/snowthing/prod.env` 비밀값 설정이 필요합니다.
+  - 커밋 전 설계 계약과 테스트 누락을 재검토해 테스트 설정의 JPA 경로, 가입·재설정 토큰 응답 필드, 인증번호 형식 오류 코드, 인증번호·토큰 만료 및 재사용, 목적 불일치, 비밀번호 변경, 세션 폐기, SES 장애 매핑 테스트를 보완했습니다.
+  - 인증 시간 계산에 `Clock`을 주입하고, 동일 세션 재로그인 시 이전 회원 매핑이 남지 않도록 세션 레지스트리를 보완했습니다. 인증 관련 비즈니스 예외는 `ErrorCode`와 `CustomException`으로 통일했습니다.
+  - 가입 이메일 중복 확인 API에 발송 제한과 분리된 IP별 슬라이딩 60초 10회 제한을 적용했습니다. 11번째 요청은 회원 조회 전에 `429 EMAIL_010`으로 차단하며, 서버 재시작·다중 인스턴스·공유 NAT 한계와 Redis·WAF 전환 조건을 설계 문서에 기록했습니다.
+  - 운영 마이그레이션 `013`에 상태·만료시각 복합 인덱스와 목적·상태·실패 횟수·발송 횟수 CHECK 제약을 추가하고, MySQL 8 임시 컨테이너에서 `001~013` 최초 적용·재실행과 제약조건을 검증한 뒤 컨테이너를 제거했습니다.
+  - 회원가입 인증 만료 카운트다운과 응답 필드 연결, 비밀번호 재설정 완료 후 로그인 화면 이동을 보완했습니다.
+  - 백엔드 전체 테스트와 Spotless, 프런트엔드 ESLint와 production build, `git diff --check`를 통과했습니다. 테스트 종료 시 Hibernate의 기존 외래 키 정리 경고가 출력되지만 테스트 결과는 성공입니다.
+  - 운영 EC2의 `/etc/snowthing/prod.env`에 SES provider·서울 리전·`help@snowthing.org` 발신자·`snowthing-mail-transactional` Configuration Set을 설정하고, 서버에서 64자리 hex HMAC 비밀값을 생성했습니다. 원본은 `prod.env.bak-20261006082540`으로 보관했으며 파일 권한 `600`과 각 키의 단일 선언을 확인했습니다. 새 값은 백엔드 컨테이너를 재배포 또는 재생성한 뒤 적용됩니다.
+  - 저장소의 애플리케이션·Compose·환경변수 예시 기본값, SES 어댑터 테스트와 운영 설계 문서의 발신 주소를 `help@snowthing.org`로 통일하고 대상 테스트를 통과했습니다. 운영 EC2는 이메일 인증 기능과 SES 환경변수 전달이 포함되기 전 커밋 `3e3d19e`를 실행 중이므로 단순 재시작은 하지 않았으며, 커밋·CI/ECR 배포 후 실제 발송 검증이 필요합니다.
+  - EC2 인스턴스 역할로 SES mailbox simulator 발송을 점검한 결과 서울 리전에 `snowthing-transactional` Configuration Set이 없어 명시 발송은 `NotFoundException`으로 실패했습니다. Configuration Set을 생략하면 Identity의 기존 기본값 `my-first-configuration-set`이 적용되지만 EC2 역할에 해당 Configuration Set 리소스 권한이 없어 `AccessDeniedException`이 발생했습니다. `snowthing-transactional` 생성, Identity 기본값 변경, IAM 정책에 Identity와 Configuration Set ARN을 함께 허용한 뒤 재검증해야 합니다.
+  - 실제 생성된 Configuration Set 이름에 맞춰 저장소·운영 문서·EC2 환경변수를 `snowthing-mail-transactional`로 통일하고 SES 어댑터 테스트와 diff 검사를 통과했습니다. SES 호출에서 Configuration Set의 존재는 확인됐으나 EC2 역할이 새 Configuration Set ARN의 `ses:SendEmail`을 허용하지 않아 `AccessDeniedException`이 남아 있습니다.
+  - EC2 역할의 Identity·`snowthing-mail-transactional` Configuration Set 권한과 `help@snowthing.org` 발신 조건을 반영한 뒤 AWS mailbox simulator 발송이 성공했고 SES `MessageId`를 확인했습니다. SES 인프라 경로는 검증됐으며 실제 사용자 수신과 애플리케이션 로그 검증은 이메일 인증 코드 운영 배포 후 진행합니다.
+  - 로컬 MySQL과 백엔드·프런트엔드 개발 서버를 기동하고 회원가입·비밀번호 재설정 페이지가 모두 정상 응답하는지 확인했습니다. Orca 브라우저에 두 화면을 열어 현재 구현을 변경하지 않은 상태로 데스크톱 레이아웃과 모바일 대응 요소를 검토했으며, 디자인 수정은 사용자와 개선안을 확정한 뒤 진행합니다.
+  - 회원가입과 비밀번호 재설정 화면의 `인증번호 받기` 문구를 `이메일 인증`으로 변경했습니다. 회원가입 버튼은 미인증 상태에서도 누를 수 있게 하고, 누르면 이메일 영역으로 이동·포커스하면서 `이메일 인증이 필요합니다.`를 인라인 경고로 표시하도록 보완했습니다. 프런트엔드 ESLint와 실제 브라우저의 버튼 문구·미인증 클릭 동작을 확인했습니다.

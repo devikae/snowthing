@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
@@ -26,6 +26,8 @@ async function readError(response: Response, fallback: string) {
 
 export default function SignUpPage() {
   const router = useRouter();
+  const emailSectionRef = useRef<HTMLDivElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationRequestId, setVerificationRequestId] = useState("");
@@ -42,6 +44,7 @@ export default function SignUpPage() {
   const [selectedStyleIds, setSelectedStyleIds] = useState<number[]>([]);
   const [notice, setNotice] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [emailVerificationError, setEmailVerificationError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const isEmailVerified = emailVerificationToken.length > 0;
@@ -80,10 +83,11 @@ export default function SignUpPage() {
     setResendSeconds(0);
     setVerificationExpiresSeconds(0);
     setNotice("");
+    setEmailVerificationError("");
   };
 
   const requestVerification = async () => {
-    setErrorMsg(""); setNotice("");
+    setErrorMsg(""); setEmailVerificationError(""); setNotice("");
     if (!EMAIL_REGEX.test(email)) return setErrorMsg("올바른 이메일 형식으로 입력해 주세요.");
     setLoading(true);
     try {
@@ -113,6 +117,7 @@ export default function SignUpPage() {
       const body: VerificationTokenResponse = await response.json();
       setEmailVerificationToken(body.verificationToken);
       setVerificationExpiresSeconds(0);
+      setEmailVerificationError("");
       setNotice("이메일 인증이 완료되었습니다.");
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "인증번호 확인에 실패했습니다.");
@@ -121,9 +126,15 @@ export default function SignUpPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault(); setErrorMsg("");
-    if (!isEmailVerified) return setErrorMsg("이메일 인증을 먼저 완료해 주세요.");
+    if (!isEmailVerified) {
+      setEmailVerificationError("이메일 인증이 필요합니다.");
+      emailSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      emailInputRef.current?.focus({ preventScroll: true });
+      return;
+    }
     if (!isPasswordValid) return setErrorMsg("비밀번호는 8자 이상이며 영문 대문자와 특수문자를 포함해야 합니다.");
     if (!isPasswordMatch) return setErrorMsg("비밀번호 확인이 일치하지 않습니다.");
+    if (!nickname.trim()) return setErrorMsg("닉네임을 입력해 주세요.");
     setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, departureRegion, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds }) });
@@ -137,12 +148,12 @@ export default function SignUpPage() {
 
   const toggle = (id: number, values: number[], setter: React.Dispatch<React.SetStateAction<number[]>>) => setter(values.includes(id) ? values.filter((value) => value !== id) : [...values, id]);
 
-  return <div className="min-h-screen bg-[var(--snow-background)]"><TopNav active="signup" /><main className="snow-container px-5 py-10 lg:px-8"><section className="mx-auto max-w-2xl"><header className="mb-6 text-center"><h1 className="text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1></header><form onSubmit={handleSubmit} className="snow-card grid gap-7 bg-white p-6 md:p-8">
+  return <div className="min-h-screen bg-[var(--snow-background)]"><TopNav active="signup" /><main className="snow-container px-5 py-10 lg:px-8"><section className="mx-auto max-w-2xl"><header className="mb-6 text-center"><h1 className="text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1></header><form onSubmit={handleSubmit} noValidate className="snow-card grid gap-7 bg-white p-6 md:p-8">
     {errorMsg && <div role="alert" className="rounded border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{errorMsg}</div>}
     {notice && <div className="rounded border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-sky-800">{notice}</div>}
-    <div className="grid gap-3"><RequiredLabel>이메일</RequiredLabel><div className="flex gap-2"><input type="email" value={email} onChange={(event) => changeEmail(event.target.value)} className="snow-input flex-1" placeholder="user@snowthing.org" disabled={isEmailVerified} required /><button type="button" className="snow-btn-secondary whitespace-nowrap" onClick={requestVerification} disabled={loading || isEmailVerified || resendSeconds > 0}>{isEmailVerified ? "인증 완료" : resendSeconds > 0 ? `${resendSeconds}초 후 재전송` : verificationRequestId ? "다시 받기" : "인증번호 받기"}</button></div>{verificationRequestId && !isEmailVerified && <><div className="flex gap-2"><input inputMode="numeric" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))} className="snow-input flex-1" placeholder="인증번호 6자리" /><button type="button" className="snow-btn-primary whitespace-nowrap" onClick={confirmVerification} disabled={loading || verificationExpiresSeconds === 0}>인증 확인</button></div><p className="text-xs font-semibold text-[var(--snow-muted)]">{verificationExpiresSeconds > 0 ? `인증번호 유효 시간 ${Math.floor(verificationExpiresSeconds / 60)}:${String(verificationExpiresSeconds % 60).padStart(2, "0")}` : "인증번호가 만료되었습니다. 다시 받아 주세요."}</p></>}</div>
+    <div ref={emailSectionRef} className="grid gap-3"><RequiredLabel>이메일</RequiredLabel><div className="flex gap-2"><input ref={emailInputRef} type="email" value={email} onChange={(event) => changeEmail(event.target.value)} className="snow-input flex-1" placeholder="user@snowthing.org" disabled={isEmailVerified} required aria-invalid={emailVerificationError ? true : undefined} aria-describedby={emailVerificationError ? "email-verification-error" : undefined} /><button type="button" className="snow-btn-secondary whitespace-nowrap" onClick={requestVerification} disabled={loading || isEmailVerified || resendSeconds > 0}>{isEmailVerified ? "인증 완료" : resendSeconds > 0 ? `${resendSeconds}초 후 재전송` : verificationRequestId ? "다시 받기" : "이메일 인증"}</button></div>{emailVerificationError && <p id="email-verification-error" role="alert" className="text-sm font-semibold text-rose-600">{emailVerificationError}</p>}{verificationRequestId && !isEmailVerified && <><div className="flex gap-2"><input inputMode="numeric" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))} className="snow-input flex-1" placeholder="인증번호 6자리" /><button type="button" className="snow-btn-primary whitespace-nowrap" onClick={confirmVerification} disabled={loading || verificationExpiresSeconds === 0}>인증 확인</button></div><p className="text-xs font-semibold text-[var(--snow-muted)]">{verificationExpiresSeconds > 0 ? `인증번호 유효 시간 ${Math.floor(verificationExpiresSeconds / 60)}:${String(verificationExpiresSeconds % 60).padStart(2, "0")}` : "인증번호가 만료되었습니다. 다시 받아 주세요."}</p></>}</div>
     <div className="grid gap-5 md:grid-cols-2"><label className="grid gap-2"><RequiredLabel>비밀번호</RequiredLabel><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="snow-input" autoComplete="new-password" minLength={8} required /></label><label className="grid gap-2"><RequiredLabel>비밀번호 확인</RequiredLabel><input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} className="snow-input" autoComplete="new-password" minLength={8} required /></label><label className="grid gap-2"><RequiredLabel>닉네임</RequiredLabel><input value={nickname} onChange={(event) => setNickname(event.target.value)} className="snow-input" required /></label><label className="grid gap-2"><span className="snow-label">출발 지역 <small className="font-normal text-[var(--snow-muted)]">선택</small></span><input value={departureRegion} onChange={(event) => setDepartureRegion(event.target.value)} className="snow-input" /></label></div>
-    <SelectionGrid title="선호 리조트" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={(id) => toggle(id, selectedResortIds, setSelectedResortIds)} /><SelectionGrid title="라이딩 성향" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={(id) => toggle(id, selectedStyleIds, setSelectedStyleIds)} /><button type="submit" className="snow-btn-primary w-full" disabled={loading || !isEmailVerified || !isPasswordValid || !isPasswordMatch}>{loading ? "처리 중" : "회원가입 완료"}</button>
+    <SelectionGrid title="선호 리조트" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={(id) => toggle(id, selectedResortIds, setSelectedResortIds)} /><SelectionGrid title="라이딩 성향" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={(id) => toggle(id, selectedStyleIds, setSelectedStyleIds)} /><button type="submit" className="snow-btn-primary w-full" disabled={loading}>{loading ? "처리 중" : "회원가입 완료"}</button>
   </form><p className="mt-6 text-center text-sm text-[var(--snow-muted)]">이미 계정이 있나요? <Link href="/login" className="font-bold text-sky-700 underline">로그인</Link></p></section></main><Footer /></div>;
 }
 
