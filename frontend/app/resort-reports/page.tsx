@@ -7,6 +7,7 @@ import { formatKoreanCalendarDate, formatReportTime } from "../lib/resortReports
 import { RESORT_MAP } from "../lib/resortTags";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { CompactSelect } from "../components/CompactSelect";
 
 interface ResortMaster {
   id: number;
@@ -99,20 +100,18 @@ export default function ResortReportsPage() {
         <header className="resort-report-page-heading">
           <div><h1>❄️ 오늘의 설질</h1><time>{koreanToday}</time></div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <select
-              value={selectedResortId ?? ""}
+            <CompactSelect
+              value={selectedResortId == null ? "" : String(selectedResortId)}
+              options={[{ value: "", label: "전체 리조트" }, ...resortList.map((resort) => ({ value: String(resort.id), label: resort.name }))]}
               disabled={resortListError}
-              onChange={(event) => {
+              onChange={(value) => {
                 setLoading(true);
                 setPage(1);
-                setSelectedResortId(event.target.value ? Number(event.target.value) : undefined);
+                setSelectedResortId(value ? Number(value) : undefined);
               }}
-              aria-label="리조트 필터"
-              style={{ height: "36px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", backgroundColor: "var(--snow-card, #fff)", color: "var(--snow-ink, #1e293b)" }}
-            >
-              <option value="">전체 리조트</option>
-              {resortList.map((resort) => <option key={resort.id} value={resort.id}>{resort.name}</option>)}
-            </select>
+              ariaLabel="리조트 필터"
+              className="resort-filter-select"
+            />
             <Link href="/">홈으로</Link>
           </div>
         </header>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
+import { CompactSelect } from "./components/CompactSelect";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
 import { RESORT_MAP } from "./lib/resortTags";
 import { formatKoreanCalendarDate, formatReportTime, isResortReportSeason } from "./lib/resortReports";
@@ -305,9 +306,13 @@ export default function HomePage() {
             <section className="panel snow-report-widget">
               <div className="mini-heading"><h2>❄️ 오늘의 설질 <span>| {koreanToday}</span></h2><Link href="/resort-reports">더보기 ›</Link></div>
               <form className="snow-report-compose" onSubmit={handleSnowReportSubmit}>
-                <select value={snowReportResort} onChange={(event) => setSnowReportResort(event.target.value)} aria-label="리조트 선택" disabled={resortMasterError || resortMasterList.length === 0 || !reportSeasonOpen}>
-                  {resortMasterList.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
+                <CompactSelect
+                  value={snowReportResort}
+                  options={resortMasterList.map((resort) => ({ value: String(resort.id), label: resort.name }))}
+                  onChange={setSnowReportResort}
+                  ariaLabel="리조트 선택"
+                  disabled={resortMasterError || resortMasterList.length === 0 || !reportSeasonOpen}
+                />
                 <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder={!reportSeasonOpen ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다" : profile ? "오늘 설질을 한 줄로 알려주세요" : "로그인 후 제보를 남겨주세요"} aria-label="설질 제보 내용" disabled={!reportSeasonOpen || resortMasterError} />
                 <button type="submit" disabled={!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0}>{submittingReport ? "등록중" : "등록"}</button>
               </form>
