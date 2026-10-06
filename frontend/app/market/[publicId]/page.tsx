@@ -6,6 +6,7 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
+import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 
@@ -259,9 +260,5 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
 
 function MarketCommentAvatar({ item }: { item: CommentItem }) {
   const nickname = item.writer?.nickname ?? "탈퇴한 회원";
-  return item.writer?.profileImageUrl ? (
-    <Image className="comment-profile-avatar" src={item.writer.profileImageUrl} alt="" width={38} height={38} />
-  ) : (
-    <span className="comment-profile-avatar comment-profile-fallback" aria-hidden="true">{nickname.slice(0, 1)}</span>
-  );
+  return <CommentProfileAvatar nickname={nickname} profileImageUrl={item.writer?.profileImageUrl} />;
 }

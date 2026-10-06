@@ -8,7 +8,7 @@ import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
 import { CompactSelect } from "./components/CompactSelect";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
 import { RESORT_MAP } from "./lib/resortTags";
-import { formatKoreanCalendarDate, formatReportTime, isResortReportSeason } from "./lib/resortReports";
+import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName, isResortReportSeason } from "./lib/resortReports";
 import { csrfFetch } from "./lib/csrfFetch";
 
 const HERO_IMAGES = [
@@ -158,17 +158,6 @@ export default function HomePage() {
     }
   };
 
-  const handleSnowReportDelete = async (reportId: number) => {
-    if (!window.confirm("이 설질 제보를 삭제할까요?")) return;
-    const response = await csrfFetch(API_ENDPOINTS.resortReports.delete(reportId), { method: "DELETE" });
-    if (response.ok) {
-      await loadTodayReports();
-      return;
-    }
-    const data = await response.json().catch(() => ({}));
-    alert(data.message || "설질 제보 삭제에 실패했습니다.");
-  };
-
   useEffect(() => {
     void (async () => {
       try {
@@ -304,11 +293,11 @@ export default function HomePage() {
 
           <aside className="home-sidebar">
             <section className="panel snow-report-widget">
-              <div className="mini-heading"><h2>❄️ 오늘의 설질 <span>| {koreanToday}</span></h2><Link href="/resort-reports">더보기 ›</Link></div>
+              <div className="mini-heading"><h2>❄️ 오늘의 설질 <time>| {koreanToday}</time></h2><Link href="/resort-reports">더보기 ›</Link></div>
               <form className="snow-report-compose" onSubmit={handleSnowReportSubmit}>
                 <CompactSelect
                   value={snowReportResort}
-                  options={resortMasterList.map((resort) => ({ value: String(resort.id), label: resort.name }))}
+                  options={resortMasterList.map((resort) => ({ value: String(resort.id), label: getResortReportDisplayName(resort.name) }))}
                   onChange={setSnowReportResort}
                   ariaLabel="리조트 선택"
                   disabled={resortMasterError || resortMasterList.length === 0 || !reportSeasonOpen}
@@ -323,7 +312,7 @@ export default function HomePage() {
                 ) : (
                   todayReports.map((report) => {
                   const resort = RESORT_MAP[report.resortCode];
-                  return <article key={report.reportId}><span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>{report.resortName}</span><strong>{report.content}</strong><time>{formatReportTime(report.createdAt)}</time>{report.canDelete && <button type="button" onClick={() => void handleSnowReportDelete(report.reportId)} aria-label="설질 제보 삭제">삭제</button>}</article>;
+                  return <article className="snow-report-row" key={report.reportId}><span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>{getResortReportDisplayName(report.resortName)}</span><strong className="snow-report-content" title={report.content}>{report.content}</strong><time className="snow-report-time">{formatReportTime(report.createdAt)}</time></article>;
                 }))}
               </div>
             </section>

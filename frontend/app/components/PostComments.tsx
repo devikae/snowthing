@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { CommentProfileAvatar } from "./CommentProfileAvatar";
 
 interface WriterInfo {
   publicId: string | null;
@@ -45,13 +45,7 @@ const COMMENT_PAGE_SIZE = 20;
 
 function ProfileAvatar({ writer }: { writer: WriterInfo | null }) {
   const nickname = writer?.nickname || "탈퇴한 회원";
-  return writer?.profileImageUrl ? (
-    <Image className="comment-profile-avatar" src={writer.profileImageUrl} alt="" width={38} height={38} />
-  ) : (
-    <span className="comment-profile-avatar comment-profile-fallback" aria-hidden="true">
-      {nickname.slice(0, 1)}
-    </span>
-  );
+  return <CommentProfileAvatar nickname={nickname} profileImageUrl={writer?.profileImageUrl} />;
 }
 
 function mergeUnique(current: CommentItem[], added: CommentItem[]) {

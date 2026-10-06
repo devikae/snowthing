@@ -6,6 +6,8 @@ import java.util.List;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+import com.ikae.snowthing.domain.member.validation.NicknamePolicy;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +17,7 @@ import lombok.NoArgsConstructor;
 public class MemberProfileUpdateRequest {
 
     @NotBlank(message = "닉네임은 필수 입력값입니다.")
-    @Pattern(regexp = "^[a-zA-Z0-9가-힣]{2,10}$", message = "닉네임은 2자 이상 10자 이하의 한글, 영문, 숫자이어야 합니다.")
+    @Pattern(regexp = NicknamePolicy.REGEXP, message = NicknamePolicy.MESSAGE)
     private String nickname;
 
     private String bio;

@@ -164,7 +164,7 @@ export default function MarketCreatePage() {
           <fieldset className="market-radio-field"><legend>거래 방식 *</legend>{transactionMethods.map(([code, label]) => <label key={code}><input type="radio" name="transactionMethod" value={code} checked={transactionMethod === code} onChange={() => setTransactionMethod(code)} />{label}</label>)}</fieldset>
           <label className="market-form-field"><span>글 제목 *</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} placeholder="판매할 상품을 알 수 있는 제목을 입력해 주세요." required /></label>
           <div className="market-price-row">
-            <label><span>가격 *</span><div><input type="number" min={1} max={20_000_000} value={free ? "" : price} onChange={(event) => setPrice(event.target.value)} disabled={free} placeholder="0" /><b>원</b></div></label>
+            <label><span>가격 *</span><div><input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={8} value={free ? "" : price} onChange={(event) => setPrice(event.target.value.replace(/\D/g, ""))} disabled={free} placeholder="0" /><b>원</b></div></label>
             <label className="market-check"><input type="checkbox" checked={negotiable} onChange={(event) => setNegotiable(event.target.checked)} disabled={free} />가격 협의 가능</label>
             <label className="market-check"><input type="checkbox" checked={free} onChange={(event) => { setFree(event.target.checked); if (event.target.checked) setNegotiable(false); }} />무료 나눔</label>
           </div>

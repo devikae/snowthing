@@ -32,6 +32,7 @@ export default function ResortStatusPage() {
         {/* 상단 탭 네비게이션: 리조트 현황 vs 슬로프캠 */}
         <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
           <div className="flex items-center gap-3">
+            {/* 실시간 현황 화면 공개 시 다시 노출한다.
             <Link
               href="/resort"
               className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-sm"
@@ -39,6 +40,7 @@ export default function ResortStatusPage() {
               <span className="material-symbols-outlined text-[16px]">info</span>
               실시간 현황
             </Link>
+            */}
             <Link
               href="/resort-cam"
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 transition"

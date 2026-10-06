@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
-import { formatKoreanCalendarDate, formatReportTime } from "../lib/resortReports";
+import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName } from "../lib/resortReports";
 import { RESORT_MAP } from "../lib/resortTags";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
@@ -102,7 +102,7 @@ export default function ResortReportsPage() {
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <CompactSelect
               value={selectedResortId == null ? "" : String(selectedResortId)}
-              options={[{ value: "", label: "전체 리조트" }, ...resortList.map((resort) => ({ value: String(resort.id), label: resort.name }))]}
+              options={[{ value: "", label: "전체 리조트" }, ...resortList.map((resort) => ({ value: String(resort.id), label: getResortReportDisplayName(resort.name) }))]}
               disabled={resortListError}
               onChange={(value) => {
                 setLoading(true);
@@ -125,13 +125,14 @@ export default function ResortReportsPage() {
             ) : reports.length === 0 ? (
               <p style={{ padding: "32px 0", textAlign: "center", color: "#888", fontSize: "0.9rem" }}>오늘 등록된 설질 제보가 없습니다.</p>
             ) : reports.map((report) => {
-              const markerClass = RESORT_MAP[report.resortCode]?.markerClass ?? "bg-[#3f6f8f]";
+              const resort = RESORT_MAP[report.resortCode];
               return (
-                <article key={report.reportId}>
-                  <span className={`snow-report-tag ${markerClass}`}>{report.resortName}</span>
-                  <div><strong>{report.content}</strong>{report.authorNickname && <span style={{ marginLeft: "8px", fontSize: "11px", color: "var(--snow-muted, #94a3b8)" }}>by {report.authorNickname}</span>}</div>
-                  <time>{formatReportTime(report.createdAt)}</time>
-                  {report.canDelete && <button type="button" onClick={() => void deleteReport(report.reportId)}>삭제</button>}
+                <article className="snow-report-row" key={report.reportId}>
+                  <span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>{getResortReportDisplayName(report.resortName)}</span>
+                  <strong className="snow-report-content">{report.content}</strong>
+                  <span className="snow-report-author">- {report.authorNickname}</span>
+                  <time className="snow-report-time">{formatReportTime(report.createdAt)}</time>
+                  {report.canDelete && <button className="snow-report-delete" type="button" onClick={() => void deleteReport(report.reportId)}>삭제</button>}
                 </article>
               );
             })}
