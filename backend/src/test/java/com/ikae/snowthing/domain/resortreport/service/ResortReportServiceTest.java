@@ -55,11 +55,7 @@ class ResortReportServiceTest {
 
     private Member createMockMember(Long id, String email, String nickname) {
         Member member =
-                Member.builder()
-                        .email(email)
-                        .nickname(nickname)
-                        .password("hashed_pw")
-                        .build();
+                Member.builder().email(email).nickname(nickname).password("hashed_pw").build();
         ReflectionTestUtils.setField(member, "id", id);
         return member;
     }
@@ -112,10 +108,7 @@ class ResortReportServiceTest {
         // given
         Long memberId = 999L;
         ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder()
-                        .resortId(1L)
-                        .content("설질 제보 테스트")
-                        .build();
+                ResortReportCreateRequest.builder().resortId(1L).content("설질 제보 테스트").build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.empty());
 
@@ -133,10 +126,7 @@ class ResortReportServiceTest {
         Long memberId = 1L;
         Long resortId = 999L;
         ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder()
-                        .resortId(resortId)
-                        .content("설질 제보 테스트")
-                        .build();
+                ResortReportCreateRequest.builder().resortId(resortId).content("설질 제보 테스트").build();
 
         Member author = createMockMember(memberId, "rider@snowthing.com", "눈꽃보더");
         given(memberRepository.findById(memberId)).willReturn(Optional.of(author));
@@ -179,10 +169,7 @@ class ResortReportServiceTest {
         Long resortId = 1L;
         String longContent = "A".repeat(101);
         ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder()
-                        .resortId(resortId)
-                        .content(longContent)
-                        .build();
+                ResortReportCreateRequest.builder().resortId(resortId).content(longContent).build();
 
         Member author = createMockMember(memberId, "rider@snowthing.com", "눈꽃보더");
         Resort resort = createMockResort(resortId, "하이원", "HIGH1", true);
@@ -212,7 +199,9 @@ class ResortReportServiceTest {
                         .build();
         ReflectionTestUtils.setField(report, "id", 1L);
 
-        given(resortReportRepository.findTodayReports(any(LocalDateTime.class), any(Pageable.class)))
+        given(
+                        resortReportRepository.findTodayReports(
+                                any(LocalDateTime.class), any(Pageable.class)))
                 .willReturn(List.of(report));
 
         // when
@@ -221,7 +210,8 @@ class ResortReportServiceTest {
         // then
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getContent()).isEqualTo("설질 굿");
-        verify(resortReportRepository).findTodayReports(any(LocalDateTime.class), any(Pageable.class));
+        verify(resortReportRepository)
+                .findTodayReports(any(LocalDateTime.class), any(Pageable.class));
     }
 
     @Test
@@ -252,6 +242,7 @@ class ResortReportServiceTest {
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getResortName()).isEqualTo("용평");
         verify(resortReportRepository)
-                .findTodayReportsByResortId(eq(resortId), any(LocalDateTime.class), any(Pageable.class));
+                .findTodayReportsByResortId(
+                        eq(resortId), any(LocalDateTime.class), any(Pageable.class));
     }
 }

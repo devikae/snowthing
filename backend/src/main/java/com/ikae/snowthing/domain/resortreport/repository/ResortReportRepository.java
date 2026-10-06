@@ -18,8 +18,7 @@ public interface ResortReportRepository extends JpaRepository<ResortReport, Long
                     + "JOIN FETCH r.author "
                     + "WHERE r.createdAt >= :start "
                     + "ORDER BY r.createdAt DESC")
-    List<ResortReport> findTodayReports(
-            @Param("start") LocalDateTime start, Pageable pageable);
+    List<ResortReport> findTodayReports(@Param("start") LocalDateTime start, Pageable pageable);
 
     @Query(
             "SELECT r FROM ResortReport r "

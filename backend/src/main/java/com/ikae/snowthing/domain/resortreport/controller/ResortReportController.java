@@ -41,8 +41,7 @@ public class ResortReportController {
     public ResponseEntity<List<ResortReportResponse>> getTodayReports(
             @RequestParam(required = false) Long resortId,
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        List<ResortReportResponse> responses =
-                resortReportService.getTodayReports(resortId, limit);
+        List<ResortReportResponse> responses = resortReportService.getTodayReports(resortId, limit);
         return ResponseEntity.ok(responses);
     }
 }

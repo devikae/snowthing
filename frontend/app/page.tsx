@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
 import { API_ENDPOINTS, ResortReportItem } from "./lib/api";
@@ -15,14 +15,14 @@ const HERO_IMAGES = [
   "https://lh3.googleusercontent.com/aida/AEtjO1Vcno6No205vArthV-VYm_1xWKA9tsOEYUO3gVlGWnI5gZTow2ELVmgfr8pg185_aUMpvVZ8e4z4F1PbMyRxb3M7hGNaZtOc5set_3eOhXq7bWRfEt2wrA2p8NYhZJHoVinT-4qax2j-zrOhbTWQ0yXmg6rzznW_92J_zQJ-rcSAncKtYkzAsWdayvEpFAYDbpp_Q2WsQeagnmchLIQKsY5uzWyAbfa4iaRW8TVldr_G1j_UNfHRcspz22v",
 ];
 
-const resorts = [
+/* const resorts = [
   { name: "휘닉스 평창", status: "정상운영", temp: "-4.5°C", open: "12 / 18면", detail: "야간 8", snow: "+4cm (압설 양호)", crowd: "쾌적 (대기 3분)", slopes: "펭귄/챔피언 슬로프", tone: "good" },
   { name: "비발디파크", status: "정상운영", temp: "-2.1°C", open: "9 / 12면", detail: "새벽운영", snow: "강설 (하단 아이스 약간)", crowd: "보통 (초급 혼잡)", slopes: "발라드/테크노", tone: "warn" },
   { name: "하이원 리조트", status: "전면개방", temp: "-6.8°C", open: "18 / 18면", detail: "전코스", snow: "+6cm (극상 파우더)", crowd: "쾌적 (대기 없음)", slopes: "마운틴탑/아테나", tone: "good" },
   { name: "모나 용평", status: "정상운영", temp: "-5.2°C", open: "22 / 28면", detail: "", snow: "강설 하드팩 (엣징 양호)", crowd: "쾌적 (레인보우 여유)", slopes: "레드/골드/레인보우", tone: "good" },
   { name: "웰리힐리파크", status: "정상운영", temp: "-5.0°C", open: "14 / 19면", detail: "", snow: "압설 (C3 모글밭 주의)", crowd: "쾌적 (대기 2분)", slopes: "에코/챌린지", tone: "good" },
   { name: "지산 포레스트", status: "야간운영", temp: "-1.5°C", open: "6 / 7면", detail: "", snow: "인공설 압설 (슬러시 약간)", crowd: "혼잡 (대기 10분)", slopes: "1/2/3번 슬로프", tone: "busy" },
-];
+]; */
 
 interface HomePost {
   publicId: string;
@@ -87,7 +87,7 @@ export default function HomePage() {
   const [resortMasterList, setResortMasterList] = useState<{ id: number; name: string }[]>([]);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
-  const resortRef = useRef<HTMLDivElement>(null);
+  // const resortRef = useRef<HTMLDivElement>(null);
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
 
   const loadTodayReports = async () => {
@@ -103,7 +103,10 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    void loadTodayReports();
+    void fetch(API_ENDPOINTS.resortReports.today(undefined, 10), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: ResortReportItem[]) => setTodayReports(Array.isArray(data) ? data : []))
+      .catch(() => setTodayReports([]));
   }, []);
 
   useEffect(() => {

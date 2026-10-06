@@ -37,7 +37,6 @@ export default function ResortReportsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
 
     void fetch(API_ENDPOINTS.resortReports.today(selectedResortId, 100), { credentials: "include" })
       .then((res) => (res.ok ? res.json() : []))
@@ -71,7 +70,10 @@ export default function ResortReportsPage() {
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <select
               value={selectedResortId ?? ""}
-              onChange={(e) => setSelectedResortId(e.target.value ? Number(e.target.value) : undefined)}
+              onChange={(e) => {
+                setLoading(true);
+                setSelectedResortId(e.target.value ? Number(e.target.value) : undefined);
+              }}
               aria-label="리조트 필터"
               style={{
                 height: "36px",
