@@ -62,7 +62,10 @@ public class PostService {
         rejectMarketCategory(category);
 
         if (isAnonymousDisallowedCategory(category.getCode())) {
-            if (request.isAnonymous() || userDetails == null) {
+            if (userDetails == null) {
+                throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+            }
+            if (request.isAnonymous()) {
                 throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
             }
         }

@@ -2,17 +2,26 @@ package com.ikae.snowthing.domain.resortreport.controller;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +38,17 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(ResortReportControllerTest.FixedClockConfig.class)
 class ResortReportControllerTest {
+
+    @TestConfiguration
+    static class FixedClockConfig {
+        @Bean
+        @Primary
+        Clock fixedClock() {
+            return Clock.fixed(Instant.parse("2026-12-06T06:30:00Z"), ZoneId.of("Asia/Seoul"));
+        }
+    }
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -128,10 +147,31 @@ class ResortReportControllerTest {
                         .content("오늘 설질 굿!")
                         .build());
 
-        mockMvc.perform(get("/api/v1/resort-reports/today").param("limit", "10"))
+        mockMvc.perform(get("/api/v1/resort-reports/today").param("page", "1").param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].content").value("오늘 설질 굿!"))
-                .andExpect(jsonPath("$[0].resortName").value("하이원리조트"));
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].content").value("오늘 설질 굿!"))
+                .andExpect(jsonPath("$.content[0].resortName").value("하이원리조트"))
+                .andExpect(jsonPath("$.pageInfo.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("작성자는 자신의 설질 제보를 삭제할 수 있다")
+    void deleteOwnReport() throws Exception {
+        long reportId =
+                resortReportService
+                        .createReport(
+                                member.getId(),
+                                ResortReportCreateRequest.builder()
+                                        .resortId(resort.getId())
+                                        .content("삭제할 제보")
+                                        .build())
+                        .getReportId();
+
+        mockMvc.perform(
+                        delete("/api/v1/resort-reports/{reportId}", reportId)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isNoContent());
     }
 }

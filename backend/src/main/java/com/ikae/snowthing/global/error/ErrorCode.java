@@ -102,6 +102,15 @@ public enum ErrorCode {
     RESORT_NOT_FOUND(HttpStatus.NOT_FOUND, "RESORT_001", "존재하지 않거나 비활성화된 리조트입니다."),
     INVALID_RESORT_REPORT_CONTENT(
             HttpStatus.BAD_REQUEST, "REPORT_001", "설질 제보 내용은 1자 이상 100자 이하여야 합니다."),
+    RESORT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "존재하지 않거나 확인할 수 없는 설질 제보입니다."),
+    RESORT_REPORT_DAILY_LIMIT_EXCEEDED(
+            HttpStatus.TOO_MANY_REQUESTS, "REPORT_003", "설질 제보는 하루에 최대 5개까지 작성할 수 있습니다."),
+    RESORT_REPORT_SEASON_CLOSED(
+            HttpStatus.FORBIDDEN, "REPORT_004", "설질 제보는 11월부터 다음 해 4월까지만 작성할 수 있습니다."),
+    RESORT_REPORT_PAGE_LIMIT_EXCEEDED(
+            HttpStatus.BAD_REQUEST, "REPORT_005", "설질 제보는 최대 100페이지까지 조회할 수 있습니다."),
+    RESORT_REPORT_INVALID_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST, "REPORT_006", "설질 제보 페이지 크기는 1 이상 100 이하이어야 합니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

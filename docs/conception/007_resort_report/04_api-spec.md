@@ -1,31 +1,15 @@
 # 오늘의 설질(Resort Report) API 명세서
 
-## 1. 개요
-오늘의 설질 제보 등록 및 당일 제보 목록 조회 엔드포인트 명세이다.
+## 등록
 
----
+`POST /api/v1/resort-reports` — 로그인 필요
 
-## 2. API 상세
-
-### 2.1 오늘의 설질 제보 등록
-- **URI**: `POST /api/v1/resort-reports`
-- **인증**: 필요 (인증된 회원 세션 쿠키 또는 인증 토큰)
-- **Content-Type**: `application/json`
-
-#### 요청 Body
 ```json
-{
-  "resortId": 1,
-  "content": "하이원 아테나 슬로프 현재 설질 뽀송하고 대기줄 거의 없습니다!"
-}
+{ "resortId": 1, "content": "아테나 상단 단단하고 엣지 잘 잡힙니다." }
 ```
 
-#### 필드 제약사항
-- `resortId`: Long, 필수
-- `content`: String, 필수, 1자 이상 100자 이하
+성공: `201 Created`
 
-#### 응답
-- **성공 (201 Created)**
 ```json
 {
   "reportId": 101,
@@ -33,46 +17,61 @@
   "resortName": "하이원",
   "resortCode": "HIGH1",
   "authorNickname": "눈꽃라이더",
-  "content": "하이원 아테나 슬로프 현재 설질 뽀송하고 대기줄 거의 없습니다!",
-  "createdAt": "2026-10-06T18:45:00"
+  "content": "아테나 상단 단단하고 엣지 잘 잡힙니다.",
+  "createdAt": "2026-12-06T15:30:00+09:00",
+  "canDelete": true
 }
 ```
 
-- **실패 응답**:
-  - `400 Bad Request`: `{"code": "INVALID_RESORT_REPORT_CONTENT", "message": "설질 제보 내용은 1자 이상 100자 이하여야 합니다."}`
-  - `401 Unauthorized`: 로그인 필요
-  - `404 Not Found`: `{"code": "RESORT_NOT_FOUND", "message": "리조트를 찾을 수 없습니다."}`
+실패: `401 AUTH_001`, `404 RESORT_001`, `400 REPORT_001`, `429 REPORT_003`, `403 REPORT_004`.
 
----
+## 오늘 목록
 
-### 2.2 오늘의 설질 제보 목록 조회
-- **URI**: `GET /api/v1/resort-reports/today`
-- **인증**: 불필요 (Public)
-- **Query Parameters**:
-  - `resortId` (Long, Optional): 특정 리조트 ID로 필터링 (미지정 시 전체 리조트)
-  - `limit` (Integer, Optional, 기본값 20, 최대 100): 조회 건수 제한
+`GET /api/v1/resort-reports/today?resortId=1&page=1&size=20` — 공개
 
-#### 응답
-- **성공 (200 OK)**
+- `resortId`: 선택
+- `page`: 기본 1, 범위 1~100
+- `size`: 기본 20, 범위 1~100
+
 ```json
-[
-  {
-    "reportId": 101,
-    "resortId": 1,
-    "resortName": "하이원",
-    "resortCode": "HIGH1",
-    "authorNickname": "눈꽃라이더",
-    "content": "하이원 아테나 슬로프 현재 설질 뽀송하고 대기줄 거의 없습니다!",
-    "createdAt": "2026-10-06T18:45:00"
-  },
-  {
-    "reportId": 100,
-    "resortId": 3,
-    "resortName": "휘닉스파크",
-    "resortCode": "PHOENIX",
-    "authorNickname": "스노우맨",
-    "content": "휘팍 챔피언 약간 아이스 있어요 조심하세요",
-    "createdAt": "2026-10-06T17:30:12"
+{
+  "content": [
+    {
+      "reportId": 101,
+      "resortId": 1,
+      "resortName": "하이원",
+      "resortCode": "HIGH1",
+      "authorNickname": "눈꽃라이더",
+      "content": "아테나 상단 단단하고 엣지 잘 잡힙니다.",
+      "createdAt": "2026-12-06T15:30:00+09:00",
+      "canDelete": false
+    }
+  ],
+  "pageInfo": {
+    "page": 1,
+    "totalPages": 1,
+    "totalElements": 1,
+    "nextCursor": null,
+    "hasNext": false,
+    "pageSize": 20
   }
-]
+}
 ```
+
+실패: `400 REPORT_005`, `400 REPORT_006`.
+
+## 삭제
+
+`DELETE /api/v1/resort-reports/{reportId}` — 작성자 또는 관리자, 성공 `204 No Content`.
+
+실패: `401 AUTH_001`, `403 AUTH_002`, `404 REPORT_002`.
+
+## 관리자 상태 변경
+
+`PATCH /api/v1/admin/resort-reports/{reportId}/moderation-status` — 관리자 전용
+
+```json
+{ "moderationStatus": "HIDDEN" }
+```
+
+허용값은 `NORMAL`, `HIDDEN`, `BLOCKED`이며 성공 시 `204 No Content`다. 삭제는 일반 삭제 API를 사용한다.

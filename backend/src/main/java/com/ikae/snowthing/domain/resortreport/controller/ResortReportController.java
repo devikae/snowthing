@@ -1,7 +1,5 @@
 package com.ikae.snowthing.domain.resortreport.controller;
 
-import java.util.List;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -12,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportCreateRequest;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportResponse;
 import com.ikae.snowthing.domain.resortreport.service.ResortReportService;
+import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -30,7 +29,7 @@ public class ResortReportController {
             @Valid @RequestBody ResortReportCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null || userDetails.getMember() == null) {
-            throw new CustomException(ErrorCode.ACCESS_DENIED);
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
         ResortReportResponse response =
                 resortReportService.createReport(userDetails.getMember().getId(), request);
@@ -38,10 +37,20 @@ public class ResortReportController {
     }
 
     @GetMapping("/today")
-    public ResponseEntity<List<ResortReportResponse>> getTodayReports(
+    public ResponseEntity<CursorPageResponse<ResortReportResponse>> getTodayReports(
             @RequestParam(required = false) Long resortId,
-            @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        List<ResortReportResponse> responses = resortReportService.getTodayReports(resortId, limit);
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        CursorPageResponse<ResortReportResponse> responses =
+                resortReportService.getTodayReports(resortId, page, size, userDetails);
         return ResponseEntity.ok(responses);
+    }
+
+    @DeleteMapping("/{reportId}")
+    public ResponseEntity<Void> deleteReport(
+            @PathVariable Long reportId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        resortReportService.deleteReport(reportId, userDetails);
+        return ResponseEntity.noContent().build();
     }
 }

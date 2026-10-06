@@ -21,7 +21,9 @@ public class MasterDataService {
     private final RidingStyleRepository ridingStyleRepository;
 
     public List<ResortResponse> getAllResorts() {
-        return resortRepository.findAll().stream().map(ResortResponse::from).toList();
+        return resortRepository.findAllByActiveTrueOrderByDisplayOrderAscIdAsc().stream()
+                .map(ResortResponse::from)
+                .toList();
     }
 
     public List<RidingStyleResponse> getAllRidingStyles() {

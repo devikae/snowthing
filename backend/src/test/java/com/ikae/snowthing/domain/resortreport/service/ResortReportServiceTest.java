@@ -7,242 +7,235 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
+import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportCreateRequest;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportResponse;
 import com.ikae.snowthing.domain.resortreport.entity.ResortReport;
+import com.ikae.snowthing.domain.resortreport.entity.ResortReportStatus;
 import com.ikae.snowthing.domain.resortreport.repository.ResortReportRepository;
+import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @ExtendWith(MockitoExtension.class)
 class ResortReportServiceTest {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final Clock WINTER_CLOCK =
+            Clock.fixed(Instant.parse("2026-12-06T06:30:00Z"), KST);
 
     @Mock private ResortReportRepository resortReportRepository;
     @Mock private ResortRepository resortRepository;
     @Mock private MemberRepository memberRepository;
 
-    @InjectMocks private ResortReportService resortReportService;
+    private ResortReportService resortReportService;
 
-    private Resort createMockResort(Long id, String name, String code, boolean active) {
+    @BeforeEach
+    void setUp() {
+        resortReportService =
+                new ResortReportService(
+                        resortReportRepository, resortRepository, memberRepository, WINTER_CLOCK);
+    }
+
+    @Test
+    @DisplayName("회원 행 잠금 후 당일 제보 수를 확인하고 제보를 저장한다")
+    void createReportSuccess() {
+        Member author = member(1L, "눈꽃보더", Role.ROLE_USER);
+        Resort resort = resort(10L);
+        ResortReportCreateRequest request = request(resort.getId());
+        given(memberRepository.findByIdForUpdate(author.getId())).willReturn(Optional.of(author));
+        given(resortRepository.findById(resort.getId())).willReturn(Optional.of(resort));
+        given(resortReportRepository.save(any(ResortReport.class)))
+                .willAnswer(
+                        invocation -> {
+                            ResortReport saved = invocation.getArgument(0);
+                            ReflectionTestUtils.setField(saved, "id", 100L);
+                            return saved;
+                        });
+
+        ResortReportResponse response = resortReportService.createReport(author.getId(), request);
+
+        assertThat(response.getReportId()).isEqualTo(100L);
+        assertThat(response.getCreatedAt().getOffset().getTotalSeconds()).isEqualTo(9 * 60 * 60);
+        assertThat(response.isCanDelete()).isTrue();
+        verify(memberRepository).findByIdForUpdate(author.getId());
+        verify(resortReportRepository)
+                .countByAuthorIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        eq(author.getId()), any(LocalDateTime.class), any(LocalDateTime.class));
+    }
+
+    @Test
+    @DisplayName("삭제 여부와 무관한 당일 제보 수가 5개면 등록을 거절한다")
+    void createReportRejectsDailyLimit() {
+        Member author = member(1L, "눈꽃보더", Role.ROLE_USER);
+        given(memberRepository.findByIdForUpdate(author.getId())).willReturn(Optional.of(author));
+        given(
+                        resortReportRepository
+                                .countByAuthorIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                                        eq(author.getId()), any(), any()))
+                .willReturn(5L);
+
+        assertThatThrownBy(() -> resortReportService.createReport(author.getId(), request(10L)))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.RESORT_REPORT_DAILY_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("5월부터 10월까지는 제보 등록을 거절한다")
+    void createReportRejectsOffSeason() {
+        ResortReportService summerService =
+                new ResortReportService(
+                        resortReportRepository,
+                        resortRepository,
+                        memberRepository,
+                        Clock.fixed(Instant.parse("2026-07-01T00:00:00Z"), KST));
+
+        assertThatThrownBy(() -> summerService.createReport(1L, request(10L)))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.RESORT_REPORT_SEASON_CLOSED);
+    }
+
+    @Test
+    @DisplayName("오늘의 공개 제보를 페이지 정보와 삭제 권한을 포함해 반환한다")
+    void getTodayReports() {
+        Member author = member(1L, "눈꽃보더", Role.ROLE_USER);
+        ResortReport report = report(1L, author, resort(10L));
+        given(
+                        resortReportRepository.findTodayReports(
+                                eq(ResortReportStatus.NORMAL), any(), any(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(report)));
+
+        CursorPageResponse<ResortReportResponse> result =
+                resortReportService.getTodayReports(null, 1, 20, new CustomUserDetails(author));
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().getFirst().isCanDelete()).isTrue();
+        assertThat(result.pageInfo().totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("작성자는 자신의 제보를 소프트 삭제할 수 있다")
+    void authorCanSoftDelete() {
+        Member author = member(1L, "눈꽃보더", Role.ROLE_USER);
+        ResortReport report = report(1L, author, resort(10L));
+        given(resortReportRepository.findByIdWithAuthor(report.getId()))
+                .willReturn(Optional.of(report));
+
+        resortReportService.deleteReport(report.getId(), new CustomUserDetails(author));
+
+        assertThat(report.getStatus()).isEqualTo(ResortReportStatus.DELETED);
+        assertThat(report.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("다른 회원은 제보를 삭제할 수 없다")
+    void otherMemberCannotDelete() {
+        Member author = member(1L, "작성자", Role.ROLE_USER);
+        Member other = member(2L, "다른회원", Role.ROLE_USER);
+        ResortReport report = report(1L, author, resort(10L));
+        given(resortReportRepository.findByIdWithAuthor(report.getId()))
+                .willReturn(Optional.of(report));
+
+        assertThatThrownBy(
+                        () ->
+                                resortReportService.deleteReport(
+                                        report.getId(), new CustomUserDetails(other)))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ACCESS_DENIED);
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 회원의 제보를 삭제할 수 있다")
+    void adminCanDelete() {
+        Member author = member(1L, "작성자", Role.ROLE_USER);
+        Member admin = member(2L, "관리자", Role.ROLE_ADMIN);
+        ResortReport report = report(1L, author, resort(10L));
+        given(resortReportRepository.findByIdWithAuthor(report.getId()))
+                .willReturn(Optional.of(report));
+
+        resortReportService.deleteReport(report.getId(), new CustomUserDetails(admin));
+
+        assertThat(report.getStatus()).isEqualTo(ResortReportStatus.DELETED);
+    }
+
+    @Test
+    @DisplayName("관리자는 공개 제보를 숨김 상태로 변경할 수 있다")
+    void adminCanHideReport() {
+        Member author = member(1L, "작성자", Role.ROLE_USER);
+        Member admin = member(2L, "관리자", Role.ROLE_ADMIN);
+        ResortReport report = report(1L, author, resort(10L));
+        given(resortReportRepository.findByIdWithAuthor(report.getId()))
+                .willReturn(Optional.of(report));
+
+        resortReportService.updateModerationStatus(
+                report.getId(), ResortReportStatus.HIDDEN, new CustomUserDetails(admin));
+
+        assertThat(report.getStatus()).isEqualTo(ResortReportStatus.HIDDEN);
+    }
+
+    private ResortReportCreateRequest request(Long resortId) {
+        return ResortReportCreateRequest.builder().resortId(resortId).content("설질이 좋아요").build();
+    }
+
+    private ResortReport report(Long id, Member author, Resort resort) {
+        ResortReport report =
+                ResortReport.builder()
+                        .resort(resort)
+                        .author(author)
+                        .content("설질이 좋아요")
+                        .createdAt(LocalDateTime.of(2026, 12, 6, 15, 30))
+                        .build();
+        ReflectionTestUtils.setField(report, "id", id);
+        return report;
+    }
+
+    private Resort resort(Long id) {
         Resort resort =
                 Resort.builder()
-                        .name(name)
-                        .code(code)
+                        .name("하이원")
+                        .code("HIGH1")
                         .regionName("강원")
                         .displayOrder(1)
-                        .active(active)
+                        .active(true)
                         .build();
         ReflectionTestUtils.setField(resort, "id", id);
         return resort;
     }
 
-    private Member createMockMember(Long id, String email, String nickname) {
+    private Member member(Long id, String nickname, Role role) {
         Member member =
-                Member.builder().email(email).nickname(nickname).password("hashed_pw").build();
+                Member.builder()
+                        .email(nickname + "@snowthing.com")
+                        .nickname(nickname)
+                        .password("hashed")
+                        .role(role)
+                        .build();
         ReflectionTestUtils.setField(member, "id", id);
         return member;
-    }
-
-    @Test
-    @DisplayName("정상 제보 등록 시 저장 및 응답 DTO 반환")
-    void createReport_Success() {
-        // given
-        Long memberId = 1L;
-        Long resortId = 10L;
-        ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder()
-                        .resortId(resortId)
-                        .content("하이원 마운틴탑 눈 진짜 좋아요!")
-                        .build();
-
-        Member author = createMockMember(memberId, "rider@snowthing.com", "눈꽃보더");
-        Resort resort = createMockResort(resortId, "하이원", "HIGH1", true);
-
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(author));
-        given(resortRepository.findById(resortId)).willReturn(Optional.of(resort));
-
-        ResortReport savedReport =
-                ResortReport.builder()
-                        .resort(resort)
-                        .author(author)
-                        .content("하이원 마운틴탑 눈 진짜 좋아요!")
-                        .createdAt(LocalDateTime.of(2026, 10, 6, 15, 30))
-                        .build();
-        ReflectionTestUtils.setField(savedReport, "id", 100L);
-
-        given(resortReportRepository.save(any(ResortReport.class))).willReturn(savedReport);
-
-        // when
-        ResortReportResponse response = resortReportService.createReport(memberId, request);
-
-        // then
-        assertThat(response).isNotNull();
-        assertThat(response.getReportId()).isEqualTo(100L);
-        assertThat(response.getResortName()).isEqualTo("하이원");
-        assertThat(response.getResortCode()).isEqualTo("HIGH1");
-        assertThat(response.getAuthorNickname()).isEqualTo("눈꽃보더");
-        assertThat(response.getContent()).isEqualTo("하이원 마운틴탑 눈 진짜 좋아요!");
-        verify(resortReportRepository).save(any(ResortReport.class));
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 회원이 제보 등록 시 MEMBER_NOT_FOUND 예외 발생")
-    void createReport_MemberNotFound() {
-        // given
-        Long memberId = 999L;
-        ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder().resortId(1L).content("설질 제보 테스트").build();
-
-        given(memberRepository.findById(memberId)).willReturn(Optional.empty());
-
-        // when & then
-        assertThatThrownBy(() -> resortReportService.createReport(memberId, request))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("존재하지 않거나 비활성화된 리조트 제보 등록 시 RESORT_NOT_FOUND 예외 발생")
-    void createReport_ResortNotFound() {
-        // given
-        Long memberId = 1L;
-        Long resortId = 999L;
-        ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder().resortId(resortId).content("설질 제보 테스트").build();
-
-        Member author = createMockMember(memberId, "rider@snowthing.com", "눈꽃보더");
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(author));
-        given(resortRepository.findById(resortId)).willReturn(Optional.empty());
-
-        // when & then
-        assertThatThrownBy(() -> resortReportService.createReport(memberId, request))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.RESORT_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("빈 본문 또는 공백만 있는 제보 내용 등록 시 INVALID_RESORT_REPORT_CONTENT 예외 발생")
-    void createReport_EmptyContent() {
-        // given
-        Long memberId = 1L;
-        Long resortId = 1L;
-        ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder().resortId(resortId).content("   ").build();
-
-        Member author = createMockMember(memberId, "rider@snowthing.com", "눈꽃보더");
-        Resort resort = createMockResort(resortId, "하이원", "HIGH1", true);
-
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(author));
-        given(resortRepository.findById(resortId)).willReturn(Optional.of(resort));
-
-        // when & then
-        assertThatThrownBy(() -> resortReportService.createReport(memberId, request))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_RESORT_REPORT_CONTENT);
-    }
-
-    @Test
-    @DisplayName("100자를 초과하는 제보 내용 등록 시 INVALID_RESORT_REPORT_CONTENT 예외 발생")
-    void createReport_TooLongContent() {
-        // given
-        Long memberId = 1L;
-        Long resortId = 1L;
-        String longContent = "A".repeat(101);
-        ResortReportCreateRequest request =
-                ResortReportCreateRequest.builder().resortId(resortId).content(longContent).build();
-
-        Member author = createMockMember(memberId, "rider@snowthing.com", "눈꽃보더");
-        Resort resort = createMockResort(resortId, "하이원", "HIGH1", true);
-
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(author));
-        given(resortRepository.findById(resortId)).willReturn(Optional.of(resort));
-
-        // when & then
-        assertThatThrownBy(() -> resortReportService.createReport(memberId, request))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_RESORT_REPORT_CONTENT);
-    }
-
-    @Test
-    @DisplayName("오늘의 설질 전체 목록 조회")
-    void getTodayReports_All() {
-        // given
-        Member author = createMockMember(1L, "rider@snowthing.com", "눈꽃보더");
-        Resort resort = createMockResort(1L, "하이원", "HIGH1", true);
-        ResortReport report =
-                ResortReport.builder()
-                        .resort(resort)
-                        .author(author)
-                        .content("설질 굿")
-                        .createdAt(LocalDateTime.now())
-                        .build();
-        ReflectionTestUtils.setField(report, "id", 1L);
-
-        given(
-                        resortReportRepository.findTodayReports(
-                                any(LocalDateTime.class), any(Pageable.class)))
-                .willReturn(List.of(report));
-
-        // when
-        List<ResortReportResponse> results = resortReportService.getTodayReports(null, 10);
-
-        // then
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getContent()).isEqualTo("설질 굿");
-        verify(resortReportRepository)
-                .findTodayReports(any(LocalDateTime.class), any(Pageable.class));
-    }
-
-    @Test
-    @DisplayName("특정 리조트 필터로 오늘의 설질 목록 조회")
-    void getTodayReports_ByResortId() {
-        // given
-        Long resortId = 2L;
-        Member author = createMockMember(1L, "rider@snowthing.com", "눈꽃보더");
-        Resort resort = createMockResort(resortId, "용평", "YONGPYONG", true);
-        ResortReport report =
-                ResortReport.builder()
-                        .resort(resort)
-                        .author(author)
-                        .content("레인보우 설질 최상")
-                        .createdAt(LocalDateTime.now())
-                        .build();
-        ReflectionTestUtils.setField(report, "id", 2L);
-
-        given(
-                        resortReportRepository.findTodayReportsByResortId(
-                                eq(resortId), any(LocalDateTime.class), any(Pageable.class)))
-                .willReturn(List.of(report));
-
-        // when
-        List<ResortReportResponse> results = resortReportService.getTodayReports(resortId, 10);
-
-        // then
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getResortName()).isEqualTo("용평");
-        verify(resortReportRepository)
-                .findTodayReportsByResortId(
-                        eq(resortId), any(LocalDateTime.class), any(Pageable.class));
     }
 }

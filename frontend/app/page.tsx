@@ -5,24 +5,15 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
-import { API_ENDPOINTS, ResortReportItem } from "./lib/api";
-import { RESORT_MAP, RESORT_OPTIONS } from "./lib/resortTags";
-import { formatKoreanCalendarDate, formatReportTime } from "./lib/resortReports";
+import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
+import { RESORT_MAP } from "./lib/resortTags";
+import { formatKoreanCalendarDate, formatReportTime, isResortReportSeason } from "./lib/resortReports";
 import { csrfFetch } from "./lib/csrfFetch";
 
 const HERO_IMAGES = [
   "https://lh3.googleusercontent.com/aida/AEtjO1UbsQy3vUnB80P1wDDnbGosvZS9vqvYFfKYsbt-ATgRpqmc2zAPzC52mv7kE-dFt3s-FEwC34VCTJRYlYi_Rv20X4gbV1Ot4EXHI4_0yNB7xgvC-4jj_0S5zRoyhDgx6tmmOf3WlnzXxe1_njPrVcsEQvpsjpP-uLoumLkQrGk_Sl87eNShpSVr4YpqH1lzrGDTFYJBa1ek0ZngAq1VNj9Hp9K8uVOjTkHDEFp6cfh7IlqT2pMxpgODiMr9",
   "https://lh3.googleusercontent.com/aida/AEtjO1Vcno6No205vArthV-VYm_1xWKA9tsOEYUO3gVlGWnI5gZTow2ELVmgfr8pg185_aUMpvVZ8e4z4F1PbMyRxb3M7hGNaZtOc5set_3eOhXq7bWRfEt2wrA2p8NYhZJHoVinT-4qax2j-zrOhbTWQ0yXmg6rzznW_92J_zQJ-rcSAncKtYkzAsWdayvEpFAYDbpp_Q2WsQeagnmchLIQKsY5uzWyAbfa4iaRW8TVldr_G1j_UNfHRcspz22v",
 ];
-
-/* const resorts = [
-  { name: "휘닉스 평창", status: "정상운영", temp: "-4.5°C", open: "12 / 18면", detail: "야간 8", snow: "+4cm (압설 양호)", crowd: "쾌적 (대기 3분)", slopes: "펭귄/챔피언 슬로프", tone: "good" },
-  { name: "비발디파크", status: "정상운영", temp: "-2.1°C", open: "9 / 12면", detail: "새벽운영", snow: "강설 (하단 아이스 약간)", crowd: "보통 (초급 혼잡)", slopes: "발라드/테크노", tone: "warn" },
-  { name: "하이원 리조트", status: "전면개방", temp: "-6.8°C", open: "18 / 18면", detail: "전코스", snow: "+6cm (극상 파우더)", crowd: "쾌적 (대기 없음)", slopes: "마운틴탑/아테나", tone: "good" },
-  { name: "모나 용평", status: "정상운영", temp: "-5.2°C", open: "22 / 28면", detail: "", snow: "강설 하드팩 (엣징 양호)", crowd: "쾌적 (레인보우 여유)", slopes: "레드/골드/레인보우", tone: "good" },
-  { name: "웰리힐리파크", status: "정상운영", temp: "-5.0°C", open: "14 / 19면", detail: "", snow: "압설 (C3 모글밭 주의)", crowd: "쾌적 (대기 2분)", slopes: "에코/챌린지", tone: "good" },
-  { name: "지산 포레스트", status: "야간운영", temp: "-1.5°C", open: "6 / 7면", detail: "", snow: "인공설 압설 (슬러시 약간)", crowd: "혼잡 (대기 10분)", slopes: "1/2/3번 슬로프", tone: "busy" },
-]; */
 
 interface HomePost {
   publicId: string;
@@ -85,17 +76,18 @@ export default function HomePage() {
   const [snowReportContent, setSnowReportContent] = useState("");
   const [todayReports, setTodayReports] = useState<ResortReportItem[]>([]);
   const [resortMasterList, setResortMasterList] = useState<{ id: number; name: string }[]>([]);
+  const [resortMasterError, setResortMasterError] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
-  // const resortRef = useRef<HTMLDivElement>(null);
+  const reportSeasonOpen = isResortReportSeason(new Date());
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
 
   const loadTodayReports = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.resortReports.today(undefined, 10), { credentials: "include" });
+      const response = await fetch(API_ENDPOINTS.resortReports.today(undefined, 1, 10), { credentials: "include" });
       if (response.ok) {
-        const data = await response.json();
-        setTodayReports(Array.isArray(data) ? data : []);
+        const data: OffsetPage<ResortReportItem> = await response.json();
+        setTodayReports(Array.isArray(data.content) ? data.content : []);
       }
     } catch {
       setTodayReports([]);
@@ -103,27 +95,34 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    void fetch(API_ENDPOINTS.resortReports.today(undefined, 10), { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: ResortReportItem[]) => setTodayReports(Array.isArray(data) ? data : []))
+    void fetch(API_ENDPOINTS.resortReports.today(undefined, 1, 10), { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((data: OffsetPage<ResortReportItem>) => setTodayReports(Array.isArray(data.content) ? data.content : []))
       .catch(() => setTodayReports([]));
   }, []);
 
   useEffect(() => {
     void fetch(API_ENDPOINTS.master.resorts, { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : []))
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data: { id: number; name: string }[]) => {
         if (Array.isArray(data) && data.length > 0) {
           setResortMasterList(data);
           setSnowReportResort(String(data[0].id));
+          setResortMasterError(false);
+        } else {
+          setResortMasterError(true);
         }
       })
-      .catch(() => {});
+      .catch(() => setResortMasterError(true));
   }, []);
 
   const handleSnowReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!snowReportContent.trim() || submittingReport) return;
+    if (!reportSeasonOpen) {
+      alert("설질 제보는 11월부터 다음 해 4월까지만 등록할 수 있습니다.");
+      return;
+    }
     if (!profile) {
       alert("설질 제보는 로그인 후 등록할 수 있습니다.");
       return;
@@ -156,6 +155,17 @@ export default function HomePage() {
     } finally {
       setSubmittingReport(false);
     }
+  };
+
+  const handleSnowReportDelete = async (reportId: number) => {
+    if (!window.confirm("이 설질 제보를 삭제할까요?")) return;
+    const response = await csrfFetch(API_ENDPOINTS.resortReports.delete(reportId), { method: "DELETE" });
+    if (response.ok) {
+      await loadTodayReports();
+      return;
+    }
+    const data = await response.json().catch(() => ({}));
+    alert(data.message || "설질 제보 삭제에 실패했습니다.");
   };
 
   useEffect(() => {
@@ -262,24 +272,6 @@ export default function HomePage() {
           <LiveChatSection currentMember={profile} />
         </div>
 
-        {/* 실시간 슬로프 & 설질 현황 (완성 후 재오픈 예정)
-        <section className="panel resort-panel">
-          <div className="panel-heading">
-            <h2><span className="status-pulse" />전국 주요 스키장 실시간 슬로프 &amp; 설질 현황 <small>(10분 주기 갱신)</small></h2>
-            <div><Link href="/resort-cam">슬로프캠 전체보기 ›</Link><button onClick={() => resortRef.current?.scrollBy({ left: -280, behavior: "smooth" })}>‹</button><button onClick={() => resortRef.current?.scrollBy({ left: 280, behavior: "smooth" })}>›</button></div>
-          </div>
-          <div className="resort-scroller" ref={resortRef}>
-            {resorts.map((resort) => (
-              <article className="resort-card" key={resort.name}>
-                <header><strong>{resort.name}</strong><span className={`operation ${resort.tone}`}>{resort.status}</span><b>{resort.temp}</b></header>
-                <dl><div><dt>슬로프 오픈</dt><dd>{resort.open} <em>{resort.detail && `(${resort.detail})`}</em></dd></div><div><dt>신설 / 설질</dt><dd>{resort.snow}</dd></div><div><dt>리프트 혼잡도</dt><dd><span className={`crowd ${resort.tone}`}>{resort.crowd}</span></dd></div></dl>
-                <footer><span>{resort.slopes}</span><Link href="/resort-cam">웹캠 보기 ›</Link></footer>
-              </article>
-            ))}
-          </div>
-        </section>
-        */}
-
         <div className="home-content-grid">
           <section className="home-feed">
             <div className="panel post-board">
@@ -313,21 +305,20 @@ export default function HomePage() {
             <section className="panel snow-report-widget">
               <div className="mini-heading"><h2>❄️ 오늘의 설질 <span>| {koreanToday}</span></h2><Link href="/resort-reports">더보기 ›</Link></div>
               <form className="snow-report-compose" onSubmit={handleSnowReportSubmit}>
-                <select value={snowReportResort} onChange={(event) => setSnowReportResort(event.target.value)} aria-label="리조트 선택">
-                  {resortMasterList.length > 0
-                    ? resortMasterList.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)
-                    : RESORT_OPTIONS.filter((option) => option.value).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <select value={snowReportResort} onChange={(event) => setSnowReportResort(event.target.value)} aria-label="리조트 선택" disabled={resortMasterError || resortMasterList.length === 0 || !reportSeasonOpen}>
+                  {resortMasterList.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
-                <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder={profile ? "오늘 설질을 한 줄로 알려주세요" : "로그인 후 제보를 남겨주세요"} aria-label="설질 제보 내용" />
-                <button type="submit" disabled={!snowReportContent.trim() || submittingReport}>{submittingReport ? "등록중" : "등록"}</button>
+                <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder={!reportSeasonOpen ? "설질 제보는 11월부터 4월까지 등록할 수 있습니다" : profile ? "오늘 설질을 한 줄로 알려주세요" : "로그인 후 제보를 남겨주세요"} aria-label="설질 제보 내용" disabled={!reportSeasonOpen || resortMasterError} />
+                <button type="submit" disabled={!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0}>{submittingReport ? "등록중" : "등록"}</button>
               </form>
+              {resortMasterError && <p className="snow-report-empty">리조트 목록을 불러오지 못해 제보를 등록할 수 없습니다.</p>}
               <div className="snow-report-list">
                 {todayReports.length === 0 ? (
                   <p className="snow-report-empty" style={{ padding: "16px 0", textAlign: "center", color: "#888", fontSize: "0.85rem" }}>오늘 등록된 설질 제보가 없습니다.</p>
                 ) : (
                   todayReports.map((report) => {
                   const resort = RESORT_MAP[report.resortCode];
-                  return <article key={report.reportId}><span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>{report.resortName}</span><strong>{report.content}</strong><time>{formatReportTime(report.createdAt)}</time></article>;
+                  return <article key={report.reportId}><span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>{report.resortName}</span><strong>{report.content}</strong><time>{formatReportTime(report.createdAt)}</time>{report.canDelete && <button type="button" onClick={() => void handleSnowReportDelete(report.reportId)} aria-label="설질 제보 삭제">삭제</button>}</article>;
                 }))}
               </div>
             </section>

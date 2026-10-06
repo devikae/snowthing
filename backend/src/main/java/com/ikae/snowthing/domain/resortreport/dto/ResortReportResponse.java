@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.resortreport.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 import com.ikae.snowthing.domain.resortreport.entity.ResortReport;
 
@@ -17,9 +18,10 @@ public class ResortReportResponse {
     private final String resortCode;
     private final String authorNickname;
     private final String content;
-    private final LocalDateTime createdAt;
+    private final OffsetDateTime createdAt;
+    private final boolean canDelete;
 
-    public static ResortReportResponse from(ResortReport report) {
+    public static ResortReportResponse from(ResortReport report, boolean canDelete) {
         return ResortReportResponse.builder()
                 .reportId(report.getId())
                 .resortId(report.getResort().getId())
@@ -27,7 +29,8 @@ public class ResortReportResponse {
                 .resortCode(report.getResort().getCode())
                 .authorNickname(report.getAuthor().getNickname())
                 .content(report.getContent())
-                .createdAt(report.getCreatedAt())
+                .createdAt(report.getCreatedAt().atZone(ZoneId.of("Asia/Seoul")).toOffsetDateTime())
+                .canDelete(canDelete)
                 .build();
     }
 }

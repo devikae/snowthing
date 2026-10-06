@@ -19,8 +19,14 @@ import lombok.NoArgsConstructor;
         name = "resort_report",
         indexes = {
             @Index(
-                    name = "idx_resort_report_created_resort",
-                    columnList = "created_at DESC, resort_id")
+                    name = "idx_resort_report_status_created",
+                    columnList = "status, created_at DESC, report_id DESC"),
+            @Index(
+                    name = "idx_resort_report_resort_status_created",
+                    columnList = "resort_id, status, created_at DESC, report_id DESC"),
+            @Index(
+                    name = "idx_resort_report_member_created",
+                    columnList = "member_id, created_at DESC")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -45,6 +51,13 @@ public class ResortReport {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private ResortReportStatus status;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     public ResortReport(Resort resort, Member author, String content, LocalDateTime createdAt) {
         if (author == null) {
@@ -57,6 +70,21 @@ public class ResortReport {
         this.author = author;
         this.content = validateAndNormalizeContent(content);
         this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
+        this.status = ResortReportStatus.NORMAL;
+    }
+
+    public void softDelete(LocalDateTime deletedAt) {
+        this.status = ResortReportStatus.DELETED;
+        this.deletedAt = deletedAt;
+    }
+
+    public void changeModerationStatus(ResortReportStatus status) {
+        this.status = status;
+        this.deletedAt = null;
+    }
+
+    public boolean isDeleted() {
+        return status == ResortReportStatus.DELETED;
     }
 
     private static String validateAndNormalizeContent(String rawContent) {

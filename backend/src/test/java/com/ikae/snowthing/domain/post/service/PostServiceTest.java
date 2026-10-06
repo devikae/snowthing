@@ -235,14 +235,17 @@ class PostServiceTest {
                             .anonymousPassword("Pass1234!")
                             .build();
 
-            assertThatThrownBy(() -> postService.createPost(roomAnonRequest, null, "127.0.0.1"))
+            assertThatThrownBy(
+                            () ->
+                                    postService.createPost(
+                                            roomAnonRequest, userDetails2, "127.0.0.1"))
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
         @Test
-        @DisplayName("비로그인 유저가 동호회/시즌방 게시판 작성을 시도하면 ANONYMOUS_POST_NOT_ALLOWED 예외가 발생한다.")
+        @DisplayName("비로그인 유저가 동호회/시즌방 게시판 작성을 시도하면 INVALID_CREDENTIALS 예외가 발생한다.")
         void createPost_recruitBoards_unauthorized_rejected() {
             PostCreateRequest crewRequest =
                     PostCreateRequest.builder()
@@ -255,7 +258,7 @@ class PostServiceTest {
             assertThatThrownBy(() -> postService.createPost(crewRequest, null, "127.0.0.1"))
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
-                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+                    .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
         }
     }
 
