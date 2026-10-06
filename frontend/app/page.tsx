@@ -5,9 +5,10 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
-import { API_ENDPOINTS } from "./lib/api";
+import { API_ENDPOINTS, ResortReportItem } from "./lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "./lib/resortTags";
-import { formatKoreanCalendarDate, RESORT_REPORT_PREVIEWS } from "./lib/resortReports";
+import { formatKoreanCalendarDate, formatReportTime } from "./lib/resortReports";
+import { csrfFetch } from "./lib/csrfFetch";
 
 const HERO_IMAGES = [
   "https://lh3.googleusercontent.com/aida/AEtjO1UbsQy3vUnB80P1wDDnbGosvZS9vqvYFfKYsbt-ATgRpqmc2zAPzC52mv7kE-dFt3s-FEwC34VCTJRYlYi_Rv20X4gbV1Ot4EXHI4_0yNB7xgvC-4jj_0S5zRoyhDgx6tmmOf3WlnzXxe1_njPrVcsEQvpsjpP-uLoumLkQrGk_Sl87eNShpSVr4YpqH1lzrGDTFYJBa1ek0ZngAq1VNj9Hp9K8uVOjTkHDEFp6cfh7IlqT2pMxpgODiMr9",
@@ -80,11 +81,79 @@ export default function HomePage() {
   const [feedsLoading, setFeedsLoading] = useState(true);
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
   const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
-  const [snowReportResort, setSnowReportResort] = useState("PHOENIX");
+  const [snowReportResort, setSnowReportResort] = useState("1");
   const [snowReportContent, setSnowReportContent] = useState("");
+  const [todayReports, setTodayReports] = useState<ResortReportItem[]>([]);
+  const [resortMasterList, setResortMasterList] = useState<{ id: number; name: string }[]>([]);
+  const [submittingReport, setSubmittingReport] = useState(false);
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const resortRef = useRef<HTMLDivElement>(null);
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
+
+  const loadTodayReports = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.resortReports.today(undefined, 10), { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setTodayReports(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      setTodayReports([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadTodayReports();
+  }, []);
+
+  useEffect(() => {
+    void fetch(API_ENDPOINTS.master.resorts, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { id: number; name: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setResortMasterList(data);
+          setSnowReportResort(String(data[0].id));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSnowReportSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!snowReportContent.trim() || submittingReport) return;
+    if (!profile) {
+      alert("설질 제보는 로그인 후 등록할 수 있습니다.");
+      return;
+    }
+    const resortId = Number(snowReportResort);
+    if (!resortId) {
+      alert("리조트를 선택해 주세요.");
+      return;
+    }
+
+    setSubmittingReport(true);
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.resortReports.create, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resortId,
+          content: snowReportContent.trim(),
+        }),
+      });
+      if (res.ok) {
+        setSnowReportContent("");
+        await loadTodayReports();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "설질 제보 등록에 실패했습니다.");
+      }
+    } catch {
+      alert("서버 통신 중 오류가 발생했습니다.");
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
 
   useEffect(() => {
     void (async () => {
@@ -238,18 +307,23 @@ export default function HomePage() {
           <aside className="home-sidebar">
             <section className="panel snow-report-widget">
               <div className="mini-heading"><h2>❄️ 오늘의 설질 <span>| {koreanToday}</span></h2><Link href="/resort-reports">더보기 ›</Link></div>
-              <form className="snow-report-compose" onSubmit={(event) => event.preventDefault()}>
+              <form className="snow-report-compose" onSubmit={handleSnowReportSubmit}>
                 <select value={snowReportResort} onChange={(event) => setSnowReportResort(event.target.value)} aria-label="리조트 선택">
-                  {RESORT_OPTIONS.filter((option) => option.value).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {resortMasterList.length > 0
+                    ? resortMasterList.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)
+                    : RESORT_OPTIONS.filter((option) => option.value).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder="오늘 설질을 한 줄로 알려주세요" aria-label="설질 제보 내용" />
-                <button type="submit" disabled={!snowReportContent.trim()}>등록</button>
+                <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder={profile ? "오늘 설질을 한 줄로 알려주세요" : "로그인 후 제보를 남겨주세요"} aria-label="설질 제보 내용" />
+                <button type="submit" disabled={!snowReportContent.trim() || submittingReport}>{submittingReport ? "등록중" : "등록"}</button>
               </form>
               <div className="snow-report-list">
-                {RESORT_REPORT_PREVIEWS.map((report) => {
+                {todayReports.length === 0 ? (
+                  <p className="snow-report-empty" style={{ padding: "16px 0", textAlign: "center", color: "#888", fontSize: "0.85rem" }}>오늘 등록된 설질 제보가 없습니다.</p>
+                ) : (
+                  todayReports.map((report) => {
                   const resort = RESORT_MAP[report.resortCode];
-                  return <article key={report.id}><span className={`snow-report-tag ${resort.markerClass}`}>{resort.koreanName}</span><strong>{report.content}</strong><time>{report.time}</time></article>;
-                })}
+                  return <article key={report.reportId}><span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>{report.resortName}</span><strong>{report.content}</strong><time>{formatReportTime(report.createdAt)}</time></article>;
+                }))}
               </div>
             </section>
 

@@ -69,4 +69,20 @@ export const API_ENDPOINTS = {
     autoPreview: `${API_V1_URL}/carpools/auto-preview`,
     places: (query: string) => `${API_V1_URL}/carpools/places?query=${encodeURIComponent(query)}`,
   },
+  resortReports: {
+    today: (resortId?: number, limit = 20) =>
+      `${API_V1_URL}/resort-reports/today?limit=${limit}${resortId ? `&resortId=${resortId}` : ""}`,
+    create: `${API_V1_URL}/resort-reports`,
+  },
 } as const;
+
+export interface ResortReportItem {
+  reportId: number;
+  resortId: number;
+  resortName: string;
+  resortCode: string;
+  authorNickname: string;
+  content: string;
+  createdAt: string;
+}
+

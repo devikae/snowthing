@@ -23,3 +23,18 @@ export function formatKoreanCalendarDate(date: Date): string {
     day: "numeric",
   }).format(date);
 }
+
+export function formatReportTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date);
+  } catch {
+    return "";
+  }
+}
+

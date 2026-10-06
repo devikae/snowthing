@@ -2005,5 +2005,27 @@
   - 실제 생성된 Configuration Set 이름에 맞춰 저장소·운영 문서·EC2 환경변수를 `snowthing-mail-transactional`로 통일하고 SES 어댑터 테스트와 diff 검사를 통과했습니다. SES 호출에서 Configuration Set의 존재는 확인됐으나 EC2 역할이 새 Configuration Set ARN의 `ses:SendEmail`을 허용하지 않아 `AccessDeniedException`이 남아 있습니다.
   - EC2 역할의 Identity·`snowthing-mail-transactional` Configuration Set 권한과 `help@snowthing.org` 발신 조건을 반영한 뒤 AWS mailbox simulator 발송이 성공했고 SES `MessageId`를 확인했습니다. SES 인프라 경로는 검증됐으며 실제 사용자 수신과 애플리케이션 로그 검증은 이메일 인증 코드 운영 배포 후 진행합니다.
   - 로컬 MySQL과 백엔드·프런트엔드 개발 서버를 기동하고 회원가입·비밀번호 재설정 페이지가 모두 정상 응답하는지 확인했습니다. Orca 브라우저에 두 화면을 열어 현재 구현을 변경하지 않은 상태로 데스크톱 레이아웃과 모바일 대응 요소를 검토했으며, 디자인 수정은 사용자와 개선안을 확정한 뒤 진행합니다.
-  - 회원가입과 비밀번호 재설정 화면의 `인증번호 받기` 문구를 `이메일 인증`으로 변경했습니다. 회원가입 버튼은 미인증 상태에서도 누를 수 있게 하고, 누르면 이메일 영역으로 이동·포커스하면서 `이메일 인증이 필요합니다.`를 인라인 경고로 표시하도록 보완했습니다. 프런트엔드 ESLint와 실제 브라우저의 버튼 문구·미인증 클릭 동작을 확인했습니다.
   - 선택값인 출발 지역은 회원가입 단계에서 받지 않도록 입력란·프런트 상태·가입 요청 필드에서 제거했습니다. 백엔드의 nullable 필드와 프로필 수정 기능은 유지하고, 닉네임 입력란은 데스크톱에서 한 줄 전체 너비로 재배치했습니다. 프런트엔드 ESLint와 실제 브라우저 화면을 확인했습니다.
+- **오늘의 설질(Resort Report) 실시간 한 줄 제보 기능 구현 (2026-10-06)**
+  - 브랜치: `feature/resort-report` (`feature/recruit-boards`에서 분리 생성)
+  - 설계 문서 작성: `docs/conception/007_resort_report/` (`01_requirements.md`, `02_domain-model.md`, `03_erd.md`, `04_api-spec.md`)
+  - 데이터베이스 마이그레이션: `database/production/015_migration_resort_report.sql` 생성 및 로컬 MySQL 적용 (`resort_report` 테이블 및 `(created_at DESC, resort_id)` 복합 인덱스)
+  - 백엔드 구현:
+    - `ErrorCode.java`: `RESORT_NOT_FOUND` (404), `INVALID_RESORT_REPORT_CONTENT` (400) 추가
+    - `ResortReport.java` 엔티티 생성 (FetchType.LAZY 매핑, 1~100자 본문 검증)
+    - `ResortReportRepository.java` 인터페이스 생성 (JPQL `JOIN FETCH`로 Resort/Member N+1 원천 차단)
+    - `ResortReportCreateRequest.java`, `ResortReportResponse.java` DTO 생성
+    - `ResortReportService.java` 비즈니스 로직 구현 (KST 기준 당일 범위 00:00:00~현재 필터링, 회원/리조트 검증)
+    - `ResortReportController.java` API 엔드포인트 구현 (`POST /api/v1/resort-reports`, `GET /api/v1/resort-reports/today`)
+    - `SecurityConfig.java`: `GET /api/v1/resort-reports/**` 비로그인 허용 (Public), POST 등록은 로그인 회원 전용
+    - 단위 및 통합 테스트 작성 (`ResortReportServiceTest`, `ResortReportControllerTest`)
+  - 프론트엔드 연동:
+    - `frontend/app/lib/api.ts`: `resortReports` API 엔드포인트 및 `ResortReportItem` 타입 인터페이스 추가
+    - `frontend/app/lib/resortReports.ts`: `formatReportTime` 시간 포맷팅 헬퍼 추가
+    - `frontend/app/page.tsx`: 메인 화면 사이드바 설질 위젯 실시간 등록(`csrfFetch`) 및 오늘 제보 목록 연동
+    - `frontend/app/resort-reports/page.tsx`: 당일 설질 제보 전체 목록 및 리조트별 필터링 연동
+  - 검증:
+    - 백엔드 전체 테스트 통과 (`./gradlew test` 100% 성공)
+    - 프론트엔드 프로덕션 빌드 통과 (`npm run build` 성공)
+    - 백엔드(8080) 및 프론트엔드(3000) 로컬 개발 서버 정상 구동 확인
+
