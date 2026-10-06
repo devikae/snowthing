@@ -107,11 +107,11 @@ jobs:
           scripts/verify-production-migration-005.sh
           scripts/verify-production-migration-006.sh
 
-      - name: Verify production migrations 007-012 used carpool schema
+      - name: Verify production migrations 007-013 schema
         working-directory: ${{ github.workspace }}
         run: |
-          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-007-012.sh
-          scripts/verify-production-migration-007-012.sh
+          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-007-013.sh
+          scripts/verify-production-migration-007-013.sh
 
       - name: Build and Test with Gradle
         run: ./gradlew test build -x spotlessCheck

@@ -95,9 +95,9 @@ public class SesVerificationEmailSender implements VerificationEmailSender {
             throw new CustomException(ErrorCode.EMAIL_DELIVERY_UNAVAILABLE);
         } catch (SdkException exception) {
             log.warn(
-                    "SES verification email client failure: exceptionType={}",
+                    "SES verification email result is uncertain: exceptionType={}",
                     exception.getClass().getSimpleName());
-            throw new CustomException(ErrorCode.EMAIL_DELIVERY_UNAVAILABLE);
+            throw new EmailDeliveryUncertainException(exception);
         }
     }
 }

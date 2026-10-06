@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
       if (!response.ok) throw new Error(await errorMessage(response, "인증번호 요청에 실패했습니다."));
       const body = await response.json();
       setRequestId(body.requestId);
-      setNotice("가입 여부와 관계없이 입력한 이메일로 안내를 요청했습니다. 메일이 오면 인증번호를 입력해 주세요.");
+      setNotice("입력한 이메일이 가입된 계정과 일치하면 인증번호가 발송됩니다. 메일을 확인해 주세요.");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "요청을 처리하지 못했습니다."); }
     finally { setLoading(false); }
   };
