@@ -159,7 +159,7 @@ public class ResortReportService {
     private void validateSeason(LocalDate date) {
         Month month = date.getMonth();
         if (month.getValue() >= Month.MAY.getValue()
-                && month.getValue() <= Month.OCTOBER.getValue()) {
+                && month.getValue() <= Month.SEPTEMBER.getValue()) {
             throw new CustomException(ErrorCode.RESORT_REPORT_SEASON_CLOSED);
         }
     }

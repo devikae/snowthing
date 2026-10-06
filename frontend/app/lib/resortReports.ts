@@ -11,7 +11,7 @@ export function isResortReportSeason(date: Date): boolean {
   const month = Number(
     new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", month: "numeric" }).format(date),
   );
-  return month >= 11 || month <= 4;
+  return month >= 10 || month <= 4;
 }
 
 export function formatReportTime(dateString: string): string {

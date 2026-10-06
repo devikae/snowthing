@@ -120,7 +120,7 @@ export default function HomePage() {
     event.preventDefault();
     if (!snowReportContent.trim() || submittingReport) return;
     if (!reportSeasonOpen) {
-      alert("설질 제보는 11월부터 다음 해 4월까지만 등록할 수 있습니다.");
+      alert("설질 제보는 10월부터 다음 해 4월까지만 등록할 수 있습니다.");
       return;
     }
     if (!profile) {
@@ -308,7 +308,7 @@ export default function HomePage() {
                 <select value={snowReportResort} onChange={(event) => setSnowReportResort(event.target.value)} aria-label="리조트 선택" disabled={resortMasterError || resortMasterList.length === 0 || !reportSeasonOpen}>
                   {resortMasterList.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
-                <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder={!reportSeasonOpen ? "설질 제보는 11월부터 4월까지 등록할 수 있습니다" : profile ? "오늘 설질을 한 줄로 알려주세요" : "로그인 후 제보를 남겨주세요"} aria-label="설질 제보 내용" disabled={!reportSeasonOpen || resortMasterError} />
+                <input value={snowReportContent} onChange={(event) => setSnowReportContent(event.target.value)} maxLength={100} placeholder={!reportSeasonOpen ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다" : profile ? "오늘 설질을 한 줄로 알려주세요" : "로그인 후 제보를 남겨주세요"} aria-label="설질 제보 내용" disabled={!reportSeasonOpen || resortMasterError} />
                 <button type="submit" disabled={!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0}>{submittingReport ? "등록중" : "등록"}</button>
               </form>
               {resortMasterError && <p className="snow-report-empty">리조트 목록을 불러오지 못해 제보를 등록할 수 없습니다.</p>}

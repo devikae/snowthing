@@ -104,7 +104,7 @@ class ResortReportServiceTest {
     }
 
     @Test
-    @DisplayName("5월부터 10월까지는 제보 등록을 거절한다")
+    @DisplayName("5월부터 9월까지는 제보 등록을 거절한다")
     void createReportRejectsOffSeason() {
         ResortReportService summerService =
                 new ResortReportService(
@@ -117,6 +117,28 @@ class ResortReportServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.RESORT_REPORT_SEASON_CLOSED);
+    }
+
+    @Test
+    @DisplayName("10월에는 시즌 준비 제보를 등록할 수 있다")
+    void createReportAllowsOctober() {
+        ResortReportService octoberService =
+                new ResortReportService(
+                        resortReportRepository,
+                        resortRepository,
+                        memberRepository,
+                        Clock.fixed(Instant.parse("2026-10-06T15:30:00Z"), KST));
+        Member author = member(1L, "눈꽃보더", Role.ROLE_USER);
+        Resort resort = resort(10L);
+        given(memberRepository.findByIdForUpdate(author.getId())).willReturn(Optional.of(author));
+        given(resortRepository.findById(resort.getId())).willReturn(Optional.of(resort));
+        given(resortReportRepository.save(any(ResortReport.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        ResortReportResponse response =
+                octoberService.createReport(author.getId(), request(resort.getId()));
+
+        assertThat(response.getContent()).isEqualTo("설질이 좋아요");
     }
 
     @Test

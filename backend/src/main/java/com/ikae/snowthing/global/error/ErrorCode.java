@@ -106,7 +106,7 @@ public enum ErrorCode {
     RESORT_REPORT_DAILY_LIMIT_EXCEEDED(
             HttpStatus.TOO_MANY_REQUESTS, "REPORT_003", "설질 제보는 하루에 최대 5개까지 작성할 수 있습니다."),
     RESORT_REPORT_SEASON_CLOSED(
-            HttpStatus.FORBIDDEN, "REPORT_004", "설질 제보는 11월부터 다음 해 4월까지만 작성할 수 있습니다."),
+            HttpStatus.FORBIDDEN, "REPORT_004", "설질 제보는 10월부터 다음 해 4월까지만 작성할 수 있습니다."),
     RESORT_REPORT_PAGE_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "REPORT_005", "설질 제보는 최대 100페이지까지 조회할 수 있습니다."),
     RESORT_REPORT_INVALID_PAGE_SIZE(
