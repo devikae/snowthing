@@ -150,6 +150,15 @@ public class DataInitializer implements CommandLineRunner {
             categoryRepository.save(PostCategory.builder().name("중고장터").code("MARKET").build());
         }
 
+        if (categoryRepository.findByCode("CREW").isEmpty()) {
+            categoryRepository.save(PostCategory.builder().name("동호회 모집").code("CREW").build());
+        }
+
+        if (categoryRepository.findByCode("SEASON_ROOM").isEmpty()) {
+            categoryRepository.save(
+                    PostCategory.builder().name("시즌방 모집").code("SEASON_ROOM").build());
+        }
+
         if (marketCategoryRepository.count() == 0) {
             marketCategoryRepository.saveAll(
                     List.of(

@@ -91,6 +91,26 @@ class PostServiceTest {
                                                         .name("자유게시판")
                                                         .code("FREE")
                                                         .build()));
+
+        categoryRepository
+                .findByCode("CREW")
+                .orElseGet(
+                        () ->
+                                categoryRepository.save(
+                                        PostCategory.builder()
+                                                .name("동호회 모집")
+                                                .code("CREW")
+                                                .build()));
+
+        categoryRepository
+                .findByCode("SEASON_ROOM")
+                .orElseGet(
+                        () ->
+                                categoryRepository.save(
+                                        PostCategory.builder()
+                                                .name("시즌방 모집")
+                                                .code("SEASON_ROOM")
+                                                .build()));
     }
 
     @Nested
@@ -154,6 +174,88 @@ class PostServiceTest {
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        @Test
+        @DisplayName("로그인 회원이 동호회 및 시즌방 홍보글을 정상적으로 등록한다.")
+        void createPost_recruitBoards_success_member() {
+            PostCreateRequest crewRequest =
+                    PostCreateRequest.builder()
+                            .categoryCode("CREW")
+                            .title("휘닉스파크 주말 크루 모집")
+                            .content("크루원 모집합니다.")
+                            .isAnonymous(false)
+                            .build();
+
+            PostResponse crewResponse =
+                    postService.createPost(crewRequest, userDetails1, "127.0.0.1");
+            assertThat(crewResponse.categoryCode()).isEqualTo("CREW");
+            assertThat(crewResponse.writerName()).isEqualTo("보더1호");
+
+            PostCreateRequest roomRequest =
+                    PostCreateRequest.builder()
+                            .categoryCode("SEASON_ROOM")
+                            .title("하이원 26/27 시즌방 모집")
+                            .content("주말조 남 2명 모집합니다.")
+                            .isAnonymous(false)
+                            .build();
+
+            PostResponse roomResponse =
+                    postService.createPost(roomRequest, userDetails2, "127.0.0.1");
+            assertThat(roomResponse.categoryCode()).isEqualTo("SEASON_ROOM");
+            assertThat(roomResponse.writerName()).isEqualTo("보더2호");
+        }
+
+        @Test
+        @DisplayName("동호회 및 시즌방 홍보 게시판에 익명 작성을 시도하면 ANONYMOUS_POST_NOT_ALLOWED 예외가 발생한다.")
+        void createPost_recruitBoards_anonymous_rejected() {
+            PostCreateRequest crewAnonRequest =
+                    PostCreateRequest.builder()
+                            .categoryCode("CREW")
+                            .title("익명 크루 모집")
+                            .content("익명 내용")
+                            .isAnonymous(true)
+                            .anonymousPassword("Pass1234!")
+                            .build();
+
+            assertThatThrownBy(
+                            () ->
+                                    postService.createPost(
+                                            crewAnonRequest, userDetails1, "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+
+            PostCreateRequest roomAnonRequest =
+                    PostCreateRequest.builder()
+                            .categoryCode("SEASON_ROOM")
+                            .title("익명 시즌방 모집")
+                            .content("익명 내용")
+                            .isAnonymous(true)
+                            .anonymousPassword("Pass1234!")
+                            .build();
+
+            assertThatThrownBy(() -> postService.createPost(roomAnonRequest, null, "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
+
+        @Test
+        @DisplayName("비로그인 유저가 동호회/시즌방 게시판 작성을 시도하면 ANONYMOUS_POST_NOT_ALLOWED 예외가 발생한다.")
+        void createPost_recruitBoards_unauthorized_rejected() {
+            PostCreateRequest crewRequest =
+                    PostCreateRequest.builder()
+                            .categoryCode("CREW")
+                            .title("비로그인 크루 모집")
+                            .content("내용")
+                            .isAnonymous(false)
+                            .build();
+
+            assertThatThrownBy(() -> postService.createPost(crewRequest, null, "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
     }
 
@@ -340,6 +442,37 @@ class PostServiceTest {
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("익명 게시글을 동호회/시즌방 홍보 카테고리로 변경 시도 시 ANONYMOUS_POST_NOT_ALLOWED 예외가 발생한다.")
+        void updatePost_anonymousToRecruitBoard_rejected() {
+            PostCreateRequest anonReq =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("익명 원본글")
+                            .content("익명 내용")
+                            .isAnonymous(true)
+                            .anonymousPassword("Password123!")
+                            .build();
+
+            PostResponse anonPost = postService.createPost(anonReq, null, "127.0.0.1");
+
+            PostUpdateRequest updateToCrewReq =
+                    PostUpdateRequest.builder()
+                            .categoryCode("CREW")
+                            .title("크루로 변경 시도")
+                            .content("변경 내용")
+                            .anonymousPassword("Password123!")
+                            .build();
+
+            assertThatThrownBy(
+                            () ->
+                                    postService.updatePost(
+                                            anonPost.publicId(), updateToCrewReq, null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
         @Test

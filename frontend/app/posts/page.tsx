@@ -47,6 +47,8 @@ const categories = [
   { code: "ANONYMOUS", name: "익명게시판" },
   { code: "QNA", name: "장비 후기" },
   { code: "FOOD", name: "리조트 맛집" },
+  { code: "CREW", name: "동호회 모집" },
+  { code: "SEASON_ROOM", name: "시즌방 모집" },
 ];
 
 const defaultNotices = [
@@ -63,6 +65,14 @@ const boardConfigs: Record<string, BoardConfig> = {
   ], topics: ["셔틀버스 매너", "휘팍 실시간 파우더", "시즌방 비용 정산", "데크 구매 고민", "복귀길 정체"] },
   QNA: { name: "장비 후기", navKey: "gear", notices: defaultNotices, topics: ["부츠 열성형", "바인딩 각도", "엣지 튜닝", "입문 데크", "카빙 자세"] },
   FOOD: { name: "리조트 맛집", navKey: "food", notices: defaultNotices, topics: ["용평 아침식사", "휘팍 국밥", "하이원 야식", "비발디 카페", "웰리힐리 맛집"] },
+  CREW: { name: "동호회 모집", navKey: "crew", notices: [
+    { label: "안내", title: "건전하고 안전한 동호회(크루) 활동 및 정기 라이딩을 응원합니다.", date: "24.12.15", views: "9,800" },
+    { label: "필독", title: "동호회 홍보 시 주 베이스 리조트와 라이딩 성향, 연락 수단을 명시해 주세요.", date: "24.12.20", views: "6,200" },
+  ], topics: ["휘팍 주말 크루", "하이원 트릭 크루", "용평 카빙 모임", "초보 환영 동호회", "평일 직장인 보더"] },
+  SEASON_ROOM: { name: "시즌방 모집", navKey: "seasonRoom", notices: [
+    { label: "안내", title: "시즌방 투자금 및 관리비 관련 분쟁 예방을 위해 상세 조건을 투명하게 기재해 주세요.", date: "24.12.15", views: "1.1만" },
+    { label: "필독", title: "금전 거래 전 방 규칙, 숙소 위치, 정원 및 환불 규정을 반드시 확인하세요.", date: "24.12.20", views: "8,900" },
+  ], topics: ["휘팍 셔틀 5분 펜션", "하이원 풀상주 모집", "웰팍 주말조 남녀", "용평 콘도 지분 양도", "게스트 환영 시즌방"] },
 };
 
 function PostListContent() {

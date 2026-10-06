@@ -73,8 +73,8 @@ function PostCreateForm() {
         } else if (currentCategory !== "ANONYMOUS") {
           if (!hasAlertedRef.current) {
             hasAlertedRef.current = true;
-            alert("자유/Q&A/맛집 게시판 글쓰기는 로그인이 필요합니다.");
-            router.replace("/login?redirect=/posts/create");
+            alert("해당 게시판 글쓰기는 로그인이 필요합니다.");
+            router.replace(`/login?redirect=/posts/create?category=${currentCategory}`);
           }
         }
       }
@@ -177,7 +177,18 @@ function PostCreateForm() {
     );
   }
 
-  const boardName = categoryCode === "ANONYMOUS" ? "익명게시판" : categoryCode === "QNA" ? "장비 후기" : categoryCode === "FOOD" ? "리조트 맛집" : "자유게시판";
+  const boardName =
+    categoryCode === "ANONYMOUS"
+      ? "익명게시판"
+      : categoryCode === "QNA"
+        ? "장비 후기"
+        : categoryCode === "FOOD"
+          ? "리조트 맛집"
+          : categoryCode === "CREW"
+            ? "동호회 모집"
+            : categoryCode === "SEASON_ROOM"
+              ? "시즌방 모집"
+              : "자유게시판";
 
   return (
     <main className="compose-page community-container">
