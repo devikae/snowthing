@@ -2024,6 +2024,7 @@
     - `frontend/app/lib/resortReports.ts`: `formatReportTime` 시간 포맷팅 헬퍼 추가
     - `frontend/app/page.tsx`: 메인 화면 사이드바 설질 위젯 실시간 등록(`csrfFetch`) 및 오늘 제보 목록 연동
     - `frontend/app/resort-reports/page.tsx`: 당일 설질 제보 전체 목록 및 리조트별 필터링 연동
+    - `frontend/app/page.tsx`: 미완성 목업 상태인 '전국 주요 스키장 실시간 슬로프 & 설질 현황' 패널(`resort-panel`)은 추후 크롤링/연동 완성 시까지 JSX 주석으로 임시 비활성화
   - 검증:
     - 백엔드 전체 테스트 통과 (`./gradlew test` 100% 성공)
     - 프론트엔드 프로덕션 빌드 통과 (`npm run build` 성공)

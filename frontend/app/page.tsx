@@ -259,6 +259,7 @@ export default function HomePage() {
           <LiveChatSection currentMember={profile} />
         </div>
 
+        {/* 실시간 슬로프 & 설질 현황 (완성 후 재오픈 예정)
         <section className="panel resort-panel">
           <div className="panel-heading">
             <h2><span className="status-pulse" />전국 주요 스키장 실시간 슬로프 &amp; 설질 현황 <small>(10분 주기 갱신)</small></h2>
@@ -274,6 +275,7 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+        */}
 
         <div className="home-content-grid">
           <section className="home-feed">
