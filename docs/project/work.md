@@ -2029,4 +2029,6 @@
     - 백엔드 전체 테스트 통과 (`./gradlew test` 100% 성공)
     - 프론트엔드 프로덕션 빌드 통과 (`npm run build` 성공)
     - 백엔드(8080) 및 프론트엔드(3000) 로컬 개발 서버 정상 구동 확인
+    - `./gradlew.bat spotlessCheck test` 통과 (320+건 전체 성공) 및 `npm run lint` 통과 (0 errors, 0 warnings)
+    - GitHub PR #38(`feat: 동호회·시즌방 홍보 게시판 분리 및 오늘의 설질 제보 구현`) 생성 완료
 
