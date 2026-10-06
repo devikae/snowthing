@@ -21,6 +21,7 @@ DROP TABLE IF EXISTS `member_riding_style`;
 DROP TABLE IF EXISTS `riding_style`;
 DROP TABLE IF EXISTS `member_resort`;
 DROP TABLE IF EXISTS `resort`;
+DROP TABLE IF EXISTS `email_verification`;
 DROP TABLE IF EXISTS `member`;
 DROP TABLE IF EXISTS `crew`;
 
@@ -45,6 +46,7 @@ CREATE TABLE `member` (
     `profile_image_url` VARCHAR(500) NULL COMMENT '프로필 이미지 URL',
     `bio` VARCHAR(255) NULL COMMENT '자기소개 한마디',
     `departure_region` VARCHAR(100) NULL COMMENT '주 출발/거주 지역',
+    `email_verified_at` DATETIME NULL COMMENT '이메일 소유 확인 일시',
     `crew_id` BIGINT NULL COMMENT '소속 크루 ID',
     `crew_role` VARCHAR(20) NULL COMMENT '크루 내 권한 (OWNER, MANAGER, MEMBER)',
     `role` VARCHAR(20) NOT NULL DEFAULT 'ROLE_USER' COMMENT '전역 권한 (ROLE_USER, ROLE_ADMIN)',
@@ -53,6 +55,40 @@ CREATE TABLE `member` (
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
     CONSTRAINT `fk_member_crew` FOREIGN KEY (`crew_id`) REFERENCES `crew` (`crew_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원 마스터';
+
+CREATE TABLE `email_verification` (
+    `verification_id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `public_id` VARCHAR(36) NOT NULL UNIQUE COMMENT '인증 요청 외부 식별자',
+    `email` VARCHAR(100) NOT NULL,
+    `purpose` VARCHAR(30) NOT NULL COMMENT 'SIGN_UP, PASSWORD_RESET',
+    `code_digest` CHAR(64) NOT NULL,
+    `token_digest` CHAR(64) NULL,
+    `status` VARCHAR(20) NOT NULL,
+    `failed_attempt_count` INT NOT NULL DEFAULT 0,
+    `send_count` INT NOT NULL DEFAULT 1,
+    `send_window_started_at` DATETIME NOT NULL,
+    `request_ip` VARCHAR(45) NOT NULL,
+    `sent_at` DATETIME NULL,
+    `expires_at` DATETIME NOT NULL,
+    `verified_at` DATETIME NULL,
+    `token_expires_at` DATETIME NULL,
+    `consumed_at` DATETIME NULL,
+    `ses_message_id` VARCHAR(255) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `uk_email_verification_email_purpose` UNIQUE (`email`, `purpose`),
+    INDEX `idx_email_verification_token_purpose` (`token_digest`, `purpose`),
+    INDEX `idx_email_verification_status_expires_at` (`status`, `expires_at`),
+    INDEX `idx_email_verification_expires_at` (`expires_at`),
+    CONSTRAINT `chk_email_verification_purpose`
+        CHECK (`purpose` IN ('SIGN_UP', 'PASSWORD_RESET')),
+    CONSTRAINT `chk_email_verification_status`
+        CHECK (`status` IN ('PENDING', 'SENT', 'VERIFIED', 'CONSUMED', 'SEND_FAILED', 'FAILED', 'EXPIRED')),
+    CONSTRAINT `chk_email_verification_failed_attempt_count`
+        CHECK (`failed_attempt_count` BETWEEN 0 AND 5),
+    CONSTRAINT `chk_email_verification_send_count`
+        CHECK (`send_count` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='이메일 인증 상태';
 
 -- 3. 리조트 마스터 테이블
 CREATE TABLE `resort` (

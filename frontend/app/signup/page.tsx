@@ -1,256 +1,163 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 
-interface ResortMaster {
-  id: number;
-  name: string;
-  regionName: string;
-}
+interface ResortMaster { id: number; name: string; regionName: string; }
+interface RidingStyleMaster { id: number; styleName: string; description: string; }
+interface VerificationSendResponse { requestId: string; expiresInSeconds: number; resendAvailableInSeconds: number; }
+interface VerificationTokenResponse { verificationToken: string; expiresInSeconds: number; }
 
-interface RidingStyleMaster {
-  id: number;
-  styleName: string;
-  description: string;
-}
-
-const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+async function readError(response: Response, fallback: string) {
+  try {
+    const body = await response.json();
+    return body.message || body.error || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export default function SignUpPage() {
   const router = useRouter();
+  const emailSectionRef = useRef<HTMLDivElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationRequestId, setVerificationRequestId] = useState("");
+  const [emailVerificationToken, setEmailVerificationToken] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(0);
+  const [verificationExpiresSeconds, setVerificationExpiresSeconds] = useState(0);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [nickname, setNickname] = useState("");
-  const [departureRegion, setDepartureRegion] = useState("");
   const [resorts, setResorts] = useState<ResortMaster[]>([]);
   const [ridingStyles, setRidingStyles] = useState<RidingStyleMaster[]>([]);
   const [selectedResortIds, setSelectedResortIds] = useState<number[]>([]);
   const [selectedStyleIds, setSelectedStyleIds] = useState<number[]>([]);
+  const [notice, setNotice] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [emailVerificationError, setEmailVerificationError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const isLengthValid = password.length >= 8;
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
-  const isPasswordComplexityValid = PASSWORD_REGEX.test(password);
+  const isEmailVerified = emailVerificationToken.length > 0;
+  const isPasswordValid = PASSWORD_REGEX.test(password);
   const isPasswordMatch = password.length > 0 && password === passwordConfirm;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const [resortRes, styleRes] = await Promise.all([
-            fetch(API_ENDPOINTS.master.resorts),
-            fetch(API_ENDPOINTS.master.ridingStyles),
-          ]);
-          if (resortRes.ok) {
-            const resortData: ResortMaster[] = await resortRes.json();
-            setResorts(resortData);
-          }
-          if (styleRes.ok) {
-            const styleData: RidingStyleMaster[] = await styleRes.json();
-            setRidingStyles(styleData);
-          }
-        } catch (error) {
-          console.error("마스터 데이터 로드 실패:", error);
-        }
-      })();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
+    void Promise.all([fetch(API_ENDPOINTS.master.resorts), fetch(API_ENDPOINTS.master.ridingStyles)])
+      .then(async ([resortResponse, styleResponse]) => {
+        if (resortResponse.ok) setResorts(await resortResponse.json());
+        if (styleResponse.ok) setRidingStyles(await styleResponse.json());
+      })
+      .catch(() => setErrorMsg("선택 정보를 불러오지 못했습니다."));
   }, []);
 
-  const handleResortToggle = (id: number) => {
-    setSelectedResortIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = window.setInterval(() => setResendSeconds((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [resendSeconds]);
+
+  useEffect(() => {
+    if (verificationExpiresSeconds <= 0 || isEmailVerified) return;
+    const timer = window.setInterval(
+      () => setVerificationExpiresSeconds((current) => Math.max(0, current - 1)),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [verificationExpiresSeconds, isEmailVerified]);
+
+  const changeEmail = (value: string) => {
+    setEmail(value);
+    setVerificationRequestId("");
+    setEmailVerificationToken("");
+    setVerificationCode("");
+    setResendSeconds(0);
+    setVerificationExpiresSeconds(0);
+    setNotice("");
+    setEmailVerificationError("");
   };
 
-  const handleStyleToggle = (id: number) => {
-    setSelectedStyleIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  const requestVerification = async () => {
+    setErrorMsg(""); setEmailVerificationError(""); setNotice("");
+    if (!EMAIL_REGEX.test(email)) return setErrorMsg("올바른 이메일 형식으로 입력해 주세요.");
+    setLoading(true);
+    try {
+      const availabilityResponse = await csrfFetch(API_ENDPOINTS.members.emailAvailability, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      if (!availabilityResponse.ok) throw new Error(await readError(availabilityResponse, "이메일 중복 확인에 실패했습니다."));
+      const availability = await availabilityResponse.json();
+      if (!availability.available) throw new Error("이미 가입된 이메일입니다.");
+      const response = await csrfFetch(API_ENDPOINTS.auth.requestSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      if (!response.ok) throw new Error(await readError(response, "인증번호를 보내지 못했습니다."));
+      const body: VerificationSendResponse = await response.json();
+      setVerificationRequestId(body.requestId);
+      setResendSeconds(body.resendAvailableInSeconds);
+      setVerificationExpiresSeconds(body.expiresInSeconds);
+      setNotice("인증번호를 보냈습니다. 5분 안에 입력해 주세요.");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "인증 요청을 처리하지 못했습니다.");
+    } finally { setLoading(false); }
+  };
+
+  const confirmVerification = async () => {
+    setErrorMsg("");
+    if (!verificationRequestId || !/^\d{6}$/.test(verificationCode)) return setErrorMsg("이메일로 받은 숫자 6자리를 입력해 주세요.");
+    setLoading(true);
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.auth.confirmSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: verificationRequestId, code: verificationCode }) });
+      if (!response.ok) throw new Error(await readError(response, "인증번호를 확인하지 못했습니다."));
+      const body: VerificationTokenResponse = await response.json();
+      setEmailVerificationToken(body.verificationToken);
+      setVerificationExpiresSeconds(0);
+      setEmailVerificationError("");
+      setNotice("이메일 인증이 완료되었습니다.");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "인증번호 확인에 실패했습니다.");
+    } finally { setLoading(false); }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setErrorMsg("");
-
-    if (!EMAIL_REGEX.test(email)) {
-      setErrorMsg("올바른 이메일 형식으로 입력해주세요. 예: user@snowthing.com");
+    event.preventDefault(); setErrorMsg("");
+    if (!isEmailVerified) {
+      setEmailVerificationError("이메일 인증이 필요합니다.");
+      emailSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      emailInputRef.current?.focus({ preventScroll: true });
       return;
     }
-
-    if (!isPasswordComplexityValid) {
-      setErrorMsg("비밀번호는 8자 이상이며 영문 대문자와 특수문자를 포함해야 합니다.");
-      return;
-    }
-
-    if (!isPasswordMatch) {
-      setErrorMsg("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
-      return;
-    }
-
+    if (!isPasswordValid) return setErrorMsg("비밀번호는 8자 이상이며 영문 대문자와 특수문자를 포함해야 합니다.");
+    if (!isPasswordMatch) return setErrorMsg("비밀번호 확인이 일치하지 않습니다.");
+    if (!nickname.trim()) return setErrorMsg("닉네임을 입력해 주세요.");
     setLoading(true);
     try {
-      const res = await csrfFetch(API_ENDPOINTS.members.signup, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          nickname,
-          departureRegion,
-          resortIds: selectedResortIds,
-          ridingStyleIds: selectedStyleIds,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || errorData.error || "회원가입에 실패했습니다.");
-      }
-
-      // 회원가입 성공 즉시 자동 로그인 수행
-      const loginRes = await csrfFetch(API_ENDPOINTS.auth.login, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe: true }),
-      });
-
-      if (loginRes.ok) {
-        router.push("/");
-      } else {
-        router.push("/login");
-      }
+      const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds }) });
+      if (!response.ok) throw new Error(await readError(response, "회원가입에 실패했습니다."));
+      const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
+      router.push(loginResponse.ok ? "/" : "/login");
     } catch (error) {
-      setErrorMsg(getErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
+      setErrorMsg(error instanceof Error ? error.message : "회원가입을 처리하지 못했습니다.");
+    } finally { setLoading(false); }
   };
 
-  return (
-    <div className="min-h-screen bg-[var(--snow-background)]">
-      <TopNav active="signup" />
-      <main className="snow-container px-5 py-10 lg:px-8">
-        <section className="mx-auto max-w-2xl">
-          <header className="mb-6 text-center">
-            <h1 className="text-3xl font-extrabold tracking-[-0.04em] text-[var(--snow-ink)]">회원가입</h1>
-          </header>
+  const toggle = (id: number, values: number[], setter: React.Dispatch<React.SetStateAction<number[]>>) => setter(values.includes(id) ? values.filter((value) => value !== id) : [...values, id]);
 
-          <form onSubmit={handleSubmit} className="snow-card grid gap-7 bg-white p-6 md:p-8">
-            {errorMsg && <div className="rounded border border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-semibold text-[#dc2626]">{errorMsg}</div>}
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <label className="grid gap-2 md:col-span-2">
-                <RequiredLabel>이메일</RequiredLabel>
-                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@snowthing.com" className="snow-input" required />
-              </label>
-
-              <label className="grid gap-2">
-                <RequiredLabel>비밀번호</RequiredLabel>
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" className="snow-input" autoComplete="new-password" minLength={8} required />
-              </label>
-
-              <label className="grid gap-2">
-                <RequiredLabel>비밀번호 확인</RequiredLabel>
-                <input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="비밀번호 확인" className="snow-input" autoComplete="new-password" minLength={8} required />
-              </label>
-            </div>
-
-            {password.length > 0 && (
-              <div className="flex flex-wrap gap-2 border-t border-[var(--snow-border)] pt-4">
-                <span className={`snow-chip ${isLengthValid ? "snow-chip-green" : ""}`}>8자 이상</span>
-                <span className={`snow-chip ${hasUppercase ? "snow-chip-green" : ""}`}>대문자 포함</span>
-                <span className={`snow-chip ${hasSpecialChar ? "snow-chip-green" : ""}`}>특수문자 포함</span>
-                <span className={`snow-chip ${isPasswordMatch ? "snow-chip-green" : ""}`}>비밀번호 일치</span>
-              </div>
-            )}
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <label className="grid gap-2">
-                <RequiredLabel>닉네임</RequiredLabel>
-                <input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="닉네임" className="snow-input" required />
-              </label>
-              <label className="grid gap-2">
-                <OptionalLabel>출발 지역</OptionalLabel>
-                <input value={departureRegion} onChange={(event) => setDepartureRegion(event.target.value)} placeholder="서울 송파구" className="snow-input" />
-              </label>
-            </div>
-
-            <SelectionGrid title="선호 리조트" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={handleResortToggle} />
-            <SelectionGrid title="라이딩 성향" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={handleStyleToggle} />
-
-            <button type="submit" className="snow-btn-primary w-full" disabled={loading || !isPasswordComplexityValid || !isPasswordMatch}>
-              {loading ? "가입 처리 중" : "회원가입 완료"}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-[var(--snow-muted)]">
-            이미 계정이 있나요?{" "}
-            <Link href="/login" className="font-bold text-black underline">
-              로그인
-            </Link>
-          </p>
-        </section>
-      </main>
-      <Footer />
-    </div>
-  );
+  return <div className="min-h-screen bg-[var(--snow-background)]"><TopNav active="signup" /><main className="snow-container px-5 py-10 lg:px-8"><section className="mx-auto max-w-2xl"><header className="mb-6 text-center"><h1 className="text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1></header><form onSubmit={handleSubmit} noValidate className="snow-card grid gap-7 bg-white p-6 md:p-8">
+    {errorMsg && <div role="alert" className="rounded border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{errorMsg}</div>}
+    {notice && <div className="rounded border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-sky-800">{notice}</div>}
+    <div ref={emailSectionRef} className="grid gap-3"><RequiredLabel>이메일</RequiredLabel><div className="flex gap-2"><input ref={emailInputRef} type="email" value={email} onChange={(event) => changeEmail(event.target.value)} className="snow-input flex-1" placeholder="user@snowthing.org" disabled={isEmailVerified} required aria-invalid={emailVerificationError ? true : undefined} aria-describedby={emailVerificationError ? "email-verification-error" : undefined} /><button type="button" className="snow-btn-secondary whitespace-nowrap" onClick={requestVerification} disabled={loading || isEmailVerified || resendSeconds > 0}>{isEmailVerified ? "인증 완료" : resendSeconds > 0 ? `${resendSeconds}초 후 재전송` : verificationRequestId ? "다시 받기" : "이메일 인증"}</button></div>{emailVerificationError && <p id="email-verification-error" role="alert" className="text-sm font-semibold text-rose-600">{emailVerificationError}</p>}{verificationRequestId && !isEmailVerified && <><div className="flex gap-2"><input inputMode="numeric" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))} className="snow-input flex-1" placeholder="인증번호 6자리" /><button type="button" className="snow-btn-primary whitespace-nowrap" onClick={confirmVerification} disabled={loading || verificationExpiresSeconds === 0}>인증 확인</button></div><p className="text-xs font-semibold text-[var(--snow-muted)]">{verificationExpiresSeconds > 0 ? `인증번호 유효 시간 ${Math.floor(verificationExpiresSeconds / 60)}:${String(verificationExpiresSeconds % 60).padStart(2, "0")}` : "인증번호가 만료되었습니다. 다시 받아 주세요."}</p></>}</div>
+    <div className="grid gap-5 md:grid-cols-2"><label className="grid gap-2"><RequiredLabel>비밀번호</RequiredLabel><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="snow-input" autoComplete="new-password" minLength={8} required /></label><label className="grid gap-2"><RequiredLabel>비밀번호 확인</RequiredLabel><input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} className="snow-input" autoComplete="new-password" minLength={8} required /></label><label className="grid gap-2 md:col-span-2"><RequiredLabel>닉네임</RequiredLabel><input value={nickname} onChange={(event) => setNickname(event.target.value)} className="snow-input" required /></label></div>
+    <SelectionGrid title="선호 리조트" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={(id) => toggle(id, selectedResortIds, setSelectedResortIds)} /><SelectionGrid title="라이딩 성향" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={(id) => toggle(id, selectedStyleIds, setSelectedStyleIds)} /><button type="submit" className="snow-btn-primary w-full" disabled={loading}>{loading ? "처리 중" : "회원가입 완료"}</button>
+  </form><p className="mt-6 text-center text-sm text-[var(--snow-muted)]">이미 계정이 있나요? <Link href="/login" className="font-bold text-sky-700 underline">로그인</Link></p></section></main><Footer /></div>;
 }
 
-function RequiredLabel({ children }: { children: React.ReactNode }) {
-  return <span className="snow-label flex items-center gap-1">{children}<b className="text-rose-500" aria-hidden="true">*</b></span>;
-}
+function RequiredLabel({ children }: { children: React.ReactNode }) { return <span className="snow-label">{children}<b className="ml-1 text-rose-500">*</b></span>; }
 
-function OptionalLabel({ children }: { children: React.ReactNode }) {
-  return <span className="snow-label flex items-center gap-2">{children}<small className="font-normal normal-case tracking-normal text-[var(--snow-muted)]">선택</small></span>;
-}
-
-function SelectionGrid({
-  title,
-  items,
-  selectedIds,
-  onToggle,
-}: {
-  title: string;
-  items: { id: number; label: string }[];
-  selectedIds: number[];
-  onToggle: (id: number) => void;
-}) {
-  return (
-    <fieldset className="grid gap-3">
-      <legend className="snow-label mb-1">
-        <span className="flex items-center gap-2">{title}<small className="font-normal normal-case tracking-normal text-[var(--snow-muted)]">선택</small></span>
-      </legend>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {items.length === 0 ? (
-          <p className="text-sm text-[var(--snow-muted)]">선택 항목을 불러오는 중입니다.</p>
-        ) : (
-          items.map((item) => {
-            const checked = selectedIds.includes(item.id);
-            return (
-              <label
-                key={item.id}
-                className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                  checked ? "border-sky-500 bg-sky-50 text-sky-800" : "border-[var(--snow-border)] bg-white text-[var(--snow-ink-soft)] hover:border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                <input type="checkbox" checked={checked} onChange={() => onToggle(item.id)} className="h-4 w-4 accent-sky-700" />
-                {item.label}
-              </label>
-            );
-          })
-        )}
-      </div>
-    </fieldset>
-  );
+function SelectionGrid({ title, items, selectedIds, onToggle }: { title: string; items: { id: number; label: string }[]; selectedIds: number[]; onToggle: (id: number) => void; }) {
+  return <fieldset className="grid gap-3"><legend className="snow-label mb-1">{title} <small className="font-normal text-[var(--snow-muted)]">선택</small></legend><div className="grid gap-2 sm:grid-cols-2">{items.map((item) => { const checked = selectedIds.includes(item.id); return <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold ${checked ? "border-sky-500 bg-sky-50 text-sky-800" : "border-[var(--snow-border)]"}`}><input type="checkbox" checked={checked} onChange={() => onToggle(item.id)} className="h-4 w-4 accent-sky-700" />{item.label}</label>; })}</div></fieldset>;
 }

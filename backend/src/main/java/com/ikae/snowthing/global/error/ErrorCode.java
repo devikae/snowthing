@@ -13,6 +13,19 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "MEMBER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_003", "이미 사용 중인 닉네임입니다."),
+    EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "EMAIL_001", "이미 가입된 이메일입니다."),
+    EMAIL_CODE_FORMAT_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_002", "인증번호는 숫자 6자리여야 합니다."),
+    EMAIL_CODE_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_003", "인증번호가 일치하지 않습니다."),
+    EMAIL_CODE_EXPIRED(HttpStatus.GONE, "EMAIL_004", "인증번호가 만료되었습니다. 다시 요청해 주세요."),
+    EMAIL_ATTEMPT_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "EMAIL_005", "인증번호 입력 횟수를 초과했습니다."),
+    EMAIL_SEND_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "EMAIL_006", "인증 메일 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    EMAIL_DELIVERY_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE, "EMAIL_007", "인증 메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    EMAIL_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_008", "이메일 인증 정보가 유효하지 않습니다."),
+    EMAIL_TOKEN_EXPIRED(HttpStatus.GONE, "EMAIL_009", "이메일 인증이 만료되었거나 이미 사용되었습니다."),
+    EMAIL_AVAILABILITY_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "EMAIL_010", "이메일 중복 확인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "존재하지 않거나 삭제된 게시글입니다."),
     POST_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_002", "존재하지 않는 게시판 카테고리입니다."),
     ALREADY_REACTED(HttpStatus.CONFLICT, "POST_003", "이미 추천 또는 비추천 투표를 완료한 게시글입니다."),

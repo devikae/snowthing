@@ -14,3 +14,10 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+
+snowthing:
+  email:
+    verification:
+      secret: test-email-verification-secret-at-least-32-bytes
+  mail:
+    provider: disabled

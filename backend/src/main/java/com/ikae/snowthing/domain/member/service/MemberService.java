@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.member.service;
 
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import com.ikae.snowthing.domain.member.entity.*;
 import com.ikae.snowthing.domain.member.repository.*;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
+import com.ikae.snowthing.global.exception.CustomException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,20 +29,27 @@ public class MemberService {
     private final MemberResortRepository memberResortRepository;
     private final MemberRidingStyleRepository memberRidingStyleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailNormalizer emailNormalizer;
 
     @Transactional
     public MemberSignUpResponse signUp(MemberSignUpRequest request) {
-        if (memberRepository.existsByEmail(request.getEmail())) {
-            throw new CustomAuthException(ErrorCode.DUPLICATE_EMAIL);
+        String normalizedEmail = emailNormalizer.normalize(request.getEmail());
+        if (memberRepository.existsByEmail(normalizedEmail)) {
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         if (memberRepository.existsByNickname(request.getNickname())) {
             throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
-        Member member = request.toEntity(encodedPassword);
+        Member member = request.toEntity(encodedPassword, normalizedEmail);
 
-        Member savedMember = memberRepository.save(member);
+        Member savedMember;
+        try {
+            savedMember = memberRepository.saveAndFlush(member);
+        } catch (DataIntegrityViolationException exception) {
+            throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
+        }
 
         if (!request.getResortIds().isEmpty()) {
             List<Resort> resorts = resortRepository.findAllById(request.getResortIds());

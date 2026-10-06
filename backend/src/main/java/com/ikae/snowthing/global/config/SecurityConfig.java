@@ -30,6 +30,8 @@ import com.ikae.snowthing.global.config.websocket.ChatConnectionRegistry;
 import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
+import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.security.MemberSessionRegistry;
 
 import lombok.RequiredArgsConstructor;
 
@@ -44,6 +46,7 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
     private final ChatConnectionRegistry chatConnectionRegistry;
+    private final MemberSessionRegistry memberSessionRegistry;
 
     @Bean
     public ObjectMapper objectMapper() {
@@ -113,6 +116,15 @@ public class SecurityConfig {
                                                 (request, response, authentication) -> {
                                                     HttpSession session = request.getSession(false);
                                                     if (session != null) {
+                                                        if (authentication != null
+                                                                && authentication.getPrincipal()
+                                                                        instanceof
+                                                                        CustomUserDetails
+                                                                                        userDetails) {
+                                                            memberSessionRegistry.unregister(
+                                                                    userDetails.getPublicId(),
+                                                                    session);
+                                                        }
                                                         chatConnectionRegistry
                                                                 .disconnectHttpSession(
                                                                         session.getId());
@@ -171,6 +183,10 @@ public class SecurityConfig {
                                                 "/api/v1/members",
                                                 "/api/auth/login",
                                                 "/api/v1/auth/login",
+                                                "/api/v1/auth/email-verifications/**",
+                                                "/api/v1/auth/password-reset",
+                                                "/api/v1/auth/password-reset/**",
+                                                "/api/v1/members/email-availability",
                                                 "/api/auth/signup",
                                                 "/api/v1/auth/signup",
                                                 "/api/v1/csrf",
