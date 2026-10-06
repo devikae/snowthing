@@ -2005,3 +2005,4 @@
   - 실제 생성된 Configuration Set 이름에 맞춰 저장소·운영 문서·EC2 환경변수를 `snowthing-mail-transactional`로 통일하고 SES 어댑터 테스트와 diff 검사를 통과했습니다. SES 호출에서 Configuration Set의 존재는 확인됐으나 EC2 역할이 새 Configuration Set ARN의 `ses:SendEmail`을 허용하지 않아 `AccessDeniedException`이 남아 있습니다.
   - EC2 역할의 Identity·`snowthing-mail-transactional` Configuration Set 권한과 `help@snowthing.org` 발신 조건을 반영한 뒤 AWS mailbox simulator 발송이 성공했고 SES `MessageId`를 확인했습니다. SES 인프라 경로는 검증됐으며 실제 사용자 수신과 애플리케이션 로그 검증은 이메일 인증 코드 운영 배포 후 진행합니다.
   - 로컬 MySQL과 백엔드·프런트엔드 개발 서버를 기동하고 회원가입·비밀번호 재설정 페이지가 모두 정상 응답하는지 확인했습니다. Orca 브라우저에 두 화면을 열어 현재 구현을 변경하지 않은 상태로 데스크톱 레이아웃과 모바일 대응 요소를 검토했으며, 디자인 수정은 사용자와 개선안을 확정한 뒤 진행합니다.
+  - 회원가입과 비밀번호 재설정 화면의 `인증번호 받기` 문구를 `이메일 인증`으로 변경했습니다. 회원가입 버튼은 미인증 상태에서도 누를 수 있게 하고, 누르면 이메일 영역으로 이동·포커스하면서 `이메일 인증이 필요합니다.`를 인라인 경고로 표시하도록 보완했습니다. 프런트엔드 ESLint와 실제 브라우저의 버튼 문구·미인증 클릭 동작을 확인했습니다.
