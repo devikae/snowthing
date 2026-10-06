@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
@@ -49,7 +50,7 @@ class MemberServiceTest {
         given(passwordEncoder.encode("Password123!")).willReturn("bcrypted_password_123");
 
         Member member = request.toEntity("bcrypted_password_123");
-        given(memberRepository.save(any(Member.class))).willReturn(member);
+        given(memberRepository.saveAndFlush(any(Member.class))).willReturn(member);
 
         // when
         MemberSignUpResponse response = memberService.signUp(request);
@@ -58,7 +59,7 @@ class MemberServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getEmail()).isEqualTo("newuser@snowthing.com");
         assertThat(response.getNickname()).isEqualTo("신규보더");
-        verify(memberRepository).save(any(Member.class));
+        verify(memberRepository).saveAndFlush(any(Member.class));
     }
 
     @Test
@@ -96,6 +97,28 @@ class MemberServiceTest {
         given(memberRepository.existsByNickname("중복닉네임")).willReturn(true);
 
         // when & then
+        assertThatThrownBy(() -> memberService.signUp(request))
+                .isInstanceOf(com.ikae.snowthing.global.exception.CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
+    }
+
+    @Test
+    @DisplayName("동시 가입의 닉네임 unique 위반도 중복 닉네임 오류로 변환해야 한다")
+    void signUp_ConcurrentDuplicateNickname_Exception() {
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("new@snowthing.com")
+                        .password("Password123!")
+                        .nickname("동시가입닉네임")
+                        .build();
+
+        given(memberRepository.existsByEmail("new@snowthing.com")).willReturn(false);
+        given(memberRepository.existsByNickname("동시가입닉네임")).willReturn(false);
+        given(passwordEncoder.encode("Password123!")).willReturn("bcrypted_password_123");
+        given(memberRepository.saveAndFlush(any(Member.class)))
+                .willThrow(new DataIntegrityViolationException("nickname unique constraint"));
+
         assertThatThrownBy(() -> memberService.signUp(request))
                 .isInstanceOf(com.ikae.snowthing.global.exception.CustomAuthException.class)
                 .extracting("errorCode")

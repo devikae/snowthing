@@ -18,6 +18,7 @@ import com.ikae.snowthing.domain.email.dto.EmailVerificationTokenResponse;
 import com.ikae.snowthing.domain.email.entity.EmailVerification;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationPurpose;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationStatus;
+import com.ikae.snowthing.domain.email.mail.EmailDeliveryUncertainException;
 import com.ikae.snowthing.domain.email.mail.VerificationEmailSender;
 import com.ikae.snowthing.domain.email.repository.EmailVerificationRepository;
 import com.ikae.snowthing.domain.email.security.EmailVerificationHasher;
@@ -145,6 +146,13 @@ public class EmailVerificationService {
         try {
             String messageId = emailSender.sendVerificationCode(email, code, purpose);
             writer.markSent(requestId, purpose, messageId);
+            return response(requestId);
+        } catch (EmailDeliveryUncertainException exception) {
+            log.warn(
+                    "Verification email delivery result is uncertain: purpose={}, requestId={}",
+                    purpose,
+                    requestId);
+            writer.markSent(requestId, purpose, null);
             return response(requestId);
         } catch (RuntimeException exception) {
             writer.markFailed(requestId, purpose);

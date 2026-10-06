@@ -11,7 +11,6 @@ import org.mockito.ArgumentCaptor;
 
 import com.ikae.snowthing.domain.email.entity.EmailVerificationPurpose;
 import com.ikae.snowthing.global.error.ErrorCode;
-import com.ikae.snowthing.global.exception.CustomException;
 
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
@@ -57,7 +56,7 @@ class SesVerificationEmailSenderTest {
                                         "member@example.com",
                                         "012345",
                                         EmailVerificationPurpose.PASSWORD_RESET))
-                .isInstanceOf(CustomException.class)
+                .isInstanceOf(EmailDeliveryUncertainException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.EMAIL_DELIVERY_UNAVAILABLE);
     }

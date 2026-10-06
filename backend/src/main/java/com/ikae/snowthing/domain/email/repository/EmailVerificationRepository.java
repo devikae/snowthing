@@ -38,6 +38,8 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
             @Param("purpose") EmailVerificationPurpose purpose);
 
     @Modifying
-    @Query("delete from EmailVerification e where e.expiresAt < :cutoff")
+    @Query(
+            "delete from EmailVerification e where e.expiresAt < :cutoff"
+                    + " and (e.tokenExpiresAt is null or e.tokenExpiresAt < :cutoff)")
     int deleteExpiredBefore(@Param("cutoff") LocalDateTime cutoff);
 }

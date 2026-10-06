@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.member.service;
 
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +44,12 @@ public class MemberService {
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         Member member = request.toEntity(encodedPassword, normalizedEmail);
 
-        Member savedMember = memberRepository.save(member);
+        Member savedMember;
+        try {
+            savedMember = memberRepository.saveAndFlush(member);
+        } catch (DataIntegrityViolationException exception) {
+            throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
+        }
 
         if (!request.getResortIds().isEmpty()) {
             List<Resort> resorts = resortRepository.findAllById(request.getResortIds());

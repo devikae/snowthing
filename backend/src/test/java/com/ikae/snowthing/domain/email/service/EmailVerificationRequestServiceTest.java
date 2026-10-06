@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import com.ikae.snowthing.domain.email.dto.EmailVerificationSendResponse;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationPurpose;
+import com.ikae.snowthing.domain.email.mail.EmailDeliveryUncertainException;
 import com.ikae.snowthing.domain.email.mail.VerificationEmailSender;
 import com.ikae.snowthing.domain.email.repository.EmailVerificationRepository;
 import com.ikae.snowthing.domain.email.security.EmailVerificationHasher;
@@ -117,5 +118,23 @@ class EmailVerificationRequestServiceTest {
 
         assertThat(response.requestId()).isNotBlank();
         verify(writer).markFailed(anyString(), eq(EmailVerificationPurpose.PASSWORD_RESET));
+    }
+
+    @Test
+    void uncertainDeliveryKeepsOriginalRequestEligibleForConfirmation() {
+        given(memberRepository.existsByEmail("member@snowthing.org")).willReturn(true);
+        given(
+                        emailSender.sendVerificationCode(
+                                eq("member@snowthing.org"),
+                                anyString(),
+                                eq(EmailVerificationPurpose.PASSWORD_RESET)))
+                .willThrow(new EmailDeliveryUncertainException(new RuntimeException("timeout")));
+
+        EmailVerificationSendResponse response =
+                service.requestPasswordReset("member@snowthing.org", "203.0.113.10");
+
+        verify(writer)
+                .markSent(response.requestId(), EmailVerificationPurpose.PASSWORD_RESET, null);
+        verify(writer, never()).markFailed(anyString(), any());
     }
 }
