@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.member.entity;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.*;
@@ -43,6 +44,9 @@ public class Member extends BaseTimeEntity {
     @Column(name = "departure_region", length = 100)
     private String departureRegion;
 
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+
     @Column(name = "crew_id")
     private Long crewId;
 
@@ -79,6 +83,7 @@ public class Member extends BaseTimeEntity {
             String profileImageUrl,
             String bio,
             String departureRegion,
+            LocalDateTime emailVerifiedAt,
             Long crewId,
             String crewRole,
             Role role,
@@ -90,10 +95,38 @@ public class Member extends BaseTimeEntity {
         this.profileImageUrl = profileImageUrl;
         this.bio = bio;
         this.departureRegion = departureRegion;
+        this.emailVerifiedAt = emailVerifiedAt;
         this.crewId = crewId;
         this.crewRole = crewRole;
         this.role = role != null ? role : Role.ROLE_USER;
         this.status = status != null ? status : MemberStatus.ACTIVE;
+    }
+
+    public Member(
+            String publicId,
+            String email,
+            String password,
+            String nickname,
+            String profileImageUrl,
+            String bio,
+            String departureRegion,
+            Long crewId,
+            String crewRole,
+            Role role,
+            MemberStatus status) {
+        this(
+                publicId,
+                email,
+                password,
+                nickname,
+                profileImageUrl,
+                bio,
+                departureRegion,
+                null,
+                crewId,
+                crewRole,
+                role,
+                status);
     }
 
     public void updateProfile(
@@ -102,5 +135,13 @@ public class Member extends BaseTimeEntity {
         this.bio = bio;
         this.departureRegion = departureRegion;
         this.profileImageUrl = profileImageUrl;
+    }
+
+    public void verifyEmail(LocalDateTime verifiedAt) {
+        this.emailVerifiedAt = verifiedAt;
+    }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }

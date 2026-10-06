@@ -31,6 +31,9 @@ public class MemberSignUpRequest {
             message = "비밀번호에는 특수문자가 포함되어야 합니다.")
     private String password;
 
+    @NotBlank(message = "이메일 인증을 완료해 주세요.")
+    private String emailVerificationToken;
+
     @NotBlank(message = "닉네임은 필수 입력값입니다.")
     @jakarta.validation.constraints.Size(min = 2, max = 20, message = "닉네임은 2자 이상 20자 이하이어야 합니다.")
     private String nickname;
@@ -47,6 +50,7 @@ public class MemberSignUpRequest {
     public MemberSignUpRequest(
             String email,
             String password,
+            String emailVerificationToken,
             String nickname,
             String bio,
             String departureRegion,
@@ -54,6 +58,7 @@ public class MemberSignUpRequest {
             List<Long> ridingStyleIds) {
         this.email = email;
         this.password = password;
+        this.emailVerificationToken = emailVerificationToken;
         this.nickname = nickname;
         this.bio = bio;
         this.departureRegion = departureRegion;
@@ -71,8 +76,12 @@ public class MemberSignUpRequest {
     }
 
     public Member toEntity(String encodedPassword) {
+        return toEntity(encodedPassword, this.email);
+    }
+
+    public Member toEntity(String encodedPassword, String normalizedEmail) {
         return Member.builder()
-                .email(this.email)
+                .email(normalizedEmail)
                 .password(encodedPassword)
                 .nickname(this.nickname)
                 .bio(this.bio)

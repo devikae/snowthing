@@ -6,10 +6,16 @@ export const API_ENDPOINTS = {
   auth: {
     login: `${API_V1_URL}/auth/login`,
     logout: `${API_V1_URL}/auth/logout`,
+    requestSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up`,
+    confirmSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up/confirm`,
+    requestPasswordReset: `${API_V1_URL}/auth/password-reset/requests`,
+    confirmPasswordReset: `${API_V1_URL}/auth/password-reset/confirm`,
+    resetPassword: `${API_V1_URL}/auth/password-reset`,
   },
   members: {
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
+    emailAvailability: `${API_V1_URL}/members/email-availability`,
   },
   images: {
     upload: `${API_V1_URL}/images`,

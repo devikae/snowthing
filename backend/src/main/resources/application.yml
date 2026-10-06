@@ -27,6 +27,15 @@ logging:
     org.hibernate.orm.jdbc.bind: trace
 
 snowthing:
+  email:
+    verification:
+      secret: ${SNOWTHING_EMAIL_VERIFICATION_SECRET:local-development-email-verification-secret}
+  mail:
+    provider: ${SNOWTHING_MAIL_PROVIDER:disabled}
+    region: ${SNOWTHING_SES_REGION:ap-northeast-2}
+    from-address: ${SNOWTHING_MAIL_FROM:help@snowthing.org}
+    from-name: ${SNOWTHING_MAIL_FROM_NAME:SnowThing}
+    configuration-set: ${SNOWTHING_SES_CONFIGURATION_SET:}
   chat:
     max-connections: ${SNOWTHING_CHAT_MAX_CONNECTIONS:500}
   carpool:
@@ -140,3 +149,14 @@ logging:
     org.hibernate.SQL: info
     org.hibernate.orm.jdbc.bind: info
     com.ikae.snowthing: info
+
+snowthing:
+  email:
+    verification:
+      secret: ${SNOWTHING_EMAIL_VERIFICATION_SECRET}
+  mail:
+    provider: ${SNOWTHING_MAIL_PROVIDER:ses}
+    region: ${SNOWTHING_SES_REGION:ap-northeast-2}
+    from-address: ${SNOWTHING_MAIL_FROM:help@snowthing.org}
+    from-name: ${SNOWTHING_MAIL_FROM_NAME:SnowThing}
+    configuration-set: ${SNOWTHING_SES_CONFIGURATION_SET:}

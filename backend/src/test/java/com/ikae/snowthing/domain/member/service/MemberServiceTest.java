@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -25,6 +26,8 @@ class MemberServiceTest {
     @Mock private MemberRepository memberRepository;
 
     @Mock private PasswordEncoder passwordEncoder;
+
+    @Spy private EmailNormalizer emailNormalizer = new EmailNormalizer();
 
     @InjectMocks private MemberService memberService;
 
@@ -73,9 +76,9 @@ class MemberServiceTest {
 
         // when & then
         assertThatThrownBy(() -> memberService.signUp(request))
-                .isInstanceOf(com.ikae.snowthing.global.exception.CustomAuthException.class)
+                .isInstanceOf(com.ikae.snowthing.global.exception.CustomException.class)
                 .extracting("errorCode")
-                .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_EMAIL);
+                .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.EMAIL_ALREADY_REGISTERED);
     }
 
     @Test

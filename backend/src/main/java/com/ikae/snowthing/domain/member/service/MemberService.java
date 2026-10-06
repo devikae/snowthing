@@ -13,6 +13,7 @@ import com.ikae.snowthing.domain.member.entity.*;
 import com.ikae.snowthing.domain.member.repository.*;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
+import com.ikae.snowthing.global.exception.CustomException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,18 +28,20 @@ public class MemberService {
     private final MemberResortRepository memberResortRepository;
     private final MemberRidingStyleRepository memberRidingStyleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailNormalizer emailNormalizer;
 
     @Transactional
     public MemberSignUpResponse signUp(MemberSignUpRequest request) {
-        if (memberRepository.existsByEmail(request.getEmail())) {
-            throw new CustomAuthException(ErrorCode.DUPLICATE_EMAIL);
+        String normalizedEmail = emailNormalizer.normalize(request.getEmail());
+        if (memberRepository.existsByEmail(normalizedEmail)) {
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         if (memberRepository.existsByNickname(request.getNickname())) {
             throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
-        Member member = request.toEntity(encodedPassword);
+        Member member = request.toEntity(encodedPassword, normalizedEmail);
 
         Member savedMember = memberRepository.save(member);
 
