@@ -142,11 +142,13 @@ public class ResortReportService {
     public void updateModerationStatus(
             Long reportId, ResortReportStatus status, CustomUserDetails userDetails) {
         Member member = requireMember(userDetails);
-        if (!isAdmin(member)
-                || (status != ResortReportStatus.NORMAL
-                        && status != ResortReportStatus.HIDDEN
-                        && status != ResortReportStatus.BLOCKED)) {
+        if (!isAdmin(member)) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
+        if (status != ResortReportStatus.NORMAL
+                && status != ResortReportStatus.HIDDEN
+                && status != ResortReportStatus.BLOCKED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         ResortReport report =
                 resortReportRepository

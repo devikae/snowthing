@@ -18,6 +18,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -205,9 +207,12 @@ class ResortReportServiceTest {
         assertThat(report.getStatus()).isEqualTo(ResortReportStatus.DELETED);
     }
 
-    @Test
-    @DisplayName("관리자는 공개 제보를 숨김 상태로 변경할 수 있다")
-    void adminCanHideReport() {
+    @ParameterizedTest
+    @EnumSource(
+            value = ResortReportStatus.class,
+            names = {"NORMAL", "HIDDEN", "BLOCKED"})
+    @DisplayName("An admin can set every allowed moderation status")
+    void adminCanSetAllowedModerationStatus(ResortReportStatus status) {
         Member author = member(1L, "작성자", Role.ROLE_USER);
         Member admin = member(2L, "관리자", Role.ROLE_ADMIN);
         ResortReport report = report(1L, author, resort(10L));
@@ -215,9 +220,41 @@ class ResortReportServiceTest {
                 .willReturn(Optional.of(report));
 
         resortReportService.updateModerationStatus(
-                report.getId(), ResortReportStatus.HIDDEN, new CustomUserDetails(admin));
+                report.getId(), status, new CustomUserDetails(admin));
 
-        assertThat(report.getStatus()).isEqualTo(ResortReportStatus.HIDDEN);
+        assertThat(report.getStatus()).isEqualTo(status);
+    }
+
+    @Test
+    @DisplayName("A non-admin receives ACCESS_DENIED when changing moderation status")
+    void nonAdminCannotChangeModerationStatus() {
+        Member member = member(1L, "member", Role.ROLE_USER);
+
+        assertThatThrownBy(
+                        () ->
+                                resortReportService.updateModerationStatus(
+                                        1L,
+                                        ResortReportStatus.DELETED,
+                                        new CustomUserDetails(member)))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ACCESS_DENIED);
+    }
+
+    @Test
+    @DisplayName("An admin receives INVALID_INPUT when requesting DELETED moderation status")
+    void adminCannotSetDeletedModerationStatus() {
+        Member admin = member(1L, "admin", Role.ROLE_ADMIN);
+
+        assertThatThrownBy(
+                        () ->
+                                resortReportService.updateModerationStatus(
+                                        1L,
+                                        ResortReportStatus.DELETED,
+                                        new CustomUserDetails(admin)))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
     }
 
     private ResortReportCreateRequest request(Long resortId) {

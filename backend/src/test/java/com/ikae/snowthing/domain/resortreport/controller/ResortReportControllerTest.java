@@ -4,6 +4,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
+import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportCreateRequest;
@@ -173,5 +175,36 @@ class ResortReportControllerTest {
                                 .with(csrf())
                                 .with(user(userDetails)))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETED is returned as INVALID_INPUT when requested by an admin")
+    void updateModerationStatus_Deleted_ReturnsBadRequest() throws Exception {
+        Member admin =
+                memberRepository.save(
+                        Member.builder()
+                                .email("admin@snowthing.com")
+                                .password("password123!")
+                                .nickname("admin")
+                                .role(Role.ROLE_ADMIN)
+                                .build());
+        long reportId =
+                resortReportService
+                        .createReport(
+                                member.getId(),
+                                ResortReportCreateRequest.builder()
+                                        .resortId(resort.getId())
+                                        .content("invalid moderation status")
+                                        .build())
+                        .getReportId();
+
+        mockMvc.perform(
+                        patch("/api/v1/admin/resort-reports/{reportId}/moderation-status", reportId)
+                                .with(csrf())
+                                .with(user(new CustomUserDetails(admin)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"moderationStatus\":\"DELETED\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_INPUT"));
     }
 }
