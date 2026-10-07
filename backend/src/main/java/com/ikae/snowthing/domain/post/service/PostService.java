@@ -35,6 +35,8 @@ public class PostService {
 
     private static final String ANONYMOUS_CATEGORY_CODE = "ANONYMOUS";
     private static final String MARKET_CATEGORY_CODE = "MARKET";
+    private static final String CREW_CATEGORY_CODE = "CREW";
+    private static final String SEASON_ROOM_CATEGORY_CODE = "SEASON_ROOM";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
     private static final int MAX_OFFSET_PAGE = 100;
@@ -58,6 +60,15 @@ public class PostService {
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
         rejectMarketCategory(category);
+
+        if (isAnonymousDisallowedCategory(category.getCode())) {
+            if (userDetails == null) {
+                throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+            }
+            if (request.isAnonymous()) {
+                throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+            }
+        }
 
         Member member = null;
         String encodedPassword = null;
@@ -208,6 +219,10 @@ public class PostService {
         rejectMarketPost(post);
         rejectMarketCategory(category);
 
+        if (isAnonymousDisallowedCategory(category.getCode()) && post.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
+
         post.update(request.title(), request.content(), category);
         post.replaceImages(toPostImages(request.imageUrls()));
         return PostResponse.from(post);
@@ -302,6 +317,11 @@ public class PostService {
         if (MARKET_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
             throw new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND);
         }
+    }
+
+    private boolean isAnonymousDisallowedCategory(String categoryCode) {
+        return CREW_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
+                || SEASON_ROOM_CATEGORY_CODE.equalsIgnoreCase(categoryCode);
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {

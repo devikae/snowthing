@@ -71,11 +71,11 @@ jobs:
           scripts/verify-production-migration-005.sh
           scripts/verify-production-migration-006.sh
 
-      - name: Verify production migrations 007-013 schema
+      - name: Verify production migrations 007-015 schema
         working-directory: ${{ github.workspace }}
         run: |
-          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-007-013.sh
-          scripts/verify-production-migration-007-013.sh
+          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-007-015.sh
+          scripts/verify-production-migration-007-015.sh
       - run: ./gradlew spotlessCheck
       - run: ./gradlew test build -x spotlessCheck
 

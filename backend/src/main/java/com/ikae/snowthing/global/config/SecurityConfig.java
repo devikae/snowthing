@@ -171,7 +171,8 @@ public class SecurityConfig {
                                                 HttpMethod.GET,
                                                 "/api/v1/market-listings/preview",
                                                 "/api/v1/carpools/**",
-                                                "/api/carpools/**")
+                                                "/api/carpools/**",
+                                                "/api/v1/resort-reports/**")
                                         .permitAll()
                                         .requestMatchers(
                                                 HttpMethod.POST,

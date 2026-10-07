@@ -336,20 +336,27 @@ button:disabled {
 .home-feed-state { display: flex; min-height: 220px; flex-direction: column; align-items: center; justify-content: center; gap: 9px; color: #64748b; }.home-feed-state .material-symbols-outlined { color: #38bdf8; font-size: 28px; }.home-feed-state strong { font-size: 12px; }.home-feed-state button { border: 0; border-radius: 6px; background: #0f2942; padding: 7px 11px; color: white; font-size: 11px; font-weight: 700; }.home-feed-state.error .material-symbols-outlined { color: #e11d48; }
 .mini-heading { min-height: 39px; padding: 0 12px; }.mini-heading h2 { display: flex; align-items: center; gap: 6px; margin: 0; color: #1e293b; font-size: 12px; font-weight: 800; }.mini-heading h2 i { width: 8px; height: 8px; border-radius: 50%; background: #0284c7; }.mini-heading > a { color: #64748b; font-size: 11px; font-weight: 650; }.mini-heading > a:hover { color: #0284c7; }
 .technique-panel { padding-bottom: 12px; }.technique-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px 0; }.technique-grid > a { display: flex; gap: 10px; border: 1px solid #f1f5f9; border-radius: 4px; background: #f8fafc; padding: 8px; }.technique-grid img { width: 58px; height: 58px; border-radius: 4px; object-fit: cover; }.technique-grid div { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; }.technique-grid strong { color: #334155; font-size: 12px; line-height: 1.45; }.technique-grid span { color: #94a3b8; font-size: 10px; }
-.snow-report-widget .mini-heading h2 > span { color: #64748b; font-size: 11px; font-weight: 550; }
-.snow-report-compose { display: grid; grid-template-columns: 66px minmax(0,1fr) auto; gap: 6px; border-bottom: 1px solid #f1f5f9; padding: 10px 12px; }
-.snow-report-compose select,.snow-report-compose input,.snow-report-compose button { height: 36px; border-radius: 6px; font-size: 13px; }
-.snow-report-compose select,.snow-report-compose input { min-width: 0; border: 1px solid #dbe3ed; outline: 0; background: #f8fafc; color: #475569; }
-.snow-report-compose select { width: 66px; padding: 0 3px 0 8px; font-weight: 700; }.snow-report-compose option { font-size: 13px; }.snow-report-compose input { padding: 0 10px; }.snow-report-compose input::placeholder { color: #94a3b8; }
-.snow-report-compose select:focus,.snow-report-compose input:focus { border-color: #0284c7; background: white; box-shadow: 0 0 0 2px rgba(2,132,199,.1); }
-.snow-report-compose button { border: 0; background: #0f2942; padding: 0 11px; color: white; font-weight: 750; }.snow-report-compose button:disabled { cursor: not-allowed; opacity: .45; }
-.snow-report-list { max-height: 230px; overflow-y: auto; padding: 0 12px; }.snow-report-list article { display: flex; min-width: 0; min-height: 46px; align-items: center; gap: 9px; border-bottom: 1px solid #f1f5f9; padding: 8px 1px; }.snow-report-list article:last-child { border-bottom: 0; }
-.snow-report-tag { display: inline-flex; min-width: 50px; height: 26px; flex: none; align-items: center; justify-content: center; border-radius: 5px; padding: 0 8px; color: white; font-size: 12px; font-weight: 700; }
-.snow-report-list strong { display: block; overflow: hidden; min-width: 0; flex: 1; color: #1e293b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }.snow-report-list time { flex: none; color: #64748b; font-size: 11px; font-variant-numeric: tabular-nums; }
+.snow-report-widget .mini-heading h2 > time { color: #475569; font-size: 13px; font-weight: 750; }
+.snow-report-compose { display: grid; grid-template-columns: 92px minmax(0,1fr) auto; gap: 6px; border-bottom: 1px solid #f1f5f9; padding: 10px 12px; }
+.snow-report-compose input,.snow-report-compose > button { height: 36px; border-radius: 6px; font-size: 13px; }
+.snow-report-compose input { min-width: 0; border: 1px solid #dbe3ed; outline: 0; background: #f8fafc; color: #475569; padding: 0 10px; }.snow-report-compose input::placeholder { color: #94a3b8; }
+.snow-report-compose input:focus { border-color: #0284c7; background: white; box-shadow: 0 0 0 2px rgba(2,132,199,.1); }
+.snow-report-compose > button { border: 0; background: #0f2942; padding: 0 11px; color: white; font-weight: 750; }.snow-report-compose button:disabled { cursor: not-allowed; opacity: .45; }
+.compact-select { position: relative; min-width: 0; font-size: 13px; }
+.compact-select-trigger { display: flex; width: 100%; height: 36px; align-items: center; justify-content: space-between; gap: 2px; overflow: hidden; border: 1px solid #dbe3ed; border-radius: 6px; outline: 0; background: #f8fafc; padding: 0 4px 0 8px; color: #475569; font: inherit; font-weight: 700; cursor: pointer; }
+.compact-select-trigger:focus-visible { border-color: #0284c7; background: white; box-shadow: 0 0 0 2px rgba(2,132,199,.1); }.compact-select-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.compact-select-trigger .material-symbols-outlined { flex: none; font-size: 18px; }
+.compact-select-list { position: absolute; z-index: 80; top: calc(100% + 4px); left: 0; min-width: max(100%, 128px); max-height: 216px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: white; padding: 4px; box-shadow: 0 10px 28px rgba(15,23,42,.16); }
+.compact-select-list button { display: block; width: 100%; height: 34px; border: 0; border-radius: 5px; background: transparent; padding: 0 9px; color: #334155; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }.compact-select-list button.active { background: #f1f5f9; }.compact-select-list button.selected { background: #0f6fbd; color: white; font-weight: 750; }
+.snow-report-compose .compact-select { width: 92px; }
+.resort-filter-select { width: 150px; }.resort-filter-select .compact-select-trigger { padding-inline: 10px 6px; }.resort-filter-select .compact-select-list { min-width: 180px; right: 0; left: auto; }
+.snow-report-list { max-height: 230px; overflow-y: auto; padding: 0 12px; }.snow-report-list article { min-height: 46px; border-bottom: 1px solid #f1f5f9; padding: 8px 1px; }.snow-report-list article:last-child { border-bottom: 0; }
+.snow-report-row { display: grid; min-width: 0; grid-template-columns: 64px minmax(0,1fr) 42px; align-items: center; gap: 8px; }
+.snow-report-tag { display: inline-flex; width: 64px; min-width: 64px; height: 26px; align-items: center; justify-content: center; overflow: hidden; border-radius: 5px; padding: 0 5px; color: white; font-size: 11px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.snow-report-content { display: block; overflow: hidden; min-width: 0; color: #1e293b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }.snow-report-author { overflow: hidden; color: #475569; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }.snow-report-time { color: #334155; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }.snow-report-delete { height: 26px; border: 1px solid #fecaca; border-radius: 5px; background: #fff7f7; padding: 0 7px; color: #b91c1c; font-size: 11px; font-weight: 750; cursor: pointer; }
 .resort-report-page { min-height: calc(100vh - 142px); padding-block: 24px 48px; }
-.resort-report-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }.resort-report-page-heading > div { display: flex; align-items: baseline; gap: 10px; }.resort-report-page-heading h1 { margin: 0; color: #0f2942; font-size: 24px; font-weight: 850; letter-spacing: -.035em; }.resort-report-page-heading time { color: #64748b; font-size: 12px; }.resort-report-page-heading > a { color: #64748b; font-size: 12px; font-weight: 700; }
+.resort-report-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }.resort-report-page-heading > div { display: flex; align-items: baseline; gap: 10px; }.resort-report-page-heading h1 { margin: 0; color: #0f2942; font-size: 24px; font-weight: 850; letter-spacing: -.035em; }.resort-report-page-heading time { color: #475569; font-size: 16px; font-weight: 750; }.resort-report-page-heading > a { color: #64748b; font-size: 12px; font-weight: 700; }
 .resort-report-board { overflow: hidden; }.resort-report-board > header { display: flex; min-height: 46px; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding: 0 16px; }.resort-report-board > header strong { color: #334155; font-size: 13px; }.resort-report-board > header span { color: #64748b; font-size: 11px; }
-.resort-report-board article { display: grid; grid-template-columns: 58px minmax(0,1fr) auto; align-items: center; gap: 12px; min-height: 58px; border-bottom: 1px solid #f1f5f9; padding: 10px 16px; }.resort-report-board article:last-child { border-bottom: 0; }.resort-report-board article strong { color: #1e293b; font-size: 14px; font-weight: 650; line-height: 1.45; }.resort-report-board article time { color: #64748b; font-size: 11px; font-variant-numeric: tabular-nums; }
+.resort-report-board article { min-height: 58px; grid-template-columns: 64px minmax(0,1fr) minmax(0,10em) 46px auto; gap: 12px; border-bottom: 1px solid #f1f5f9; padding: 10px 16px; }.resort-report-board article:last-child { border-bottom: 0; }.resort-report-board article .snow-report-content { font-size: 14px; font-weight: 650; line-height: 1.45; }.resort-report-board article .snow-report-author { font-size: 13px; }
 .carpool-widget > div:nth-child(2) { padding: 0 12px; }.carpool-widget article { border-bottom: 1px solid #f1f5f9; padding: 11px 0; }.carpool-widget article:last-child { border: 0; }.carpool-widget article header,.carpool-widget article p,.carpool-widget article footer { display: flex; justify-content: space-between; gap: 8px; }.carpool-widget article header strong { color: #334155; font-size: 12px; }.carpool-widget article header i { color: #94a3b8; font-style: normal; }.carpool-widget article header em { color: #0369a1; font-style: normal; }.carpool-widget article header > span { border: 1px solid #fecdd3; border-radius: 3px; background: #fff1f2; padding: 2px 5px; color: #e11d48; font-size: 10px; font-weight: 800; }.carpool-widget article p { margin: 7px 0; color: #64748b; font-size: 11px; }.carpool-widget article p strong { color: #475569; }.carpool-widget article footer { color: #94a3b8; font-size: 10px; }.carpool-widget article footer a { flex: none; color: #0284c7; font-weight: 750; }
 .market-widget { padding-bottom: 11px; }.market-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 10px 12px 0; }.market-grid > a { min-width: 0; border: 1px solid #e2e8f0; border-radius: 5px; background: #fbfcfd; padding: 7px; }.market-grid > a:hover { border-color: #38bdf8; }.market-grid a > div { position: relative; overflow: hidden; border-radius: 4px; }.market-grid img { width: 100%; aspect-ratio: 1.35; object-fit: cover; transition: transform .2s ease; }.market-grid a:hover img { transform: scale(1.03); }.market-grid div span { position: absolute; top: 5px; left: 5px; border-radius: 3px; background: #0f172a; padding: 2px 5px; color: white; font-size: 9px; font-weight: 800; }.market-grid > a > strong,.market-grid > a > b,.market-grid > a > small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.market-grid > a > strong { margin-top: 6px; color: #334155; font-size: 11px; }.market-grid > a > b { margin-top: 2px; color: #0f172a; font-size: 12px; }.market-grid > a > small { margin-top: 2px; color: #94a3b8; font-size: 10px; }
 .market-preview-grid > a { padding: 0; }
@@ -1039,23 +1046,26 @@ html[data-theme="dark"] .community-copyright {
 
 html[data-theme="dark"] .snow-report-compose,
 html[data-theme="dark"] .snow-report-list article { border-color: var(--snow-border); }
-html[data-theme="dark"] .snow-report-compose select,
 html[data-theme="dark"] .snow-report-compose input { border-color: var(--snow-border-strong); background: var(--snow-surface-low); color: var(--snow-ink); }
-html[data-theme="dark"] .snow-report-compose select:focus,
 html[data-theme="dark"] .snow-report-compose input:focus { background: var(--snow-canvas); }
+html[data-theme="dark"] .compact-select-trigger { border-color: var(--snow-border-strong); background: var(--snow-surface-low); color: var(--snow-ink); }
+html[data-theme="dark"] .compact-select-list { border-color: var(--snow-border-strong); background: var(--snow-surface); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+html[data-theme="dark"] .compact-select-list button { color: var(--snow-ink); }html[data-theme="dark"] .compact-select-list button.active { background: var(--snow-surface-low); }html[data-theme="dark"] .compact-select-list button.selected { background: #0f6fbd; color: white; }
 html[data-theme="dark"] .resort-report-page-heading h1,
 html[data-theme="dark"] .resort-report-board > header strong,
 html[data-theme="dark"] .resort-report-board article strong { color: var(--snow-ink); }
 html[data-theme="dark"] .resort-report-page-heading time,
 html[data-theme="dark"] .resort-report-page-heading > a,
 html[data-theme="dark"] .resort-report-board > header span,
-html[data-theme="dark"] .resort-report-board article time { color: var(--snow-muted); }
+html[data-theme="dark"] .snow-report-author { color: var(--snow-muted); }
+html[data-theme="dark"] .snow-report-time { color: var(--snow-ink-soft); }
+html[data-theme="dark"] .snow-report-delete { border-color: #7f1d1d; background: rgba(127,29,29,.18); color: #fca5a5; }
 html[data-theme="dark"] .resort-report-board > header,
 html[data-theme="dark"] .resort-report-board article { border-color: var(--snow-border); }
 
 @media (max-width: 420px) {
-  .snow-report-compose { grid-template-columns: 72px minmax(0,1fr); }
-  .snow-report-compose button { grid-column: 1/-1; }
+  .snow-report-compose { grid-template-columns: 92px minmax(0,1fr); }
+  .snow-report-compose > button { grid-column: 1/-1; }
 }
 
 @media (max-width: 640px) {
@@ -1063,8 +1073,8 @@ html[data-theme="dark"] .resort-report-board article { border-color: var(--snow-
   .resort-report-page-heading { align-items: flex-start; }
   .resort-report-page-heading > div { align-items: flex-start; flex-direction: column; gap: 3px; }
   .resort-report-page-heading h1 { font-size: 21px; }
-  .resort-report-board article { grid-template-columns: 52px minmax(0,1fr) auto; gap: 8px; padding-inline: 10px; }
-  .resort-report-board article strong { font-size: 13px; }
+  .resort-report-board article { grid-template-columns: 64px minmax(0,1fr) minmax(0,72px) 42px auto; gap: 6px; padding-inline: 10px; }
+  .resort-report-board article .snow-report-content { font-size: 13px; }
 }
 
 /* Live chat */

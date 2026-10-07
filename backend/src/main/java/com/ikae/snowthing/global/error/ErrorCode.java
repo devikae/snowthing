@@ -34,6 +34,7 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "POST_005",
             "게시판 조회의 최대 한계선은 100페이지(2,000개 글)까지입니다. 더 이전 글은 검색 기능을 이용해 주세요."),
+    ANONYMOUS_POST_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "POST_006", "해당 게시판은 익명 작성을 지원하지 않습니다."),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "존재하지 않거나 이미 삭제된 댓글입니다."),
     PARENT_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_002", "존재하지 않는 부모 댓글입니다."),
     INVALID_COMMENT_PARENT(HttpStatus.BAD_REQUEST, "COMMENT_003", "동일한 게시글의 댓글에만 대댓글을 달 수 있습니다."),
@@ -98,6 +99,18 @@ public enum ErrorCode {
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_002", "파일 크기는 최대 5MB까지 업로드 가능합니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_003", "존재하지 않는 파일입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_004", "파일 업로드에 실패했습니다."),
+    RESORT_NOT_FOUND(HttpStatus.NOT_FOUND, "RESORT_001", "존재하지 않거나 비활성화된 리조트입니다."),
+    INVALID_RESORT_REPORT_CONTENT(
+            HttpStatus.BAD_REQUEST, "REPORT_001", "설질 제보 내용은 1자 이상 100자 이하여야 합니다."),
+    RESORT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "존재하지 않거나 확인할 수 없는 설질 제보입니다."),
+    RESORT_REPORT_DAILY_LIMIT_EXCEEDED(
+            HttpStatus.TOO_MANY_REQUESTS, "REPORT_003", "설질 제보는 하루에 최대 5개까지 작성할 수 있습니다."),
+    RESORT_REPORT_SEASON_CLOSED(
+            HttpStatus.FORBIDDEN, "REPORT_004", "설질 제보는 10월부터 다음 해 4월까지만 작성할 수 있습니다."),
+    RESORT_REPORT_PAGE_LIMIT_EXCEEDED(
+            HttpStatus.BAD_REQUEST, "REPORT_005", "설질 제보는 최대 100페이지까지 조회할 수 있습니다."),
+    RESORT_REPORT_INVALID_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST, "REPORT_006", "설질 제보 페이지 크기는 1 이상 100 이하이어야 합니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

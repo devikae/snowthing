@@ -54,7 +54,7 @@ function ThemeToggle() {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "carpool" | "market" | "resort" | "profile" | "login" | "signup";
+export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup";
 
 interface MemberUser {
   publicId: string;
@@ -76,6 +76,8 @@ const boardItems: NavItem[] = [
   { href: "/posts?category=ANONYMOUS", label: "익명게시판", key: "anonymous" },
   { href: "/posts?category=QNA", label: "장비 후기", key: "gear" },
   { href: "/posts?category=FOOD", label: "리조트 맛집", key: "food" },
+  { href: "/posts?category=CREW", label: "동호회 모집", key: "crew" },
+  { href: "/posts?category=SEASON_ROOM", label: "시즌방 모집", key: "seasonRoom" },
 ];
 
 export function TopNav({ active = "home" }: { active?: ActiveNav }) {
@@ -85,7 +87,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const boardActive = ["posts", "best", "free", "anonymous", "gear", "food"].includes(active);
+  const boardActive = ["posts", "best", "free", "anonymous", "gear", "food", "crew", "seasonRoom"].includes(active);
   const isBoardItemActive = (key: string) => active === key;
 
   useEffect(() => {

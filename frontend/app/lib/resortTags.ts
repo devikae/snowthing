@@ -14,10 +14,18 @@ export const RESORT_MAP: Record<string, ResortMeta> = {
   MUJU: { code: "MUJU", koreanName: "무주", shortName: "무주", markerClass: "bg-[#2563eb]" },
   JISAN: { code: "JISAN", koreanName: "지산", shortName: "지산", markerClass: "bg-[#f2b335]" },
   KONJIAM: { code: "KONJIAM", koreanName: "곤지암", shortName: "곤지", markerClass: "resort-marker-konjiam" },
+  EDEN_VALLEY: { code: "EDEN_VALLEY", koreanName: "에덴밸리", shortName: "에덴밸리", markerClass: "bg-[#0369a1]" },
+  ELYSIAN: { code: "ELYSIAN", koreanName: "엘리시안", shortName: "엘리시안", markerClass: "bg-[#7c3aed]" },
+  ALPENSIA: { code: "ALPENSIA", koreanName: "알펜시아", shortName: "알펜시아", markerClass: "bg-[#c2410c]" },
+  OAK_VALLEY: { code: "OAK_VALLEY", koreanName: "오크밸리", shortName: "오크밸리", markerClass: "bg-[#3f6212]" },
+  O2_RESORT: { code: "O2_RESORT", koreanName: "오투", shortName: "오투", markerClass: "bg-[#be123c]" },
   ETC: { code: "ETC", koreanName: "기타", shortName: "기타", markerClass: "bg-[#9a3412]" },
 };
 
 export const RESORT_OPTIONS = [
   { value: "", label: "일반" },
-  ...Object.values(RESORT_MAP).map((resort) => ({ value: resort.code, label: resort.koreanName })),
+  ...["PHOENIX", "VIVALDI", "HIGH1", "YONGPYONG", "WELLI_HILLI", "MUJU", "JISAN", "KONJIAM", "ETC"].map((code) => ({
+    value: RESORT_MAP[code].code,
+    label: RESORT_MAP[code].koreanName,
+  })),
 ];

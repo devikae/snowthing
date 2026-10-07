@@ -63,10 +63,12 @@ export function ResortCamView({
       {/* 상단 탭 네비게이션: 리조트 현황 vs 슬로프캠 */}
       <div className={styles.topTabs}>
         <div className={styles.topTabsLeft}>
+          {/* 실시간 현황 화면 공개 시 다시 노출한다.
           <Link href="/resort" className={styles.tabInactive}>
             <span className="material-symbols-outlined">info</span>
             실시간 현황
           </Link>
+          */}
           <Link href="/resort-cam" className={styles.tabActive}>
             <span className="material-symbols-outlined">videocam</span>
             슬로프캠 LIVE

@@ -4,6 +4,10 @@ import java.util.List;
 
 /** 웹 Offset 및 모바일 Keyset Cursor 공통 Wrapper 응답 DTO */
 public record CursorPageResponse<T>(List<T> content, PageInfo pageInfo) {
+    public CursorPageResponse {
+        content = List.copyOf(content);
+    }
+
     public record PageInfo(
             Integer page, // 웹용: 현재 페이지 번호 (모바일 시 null)
             Integer totalPages, // 웹용: 전체 페이지 수 (모바일 시 null)

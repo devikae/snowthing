@@ -69,4 +69,32 @@ export const API_ENDPOINTS = {
     autoPreview: `${API_V1_URL}/carpools/auto-preview`,
     places: (query: string) => `${API_V1_URL}/carpools/places?query=${encodeURIComponent(query)}`,
   },
+  resortReports: {
+    today: (resortId?: number, page = 1, size = 20) =>
+      `${API_V1_URL}/resort-reports/today?page=${page}&size=${size}${resortId ? `&resortId=${resortId}` : ""}`,
+    create: `${API_V1_URL}/resort-reports`,
+    delete: (reportId: number) => `${API_V1_URL}/resort-reports/${reportId}`,
+  },
 } as const;
+
+export interface ResortReportItem {
+  reportId: number;
+  resortId: number;
+  resortName: string;
+  resortCode: string;
+  authorNickname: string;
+  content: string;
+  createdAt: string;
+  canDelete: boolean;
+}
+
+export interface OffsetPage<T> {
+  content: T[];
+  pageInfo: {
+    page: number;
+    totalPages: number;
+    totalElements: number;
+    hasNext: boolean;
+    pageSize: number;
+  };
+}

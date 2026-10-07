@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
+import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import dynamic from "next/dynamic";
 import { csrfFetch } from "../../lib/csrfFetch";
@@ -907,7 +908,7 @@ function CommentRow({
   return (
     <div className="post-comment-item">
       <div className={`comment-youtube-row ${isAnonymousPost ? "anonymous-comment-row" : ""}`}>
-        {!isAnonymousPost && <CommentProfileAvatar item={item} />}
+        {!isAnonymousPost && <CommentProfileAvatar nickname={getWriterName(item)} profileImageUrl={item.writer?.profileImageUrl} />}
         <div className="comment-youtube-body">
           <header>
             <strong className={item.isDeleted ? "deleted" : ""}>
@@ -1085,7 +1086,7 @@ function ReplyRow({
     <div className="post-comment-reply">
       <div className={`comment-youtube-row ${isAnonymousPost ? "anonymous-comment-row" : ""}`}>
         <span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>
-        {!isAnonymousPost && <CommentProfileAvatar item={item} />}
+        {!isAnonymousPost && <CommentProfileAvatar nickname={getWriterName(item)} profileImageUrl={item.writer?.profileImageUrl} />}
         <div className="comment-youtube-body">
           <header>
             <strong className={item.isDeleted ? "deleted" : ""}>
@@ -1127,15 +1128,6 @@ function ReplyRow({
         </div>
       </div>
     </div>
-  );
-}
-
-function CommentProfileAvatar({ item }: { item: CommentItem }) {
-  const name = getWriterName(item);
-  return item.writer?.profileImageUrl ? (
-    <Image className="comment-profile-avatar" src={item.writer.profileImageUrl} alt="" width={38} height={38} />
-  ) : (
-    <span className="comment-profile-avatar comment-profile-fallback" aria-hidden="true">{name.slice(0, 1)}</span>
   );
 }
 
