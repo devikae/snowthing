@@ -1,3 +1,14 @@
+## 알림 기능 멀티 디바이스 작업 브랜치 정리 (2026-10-16)
+
+- 상태: Mac·Windows 공용 브랜치 구성 완료, 기존 설계 복원 및 구현 계획 수립 예정
+- Windows에 보존되어 있던 `feature/notification` 브랜치를 최신 `origin/main`까지 fast-forward
+- `feature/notification`을 GitHub 원격 브랜치로 최초 푸시하고 추적 브랜치 설정
+- Mac 작업 공간 `/Users/juseoklee/orca/workspaces/snowthing/feature-notification` 생성
+- Windows 기존 작업 공간 `C:/Users/ikaes/IdeaProjects/snowthing-notification` 유지
+- 잘못 추가했던 `feature/notification-improvements`의 Mac·Windows 작업 공간과 로컬·원격 브랜치 제거
+- 기존 Codex 세션에서 인앱 알림 범위와 REST 폴링 기반 초기 설계 기록 확인
+- 기능 코드는 변경하지 않았으며, 전체 설계 문서 대조와 사용자 승인 후 구현 예정
+
 ## 동호회 및 시즌방 홍보 게시판 분리 구현 (2026-10-06)
 
 - 상태: 구현·전체 테스트·프로덕션 빌드 통과 완료
@@ -2048,4 +2059,3 @@
   - 메인 설질 제보는 정보 미리보기 역할에 맞춰 작성자와 삭제 버튼을 제거하고 `리조트·내용·시간`만 표시한다. 긴 내용은 한 줄 말줄임 처리하고 전체 내용 확인과 작성자 삭제는 더보기 화면에 유지했다.
   - 일반 게시글·카풀·중고장터 댓글의 프로필 표시를 공통 컴포넌트로 통일했다. 회원 프로필 이미지가 없을 때 닉네임 첫 글자 대신 기본 프로필 이미지를 사용해 원댓글과 답글이 다르게 보이지 않도록 했다.
   - 관리자 설질 제보 상태 변경에서 권한 검사와 상태값 검사를 분리했다. 비관리자는 기존처럼 `ACCESS_DENIED(403)`을 받고, 관리자가 운영 상태로 허용되지 않는 `DELETED`를 요청하면 `INVALID_INPUT(400)`을 받도록 서비스·API 회귀 테스트를 추가했다.
-
