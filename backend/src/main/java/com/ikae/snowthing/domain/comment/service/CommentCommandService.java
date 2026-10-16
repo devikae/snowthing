@@ -9,6 +9,7 @@ import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.notification.service.NotificationService;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
@@ -25,6 +26,7 @@ class CommentCommandService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final MarketListingRepository marketListingRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     CommentResponse createComment(
@@ -82,11 +84,13 @@ class CommentCommandService {
                         clientIp != null ? clientIp : "127.0.0.1",
                         request.isAnonymous(),
                         encodedPassword);
+        Comment savedComment = commentRepository.save(comment);
         CommentResponse response =
-                CommentResponse.from(commentRepository.save(comment))
+                CommentResponse.from(savedComment)
                         .withViewerPermissions(
                                 userDetails == null ? null : userDetails.getPublicId());
         postRepository.increaseCommentCount(post.getId());
+        notificationService.notifyCommentCreated(post, savedComment, member);
         return response;
     }
 }

@@ -84,6 +84,10 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     COMMENT_UPDATE_CONFLICT(
             HttpStatus.CONFLICT, "COMMENT_006", "다른 요청에서 댓글을 먼저 수정했습니다. 최신 댓글을 다시 확인해 주세요."),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),
+    NOTIFICATION_INVALID_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST, "NOTIFICATION_002", "알림 페이지 크기는 1 이상 50 이하이어야 합니다."),
+    NOTIFICATION_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "NOTIFICATION_003", "알림 조회 커서가 유효하지 않습니다."),
     CHAT_EXTERNAL_LINK_FORBIDDEN(
             HttpStatus.BAD_REQUEST, "CHAT_001", "외부 링크 및 메신저 연락처는 전송할 수 없습니다."),
     CHAT_DUPLICATE_MESSAGE(

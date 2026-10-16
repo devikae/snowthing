@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
+import { NotificationBell } from "./NotificationBell";
 
 type ThemeSetting = "light" | "dark";
 
@@ -165,6 +166,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               </button>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
             </form>
+            {!loading && <NotificationBell visible={Boolean(user)} />}
             {!loading && (user ? (
               <div className="header-profile-wrap">
                 <Link href="/profile" className="header-profile" title={`${user.nickname} 프로필`}>

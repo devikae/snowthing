@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.notification.service.NotificationService;
 import com.ikae.snowthing.domain.post.dto.ReactionCountMismatch;
 import com.ikae.snowthing.domain.post.dto.ReactionReconciliationResult;
 import com.ikae.snowthing.domain.post.dto.ReactionResponse;
@@ -48,6 +49,7 @@ public class ReactionService {
     private final MemberRepository memberRepository;
     private final MarketListingRepository marketListingRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
 
     @Transactional
     public ReactionResponse apply(
@@ -63,6 +65,11 @@ public class ReactionService {
         int inserted = insertReaction(post.getId(), actor, type);
         if (inserted == SINGLE_ROW_AFFECTED) {
             eventPublisher.publishEvent(new PostReactionEvent(post.getId(), type));
+            if (type == ReactionType.LIKE) {
+                int resultingLikeCount = findCurrentCounts(post.getId()).getLikeCount();
+                notificationService.notifyPostBecameBest(
+                        post, actor.memberId(), resultingLikeCount);
+            }
         } else {
             decreaseCount(post.getId(), type);
         }

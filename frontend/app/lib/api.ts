@@ -17,6 +17,13 @@ export const API_ENDPOINTS = {
     signup: `${API_V1_URL}/members`,
     emailAvailability: `${API_V1_URL}/members/email-availability`,
   },
+  notifications: {
+    list: (cursor?: string | null, size = 20) =>
+      `${API_V1_URL}/notifications?size=${size}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    unreadCount: `${API_V1_URL}/notifications/unread-count`,
+    read: (publicId: string) => `${API_V1_URL}/notifications/${publicId}/read`,
+    readAll: `${API_V1_URL}/notifications/read-all`,
+  },
   images: {
     upload: `${API_V1_URL}/images`,
   },

@@ -260,3 +260,26 @@ CREATE TABLE `comment` (
     CONSTRAINT `fk_comment_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE SET NULL,
     CONSTRAINT `fk_comment_parent` FOREIGN KEY (`parent_id`) REFERENCES `comment` (`comment_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='댓글 및 계층형 대댓글';
+
+-- 12. 회원 알림
+CREATE TABLE `notification` (
+    `notification_id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '알림 식별자',
+    `public_id` VARCHAR(36) NOT NULL COMMENT '외부 공개 식별자',
+    `recipient_member_id` BIGINT NOT NULL COMMENT '알림 수신 회원',
+    `type` VARCHAR(30) NOT NULL COMMENT '알림 유형',
+    `post_id` BIGINT NOT NULL COMMENT '대상 게시글',
+    `comment_id` BIGINT NULL COMMENT '대상 댓글',
+    `idempotency_key` VARCHAR(150) NOT NULL COMMENT '중복 생성 방지 키',
+    `read_at` DATETIME NULL COMMENT '읽은 시각',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_notification_public_id` (`public_id`),
+    UNIQUE KEY `uk_notification_idempotency_key` (`idempotency_key`),
+    INDEX `idx_notification_recipient_id_desc` (`recipient_member_id`, `notification_id` DESC),
+    INDEX `idx_notification_recipient_read_id` (`recipient_member_id`, `read_at`, `notification_id` DESC),
+    INDEX `idx_notification_retention` (`read_at`, `created_at`),
+    CONSTRAINT `fk_notification_recipient` FOREIGN KEY (`recipient_member_id`) REFERENCES `member` (`member_id`),
+    CONSTRAINT `fk_notification_post` FOREIGN KEY (`post_id`) REFERENCES `post` (`post_id`),
+    CONSTRAINT `fk_notification_comment` FOREIGN KEY (`comment_id`) REFERENCES `comment` (`comment_id`),
+    CONSTRAINT `chk_notification_type` CHECK (`type` IN ('POST_COMMENT', 'COMMENT_REPLY', 'POST_BEST'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원 인앱 알림';
