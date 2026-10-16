@@ -1,13 +1,16 @@
 ## 알림 기능 멀티 디바이스 작업 브랜치 정리 (2026-10-16)
 
-- 상태: Mac·Windows 공용 브랜치 구성 완료, 기존 설계 복원 및 구현 계획 수립 예정
+- 상태: Mac·Windows 공용 브랜치 구성 및 알림 설계 문서 작성 완료, 구현 승인 대기
 - Windows에 보존되어 있던 `feature/notification` 브랜치를 최신 `origin/main`까지 fast-forward
 - `feature/notification`을 GitHub 원격 브랜치로 최초 푸시하고 추적 브랜치 설정
 - Mac 작업 공간 `/Users/juseoklee/orca/workspaces/snowthing/feature-notification` 생성
 - Windows 기존 작업 공간 `C:/Users/ikaes/IdeaProjects/snowthing-notification` 유지
 - 잘못 추가했던 `feature/notification-improvements`의 Mac·Windows 작업 공간과 로컬·원격 브랜치 제거
 - 기존 Codex 세션에서 인앱 알림 범위와 REST 폴링 기반 초기 설계 기록 확인
-- 기능 코드는 변경하지 않았으며, 전체 설계 문서 대조와 사용자 승인 후 구현 예정
+- `docs/conception/` 전체 문서를 구조적으로 검토하고 게시글·댓글·추천·카풀·중고장터의 최신 계약과 대조
+- `docs/conception/008_notification/`에 요구사항·도메인 모델·ERD·API·정책·테스트·프런트엔드·구현 계획 작성
+- 대댓글은 게시글 작성자가 아닌 루트 댓글 작성자에게만 알리고 자기 알림은 생성하지 않는 정책 확정
+- 기능 코드는 변경하지 않았으며 설계 문서 검토와 사용자 승인 후 구현 예정
 
 ## 동호회 및 시즌방 홍보 게시판 분리 구현 (2026-10-06)
 
