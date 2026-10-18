@@ -2066,4 +2066,4 @@
   - `feature/notification` 브랜치에서 설계 문서와 정책을 기준으로 알림 엔티티·리포지토리·서비스·REST 컨트롤러와 운영 마이그레이션 `016`을 추가했습니다.
   - 댓글 작성 시 게시글 작성자 또는 루트 댓글 작성자에게, 게시글 좋아요가 30개에 도달할 때 게시글 작성자에게 알림을 저장하도록 연결했습니다. 자기 알림과 중고장터 댓글 알림은 제외합니다.
   - 상단 알림 벨, 30초 미읽음 폴링, 목록 조회, 읽음 처리 UI를 연결했습니다.
-  - 검증 현황: `git diff --check` 통과. 백엔드는 현재 Mac 기본 Java 8이라 Gradle 요구 Java 17을 실행하지 못했고, 프런트는 의존성(`node_modules`)이 없어 lint를 실행하지 못했습니다. Java 17과 프런트 의존성 준비 후 컴파일·테스트를 이어서 진행합니다.
+  - 검증 현황: `git diff --check`와 Java 21 기반 `bash gradlew compileJava`를 통과했습니다. 전체 백엔드 테스트는 실행했으나 이 Mac에 Docker·MySQL 클라이언트가 없고 `localhost:3306`의 `snowthing_test` MySQL도 실행 중이지 않아 336개 중 DB 연결이 필요한 169개가 `Connection refused`로 실패했습니다. 프런트는 의존성(`node_modules`)이 없어 lint를 실행하지 못했습니다.
