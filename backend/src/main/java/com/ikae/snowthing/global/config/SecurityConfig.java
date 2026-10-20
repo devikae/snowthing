@@ -18,6 +18,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -26,10 +27,13 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.config.websocket.ChatConnectionRegistry;
 import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
+import com.ikae.snowthing.global.security.BotDelegationAuthenticationFilter;
+import com.ikae.snowthing.global.security.BotDelegationTokenService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
 
@@ -87,8 +91,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+    public BotDelegationAuthenticationFilter botDelegationAuthenticationFilter(
+            BotDelegationTokenService tokenService, MemberRepository memberRepository) {
+        return new BotDelegationAuthenticationFilter(tokenService, memberRepository, objectMapper);
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(
+            HttpSecurity http, BotDelegationAuthenticationFilter botDelegationAuthenticationFilter)
+            throws Exception {
+        http.addFilterBefore(
+                        botDelegationAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(
                         csrf ->
                                 csrf.csrfTokenRepository(

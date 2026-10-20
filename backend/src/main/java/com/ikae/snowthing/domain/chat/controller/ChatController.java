@@ -12,6 +12,7 @@ import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
+import com.ikae.snowthing.domain.chat.bot.BotMentionService;
 import com.ikae.snowthing.domain.chat.dto.ChatErrorResponse;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class ChatController {
 
     private final ChatService chatService;
+    private final BotMentionService botMentionService;
     private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
 
     @MessageMapping("/chat/messages")
@@ -55,7 +57,9 @@ public class ChatController {
             clientIp = (String) sessionAttributes.get(ChatHandshakeInterceptor.ATTR_CLIENT_IP);
         }
 
-        return chatService.processMessage(request, userDetails, clientIp);
+        ChatMessageResponse response = chatService.processMessage(request, userDetails, clientIp);
+        botMentionService.submit(response, userDetails);
+        return response;
     }
 
     @MessageExceptionHandler(CustomException.class)

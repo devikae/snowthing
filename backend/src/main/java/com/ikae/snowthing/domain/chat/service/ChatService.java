@@ -45,6 +45,7 @@ public class ChatService {
     private static final Pattern MESSENGER_IDENTIFIER_PATTERN =
             Pattern.compile(
                     "(?i)(?:\\bt\\.me/\\S+|\\btelegram\\b|\\bopen\\.kakao\\.com/\\S+|(?<![\\w.])@[a-z0-9_]{3,})");
+    private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
@@ -116,6 +117,22 @@ public class ChatService {
         return chatRecentHistoryBuffer.getRecentMessages();
     }
 
+    public ChatMessageResponse createBotMessage(String resortTag, String content) {
+        String safeContent = content == null ? "" : content.trim();
+        if (safeContent.length() > MAX_CONTENT_LENGTH) {
+            safeContent = safeContent.substring(0, MAX_CONTENT_LENGTH);
+        }
+        ChatMessageResponse response =
+                new ChatMessageResponse(
+                        UUID.randomUUID().toString(),
+                        new SenderDto("snowthing-ai", "스노씽 AI"),
+                        resortTag,
+                        safeContent,
+                        LocalDateTime.now().format(ISO_FORMATTER));
+        chatRecentHistoryBuffer.append(response);
+        return response;
+    }
+
     /** Cache eviction for tests or periodic maintenance */
     public void clearCache() {
         recentMessageCache.invalidateAll();
@@ -124,8 +141,9 @@ public class ChatService {
     }
 
     private boolean containsForbiddenContact(String content) {
-        return URL_PATTERN.matcher(content).find()
-                || MESSENGER_IDENTIFIER_PATTERN.matcher(content).find();
+        String contactCheckTarget = BOT_MENTION_PREFIX.matcher(content).replaceFirst("");
+        return URL_PATTERN.matcher(contactCheckTarget).find()
+                || MESSENGER_IDENTIFIER_PATTERN.matcher(contactCheckTarget).find();
     }
 
     private void validateAbuseLimits(Long memberId, String normalizedContent, long now) {
