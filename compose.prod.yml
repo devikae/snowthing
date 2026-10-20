@@ -29,9 +29,12 @@ services:
       - SNOWTHING_BOT_DELEGATION_SECRET=${SNOWTHING_BOT_DELEGATION_SECRET:-}
       - SNOWTHING_BOT_DELEGATION_TTL=${SNOWTHING_BOT_DELEGATION_TTL:-60s}
       - SNOWTHING_BOT_REQUEST_TIMEOUT=${SNOWTHING_BOT_REQUEST_TIMEOUT:-15s}
+      - JAVA_TOOL_OPTIONS=-javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
       - TZ=Asia/Seoul
     volumes:
       - /var/log/snowthing-chat:/var/log/snowthing-chat
+      - /opt/pinpoint-agent-3.1.0:/opt/pinpoint-agent:ro
+      - /var/log/pinpoint-agent:/opt/pinpoint-agent/logs
 
   frontend:
     image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:latest}
