@@ -2062,3 +2062,10 @@
   - `BotDelegationTokenService` 생성자에서 봇 활성화(`enabled=true`) 시 `delegationSecret`과 `internalSecret`의 최소 32바이트 길이를 기동 시점에 즉시 검증(Fail-Fast)하도록 보강하고, 비활성화 상태에서 `Bearer` 요청이 들어올 때 500 대신 `401 INVALID_CREDENTIALS`를 반환하도록 수정했다.
   - `compose.prod.yml`의 `mcp-bot` 환경변수에서 Compose 보간 단계 필수값 에러(`:?`)를 기본 빈 값(`:-`)으로 변경하여, 봇 비활성 환경에서 백엔드·프론트엔드 단독 배포가 실패하지 않도록 조정했다.
   - `scripts/deploy-ecr-service.sh`의 `container` 헬스체크 모드에서 컨테이너에 `HEALTHCHECK`가 정의되지 않은 경우(`no-healthcheck`) 대기 루프 없이 즉시 오류를 출력하고 실패하도록 개선했다.
+
+## 읽기 전용 봇 운영 제한 조정 (2026-10-20)
+
+- 라이브톡 봇은 활성화하되 쓰기 도구 비활성 정책을 유지하는 운영 방향을 확정했다.
+- 사용자별 봇 호출 제한을 분당 3회에서 분당 1회로 낮췄다.
+- 동일 사용자의 두 번째 요청이 MCP와 OpenAI로 전달되지 않는 단위 테스트를 추가했다.
+- 목록·검색 결과는 MCP 서버에서 기본·최대 5개로 제한하도록 사용자 위임 보안 설계를 갱신했다.

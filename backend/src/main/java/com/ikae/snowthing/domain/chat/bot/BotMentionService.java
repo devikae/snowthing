@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class BotMentionService {
 
     private static final String CHAT_DESTINATION = "/sub/chat/main";
-    private static final int REQUESTS_PER_MINUTE = 3;
+    private static final int REQUESTS_PER_MINUTE = 1;
 
     private final BotProperties properties;
     private final BotMentionDetector detector;
