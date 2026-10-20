@@ -38,7 +38,7 @@ class BotDelegationAuthenticationFilterTest {
         when(members.findByPublicId("member-public-id")).thenReturn(Optional.of(member));
         BotDelegationAuthenticationFilter filter =
                 new BotDelegationAuthenticationFilter(tokens, members, objectMapper);
-        MockHttpServletRequest request = request("GET", "/api/v1/members/me", tokens);
+        MockHttpServletRequest request = request("GET", "/api/v1/master/resorts", tokens);
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain =
                 (servletRequest, servletResponse) -> {
@@ -57,6 +57,23 @@ class BotDelegationAuthenticationFilterTest {
         verify(members).findByPublicId("member-public-id");
         assertThat(response.getStatus()).isEqualTo(200);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void rejectsMyProfilePathToPreventPrivateDataBroadcast() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        BotDelegationTokenService tokens =
+                new BotDelegationTokenService(properties(), objectMapper);
+        MemberRepository members = mock(MemberRepository.class);
+        BotDelegationAuthenticationFilter filter =
+                new BotDelegationAuthenticationFilter(tokens, members, objectMapper);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilterInternal(
+                request("GET", "/api/v1/members/me", tokens), response, mock(FilterChain.class));
+
+        assertThat(response.getStatus()).isEqualTo(403);
+        verifyNoInteractions(members);
     }
 
     @Test
@@ -108,9 +125,38 @@ class BotDelegationAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilterInternal(
-                request("GET", "/api/v1/members/me", tokens), response, mock(FilterChain.class));
+                request("GET", "/api/v1/master/resorts", tokens),
+                response,
+                mock(FilterChain.class));
 
         assertThat(response.getStatus()).isEqualTo(403);
+    }
+
+    @Test
+    void returnsUnauthorizedInsteadOfServerErrorWhenBotDisabled() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        BotProperties disabledProperties =
+                new BotProperties(
+                        false,
+                        URI.create("http://127.0.0.1:3100"),
+                        "",
+                        "",
+                        Duration.ofSeconds(60),
+                        Duration.ofSeconds(15));
+        BotDelegationTokenService tokens =
+                new BotDelegationTokenService(disabledProperties, objectMapper);
+        MemberRepository members = mock(MemberRepository.class);
+        BotDelegationAuthenticationFilter filter =
+                new BotDelegationAuthenticationFilter(tokens, members, objectMapper);
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("GET", "/api/v1/master/resorts");
+        request.addHeader("Authorization", "Bearer any-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilterInternal(request, response, mock(FilterChain.class));
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        verifyNoInteractions(members);
     }
 
     private MockHttpServletRequest request(

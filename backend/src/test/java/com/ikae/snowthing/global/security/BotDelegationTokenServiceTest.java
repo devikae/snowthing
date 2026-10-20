@@ -57,6 +57,66 @@ class BotDelegationTokenServiceTest {
                 .isEqualTo(ErrorCode.INVALID_INPUT);
     }
 
+    @Test
+    void shortDelegationSecretFailsEagerlyWhenBotEnabled() {
+        BotProperties invalidProperties =
+                new BotProperties(
+                        true,
+                        URI.create("http://127.0.0.1:3100"),
+                        SECRET,
+                        "short-secret",
+                        Duration.ofSeconds(60),
+                        Duration.ofSeconds(15));
+
+        assertThatThrownBy(
+                        () ->
+                                new BotDelegationTokenService(
+                                        invalidProperties,
+                                        new ObjectMapper(),
+                                        Clock.fixed(NOW, ZoneOffset.UTC)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("snowthing.bot.delegation-secret");
+    }
+
+    @Test
+    void shortInternalSecretFailsEagerlyWhenBotEnabled() {
+        BotProperties invalidProperties =
+                new BotProperties(
+                        true,
+                        URI.create("http://127.0.0.1:3100"),
+                        "short-secret",
+                        SECRET,
+                        Duration.ofSeconds(60),
+                        Duration.ofSeconds(15));
+
+        assertThatThrownBy(
+                        () ->
+                                new BotDelegationTokenService(
+                                        invalidProperties,
+                                        new ObjectMapper(),
+                                        Clock.fixed(NOW, ZoneOffset.UTC)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("snowthing.bot.internal-secret");
+    }
+
+    @Test
+    void disabledServiceRejectsValidationWithInvalidCredentialsInsteadOfServerError() {
+        BotProperties disabledProperties =
+                new BotProperties(
+                        false,
+                        URI.create("http://127.0.0.1:3100"),
+                        "",
+                        "",
+                        Duration.ofSeconds(60),
+                        Duration.ofSeconds(15));
+        BotDelegationTokenService disabledService =
+                new BotDelegationTokenService(
+                        disabledProperties, new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
+        String token = serviceAt(NOW).issue("member-public-id", "chat-message-id");
+
+        assertInvalid(() -> disabledService.validate(token));
+    }
+
     private void assertInvalid(org.assertj.core.api.ThrowableAssert.ThrowingCallable operation) {
         assertThatThrownBy(operation)
                 .isInstanceOf(CustomException.class)

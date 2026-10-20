@@ -302,7 +302,11 @@ check_health() {
   local attempt status
   for attempt in $(seq 1 12); do
     if [[ "$HEALTH_KIND" == 'container' ]]; then
-      status="$(docker inspect --format '{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+      status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+      if [[ "$status" == 'no-healthcheck' ]]; then
+        echo "$SERVICE 컨테이너에 HEALTHCHECK가 정의되어 있지 않습니다" >&2
+        return 1
+      fi
       if [[ "$status" == 'healthy' ]]; then
         echo "$SERVICE health check passed (container healthy)"
         return 0

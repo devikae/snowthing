@@ -45,6 +45,21 @@ public class BotDelegationTokenService {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        if (properties.enabled()) {
+            validateStartupSecret(properties.delegationSecret(), "snowthing.bot.delegation-secret");
+            validateStartupSecret(properties.internalSecret(), "snowthing.bot.internal-secret");
+        }
+    }
+
+    private static void validateStartupSecret(String secret, String propertyName) {
+        if (secret.getBytes(StandardCharsets.UTF_8).length < MINIMUM_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    propertyName + " must be at least 32 bytes when bot is enabled");
+        }
+    }
+
+    public boolean isEnabled() {
+        return properties.enabled();
     }
 
     public String issue(String memberPublicId, String chatMessageId) {
@@ -54,7 +69,7 @@ public class BotDelegationTokenService {
                 || chatMessageId.isBlank()) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
-        byte[] secret = signingSecret();
+        byte[] secret = issueSecret();
         Instant issuedAt = clock.instant();
         Map<String, Object> claims = new LinkedHashMap<>();
         claims.put("iss", ISSUER);
@@ -137,10 +152,21 @@ public class BotDelegationTokenService {
         return mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
     }
 
-    private byte[] signingSecret() {
+    private byte[] issueSecret() {
         byte[] secret = properties.delegationSecret().getBytes(StandardCharsets.UTF_8);
         if (secret.length < MINIMUM_SECRET_BYTES) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        return secret;
+    }
+
+    private byte[] signingSecret() {
+        if (!properties.enabled()) {
+            throw invalidCredentials();
+        }
+        byte[] secret = properties.delegationSecret().getBytes(StandardCharsets.UTF_8);
+        if (secret.length < MINIMUM_SECRET_BYTES) {
+            throw invalidCredentials();
         }
         return secret;
     }

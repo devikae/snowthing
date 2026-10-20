@@ -36,8 +36,7 @@ public class BotDelegationAuthenticationFilter extends OncePerRequestFilter {
                     Pattern.compile("^/api/v1/posts(?:/[0-9a-fA-F-]{36})?$"),
                     Pattern.compile("^/api/v1/carpools(?:/[0-9a-fA-F-]{36})?$"),
                     Pattern.compile("^/api/v1/market-listings(?:/[0-9a-fA-F-]{36})?$"),
-                    Pattern.compile("^/api/v1/market-listings/categories$"),
-                    Pattern.compile("^/api/v1/members/me$"));
+                    Pattern.compile("^/api/v1/market-listings/categories$"));
 
     private final BotDelegationTokenService tokenService;
     private final MemberRepository memberRepository;
@@ -54,6 +53,10 @@ public class BotDelegationAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
+            if (!tokenService.isEnabled()) {
+                writeError(response, ErrorCode.INVALID_CREDENTIALS);
+                return;
+            }
             if (!HttpMethod.GET.matches(request.getMethod())
                     || !isAllowedPath(request.getRequestURI())) {
                 writeError(response, ErrorCode.ACCESS_DENIED);

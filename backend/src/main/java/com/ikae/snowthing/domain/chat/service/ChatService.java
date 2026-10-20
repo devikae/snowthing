@@ -120,7 +120,16 @@ public class ChatService {
     public ChatMessageResponse createBotMessage(String resortTag, String content) {
         String safeContent = content == null ? "" : content.trim();
         if (safeContent.length() > MAX_CONTENT_LENGTH) {
-            safeContent = safeContent.substring(0, MAX_CONTENT_LENGTH);
+            int end =
+                    safeContent.offsetByCodePoints(
+                            0,
+                            Math.min(
+                                    MAX_CONTENT_LENGTH,
+                                    safeContent.codePointCount(0, safeContent.length())));
+            safeContent = safeContent.substring(0, end);
+        }
+        if (safeContent.isEmpty() || containsForbiddenContact(safeContent)) {
+            throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
         ChatMessageResponse response =
                 new ChatMessageResponse(

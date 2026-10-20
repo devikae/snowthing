@@ -141,6 +141,8 @@ public class CarpoolService {
 
     private boolean isManager(Post post, CustomUserDetails userDetails) {
         return userDetails != null
+                && !(userDetails
+                        instanceof com.ikae.snowthing.global.security.BotDelegatedUserDetails)
                 && (isAdmin(userDetails)
                         || (post.getMember() != null
                                 && post.getMember()
