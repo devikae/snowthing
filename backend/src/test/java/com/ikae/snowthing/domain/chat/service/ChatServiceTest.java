@@ -338,4 +338,56 @@ class ChatServiceTest {
             }
         }
     }
+
+    @Nested
+    @DisplayName("봇 응답 메시지 생성 및 검증")
+    class BotMessageCases {
+
+        @Test
+        @DisplayName("봇 응답에 외부 링크나 메신저 ID가 포함되면 CHAT_EXTERNAL_LINK_FORBIDDEN 예외 발생")
+        void createBotMessage_withForbiddenContact_throwsException() {
+            assertThatThrownBy(
+                            () ->
+                                    chatService.createBotMessage(
+                                            "PHOENIX", "상세 문의는 open.kakao.com/o/s12345 로 주세요"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
+
+            assertThatThrownBy(
+                            () ->
+                                    chatService.createBotMessage(
+                                            "PHOENIX", "텔레그램 @secret_dealer 연락 바랍니다"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
+
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("봇 응답이 비어있거나 공백뿐이면 CHAT_EXTERNAL_LINK_FORBIDDEN 예외 발생")
+        void createBotMessage_withBlankContent_throwsException() {
+            assertThatThrownBy(() -> chatService.createBotMessage("PHOENIX", "   "))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
+
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("봇 응답이 최대 길이를 초과할 때 유니코드 서로게이트 페어를 깨뜨리지 않고 절단한다")
+        void createBotMessage_truncatesByCodePointsWithoutSplittingEmoji() {
+            String prefix = "가".repeat(99);
+            String emoji = "🏂"; // 2 UTF-16 code units (surrogate pair), 1 Unicode code point
+            String rawContent = prefix + emoji + "추가텍스트";
+
+            ChatMessageResponse response = chatService.createBotMessage("HIGH1", rawContent);
+
+            assertThat(response.content()).isEqualTo(prefix + emoji);
+            assertThat(response.content().codePointCount(0, response.content().length()))
+                    .isEqualTo(100);
+        }
+    }
 }

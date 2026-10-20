@@ -2049,3 +2049,16 @@
   - 일반 게시글·카풀·중고장터 댓글의 프로필 표시를 공통 컴포넌트로 통일했다. 회원 프로필 이미지가 없을 때 닉네임 첫 글자 대신 기본 프로필 이미지를 사용해 원댓글과 답글이 다르게 보이지 않도록 했다.
   - 관리자 설질 제보 상태 변경에서 권한 검사와 상태값 검사를 분리했다. 비관리자는 기존처럼 `ACCESS_DENIED(403)`을 받고, 관리자가 운영 상태로 허용되지 않는 `DELETED`를 요청하면 `INVALID_INPUT(400)`을 받도록 서비스·API 회귀 테스트를 추가했다.
 
+## 라이브톡 MCP Bot 운영 배포 기반 (2026-10-20)
+
+- 기존 EC2 한 대에서 Backend·Frontend와 분리된 `mcp-bot` 컨테이너를 실행하도록 운영 Compose를 확장했다.
+- Bot 포트는 호스트에 공개하지 않고 Docker 내부 DNS `http://mcp-bot:3100`으로만 Backend가 호출한다.
+- OpenAI 키와 내부 인증 비밀은 저장소나 이미지에 넣지 않고 `/etc/snowthing/prod.env`에서 주입한다.
+- Backend는 로그인 사용자의 짧은 수명 위임 토큰을 발급하고, 기존 API의 인증·권한 검증을 그대로 통과시킨다.
+- 쓰기 MCP 도구와 라이브톡 Bot 기능은 기본 비활성화 상태를 유지한다.
+- PR #39 리뷰 반영:
+  - 공개 채팅방(`/sub/chat/main`) 브로드캐스트를 통한 개인정보 유출을 차단하기 위해 `BotDelegationAuthenticationFilter`의 허용 경로에서 `/api/v1/members/me`를 제거하고, 카풀 상세 조회(`CarpoolService`)에서도 위임 주체(`BotDelegatedUserDetails`)에는 작성자 전용 비공개 연락처·출발 좌표 관리 권한(`canManage`)을 부여하지 않도록 제한했다. (`snowthing-mcp-server`에서도 라이브톡 봇 도구 허용 목록에서 `snowthing_my_profile_get`을 제외하고 공개 마스터 경로로 위임 토큰을 검증하도록 동기화했다.)
+  - `ChatService.createBotMessage`에 외부 링크·메신저 ID 차단(`containsForbiddenContact`) 및 빈 응답 검증을 추가하고, 유니코드 코드포인트(`offsetByCodePoints`) 기준으로 100자 절단을 수행해 서로게이트 페어(이모지 등) 깨짐을 방지했다.
+  - `BotDelegationTokenService` 생성자에서 봇 활성화(`enabled=true`) 시 `delegationSecret`과 `internalSecret`의 최소 32바이트 길이를 기동 시점에 즉시 검증(Fail-Fast)하도록 보강하고, 비활성화 상태에서 `Bearer` 요청이 들어올 때 500 대신 `401 INVALID_CREDENTIALS`를 반환하도록 수정했다.
+  - `compose.prod.yml`의 `mcp-bot` 환경변수에서 Compose 보간 단계 필수값 에러(`:?`)를 기본 빈 값(`:-`)으로 변경하여, 봇 비활성 환경에서 백엔드·프론트엔드 단독 배포가 실패하지 않도록 조정했다.
+  - `scripts/deploy-ecr-service.sh`의 `container` 헬스체크 모드에서 컨테이너에 `HEALTHCHECK`가 정의되지 않은 경우(`no-healthcheck`) 대기 루프 없이 즉시 오류를 출력하고 실패하도록 개선했다.

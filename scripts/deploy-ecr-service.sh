@@ -37,12 +37,21 @@ case "$SERVICE" in
     CONTAINER_NAME="snowthing-backend"
     HEALTH_URL="http://127.0.0.1:8080/api/v1/master/resorts"
     EXPECTED_STATUS='200'
+    HEALTH_KIND='http'
     ;;
   frontend)
     IMAGE_VARIABLE="FRONTEND_IMAGE_URI"
     CONTAINER_NAME="snowthing-frontend"
     HEALTH_URL="http://127.0.0.1:3000"
     EXPECTED_STATUS='200|304'
+    HEALTH_KIND='http'
+    ;;
+  mcp-bot)
+    IMAGE_VARIABLE="MCP_BOT_IMAGE_URI"
+    CONTAINER_NAME="snowthing-mcp-bot"
+    HEALTH_URL=''
+    EXPECTED_STATUS=''
+    HEALTH_KIND='container'
     ;;
   *)
     echo "지원하지 않는 서비스입니다: $SERVICE" >&2
@@ -292,6 +301,20 @@ restore_nginx_websocket_config() {
 check_health() {
   local attempt status
   for attempt in $(seq 1 12); do
+    if [[ "$HEALTH_KIND" == 'container' ]]; then
+      status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+      if [[ "$status" == 'no-healthcheck' ]]; then
+        echo "$SERVICE 컨테이너에 HEALTHCHECK가 정의되어 있지 않습니다" >&2
+        return 1
+      fi
+      if [[ "$status" == 'healthy' ]]; then
+        echo "$SERVICE health check passed (container healthy)"
+        return 0
+      fi
+      echo "$SERVICE startup pending ($attempt/12, health=$status)"
+      sleep 5
+      continue
+    fi
     status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
       --connect-timeout 2 --max-time 5 "$HEALTH_URL" || true)"
     if [[ "$status" =~ ^($EXPECTED_STATUS)$ ]]; then

@@ -38,6 +38,13 @@ snowthing:
     configuration-set: ${SNOWTHING_SES_CONFIGURATION_SET:}
   chat:
     max-connections: ${SNOWTHING_CHAT_MAX_CONNECTIONS:500}
+  bot:
+    enabled: ${SNOWTHING_BOT_ENABLED:false}
+    base-url: ${SNOWTHING_BOT_BASE_URL:http://127.0.0.1:3100}
+    internal-secret: ${SNOWTHING_BOT_INTERNAL_SECRET:}
+    delegation-secret: ${SNOWTHING_BOT_DELEGATION_SECRET:}
+    delegation-ttl: ${SNOWTHING_BOT_DELEGATION_TTL:60s}
+    request-timeout: ${SNOWTHING_BOT_REQUEST_TIMEOUT:15s}
   carpool:
     external:
       connect-timeout-millis: ${SNOWTHING_CARPOOL_CONNECT_TIMEOUT_MILLIS:2000}

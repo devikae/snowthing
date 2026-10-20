@@ -132,7 +132,7 @@ public class ResortReportService {
                         .findByIdWithAuthor(reportId)
                         .filter(candidate -> !candidate.isDeleted())
                         .orElseThrow(() -> new CustomException(ErrorCode.RESORT_REPORT_NOT_FOUND));
-        if (!report.getAuthor().getId().equals(member.getId()) && !isAdmin(member)) {
+        if (!report.getAuthor().getId().equals(member.getId()) && !isAdmin(userDetails)) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
         report.softDelete(LocalDateTime.now(clock.withZone(KST_ZONE)));
@@ -142,7 +142,7 @@ public class ResortReportService {
     public void updateModerationStatus(
             Long reportId, ResortReportStatus status, CustomUserDetails userDetails) {
         Member member = requireMember(userDetails);
-        if (!isAdmin(member)) {
+        if (!isAdmin(userDetails)) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
         if (status != ResortReportStatus.NORMAL
@@ -187,10 +187,11 @@ public class ResortReportService {
             return false;
         }
         Member member = userDetails.getMember();
-        return report.getAuthor().getId().equals(member.getId()) || isAdmin(member);
+        return report.getAuthor().getId().equals(member.getId()) || isAdmin(userDetails);
     }
 
-    private boolean isAdmin(Member member) {
-        return member.getRole() == Role.ROLE_ADMIN;
+    private boolean isAdmin(CustomUserDetails userDetails) {
+        return userDetails.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(Role.ROLE_ADMIN.getKey()));
     }
 }
