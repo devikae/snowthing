@@ -40,7 +40,8 @@ for version in \
   012_migration_carpool_latest_sort_index \
   013_migration_email_verification \
   014_migration_crew_and_season_room \
-  015_migration_resort_report; do
+  015_migration_resort_report \
+  016_migration_social_login; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done
@@ -67,5 +68,9 @@ done
 [[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'resort_report' AND index_name = 'idx_resort_report_resort_status_created'")" == "resort_id,status,created_at,report_id" ]]
 [[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'resort_report' AND index_name = 'idx_resort_report_member_created'")" == "member_id,created_at" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND table_name = 'resort_report' AND constraint_name IN ('fk_resort_report_resort', 'fk_resort_report_member')")" == "2" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'member_social_account'")" == "1" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'member_social_account' AND index_name IN ('uk_member_social_provider_user', 'uk_member_social_member_provider')")" == "2" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.check_constraints WHERE constraint_schema = '$DB_NAME' AND constraint_name = 'chk_member_social_provider' AND check_clause LIKE '%GOOGLE%' AND check_clause LIKE '%NAVER%' AND check_clause NOT LIKE '%KAKAO%'")" == "1" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND table_name = 'member_social_account' AND constraint_name = 'fk_member_social_member'")" == "1" ]]
 
-echo "Production migrations 007-015 verification passed."
+echo "Production migrations 007-016 verification passed."

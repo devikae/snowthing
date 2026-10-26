@@ -1,3 +1,22 @@
+## 네이버·구글 OAuth 2.0 소셜 로그인 구현 (2026-10-19, 2026-10-26 카카오 제외)
+
+- 상태: 구현·단위/계약 테스트·프론트엔드 프로덕션 빌드 통과 완료 (`feature/social-login` 브랜치)
+- `docs/conception/008_social_login/` 하위 요구사항, 도메인 모델, ERD, API 명세서, 보안 정책, 테스트 계획서 6종 설계 문서 작성
+- `database/production/016_migration_social_login.sql` 신설 (`member_social_account` 1:N 소셜 계정 연동 테이블, `(provider, provider_user_id)` 및 `(member_id, provider)` 유니크 제약, `GOOGLE`/`NAVER` 체크 제약) 및 `scripts/verify-production-migration-007-015.sh`에 016 검증 로직 반영
+- `OAuth2ExternalClient`: Spring `RestClient` 및 Jackson 3 `JsonNode` 기반으로 Google, Naver 인가 URL 생성, 인가 코드 토큰 교환, 사용자 프로필 조회를 DB 트랜잭션 외부에서 수행하도록 구현
+- `SocialAuthService` & `SocialNicknameGenerator`:
+  - 웹/세션 결합을 배제한 순수 도메인 트랜잭션 서비스로 구현
+  - 두 제공자 모두 검증된 이메일(`email != null && emailVerified == true`) 필수 검증 적용 (`OAUTH_EMAIL_REQUIRED`, `OAUTH_EMAIL_NOT_VERIFIED`)
+  - 기존 이메일 회원이 존재할 경우 별도 가입 폼 없이 기존 `Member`에 `MemberSocialAccount`를 자동 1:N 연결하고, 신규 이메일일 경우 `NicknamePolicy`(`^[a-zA-Z0-9가-힣]{2,10}$`)를 만족하는 고유 닉네임과 함께 즉시 가입 처리
+  - 정지(`SUSPENDED`) 및 탈퇴(`WITHDRAWN`) 회원 로그인 차단 가드 적용
+- `OAuth2AuthController`:
+  - `GET /api/v1/auth/oauth2/authorize/{provider}` 및 `GET /api/v1/auth/oauth2/callback/{provider}` 엔드포인트 구현
+  - `HttpSession` 기반 일회성 난수 `state` 검증(10분 TTL, `MessageDigest.isEqual` 상수 시간 비교), Open Redirect 방지 `returnUrl` 정제, `changeSessionId()` 세션 고정 방어, `SecurityContextRepository` 및 `MemberSessionRegistry` 연동
+- 프론트엔드 `/login`, `/signup` 페이지에 네이버·구글 소셜 로그인 버튼 및 소셜 인증 에러 배너 추가
+- 카카오 로그인은 이메일 동의 권한 운영 제약과 `KOE205` 위험을 고려해 지원 범위에서 제거했으며, 카카오 지도·장소 검색·모빌리티 연동은 그대로 유지
+- 카카오 제거 후 백엔드 전체 테스트 370건(실패·오류 0건, 기존 조건부 테스트 1건 skip), 프론트엔드 Next.js 프로덕션 빌드, 임시 MySQL DB의 016 마이그레이션 적용 및 `GOOGLE`/`NAVER` 전용 체크 제약 검증 통과
+- 백엔드 Spotless 포맷팅 및 `OAuth2ExternalClientTest`, `SocialNicknameGeneratorTest`, `SocialAuthServiceTest`, `OAuth2AuthControllerTest` 전체 통과, 프론트엔드 Next.js 16 프로덕션 빌드 통과
+
 ## 동호회 및 시즌방 홍보 게시판 분리 구현 (2026-10-06)
 
 - 상태: 구현·전체 테스트·프로덕션 빌드 통과 완료

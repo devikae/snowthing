@@ -1,11 +1,15 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 export const API_V1_URL = `${API_BASE_URL}/api/v1`;
 
+export type SocialLoginProvider = "google" | "naver";
+
 export const API_ENDPOINTS = {
   csrf: `${API_V1_URL}/csrf`,
   auth: {
     login: `${API_V1_URL}/auth/login`,
     logout: `${API_V1_URL}/auth/logout`,
+    oauth2Authorize: (provider: SocialLoginProvider, returnUrl?: string | null) =>
+      `${API_V1_URL}/auth/oauth2/authorize/${provider}${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`,
     requestSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up`,
     confirmSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up/confirm`,
     requestPasswordReset: `${API_V1_URL}/auth/password-reset/requests`,
