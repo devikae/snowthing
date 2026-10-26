@@ -18,6 +18,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseTimeEntity {
 
+    public static final String EMAIL_UNIQUE_CONSTRAINT = "email";
+    public static final String NICKNAME_UNIQUE_CONSTRAINT = "nickname";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "member_id")

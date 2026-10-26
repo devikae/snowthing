@@ -199,6 +199,7 @@ public class SecurityConfig {
                                                 "/api/v1/members",
                                                 "/api/auth/login",
                                                 "/api/v1/auth/login",
+                                                "/api/v1/auth/oauth2/**",
                                                 "/api/v1/auth/email-verifications/**",
                                                 "/api/v1/auth/password-reset",
                                                 "/api/v1/auth/password-reset/**",

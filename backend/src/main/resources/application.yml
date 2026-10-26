@@ -53,6 +53,18 @@ snowthing:
         rest-api-key: ${SNOWTHING_KAKAO_REST_API_KEY:}
       opinet:
         api-key: ${SNOWTHING_OPINET_API_KEY:}
+  oauth2:
+    frontend-base-url: ${SNOWTHING_FRONTEND_BASE_URL:http://localhost:3000}
+    connect-timeout-millis: ${SNOWTHING_OAUTH2_CONNECT_TIMEOUT_MILLIS:2000}
+    read-timeout-millis: ${SNOWTHING_OAUTH2_READ_TIMEOUT_MILLIS:4000}
+    google:
+      client-id: ${SNOWTHING_GOOGLE_CLIENT_ID:}
+      client-secret: ${SNOWTHING_GOOGLE_CLIENT_SECRET:}
+      redirect-uri: ${SNOWTHING_GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth2/callback/google}
+    naver:
+      client-id: ${SNOWTHING_NAVER_CLIENT_ID:}
+      client-secret: ${SNOWTHING_NAVER_CLIENT_SECRET:}
+      redirect-uri: ${SNOWTHING_NAVER_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth2/callback/naver}
 
 server:
   servlet:
@@ -167,3 +179,9 @@ snowthing:
     from-address: ${SNOWTHING_MAIL_FROM:help@snowthing.org}
     from-name: ${SNOWTHING_MAIL_FROM_NAME:SnowThing}
     configuration-set: ${SNOWTHING_SES_CONFIGURATION_SET:}
+  oauth2:
+    frontend-base-url: ${SNOWTHING_FRONTEND_BASE_URL:https://snowthing.org}
+    google:
+      redirect-uri: ${SNOWTHING_GOOGLE_REDIRECT_URI:https://snowthing.org/api/v1/auth/oauth2/callback/google}
+    naver:
+      redirect-uri: ${SNOWTHING_NAVER_REDIRECT_URI:https://snowthing.org/api/v1/auth/oauth2/callback/naver}
