@@ -24,6 +24,9 @@
 - **닉네임 자동 생성 정책 (`SocialNicknameGeneratorTest`)**:
   - 특수문자/이모지/공백이 섞인 소셜 닉네임이나 1자/장문 닉네임에서도 항상 `^[a-zA-Z0-9가-힣]{2,10}$`를 만족하는지 검증한다.
   - 닉네임 중복 시 난수 접미사를 붙여 재시도하는지 검증한다.
+- **동시성 및 무결성 오류**:
+  - 회원 닉네임 유니크 제약 충돌을 `DUPLICATE_NICKNAME`으로 변환하고 같은 트랜잭션에서 재시도하지 않는지 검증한다.
+  - 소셜 계정 유니크 제약 충돌을 OAuth 오류로 변환하고, 알 수 없는 무결성 오류는 원본 그대로 전파하는지 검증한다.
 
 ## 3. 컨트롤러 및 보안 흐름 테스트 (`OAuth2AuthControllerTest`)
 
@@ -32,3 +35,10 @@
   - 정상 `state` 및 `code`일 때 세션(`SecurityContext`)이 생성되고 `MemberSessionRegistry`에 등록된 후 `{frontendBaseUrl}{returnUrl}`로 302 리다이렉트되는지 검증한다.
   - `state` 불일치 또는 재사용(Replay) 시 `/login?error=OAUTH_STATE_INVALID`로 리다이렉트되는지 검증한다.
   - 악성 `returnUrl`(`https://evil.com`, `//evil.com`) 입력 시 `/`로 안전하게 치환되는지 검증한다.
+  - URI 문법상 유효하지 않은 `returnUrl` 입력 시 `/`로 치환되는지 검증한다.
+  - IP당 분당 20회 제한을 초과한 인가 요청이 신규 세션 생성 전에 거부되는지 검증한다.
+
+## 4. 운영 마이그레이션 검증
+
+- `member_social_account.provider_user_id`의 collation이 `utf8mb4_bin`인지 검증한다.
+- 대소문자만 다른 제공자 사용자 ID가 서로 다른 값으로 비교되는지 확인한다.

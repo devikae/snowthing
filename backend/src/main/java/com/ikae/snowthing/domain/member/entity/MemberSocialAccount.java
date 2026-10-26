@@ -37,6 +37,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberSocialAccount extends BaseTimeEntity {
 
+    public static final String PROVIDER_USER_UNIQUE_CONSTRAINT = "uk_member_social_provider_user";
+    public static final String MEMBER_PROVIDER_UNIQUE_CONSTRAINT =
+            "uk_member_social_member_provider";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "social_account_id")

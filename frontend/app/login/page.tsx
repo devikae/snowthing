@@ -18,6 +18,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   OAUTH_EMAIL_NOT_VERIFIED: "인증되지 않은 소셜 이메일 계정으로는 로그인할 수 없습니다.",
   ACCOUNT_SUSPENDED: "이용이 정지된 계정입니다.",
   ACCOUNT_WITHDRAWN: "탈퇴 처리된 계정입니다.",
+  OAUTH_RATE_LIMIT: "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 function getErrorMessage(error: unknown) {

@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.auth.controller;
 
 import java.io.Serializable;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -30,6 +31,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
+import com.ikae.snowthing.domain.auth.service.OAuthAuthorizationIpRateLimiter;
 import com.ikae.snowthing.domain.auth.service.SocialAuthService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
@@ -37,6 +39,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
 
@@ -56,6 +59,8 @@ public class OAuth2AuthController {
     private final OAuth2Properties oauth2Properties;
     private final SecurityContextRepository securityContextRepository;
     private final MemberSessionRegistry memberSessionRegistry;
+    private final OAuthAuthorizationIpRateLimiter authorizationIpRateLimiter;
+    private final ClientIpResolver clientIpResolver;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -66,6 +71,7 @@ public class OAuth2AuthController {
             HttpServletRequest httpRequest) {
         try {
             SocialProvider socialProvider = SocialProvider.from(provider);
+            authorizationIpRateLimiter.check(clientIpResolver.resolve(httpRequest));
             String state = generateStateToken();
             String safeReturnUrl = sanitizeReturnUrl(returnUrl);
             URI authorizationUri =
@@ -186,6 +192,11 @@ public class OAuth2AuthController {
                 || trimmed.contains("\\")
                 || trimmed.contains("\r")
                 || trimmed.contains("\n")) {
+            return "/";
+        }
+        try {
+            new URI(trimmed);
+        } catch (URISyntaxException exception) {
             return "/";
         }
         return trimmed;

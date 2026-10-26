@@ -5,7 +5,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.net.URI;
@@ -27,12 +29,16 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
+import com.ikae.snowthing.domain.auth.service.OAuthAuthorizationIpRateLimiter;
 import com.ikae.snowthing.domain.auth.service.SocialAuthService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
+import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 class OAuth2AuthControllerTest {
 
@@ -40,6 +46,8 @@ class OAuth2AuthControllerTest {
     private SocialAuthService socialAuthService;
     private SecurityContextRepository securityContextRepository;
     private MemberSessionRegistry memberSessionRegistry;
+    private OAuthAuthorizationIpRateLimiter authorizationIpRateLimiter;
+    private ClientIpResolver clientIpResolver;
     private OAuth2AuthController controller;
 
     @BeforeEach
@@ -48,6 +56,9 @@ class OAuth2AuthControllerTest {
         socialAuthService = mock(SocialAuthService.class);
         securityContextRepository = mock(SecurityContextRepository.class);
         memberSessionRegistry = mock(MemberSessionRegistry.class);
+        authorizationIpRateLimiter = mock(OAuthAuthorizationIpRateLimiter.class);
+        clientIpResolver = mock(ClientIpResolver.class);
+        given(clientIpResolver.resolve(any())).willReturn("203.0.113.10");
 
         OAuth2Properties oauth2Properties =
                 new OAuth2Properties("https://snowthing.org", 3000, 5000, null, null);
@@ -61,6 +72,8 @@ class OAuth2AuthControllerTest {
                         oauth2Properties,
                         securityContextRepository,
                         memberSessionRegistry,
+                        authorizationIpRateLimiter,
+                        clientIpResolver,
                         fixedClock);
     }
 
@@ -172,11 +185,30 @@ class OAuth2AuthControllerTest {
     }
 
     @Test
+    @DisplayName("인가 요청 제한을 초과하면 서버 세션을 만들기 전에 로그인 오류로 리다이렉트한다")
+    void authorize_RateLimitExceeded_DoesNotCreateSession() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        willThrow(new CustomException(ErrorCode.OAUTH_RATE_LIMIT))
+                .given(authorizationIpRateLimiter)
+                .check("203.0.113.10");
+
+        ResponseEntity<Void> response = controller.authorize("google", null, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(response.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/login?error=OAUTH_RATE_LIMIT"));
+        assertThat(request.getSession(false)).isNull();
+        verify(oauth2ExternalClient, never())
+                .buildAuthorizationUri(eq(SocialProvider.GOOGLE), anyString());
+    }
+
+    @Test
     @DisplayName("Open Redirect 공격용 returnUrl은 '/'로 안전하게 정제된다")
     void sanitizeReturnUrl_OpenRedirectAttempts_ReturnsRootPath() {
         assertThat(OAuth2AuthController.sanitizeReturnUrl("https://evil.com")).isEqualTo("/");
         assertThat(OAuth2AuthController.sanitizeReturnUrl("//evil.com")).isEqualTo("/");
         assertThat(OAuth2AuthController.sanitizeReturnUrl("/\\evil.com")).isEqualTo("/");
+        assertThat(OAuth2AuthController.sanitizeReturnUrl("/search?q=a b")).isEqualTo("/");
         assertThat(OAuth2AuthController.sanitizeReturnUrl("/posts/123")).isEqualTo("/posts/123");
     }
 }

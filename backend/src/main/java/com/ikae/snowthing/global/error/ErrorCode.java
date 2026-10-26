@@ -22,6 +22,8 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "AUTH_008", "인증되지 않은 소셜 이메일 계정으로는 로그인할 수 없습니다."),
     ACCOUNT_SUSPENDED(HttpStatus.FORBIDDEN, "AUTH_009", "이용이 정지된 계정입니다."),
     ACCOUNT_WITHDRAWN(HttpStatus.FORBIDDEN, "AUTH_010", "탈퇴 처리된 계정입니다."),
+    OAUTH_RATE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "AUTH_011", "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "MEMBER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_003", "이미 사용 중인 닉네임입니다."),

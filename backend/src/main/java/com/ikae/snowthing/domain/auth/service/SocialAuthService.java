@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,7 +66,7 @@ public class SocialAuthService {
         }
 
         Member newMember = createSocialMember(normalizedEmail, profile.nickname(), now);
-        memberSocialAccountRepository.save(
+        saveSocialAccount(
                 MemberSocialAccount.builder()
                         .member(newMember)
                         .provider(profile.provider())
@@ -115,7 +116,7 @@ public class SocialAuthService {
             }
             return;
         }
-        memberSocialAccountRepository.save(
+        saveSocialAccount(
                 MemberSocialAccount.builder()
                         .member(member)
                         .provider(profile.provider())
@@ -147,11 +148,42 @@ public class SocialAuthService {
             try {
                 return memberRepository.saveAndFlush(member);
             } catch (DataIntegrityViolationException exception) {
-                if (memberRepository.existsByEmail(normalizedEmail)) {
+                if (violatesConstraint(exception, Member.EMAIL_UNIQUE_CONSTRAINT)) {
                     throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED, exception);
                 }
+                if (violatesConstraint(exception, Member.NICKNAME_UNIQUE_CONSTRAINT)) {
+                    throw new CustomException(ErrorCode.DUPLICATE_NICKNAME, exception);
+                }
+                throw exception;
             }
         }
         throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+    }
+
+    private void saveSocialAccount(MemberSocialAccount socialAccount) {
+        try {
+            memberSocialAccountRepository.saveAndFlush(socialAccount);
+        } catch (DataIntegrityViolationException exception) {
+            if (violatesConstraint(exception, MemberSocialAccount.PROVIDER_USER_UNIQUE_CONSTRAINT)
+                    || violatesConstraint(
+                            exception, MemberSocialAccount.MEMBER_PROVIDER_UNIQUE_CONSTRAINT)) {
+                throw new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED, exception);
+            }
+            throw exception;
+        }
+    }
+
+    private boolean violatesConstraint(
+            DataIntegrityViolationException exception, String expectedConstraintName) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof ConstraintViolationException constraintViolation
+                    && expectedConstraintName.equalsIgnoreCase(
+                            constraintViolation.getConstraintName())) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }

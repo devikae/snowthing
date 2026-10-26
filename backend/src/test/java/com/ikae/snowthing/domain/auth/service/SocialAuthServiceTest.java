@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -12,6 +13,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Optional;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
@@ -87,7 +90,7 @@ class SocialAuthServiceTest {
 
         ArgumentCaptor<MemberSocialAccount> socialCaptor =
                 ArgumentCaptor.forClass(MemberSocialAccount.class);
-        verify(memberSocialAccountRepository).save(socialCaptor.capture());
+        verify(memberSocialAccountRepository).saveAndFlush(socialCaptor.capture());
         assertThat(socialCaptor.getValue().getProvider()).isEqualTo(SocialProvider.NAVER);
         assertThat(socialCaptor.getValue().getProviderUserId()).isEqualTo("naver-1001");
         assertThat(socialCaptor.getValue().getProviderEmail()).isEqualTo("newrider@naver.com");
@@ -128,7 +131,7 @@ class SocialAuthServiceTest {
         assertThat(linked).isSameAs(existingMember);
         assertThat(linked.getEmailVerifiedAt()).isNotNull();
         verify(memberRepository, never()).saveAndFlush(any(Member.class));
-        verify(memberSocialAccountRepository).save(any(MemberSocialAccount.class));
+        verify(memberSocialAccountRepository).saveAndFlush(any(MemberSocialAccount.class));
     }
 
     @Test
@@ -224,5 +227,102 @@ class SocialAuthServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(ex -> ((CustomException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.ACCOUNT_WITHDRAWN);
+    }
+
+    @Test
+    @DisplayName("동시 가입으로 닉네임 유니크 제약이 충돌하면 같은 트랜잭션에서 재시도하지 않는다")
+    void authenticateOrRegister_NicknameConstraintViolation_ThrowsDuplicateNickname() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE,
+                        "google-concurrent",
+                        "concurrent@snowthing.org",
+                        true,
+                        "동시가입자");
+        DataIntegrityViolationException violation =
+                constraintViolation(Member.NICKNAME_UNIQUE_CONSTRAINT);
+
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-concurrent"))
+                .willReturn(Optional.empty());
+        given(memberRepository.findByEmail("concurrent@snowthing.org"))
+                .willReturn(Optional.empty());
+        given(memberRepository.existsByNickname("동시가입자")).willReturn(false);
+        given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
+
+        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_NICKNAME);
+        verify(memberRepository).saveAndFlush(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("소셜 계정 유니크 제약 충돌은 OAuth 인증 오류로 변환한다")
+    void authenticateOrRegister_SocialAccountConstraintViolation_ThrowsOAuthError() {
+        Member existingMember =
+                Member.builder()
+                        .email("linked@snowthing.org")
+                        .nickname("연결회원")
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        ReflectionTestUtils.setField(existingMember, "id", 17L);
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.NAVER,
+                        "naver-concurrent",
+                        "linked@snowthing.org",
+                        true,
+                        "연결회원");
+        DataIntegrityViolationException violation =
+                constraintViolation(MemberSocialAccount.PROVIDER_USER_UNIQUE_CONSTRAINT);
+
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.NAVER, "naver-concurrent"))
+                .willReturn(Optional.empty());
+        given(memberRepository.findByEmail("linked@snowthing.org"))
+                .willReturn(Optional.of(existingMember));
+        given(memberSocialAccountRepository.findByMemberIdAndProvider(17L, SocialProvider.NAVER))
+                .willReturn(Optional.empty());
+        given(memberSocialAccountRepository.saveAndFlush(any(MemberSocialAccount.class)))
+                .willThrow(violation);
+
+        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
+    }
+
+    @Test
+    @DisplayName("알 수 없는 회원 무결성 오류는 닉네임 충돌로 오분류하지 않는다")
+    void authenticateOrRegister_UnknownIntegrityViolation_PropagatesOriginalException() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE,
+                        "google-unknown",
+                        "unknown@snowthing.org",
+                        true,
+                        "알수없는오류");
+        DataIntegrityViolationException violation = constraintViolation("unknown_constraint");
+
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-unknown"))
+                .willReturn(Optional.empty());
+        given(memberRepository.findByEmail("unknown@snowthing.org")).willReturn(Optional.empty());
+        given(memberRepository.existsByNickname("알수없는오류")).willReturn(false);
+        given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
+
+        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+                .isSameAs(violation);
+    }
+
+    private DataIntegrityViolationException constraintViolation(String constraintName) {
+        ConstraintViolationException cause = mock(ConstraintViolationException.class);
+        given(cause.getConstraintName()).willReturn(constraintName);
+        return new DataIntegrityViolationException("constraint violation", cause);
     }
 }

@@ -14,8 +14,10 @@
   - `HttpSession` 기반 일회성 난수 `state` 검증(10분 TTL, `MessageDigest.isEqual` 상수 시간 비교), Open Redirect 방지 `returnUrl` 정제, `changeSessionId()` 세션 고정 방어, `SecurityContextRepository` 및 `MemberSessionRegistry` 연동
 - 프론트엔드 `/login`, `/signup` 페이지에 네이버·구글 소셜 로그인 버튼 및 소셜 인증 에러 배너 추가
 - 카카오 로그인은 이메일 동의 권한 운영 제약과 `KOE205` 위험을 고려해 지원 범위에서 제거했으며, 카카오 지도·장소 검색·모빌리티 연동은 그대로 유지
-- 카카오 제거 후 백엔드 전체 테스트 370건(실패·오류 0건, 기존 조건부 테스트 1건 skip), 프론트엔드 Next.js 프로덕션 빌드, 임시 MySQL DB의 016 마이그레이션 적용 및 `GOOGLE`/`NAVER` 전용 체크 제약 검증 통과
+- 카카오 제거 및 PR 리뷰 반영 후 백엔드 전체 테스트 375건(실패·오류 0건, 기존 조건부 테스트 1건 skip), 프론트엔드 Next.js 프로덕션 빌드, 임시 MySQL DB의 016 마이그레이션 적용 및 `GOOGLE`/`NAVER` 전용 체크 제약 검증 통과
 - 백엔드 Spotless 포맷팅 및 `OAuth2ExternalClientTest`, `SocialNicknameGeneratorTest`, `SocialAuthServiceTest`, `OAuth2AuthControllerTest` 전체 통과, 프론트엔드 Next.js 16 프로덕션 빌드 통과
+- PR #42 CodeRabbit 리뷰 대응: OAuth 인가 요청 IP 제한을 세션 생성 전에 적용하고, `returnUrl` URI 문법 검증, rollback-only 트랜잭션 내부 닉네임 재시도 제거, 소셜 계정 유니크 충돌의 타입 기반 변환, `provider_user_id` 바이너리 collation 및 회귀 테스트를 추가
+- 임시 MySQL 검증 DB에서 `provider_user_id`가 `utf8mb4_bin`으로 생성되고 대소문자만 다른 Google 식별자 2건이 각각 저장되는 것을 확인한 뒤 검증 DB를 삭제
 
 ## 동호회 및 시즌방 홍보 게시판 분리 구현 (2026-10-06)
 

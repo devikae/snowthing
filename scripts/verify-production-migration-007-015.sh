@@ -70,6 +70,7 @@ done
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND table_name = 'resort_report' AND constraint_name IN ('fk_resort_report_resort', 'fk_resort_report_member')")" == "2" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'member_social_account'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'member_social_account' AND index_name IN ('uk_member_social_provider_user', 'uk_member_social_member_provider')")" == "2" ]]
+[[ "$(mysql_test --execute="SELECT collation_name FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'member_social_account' AND column_name = 'provider_user_id'")" == "utf8mb4_bin" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.check_constraints WHERE constraint_schema = '$DB_NAME' AND constraint_name = 'chk_member_social_provider' AND check_clause LIKE '%GOOGLE%' AND check_clause LIKE '%NAVER%' AND check_clause NOT LIKE '%KAKAO%'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND table_name = 'member_social_account' AND constraint_name = 'fk_member_social_member'")" == "1" ]]
 
