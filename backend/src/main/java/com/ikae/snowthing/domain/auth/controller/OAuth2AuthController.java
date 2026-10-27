@@ -143,7 +143,7 @@ public class OAuth2AuthController {
         List<OAuth2AuthorizationSession> remainingStates = new ArrayList<>();
         for (OAuth2AuthorizationSession candidate : savedStates.pending()) {
             boolean matches = constantTimeEquals(candidate.state(), requestState);
-            if (matches) {
+            if (matches && candidate.provider() == provider) {
                 if (matchedState == null) {
                     matchedState = candidate;
                 }

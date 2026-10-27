@@ -9,7 +9,7 @@ erDiagram
     MEMBER {
         BIGINT member_id PK
         VARCHAR(36) public_id UK
-        VARCHAR(100) email UK "NOT NULL"
+        VARCHAR(100) email UK "NOT NULL, 권위 이메일 또는 @users.invalid 내부 식별자"
         VARCHAR(255) password "NULLABLE (소셜 전용 가입 시 NULL)"
         VARCHAR(50) nickname UK
         DATETIME email_verified_at "SnowThing이 신뢰 가능한 이메일 인증 시각, NULL 허용"
@@ -52,6 +52,8 @@ erDiagram
 - `fk_member_social_member`: `FOREIGN KEY (member_id) REFERENCES member (member_id) ON DELETE CASCADE`
 
 `member.email` UNIQUE 제약은 한 이메일로 회원 행이 중복 생성되는 것을 막는다. 다만 이메일 충돌 시 기존 회원에 자동 연결하지 않고 `OAUTH_ACCOUNT_LINK_REQUIRED`로 종료한다.
+
+비권위 프로필은 실제 제공자 이메일 대신 `oauth-{provider}-{SHA-256 digest}@users.invalid`를 `member.email`에 저장한다. 실제 이메일은 `member_social_account.provider_email`에만 남겨 일반 가입 이메일과 비밀번호 재설정 대상을 선점하지 않게 한다.
 
 ## 4. 마이그레이션 파일
 

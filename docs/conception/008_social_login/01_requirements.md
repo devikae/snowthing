@@ -18,13 +18,14 @@
 - 네이버 프로필의 이메일 존재 여부는 현재 이메일 소유권 검증으로 취급하지 않는다.
 - 구글은 `email_verified = true`이면서 Gmail 주소이거나 Workspace `hd` 클레임이 있을 때만 SnowThing의 `emailVerifiedAt`을 기록한다. 외부 도메인 이메일은 `email_verified = true`여도 로컬 인증 완료로 승격하지 않는다.
 - 이메일 신뢰 여부가 낮더라도 기존 계정과 충돌하지 않는 신규 소셜 계정은 추가 이메일 인증 없이 생성한다.
+- 비권위 이메일은 일반 가입·권위 있는 소셜 가입이 사용하는 `Member.email`을 점유하지 않는다. 신규 회원의 `Member.email`에는 제공자와 제공자 사용자 ID로 만든 `@users.invalid` 내부 식별 이메일을 저장하고 실제 이메일은 `MemberSocialAccount.providerEmail`에만 보관한다.
 
 ### 3.2. 계정 조회 및 연결 충돌 정책 (Account Linking)
 - 1명의 회원(`Member`)은 구글, 네이버 소셜 계정을 각각 최대 1개씩(총 2개 복수 연동) 연결할 수 있다.
 - 소셜 인증 완료 시 다음 순서로 회원을 식별한다:
   1. `(provider, providerUserId)`로 이미 연결된 `MemberSocialAccount`가 존재하면 해당 `Member`로 즉시 로그인한다.
-  2. 연결된 소셜 계정은 없으나 정규화된 이메일(`emailNormalizer.normalize(email)`)과 일치하는 기존 `Member`가 존재하면 자동 연결하지 않고 `OAUTH_ACCOUNT_LINK_REQUIRED`로 거절한다. 이메일 일치는 기존 SnowThing 계정의 현재 소유권 증명이 아니다.
-  3. 일치하는 이메일 회원도 없으면 신규 `Member`와 `MemberSocialAccount`를 즉시 자동 생성하고 로그인한다.
+  2. 연결된 소셜 계정은 없으나 권위 있는 정규화 이메일(`emailNormalizer.normalize(email)`)과 일치하는 기존 `Member`가 존재하면 자동 연결하지 않고 `OAUTH_ACCOUNT_LINK_REQUIRED`로 거절한다. 이메일 일치는 기존 SnowThing 계정의 현재 소유권 증명이 아니다. 비권위 이메일은 이 조회에 사용하지 않는다.
+  3. 권위 있는 이메일과 일치하는 회원도 없으면 신규 `Member`와 `MemberSocialAccount`를 즉시 자동 생성하고 로그인한다. 비권위 프로필은 실제 이메일을 중복 조회하지 않고 내부 식별 이메일로 회원을 생성한다.
 
 ### 3.3. 최초 가입 시 별도 입력 화면 없는 즉시 가입 및 닉네임 자동 부여
 - 최초 소셜 로그인 사용자는 추가 정보 입력 화면을 거치지 않고 즉시 자동 가입 및 세션 로그인 처리한다.

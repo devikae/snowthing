@@ -176,6 +176,75 @@ class OAuth2AuthControllerTest {
     }
 
     @Test
+    @DisplayName("다른 제공자 콜백에 전달된 state는 소비하지 않아 원래 제공자 콜백에서 사용할 수 있다")
+    void callback_WrongProvider_DoesNotConsumePendingState() {
+        given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.GOOGLE), anyString()))
+                .willReturn(URI.create("https://accounts.google.com/o/oauth2/v2/auth"));
+        MockHttpServletRequest authorizeRequest = new MockHttpServletRequest();
+        controller.authorize("google", "/posts", authorizeRequest);
+        MockHttpSession session = (MockHttpSession) authorizeRequest.getSession(false);
+        OAuth2AuthController.OAuth2AuthorizationSessions savedStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        String googleState = savedStates.pending().get(0).state();
+
+        MockHttpServletRequest wrongProviderRequest = new MockHttpServletRequest();
+        wrongProviderRequest.setSession(session);
+        ResponseEntity<Void> wrongProviderResponse =
+                controller.callback(
+                        "naver",
+                        "wrong-provider-code",
+                        googleState,
+                        null,
+                        wrongProviderRequest,
+                        new MockHttpServletResponse());
+        assertThat(wrongProviderResponse.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/login?error=OAUTH_STATE_INVALID"));
+
+        OAuth2AuthController.OAuth2AuthorizationSessions remainingStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        assertThat(remainingStates.pending())
+                .extracting(OAuth2AuthController.OAuth2AuthorizationSession::state)
+                .containsExactly(googleState);
+
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE,
+                        "google-provider-check",
+                        "rider@gmail.com",
+                        true,
+                        "보더");
+        Member member =
+                Member.builder()
+                        .email("rider@gmail.com")
+                        .nickname("보더")
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        given(
+                        oauth2ExternalClient.fetchUserProfile(
+                                SocialProvider.GOOGLE, "google-code", googleState))
+                .willReturn(profile);
+        given(socialAuthService.authenticateOrRegister(profile)).willReturn(member);
+        MockHttpServletRequest googleCallbackRequest = new MockHttpServletRequest();
+        googleCallbackRequest.setSession(session);
+
+        ResponseEntity<Void> googleResponse =
+                controller.callback(
+                        "google",
+                        "google-code",
+                        googleState,
+                        null,
+                        googleCallbackRequest,
+                        new MockHttpServletResponse());
+
+        assertThat(googleResponse.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/posts"));
+        assertThat(session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE)).isNull();
+    }
+
+    @Test
     @DisplayName("두 탭에서 시작한 OAuth 요청은 서로 덮어쓰지 않고 역순 콜백도 각각 성공한다")
     void authorizeAndCallback_TwoPendingStates_BothSucceedInReverseOrder() {
         given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.GOOGLE), anyString()))

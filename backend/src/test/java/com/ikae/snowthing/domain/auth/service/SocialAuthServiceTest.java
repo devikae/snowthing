@@ -69,7 +69,6 @@ class SocialAuthServiceTest {
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-1001"))
                 .willReturn(Optional.empty());
-        given(memberRepository.findByEmail("newrider@naver.com")).willReturn(Optional.empty());
         given(memberRepository.existsByNickname("네이버보더")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(
@@ -82,7 +81,7 @@ class SocialAuthServiceTest {
         Member member = socialAuthService.authenticateOrRegister(profile);
 
         assertThat(member.getId()).isEqualTo(10L);
-        assertThat(member.getEmail()).isEqualTo("newrider@naver.com");
+        assertThat(member.getEmail()).matches("oauth-naver-[A-Za-z0-9_-]{43}@users\\.invalid");
         assertThat(member.getPassword()).isNull();
         assertThat(member.getNickname()).isEqualTo("네이버보더");
         assertThat(member.getEmailVerifiedAt()).isNull();
@@ -94,6 +93,7 @@ class SocialAuthServiceTest {
         assertThat(socialCaptor.getValue().getProvider()).isEqualTo(SocialProvider.NAVER);
         assertThat(socialCaptor.getValue().getProviderUserId()).isEqualTo("naver-1001");
         assertThat(socialCaptor.getValue().getProviderEmail()).isEqualTo("newrider@naver.com");
+        verify(memberRepository, never()).findByEmail("newrider@naver.com");
     }
 
     @Test
@@ -117,6 +117,7 @@ class SocialAuthServiceTest {
 
         Member member = socialAuthService.authenticateOrRegister(profile);
 
+        assertThat(member.getEmail()).isEqualTo("rider@gmail.com");
         assertThat(member.getEmailVerifiedAt()).isNotNull();
     }
 
@@ -162,13 +163,12 @@ class SocialAuthServiceTest {
     void authenticateOrRegister_DuplicateNickname_GeneratesUniqueNickname() {
         OAuthUserProfile profile =
                 new OAuthUserProfile(
-                        SocialProvider.NAVER, "naver-999", "second@naver.com", true, "설원라이더");
+                        SocialProvider.NAVER, "naver-999", "second@naver.com", false, "설원라이더");
 
         given(
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-999"))
                 .willReturn(Optional.empty());
-        given(memberRepository.findByEmail("second@naver.com")).willReturn(Optional.empty());
         given(memberRepository.existsByNickname("설원라이더")).willReturn(true);
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -332,17 +332,17 @@ class SocialAuthServiceTest {
     void authenticateOrRegister_EmailConstraintViolation_RequiresExplicitAccountLink() {
         OAuthUserProfile profile =
                 new OAuthUserProfile(
-                        SocialProvider.NAVER,
-                        "naver-concurrent",
+                        SocialProvider.GOOGLE,
+                        "google-email-concurrent",
                         "concurrent-email@snowthing.org",
-                        false,
+                        true,
                         "동시가입자");
         DataIntegrityViolationException violation =
                 constraintViolation(Member.EMAIL_UNIQUE_CONSTRAINT);
 
         given(
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
-                                SocialProvider.NAVER, "naver-concurrent"))
+                                SocialProvider.GOOGLE, "google-email-concurrent"))
                 .willReturn(Optional.empty());
         given(memberRepository.findByEmail("concurrent-email@snowthing.org"))
                 .willReturn(Optional.empty());
@@ -353,6 +353,31 @@ class SocialAuthServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
+    }
+
+    @Test
+    @DisplayName("비권위 프로필의 내부 이메일 유니크 제약 충돌은 계정 연결 안내로 오분류하지 않는다")
+    void authenticateOrRegister_InternalEmailConstraintViolation_ThrowsOAuthError() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.NAVER,
+                        "naver-internal-concurrent",
+                        "untrusted@naver.com",
+                        false,
+                        "내부충돌");
+        DataIntegrityViolationException violation =
+                constraintViolation(Member.EMAIL_UNIQUE_CONSTRAINT);
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.NAVER, "naver-internal-concurrent"))
+                .willReturn(Optional.empty());
+        given(memberRepository.existsByNickname("내부충돌")).willReturn(false);
+        given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
+
+        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
     }
 
     @Test
@@ -370,8 +395,6 @@ class SocialAuthServiceTest {
         given(
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-social-concurrent"))
-                .willReturn(Optional.empty());
-        given(memberRepository.findByEmail("social-concurrent@naver.com"))
                 .willReturn(Optional.empty());
         given(memberRepository.existsByNickname("소셜충돌")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class)))

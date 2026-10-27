@@ -1,7 +1,12 @@
 package com.ikae.snowthing.domain.auth.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.hibernate.exception.ConstraintViolationException;
@@ -14,6 +19,7 @@ import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberSocialAccount;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
+import com.ikae.snowthing.domain.member.entity.SocialProvider;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
@@ -49,22 +55,28 @@ public class SocialAuthService {
         }
 
         validateEmailPresent(profile);
-        String normalizedEmail = emailNormalizer.normalize(profile.email());
+        String providerEmail = emailNormalizer.normalize(profile.email());
+        String memberEmail =
+                profile.emailAuthoritative()
+                        ? providerEmail
+                        : createInternalEmail(profile.provider(), providerUserId);
         LocalDateTime now = LocalDateTime.now(clock);
-        Optional<Member> existingMemberByEmail = memberRepository.findByEmail(normalizedEmail);
-        if (existingMemberByEmail.isPresent()) {
-            throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
+        if (profile.emailAuthoritative()) {
+            Optional<Member> existingMemberByEmail = memberRepository.findByEmail(memberEmail);
+            if (existingMemberByEmail.isPresent()) {
+                throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
+            }
         }
 
         Member newMember =
                 createSocialMember(
-                        normalizedEmail, profile.nickname(), profile.emailAuthoritative(), now);
+                        memberEmail, profile.nickname(), profile.emailAuthoritative(), now);
         saveSocialAccount(
                 MemberSocialAccount.builder()
                         .member(newMember)
                         .provider(profile.provider())
                         .providerUserId(providerUserId)
-                        .providerEmail(normalizedEmail)
+                        .providerEmail(providerEmail)
                         .connectedAt(now)
                         .build());
         return newMember;
@@ -95,7 +107,7 @@ public class SocialAuthService {
     }
 
     private Member createSocialMember(
-            String normalizedEmail,
+            String memberEmail,
             String rawNickname,
             boolean emailAuthoritative,
             LocalDateTime now) {
@@ -109,7 +121,7 @@ public class SocialAuthService {
             }
             Member member =
                     Member.builder()
-                            .email(normalizedEmail)
+                            .email(memberEmail)
                             .password(null)
                             .nickname(candidateNickname)
                             .emailVerifiedAt(emailAuthoritative ? now : null)
@@ -120,7 +132,11 @@ public class SocialAuthService {
                 return memberRepository.saveAndFlush(member);
             } catch (DataIntegrityViolationException exception) {
                 if (violatesConstraint(exception, Member.EMAIL_UNIQUE_CONSTRAINT)) {
-                    throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED, exception);
+                    ErrorCode errorCode =
+                            emailAuthoritative
+                                    ? ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED
+                                    : ErrorCode.OAUTH_AUTHENTICATION_FAILED;
+                    throw new CustomException(errorCode, exception);
                 }
                 if (violatesConstraint(exception, Member.NICKNAME_UNIQUE_CONSTRAINT)) {
                     throw new CustomException(ErrorCode.DUPLICATE_NICKNAME, exception);
@@ -129,6 +145,25 @@ public class SocialAuthService {
             }
         }
         throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+    }
+
+    private String createInternalEmail(SocialProvider provider, String providerUserId) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] identifier =
+                    (provider.name() + ":" + providerUserId).getBytes(StandardCharsets.UTF_8);
+            String encoded =
+                    Base64.getUrlEncoder()
+                            .withoutPadding()
+                            .encodeToString(digest.digest(identifier));
+            return "oauth-"
+                    + provider.name().toLowerCase(Locale.ROOT)
+                    + "-"
+                    + encoded
+                    + "@users.invalid";
+        } catch (NoSuchAlgorithmException exception) {
+            throw new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED, exception);
+        }
     }
 
     private void saveSocialAccount(MemberSocialAccount socialAccount) {

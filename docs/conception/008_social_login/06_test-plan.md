@@ -15,8 +15,9 @@
 - **신규 회원 자동 가입**:
   - 처음 로그인하는 소셜 프로필인 경우 `Member`(`password = null`)와 `MemberSocialAccount`가 함께 저장되는지 검증한다.
   - 네이버와 구글 외부 도메인은 `emailVerifiedAt = null`, 권위 있는 구글 이메일은 인증 시각이 기록되는지 검증한다.
+  - 비권위 프로필은 실제 제공자 이메일 대신 `@users.invalid` 내부 식별 이메일로 `Member`를 생성하고 실제 값은 `MemberSocialAccount.providerEmail`에 저장하는지 검증한다.
 - **기존 이메일 회원 자동 연결 차단**:
-  - 이미 존재하는 이메일이면 새 `Member`와 `MemberSocialAccount`를 만들지 않고 `OAUTH_ACCOUNT_LINK_REQUIRED`를 반환하는지 검증한다.
+  - 권위 있는 이메일이 이미 존재하면 새 `Member`와 `MemberSocialAccount`를 만들지 않고 `OAUTH_ACCOUNT_LINK_REQUIRED`를 반환하는지 검증한다.
 - **이미 연결된 소셜 계정 재로그인**:
   - `(provider, providerUserId)`가 이미 존재하면 추가 insert 없이 기존 `Member`를 반환하는지 검증한다.
 - **이메일 필수 범위 검증**:
@@ -35,6 +36,7 @@
 
 - 인가 요청 시 세션에 `state`와 검증된 `returnUrl`이 저장되고 소셜 인가 URL로 302 리다이렉트되는지 검증한다.
 - 두 탭의 요청을 동시에 저장하고 역순 콜백도 각각 성공하는지, 변조된 콜백이 정상 요청을 삭제하지 않는지, 최대 5개 제한이 적용되는지 검증한다.
+- 다른 공급자 콜백에 전달된 `state`가 거절된 뒤에도 원래 공급자 콜백에서 정상 소비되는지 검증한다.
 - 콜백 요청 시:
   - 정상 `state` 및 `code`일 때 세션(`SecurityContext`)이 생성되고 `MemberSessionRegistry`에 등록된 후 `{frontendBaseUrl}{returnUrl}`로 302 리다이렉트되는지 검증한다.
   - `state` 불일치 또는 재사용(Replay) 시 `/login?error=OAUTH_STATE_INVALID`로 리다이렉트되는지 검증한다.

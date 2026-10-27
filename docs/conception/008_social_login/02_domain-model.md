@@ -51,4 +51,5 @@
 - 로그인 권한은 이미 저장된 `(provider, providerUserId)` 연결로만 부여한다.
 - 제공자 이메일은 기존 `Member` 자동 연결의 증거로 사용하지 않는다.
 - 신규 회원의 `emailVerifiedAt`은 `emailAuthoritative = true`일 때만 기록한다.
+- 비권위 이메일은 `Member.email`에 저장하지 않는다. 제공자와 제공자 사용자 ID의 SHA-256 결과로 만든 `oauth-{provider}-{digest}@users.invalid`를 내부 조회 키로 사용하고 실제 값은 `MemberSocialAccount.providerEmail`에 저장한다.
 - 연결된 계정의 로그인 과정에서는 현재 프로필 이메일로 기존 `emailVerifiedAt`을 변경하지 않는다.
