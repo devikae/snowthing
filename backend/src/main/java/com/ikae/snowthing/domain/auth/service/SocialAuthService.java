@@ -36,36 +36,29 @@ public class SocialAuthService {
 
     @Transactional
     public Member authenticateOrRegister(OAuthUserProfile profile) {
-        validateProfile(profile);
+        validateIdentity(profile);
 
         String providerUserId = profile.providerUserId().trim();
-        String normalizedEmail = emailNormalizer.normalize(profile.email());
-        LocalDateTime now = LocalDateTime.now(clock);
-
         Optional<MemberSocialAccount> existingSocialAccount =
                 memberSocialAccountRepository.findByProviderAndProviderUserId(
                         profile.provider(), providerUserId);
         if (existingSocialAccount.isPresent()) {
             Member linkedMember = existingSocialAccount.get().getMember();
             validateActiveStatus(linkedMember);
-            if (linkedMember.getEmailVerifiedAt() == null) {
-                linkedMember.verifyEmail(now);
-            }
             return linkedMember;
         }
 
+        validateEmailPresent(profile);
+        String normalizedEmail = emailNormalizer.normalize(profile.email());
+        LocalDateTime now = LocalDateTime.now(clock);
         Optional<Member> existingMemberByEmail = memberRepository.findByEmail(normalizedEmail);
         if (existingMemberByEmail.isPresent()) {
-            Member member = existingMemberByEmail.get();
-            validateActiveStatus(member);
-            if (member.getEmailVerifiedAt() == null) {
-                member.verifyEmail(now);
-            }
-            linkSocialAccountIfAbsent(member, profile, providerUserId, normalizedEmail, now);
-            return member;
+            throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
         }
 
-        Member newMember = createSocialMember(normalizedEmail, profile.nickname(), now);
+        Member newMember =
+                createSocialMember(
+                        normalizedEmail, profile.nickname(), profile.emailAuthoritative(), now);
         saveSocialAccount(
                 MemberSocialAccount.builder()
                         .member(newMember)
@@ -77,18 +70,18 @@ public class SocialAuthService {
         return newMember;
     }
 
-    private void validateProfile(OAuthUserProfile profile) {
+    private void validateIdentity(OAuthUserProfile profile) {
         if (profile == null
                 || profile.provider() == null
                 || profile.providerUserId() == null
                 || profile.providerUserId().isBlank()) {
             throw new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
         }
+    }
+
+    private void validateEmailPresent(OAuthUserProfile profile) {
         if (profile.email() == null || profile.email().isBlank()) {
             throw new CustomException(ErrorCode.OAUTH_EMAIL_REQUIRED);
-        }
-        if (!profile.emailVerified()) {
-            throw new CustomException(ErrorCode.OAUTH_EMAIL_NOT_VERIFIED);
         }
     }
 
@@ -101,33 +94,11 @@ public class SocialAuthService {
         }
     }
 
-    private void linkSocialAccountIfAbsent(
-            Member member,
-            OAuthUserProfile profile,
-            String providerUserId,
-            String normalizedEmail,
-            LocalDateTime now) {
-        Optional<MemberSocialAccount> existingProviderLink =
-                memberSocialAccountRepository.findByMemberIdAndProvider(
-                        member.getId(), profile.provider());
-        if (existingProviderLink.isPresent()) {
-            if (!existingProviderLink.get().getProviderUserId().equals(providerUserId)) {
-                throw new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
-            }
-            return;
-        }
-        saveSocialAccount(
-                MemberSocialAccount.builder()
-                        .member(member)
-                        .provider(profile.provider())
-                        .providerUserId(providerUserId)
-                        .providerEmail(normalizedEmail)
-                        .connectedAt(now)
-                        .build());
-    }
-
     private Member createSocialMember(
-            String normalizedEmail, String rawNickname, LocalDateTime now) {
+            String normalizedEmail,
+            String rawNickname,
+            boolean emailAuthoritative,
+            LocalDateTime now) {
         for (int attempt = 0; attempt < MAX_NICKNAME_GENERATION_ATTEMPTS; attempt++) {
             String candidateNickname =
                     attempt == 0
@@ -141,7 +112,7 @@ public class SocialAuthService {
                             .email(normalizedEmail)
                             .password(null)
                             .nickname(candidateNickname)
-                            .emailVerifiedAt(now)
+                            .emailVerifiedAt(emailAuthoritative ? now : null)
                             .role(Role.ROLE_USER)
                             .status(MemberStatus.ACTIVE)
                             .build();
@@ -149,7 +120,7 @@ public class SocialAuthService {
                 return memberRepository.saveAndFlush(member);
             } catch (DataIntegrityViolationException exception) {
                 if (violatesConstraint(exception, Member.EMAIL_UNIQUE_CONSTRAINT)) {
-                    throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED, exception);
+                    throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED, exception);
                 }
                 if (violatesConstraint(exception, Member.NICKNAME_UNIQUE_CONSTRAINT)) {
                     throw new CustomException(ErrorCode.DUPLICATE_NICKNAME, exception);

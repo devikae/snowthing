@@ -12,7 +12,7 @@ erDiagram
         VARCHAR(100) email UK "NOT NULL"
         VARCHAR(255) password "NULLABLE (소셜 전용 가입 시 NULL)"
         VARCHAR(50) nickname UK
-        DATETIME email_verified_at "소셜 인증 완료 시각 기록"
+        DATETIME email_verified_at "SnowThing이 신뢰 가능한 이메일 인증 시각, NULL 허용"
         VARCHAR(20) role
         VARCHAR(20) status
         DATETIME created_at
@@ -39,7 +39,7 @@ erDiagram
 | `member_id` | `BIGINT` | `FK (member.member_id), NOT NULL` | 회원 내부 PK (`ON DELETE CASCADE`) |
 | `provider` | `VARCHAR(20)` | `NOT NULL` | `GOOGLE`, `NAVER` |
 | `provider_user_id` | `VARCHAR(100)` | `NOT NULL` | 소셜 공급자 측 고유 사용자 ID |
-| `provider_email` | `VARCHAR(100)` | `NOT NULL` | 소셜 공급자 측 인증 이메일 |
+| `provider_email` | `VARCHAR(100)` | `NOT NULL` | 연결 시점에 공급자가 제공한 이메일. 현재 소유권 보증 필드는 아님 |
 | `connected_at` | `DATETIME` | `NOT NULL` | 연결 일시 |
 | `created_at` | `DATETIME` | `NOT NULL, DEFAULT CURRENT_TIMESTAMP` | 생성 일시 |
 | `updated_at` | `DATETIME` | `NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | 수정 일시 |
@@ -50,6 +50,8 @@ erDiagram
 - `uk_member_social_member_provider`: `UNIQUE (member_id, provider)` — 한 회원이 같은 소셜 공급자를 중복 연결하는 것 차단
 - `chk_member_social_provider`: `CHECK (provider IN ('GOOGLE', 'NAVER'))`
 - `fk_member_social_member`: `FOREIGN KEY (member_id) REFERENCES member (member_id) ON DELETE CASCADE`
+
+`member.email` UNIQUE 제약은 한 이메일로 회원 행이 중복 생성되는 것을 막는다. 다만 이메일 충돌 시 기존 회원에 자동 연결하지 않고 `OAUTH_ACCOUNT_LINK_REQUIRED`로 종료한다.
 
 ## 4. 마이그레이션 파일
 

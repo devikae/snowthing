@@ -63,7 +63,7 @@ class SocialAuthServiceTest {
     void authenticateOrRegister_NewSocialUser_CreatesMemberAndSocialAccount() {
         OAuthUserProfile profile =
                 new OAuthUserProfile(
-                        SocialProvider.NAVER, "naver-1001", "NewRider@Naver.com", true, "네이버보더");
+                        SocialProvider.NAVER, "naver-1001", "NewRider@Naver.com", false, "네이버보더");
 
         given(
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
@@ -85,7 +85,7 @@ class SocialAuthServiceTest {
         assertThat(member.getEmail()).isEqualTo("newrider@naver.com");
         assertThat(member.getPassword()).isNull();
         assertThat(member.getNickname()).isEqualTo("네이버보더");
-        assertThat(member.getEmailVerifiedAt()).isNotNull();
+        assertThat(member.getEmailVerifiedAt()).isNull();
         assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
 
         ArgumentCaptor<MemberSocialAccount> socialCaptor =
@@ -97,8 +97,32 @@ class SocialAuthServiceTest {
     }
 
     @Test
-    @DisplayName("동일 이메일의 기존 일반 회원이 존재하면 새 회원을 만들지 않고 기존 회원에 소셜 계정을 자동 연결한다")
-    void authenticateOrRegister_ExistingEmail_LinksSocialAccountToExistingMember() {
+    @DisplayName("권위 있는 Google 이메일로 신규 가입하면 SnowThing 이메일 인증 시각을 기록한다")
+    void authenticateOrRegister_AuthoritativeGoogleEmail_MarksEmailVerified() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE,
+                        "google-authoritative",
+                        "rider@gmail.com",
+                        true,
+                        "구글보더");
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-authoritative"))
+                .willReturn(Optional.empty());
+        given(memberRepository.findByEmail("rider@gmail.com")).willReturn(Optional.empty());
+        given(memberRepository.existsByNickname("구글보더")).willReturn(false);
+        given(memberRepository.saveAndFlush(any(Member.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        Member member = socialAuthService.authenticateOrRegister(profile);
+
+        assertThat(member.getEmailVerifiedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("미연결 소셜 이메일이 기존 회원과 같으면 자동 연결하지 않는다")
+    void authenticateOrRegister_ExistingEmail_RequiresExplicitAccountLink() {
         Member existingMember =
                 Member.builder()
                         .email("rider@snowthing.org")
@@ -123,15 +147,14 @@ class SocialAuthServiceTest {
                 .willReturn(Optional.empty());
         given(memberRepository.findByEmail("rider@snowthing.org"))
                 .willReturn(Optional.of(existingMember));
-        given(memberSocialAccountRepository.findByMemberIdAndProvider(7L, SocialProvider.GOOGLE))
-                .willReturn(Optional.empty());
+        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(googleProfile))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
 
-        Member linked = socialAuthService.authenticateOrRegister(googleProfile);
-
-        assertThat(linked).isSameAs(existingMember);
-        assertThat(linked.getEmailVerifiedAt()).isNotNull();
+        assertThat(existingMember.getEmailVerifiedAt()).isNull();
         verify(memberRepository, never()).saveAndFlush(any(Member.class));
-        verify(memberSocialAccountRepository).saveAndFlush(any(MemberSocialAccount.class));
+        verify(memberSocialAccountRepository, never()).saveAndFlush(any(MemberSocialAccount.class));
     }
 
     @Test
@@ -159,23 +182,52 @@ class SocialAuthServiceTest {
     }
 
     @Test
-    @DisplayName("이메일이 누락되었거나 미인증된 소셜 프로필은 가입 및 로그인이 거부된다")
-    void authenticateOrRegister_MissingOrUnverifiedEmail_ThrowsCustomException() {
+    @DisplayName("미연결 소셜 프로필에 이메일이 누락되면 가입이 거부된다")
+    void authenticateOrRegister_MissingEmail_ThrowsCustomException() {
         OAuthUserProfile missingEmailProfile =
                 new OAuthUserProfile(SocialProvider.NAVER, "naver-200", null, false, "보더");
-        OAuthUserProfile unverifiedEmailProfile =
-                new OAuthUserProfile(
-                        SocialProvider.NAVER, "naver-201", "unverified@naver.com", false, "보더");
+
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.NAVER, "naver-200"))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(missingEmailProfile))
                 .isInstanceOf(CustomException.class)
                 .extracting(ex -> ((CustomException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.OAUTH_EMAIL_REQUIRED);
+    }
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(unverifiedEmailProfile))
-                .isInstanceOf(CustomException.class)
-                .extracting(ex -> ((CustomException) ex).getErrorCode())
-                .isEqualTo(ErrorCode.OAUTH_EMAIL_NOT_VERIFIED);
+    @Test
+    @DisplayName("이미 연결된 소셜 계정은 현재 프로필 이메일이 없어도 제공자 고유 ID로 로그인한다")
+    void authenticateOrRegister_LinkedAccount_DoesNotRequireEmailProfile() {
+        Member linkedMember =
+                Member.builder()
+                        .email("linked@snowthing.org")
+                        .password(null)
+                        .nickname("연결회원")
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        MemberSocialAccount socialAccount =
+                MemberSocialAccount.builder()
+                        .member(linkedMember)
+                        .provider(SocialProvider.NAVER)
+                        .providerUserId("naver-201")
+                        .providerEmail("old@naver.com")
+                        .build();
+        OAuthUserProfile profile =
+                new OAuthUserProfile(SocialProvider.NAVER, "naver-201", null, false, "보더");
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.NAVER, "naver-201"))
+                .willReturn(Optional.of(socialAccount));
+
+        Member authenticated = socialAuthService.authenticateOrRegister(profile);
+
+        assertThat(authenticated).isSameAs(linkedMember);
+        assertThat(authenticated.getEmailVerifiedAt()).isNull();
+        verify(memberRepository, never()).findByEmail(any());
     }
 
     @Test
@@ -198,11 +250,6 @@ class SocialAuthServiceTest {
                         .status(MemberStatus.WITHDRAWN)
                         .build();
 
-        given(memberRepository.findByEmail("suspended@snowthing.org"))
-                .willReturn(Optional.of(suspendedMember));
-        given(memberRepository.findByEmail("withdrawn@snowthing.org"))
-                .willReturn(Optional.of(withdrawnMember));
-
         OAuthUserProfile suspendedProfile =
                 new OAuthUserProfile(
                         SocialProvider.GOOGLE,
@@ -217,6 +264,28 @@ class SocialAuthServiceTest {
                         "withdrawn@snowthing.org",
                         true,
                         "탈퇴회원");
+        MemberSocialAccount suspendedSocialAccount =
+                MemberSocialAccount.builder()
+                        .member(suspendedMember)
+                        .provider(SocialProvider.GOOGLE)
+                        .providerUserId("google-suspended")
+                        .providerEmail("suspended@snowthing.org")
+                        .build();
+        MemberSocialAccount withdrawnSocialAccount =
+                MemberSocialAccount.builder()
+                        .member(withdrawnMember)
+                        .provider(SocialProvider.GOOGLE)
+                        .providerUserId("google-withdrawn")
+                        .providerEmail("withdrawn@snowthing.org")
+                        .build();
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-suspended"))
+                .willReturn(Optional.of(suspendedSocialAccount));
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-withdrawn"))
+                .willReturn(Optional.of(withdrawnSocialAccount));
 
         assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(suspendedProfile))
                 .isInstanceOf(CustomException.class)
@@ -259,34 +328,54 @@ class SocialAuthServiceTest {
     }
 
     @Test
-    @DisplayName("소셜 계정 유니크 제약 충돌은 OAuth 인증 오류로 변환한다")
-    void authenticateOrRegister_SocialAccountConstraintViolation_ThrowsOAuthError() {
-        Member existingMember =
-                Member.builder()
-                        .email("linked@snowthing.org")
-                        .nickname("연결회원")
-                        .role(Role.ROLE_USER)
-                        .status(MemberStatus.ACTIVE)
-                        .build();
-        ReflectionTestUtils.setField(existingMember, "id", 17L);
+    @DisplayName("동시 가입으로 이메일 유니크 제약이 충돌하면 자동 연결 대신 계정 연결 필요 오류를 반환한다")
+    void authenticateOrRegister_EmailConstraintViolation_RequiresExplicitAccountLink() {
         OAuthUserProfile profile =
                 new OAuthUserProfile(
                         SocialProvider.NAVER,
                         "naver-concurrent",
-                        "linked@snowthing.org",
-                        true,
-                        "연결회원");
+                        "concurrent-email@snowthing.org",
+                        false,
+                        "동시가입자");
         DataIntegrityViolationException violation =
-                constraintViolation(MemberSocialAccount.PROVIDER_USER_UNIQUE_CONSTRAINT);
+                constraintViolation(Member.EMAIL_UNIQUE_CONSTRAINT);
 
         given(
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-concurrent"))
                 .willReturn(Optional.empty());
-        given(memberRepository.findByEmail("linked@snowthing.org"))
-                .willReturn(Optional.of(existingMember));
-        given(memberSocialAccountRepository.findByMemberIdAndProvider(17L, SocialProvider.NAVER))
+        given(memberRepository.findByEmail("concurrent-email@snowthing.org"))
                 .willReturn(Optional.empty());
+        given(memberRepository.existsByNickname("동시가입자")).willReturn(false);
+        given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
+
+        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
+    }
+
+    @Test
+    @DisplayName("신규 가입 중 소셜 계정 유니크 제약이 충돌하면 OAuth 인증 오류로 변환한다")
+    void authenticateOrRegister_SocialAccountConstraintViolation_ThrowsOAuthError() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.NAVER,
+                        "naver-social-concurrent",
+                        "social-concurrent@naver.com",
+                        false,
+                        "소셜충돌");
+        DataIntegrityViolationException violation =
+                constraintViolation(MemberSocialAccount.PROVIDER_USER_UNIQUE_CONSTRAINT);
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.NAVER, "naver-social-concurrent"))
+                .willReturn(Optional.empty());
+        given(memberRepository.findByEmail("social-concurrent@naver.com"))
+                .willReturn(Optional.empty());
+        given(memberRepository.existsByNickname("소셜충돌")).willReturn(false);
+        given(memberRepository.saveAndFlush(any(Member.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
         given(memberSocialAccountRepository.saveAndFlush(any(MemberSocialAccount.class)))
                 .willThrow(violation);
 

@@ -6,5 +6,5 @@ public record OAuthUserProfile(
         SocialProvider provider,
         String providerUserId,
         String email,
-        boolean emailVerified,
+        boolean emailAuthoritative,
         String nickname) {}

@@ -2,8 +2,9 @@
 
 ## 1. OAuth 2.0 CSRF 및 Replay 방어 (`state` 검증)
 
-- 인가 시작 시 `SecureRandom`으로 생성한 32바이트(Base64Url 인코딩) 일회성 `state` 토큰을 `HttpSession`에 저장한다.
-- 콜백 진입 시 세션에 보관된 `state`를 **즉시 꺼내어 제거(One-time Consume)**한 뒤, 쿼리 파라미터 `state`, 요청 `provider`, 만료 시간(10분 이내)을 상수 시간 비교(`MessageDigest.isEqual`)로 검증한다.
+- 인가 시작 시 `SecureRandom`으로 생성한 32바이트(Base64Url 인코딩) 일회성 `state` 토큰을 `HttpSession`에 저장한다. 여러 탭을 지원하기 위해 세션당 최대 5개의 대기 요청을 불변 목록으로 보관한다.
+- 콜백 진입 시 전체 목록에서 쿼리 파라미터 `state`를 상수 시간 비교(`MessageDigest.isEqual`)로 찾고, 일치한 요청만 제거(One-time Consume)한 뒤 요청 `provider`와 만료 시간(10분 이내)을 검증한다.
+- 알 수 없는 `state` 콜백은 다른 정상 요청을 삭제하지 않는다. 일치한 요청의 공급자가 다르거나 만료된 경우에는 해당 요청만 소비해 재사용을 막는다.
 - 불일치하거나 만료된 경우 즉시 `OAUTH_STATE_INVALID`로 차단하여 OAuth CSRF(로그인 세션 강제 바인딩 공격) 및 재전송 공격을 방어한다.
 
 ## 2. Open Redirect 방어 (`returnUrl` 화이트리스트 검증)
@@ -11,12 +12,13 @@
 - `returnUrl` 파라미터는 반드시 단일 슬래시(`/`)로 시작하고 `//`나 `http:`, `https:`, 역슬래시(`\`), 제어문자를 포함하지 않으며 URI 문법상 유효한 상대 경로만 허용한다.
 - 최종 리다이렉트 URL은 서버 설정에 고정된 `snowthing.oauth2.frontend-base-url` (`http://localhost:3000` 또는 `https://snowthing.org`) 뒤에 검증된 상대 경로만 결합하여 외부 피싱 사이트로의 리다이렉트를 원천 차단한다.
 
-## 3. 이메일 미인증 계정 연결 공격(Pre-hijacking) 방어
+## 3. 이메일 기반 계정 선점·탈취(Pre-hijacking) 방어
 
-- 소셜 계정과 기존 이메일 계정을 자동 통합할 때, 소셜 제공자가 보낸 이메일 검증 플래그를 반드시 확인한다:
-  - **Google**: `email_verified == true`
-  - **Naver**: `resultcode == "00"` 및 `response.email` 존재 여부 확인
-- 이메일이 누락되었거나 미인증인 경우 어떠한 경우에도 기존 `Member`와 연결하지 않으며 신규 가입도 허용하지 않는다.
+- 공급자 이메일과 기존 회원 이메일이 같아도 자동 연결하거나 로그인 권한을 부여하지 않는다. 기존 계정 연결은 현재 계정 재인증을 포함한 별도 기능으로만 제공한다.
+- **Google**: `email_verified == true`만으로 외부 도메인 이메일의 현재 소유권을 보증하지 않는다. Gmail 또는 Workspace `hd`가 함께 확인될 때만 신규 회원의 `emailVerifiedAt`을 기록한다.
+- **Naver**: `resultcode == "00"`은 네이버 사용자 정보 조회 성공을 뜻한다. `response.email` 존재 여부는 현재 이메일 소유권 검증으로 승격하지 않는다.
+- 신규 회원은 공급자 고유 ID를 주 로그인 식별자로 생성할 수 있다. 이메일 신뢰 수준이 낮으면 `emailVerifiedAt`을 `NULL`로 유지한다.
+- 이미 연결된 계정은 공급자 고유 ID로 로그인하며, 이후 프로필 이메일의 변경·누락으로 로컬 인증 상태를 갱신하지 않는다.
 
 ## 4. 세션 고정 방어 및 실시간 채팅 세션 연동
 

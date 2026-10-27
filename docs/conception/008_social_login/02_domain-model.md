@@ -26,7 +26,7 @@
 - `SocialProvider provider`
 - `String providerUserId`
 - `String email`
-- `boolean emailVerified`
+- `boolean emailAuthoritative`: 공급자 응답이 SnowThing 이메일 인증 완료로 승격 가능한 수준인지 나타낸다. 네이버와 구글 외부 도메인은 `false`이다.
 - `String nickname`
 
 ### 1.4. `SocialNicknameGenerator` (Domain Component)
@@ -44,4 +44,11 @@
   - DB 트랜잭션 외부에서 인가 코드(`code`)로 Access Token 교환 및 UserInfo 조회 수행 (`RestClient` + 명시적 타임아웃)
 - **Service (`SocialAuthService`)**:
   - 서블릿/세션 API(`HttpSession`, `SecurityContextHolder`)를 일절 참조하지 않음
-  - `OAuthUserProfile` 검증 및 회원 조회·자동 연결·신규 생성 트랜잭션 수행
+  - `OAuthUserProfile` 검증, 공급자 고유 ID 조회, 기존 이메일 충돌 차단, 신규 생성 트랜잭션 수행
+
+## 3. 계정 식별 불변식
+
+- 로그인 권한은 이미 저장된 `(provider, providerUserId)` 연결로만 부여한다.
+- 제공자 이메일은 기존 `Member` 자동 연결의 증거로 사용하지 않는다.
+- 신규 회원의 `emailVerifiedAt`은 `emailAuthoritative = true`일 때만 기록한다.
+- 연결된 계정의 로그인 과정에서는 현재 프로필 이메일로 기존 `emailVerifiedAt`을 변경하지 않는다.

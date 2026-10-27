@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.auth.oauth2;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -159,9 +160,11 @@ public class OAuth2ExternalClient {
             throw new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
         }
         String email = nullIfBlank(root.path("email").asText(null));
-        boolean emailVerified = root.path("email_verified").asBoolean(false);
+        boolean emailAuthoritative =
+                root.path("email_verified").asBoolean(false)
+                        && isGoogleAuthoritativeEmail(email, root.path("hd").asText(null));
         String name = nullIfBlank(root.path("name").asText(null));
-        return new OAuthUserProfile(SocialProvider.GOOGLE, sub, email, emailVerified, name);
+        return new OAuthUserProfile(SocialProvider.GOOGLE, sub, email, emailAuthoritative, name);
     }
 
     private OAuthUserProfile parseNaverProfile(JsonNode root) {
@@ -174,8 +177,7 @@ public class OAuth2ExternalClient {
         String email = nullIfBlank(response.path("email").asText(null));
         String nickname =
                 nullIfBlank(response.path("nickname").asText(response.path("name").asText(null)));
-        boolean emailVerified = email != null;
-        return new OAuthUserProfile(SocialProvider.NAVER, id, email, emailVerified, nickname);
+        return new OAuthUserProfile(SocialProvider.NAVER, id, email, false, nickname);
     }
 
     private OAuth2Properties.Provider requireConfigured(SocialProvider provider) {
@@ -190,6 +192,14 @@ public class OAuth2ExternalClient {
             return null;
         }
         return value.trim();
+    }
+
+    private static boolean isGoogleAuthoritativeEmail(String email, String hostedDomain) {
+        if (email == null) {
+            return false;
+        }
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
+        return normalizedEmail.endsWith("@gmail.com") || nullIfBlank(hostedDomain) != null;
     }
 
     private static RestClient createRestClient(OAuth2Properties properties) {
