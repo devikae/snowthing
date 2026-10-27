@@ -107,10 +107,7 @@ public class SocialAuthService {
     }
 
     private Member createSocialMember(
-            String memberEmail,
-            String rawNickname,
-            boolean emailAuthoritative,
-            LocalDateTime now) {
+            String memberEmail, String rawNickname, boolean emailAuthoritative, LocalDateTime now) {
         for (int attempt = 0; attempt < MAX_NICKNAME_GENERATION_ATTEMPTS; attempt++) {
             String candidateNickname =
                     attempt == 0
