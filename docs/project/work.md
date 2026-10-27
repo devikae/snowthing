@@ -2090,3 +2090,17 @@
 - 사용자별 봇 호출 제한을 분당 3회에서 분당 1회로 낮췄다.
 - 동일 사용자의 두 번째 요청이 MCP와 OpenAI로 전달되지 않는 단위 테스트를 추가했다.
 - 목록·검색 결과는 MCP 서버에서 기본·최대 5개로 제한하도록 사용자 위임 보안 설계를 갱신했다.
+
+## OAuth 보안 핫픽스 (2026-10-27)
+
+- 브랜치: `hotfix/oauth-security` (`origin/main`의 PR #42 병합 커밋에서 별도 worktree로 분리)
+- 공급자 이메일이 기존 회원 이메일과 같다는 이유만으로 `MemberSocialAccount`를 자동 연결하던 경로를 제거했다. 충돌 시 `AUTH_012 / OAUTH_ACCOUNT_LINK_REQUIRED`로 로그인 화면에 안내하며 회원 및 연결 데이터를 변경하지 않는다.
+- 신규 소셜 가입은 별도 이메일 인증 없이 유지한다. 네이버 이메일과 `hd` 없는 구글 외부 도메인은 SnowThing 이메일 인증 완료로 승격하지 않고 `emailVerifiedAt = NULL`로 저장한다. Gmail 또는 `email_verified=true`와 Workspace `hd`가 함께 있는 구글 이메일만 인증 시각을 기록한다.
+- 이미 연결된 소셜 계정은 현재 UserInfo 이메일의 존재·신뢰 여부와 무관하게 `(provider, providerUserId)`로 로그인하며, 로그인 과정에서 기존 `emailVerifiedAt`을 변경하지 않는다.
+- OAuth `state`를 세션당 최대 5개, 10분 TTL의 불변 목록으로 보관하도록 변경했다. 콜백은 일치하는 요청만 일회성 소비하며 변조된 콜백이 다른 탭의 정상 요청을 삭제하지 않는다.
+- `docs/conception/008_social_login`의 요구사항·도메인·ERD·API·보안·테스트 문서와 `docs/plans/2026-10-27-oauth-security-hotfix-design.md`를 현재 구현 기준으로 갱신했다. 데이터베이스 마이그레이션은 없다.
+- 검증: 백엔드 전체 테스트 통과, 일반 Git 작업본에서 Spotless 통과, 프런트엔드 ESLint와 production build 통과, `git diff --check` 통과.
+- 기존에 자동 연결된 운영 데이터는 소유권 확인 없이 일괄 분리하면 정상 연결을 끊을 수 있어 자동 변경하지 않는다. 로그인된 계정에서 재인증 후 소셜 계정을 연결하는 관리 UI/API는 후속 작업으로 남긴다.
+- 프런트 의존성 설치 시 현재 lockfile 기준 npm 취약점 11건(중간 2, 높음 8, 치명적 1)이 보고됐다. 이번 핫픽스에서 의존성 버전은 변경하지 않았으며 별도 의존성 보안 점검이 필요하다.
+- PR #43 CodeRabbit 추가 리뷰를 반영했다. 다른 공급자 콜백은 같은 `state`를 전달받아도 원래 요청을 소비하지 않으며, 정상 공급자 콜백에서만 제거한다.
+- 신규 네이버·구글 외부 도메인 프로필은 실제 이메일로 `Member.email`을 점유하지 않는다. 제공자와 사용자 ID의 SHA-256 결과로 만든 `@users.invalid` 내부 식별 이메일을 회원 조회 키로 쓰고 실제 이메일은 `MemberSocialAccount.providerEmail`에만 저장한다. 기존 연결 회원은 데이터 변경 없이 제공자 ID 로그인을 유지하며 과거 데이터 정리는 별도 점검으로 남긴다.

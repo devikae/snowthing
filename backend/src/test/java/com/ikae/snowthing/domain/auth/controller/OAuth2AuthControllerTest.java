@@ -93,9 +93,10 @@ class OAuth2AuthControllerTest {
 
         MockHttpSession session = (MockHttpSession) authorizeRequest.getSession(false);
         assertThat(session).isNotNull();
-        OAuth2AuthController.OAuth2AuthorizationSession savedState =
-                (OAuth2AuthController.OAuth2AuthorizationSession)
+        OAuth2AuthController.OAuth2AuthorizationSessions savedStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
                         session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        OAuth2AuthController.OAuth2AuthorizationSession savedState = savedStates.pending().get(0);
         assertThat(savedState).isNotNull();
         assertThat(savedState.returnUrl()).isEqualTo("/carpool");
 
@@ -168,6 +169,168 @@ class OAuth2AuthControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FOUND);
         assertThat(response.getHeaders().getLocation())
                 .isEqualTo(URI.create("https://snowthing.org/login?error=OAUTH_STATE_INVALID"));
+        OAuth2AuthController.OAuth2AuthorizationSessions remainingStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        assertThat(remainingStates.pending()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("다른 제공자 콜백에 전달된 state는 소비하지 않아 원래 제공자 콜백에서 사용할 수 있다")
+    void callback_WrongProvider_DoesNotConsumePendingState() {
+        given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.GOOGLE), anyString()))
+                .willReturn(URI.create("https://accounts.google.com/o/oauth2/v2/auth"));
+        MockHttpServletRequest authorizeRequest = new MockHttpServletRequest();
+        controller.authorize("google", "/posts", authorizeRequest);
+        MockHttpSession session = (MockHttpSession) authorizeRequest.getSession(false);
+        OAuth2AuthController.OAuth2AuthorizationSessions savedStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        String googleState = savedStates.pending().get(0).state();
+
+        MockHttpServletRequest wrongProviderRequest = new MockHttpServletRequest();
+        wrongProviderRequest.setSession(session);
+        ResponseEntity<Void> wrongProviderResponse =
+                controller.callback(
+                        "naver",
+                        "wrong-provider-code",
+                        googleState,
+                        null,
+                        wrongProviderRequest,
+                        new MockHttpServletResponse());
+        assertThat(wrongProviderResponse.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/login?error=OAUTH_STATE_INVALID"));
+
+        OAuth2AuthController.OAuth2AuthorizationSessions remainingStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        assertThat(remainingStates.pending())
+                .extracting(OAuth2AuthController.OAuth2AuthorizationSession::state)
+                .containsExactly(googleState);
+
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE,
+                        "google-provider-check",
+                        "rider@gmail.com",
+                        true,
+                        "보더");
+        Member member =
+                Member.builder()
+                        .email("rider@gmail.com")
+                        .nickname("보더")
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        given(
+                        oauth2ExternalClient.fetchUserProfile(
+                                SocialProvider.GOOGLE, "google-code", googleState))
+                .willReturn(profile);
+        given(socialAuthService.authenticateOrRegister(profile)).willReturn(member);
+        MockHttpServletRequest googleCallbackRequest = new MockHttpServletRequest();
+        googleCallbackRequest.setSession(session);
+
+        ResponseEntity<Void> googleResponse =
+                controller.callback(
+                        "google",
+                        "google-code",
+                        googleState,
+                        null,
+                        googleCallbackRequest,
+                        new MockHttpServletResponse());
+
+        assertThat(googleResponse.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/posts"));
+        assertThat(session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE)).isNull();
+    }
+
+    @Test
+    @DisplayName("두 탭에서 시작한 OAuth 요청은 서로 덮어쓰지 않고 역순 콜백도 각각 성공한다")
+    void authorizeAndCallback_TwoPendingStates_BothSucceedInReverseOrder() {
+        given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.GOOGLE), anyString()))
+                .willReturn(URI.create("https://accounts.google.com/o/oauth2/v2/auth"));
+
+        MockHttpServletRequest authorizeRequest = new MockHttpServletRequest();
+        controller.authorize("google", "/posts", authorizeRequest);
+        controller.authorize("google", "/carpool", authorizeRequest);
+        MockHttpSession session = (MockHttpSession) authorizeRequest.getSession(false);
+        OAuth2AuthController.OAuth2AuthorizationSessions savedStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        assertThat(savedStates.pending()).hasSize(2);
+        OAuth2AuthController.OAuth2AuthorizationSession first = savedStates.pending().get(0);
+        OAuth2AuthController.OAuth2AuthorizationSession second = savedStates.pending().get(1);
+
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE, "google-777", "rider@gmail.com", true, "보더");
+        Member member =
+                Member.builder()
+                        .email("rider@gmail.com")
+                        .nickname("보더")
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        given(
+                        oauth2ExternalClient.fetchUserProfile(
+                                eq(SocialProvider.GOOGLE), anyString(), anyString()))
+                .willReturn(profile);
+        given(socialAuthService.authenticateOrRegister(profile)).willReturn(member);
+
+        MockHttpServletRequest secondCallbackRequest = new MockHttpServletRequest();
+        secondCallbackRequest.setSession(session);
+        ResponseEntity<Void> secondResponse =
+                controller.callback(
+                        "google",
+                        "second-code",
+                        second.state(),
+                        null,
+                        secondCallbackRequest,
+                        new MockHttpServletResponse());
+        assertThat(secondResponse.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/carpool"));
+
+        OAuth2AuthController.OAuth2AuthorizationSessions afterSecond =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        assertThat(afterSecond.pending())
+                .extracting(OAuth2AuthController.OAuth2AuthorizationSession::state)
+                .containsExactly(first.state());
+
+        MockHttpServletRequest firstCallbackRequest = new MockHttpServletRequest();
+        firstCallbackRequest.setSession(session);
+        ResponseEntity<Void> firstResponse =
+                controller.callback(
+                        "google",
+                        "first-code",
+                        first.state(),
+                        null,
+                        firstCallbackRequest,
+                        new MockHttpServletResponse());
+        assertThat(firstResponse.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/posts"));
+        assertThat(session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE)).isNull();
+    }
+
+    @Test
+    @DisplayName("세션에는 최근 OAuth 인가 요청을 최대 5개만 보관한다")
+    void authorize_MoreThanFiveRequests_KeepsLatestFive() {
+        given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.NAVER), anyString()))
+                .willReturn(URI.create("https://nid.naver.com/oauth2.0/authorize"));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+
+        for (int index = 0; index < 6; index++) {
+            controller.authorize("naver", "/posts/" + index, request);
+        }
+
+        MockHttpSession session = (MockHttpSession) request.getSession(false);
+        OAuth2AuthController.OAuth2AuthorizationSessions savedStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        assertThat(savedStates.pending()).hasSize(5);
+        assertThat(savedStates.pending())
+                .extracting(OAuth2AuthController.OAuth2AuthorizationSession::returnUrl)
+                .containsExactly("/posts/1", "/posts/2", "/posts/3", "/posts/4", "/posts/5");
     }
 
     @Test

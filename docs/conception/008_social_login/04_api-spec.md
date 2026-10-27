@@ -20,7 +20,7 @@
   - `returnUrl` (선택): 로그인 성공 후 돌아갈 프론트엔드 상대 경로 (예: `/carpool`). `/`로 시작하고 `//`로 시작하지 않는 안전한 내부 경로만 허용하며, 그 외에는 `/`로 대체한다.
 - **동작**:
   1. 해당 `provider`의 클라이언트 설정(`clientId`, `redirectUri`)이 유효한지 확인한다. 미설정 시 프론트엔드 `/login?error=OAUTH_PROVIDER_NOT_CONFIGURED`로 302 리다이렉트한다.
-  2. 암호학적 난수 `state`와 `returnUrl`, 만료 시각(10분)을 `HttpSession`에 저장한다.
+  2. 암호학적 난수 `state`와 `returnUrl`, 만료 시각(10분)을 `HttpSession`에 저장한다. 한 세션에서 최대 5개의 대기 요청을 보관하며 한도를 넘으면 가장 오래된 요청을 제거한다.
   3. 각 소셜 공급자의 Authorization Endpoint로 `302 Found` 리다이렉트한다.
 
 ### 2.2. 소셜 인가 콜백 (`GET /api/v1/auth/oauth2/callback/{provider}`)
@@ -50,3 +50,5 @@
 | `OAUTH_EMAIL_NOT_VERIFIED` | `AUTH_008` | `400 Bad Request` | 인증되지 않은 소셜 이메일 계정으로는 로그인할 수 없습니다. |
 | `ACCOUNT_SUSPENDED` | `AUTH_009` | `403 Forbidden` | 이용이 정지된 계정입니다. |
 | `ACCOUNT_WITHDRAWN` | `AUTH_010` | `403 Forbidden` | 탈퇴 처리된 계정입니다. |
+| `OAUTH_RATE_LIMIT` | `AUTH_011` | `429 Too Many Requests` | 소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요. |
+| `OAUTH_ACCOUNT_LINK_REQUIRED` | `AUTH_012` | `409 Conflict` | 이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요. |

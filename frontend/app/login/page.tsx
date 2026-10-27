@@ -19,6 +19,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   ACCOUNT_SUSPENDED: "이용이 정지된 계정입니다.",
   ACCOUNT_WITHDRAWN: "탈퇴 처리된 계정입니다.",
   OAUTH_RATE_LIMIT: "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+  OAUTH_ACCOUNT_LINK_REQUIRED:
+    "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요.",
 };
 
 function getErrorMessage(error: unknown) {
