@@ -508,7 +508,7 @@ export default function NewCarpoolPage() {
 
   return (
     <>
-      <TopNav active="carpool" />
+      <div className="community-page"><TopNav active="carpool" />
       <main className="community-container carpool-compose-page">
         <header className="carpool-compose-heading">
           <Link href="/carpool">카풀·동행</Link>
@@ -966,7 +966,7 @@ export default function NewCarpoolPage() {
           </footer>
         </form>}
       </main>
-      <Footer />
+      <Footer /></div>
     </>
   );
 }

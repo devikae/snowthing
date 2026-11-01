@@ -199,3 +199,58 @@ html[data-theme="dark"] .carpool-manual-fallback {
     height: 260px;
   }
 }
+
+
+/* 2026 Design Renewal Token Alignment */
+.carpool-form select {
+  border-color: var(--snow-border);
+  background: var(--snow-surface-low);
+  color: var(--snow-ink);
+}
+
+.carpool-form select:focus {
+  border-color: var(--community-accent);
+  box-shadow: 0 0 0 3px var(--community-accent-soft);
+}
+
+
+/* Dark/Light unified tokens for KakaoMapPicker and Carpool Preview */
+.kakao-map {
+  border-color: var(--snow-border);
+  background: var(--snow-surface-mid);
+}
+
+.kakao-map-hint,
+.carpool-selected-place {
+  color: var(--snow-muted);
+}
+
+.carpool-selected-place strong,
+.carpool-place-results strong,
+.carpool-preview-result b,
+.carpool-preview-result strong {
+  color: var(--snow-ink);
+}
+
+.carpool-place-results button {
+  border-color: var(--snow-border);
+  background: var(--snow-canvas);
+}
+
+.carpool-place-results span,
+.carpool-preview-result span,
+.carpool-preview-result small {
+  color: var(--snow-muted);
+}
+
+.carpool-place-search button,
+.carpool-cost-button {
+  border-color: var(--snow-border-strong);
+  background: var(--snow-canvas);
+  color: var(--snow-ink);
+}
+
+.carpool-preview-result {
+  border-color: var(--snow-border-strong);
+  background: var(--snow-canvas);
+}

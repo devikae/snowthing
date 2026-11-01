@@ -13,7 +13,9 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.zip.CRC32;
 import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +55,66 @@ class ImageServiceTest {
         ReflectionTestUtils.setField(imageService, "bucketName", "snowthing-media-00001");
         ReflectionTestUtils.setField(
                 imageService, "cloudFrontBaseUrl", "https://images.snowthing.org");
+    }
+
+    @Test
+    void rejectsOversizedDimensionsBeforeDecodingOrWritingS3() {
+        for (int[] size :
+                new int[][] {{10001, 1}, {5001, 5000}, {Integer.MAX_VALUE, Integer.MAX_VALUE}}) {
+            byte[] header = pngBytes.clone();
+            ByteBuffer.wrap(header).putInt(16, size[0]).putInt(20, size[1]);
+            CRC32 crc = new CRC32();
+            crc.update(header, 12, 17);
+            ByteBuffer.wrap(header).putInt(29, (int) crc.getValue());
+            var file = new MockMultipartFile("file", "large.png", "image/png", header);
+            assertThatThrownBy(() -> imageService.uploadImage(file))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
+            assertThatThrownBy(() -> imageService.uploadProfileImage(file))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
+        }
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    void rejectsDeclaredMimeThatDoesNotMatchActualFile() {
+        var file = new MockMultipartFile("file", "picture.png", "image/jpeg", pngBytes);
+        assertThatThrownBy(() -> imageService.uploadImage(file))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_FILE_TYPE);
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    void profileUploadNormalizesPixelsAndStoresOnlyOneJpeg() throws IOException {
+        MockMultipartFile file =
+                new MockMultipartFile("file", "portrait.png", "image/png", pngBytes);
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().build());
+        var result = imageService.uploadProfileImage(file);
+        assertThat(result.imageKey()).startsWith("public/profiles/").endsWith(".jpg");
+        var request = ArgumentCaptor.forClass(PutObjectRequest.class);
+        var body = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(request.capture(), body.capture());
+        assertThat(request.getValue().contentType()).isEqualTo("image/jpeg");
+        try (var input = body.getValue().contentStreamProvider().newStream()) {
+            BufferedImage image = ImageIO.read(input);
+            assertThat(image.getWidth()).isLessThanOrEqualTo(320);
+            assertThat(image.getHeight()).isLessThanOrEqualTo(320);
+        }
+    }
+
+    @Test
+    void profileUploadRejectsSignatureOnlyFakeImageWithoutWritingS3() {
+        byte[] fake = {(byte) 0x89, 'P', 'N', 'G', 13, 10, 26, 10};
+        var file = new MockMultipartFile("file", "fake.png", "image/png", fake);
+        assertThatThrownBy(() -> imageService.uploadProfileImage(file))
+                .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(s3Client);
     }
 
     @Test

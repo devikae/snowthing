@@ -28,6 +28,7 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
+import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @SpringBootTest
@@ -73,6 +74,21 @@ class MarketListingControllerTest {
                                 .role(Role.ROLE_USER)
                                 .build());
         userDetails = new CustomUserDetails(member);
+    }
+
+    @Test
+    void delegatedBotCannotReadSellerContactOrReceiveWriterPrivileges() throws Exception {
+        String publicId = createListing();
+        var delegated = new BotDelegatedUserDetails(userDetails.getMember());
+        mockMvc.perform(get("/api/v1/market-listings/{publicId}", publicId).with(user(delegated)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contact").doesNotExist())
+                .andExpect(jsonPath("$.canEdit").value(false))
+                .andExpect(jsonPath("$.canDelete").value(false));
+        mockMvc.perform(get("/api/v1/market-listings/{publicId}", publicId).with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contact").value("010-1234-5678"))
+                .andExpect(jsonPath("$.canEdit").value(true));
     }
 
     @Test

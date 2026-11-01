@@ -80,6 +80,24 @@ class BotMentionServiceTest {
     }
 
     @Test
+    void globalBudgetBoundsRequestsAcrossDifferentAccounts() {
+        for (long id = 1; id <= 61; id++) {
+            Member member =
+                    Member.builder()
+                            .publicId("public-" + id)
+                            .email("account-" + id + "@example.com")
+                            .nickname("테스터")
+                            .build();
+            ReflectionTestUtils.setField(member, "id", id);
+            service.submit(
+                    new ChatMessageResponse(
+                            "message-" + id, null, "GENERAL", "@bot 최근 매물", "2026-11-01T00:00:00"),
+                    new CustomUserDetails(member));
+        }
+        verify(gateway, times(60)).answer(any());
+    }
+
+    @Test
     @DisplayName("같은 사용자의 봇 호출은 분당 한 번만 처리한다")
     void submit_RateLimitsToOneRequestPerMinute() {
         ChatMessageResponse first =

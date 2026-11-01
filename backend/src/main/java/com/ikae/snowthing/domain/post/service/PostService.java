@@ -37,6 +37,7 @@ public class PostService {
     private static final String MARKET_CATEGORY_CODE = "MARKET";
     private static final String CREW_CATEGORY_CODE = "CREW";
     private static final String SEASON_ROOM_CATEGORY_CODE = "SEASON_ROOM";
+    private static final String NOTICE_CATEGORY_CODE = "NOTICE";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
     private static final int MAX_OFFSET_PAGE = 100;
@@ -60,6 +61,10 @@ public class PostService {
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
         rejectMarketCategory(category);
+        requireNoticeAdmin(category, userDetails);
+        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && request.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
 
         if (isAnonymousDisallowedCategory(category.getCode())) {
             if (userDetails == null) {
@@ -218,6 +223,11 @@ public class PostService {
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
         rejectMarketPost(post);
         rejectMarketCategory(category);
+        requireNoticeAdmin(post.getCategory(), userDetails);
+        requireNoticeAdmin(category, userDetails);
+        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && post.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
 
         if (isAnonymousDisallowedCategory(category.getCode()) && post.isAnonymous()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
@@ -316,6 +326,12 @@ public class PostService {
     private void rejectMarketCategory(PostCategory category) {
         if (MARKET_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
             throw new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND);
+        }
+    }
+
+    private void requireNoticeAdmin(PostCategory category, CustomUserDetails userDetails) {
+        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && !isAdmin(userDetails)) {
+            throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
     }
 

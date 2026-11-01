@@ -57,15 +57,18 @@ class WriterDisplayFormatterTest {
         assertThat(result).isEqualTo("익명 (127.0.***.***)");
     }
 
-    @ParameterizedTest
-    @CsvSource({
-        "2001:0db8:85a3:0000:0000:8a2e:0370:7334, 익명 (2001:0db8:****:****)",
-        "fe80:1234:5678::1, 익명 (fe80:1234:****:****)"
-    })
-    @DisplayName("익명 작성글이 IPv6일 경우 앞 2개 세그먼트를 제외하고 정상 마스킹한다")
-    void format_anonymousWriter_masksIpv6(String ip, String expected) {
-        String result = WriterDisplayFormatter.format(true, null, ip);
+    @Test
+    void ipv6UsesStableIpv4StyleMaskForEquivalentRepresentations() {
+        String expanded = WriterDisplayFormatter.maskIp("2001:0db8:0000:0000:0000:0000:0000:0001");
+        String compressed = WriterDisplayFormatter.maskIp("2001:db8::1");
+        assertThat(compressed)
+                .isEqualTo(expanded)
+                .matches("\\d{1,3}\\.\\d{1,3}\\.\\*\\*\\*\\.\\*\\*\\*");
+    }
 
-        assertThat(result).isEqualTo(expected);
+    @Test
+    void mappedIpv4UsesOriginalIpv4Mask() {
+        assertThat(WriterDisplayFormatter.maskIp("::ffff:192.168.1.2"))
+                .isEqualTo("192.168.***.***");
     }
 }

@@ -1,0 +1,31 @@
+.page { display: flex; flex-direction: column; min-height: 100dvh; }
+.main { display: grid; flex: 1; align-content: center; padding-block: 64px 80px; }
+.panel { width: 100%; max-width: 400px; margin-inline: auto; color: var(--snow-ink); }
+.heading { margin-bottom: 32px; }
+.heading h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -.03em; }
+.heading p { margin: 8px 0 0; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
+.form { display: grid; gap: 24px; }
+.field { display: grid; gap: 8px; color: var(--snow-ink); font-size: 14px; line-height: 20px; font-weight: 500; }
+.field input { width: 100%; min-width: 0; height: 48px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-surface-low); padding: 12px; color: var(--snow-ink); font: inherit; font-weight: 400; transition: border-color 300ms cubic-bezier(.22,1,.36,1), background-color 300ms cubic-bezier(.22,1,.36,1); }
+.field input::placeholder { color: var(--snow-muted); }
+.field input:focus { background: var(--snow-canvas); border-color: var(--snow-ink-soft); }
+.options { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
+.remember { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.remember input { width: 16px; height: 16px; accent-color: var(--snow-ink); }
+.options a:hover,.signup a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.button { display: flex; align-items: center; justify-content: center; position: relative; gap: 12px; width: 100%; min-height: 48px; padding: 8px 12px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); font: inherit; font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: inherit; transition: background-color 300ms cubic-bezier(.22,1,.36,1), border-color 300ms cubic-bezier(.22,1,.36,1), opacity 300ms cubic-bezier(.22,1,.36,1); }
+.button:hover:not(:disabled) { background: var(--snow-surface-mid); }
+.button:active:not(:disabled) { opacity: .8; }
+.button:disabled { opacity: .5; cursor: not-allowed; }
+.primary { background: var(--snow-ink); border-color: var(--snow-ink); color: var(--snow-canvas); font-weight: 600; }
+.primary:hover:not(:disabled) { background: var(--snow-ink-soft); border-color: var(--snow-ink-soft); }
+.divider { display: flex; align-items: center; gap: 16px; margin-block: 24px; color: var(--snow-muted); font-size: 12px; line-height: 16px; }
+.divider::before,.divider::after { content: ""; height: 1px; flex: 1; background: var(--snow-border); }
+.social { display: grid; gap: 12px; }
+.providerIcon { position: absolute; left: 16px; width: 16px; height: 16px; }
+.naver { color: #03c75a; }
+.signup { margin: 32px 0 0; text-align: center; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
+.signup a { margin-left: 8px; color: var(--snow-ink); font-weight: 500; }
+.error { margin-bottom: 24px; border: 1px solid var(--snow-error); border-radius: 8px; background: var(--snow-canvas); padding: 12px 16px; color: var(--snow-error); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
+.panel :is(input,button,a):focus-visible { outline: 2px solid var(--snow-ink); outline-offset: 4px; }
+@media (max-width: 640px) { .main { align-content: start; padding-block: 40px 48px; } }

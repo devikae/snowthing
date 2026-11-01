@@ -3,8 +3,12 @@ package com.ikae.snowthing.domain.image.service;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -28,6 +32,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 public class ImageService {
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024L;
+    private static final int MAX_IMAGE_SIDE = 10_000;
+    private static final long MAX_IMAGE_PIXELS = 25_000_000L;
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Set<String> ALLOWED_MIME_TYPES =
             Set.of("image/jpeg", "image/png", "image/webp");
@@ -70,6 +76,42 @@ public class ImageService {
                     imageKey,
                     e.getMessage());
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    public ImageUploadResponse uploadProfileImage(MultipartFile file) {
+        byte[] bytes = readImageBytes(file);
+        validateFile(file, bytes);
+        byte[] normalized = createThumbnail(bytes);
+        String key = "public/profiles/" + UUID.randomUUID() + ".jpg";
+        try {
+            putObject(key, "image/jpeg", normalized);
+            return new ImageUploadResponse(
+                    cloudFrontBaseUrl.replaceAll("/+$", "") + "/" + key, key);
+        } catch (SdkException exception) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    public byte[] normalizeCrewImage(MultipartFile file, int width, int height) {
+        try {
+            byte[] bytes = readImageBytes(file);
+            validateFile(file, bytes);
+            try (var input = new ByteArrayInputStream(bytes);
+                    var output = new ByteArrayOutputStream()) {
+                Thumbnails.of(input)
+                        .size(width, height)
+                        .outputFormat("jpg")
+                        .outputQuality(0.85)
+                        .toOutputStream(output);
+                return output.toByteArray();
+            }
+        } catch (BusinessException exception) {
+            throw new com.ikae.snowthing.global.exception.CustomException(
+                    exception.getErrorCode(), exception);
+        } catch (IOException | RuntimeException exception) {
+            throw new com.ikae.snowthing.global.exception.CustomException(
+                    ErrorCode.INVALID_FILE_TYPE, exception);
         }
     }
 
@@ -122,11 +164,48 @@ public class ImageService {
         }
 
         String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+        String expectedMime =
+                switch (extension) {
+                    case "jpg", "jpeg" -> "image/jpeg";
+                    case "png" -> "image/png";
+                    default -> "image/webp";
+                };
+        if (contentType == null
+                || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase(Locale.ROOT))
+                || !expectedMime.equalsIgnoreCase(contentType)) {
             throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
         }
 
         if (!hasValidSignature(extension, imageBytes)) {
+            throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+        }
+        validateImageDimensions(imageBytes, extension);
+    }
+
+    private void validateImageDimensions(byte[] bytes, String extension) {
+        try (var input = new MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
+            var readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                String expectedFormat = extension.equals("jpg") ? "jpeg" : extension;
+                if (!expectedFormat.equalsIgnoreCase(reader.getFormatName())) {
+                    throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+                }
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width <= 0 || height <= 0)
+                    throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+                if (width > MAX_IMAGE_SIDE
+                        || height > MAX_IMAGE_SIDE
+                        || (long) width * height > MAX_IMAGE_PIXELS) {
+                    throw new BusinessException(ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
+                }
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | IllegalArgumentException exception) {
             throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
         }
     }
@@ -170,6 +249,6 @@ public class ImageService {
         if (filename == null || !filename.contains(".")) {
             throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
         }
-        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase(Locale.ROOT);
     }
 }

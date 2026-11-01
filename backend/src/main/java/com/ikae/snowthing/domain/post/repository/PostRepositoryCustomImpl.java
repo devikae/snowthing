@@ -89,7 +89,11 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .fetchJoin()
                         .leftJoin(post.member)
                         .fetchJoin()
-                        .where(post.id.in(postIds))
+                        .where(
+                                post.id.in(postIds),
+                                post.status.eq(
+                                        com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL),
+                                post.isDeleted.isFalse())
                         .orderBy(getLatestSortOrders())
                         .fetch();
 

@@ -118,6 +118,136 @@ class PostServiceTest {
     class CreatePostTest {
 
         @Test
+        void latestNoticeListExcludesDeletedHiddenAndBlockedPosts() {
+            PostCategory notice =
+                    categoryRepository
+                            .findByCode("NOTICE")
+                            .orElseGet(
+                                    () ->
+                                            categoryRepository.save(
+                                                    PostCategory.builder()
+                                                            .name("공지사항")
+                                                            .code("NOTICE")
+                                                            .build()));
+            for (int i = 0; i < 4; i++) {
+                postRepository.save(
+                        Post.builder()
+                                .member(member1)
+                                .category(notice)
+                                .title("공지 " + i)
+                                .content("내용")
+                                .writerIp("127.0.0.1")
+                                .build());
+            }
+            Post hidden =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(notice)
+                                    .title("숨김")
+                                    .content("내용")
+                                    .writerIp("127.0.0.1")
+                                    .build());
+            hidden.changeStatus(PostStatus.HIDDEN);
+            Post blocked =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(notice)
+                                    .title("차단")
+                                    .content("내용")
+                                    .writerIp("127.0.0.1")
+                                    .build());
+            blocked.changeStatus(PostStatus.BLOCKED);
+            Post deleted =
+                    postRepository.save(
+                            Post.builder()
+                                    .member(member1)
+                                    .category(notice)
+                                    .title("삭제")
+                                    .content("내용")
+                                    .writerIp("127.0.0.1")
+                                    .build());
+            deleted.softDelete();
+            entityManager.flush();
+            PostSearchRequest request =
+                    new PostSearchRequest("NOTICE", null, null, null, null, 1, null, 3);
+            assertThat(postService.searchPostsByOffset(request).content())
+                    .extracting(PostListResponse::title)
+                    .containsExactly("공지 3", "공지 2", "공지 1");
+        }
+
+        @Test
+        void noticeCanOnlyBeCreatedByAnAdministrator() {
+            categoryRepository
+                    .findByCode("NOTICE")
+                    .orElseGet(
+                            () ->
+                                    categoryRepository.save(
+                                            PostCategory.builder()
+                                                    .name("공지사항")
+                                                    .code("NOTICE")
+                                                    .build()));
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("NOTICE")
+                            .title("공지")
+                            .content("내용")
+                            .build();
+            assertThatThrownBy(() -> postService.createPost(request, userDetails1, "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ACCESS_DENIED);
+            assertThatThrownBy(() -> postService.createPost(request, null, "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ACCESS_DENIED);
+            Member admin =
+                    memberRepository.save(
+                            Member.builder()
+                                    .email("notice-admin@example.com")
+                                    .nickname("공지관리자")
+                                    .password("encoded")
+                                    .role(Role.ROLE_ADMIN)
+                                    .build());
+            assertThat(
+                            postService
+                                    .createPost(request, new CustomUserDetails(admin), "127.0.0.1")
+                                    .categoryCode())
+                    .isEqualTo("NOTICE");
+        }
+
+        @Test
+        void ordinaryMemberCannotChangeTheirPostToNotice() {
+            categoryRepository
+                    .findByCode("NOTICE")
+                    .orElseGet(
+                            () ->
+                                    categoryRepository.save(
+                                            PostCategory.builder()
+                                                    .name("공지사항")
+                                                    .code("NOTICE")
+                                                    .build()));
+            PostCreateRequest create =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("일반 글")
+                            .content("내용")
+                            .build();
+            String publicId = postService.createPost(create, userDetails1, "127.0.0.1").publicId();
+            PostUpdateRequest update =
+                    PostUpdateRequest.builder()
+                            .categoryCode("NOTICE")
+                            .title("변경")
+                            .content("내용")
+                            .build();
+            assertThatThrownBy(() -> postService.updatePost(publicId, update, userDetails1))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ACCESS_DENIED);
+        }
+
+        @Test
         @DisplayName("로그인 회원이 정상적으로 게시글을 작성한다.")
         void createPost_success_member() {
             PostCreateRequest request =

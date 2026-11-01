@@ -2,9 +2,9 @@
 
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav, type ActiveNav } from "../components/SiteChrome";
+import { PostImageIcon } from "../components/PostImageIcon";
 import { API_ENDPOINTS } from "../lib/api";
 
 interface PostItem {
@@ -27,8 +27,6 @@ interface PostItem {
 interface BoardConfig {
   name: string;
   navKey: ActiveNav;
-  notices: { label: string; title: string; date: string; views: string }[];
-  topics: string[];
 }
 
 interface CarpoolSidebarItem {
@@ -43,37 +41,63 @@ interface CarpoolSidebarItem {
 
 const categories = [
   { code: "", name: "전체글" },
+  { code: "NOTICE", name: "공지사항" },
   { code: "FREE", name: "자유게시판" },
   { code: "ANONYMOUS", name: "익명게시판" },
-  { code: "QNA", name: "장비 후기" },
+  { code: "QNA", name: "질문게시판" },
   { code: "FOOD", name: "리조트 맛집" },
   { code: "CREW", name: "동호회 모집" },
   { code: "SEASON_ROOM", name: "시즌방 모집" },
 ];
 
-const defaultNotices = [
-  { label: "공지", title: "스노우띵 커뮤니티 이용 수칙 및 게시물 운영 정책 안내", date: "24.12.15", views: "1.2만" },
-  { label: "필독", title: "안전한 라이딩을 위한 슬로프 에티켓과 제보 작성 가이드", date: "24.12.20", views: "8,490" },
-];
-
 const boardConfigs: Record<string, BoardConfig> = {
-  "": { name: "전체 게시판", navKey: "posts", notices: defaultNotices, topics: ["휘팍 챔피언 설질", "야간 고글 추천", "시즌권 양도", "초보 데크 선택", "강원권 교통"] },
-  FREE: { name: "자유게시판", navKey: "free", notices: defaultNotices, topics: ["첫 보딩 후기", "시즌방 생활", "주말 원정", "라이딩 영상", "보드복 추천"] },
-  ANONYMOUS: { name: "익명게시판", navKey: "anonymous", notices: [
-    { label: "공지", title: "익명게시판 내 특정인 저격, 허위 사실 유포 및 연락처 공유 시 제재 안내", date: "24.12.15", views: "1.2만" },
-    { label: "필독", title: "익명성은 타인을 공격할 권리가 아닙니다. 익명게시판 이용 가이드", date: "24.12.20", views: "8,490" },
-  ], topics: ["셔틀버스 매너", "휘팍 실시간 파우더", "시즌방 비용 정산", "데크 구매 고민", "복귀길 정체"] },
-  QNA: { name: "장비 후기", navKey: "gear", notices: defaultNotices, topics: ["부츠 열성형", "바인딩 각도", "엣지 튜닝", "입문 데크", "카빙 자세"] },
-  FOOD: { name: "리조트 맛집", navKey: "food", notices: defaultNotices, topics: ["용평 아침식사", "휘팍 국밥", "하이원 야식", "비발디 카페", "웰리힐리 맛집"] },
-  CREW: { name: "동호회 모집", navKey: "crew", notices: [
-    { label: "안내", title: "건전하고 안전한 동호회(크루) 활동 및 정기 라이딩을 응원합니다.", date: "24.12.15", views: "9,800" },
-    { label: "필독", title: "동호회 홍보 시 주 베이스 리조트와 라이딩 성향, 연락 수단을 명시해 주세요.", date: "24.12.20", views: "6,200" },
-  ], topics: ["휘팍 주말 크루", "하이원 트릭 크루", "용평 카빙 모임", "초보 환영 동호회", "평일 직장인 보더"] },
-  SEASON_ROOM: { name: "시즌방 모집", navKey: "seasonRoom", notices: [
-    { label: "안내", title: "시즌방 투자금 및 관리비 관련 분쟁 예방을 위해 상세 조건을 투명하게 기재해 주세요.", date: "24.12.15", views: "1.1만" },
-    { label: "필독", title: "금전 거래 전 방 규칙, 숙소 위치, 정원 및 환불 규정을 반드시 확인하세요.", date: "24.12.20", views: "8,900" },
-  ], topics: ["휘팍 셔틀 5분 펜션", "하이원 풀상주 모집", "웰팍 주말조 남녀", "용평 콘도 지분 양도", "게스트 환영 시즌방"] },
+  "": { name: "전체 게시판", navKey: "posts" },
+  NOTICE: { name: "공지사항", navKey: "notice" },
+  FREE: { name: "자유게시판", navKey: "free" },
+  ANONYMOUS: { name: "익명게시판", navKey: "anonymous" },
+  QNA: { name: "질문게시판", navKey: "gear" },
+  FOOD: { name: "리조트 맛집", navKey: "food" },
+  CREW: { name: "동호회 모집", navKey: "crew" },
+  SEASON_ROOM: { name: "시즌방 모집", navKey: "seasonRoom" },
 };
+
+function formatCompactTime(isoString: string): string {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diffSec < 60) return "방금";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}분`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay === 1) return "어제";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${month}.${day}`;
+}
+
+function formatShortCategory(categoryCode: string, categoryName: string): string {
+  switch (categoryCode) {
+    case "NOTICE":
+      return "공지사항";
+    case "FREE":
+      return "자유";
+    case "ANONYMOUS":
+      return "익명";
+    case "QNA":
+      return "질문";
+    case "FOOD":
+      return "맛집";
+    case "CREW":
+      return "동호회";
+    case "SEASON_ROOM":
+      return "시즌방";
+    default:
+      return categoryName.replace(/게시판|\s+/g, "");
+  }
+}
 
 function PostListContent() {
   const router = useRouter();
@@ -86,38 +110,58 @@ function PostListContent() {
   const config = boardConfigs[currentCategory];
 
   const [posts, setPosts] = useState<PostItem[]>([]);
+  const [notices, setNotices] = useState<PostItem[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState(keywordFromUrl);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [carpools, setCarpools] = useState<CarpoolSidebarItem[]>([]);
 
-  const fetchPosts = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(false);
-    try {
-      const params = new URLSearchParams({ page: String(page + 1), size: "10" });
-      if (currentCategory) params.set("categoryCode", currentCategory);
-      if (currentView === "best") params.set("viewType", "BEST");
-      if (keywordFromUrl.trim()) params.set("keyword", keywordFromUrl.trim());
-      const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, {
-        credentials: "include",
-        signal,
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`${API_ENDPOINTS.posts.list}?categoryCode=NOTICE&page=1&size=3`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((data) => setNotices(Array.isArray(data.content) ? data.content : []))
+      .catch(() => {
+        if (!controller.signal.aborted) setNotices([]);
       });
-      if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
-      const data = await response.json();
-      if (signal?.aborted) return;
-      setPosts(Array.isArray(data.content) ? data.content : []);
-      setTotalPages(Math.max(1, data.pageInfo?.totalPages || 1));
-    } catch (fetchError) {
-      if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
-      console.error("게시글 목록 로드 실패:", fetchError);
-      setPosts([]);
-      setError(true);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, [currentCategory, currentView, keywordFromUrl, page]);
+    void fetch(API_ENDPOINTS.members.me, { credentials: "include", signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((member) => setIsAdmin(member?.role === "ROLE_ADMIN"))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  const fetchPosts = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError(false);
+      try {
+        const params = new URLSearchParams({ page: String(page + 1), size: "10" });
+        if (currentCategory) params.set("categoryCode", currentCategory);
+        if (currentView === "best") params.set("viewType", "BEST");
+        if (keywordFromUrl.trim()) params.set("keyword", keywordFromUrl.trim());
+        const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, {
+          credentials: "include",
+          signal,
+        });
+        if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
+        const data = await response.json();
+        if (signal?.aborted) return;
+        setPosts(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(Math.max(1, data.pageInfo?.totalPages || 1));
+      } catch (fetchError) {
+        if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
+        console.error("게시글 목록 로드 실패:", fetchError);
+        setPosts([]);
+        setError(true);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [currentCategory, currentView, keywordFromUrl, page],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -186,39 +230,218 @@ function PostListContent() {
         <div className="board-layout">
           <section className="board-primary">
             <nav className="board-filter-panel" aria-label="게시판 선택">
-              <div className="board-category-tabs">{categories.map((category) => <button key={category.code} type="button" className={currentCategory === category.code && !currentView ? "active" : ""} onClick={() => moveTo({ category: category.code, page: 0, keyword: "", view: "" })}>{category.name}</button>)}</div>
+              <div className="board-category-tabs filter-pills">
+                {categories.map((category) => (
+                  <button
+                    key={category.code}
+                    type="button"
+                    className={currentCategory === category.code && !currentView ? "active" : ""}
+                    onClick={() => moveTo({ category: category.code, page: 0, keyword: "", view: "" })}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
             </nav>
 
-            <section className="board-notices" aria-label="게시판 공지">
-              {config.notices.map((notice) => <article key={notice.title}><div><span>{notice.label}</span><strong>{notice.title}</strong></div><p><b>관리자</b><time>{notice.date}</time><span>조회 {notice.views}</span></p></article>)}
-            </section>
+            {currentCategory !== "NOTICE" && notices.length > 0 && (
+              <section className="board-notices" aria-label="게시판 공지">
+                {notices.map((notice) => (
+                  <article key={notice.publicId} className="m-row">
+                    <div className="m-row-left">
+                      <span className="m-cat notice">공지사항</span>
+                      <Link href={`/posts/${notice.publicId}`} className="m-title-link">
+                        <strong className="m-title">{notice.title}</strong>
+                      </Link>
+                    </div>
+                    <div className="m-row-right">
+                      <span className="m-author">
+                        <b>{notice.writerNickname}</b>
+                      </span>
+                      <span className="m-stats">
+                        <span className="m-stat">
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            visibility
+                          </span>
+                          {notice.viewCount.toLocaleString()}
+                        </span>
+                      </span>
+                      <time className="m-time">{formatCompactTime(notice.createdAt)}</time>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
 
             <section className="board-post-list" aria-live="polite">
-              {loading ? <div className="board-state"><span className="material-symbols-outlined spin">progress_activity</span><strong>게시글을 불러오는 중입니다.</strong></div>
-                : error ? <div className="board-state error"><span className="material-symbols-outlined">cloud_off</span><strong>게시글을 불러오지 못했습니다.</strong><button type="button" onClick={() => void fetchPosts()}>다시 시도</button></div>
-                : posts.length === 0 ? <div className="board-state"><span className="material-symbols-outlined">edit_note</span><strong>등록된 게시글이 없습니다.</strong><Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}>첫 글 작성하기</Link></div>
-                : posts.map((post) => {
+              {loading ? (
+                <div className="board-state">
+                  <span className="material-symbols-outlined spin">progress_activity</span>
+                  <strong>게시글을 불러오는 중입니다.</strong>
+                </div>
+              ) : error ? (
+                <div className="board-state error">
+                  <span className="material-symbols-outlined">cloud_off</span>
+                  <strong>게시글을 불러오지 못했습니다.</strong>
+                  <button type="button" onClick={() => void fetchPosts()}>
+                    다시 시도
+                  </button>
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="board-state">
+                  <span className="material-symbols-outlined">edit_note</span>
+                  <strong>등록된 게시글이 없습니다.</strong>
+                  {(currentCategory !== "NOTICE" || isAdmin) && (
+                    <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}>
+                      첫 글 작성하기
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                posts.map((post) => {
                   const unavailable = post.isDeleted || post.status === "DELETED" || post.status === "BLOCKED";
-                  const title = post.status === "BLOCKED" ? "[차단된 게시글입니다]" : post.isDeleted || post.status === "DELETED" ? "[삭제된 게시글입니다]" : post.title;
-                  return <Link key={post.publicId} href={`/posts/${post.publicId}`} onClick={(event) => handlePostClick(event, post)} className={`board-post-row ${unavailable ? "unavailable" : ""}`}>
-                    <div className="board-post-copy"><div className="board-post-title">{!currentCategory && <span>{post.categoryCode === "QNA" ? "장비 후기" : post.categoryName}</span>}{post.likeCount >= 50 && <em>HOT</em>}<strong>{title}</strong>{post.commentCount > 0 && <b>[{post.commentCount}]</b>}{post.hasImage && <span className="material-symbols-outlined image-mark">image</span>}</div><p><b>{post.writerNickname}</b><span>•</span><time>{new Date(post.createdAt).toLocaleDateString("ko-KR")}</time><span>•</span><span>조회 {post.viewCount.toLocaleString()}</span></p></div>
-                    {post.thumbnailImageUrl && <Image src={post.thumbnailImageUrl} alt="" width={58} height={52} unoptimized />}
-                  </Link>;
-                })}
+                  const title =
+                    post.status === "BLOCKED"
+                      ? "[차단된 게시글입니다]"
+                      : post.isDeleted || post.status === "DELETED"
+                        ? "[삭제된 게시글입니다]"
+                        : post.title;
+                  const writerInitial = post.writerNickname ? post.writerNickname.trim().charAt(0) : "익";
+                  return (
+                    <Link
+                      key={post.publicId}
+                      href={`/posts/${post.publicId}`}
+                      onClick={(event) => handlePostClick(event, post)}
+                      className={`board-post-row m-row ${unavailable ? "unavailable" : ""}`}
+                    >
+                      <div className="m-row-left">
+                        {!currentCategory && (
+                          <span className={`m-cat ${post.categoryCode === "NOTICE" ? "notice" : post.categoryCode === "QNA" ? "accent" : ""}`}>
+                            {formatShortCategory(post.categoryCode, post.categoryName)}
+                          </span>
+                        )}
+                        {post.likeCount >= 50 && <em className="board-hot-badge">HOT</em>}
+                        <strong className="m-title">{title}</strong>
+                        {post.hasImage && <PostImageIcon />}
+                      </div>
+                      <div className="m-row-right">
+                        <span className="m-author">
+                          <span className="m-avatar" aria-hidden="true">
+                            {writerInitial}
+                          </span>
+                          <b>{post.writerNickname}</b>
+                        </span>
+                        <span className="m-stats">
+                          {post.commentCount > 0 && (
+                            <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
+                              <span className="material-symbols-outlined" aria-hidden="true">
+                                chat_bubble
+                              </span>
+                              {post.commentCount}
+                            </span>
+                          )}
+                          <span className="m-stat" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              visibility
+                            </span>
+                            {post.viewCount.toLocaleString()}
+                          </span>
+                        </span>
+                        <time className="m-time">{formatCompactTime(post.createdAt)}</time>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
             </section>
 
             <div className="board-navigation">
-              <nav className="board-pagination" aria-label="페이지 이동"><button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })}><span className="material-symbols-outlined">chevron_left</span></button>{visiblePages.map((pageNumber) => <button key={pageNumber} className={page === pageNumber ? "current" : ""} onClick={() => moveTo({ page: pageNumber })}>{pageNumber + 1}</button>)}{totalPages > 6 && <><span>…</span><button onClick={() => moveTo({ page: totalPages - 1 })}>{totalPages}</button></>}<button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })}><span className="material-symbols-outlined">chevron_right</span></button></nav>
+              <nav className="board-pagination" aria-label="페이지 이동">
+                <button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })}>
+                  <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                {visiblePages.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    className={page === pageNumber ? "current" : ""}
+                    onClick={() => moveTo({ page: pageNumber })}
+                  >
+                    {pageNumber + 1}
+                  </button>
+                ))}
+                {totalPages > 6 && (
+                  <>
+                    <span>…</span>
+                    <button onClick={() => moveTo({ page: totalPages - 1 })}>{totalPages}</button>
+                  </>
+                )}
+                <button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })}>
+                  <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+              </nav>
               <div className="board-navigation-actions">
-                <form className="board-search" onSubmit={handleSearch}><select aria-label="검색 범위"><option>제목+내용</option></select><input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder={`${config.name} 내 검색`} /><button>검색</button></form>
-                <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`} className="board-write-button"><span className="material-symbols-outlined">edit</span>글쓰기</Link>
+                <form className="board-search" onSubmit={handleSearch}>
+                  <select aria-label="검색 범위">
+                    <option>제목+내용</option>
+                  </select>
+                  <input
+                    value={searchKeyword}
+                    onChange={(event) => setSearchKeyword(event.target.value)}
+                    placeholder={`${config.name} 내 검색`}
+                  />
+                  <button>검색</button>
+                </form>
+                {(currentCategory !== "NOTICE" || isAdmin) && (
+                  <Link
+                    href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}
+                    className="board-write-button"
+                  >
+                    <span className="material-symbols-outlined">edit</span>글쓰기
+                  </Link>
+                )}
               </div>
             </div>
           </section>
 
           <aside className="board-sidebar">
-            <section className="board-widget topic-widget"><header><h2><span className="material-symbols-outlined">trending_up</span>{config.name} 실시간 핫 토픽</h2><small>10분 주기 갱신</small></header><ol>{config.topics.map((topic, index) => <li key={topic}><b>{index + 1}</b><Link href={`/posts${currentCategory ? `?category=${currentCategory}` : ""}`}>{topic}</Link><span>{index === 3 ? "NEW" : index < 2 ? `▲ ${42 - index * 24}` : "-"}</span></li>)}</ol></section>
-            <section className="board-widget board-carpool" id="carpool"><header><h2><em>실시간</em> 급구! 카풀 &amp; 동행</h2><Link href="/carpool/new">+ 등록</Link></header><div>{carpools.length === 0 ? <p className="board-carpool-empty">현재 모집 중인 카풀이 없습니다.</p> : carpools.map((item) => <Link href={`/carpool/${item.publicId}`} key={item.publicId}><article><div><strong>{item.departureRegion} <span>→</span> <em>{item.destinationResortName}</em></strong><b>모집 {item.passengerCapacity}명</b></div><p><span>{new Date(item.departureAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span><strong>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</strong></p></article></Link>)}</div></section>
+            <section className="board-widget board-carpool" id="carpool">
+              <header>
+                <div>
+                  <small className="section-eyebrow">RIDE SHARE</small>
+                  <h2>카풀 &amp; 동행</h2>
+                </div>
+                <Link href="/carpool/new">+ 등록</Link>
+              </header>
+              <div>
+                {carpools.length === 0 ? (
+                  <p className="board-carpool-empty">현재 모집 중인 카풀이 없습니다.</p>
+                ) : (
+                  carpools.map((item) => (
+                    <Link href={`/carpool/${item.publicId}`} key={item.publicId}>
+                      <article>
+                        <div>
+                          <strong>
+                            {item.departureRegion} <span>→</span> <em>{item.destinationResortName}</em>
+                          </strong>
+                          <b>{item.passengerCapacity}명</b>
+                        </div>
+                        <p>
+                          <span>
+                            {new Date(item.departureAt).toLocaleString("ko-KR", {
+                              month: "numeric",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          <strong>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</strong>
+                        </p>
+                      </article>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </section>
           </aside>
         </div>
       </main>
@@ -228,5 +451,15 @@ function PostListContent() {
 }
 
 export default function PostListPage() {
-  return <Suspense fallback={<div className="board-state"><strong>게시판을 준비하는 중입니다.</strong></div>}><PostListContent /></Suspense>;
+  return (
+    <Suspense
+      fallback={
+        <div className="board-state">
+          <strong>게시판을 준비하는 중입니다.</strong>
+        </div>
+      }
+    >
+      <PostListContent />
+    </Suspense>
+  );
 }

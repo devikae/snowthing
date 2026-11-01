@@ -74,6 +74,8 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
           KAKAO_MAP_APP_KEY: ${{ vars.NEXT_PUBLIC_KAKAO_MAP_APP_KEY }}
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          NAVER_SITE_VERIFICATION: ${{ vars.NAVER_SITE_VERIFICATION }}
         run: |
           set -euo pipefail
           if [[ ! "$API_BASE_URL" =~ ^https://[^[:space:]]+$ ]]; then
@@ -84,7 +86,7 @@ jobs:
             echo "NEXT_PUBLIC_KAKAO_MAP_APP_KEY가 설정되지 않았습니다." >&2
             exit 2
           fi
-          CONFIG_FINGERPRINT=$(printf '%s' "$API_BASE_URL|$KAKAO_MAP_APP_KEY" | sha256sum | cut -c1-12)
+          CONFIG_FINGERPRINT=$(printf '%s' "$API_BASE_URL|$KAKAO_MAP_APP_KEY|$GOOGLE_SITE_VERIFICATION|$NAVER_SITE_VERIFICATION" | sha256sum | cut -c1-12)
           IMAGE_VERSION="${COMMIT_SHA}-${CONFIG_FINGERPRINT}"
           CANDIDATE_TAG="candidate-${IMAGE_VERSION}"
           RELEASE_TAG="release-${IMAGE_VERSION}"
@@ -93,7 +95,7 @@ jobs:
           elif aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$CANDIDATE_TAG" >/dev/null 2>&1; then
             SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
           else
-            docker build --build-arg NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL" --build-arg NEXT_PUBLIC_KAKAO_MAP_APP_KEY="$KAKAO_MAP_APP_KEY" --tag "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG" ./frontend
+            docker build --build-arg NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL" --build-arg NEXT_PUBLIC_KAKAO_MAP_APP_KEY="$KAKAO_MAP_APP_KEY" --build-arg GOOGLE_SITE_VERIFICATION="$GOOGLE_SITE_VERIFICATION" --build-arg NAVER_SITE_VERIFICATION="$NAVER_SITE_VERIFICATION" --tag "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG" ./frontend
             docker push "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG"
             SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
           fi

@@ -7,7 +7,6 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 
-const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 async function errorMessage(response: Response, fallback: string) {
   try { const body = await response.json(); return body.message || body.error || fallback; }
@@ -52,7 +51,7 @@ export default function ForgotPasswordPage() {
 
   const resetPassword = async () => {
     setError("");
-    if (!PASSWORD_REGEX.test(password)) return setError("비밀번호는 8자 이상이며 영문 대문자와 특수문자를 포함해야 합니다.");
+    if (password.length < 8 || password.length > 20 || !password.trim()) return setError("비밀번호는 8~20자로 입력해 주세요.");
     if (password !== passwordConfirm) return setError("비밀번호 확인이 일치하지 않습니다.");
     setLoading(true);
     try {
@@ -68,7 +67,7 @@ export default function ForgotPasswordPage() {
   return <div className="min-h-screen bg-[var(--snow-background)]"><TopNav active="login" /><main className="snow-container px-5 py-14"><section className="snow-card mx-auto grid max-w-lg gap-6 bg-white p-7"><div><h1 className="text-2xl font-black text-[var(--snow-ink)]">비밀번호 재설정</h1><p className="mt-2 text-sm text-[var(--snow-muted)]">가입 이메일로 받은 6자리 인증번호를 확인합니다.</p></div>{error && <div role="alert" className="rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}{notice && <div className="rounded border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">{notice}</div>}
     {!requestId && <div className="grid gap-3"><input type="email" className="snow-input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="가입 이메일" /><button type="button" className="snow-btn-primary" onClick={requestCode} disabled={loading || !email}>이메일 인증</button></div>}
     {requestId && !resetToken && <div className="grid gap-3"><input inputMode="numeric" maxLength={6} className="snow-input" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} placeholder="인증번호 6자리" /><button type="button" className="snow-btn-primary" onClick={confirmCode} disabled={loading || code.length !== 6}>인증 확인</button></div>}
-    {resetToken && resetToken !== "completed" && <div className="grid gap-3"><input type="password" className="snow-input" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="새 비밀번호" autoComplete="new-password" /><input type="password" className="snow-input" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="새 비밀번호 확인" autoComplete="new-password" /><button type="button" className="snow-btn-primary" onClick={resetPassword} disabled={loading}>비밀번호 변경</button></div>}
+    {resetToken && resetToken !== "completed" && <div className="grid gap-3"><input type="password" className="snow-input" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="새 비밀번호 (8~20자)" autoComplete="new-password" minLength={8} maxLength={20} /><input type="password" className="snow-input" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="새 비밀번호 확인" autoComplete="new-password" minLength={8} maxLength={20} /><button type="button" className="snow-btn-primary" onClick={resetPassword} disabled={loading}>비밀번호 변경</button></div>}
     <Link href="/login" className="text-center text-sm font-bold text-sky-700 underline">로그인으로 돌아가기</Link>
   </section></main><Footer /></div>;
 }

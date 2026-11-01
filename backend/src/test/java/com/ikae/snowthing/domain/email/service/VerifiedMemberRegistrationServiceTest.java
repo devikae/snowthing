@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import com.ikae.snowthing.domain.email.entity.EmailVerification;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationPurpose;
@@ -23,6 +25,8 @@ import com.ikae.snowthing.domain.email.security.EmailVerificationHasher;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.MemberRegistrationConsent;
+import com.ikae.snowthing.domain.member.repository.MemberRegistrationConsentRepository;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.MemberService;
@@ -41,12 +45,14 @@ class VerifiedMemberRegistrationServiceTest {
     private MemberService memberService;
     private EmailVerificationHasher hasher;
     private VerifiedMemberRegistrationService service;
+    private MemberRegistrationConsentRepository consentRepository;
 
     @BeforeEach
     void setUp() {
         verificationRepository = mock(EmailVerificationRepository.class);
         memberRepository = mock(MemberRepository.class);
         memberService = mock(MemberService.class);
+        consentRepository = mock(MemberRegistrationConsentRepository.class);
         hasher = new EmailVerificationHasher("member-registration-test-secret-at-least-32-bytes");
         service =
                 new VerifiedMemberRegistrationService(
@@ -55,7 +61,18 @@ class VerifiedMemberRegistrationServiceTest {
                         new EmailNormalizer(),
                         memberRepository,
                         memberService,
-                        CLOCK);
+                        CLOCK,
+                        consentRepository);
+    }
+
+    @Test
+    void rejectsMissingRequiredConsentBeforeLookingUpEmail() {
+        MemberSignUpRequest request = MemberSignUpRequest.builder().build();
+        assertThatThrownBy(() -> service.register(request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+        org.mockito.Mockito.verifyNoInteractions(verificationRepository, consentRepository);
     }
 
     @Test
@@ -83,6 +100,12 @@ class VerifiedMemberRegistrationServiceTest {
         assertThat(service.register(request)).isSameAs(response);
         assertThat(member.getEmailVerifiedAt()).isEqualTo(LocalDateTime.now(CLOCK));
         assertThat(verification.getStatus()).isEqualTo(EmailVerificationStatus.CONSUMED);
+        ArgumentCaptor<MemberRegistrationConsent> consent =
+                ArgumentCaptor.forClass(MemberRegistrationConsent.class);
+        verify(consentRepository).save(consent.capture());
+        assertThat(consent.getValue().isAgeConfirmed()).isTrue();
+        assertThat(consent.getValue().isMarketingEmailAgreed()).isFalse();
+        assertThat(consent.getValue().getConfirmedAt()).isEqualTo(LocalDateTime.now(CLOCK));
 
         assertThatThrownBy(() -> service.register(request))
                 .isInstanceOf(CustomException.class)
@@ -126,6 +149,9 @@ class VerifiedMemberRegistrationServiceTest {
                 .nickname("라이더")
                 .resortIds(List.of())
                 .ridingStyleIds(List.of())
+                .ageConfirmed(true)
+                .privacyAgreed(true)
+                .marketingEmailAgreed(false)
                 .build();
     }
 }

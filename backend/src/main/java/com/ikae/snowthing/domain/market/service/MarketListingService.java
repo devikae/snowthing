@@ -30,6 +30,7 @@ import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse.PageInfo;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
@@ -163,8 +164,15 @@ public class MarketListingService {
             postRepository.increaseViewCount(post.getId());
             viewCount++;
         }
-        boolean writer = isWriter(post, userDetails);
-        return toDetail(listing, images, viewCount, writer, writer || isAdmin(userDetails));
+        boolean delegated = userDetails instanceof BotDelegatedUserDetails;
+        boolean writer = !delegated && isWriter(post, userDetails);
+        return toDetail(
+                listing,
+                images,
+                viewCount,
+                writer,
+                !delegated && (writer || isAdmin(userDetails)),
+                !delegated);
     }
 
     @Transactional
@@ -267,7 +275,8 @@ public class MarketListingService {
             List<String> images,
             int viewCount,
             boolean canEdit,
-            boolean canDelete) {
+            boolean canDelete,
+            boolean includeContact) {
         Post post = listing.getPost();
         Member seller = post.getMember();
         return new MarketListingDetailResponse(
@@ -282,7 +291,7 @@ public class MarketListingService {
                 listing.getPrice(),
                 listing.isNegotiable(),
                 listing.isFree(),
-                listing.getContact(),
+                includeContact ? listing.getContact() : null,
                 new MarketListingSummaryResponse.Seller(
                         seller.getPublicId(), seller.getNickname(), seller.getProfileImageUrl()),
                 images,

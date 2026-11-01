@@ -1,6 +1,8 @@
 package com.ikae.snowthing.domain.member.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -133,9 +135,100 @@ class MemberProfileUpdateIntegrationTest {
         memberRepository.deleteAll();
     }
 
+    private MockHttpSession loginForSettings(String password) throws Exception {
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        MemberLoginRequest.builder()
+                                                                .email(
+                                                                        "profileupdate@snowthing.com")
+                                                                .password(password)
+                                                                .build())))
+                        .andExpect(status().isOk())
+                        .andReturn();
+        return (MockHttpSession) result.getRequest().getSession(false);
+    }
+
+    @Test
+    void settingsIncludeExistingPreferenceIdsWithoutPasswordHash() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/members/me/settings")
+                                .session(loginForSettings("Password123!")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resorts[0].id").value(resortId1))
+                .andExpect(jsonPath("$.ridingStyles[0].id").value(styleId1))
+                .andExpect(jsonPath("$.bio").value("수정전소개"))
+                .andExpect(jsonPath("$.passwordChangeAvailable").value(true))
+                .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    @Test
+    void settingsRejectUnknownMasterAndPreserveProfile() throws Exception {
+        MockHttpSession session = loginForSettings("Password123!");
+        var request =
+                MemberProfileUpdateRequest.builder()
+                        .nickname("변경시도")
+                        .resortIds(List.of(Long.MAX_VALUE))
+                        .ridingStyleIds(List.of(styleId1))
+                        .build();
+        mockMvc.perform(
+                        put("/api/v1/members/me/settings")
+                                .with(csrf())
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/members/me/settings").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value("수정전닉네임"))
+                .andExpect(jsonPath("$.resorts[0].id").value(resortId1));
+    }
+
+    @Test
+    void passwordChangeAcceptsDigitsAndInvalidatesSession() throws Exception {
+        MockHttpSession session = loginForSettings("Password123!");
+        mockMvc.perform(
+                        put("/api/v1/members/me/password")
+                                .with(csrf())
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"currentPassword\":\"Password123!\",\"newPassword\":\"12345678\"}"))
+                .andExpect(status().isNoContent());
+        assertThat(session.isInvalid()).isTrue();
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"email\":\"profileupdate@snowthing.com\",\"password\":\"Password123!\"}"))
+                .andExpect(status().isUnauthorized());
+        assertThat(loginForSettings("12345678")).isNotNull();
+    }
+
+    @Test
+    void defaultPhotoRestorationKeepsPreferences() throws Exception {
+        memberService.setMyProfileImage(
+                "profileupdate@snowthing.com",
+                "https://images.snowthing.org/public/profiles/test.jpg");
+        MockHttpSession session = loginForSettings("Password123!");
+        mockMvc.perform(delete("/api/v1/members/me/profile-image").with(csrf()).session(session))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/members/me/settings").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileImageUrl").isEmpty())
+                .andExpect(jsonPath("$.resorts[0].id").value(resortId1))
+                .andExpect(jsonPath("$.nickname").value("수정전닉네임"));
+    }
+
     @Test
     @DisplayName(
-            "[프로필 수정 통합 테스트] 로그인한 유저가 PUT /api/members/me 로 닉네임과 N:M 스키장/성향을 변경 시 DB 중계 데이터가 갱신되고 조회가 반영되어야 한다")
+            "[프로필 수정 통합 테스트] 로그인한 유저가 PUT /api/members/me 로 닉네임과 N:M 스키장/성향을 변경 시 DB 중계 데이터가 갱신되고"
+                    + " 조회가 반영되어야 한다")
     void updateMyProfile_Success_UpdatesProfileAndMiddleTables() throws Exception {
         MockHttpSession beforeSession = new MockHttpSession();
 

@@ -3,129 +3,17 @@
    ========================================================================== */
 
 .page {
-  width: min(100% - 32px, 1280px);
+  width: min(100% - 48px, 1320px);
   margin: 0 auto;
-  padding: 20px 0 56px;
+  padding: 24px 0 56px;
 }
 
-/* 상단 서브 탭 (실시간 현황 vs 슬로프캠) */
-.topTabs {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--snow-border, #e2e8f0);
-  padding-bottom: 12px;
-  margin-bottom: 20px;
-}
-
-.topTabsLeft {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.tabActive {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: var(--alpine-navy, #0f2942);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 750;
-  box-shadow: 0 2px 6px rgba(15, 41, 66, 0.12);
-}
-
-.tabActive span {
-  font-size: 17px;
-  color: #38bdf8;
-}
-
-.tabInactive {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--snow-border, #e2e8f0);
-  background: var(--snow-canvas, #ffffff);
-  color: var(--snow-ink-soft, #475569);
-  font-size: 13px;
-  font-weight: 700;
-  transition: all 0.16s ease;
-}
-
-.tabInactive:hover {
-  border-color: #7dd3fc;
-  background: #f0f9ff;
-  color: #0369a1;
-}
-
-.tabInactive span {
-  font-size: 17px;
-}
-
-.autoRefreshNote {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--snow-faint, #94a3b8);
-}
-
-/* 인트로 헤더 */
-.intro {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.introIcon {
-  display: grid;
-  width: 50px;
-  height: 50px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid #bae6fd;
-  border-radius: 12px;
-  background: #f0f9ff;
-  color: #0284c7;
-}
-
-.introIcon span {
-  font-size: 26px;
-}
-
-.eyebrow {
-  margin: 0 0 2px;
-  color: #0284c7;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.intro h1 {
-  margin: 0;
-  color: var(--snow-ink, #0f172a);
-  font-size: 24px;
-  font-weight: 850;
-  line-height: 1.25;
-  letter-spacing: -0.035em;
-}
-
-.introCopy {
-  margin: 4px 0 0;
-  color: var(--snow-muted, #64748b);
-  font-size: 13px;
-}
-
-/* 리조트 선택 스크롤러 */
+/* 리조트 선택 */
 .resortNav {
   overflow: hidden;
   border: 1px solid var(--snow-border, #e2e8f0);
   border-radius: 12px;
-  background: var(--snow-canvas, #ffffff);
-  box-shadow: 0 2px 8px rgba(15, 41, 66, 0.04);
+  background: var(--snow-surface-low, #ffffff);
 }
 
 .resortNavTrack {
@@ -141,6 +29,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
+  border: 1px solid transparent;
   border-radius: 8px;
   padding: 6px 8px;
   color: var(--snow-ink-soft, #475569);
@@ -152,14 +41,22 @@
 }
 
 .resortTab:hover {
-  background: var(--snow-surface-low, #f8fafc);
+  background: var(--snow-surface-mid, #f8fafc);
   color: var(--snow-ink, #0f172a);
 }
 
 .resortActive {
-  background: var(--alpine-navy, #0f2942) !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(15, 41, 66, 0.16);
+  border-color: var(--snow-border, #e4e4e7) !important;
+  background: var(--snow-ink, #09090b) !important;
+  color: var(--snow-canvas, #ffffff) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+:global(html[data-theme="dark"]) .resortActive {
+  border-color: var(--snow-border-strong, #2e2e34) !important;
+  background: #222228 !important;
+  color: var(--snow-ink, #fafafa) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .tabName {
@@ -170,12 +67,13 @@
 
 .countBadge {
   color: var(--snow-faint, #94a3b8);
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 650;
 }
 
 .resortActive .countBadge {
-  color: #93c5fd;
+  color: var(--community-accent, #60a5fa);
 }
 
 /* 리조트 본문 섹션 */
@@ -185,7 +83,6 @@
   border-radius: 14px;
   background: var(--snow-canvas, #ffffff);
   padding: 22px;
-  box-shadow: 0 4px 16px rgba(15, 41, 66, 0.04);
 }
 
 .resortHeader {
@@ -208,28 +105,29 @@
 
 .metaRegion,
 .metaCount {
-  border-radius: 5px;
-  background: #f1f5f9;
+  border: 1px solid var(--snow-border, #e4e4e7);
+  border-radius: 6px;
+  background: var(--snow-surface-mid, #f1f5f9);
   padding: 3px 8px;
-  color: #475569;
+  color: var(--snow-ink-soft, #475569);
   font-size: 11px;
   font-weight: 700;
 }
 
 .liveMeta {
-  border-radius: 5px;
-  background: #ecfdf5;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.14);
   padding: 3px 8px;
-  color: #047857;
+  color: var(--snow-success, #059669);
   font-size: 11px;
   font-weight: 750;
 }
 
 .officialMeta {
-  border-radius: 5px;
-  background: #f0f9ff;
+  border-radius: 6px;
+  background: var(--community-accent-soft, #eff6ff);
   padding: 3px 8px;
-  color: #0369a1;
+  color: var(--community-accent, #2563eb);
   font-size: 11px;
   font-weight: 750;
 }
@@ -264,9 +162,9 @@
 }
 
 .backLink:hover {
-  border-color: #0284c7;
-  background: #f0f9ff;
-  color: #0284c7;
+  border-color: var(--snow-border-strong, #0284c7);
+  background: var(--snow-surface-mid, #f0f9ff);
+  color: var(--snow-ink, #0284c7);
 }
 
 .backLink span {
@@ -290,25 +188,23 @@
   overflow: hidden;
   border: 1px solid var(--snow-border, #e2e8f0);
   border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  background: var(--snow-surface-low, #ffffff);
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .cameraCard:hover {
-  border-color: #94a3b8;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  border-color: var(--snow-border-strong, #94a3b8);
 }
 
 .cardHeader {
   display: flex;
-  min-height: 52px;
+  min-height: 50px;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 8px 12px 8px 14px;
-  border-bottom: 1px solid #f1f5f9;
-  background: #fcfdfe;
+  border-bottom: 1px solid var(--snow-border, #f1f5f9);
+  background: var(--snow-surface-low, #fcfdfe);
 }
 
 .cardHeaderLeft {
@@ -331,9 +227,9 @@
 .statusLive {
   flex: 0 0 auto;
   border-radius: 4px;
-  background: #e0f2fe;
+  background: var(--community-accent-soft, #e0f2fe);
   padding: 3px 6px;
-  color: #0369a1;
+  color: var(--community-accent, #0369a1);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -342,9 +238,9 @@
 .statusOfficial {
   flex: 0 0 auto;
   border-radius: 4px;
-  background: #f1f5f9;
+  background: var(--snow-surface-mid, #f1f5f9);
   padding: 3px 6px;
-  color: #64748b;
+  color: var(--snow-muted, #64748b);
   font-size: 10px;
   font-weight: 750;
 }
@@ -356,13 +252,13 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 6px;
-  color: #64748b;
+  color: var(--snow-muted, #64748b);
   transition: all 0.16s ease;
 }
 
 .expandButton:hover {
-  background: #f1f5f9;
-  color: #0284c7;
+  background: var(--snow-surface-mid, #f1f5f9);
+  color: var(--snow-ink, #0284c7);
 }
 
 .expandButton span {
@@ -459,7 +355,8 @@
   font-weight: 500;
 }
 
-/* 현지 스트림 준비 중 / 비시즌 대기 카드 (16:9 비율 유지) */
+/* Status copy stays readable without being clipped by the video aspect ratio. */
+.statusContainer { aspect-ratio: auto; min-height: 240px; background: var(--snow-surface-low); }
 .offlineCard {
   width: 100%;
   height: 100%;
@@ -468,7 +365,8 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+  background: var(--snow-surface-low);
+  min-height: inherit;
   text-align: center;
   box-sizing: border-box;
   gap: 8px;
@@ -480,9 +378,9 @@
   height: 44px;
   place-items: center;
   border-radius: 50%;
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
+  background: var(--snow-surface-mid);
+  border: 1px solid var(--snow-border);
+  color: var(--snow-ink-soft);
 }
 
 .offlineIconBox span {
@@ -491,41 +389,45 @@
 
 .offlineText h4 {
   margin: 0;
-  color: #f1f5f9;
-  font-size: 14px;
-  font-weight: 750;
+  color: var(--snow-ink);
+  font-size: 16px;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .offlineText p {
   margin: 4px 0 0;
-  color: #94a3b8;
-  font-size: 11px;
-  max-width: 280px;
-  line-height: 1.45;
+  color: var(--snow-ink-soft);
+  font-size: 14px;
+  max-width: 360px;
+  line-height: 1.5;
 }
+.offlineText small { display: block; margin-top: 8px; color: var(--snow-muted); font-size: 12px; }
+.offlineActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 .officialSiteBtn {
-  margin-top: 6px;
+  margin-top: 0;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  padding: 6px 12px;
-  color: #e2e8f0;
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: 8px;
+  background: var(--snow-canvas);
+  border: 1px solid var(--snow-border-strong);
+  padding: 8px 12px;
+  min-height: 40px;
+  color: var(--snow-ink);
+  font-size: 14px;
+  font-weight: 600;
   text-decoration: none;
   transition: all 0.16s ease;
 }
 
 .officialSiteBtn:hover {
-  background: #0284c7;
-  border-color: #0284c7;
-  color: #ffffff;
+  background: var(--snow-surface-mid);
+  border-color: var(--snow-ink-soft);
+  color: var(--snow-ink);
 }
+.officialSiteBtn:focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
 
 .officialSiteBtn span {
   font-size: 14px;
@@ -669,27 +571,8 @@
 
 @media (max-width: 768px) {
   .page {
-    width: 100%;
-    padding: 14px 12px 40px;
-  }
-  .topTabs {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .intro {
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .introIcon {
-    width: 42px;
-    height: 42px;
-  }
-  .intro h1 {
-    font-size: 20px;
-  }
-  .introCopy {
-    display: none;
+    width: calc(100% - 24px);
+    padding: 24px 0 40px;
   }
   .resortSection {
     padding: 14px 10px;

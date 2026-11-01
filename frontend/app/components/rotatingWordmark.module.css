@@ -1,0 +1,59 @@
+.wordmark {
+  display: inline-grid;
+  inline-size: 6em;
+  align-items: center;
+  overflow: hidden;
+  line-height: 32px;
+  vertical-align: middle;
+}
+.label {
+  grid-area: 1 / 1;
+  justify-self: start;
+  display: inline-flex;
+  white-space: nowrap;
+}
+.korean {
+  font-family: "Pretendard Variable", Pretendard, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0;
+  font-synthesis: none;
+  -webkit-font-smoothing: auto;
+}
+.glyph { display: inline-flex; }
+.ink {
+  display: inline-block;
+  animation-duration: 12s;
+  animation-iteration-count: infinite;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+  animation-delay: calc(var(--i) * 25ms);
+  animation-fill-mode: both;
+}
+.english .ink { animation-name: englishDrift; }
+.korean .ink {
+  opacity: 0;
+  animation-name: koreanDrift;
+  animation-delay: calc(var(--i) * 50ms);
+}
+
+/* One clean text layer: a small horizontal drift, with no duplicated trails. */
+@keyframes englishDrift {
+  0%, 36%, 98%, 100% { opacity: 1; transform: none; }
+  43% { opacity: 0; transform: translateX(12px); }
+  43.01%, 91% { opacity: 0; transform: translateX(-8px); }
+}
+@keyframes koreanDrift {
+  0%, 43%, 93.01%, 100% { opacity: 0; transform: translateX(-8px); }
+  50%, 86% { opacity: 1; transform: none; }
+  93% { opacity: 0; transform: translateX(12px); }
+}
+
+:global(.alpine-logo:focus-visible) .ink { animation: none; transform: none; }
+:global(.alpine-logo:focus-visible) .english .ink { opacity: 0; }
+:global(.alpine-logo:focus-visible) .korean .ink { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .english .ink, .korean .ink { animation: none; transform: none; }
+  .english .ink { opacity: 0; }
+  .korean .ink { opacity: 1; }
+}

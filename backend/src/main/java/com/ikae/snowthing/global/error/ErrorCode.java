@@ -27,6 +27,11 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "MEMBER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_003", "이미 사용 중인 닉네임입니다."),
+    CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_004", "현재 비밀번호가 일치하지 않습니다."),
+    PASSWORD_CHANGE_UNAVAILABLE(
+            HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
+    PROFILE_ACTION_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "MEMBER_006", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "EMAIL_001", "이미 가입된 이메일입니다."),
     EMAIL_CODE_FORMAT_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_002", "인증번호는 숫자 6자리여야 합니다."),
     EMAIL_CODE_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_003", "인증번호가 일치하지 않습니다."),
@@ -113,6 +118,8 @@ public enum ErrorCode {
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_002", "파일 크기는 최대 5MB까지 업로드 가능합니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_003", "존재하지 않는 파일입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_004", "파일 업로드에 실패했습니다."),
+    IMAGE_DIMENSIONS_EXCEEDED(
+            HttpStatus.BAD_REQUEST, "FILE_005", "이미지는 한 변 10,000px, 총 2,500만 화소 이하로 줄여 주세요."),
     RESORT_NOT_FOUND(HttpStatus.NOT_FOUND, "RESORT_001", "존재하지 않거나 비활성화된 리조트입니다."),
     INVALID_RESORT_REPORT_CONTENT(
             HttpStatus.BAD_REQUEST, "REPORT_001", "설질 제보 내용은 1자 이상 100자 이하여야 합니다."),
@@ -125,6 +132,7 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "REPORT_005", "설질 제보는 최대 100페이지까지 조회할 수 있습니다."),
     RESORT_REPORT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "REPORT_006", "설질 제보 페이지 크기는 1 이상 100 이하이어야 합니다."),
+
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

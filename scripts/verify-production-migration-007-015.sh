@@ -41,7 +41,9 @@ for version in \
   013_migration_email_verification \
   014_migration_crew_and_season_room \
   015_migration_resort_report \
-  016_migration_social_login; do
+  016_migration_social_login \
+  017_migration_registration_consent \
+  018_migration_notice_category; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done
@@ -73,5 +75,8 @@ done
 [[ "$(mysql_test --execute="SELECT collation_name FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'member_social_account' AND column_name = 'provider_user_id'")" == "utf8mb4_bin" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.check_constraints WHERE constraint_schema = '$DB_NAME' AND constraint_name = 'chk_member_social_provider' AND check_clause LIKE '%GOOGLE%' AND check_clause LIKE '%NAVER%' AND check_clause NOT LIKE '%KAKAO%'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND table_name = 'member_social_account' AND constraint_name = 'fk_member_social_member'")" == "1" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'member_registration_consent' AND column_name IN ('member_id', 'privacy_version', 'age_confirmed', 'marketing_email_agreed', 'confirmed_at')")" == "5" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND table_name = 'member_registration_consent' AND constraint_name = 'fk_registration_consent_member'")" == "1" ]]
 
-echo "Production migrations 007-016 verification passed."
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM post_category WHERE code = 'NOTICE'")" == "1" ]]
+echo "Production migrations 007-018 verification passed."
