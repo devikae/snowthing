@@ -17,11 +17,16 @@ export const API_ENDPOINTS = {
     resetPassword: `${API_V1_URL}/auth/password-reset`,
   },
   members: {
+    settings: `${API_V1_URL}/members/me/settings`,
+    nicknameAvailability: `${API_V1_URL}/members/me/nickname-availability`,
+    changePassword: `${API_V1_URL}/members/me/password`,
+    resetProfileImage: `${API_V1_URL}/members/me/profile-image`,
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
     emailAvailability: `${API_V1_URL}/members/email-availability`,
   },
   images: {
+    profileUpload: `${API_V1_URL}/images/profile`,
     upload: `${API_V1_URL}/images`,
   },
   master: {

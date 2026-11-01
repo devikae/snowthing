@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
+import { RotatingWordmark } from "./RotatingWordmark";
 
 type ThemeSetting = "light" | "dark";
 
@@ -54,7 +55,7 @@ function ThemeToggle() {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup";
+export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools";
 
 interface MemberUser {
   publicId: string;
@@ -70,11 +71,11 @@ interface NavItem {
 }
 
 const boardItems: NavItem[] = [
+  { href: "/posts?category=NOTICE", label: "공지사항", key: "notice" },
   { href: "/posts", label: "전체글", key: "posts" },
-  { href: "/posts?view=best", label: "실시간 베스트", key: "best" },
   { href: "/posts?category=FREE", label: "자유게시판", key: "free" },
   { href: "/posts?category=ANONYMOUS", label: "익명게시판", key: "anonymous" },
-  { href: "/posts?category=QNA", label: "장비 후기", key: "gear" },
+  { href: "/posts?category=QNA", label: "질문게시판", key: "gear" },
   { href: "/posts?category=FOOD", label: "리조트 맛집", key: "food" },
   { href: "/posts?category=CREW", label: "동호회 모집", key: "crew" },
   { href: "/posts?category=SEASON_ROOM", label: "시즌방 모집", key: "seasonRoom" },
@@ -87,11 +88,11 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const boardActive = ["posts", "best", "free", "anonymous", "gear", "food", "crew", "seasonRoom"].includes(active);
+  const boardActive = ["posts", "notice", "best", "free", "anonymous", "gear", "food", "crew", "seasonRoom"].includes(active);
   const isBoardItemActive = (key: string) => active === key;
 
   useEffect(() => {
-    void (async () => {
+    const refreshProfile = async () => {
       try {
         const response = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
         setUser(response.ok ? await response.json() : null);
@@ -100,7 +101,11 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
       } finally {
         setLoading(false);
       }
-    })();
+    };
+    const onUpdate = () => { void refreshProfile(); };
+    void refreshProfile();
+    window.addEventListener("snowthing-profile-updated", onUpdate);
+    return () => window.removeEventListener("snowthing-profile-updated", onUpdate);
   }, []);
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
@@ -123,8 +128,8 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
       <header className="community-header">
         <div className="community-container community-header-inner">
           <div className="community-header-left">
-            <Link href="/" aria-label="Snowthing 홈" className="alpine-logo">
-              <span>SnowThing</span>
+            <Link href="/" aria-label="눈팅 SnowThing 홈" className="alpine-logo">
+              <RotatingWordmark />
             </Link>
             <nav className="community-main-nav" aria-label="메인 메뉴">
               <details className="header-board-menu">
@@ -154,6 +159,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/carpool" className={active === "carpool" ? "nav-active" : ""} aria-current={active === "carpool" ? "page" : undefined}>
                 카풀·동행
               </Link>
+              <Link href="/tools" className={active === "tools" ? "nav-active" : ""} aria-current={active === "tools" ? "page" : undefined}>라이더 도구</Link>
             </nav>
           </div>
 
@@ -167,7 +173,8 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
             </form>
             {!loading && (user ? (
               <div className="header-profile-wrap">
-                <Link href="/profile" className="header-profile" title={`${user.nickname} 프로필`}>
+                <details className="header-profile-menu">
+                <summary className="header-profile" title={`${user.nickname} 프로필`} aria-label="프로필 메뉴">
                   <Image
                     src={user.profileImageUrl || "/images/default-profile-avatar.png"}
                     alt=""
@@ -176,7 +183,11 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                     unoptimized={Boolean(user.profileImageUrl)}
                     className={user.profileImageUrl ? undefined : "header-default-profile"}
                   />
-                </Link>
+                </summary>
+                <div className="header-profile-dropdown">
+                  <Link href="/profile" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>내 정보 수정</Link>
+                </div>
+                </details>
                 <button type="button" onClick={handleLogout} className="header-logout">로그아웃</button>
               </div>
             ) : (
@@ -202,6 +213,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/resort-cam" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>슬로프캠</Link>
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀·동행</Link>
+              <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
             </nav>
           </div>
         </div>
@@ -218,8 +230,8 @@ export function Footer() {
   return (
     <footer className="community-footer">
       <div className="community-container community-footer-inner">
-        <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>Winter Sports Community</span></div>
-        <nav><Link href="/">이용약관</Link><Link href="/">개인정보처리방침</Link><Link href="/">게시판 운영원칙</Link><Link href="/">고객센터</Link></nav>
+        <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>스노보드 커뮤니티</span></div>
+        <nav aria-label="사이트 안내"><Link href="/privacy">개인정보처리방침</Link><Link href="/posts?category=NOTICE">공지사항</Link><a href="mailto:82snowthing@gmail.com">82snowthing@gmail.com</a></nav>
       </div>
       <div className="community-container community-copyright">Copyright © SNOWTHING Alpine Community. All rights reserved.</div>
     </footer>

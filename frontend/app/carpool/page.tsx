@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeading } from "../components/PageHeading";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Footer, TopNav } from "../components/SiteChrome";
@@ -87,15 +88,17 @@ function CarpoolList() {
 }
 
 export default function CarpoolPage() {
-  return <>
-    <TopNav active="carpool" />
-    <main className="community-container carpool-page">
-      <header className="carpool-heading">
-        <div><span className="material-symbols-outlined">directions_car</span><div><p className="carpool-eyebrow">함께 가면 더 가벼운 이동</p><h1>카풀·동행 모집</h1><p>출발지와 리조트, 예상 비용을 확인하고 이동 계획을 세워보세요.</p></div></div>
-        <Link className="carpool-primary-button" href="/carpool/new"><span className="material-symbols-outlined">add</span>모집글 등록</Link>
-      </header>
-      <Suspense fallback={<div className="carpool-empty">카풀 모집글을 불러오는 중입니다.</div>}><CarpoolList /></Suspense>
-    </main>
-    <Footer />
-  </>;
+  return (
+    <div className="community-page">
+      <TopNav active="carpool" />
+      <main className="community-container carpool-page">
+        <PageHeading title="카풀·동행" description="출발지와 리조트가 맞는 동행을 찾아보세요."
+          actions={<Link href="/carpool/new">모집글 등록</Link>} />
+        <Suspense fallback={<div className="carpool-empty">카풀 모집글을 불러오는 중입니다.</div>}>
+          <CarpoolList />
+        </Suspense>
+      </main>
+      <Footer />
+    </div>
+  );
 }

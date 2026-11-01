@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION } from "./lib/siteMetadata";
 import "@toast-ui/editor/dist/toastui-editor.css";
 import "./globals.css";
 import "./carpool.css";
@@ -19,8 +20,16 @@ const themeBootScript = `
 })();`;
 
 export const metadata: Metadata = {
-  title: "Snowthing - Snowboard Community",
-  description: "스노보더를 위한 게시판, 리조트 정보, 라이더 프로필 커뮤니티",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  applicationName: "눈팅 SnowThing",
+  openGraph: { type: "website", title: SITE_TITLE, description: SITE_DESCRIPTION, siteName: SITE_NAME, locale: "ko_KR" },
+  twitter: { card: "summary", title: SITE_TITLE, description: SITE_DESCRIPTION },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NAVER_SITE_VERIFICATION ? { "naver-site-verification": process.env.NAVER_SITE_VERIFICATION } : {},
+  },
 };
 
 export default function RootLayout({
@@ -35,7 +44,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
           rel="stylesheet"
         />
         <link

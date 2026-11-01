@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { DECK_QUESTION_KEY, readDeckQuestionDraft } from "../../lib/toolQuestionDraft";
 import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
@@ -12,13 +13,24 @@ import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm font-mono text-gray-400">📝 스마트 에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm font-mono text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
 });
 
 interface MemberProfile {
   publicId: string;
   nickname: string;
+  role: string;
 }
+
+const COMPOSE_CATEGORIES = [
+  { code: "NOTICE", label: "공지사항", adminOnly: true },
+  { code: "FREE", label: "자유게시판", adminOnly: false },
+  { code: "ANONYMOUS", label: "익명게시판", adminOnly: false },
+  { code: "QNA", label: "질문게시판", adminOnly: false },
+  { code: "FOOD", label: "리조트 맛집", adminOnly: false },
+  { code: "CREW", label: "동호회 모집", adminOnly: false },
+  { code: "SEASON_ROOM", label: "시즌방 모집", adminOnly: false },
+] as const;
 
 function PostCreateForm() {
   const router = useRouter();
@@ -27,7 +39,8 @@ function PostCreateForm() {
   const initialCat = searchParams.get("category") || "FREE";
 
   const [categoryCode, setCategoryCode] = useState(initialCat);
-  const [title, setTitle] = useState("");
+  const [toolDraft] = useState(() => readDeckQuestionDraft(searchParams.get("draft") === "deck" && initialCat === "QNA"));
+  const [title, setTitle] = useState(toolDraft?.title ?? "");
   const [anonymousPassword, setAnonymousPassword] = useState("");
   const [imageKey, setImageKey] = useState("");
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
@@ -41,7 +54,6 @@ function PostCreateForm() {
   const editorRef = useRef<ToastEditorHandle>(null);
   const hasAlertedRef = useRef(false);
 
-  // 로그인 상태 확인 & 권한 라우트 가드 (Route Guard - 중복 알림 방지 적용)
   useEffect(() => {
     let isSubscribed = true;
 
@@ -63,18 +75,19 @@ function PostCreateForm() {
         if (isSubscribed) setCheckingAuth(false);
       }
 
-      // 비로그인 사용자 처리:
-      // URL 파라미터가 없으면 기본 카테고리를 ANONYMOUS로 세팅하여 로그인 없이 작성 허용.
-      // URL 파라미터가 ANONYMOUS가 아닌 멤버 전용 게시판인 경우에만 1회 안내 후 리다이렉트.
       const currentCategory = searchParams.get("category");
+      if (currentCategory === "NOTICE" && loggedInMember && loggedInMember.role !== "ROLE_ADMIN") {
+        router.replace("/posts?category=NOTICE");
+        return;
+      }
       if (!loggedInMember) {
         if (!currentCategory) {
           setCategoryCode("ANONYMOUS");
         } else if (currentCategory !== "ANONYMOUS") {
           if (!hasAlertedRef.current) {
             hasAlertedRef.current = true;
-            alert("해당 게시판 글쓰기는 로그인이 필요합니다.");
-            router.replace(`/login?redirect=/posts/create?category=${currentCategory}`);
+            const destination = `/posts/create?category=${encodeURIComponent(currentCategory)}${searchParams.get("draft") === "deck" ? "&draft=deck" : ""}`;
+            router.replace(`/login?returnUrl=${encodeURIComponent(destination)}`);
           }
         }
       }
@@ -87,6 +100,14 @@ function PostCreateForm() {
   }, [searchParams, router]);
 
   const isAnonCategory = categoryCode === "ANONYMOUS";
+
+  const handleCategorySelect = (nextCode: string) => {
+    if (!userProfile && nextCode !== "ANONYMOUS") {
+      router.push(`/login?returnUrl=${encodeURIComponent(`/posts/create?category=${nextCode}`)}`);
+      return;
+    }
+    setCategoryCode(nextCode);
+  };
 
   const handleImageUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -130,7 +151,7 @@ function PostCreateForm() {
       return;
     }
     if (!isAnonCategory && !userProfile) {
-      setErrorMsg("자유/Q&A/맛집 게시판은 로그인이 필요합니다.");
+      setErrorMsg("자유/질문/맛집 게시판은 로그인이 필요합니다.");
       return;
     }
     if (isAnonCategory && !userProfile && !anonymousPassword.trim()) {
@@ -157,6 +178,7 @@ function PostCreateForm() {
 
       if (res.ok) {
         const data = await res.json();
+        if (toolDraft) { try { sessionStorage.removeItem(DECK_QUESTION_KEY); } catch { /* Draft cleanup must not prevent navigation. */ } }
         router.push(`/posts/${data.publicId}`);
       } else {
         const err = await res.json();
@@ -171,128 +193,157 @@ function PostCreateForm() {
 
   if (checkingAuth) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-20 text-center text-xs font-mono text-[#6b7280]">
-        🔒 작성 권한 및 세션을 확인하는 중입니다...
+      <div className="max-w-4xl mx-auto px-6 py-20 text-center text-xs font-mono text-[var(--snow-muted)]">
+        작성 권한 및 세션을 확인하는 중입니다...
       </div>
     );
   }
 
   const boardName =
-    categoryCode === "ANONYMOUS"
-      ? "익명게시판"
-      : categoryCode === "QNA"
-        ? "장비 후기"
-        : categoryCode === "FOOD"
-          ? "리조트 맛집"
-          : categoryCode === "CREW"
-            ? "동호회 모집"
-            : categoryCode === "SEASON_ROOM"
-              ? "시즌방 모집"
-              : "자유게시판";
+    COMPOSE_CATEGORIES.find((item) => item.code === categoryCode)?.label ?? "자유게시판";
+  const writerName = isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자";
+  const writerInitial = writerName.trim().charAt(0) || "익";
 
   return (
     <main className="compose-page community-container">
-      <header className="compose-heading">
-        <h1>{boardName}</h1>
+      <header className="compose-top-bar">
+        <div className="compose-head-left">
+          <small className="section-eyebrow">NEW POST · EDITORIAL COMPOSER</small>
+          <h1>{boardName} 글쓰기</h1>
+        </div>
+
+        <div className="compose-meta-Cluster">
+          <div className={`compose-author-pill${isAnonCategory ? " anonymous" : ""}`}>
+            {isAnonCategory ? <strong>익명</strong> : <>
+              <span className="m-avatar" aria-hidden="true">{writerInitial}</span>
+              <span>작성자</span>
+              <strong>{writerName}</strong>
+            </>}
+          </div>
+
+          {isAnonCategory && !userProfile && (
+            <label className="compose-anon-pw-pill">
+              <span className="material-symbols-outlined">lock</span>
+              <input
+                type="password"
+                placeholder="수정·삭제 비밀번호"
+                value={anonymousPassword}
+                onChange={(e) => setAnonymousPassword(e.target.value)}
+              />
+            </label>
+          )}
+        </div>
       </header>
 
-      <div className="compose-layout">
-        <form onSubmit={handleSubmit} className="compose-card">
+      <nav className="compose-category-bar" aria-label="작성할 게시판 선택">
+        <div className="filter-pills">
+          {COMPOSE_CATEGORIES.filter((cat) => !cat.adminOnly || userProfile?.role === "ROLE_ADMIN").map((cat) => (
+            <button
+              key={cat.code}
+              type="button"
+              className={categoryCode === cat.code ? "active" : ""}
+              onClick={() => handleCategorySelect(cat.code)}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (
           <div className="compose-error" role="alert">
-            <span className="material-symbols-outlined">error</span>{errorMsg}
+            <span className="material-symbols-outlined">error</span>
+            {errorMsg}
           </div>
         )}
 
-        <section className="compose-author-row">
-          <div className="compose-author">
-            <span>작성자</span>
-            <strong>{isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자"}</strong>
-          </div>
-          {isAnonCategory && !userProfile && (
-            <label className="compose-password">
-              <span>글 수정/삭제 비밀번호</span>
-              <span className="compose-password-field">
-                <input type="password" placeholder="비밀번호 입력" value={anonymousPassword} onChange={(e) => setAnonymousPassword(e.target.value)} />
-                <span className="material-symbols-outlined">lock</span>
-              </span>
-            </label>
-          )}
-        </section>
-
-        <section className="compose-section">
-          <label htmlFor="post-title" className="compose-label">글 제목</label>
+        <div className="compose-title-bar">
+          <label htmlFor="post-title" className="compose-title-tag">
+            제목
+          </label>
           <input
             id="post-title"
             type="text"
             maxLength={200}
-            placeholder="글 제목을 입력해주세요."
+            placeholder="제목을 입력하세요"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="compose-title-input"
+            aria-label="글 제목"
           />
-        </section>
+          <span className="compose-title-count" aria-hidden="true">
+            {title.length}/200
+          </span>
+        </div>
 
-        <section className="compose-section">
-          <label className="compose-label">본문 내용</label>
-          <div className="compose-editor">
-            <ToastEditor ref={editorRef} initialValue="" height="500px" />
+        <div className="compose-sheet">
+          <div className="compose-sheet-editor">
+            <ToastEditor ref={editorRef} initialValue={toolDraft?.content ?? ""} height="480px" />
           </div>
-        </section>
 
-        <section className="compose-section">
-          <label htmlFor="post-image" className="compose-label"><span className="material-symbols-outlined">attach_file</span> 사진 첨부 <small>(선택, 최대 5MB)</small></label>
-          <input
-            id="post-image"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={!userProfile || uploadingImage}
-            onChange={(e) => handleImageUpload(e.target.files?.[0])}
-            className="compose-image-input"
-          />
-          <p className="compose-help">
-            {!userProfile
-              ? "이미지 첨부는 로그인한 회원만 사용할 수 있습니다."
-              : uploadingImage
-                ? "이미지를 업로드하고 있습니다."
-                : imageKey
-                  ? "이미지 업로드가 완료되었습니다."
-                  : "JPG, PNG, WebP 이미지 1개를 첨부할 수 있습니다."}
-          </p>
-          {imagePreviewUrl && (
-            <Image src={imagePreviewUrl} alt="첨부 이미지 미리보기" width={800} height={256} unoptimized className="mt-3 max-h-64 w-auto rounded-xl object-contain" />
-          )}
-        </section>
+          <div className="compose-sheet-attach">
+            <div className="compose-attach-row">
+              <label
+                htmlFor="post-image"
+                className={`compose-attach-btn ${!userProfile || uploadingImage ? "disabled" : ""}`}
+              >
+                <span className="material-symbols-outlined">image</span>
+                <span>{uploadingImage ? "업로드 중..." : imageKey ? "첨부 사진 변경" : "사진 첨부"}</span>
+              </label>
+              <input
+                id="post-image"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={!userProfile || uploadingImage}
+                onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                hidden
+              />
+              <span className="compose-attach-hint">
+                {!userProfile
+                  ? "이미지 첨부는 로그인한 회원만 사용할 수 있습니다."
+                  : uploadingImage
+                    ? "이미지를 서버에 업로드하고 있습니다..."
+                    : imageKey
+                      ? "대표 이미지 1장이 첨부되었습니다."
+                      : "JPG, PNG, WebP · 최대 5MB"}
+              </span>
+            </div>
 
-        <footer className="compose-actions">
-          <Link
-            href={`/posts${categoryCode ? `?category=${categoryCode}` : ""}`}
-            className="compose-cancel"
-          >
-            <span className="material-symbols-outlined">arrow_back</span> 취소 / 뒤로가기
+            {imagePreviewUrl && (
+              <div className="compose-attach-preview">
+                <Image
+                  src={imagePreviewUrl}
+                  alt="첨부 이미지 미리보기"
+                  width={320}
+                  height={180}
+                  unoptimized
+                />
+                <button
+                  type="button"
+                  className="compose-attach-remove"
+                  onClick={() => {
+                    setImageKey("");
+                    setImagePreviewUrl("");
+                  }}
+                >
+                  <span className="material-symbols-outlined">close</span>
+                  첨부 취소
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <footer className="compose-footer-bar">
+          <Link href={`/posts${categoryCode ? `?category=${categoryCode}` : ""}`} className="compose-cancel-pill">
+            <span className="material-symbols-outlined">arrow_back</span> 목록으로
           </Link>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="compose-submit"
-          >
-            <span className="material-symbols-outlined">edit_note</span>
+          <button type="submit" disabled={submitting} className="compose-submit-pill">
+            <span className="material-symbols-outlined">check</span>
             {submitting ? "등록 처리 중..." : `${isAnonCategory ? "익명 " : ""}게시글 등록`}
           </button>
         </footer>
-        </form>
-
-        <aside className="compose-sidebar" aria-label="참고 정보">
-          <section className="compose-side-card">
-            <header><span className="material-symbols-outlined">ac_unit</span><strong>오늘의 설질</strong><small>참고 정보</small></header>
-            <div className="compose-weather-grid">
-              <article><span>용평 발왕산</span><b>-6.4°C</b><small>설질: 최상 파우더</small></article>
-              <article><span>휘닉스 몽블랑</span><b>-4.8°C</b><small>설질: 압설 양호</small></article>
-            </div>
-          </section>
-          <p className="compose-side-note">설질 영역은 현재 화면 구성을 위한 예시입니다.</p>
-        </aside>
-      </div>
+      </form>
     </main>
   );
 }
@@ -301,7 +352,7 @@ export default function PostCreatePage() {
   return (
     <div className="community-page">
       <TopNav active="posts" />
-      <Suspense fallback={<div className="p-12 text-center text-xs text-[#6b7280]">로딩 중입니다...</div>}>
+      <Suspense fallback={<div className="p-20 text-center text-xs font-mono text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다...</div>}>
         <PostCreateForm />
       </Suspense>
       <Footer />

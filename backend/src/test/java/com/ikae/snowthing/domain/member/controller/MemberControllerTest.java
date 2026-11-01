@@ -71,6 +71,9 @@ class MemberControllerTest {
                         .password("Password123!")
                         .emailVerificationToken("verified-token")
                         .nickname("정상닉네임")
+                        .ageConfirmed(true)
+                        .privacyAgreed(true)
+                        .marketingEmailAgreed(false)
                         .build();
 
         MemberSignUpResponse response =
@@ -124,40 +127,6 @@ class MemberControllerTest {
                         .build();
 
         // when & then
-        mockMvc.perform(
-                        post("/api/v1/members")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("회원가입 비밀번호에 영문 대문자가 없으면 400 Bad Request를 반환한다")
-    void signUp_PasswordWithoutUppercase_Returns400() throws Exception {
-        MemberSignUpRequest request =
-                MemberSignUpRequest.builder()
-                        .email("valid@snowthing.com")
-                        .password("password123!")
-                        .nickname("정상닉네임")
-                        .build();
-
-        mockMvc.perform(
-                        post("/api/v1/members")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("회원가입 비밀번호에 특수문자가 없으면 400 Bad Request를 반환한다")
-    void signUp_PasswordWithoutSpecialCharacter_Returns400() throws Exception {
-        MemberSignUpRequest request =
-                MemberSignUpRequest.builder()
-                        .email("valid@snowthing.com")
-                        .password("Password123")
-                        .nickname("정상닉네임")
-                        .build();
-
         mockMvc.perform(
                         post("/api/v1/members")
                                 .contentType(MediaType.APPLICATION_JSON)

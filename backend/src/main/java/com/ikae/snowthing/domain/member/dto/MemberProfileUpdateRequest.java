@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import com.ikae.snowthing.domain.member.validation.NicknamePolicy;
 
@@ -20,13 +23,19 @@ public class MemberProfileUpdateRequest {
     @Pattern(regexp = NicknamePolicy.REGEXP, message = NicknamePolicy.MESSAGE)
     private String nickname;
 
+    @Size(max = 255)
     private String bio;
 
+    @Size(max = 100)
     private String departureRegion;
 
-    private List<Long> resortIds = new ArrayList<>();
+    @NotNull
+    @Size(max = 2)
+    private List<@NotNull @Positive Long> resortIds = new ArrayList<>();
 
-    private List<Long> ridingStyleIds = new ArrayList<>();
+    @NotNull
+    @Size(max = 50)
+    private List<@NotNull @Positive Long> ridingStyleIds = new ArrayList<>();
 
     @Builder
     public MemberProfileUpdateRequest(

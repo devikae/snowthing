@@ -42,6 +42,9 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        if (categoryRepository.findByCode("NOTICE").isEmpty()) {
+            categoryRepository.save(PostCategory.builder().name("공지사항").code("NOTICE").build());
+        }
         if (!memberRepository.existsByEmail("user@snowthing.com")
                 && !memberRepository.existsByNickname("스노보더1")) {
             memberRepository.save(

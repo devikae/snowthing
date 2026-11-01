@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeading } from "../components/PageHeading";
 import { useEffect, useRef, useState } from "react";
 import { CameraPlayer } from "./CameraPlayer";
 import styles from "./resortCam.module.css";
@@ -60,33 +61,7 @@ export function ResortCamView({
 
   return (
     <main className={styles.page}>
-      {/* 상단 탭 네비게이션: 리조트 현황 vs 슬로프캠 */}
-      <div className={styles.topTabs}>
-        <div className={styles.topTabsLeft}>
-          {/* 실시간 현황 화면 공개 시 다시 노출한다.
-          <Link href="/resort" className={styles.tabInactive}>
-            <span className="material-symbols-outlined">info</span>
-            실시간 현황
-          </Link>
-          */}
-          <Link href="/resort-cam" className={styles.tabActive}>
-            <span className="material-symbols-outlined">videocam</span>
-            슬로프캠 LIVE
-          </Link>
-        </div>
-        <span className={styles.autoRefreshNote}>외부 스트리밍 직접 연결</span>
-      </div>
-
-      <section className={styles.intro}>
-        <div className={styles.introIcon} aria-hidden="true">
-          <span className="material-symbols-outlined">videocam</span>
-        </div>
-        <div>
-          <p className={styles.eyebrow}>RESORT LIVE CAM</p>
-          <h1>전국 스키장 실시간 슬로프캠</h1>
-          <p className={styles.introCopy}>주요 리조트의 슬로프 실시간 상황과 설질을 한 화면에서 확인하세요.</p>
-        </div>
-      </section>
+      <PageHeading title="스키장 웹캠" description="리조트에서 제공하는 웹캠·슬로프캠으로 현장 모습을 확인하세요." />
 
       {/* 리조트 선택 탭 */}
       <nav className={styles.resortNav} aria-label="리조트 선택">
@@ -116,17 +91,12 @@ export function ResortCamView({
               <span className={styles.metaRegion}>{selectedResort.regionName}</span>
               <span className={styles.metaCount}>카메라 {selectedResort.cameras.length}개</span>
               {playableCount > 0 ? (
-                <span className={styles.liveMeta}>실시간 스트림 {playableCount}개</span>
+                <span className={styles.liveMeta}>영상 연결 {playableCount}개</span>
               ) : (
                 <span className={styles.officialMeta}>공식 스트리밍 센터</span>
               )}
             </div>
             <h2>{selectedCamera ? selectedCamera.name : selectedResort.name}</h2>
-            <p className={styles.headerDescription}>
-              {selectedCamera
-                ? `${selectedResort.name} · ${selectedCamera.name} 화면입니다.`
-                : `${selectedResort.name}에서 송출하는 실시간 슬로프 영상입니다.`}
-            </p>
           </div>
           {selectedCamera && (
             <Link className={styles.backLink} href={`/resort-cam/${resortSlug(selectedResort.code)}`}>
@@ -162,6 +132,7 @@ export function ResortCamView({
                   )}
                 </div>
                 <CameraPlayer
+                  key={`${selectedResort.code}:${camera.code}:${camera.sourceUrl}`}
                   camera={camera}
                   autoPlay={selectedCamera ? true : autoPlayCodes.has(camera.code)}
                   focused={Boolean(selectedCamera)}
@@ -173,7 +144,7 @@ export function ResortCamView({
       </section>
 
       <p className={styles.sourceNotice}>
-        ※ 슬로프캠 영상은 각 리조트의 공식 공개 스트림에 직접 연결됩니다. 현지 기상 상황 및 리조트 사정에 따라 스트리밍이 일시 중단될 수 있습니다.
+        ※ 각 리조트에서 제공하는 공개 영상을 연결합니다. 제공처의 영상 주소나 송출 상태에 따라 일부 카메라가 재생되지 않을 수 있습니다.
       </p>
     </main>
   );

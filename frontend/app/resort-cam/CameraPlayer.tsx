@@ -15,6 +15,8 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
   const [manualPlay, setManualPlay] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [failureReason, setFailureReason] = useState("");
 
   const shouldLoad = focused || manualPlay || autoPlay;
   const officialUrl = camera.externalPageUrl || camera.sourceUrl || "";
@@ -24,65 +26,91 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
     if (camera.sourceType !== "HLS" || !video || !shouldLoad) return;
 
     let disposed = false;
+    let usingHls = false;
     let destroy: (() => void) | undefined;
+    const fail = (reason = "connection-error") => {
+      if (disposed) return;
+      window.clearTimeout(startupTimer);
+      destroy?.();
+      destroy = undefined;
+      setFailed(true);
+      setFailureReason(reason);
+      setLoading(false);
+    };
+    let startupTimer = window.setTimeout(() => fail("startup-timeout"), 18000);
+    const onNativeError = () => { if (!usingHls) fail(`native-media-${video.error?.code ?? 0}`); };
+    const onReady = () => {
+      if (disposed) return;
+      window.clearTimeout(startupTimer);
+      setLoading(false);
+    };
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("error", onNativeError);
     setFailed(false);
     setLoading(true);
 
     void (async () => {
       try {
-        if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = camera.sourceUrl;
-          video.addEventListener("loadedmetadata", () => setLoading(false), { once: true });
-          video.addEventListener("error", () => {
-            setFailed(true);
-            setLoading(false);
-          }, { once: true });
-        } else {
-          const { default: Hls } = await import("hls.js");
-          if (disposed) return;
-          if (!Hls.isSupported()) {
-            setFailed(true);
-            setLoading(false);
-            return;
-          }
+        const { default: Hls } = await import("hls.js");
+        if (disposed) return;
+        // Chromium can report native HLS support but stall on valid camera streams.
+        if (Hls.isSupported()) {
+          usingHls = true;
           const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+          destroy = () => hls.destroy();
+          let mediaRecoveries = 0;
+          let nativeFallback = false;
           hls.loadSource(camera.sourceUrl);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            setLoading(false);
+            if (disposed) return;
             void video.play().catch(() => undefined);
           });
           hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) {
-              setFailed(true);
-              setLoading(false);
+              if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries++ === 0) {
+                hls.recoverMediaError();
+              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !nativeFallback && video.canPlayType("application/vnd.apple.mpegurl")) {
+                nativeFallback = true;
+                usingHls = false;
+                destroy?.();
+                destroy = undefined;
+                window.clearTimeout(startupTimer);
+                startupTimer = window.setTimeout(() => fail("startup-timeout"), 18000);
+                video.src = camera.sourceUrl;
+                video.load();
+                void video.play().catch(() => undefined);
+              } else fail(data.details);
             }
           });
-          destroy = () => hls.destroy();
-        }
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = camera.sourceUrl;
+        else { fail("unsupported-browser"); return; }
         void video.play().catch(() => undefined);
       } catch {
-        setFailed(true);
-        setLoading(false);
+        fail("initialization-failed");
       }
     })();
 
     return () => {
       disposed = true;
+      window.clearTimeout(startupTimer);
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("error", onNativeError);
+      destroy?.();
       video.pause();
       video.removeAttribute("src");
       video.load();
-      destroy?.();
     };
-  }, [camera.sourceType, camera.sourceUrl, manualPlay, shouldLoad]);
+  }, [camera.sourceType, camera.sourceUrl, manualPlay, shouldLoad, retryAttempt]);
 
   // 순수 영상 iframe 전용 (vivaldi.html, rtsp.me 등)
   const isDedicatedVideoIframe =
     camera.sourceType === "IFRAME" ||
     (camera.sourceType === "EXTERNAL_LINK" && camera.sourceUrl.includes("pop_webcam.do"));
+  const showStatus = (camera.sourceType === "EXTERNAL_LINK" && !isDedicatedVideoIframe) || failed;
 
   return (
-    <div className={styles.playerContainer}>
+    <div className={`${styles.playerContainer} ${showStatus ? styles.statusContainer : ""}`} data-playback-error={failed ? failureReason : undefined}>
       {/* 1. HLS 비디오 스트림 (정상 작동 중) */}
       {camera.sourceType === "HLS" && shouldLoad && !failed && (
         <>
@@ -128,15 +156,20 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
       )}
 
       {/* 4. 현지 스트림 송출 대기 중 / 비시즌 점검 (깔끔한 프리뷰 카드) */}
-      {((camera.sourceType === "EXTERNAL_LINK" && !isDedicatedVideoIframe) || failed) && (
-        <div className={styles.offlineCard}>
+      {showStatus && (
+        <div className={styles.offlineCard} role="status">
           <div className={styles.offlineIconBox}>
-            <span className="material-symbols-outlined">ac_unit</span>
+            <span className="material-symbols-outlined">videocam_off</span>
           </div>
           <div className={styles.offlineText}>
-            <h4>현지 스트리밍 준비 중</h4>
-            <p>리조트 현지 기상 및 비시즌 점검으로 인해 시즌 개장 시 실시간 자동 송출됩니다.</p>
+            <h4>{camera.sourceIssue === "upstream-unavailable" ? "원본 영상에 연결할 수 없습니다" : camera.sourceIssue === "provider-restricted" ? "제공처에서 재생을 제한하고 있습니다" : camera.sourceIssue === "not-published" ? "현재 공개된 영상이 없습니다" : failed ? "영상에 연결하지 못했습니다" : "공식 페이지에서 확인해 주세요"}</h4>
+            <p>{camera.availabilityNote || (failed ? "영상 주소가 변경되었거나 제공처 연결에 문제가 있을 수 있습니다." : "이 카메라는 리조트 공식 페이지에서 확인할 수 있습니다.")}</p>
+            {camera.availabilityCheckedAt && <small>원본 확인: {camera.availabilityCheckedAt}</small>}
           </div>
+          <div className={styles.offlineActions}>{failed && <button type="button" className={styles.officialSiteBtn} onClick={() => {
+            setFailed(false);
+            setRetryAttempt(attempt => attempt + 1);
+          }}>다시 연결</button>}
           {officialUrl && (
             <a
               href={officialUrl}
@@ -148,6 +181,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
               리조트 공식 현황 보기
             </a>
           )}
+          </div>
         </div>
       )}
 

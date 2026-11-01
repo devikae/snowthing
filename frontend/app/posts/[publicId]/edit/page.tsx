@@ -11,7 +11,7 @@ import { API_ENDPOINTS } from "../../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm font-mono text-gray-400">📝 스마트 에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm font-mono text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
 });
 
 interface PostDetail {
@@ -27,10 +27,13 @@ interface PostDetail {
 }
 
 const categoryOptions = [
-  { value: "FREE", label: "자유 게시판" },
-  { value: "ANONYMOUS", label: "익명 게시판" },
-  { value: "QNA", label: "장비 후기" },
+  { value: "NOTICE", label: "공지사항" },
+  { value: "FREE", label: "자유게시판" },
+  { value: "ANONYMOUS", label: "익명게시판" },
+  { value: "QNA", label: "질문게시판" },
   { value: "FOOD", label: "리조트 맛집" },
+  { value: "CREW", label: "동호회 모집" },
+  { value: "SEASON_ROOM", label: "시즌방 모집" },
 ];
 
 function PostEditForm({ publicId }: { publicId: string }) {
@@ -42,6 +45,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const [anonymousPassword, setAnonymousPassword] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isAuthor, setIsAuthor] = useState(false);
+  const [writerNickname, setWriterNickname] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +54,6 @@ function PostEditForm({ publicId }: { publicId: string }) {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          // 1. 현재 로그인한 유저 정보 확인
           let currentUserPublicId: string | null = null;
           try {
             const meRes = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
@@ -62,7 +65,6 @@ function PostEditForm({ publicId }: { publicId: string }) {
             currentUserPublicId = null;
           }
 
-          // 2. 게시글 상세 정보 확인
           const res = await fetch(API_ENDPOINTS.posts.detail(publicId), {
             credentials: "include",
           });
@@ -72,7 +74,6 @@ function PostEditForm({ publicId }: { publicId: string }) {
             const isWriter = Boolean(currentUserPublicId && data.writer?.publicId === currentUserPublicId);
             setIsAuthor(isWriter);
 
-            // 작성자 권한 검증: 익명글이 아닌 경우 본인만 접근 가능
             if (!data.isAnonymous) {
               if (!isWriter) {
                 alert("본인이 작성한 글만 수정할 수 있습니다.");
@@ -85,6 +86,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
             setTitle(data.title || "");
             setContent(data.content || "");
             setIsAnonymous(Boolean(data.isAnonymous));
+            setWriterNickname(data.writer?.nickname || "익명의 사용자");
           } else {
             setErrorMsg("수정할 게시글 정보를 불러오지 못했습니다.");
           }
@@ -145,70 +147,96 @@ function PostEditForm({ publicId }: { publicId: string }) {
     return <div className="p-12 text-center text-sm text-[var(--snow-muted)]">게시글 정보를 불러오는 중입니다.</div>;
   }
 
+  const writerInitial = (writerNickname || "익").trim().charAt(0) || "익";
+
   return (
-    <main className="snow-container px-5 py-8 lg:px-8 lg:py-10">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-7 border-b-2 border-black pb-5">
-          <span className="snow-label">Community Editor</span>
-          <h1 className="mt-2 text-4xl font-extrabold italic text-black">EDIT POST</h1>
-          <p className="mt-3 text-[var(--snow-muted)]">작성한 게시글의 제목과 본문을 수정합니다.</p>
+    <main className="compose-page community-container">
+      <header className="compose-top-bar">
+        <div className="compose-head-left">
+          <small className="section-eyebrow">EDIT POST · EDITORIAL COMPOSER</small>
+          <h1>게시글 수정</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="snow-card bg-white p-6 md:p-8">
-          {errorMsg && (
-            <div className="mb-6 rounded border border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-semibold text-[#dc2626]">
-              {errorMsg}
-            </div>
+        <div className="compose-meta-Cluster">
+          <div className="compose-author-pill">
+            <span className="m-avatar" aria-hidden="true">
+              {writerInitial}
+            </span>
+            <span>작성자</span>
+            <strong>{writerNickname || "익명의 사용자"}</strong>
+          </div>
+
+          {isAnonymous && !isAuthor && (
+            <label className="compose-anon-pw-pill">
+              <span className="material-symbols-outlined">lock</span>
+              <input
+                type="password"
+                placeholder="작성 당시 익명 비밀번호"
+                value={anonymousPassword}
+                onChange={(event) => setAnonymousPassword(event.target.value)}
+              />
+            </label>
           )}
+        </div>
+      </header>
 
-          <div className="grid gap-6">
-            <label className="grid gap-2">
-              <span className="snow-label">Category</span>
-              <select value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} className="snow-select">
-                {categoryOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="grid gap-2">
-              <span className="snow-label">Title</span>
-              <input value={title} onChange={(event) => setTitle(event.target.value)} className="snow-input" />
-            </label>
-
-            <div className="grid gap-2">
-              <span className="snow-label">Content</span>
-              <div className="rounded border border-[#e5e7eb] bg-white p-1">
-                <ToastEditor ref={editorRef} initialValue={content} height="500px" />
-              </div>
-            </div>
-
-            {isAnonymous && !isAuthor && (
-              <label className="grid gap-2">
-                <span className="snow-label">Anonymous Password</span>
-                <input
-                  type="password"
-                  placeholder="작성 당시 등록한 익명 비밀번호"
-                  value={anonymousPassword}
-                  onChange={(event) => setAnonymousPassword(event.target.value)}
-                  className="snow-input"
-                />
-              </label>
-            )}
-          </div>
-
-          <div className="mt-8 flex justify-end gap-3 border-t border-[var(--snow-border)] pt-5">
-            <Link href={`/posts/${publicId}`} className="snow-btn-secondary">
-              취소
-            </Link>
-            <button type="submit" disabled={submitting} className="snow-btn-primary">
-              {submitting ? "수정 중" : "수정 완료"}
+      <nav className="compose-category-bar" aria-label="게시판 변경">
+        <div className="filter-pills">
+          {categoryOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={categoryCode === option.value ? "active" : ""}
+              onClick={() => setCategoryCode(option.value)}
+            >
+              {option.label}
             </button>
+          ))}
+        </div>
+      </nav>
+
+      <form onSubmit={handleSubmit} className="compose-editorial-form">
+        {errorMsg && (
+          <div className="compose-error" role="alert">
+            <span className="material-symbols-outlined">error</span>
+            {errorMsg}
           </div>
-        </form>
-      </div>
+        )}
+
+        <div className="compose-title-bar">
+          <label htmlFor="post-edit-title" className="compose-title-tag">
+            제목
+          </label>
+          <input
+            id="post-edit-title"
+            type="text"
+            maxLength={200}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="제목을 입력하세요"
+            aria-label="글 제목"
+          />
+          <span className="compose-title-count" aria-hidden="true">
+            {title.length}/200
+          </span>
+        </div>
+
+        <div className="compose-sheet">
+          <div className="compose-sheet-editor">
+            <ToastEditor ref={editorRef} initialValue={content} height="480px" />
+          </div>
+        </div>
+
+        <footer className="compose-footer-bar">
+          <Link href={`/posts/${publicId}`} className="compose-cancel-pill">
+            <span className="material-symbols-outlined">arrow_back</span> 취소
+          </Link>
+          <button type="submit" disabled={submitting} className="compose-submit-pill">
+            <span className="material-symbols-outlined">check</span>
+            {submitting ? "수정 중..." : "수정 완료"}
+          </button>
+        </footer>
+      </form>
     </main>
   );
 }
@@ -217,7 +245,7 @@ export default function PostEditPage({ params }: { params: Promise<{ publicId: s
   const { publicId } = use(params);
 
   return (
-    <div className="min-h-screen bg-[var(--snow-background)]">
+    <div className="community-page">
       <TopNav active="posts" />
       <Suspense fallback={<div className="p-12 text-center text-sm text-[var(--snow-muted)]">로딩 중입니다.</div>}>
         <PostEditForm publicId={publicId} />

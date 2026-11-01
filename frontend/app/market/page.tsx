@@ -1,4 +1,5 @@
 "use client";
+import { PageHeading } from "../components/PageHeading";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -143,10 +144,8 @@ function MarketPageContent() {
     <div className="community-page">
       <TopNav active="market" />
       <main className="community-container market-page">
-        <header className="market-page-heading">
-          <div><span className="material-symbols-outlined">sell</span><div><h1>중고장터</h1><p>회원끼리 장비를 등록하고 댓글과 연락처로 거래합니다.</p></div></div>
-          <Link href="/market/new" className="snow-btn-primary"><span className="material-symbols-outlined">add</span>판매글 등록</Link>
-        </header>
+        <PageHeading title="중고장터" description="라이더끼리 장비를 사고팔아요."
+          actions={<Link href="/market/new">판매글 등록</Link>} />
 
         <section className="market-filter-card">
           <form onSubmit={handleSearch} className="market-search-row">

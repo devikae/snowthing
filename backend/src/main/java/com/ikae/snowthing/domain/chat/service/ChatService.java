@@ -46,6 +46,9 @@ public class ChatService {
             Pattern.compile(
                     "(?i)(?:\\bt\\.me/\\S+|\\btelegram\\b|\\bopen\\.kakao\\.com/\\S+|(?<![\\w.])@[a-z0-9_]{3,})");
     private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
+    private static final Pattern BOT_PHONE_PATTERN =
+            Pattern.compile(
+                    "(?<![0-9])(?:\\+82[ .-]?(?:10|2|[3-6][1-5])|0(?:1[016789]|2|[3-6][1-5]))[ .-]?[0-9]{3,4}[ .-]?[0-9]{4}(?![0-9])");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
@@ -119,6 +122,10 @@ public class ChatService {
 
     public ChatMessageResponse createBotMessage(String resortTag, String content) {
         String safeContent = content == null ? "" : content.trim();
+        if (containsForbiddenContact(safeContent)
+                || BOT_PHONE_PATTERN.matcher(safeContent).find()) {
+            throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
+        }
         if (safeContent.length() > MAX_CONTENT_LENGTH) {
             int end =
                     safeContent.offsetByCodePoints(

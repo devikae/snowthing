@@ -3,13 +3,15 @@
 ## 1. 라우트
 
 ```text
-/resort-cam                                  기본 리조트로 이동
+/resort-cam                                  기본 리조트 화면을 서버 HTML로 표시
 /resort-cam/[resortCode]                    리조트 전체 보기
 /resort-cam/[resortCode]/[cameraCode]       개별 카메라 보기
 /resort                                      /resort-cam 리다이렉트
 ```
 
 경로 코드는 소문자를 사용하고 API 코드와 비교할 때 대문자로 정규화합니다.
+
+2026-11-01 검색 대응: 루트는 클라이언트 리다이렉트 대신 곤지암 우선 화면을 서버에서 렌더링하며 `/resort-cam` 주소를 유지한다. 루트/리조트/카메라별 검색 제목·설명·canonical을 제공하고 없는 경로는 notFound로 처리한다. 리조트별 공개 경로는 sitemap에 넣는다. 초기 레이아웃과 검색 메타데이터 조회는 요청 단위 캐시로 공유한다. 상세 설계와 실제 검색 반영 경계는 016_search_visibility/01_design.md를 따른다.
 
 ## 2. 레이아웃
 

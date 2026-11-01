@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PageHeading } from "../components/PageHeading";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName } from "../lib/resortReports";
 import { RESORT_MAP } from "../lib/resortTags";
@@ -79,7 +80,9 @@ export default function ResortReportsPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [page, selectedResortId]);
 
   const deleteReport = async (reportId: number) => {
@@ -97,12 +100,15 @@ export default function ResortReportsPage() {
     <div className="community-page">
       <TopNav active="posts" />
       <main className="community-container resort-report-page">
-        <header className="resort-report-page-heading">
-          <div><h1>❄️ 오늘의 설질</h1><time>{koreanToday}</time></div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <PageHeading title="오늘의 설질" description="라이더가 직접 전하는 리조트 현장 소식입니다."
+          meta={<time className="snow-date-badge">{koreanToday}</time>}
+          actions={<>
             <CompactSelect
               value={selectedResortId == null ? "" : String(selectedResortId)}
-              options={[{ value: "", label: "전체 리조트" }, ...resortList.map((resort) => ({ value: String(resort.id), label: getResortReportDisplayName(resort.name) }))]}
+              options={[
+                { value: "", label: "전체 리조트" },
+                ...resortList.map((resort) => ({ value: String(resort.id), label: getResortReportDisplayName(resort.name) })),
+              ]}
               disabled={resortListError}
               onChange={(value) => {
                 setLoading(true);
@@ -112,36 +118,87 @@ export default function ResortReportsPage() {
               ariaLabel="리조트 필터"
               className="resort-filter-select"
             />
-            <Link href="/">홈으로</Link>
-          </div>
-        </header>
+            <Link href="/">
+              ← 홈으로
+            </Link>
+          </>} />
 
-        {resortListError && <p style={{ color: "#b91c1c", marginBottom: "12px" }}>리조트 목록을 불러오지 못했습니다. 전체 제보는 계속 확인할 수 있습니다.</p>}
+        {resortListError && (
+          <p className="compose-error" style={{ marginBottom: "12px" }}>
+            리조트 목록을 불러오지 못했습니다. 전체 제보는 계속 확인할 수 있습니다.
+          </p>
+        )}
         <section className="panel resort-report-board" aria-label={`${koreanToday} 설질 제보 목록`}>
-          <header><strong>오늘 등록된 제보</strong><span>{loading ? "불러오는 중..." : `${pageInfo.totalElements}건`}</span></header>
+          <header>
+            <strong>오늘 등록된 제보</strong>
+            <span>{loading ? "불러오는 중..." : `${pageInfo.totalElements}건`}</span>
+          </header>
           <div>
             {loading ? (
-              <p style={{ padding: "32px 0", textAlign: "center", color: "#888", fontSize: "0.9rem" }}>설질 제보 목록을 불러오는 중입니다...</p>
+              <div className="snow-empty-state vertical">
+                <span className="snow-empty-icon">
+                  <span className="material-symbols-outlined spin">progress_activity</span>
+                </span>
+                <div className="snow-empty-copy">
+                  <strong>설질 제보 목록을 불러오는 중입니다...</strong>
+                </div>
+              </div>
             ) : reports.length === 0 ? (
-              <p style={{ padding: "32px 0", textAlign: "center", color: "#888", fontSize: "0.9rem" }}>오늘 등록된 설질 제보가 없습니다.</p>
-            ) : reports.map((report) => {
-              const resort = RESORT_MAP[report.resortCode];
-              return (
-                <article className="snow-report-row" key={report.reportId}>
-                  <span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>{getResortReportDisplayName(report.resortName)}</span>
-                  <strong className="snow-report-content">{report.content}</strong>
-                  <span className="snow-report-author">- {report.authorNickname}</span>
-                  <time className="snow-report-time">{formatReportTime(report.createdAt)}</time>
-                  {report.canDelete && <button className="snow-report-delete" type="button" onClick={() => void deleteReport(report.reportId)}>삭제</button>}
-                </article>
-              );
-            })}
+              <div className="snow-empty-state vertical">
+                <span className="snow-empty-icon">
+                  <span className="material-symbols-outlined">ac_unit</span>
+                </span>
+                <div className="snow-empty-copy">
+                  <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>
+                  <span>첫 번째 현장 설질·슬로프 대기열 소식을 남겨 보세요.</span>
+                </div>
+              </div>
+            ) : (
+              reports.map((report) => {
+                const resort = RESORT_MAP[report.resortCode];
+                return (
+                  <article className="snow-report-row" key={report.reportId}>
+                    <span className={`snow-report-tag ${resort?.markerClass ?? "bg-[#3f6f8f]"}`}>
+                      {getResortReportDisplayName(report.resortName)}
+                    </span>
+                    <strong className="snow-report-content">{report.content}</strong>
+                    <span className="snow-report-author">{report.authorNickname}</span>
+                    <time className="snow-report-time">{formatReportTime(report.createdAt)}</time>
+                    {report.canDelete && (
+                      <button className="snow-report-delete" type="button" onClick={() => void deleteReport(report.reportId)}>
+                        삭제
+                      </button>
+                    )}
+                  </article>
+                );
+              })
+            )}
           </div>
           {pageInfo.totalPages > 1 && (
-            <footer style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", padding: "16px" }}>
-              <button type="button" disabled={page <= 1 || loading} onClick={() => { setLoading(true); setPage((current) => current - 1); }}>이전</button>
-              <span>{page} / {pageInfo.totalPages}</span>
-              <button type="button" disabled={!pageInfo.hasNext || loading} onClick={() => { setLoading(true); setPage((current) => current + 1); }}>다음</button>
+            <footer className="board-pagination" style={{ justifyContent: "center", padding: "16px" }}>
+              <button
+                type="button"
+                disabled={page <= 1 || loading}
+                onClick={() => {
+                  setLoading(true);
+                  setPage((current) => current - 1);
+                }}
+              >
+                이전
+              </button>
+              <span style={{ padding: "0 8px", color: "var(--snow-muted)", fontSize: "12px" }}>
+                {page} / {pageInfo.totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={!pageInfo.hasNext || loading}
+                onClick={() => {
+                  setLoading(true);
+                  setPage((current) => current + 1);
+                }}
+              >
+                다음
+              </button>
             </footer>
           )}
         </section>

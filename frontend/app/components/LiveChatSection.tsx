@@ -2,9 +2,11 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Client } from "@stomp/stompjs";
 import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
+import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
 
 export interface MemberProfile {
   publicId: string;
@@ -88,6 +90,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const [isConnected, setIsConnected] = useState(false);
   const [toastError, setToastError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [localHelp, setLocalHelp] = useState<LocalChatCommand | null>(null);
 
   const stompClientRef = useRef<Client | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -220,6 +223,12 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   // 6. 메시지 전송
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const command = localChatCommand(inputContent);
+    if (command) {
+      setLocalHelp(command);
+      setInputContent("");
+      return;
+    }
     if (!currentMember) {
       router.push("/login");
       return;
@@ -246,47 +255,35 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   };
 
   return (
-    <section aria-label="실시간 라이브톡" className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs mb-6 relative">
+    <section aria-label="실시간 라이브톡" className="live-chat-card relative">
       {/* 상단 헤더 바 */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <span className="flex h-2.5 w-2.5 relative">
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                isConnected ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-            />
-            <span
-              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                isConnected ? "bg-emerald-500" : "bg-amber-500"
-              }`}
-            />
-          </span>
-          <h2 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-1.5">
-            <span className="text-amber-500">⚡</span>
-            <span>라이브톡</span>
-          </h2>
+      <div className="live-chat-head">
+        <div className="section-head-title">
+          <small className="section-eyebrow">LIVE STREAM</small>
+          <h2>라이브톡</h2>
         </div>
-        <div className="flex items-center gap-2 text-slate-400 text-xs">
-          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-emerald-500" : "bg-amber-500"}`}
-            />
-            {isConnected ? "실시간 스트림 연결됨" : "스트림 재연결 중..."}
-          </span>
-        </div>
+        <button type="button" className="live-chat-help-toggle" aria-expanded={localHelp!==null} aria-controls="live-chat-local-help" onClick={()=>setLocalHelp(localHelp?null:"help")}>도움말</button>
       </div>
 
+      {localHelp&&<aside id="live-chat-local-help" className="live-chat-local-help" aria-label="라이브톡 도구 안내">
+        <p>이 안내는 나에게만 보여요. 계산값은 각 도구에서 입력해 주세요.</p>
+        <nav aria-label="라이더 도구 바로가기">
+          {(localHelp==="help"||localHelp==="season-pass")&&<Link href="/tools/season-pass">시즌권 본전 계산 <small>/시즌권</small></Link>}
+          {(localHelp==="help"||localHelp==="deck-size")&&<Link href="/tools/deck-size">데크 사이즈 참고 <small>/데크</small></Link>}
+        </nav>
+        <small>/도움말로 다시 열 수 있어요. 일반 대화와 봇 질문은 공개되므로 연락처·개인정보를 적지 마세요.</small>
+      </aside>}
+
       {/* 실시간 말풍선 피드 영역 */}
-      <div className="relative my-2.5">
+      <div className="live-chat-body relative">
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
           className="live-chat-feed"
         >
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs gap-1">
-              <span className="text-sm">🏂</span>
+            <div className="live-chat-empty">
+              <span className="material-symbols-outlined">forum</span>
               <p>실시간 슬로프 현황이나 오늘의 라이딩 잡담을 나눠보세요!</p>
             </div>
           ) : (
@@ -315,77 +312,70 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           <button
             type="button"
             onClick={() => scrollToBottom("smooth")}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#0f2942] hover:bg-sky-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 transition-all animate-bounce"
+            className="live-chat-scroll-btn"
           >
             <span>새 메시지 수신</span>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
+            <span className="material-symbols-outlined">south</span>
           </button>
         )}
 
         {/* 도배/링크 차단 개인 에러 토스트 */}
         {toastError && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-xs font-semibold px-4 py-2 rounded-md shadow-lg flex items-center gap-2 z-20 animate-fade-in">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+          <div className="live-chat-toast-error">
+            <span className="material-symbols-outlined">warning</span>
             <span>{toastError}</span>
           </div>
         )}
       </div>
 
-      {/* 하단 입력 폼 바 */}
-      <form onSubmit={handleSubmit} className="live-chat-compose">
-        {/* 리조트 태그 드롭다운 (비로그인 시 일반 고정 잠금) */}
-        <select
-          value={currentMember ? selectedResort : ""}
-          onChange={handleResortChange}
-          disabled={!currentMember}
-          className="live-chat-compose-select"
-        >
-          {RESORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-
-        {/* 텍스트 입력창 (100자 제한, 비로그인 시 클릭/포커스 시 로그인 페이지 이동 유도) */}
-        <div className="relative flex-1">
-          <input
-            type="text"
-            maxLength={100}
-            value={inputContent}
-            onChange={(e) => setInputContent(e.target.value)}
-            onClick={() => {
-              if (!currentMember) {
-                router.push("/login");
-              }
-            }}
-            onFocus={() => {
-              if (!currentMember) {
-                router.push("/login");
-              }
-            }}
-            placeholder={
-              currentMember
-                ? "메세지를 입력하세요"
-                : "로그인하고 라이브톡에 참여해보세요"
-            }
-            className="live-chat-compose-input"
-          />
+      {/* 하단 일체형 캡슐 입력 폼 바 */}
+      <form onSubmit={handleSubmit} className="live-chat-compose unified-capsule-form">
+        <div className="capsule-select-wrap">
+          <select
+            value={currentMember ? selectedResort : ""}
+            onChange={handleResortChange}
+            disabled={!currentMember}
+            aria-label="리조트 태그"
+            className="live-chat-compose-select capsule-select"
+          >
+            {RESORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* 전송 버튼 */}
+        <input
+          type="text"
+          maxLength={100}
+          value={inputContent}
+          onChange={(e) => setInputContent(e.target.value)}
+          onClick={() => {
+            if (!currentMember) {
+              router.push("/login");
+            }
+          }}
+          onFocus={() => {
+            if (!currentMember) {
+              router.push("/login");
+            }
+          }}
+          placeholder={
+            currentMember
+              ? "메세지를 입력하세요"
+              : "로그인하고 라이브톡에 참여해보세요"
+          }
+          className="live-chat-compose-input capsule-input"
+        />
+
         <button
           type="submit"
           disabled={Boolean(currentMember && !inputContent.trim())}
-          className="live-chat-compose-submit"
+          aria-label="메시지 전송"
+          className="live-chat-compose-submit capsule-send-btn"
         >
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-          </svg>
+          <span className="material-symbols-outlined">arrow_upward</span>
           <span>전송</span>
         </button>
       </form>

@@ -14,6 +14,8 @@ import com.ikae.snowthing.domain.email.security.EmailVerificationHasher;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.MemberRegistrationConsent;
+import com.ikae.snowthing.domain.member.repository.MemberRegistrationConsentRepository;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.MemberService;
@@ -32,9 +34,15 @@ public class VerifiedMemberRegistrationService {
     private final MemberRepository memberRepository;
     private final MemberService memberService;
     private final Clock clock;
+    private final MemberRegistrationConsentRepository consentRepository;
 
     @Transactional
     public MemberSignUpResponse register(MemberSignUpRequest request) {
+        if (!Boolean.TRUE.equals(request.getAgeConfirmed())
+                || !Boolean.TRUE.equals(request.getPrivacyAgreed())
+                || request.getMarketingEmailAgreed() == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
         String email = normalizer.normalize(request.getEmail());
         EmailVerification verification =
                 verificationRepository
@@ -47,6 +55,11 @@ public class VerifiedMemberRegistrationService {
                         .findByPublicId(response.getPublicId())
                         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         LocalDateTime now = LocalDateTime.now(clock);
+        consentRepository.save(
+                new MemberRegistrationConsent(
+                        member.getId(),
+                        Boolean.TRUE.equals(request.getMarketingEmailAgreed()),
+                        now));
         member.verifyEmail(now);
         verification.consume(now);
         return response;

@@ -344,6 +344,23 @@ class ChatServiceTest {
     class BotMessageCases {
 
         @Test
+        void phoneNumberOrContactAfterTruncationBoundaryNeverEntersPublicHistory() {
+            for (String content :
+                    new String[] {
+                        "판매자 번호 010-1234-5678",
+                        "문의 +82 10 1234 5678",
+                        "가".repeat(100) + " https://example.com",
+                        "가".repeat(95) + "01012345678"
+                    }) {
+                assertThatThrownBy(() -> chatService.createBotMessage("PHOENIX", content))
+                        .isInstanceOf(CustomException.class)
+                        .extracting("errorCode")
+                        .isEqualTo(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
+            }
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).isEmpty();
+        }
+
+        @Test
         @DisplayName("봇 응답에 외부 링크나 메신저 ID가 포함되면 CHAT_EXTERNAL_LINK_FORBIDDEN 예외 발생")
         void createBotMessage_withForbiddenContact_throwsException() {
             assertThatThrownBy(

@@ -38,6 +38,11 @@ public class BotMentionService {
                     .maximumSize(10_000)
                     .expireAfterWrite(Duration.ofMinutes(1))
                     .build();
+    // Count attempts, including gateway failures, to bound accidental paid-call loops.
+    private final Cache<String, AtomicInteger> hourlyRequests =
+            Caffeine.newBuilder().maximumSize(1).expireAfterWrite(Duration.ofHours(1)).build();
+    private final Cache<String, AtomicInteger> dailyRequests =
+            Caffeine.newBuilder().maximumSize(1).expireAfterWrite(Duration.ofDays(1)).build();
 
     public BotMentionService(
             BotProperties properties,
@@ -68,6 +73,14 @@ public class BotMentionService {
         AtomicInteger count = requestCounts.get(memberId, ignored -> new AtomicInteger());
         if (count == null || count.incrementAndGet() > REQUESTS_PER_MINUTE) {
             log.warn("chat bot rate limit exceeded: messageId={}", userMessage.messageId());
+            return;
+        }
+        if (hourlyRequests.get("all", ignored -> new AtomicInteger()).incrementAndGet() > 60
+                || dailyRequests.get("all", ignored -> new AtomicInteger()).incrementAndGet()
+                        > 200) {
+            log.warn(
+                    "chat bot global request budget exceeded: messageId={}",
+                    userMessage.messageId());
             return;
         }
         try {

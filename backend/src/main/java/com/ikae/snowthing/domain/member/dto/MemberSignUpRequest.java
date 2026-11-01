@@ -3,7 +3,9 @@ package com.ikae.snowthing.domain.member.dto;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -18,6 +20,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class MemberSignUpRequest {
 
+    @NotNull @AssertTrue private Boolean ageConfirmed;
+    @NotNull @AssertTrue private Boolean privacyAgreed;
+    @NotNull private Boolean marketingEmailAgreed;
+
     @NotBlank(message = "이메일은 필수 입력값입니다.")
     @Pattern(
             regexp = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6}$",
@@ -25,11 +31,7 @@ public class MemberSignUpRequest {
     private String email;
 
     @NotBlank(message = "비밀번호는 필수 입력값입니다.")
-    @Size(min = 8, message = "비밀번호는 최소 8자 이상이어야 합니다.")
-    @Pattern(regexp = ".*[A-Z].*", message = "비밀번호에는 영문 대문자가 포함되어야 합니다.")
-    @Pattern(
-            regexp = ".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*",
-            message = "비밀번호에는 특수문자가 포함되어야 합니다.")
+    @Size(min = 8, max = 20, message = "비밀번호는 8~20자여야 합니다.")
     private String password;
 
     @NotBlank(message = "이메일 인증을 완료해 주세요.")
@@ -56,13 +58,19 @@ public class MemberSignUpRequest {
             String bio,
             String departureRegion,
             List<Long> resortIds,
-            List<Long> ridingStyleIds) {
+            List<Long> ridingStyleIds,
+            Boolean ageConfirmed,
+            Boolean privacyAgreed,
+            Boolean marketingEmailAgreed) {
         this.email = email;
         this.password = password;
         this.emailVerificationToken = emailVerificationToken;
         this.nickname = nickname;
         this.bio = bio;
         this.departureRegion = departureRegion;
+        this.ageConfirmed = ageConfirmed;
+        this.privacyAgreed = privacyAgreed;
+        this.marketingEmailAgreed = marketingEmailAgreed;
         this.resortIds = resortIds != null ? new ArrayList<>(resortIds) : new ArrayList<>();
         this.ridingStyleIds =
                 ridingStyleIds != null ? new ArrayList<>(ridingStyleIds) : new ArrayList<>();
