@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 
+import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,7 @@ class MarketListingControllerTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private PostCategoryRepository postCategoryRepository;
     @Autowired private MarketCategoryRepository marketCategoryRepository;
+    @Autowired private EntityManager entityManager;
 
     private CustomUserDetails userDetails;
 
@@ -217,6 +220,81 @@ class MarketListingControllerTest {
                                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MARKET_004"));
+    }
+
+    @Test
+    void 작성자는_새_영속성_컨텍스트에서_판매글을_삭제할_수_있다() throws Exception {
+        String publicId = createListing();
+        entityManager.flush();
+        entityManager.clear();
+
+        mockMvc.perform(
+                        delete("/api/v1/market-listings/{publicId}", publicId)
+                                .with(csrf())
+                                .with(user(userDetails)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+        entityManager.clear();
+        mockMvc.perform(get("/api/v1/market-listings/{publicId}", publicId).with(user(userDetails)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/market-listings").with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty());
+    }
+
+    @Test
+    void 다른_회원은_판매글을_삭제할_수_없다() throws Exception {
+        String publicId = createListing();
+        Member other =
+                memberRepository.save(
+                        Member.builder()
+                                .email("market-other@test.com")
+                                .nickname("다른판매자")
+                                .role(Role.ROLE_USER)
+                                .build());
+        CustomUserDetails otherUser = new CustomUserDetails(other);
+        entityManager.flush();
+        entityManager.clear();
+        mockMvc.perform(
+                        delete("/api/v1/market-listings/{publicId}", publicId)
+                                .with(csrf())
+                                .with(user(otherUser)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 관리자는_판매글을_삭제할_수_있다() throws Exception {
+        String publicId = createListing();
+        Member admin =
+                memberRepository.save(
+                        Member.builder()
+                                .email("market-admin@test.com")
+                                .nickname("장터관리자")
+                                .role(Role.ROLE_ADMIN)
+                                .build());
+        CustomUserDetails adminUser = new CustomUserDetails(admin);
+        entityManager.flush();
+        entityManager.clear();
+        mockMvc.perform(
+                        delete("/api/v1/market-listings/{publicId}", publicId)
+                                .with(csrf())
+                                .with(user(adminUser)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void 거래상태_변경은_카테고리에_낙관적_잠금을_전파하지_않는다() throws Exception {
+        String publicId = createListing();
+        entityManager.flush();
+        entityManager.clear();
+        mockMvc.perform(
+                        patch("/api/v1/market-listings/{publicId}/trade-status", publicId)
+                                .with(csrf())
+                                .with(user(userDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"tradeStatus\":\"SOLD\",\"version\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tradeStatus").value("SOLD"));
     }
 
     private String createListing() throws Exception {

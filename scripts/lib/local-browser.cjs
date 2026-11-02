@@ -69,7 +69,7 @@ async function withLocalBrowser(label, check) {
     };
     await viewport(1440);
     const confirmNext = (accept = true) => { dialogAnswer=accept; };
-    const result = await check({ send, evaluate, waitFor, navigate, fill, viewport, screenshot, pause, artifacts, confirmNext });
+    const result = await check({ send, evaluate, waitFor, navigate, fill, viewport, screenshot, pause, artifacts, confirmNext, localOrigin: localOrigin.origin });
     return { ...result, artifacts };
   } catch (error) {
     if (ws?.readyState === WebSocket.OPEN) {

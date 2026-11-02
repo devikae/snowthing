@@ -51,6 +51,7 @@ public class ProfileImageLifecycleService {
 
     public ImageUploadResponse upload(String email, MultipartFile file) {
         String key = "public/profiles/" + UUID.randomUUID() + ".jpg";
+        ImageService.PreparedProfileImage prepared = images.prepareProfileImage(file, key);
         String url = images.profileUrl(key);
         // Commit recovery intent before touching S3, including for a process crash.
         transactions.executeWithoutResult(
@@ -59,7 +60,7 @@ public class ProfileImageLifecycleService {
                                 new ProfileImageCleanup(
                                         key, url, clock.instant().plus(Duration.ofHours(24)))));
         try {
-            ImageUploadResponse uploaded = images.uploadProfileImage(file, key);
+            ImageUploadResponse uploaded = images.uploadPreparedProfileImage(prepared);
             transactions.executeWithoutResult(
                     status -> {
                         Member member = member(email);
@@ -125,22 +126,40 @@ public class ProfileImageLifecycleService {
     }
 
     public void cleanOne(String key) {
-        transactions.executeWithoutResult(
-                status ->
-                        jobs.findForUpdate(key)
-                                .ifPresent(
-                                        job -> {
-                                            if (job.getNotBefore().isAfter(clock.instant())) return;
-                                            // Never delete a currently referenced object, even
-                                            // after recovery races.
-                                            if (members.existsByProfileImageUrl(job.getUrl())) {
-                                                jobs.delete(job);
-                                                return;
-                                            }
-                                            try {
-                                                images.deleteProfileImage(job.getKey());
-                                                jobs.delete(job);
-                                            } catch (RuntimeException failure) {
+        boolean readyForDeletion =
+                Boolean.TRUE.equals(
+                        transactions.execute(
+                                status ->
+                                        jobs.findForUpdate(key)
+                                                .map(
+                                                        job -> {
+                                                            if (job.getNotBefore().isAfter(clock.instant())) {
+                                                                return false;
+                                                            }
+                                                            // Never delete a currently referenced object, even
+                                                            // after recovery races.
+                                                            if (members.existsByProfileImageUrl(job.getUrl())) {
+                                                                jobs.delete(job);
+                                                                return false;
+                                                            }
+                                                            job.lease(clock.instant().plus(Duration.ofMinutes(5)));
+                                                            return true;
+                                                        })
+                                                .orElse(false)));
+
+        if (!readyForDeletion) {
+            return;
+        }
+
+        try {
+            images.deleteProfileImage(key);
+            transactions.executeWithoutResult(status -> jobs.deleteById(key));
+        } catch (RuntimeException failure) {
+            transactions.executeWithoutResult(
+                    status ->
+                            jobs.findForUpdate(key)
+                                    .ifPresent(
+                                            job -> {
                                                 job.retryAt(
                                                         clock.instant()
                                                                 .plus(
@@ -148,16 +167,14 @@ public class ProfileImageLifecycleService {
                                                                                 Math.min(
                                                                                         60,
                                                                                         1L
-                                                                                                << Math
-                                                                                                        .min(
-                                                                                                                job
-                                                                                                                        .getAttempts(),
-                                                                                                                6)))));
+                                                                                                << Math.min(
+                                                                                                        job.getAttempts(),
+                                                                                                        6)))));
                                                 log.warn(
                                                         "Profile image cleanup deferred: attempt={}, type={}",
                                                         job.getAttempts(),
                                                         failure.getClass().getSimpleName());
-                                            }
-                                        }));
+                                            }));
+        }
     }
 }

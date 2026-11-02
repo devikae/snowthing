@@ -7,6 +7,7 @@ import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
 import { CompactSelect } from "./components/CompactSelect";
 import { PostImageIcon } from "./components/PostImageIcon";
+import { PostListAuthor } from "./components/PostListAuthor";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
 import { RESORT_MAP } from "./lib/resortTags";
 import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName, isResortReportSeason } from "./lib/resortReports";
@@ -351,7 +352,6 @@ export default function HomePageClient() {
                   </div>
                 ) : (
                   feeds[activeFeed].map((post) => {
-                    const writerInitial = post.writerNickname ? post.writerNickname.trim().charAt(0) : "익";
                     return (
                       <Link href={`/posts/${post.publicId}`} className="compact-post m-row" key={post.publicId}>
                         <div className="m-row-left">
@@ -364,12 +364,7 @@ export default function HomePageClient() {
                           {post.hasImage && <PostImageIcon />}
                         </div>
                         <div className="m-row-right">
-                          <span className="m-author">
-                            <span className="m-avatar" aria-hidden="true">
-                              {writerInitial}
-                            </span>
-                            <b>{post.writerNickname}</b>
-                          </span>
+                          <PostListAuthor nickname={post.writerNickname} />
                           <span className="m-stats">
                             {post.commentCount > 0 && (
                               <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>

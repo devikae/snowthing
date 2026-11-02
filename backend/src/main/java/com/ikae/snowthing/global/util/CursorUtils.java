@@ -11,7 +11,7 @@ public class CursorUtils {
 
     public record CursorValue(Long likeCount, LocalDateTime createdAt, Long id) {}
 
-    /** 최신순 (id) 또는 인기순 (likeCount + id) 커서 토큰 인코딩 */
+    /** 작성 시각과 ID를 포함한 커서 토큰 인코딩. 좋아요 수는 토큰 형식 호환을 위해 유지한다. */
     public static String encode(Long likeCount, LocalDateTime createdAt, Long id) {
         if (id == null) return null;
         String raw =

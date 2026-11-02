@@ -147,7 +147,30 @@ html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-deta
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-card { margin-bottom: 32px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card > h1,.carpool-detail-head > h1,.market-detail-summary > h1) { margin: 16px 0; color: var(--snow-ink); font: 700 24px/32px var(--font-hanken); letter-spacing: -.03em; overflow-wrap: anywhere; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author { margin: 0; padding: 0 0 20px; border-color: var(--snow-border); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author-avatar { width: 32px; height: 32px; }
+html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author-avatar { width: 32px; height: 32px; flex: 0 0 32px; }
+
+/* Keep the image itself circular, without a decorative frame or background. */
+html :is(.post-detail-author-avatar,.comment-profile-avatar) {
+  display: block;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  object-fit: cover;
+  color: var(--snow-muted);
+}
+
+html .content-detail-page .detail-carpool-actions { display: flex; align-items: center; gap: 8px; }
+html .content-detail-page .detail-carpool-refresh { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 4px; padding: 4px; background: transparent; color: var(--snow-muted); cursor: pointer; }
+html .content-detail-page .detail-carpool-refresh .material-symbols-outlined { font-size: 16px; }
+html .content-detail-page .detail-carpool-refresh:hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
+html .content-detail-page .detail-carpool-refresh:disabled { opacity: .5; cursor: wait; }
+html .content-detail-page .detail-carpool-refresh:focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 2px; }
+
+html .m-anonymous-badge { flex: none; border-radius: 4px; background: var(--snow-surface-mid); padding: 2px 4px; color: var(--snow-ink-soft); font-size: 12px; font-weight: 500; line-height: 16px; }
+html .m-author-anonymous b { flex: none; font-variant-numeric: tabular-nums; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author strong { color: var(--snow-ink); font-size: 14px; font-weight: 600; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-author time,.post-detail-meta-top,.post-detail-meta-top > div) { color: var(--snow-muted); font-size: 12px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-content-panel { min-height: 200px; padding: 24px 0; border: 0; border-radius: 0; background: transparent; }
