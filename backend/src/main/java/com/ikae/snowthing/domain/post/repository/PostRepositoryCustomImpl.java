@@ -179,12 +179,14 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
     }
 
     private BooleanExpression cursorCondition(CursorValue cursor) {
-        if (cursor == null || cursor.id() == null) return null;
+        if (cursor == null || cursor.id() == null || cursor.createdAt() == null) return null;
 
-        return post.id.lt(cursor.id());
+        return post.createdAt
+                .lt(cursor.createdAt())
+                .or(post.createdAt.eq(cursor.createdAt()).and(post.id.lt(cursor.id())));
     }
 
     private OrderSpecifier<?>[] getLatestSortOrders() {
-        return new OrderSpecifier<?>[] {post.id.desc()};
+        return new OrderSpecifier<?>[] {post.createdAt.desc(), post.id.desc()};
     }
 }
