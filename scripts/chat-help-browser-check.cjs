@@ -12,7 +12,7 @@ withLocalBrowser('chat-help-check',async({navigate,evaluate,waitFor,fill,viewpor
   await viewport(390,844);
   assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);
   await screenshot('anonymous-mobile-light');
-  await evaluate('document.documentElement.dataset.theme="dark"');
+  await evaluate('localStorage.setItem("snowthing-theme","dark"); document.documentElement.dataset.theme="dark"');
   await screenshot('anonymous-mobile-dark');
   await navigate('/login');
   const status=await evaluate(`(async()=>{
@@ -36,6 +36,7 @@ withLocalBrowser('chat-help-check',async({navigate,evaluate,waitFor,fill,viewpor
     await evaluate('document.querySelector(".live-chat-compose-submit").click()');
     await waitFor('document.querySelectorAll("#live-chat-local-help a").length===2');
     assert.equal(await evaluate('window.chatSendCount'),0);
+    await waitFor('document.documentElement.dataset.theme==="dark"');
     await viewport(1440,900);await screenshot('member-desktop-dark');
     assert.equal(await evaluate('[...document.querySelectorAll(".community-header a")].some(a=>a.getAttribute("href")==="/crews")'),false);
     return {status:'passed',checks:['anonymous help','two real tool links','390px overflow','light/dark','exact local command','no STOMP SEND for local commands','no calculation data broadcast','crew navigation excluded']};

@@ -1,12 +1,11 @@
 // Inspect server HTML without executing browser JavaScript or signing in.
 const assert = require('node:assert/strict');
+const {localPage,canCrawl} = require('./lib/seo-validation.cjs');
 const base = process.env.SEO_CHECK_URL || 'http://localhost:3000';
 if (new URL(base).hostname !== 'localhost') throw Error('This check is local-only');
 const origin = 'https://snowthing.org';
-const botHeaders = {'User-Agent':'Googlebot'};
 async function page(path) {
-  const response = await fetch(base + path,{headers:botHeaders});
-  return {status:response.status,html:await response.text()};
+  return localPage(base,path);
 }
 function meta(html,name) {
   const tags=html.match(/<meta\b[^>]*>/gi)||[];
@@ -27,5 +26,8 @@ function canonical(html) { const value=html.match(/<link\b[^>]*rel="canonical"[^
   assert.ok(!home.html.includes('href="/crews"'),'Crew navigation is excluded');
   const invalid=await page('/resort-cam/does-not-exist');assert.ok(invalid.status===404||meta(invalid.html,'robots')?.includes('noindex'));
   const robots=await page('/robots.txt');assert.equal(robots.status,200);assert.ok(robots.html.includes('Sitemap: '+origin+'/sitemap.xml'));assert.ok(!robots.html.includes('Disallow: /api/'),'Public rendering data must stay crawlable');
+  for(const path of ['/','/posts','/resort-cam','/tools','/api/v1/master/resorts','/api/v1/posts','/_next/static/app.js']) {
+    assert.ok(canCrawl(robots.html,path),`Public crawl path is blocked: ${path}`);
+  }
   console.log(JSON.stringify({status:'passed',publicSitemapUrls:urls.length,resortMetadata:titles.size,checks:['Korean site name in server HTML','WebSite JSON-LD','canonical URLs','webcam content without JS','unique resort titles','camera metadata','private page noindex','robots sitemap link','invalid resort excluded']}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

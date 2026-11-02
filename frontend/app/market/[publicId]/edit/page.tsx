@@ -6,6 +6,7 @@ import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../../components/SiteChrome";
+import { PageHeading } from "../../../components/PageHeading";
 import type { ToastEditorHandle } from "../../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { csrfFetch } from "../../../lib/csrfFetch";
@@ -160,8 +161,8 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
   return (
     <div className="community-page">
       <TopNav active="market" />
-      <main className="community-container market-compose-page">
-        <header className="market-compose-heading"><div><Link href="/market">중고장터</Link><span>/</span><strong>판매글 수정</strong></div><h1>판매 상품 정보를 수정해주세요.</h1></header>
+      <main className="community-container market-compose-page content-compose-page">
+        <PageHeading title="판매글 수정" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 수정해 주세요." />
         {!detail ? <div className="market-state">{error || "판매글을 불러오는 중입니다."}</div> : <form className="market-compose-card" onSubmit={(event) => void submit(event)}>
           {error && <div className="compose-error" role="alert">{error}</div>}
           <div className="market-form-grid">

@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import javax.imageio.ImageIO;
@@ -23,7 +24,12 @@ import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.cloudfront.CloudFrontClient;
+import software.amazon.awssdk.services.cloudfront.model.CreateInvalidationRequest;
+import software.amazon.awssdk.services.cloudfront.model.InvalidationBatch;
+import software.amazon.awssdk.services.cloudfront.model.Paths;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Slf4j
@@ -45,6 +51,10 @@ public class ImageService {
     private static final String IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
     private final S3Client s3Client;
+    private final CloudFrontClient cloudFrontClient;
+
+    @Value("${cloud.aws.cloudfront.distribution-id:}")
+    private String distributionId;
 
     @Value("${cloud.aws.s3.bucket:snowthing-media-00001}")
     private String bucketName;
@@ -80,17 +90,66 @@ public class ImageService {
     }
 
     public ImageUploadResponse uploadProfileImage(MultipartFile file) {
+        return uploadProfileImage(file, "public/profiles/" + UUID.randomUUID() + ".jpg");
+    }
+
+    public ImageUploadResponse uploadProfileImage(MultipartFile file, String key) {
+        validateProfileKey(key);
         byte[] bytes = readImageBytes(file);
         validateFile(file, bytes);
         byte[] normalized = createThumbnail(bytes);
-        String key = "public/profiles/" + UUID.randomUUID() + ".jpg";
         try {
-            putObject(key, "image/jpeg", normalized);
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(key)
+                            .contentType("image/jpeg")
+                            .cacheControl("no-store")
+                            .build(),
+                    RequestBody.fromBytes(normalized));
             return new ImageUploadResponse(
                     cloudFrontBaseUrl.replaceAll("/+$", "") + "/" + key, key);
         } catch (SdkException exception) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
         }
+    }
+
+    public String profileUrl(String key) {
+        validateProfileKey(key);
+        return cloudFrontBaseUrl.replaceAll("/+$", "") + "/" + key;
+    }
+
+    public Optional<String> profileKey(String url) {
+        String prefix = cloudFrontBaseUrl.replaceAll("/+$", "") + "/";
+        if (url == null || !url.startsWith(prefix)) return Optional.empty();
+        String key = url.substring(prefix.length());
+        return key.matches("public/profiles/[0-9a-fA-F-]{36}\\.jpg")
+                ? Optional.of(key)
+                : Optional.empty();
+    }
+
+    private void validateProfileKey(String key) {
+        if (key == null || !key.matches("public/profiles/[0-9a-fA-F-]{36}\\.jpg"))
+            throw new com.ikae.snowthing.global.exception.CustomException(ErrorCode.INVALID_INPUT);
+    }
+
+    public void deleteProfileImage(String key) {
+        validateProfileKey(key);
+        s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
+        if (distributionId == null || distributionId.isBlank())
+            throw new com.ikae.snowthing.global.exception.CustomException(
+                    ErrorCode.PROFILE_CDN_NOT_CONFIGURED);
+        cloudFrontClient.createInvalidation(
+                CreateInvalidationRequest.builder()
+                        .distributionId(distributionId)
+                        .invalidationBatch(
+                                InvalidationBatch.builder()
+                                        .callerReference(
+                                                "profile-delete-"
+                                                        + key.substring(key.lastIndexOf('/') + 1))
+                                        .paths(Paths.builder().quantity(1).items("/" + key).build())
+                                        .build())
+                        .build());
     }
 
     public byte[] normalizeCrewImage(MultipartFile file, int width, int height) {

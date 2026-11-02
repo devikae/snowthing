@@ -3,7 +3,7 @@ name: Deploy Backend
 on:
   push:
     branches: [ "main", "deploy/aws-ec2" ]
-    paths: [ 'backend/**', 'database/**', 'compose.prod.yml', 'scripts/deploy-ecr-service.sh', '.github/workflows/deploy-backend.yml' ]
+    paths: [ 'backend/**', 'database/**', 'shared/**', '.dockerignore', 'compose.prod.yml', 'scripts/deploy-ecr-service.sh', '.github/workflows/deploy-backend.yml' ]
   workflow_dispatch:
     inputs:
       stable_tag:
@@ -121,7 +121,7 @@ jobs:
           elif aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$CANDIDATE_TAG" >/dev/null 2>&1; then
             SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
           else
-            docker build --tag "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG" ./backend
+            docker build -f backend/Dockerfile --tag "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG" .
             docker push "$REGISTRY/$REPOSITORY:$CANDIDATE_TAG"
             SOURCE_TAG="$CANDIDATE_TAG"; PROMOTE=true
           fi

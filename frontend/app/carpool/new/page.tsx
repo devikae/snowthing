@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
+import { PageHeading } from "../../components/PageHeading";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { API_ENDPOINTS } from "../../lib/api";
 import KakaoMapPicker, { MapPlace } from "../KakaoMapPicker";
@@ -509,15 +510,10 @@ export default function NewCarpoolPage() {
   return (
     <>
       <div className="community-page"><TopNav active="carpool" />
-      <main className="community-container carpool-compose-page">
-        <header className="carpool-compose-heading">
-          <Link href="/carpool">카풀·동행</Link>
-          <h1>카풀 모집글 {editPublicId ? "수정" : "등록"}</h1>
-          <p>
-            출발지와 리조트를 선택하면 현재 경로와 전국 평균 유가로 예상 비용을
-            계산합니다.
-          </p>
-        </header>
+      <main className="community-container carpool-compose-page content-compose-page">
+        <PageHeading title={`카풀 모집글 ${editPublicId ? "수정" : "등록"}`}
+          breadcrumb={<Link href="/carpool">카풀·동행</Link>}
+          description="일정과 출발 장소를 정하고 함께할 라이더를 모집해 보세요." />
         {!authChecked ? <div className="carpool-auth-gate">로그인 상태를 확인하는 중입니다.</div> : !authenticated ? (
           <section className="carpool-auth-gate">
             <span className="material-symbols-outlined">lock</span>

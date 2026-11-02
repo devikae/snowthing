@@ -19,6 +19,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRegistrationConsentRepo
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.MemberService;
+import com.ikae.snowthing.domain.member.service.RegistrationPrivacyPolicy;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -35,6 +36,7 @@ public class VerifiedMemberRegistrationService {
     private final MemberService memberService;
     private final Clock clock;
     private final MemberRegistrationConsentRepository consentRepository;
+    private final RegistrationPrivacyPolicy privacyPolicy;
 
     @Transactional
     public MemberSignUpResponse register(MemberSignUpRequest request) {
@@ -43,6 +45,7 @@ public class VerifiedMemberRegistrationService {
                 || request.getMarketingEmailAgreed() == null) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
+        privacyPolicy.validate(request.getPrivacyVersion());
         String email = normalizer.normalize(request.getEmail());
         EmailVerification verification =
                 verificationRepository
@@ -58,6 +61,7 @@ public class VerifiedMemberRegistrationService {
         consentRepository.save(
                 new MemberRegistrationConsent(
                         member.getId(),
+                        privacyPolicy.version(),
                         Boolean.TRUE.equals(request.getMarketingEmailAgreed()),
                         now));
         member.verifyEmail(now);

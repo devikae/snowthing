@@ -2,16 +2,17 @@
 # 1단계: 빌드 스테이지 (JDK 21)
 # ==========================================
 FROM eclipse-temurin:21-jdk-jammy@sha256:c7d5863b5dd8f26b90c64f1d80cc2b0e5a5e4642f8db9955a370d348edd8f438 AS builder
-WORKDIR /app
+WORKDIR /app/backend
 
 # Gradle 래퍼 및 빌드 스크립트 복사
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle settings.gradle ./
+COPY backend/gradlew .
+COPY backend/gradle gradle
+COPY backend/build.gradle backend/settings.gradle ./
 RUN chmod +x ./gradlew
 
 # 소스코드 복사 및 bootJar 빌드 (테스트 제외하여 빠른 배포 빌드)
-COPY src src
+COPY backend/src src
+COPY shared /app/shared
 RUN ./gradlew bootJar -x test --no-daemon
 
 # ==========================================
@@ -23,11 +24,11 @@ WORKDIR /app
 # 보안을 위한 비root 시스템 유저 생성
 RUN addgroup --system --gid 1001 spring && adduser --system --uid 1001 --ingroup spring spring
 
-COPY --chown=spring:spring docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY --chown=spring:spring backend/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod 0555 /app/docker-entrypoint.sh
 
 # 빌더에서 생성된 실행 가능한 jar 파일만 추출
-COPY --from=builder --chown=spring:spring /app/build/libs/*.jar app.jar
+COPY --from=builder --chown=spring:spring /app/backend/build/libs/*.jar app.jar
 
 USER spring:spring
 

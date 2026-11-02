@@ -48,7 +48,7 @@ public class ChatService {
     private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
     private static final Pattern BOT_PHONE_PATTERN =
             Pattern.compile(
-                    "(?<![0-9])(?:\\+82[ .-]?(?:10|2|[3-6][1-5])|0(?:1[016789]|2|[3-6][1-5]))[ .-]?[0-9]{3,4}[ .-]?[0-9]{4}(?![0-9])");
+                    "(?<![0-9])(?:\\+82[ .-]?(?:1[016789]|2|[3-6][1-5]|70)|0(?:1[016789]|2|[3-6][1-5]|70))[ .-]?[0-9]{3,4}[ .-]?[0-9]{4}(?![0-9])");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
@@ -135,7 +135,9 @@ public class ChatService {
                                     safeContent.codePointCount(0, safeContent.length())));
             safeContent = safeContent.substring(0, end);
         }
-        if (safeContent.isEmpty() || containsForbiddenContact(safeContent)) {
+        if (safeContent.isEmpty()
+                || containsForbiddenContact(safeContent)
+                || BOT_PHONE_PATTERN.matcher(safeContent).find()) {
             throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
         ChatMessageResponse response =

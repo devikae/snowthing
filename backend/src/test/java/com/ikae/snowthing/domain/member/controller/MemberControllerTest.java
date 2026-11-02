@@ -73,6 +73,7 @@ class MemberControllerTest {
                         .nickname("정상닉네임")
                         .ageConfirmed(true)
                         .privacyAgreed(true)
+                        .privacyVersion("draft-2026-11-01-v1")
                         .marketingEmailAgreed(false)
                         .build();
 

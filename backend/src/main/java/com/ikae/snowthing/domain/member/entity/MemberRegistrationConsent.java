@@ -30,9 +30,12 @@ public class MemberRegistrationConsent {
     private LocalDateTime confirmedAt;
 
     public MemberRegistrationConsent(
-            Long memberId, boolean marketingEmailAgreed, LocalDateTime confirmedAt) {
+            Long memberId,
+            String privacyVersion,
+            boolean marketingEmailAgreed,
+            LocalDateTime confirmedAt) {
         this.memberId = memberId;
-        this.privacyVersion = "draft-2026-10-30";
+        this.privacyVersion = privacyVersion;
         this.ageConfirmed = true;
         this.marketingEmailAgreed = marketingEmailAgreed;
         this.confirmedAt = confirmedAt;

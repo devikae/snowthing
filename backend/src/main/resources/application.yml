@@ -79,6 +79,7 @@ cloud:
     s3:
       bucket: ${SNOWTHING_S3_BUCKET:snowthing-media-00001}
     cloudfront:
+      distribution-id: ${SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID:}
       base-url: ${SNOWTHING_IMAGE_BASE_URL:https://images.snowthing.org}
 
 ---

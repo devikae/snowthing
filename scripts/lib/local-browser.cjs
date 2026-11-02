@@ -6,6 +6,8 @@ const WebSocket = require('../../frontend/node_modules/next/dist/compiled/ws');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function withLocalBrowser(label, check) {
+  const localOrigin = new URL(process.env.LOCAL_BROWSER_ORIGIN || 'http://localhost:3000');
+  if (localOrigin.hostname !== 'localhost' || localOrigin.protocol !== 'http:') throw new Error('Local browser checks require HTTP localhost');
   const browserPath = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
   if (!browserPath) throw new Error('No supported local browser found');
   const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), `snowthing-${label}-`));
@@ -49,8 +51,8 @@ async function withLocalBrowser(label, check) {
     });
     await send('Page.enable');
     const navigate = async route => {
-      const url = new URL(route, 'http://localhost:3000');
-      if (url.origin !== 'http://localhost:3000') throw new Error('This check only navigates the local app');
+      const url = new URL(route, localOrigin);
+      if (url.origin !== localOrigin.origin) throw new Error('This check only navigates the local app');
       const marker = `navigation-${Date.now()}-${nextId}`;
       await evaluate(`window.__localBrowserNavigationMarker=${JSON.stringify(marker)}`);
       await send('Page.navigate', { url: url.toString() });

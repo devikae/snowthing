@@ -25,6 +25,17 @@ public enum ErrorCode {
     OAUTH_RATE_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "AUTH_011", "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
+    PROFILE_LIMIT_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "비밀번호 변경을 일시적으로 처리할 수 없습니다."),
+    PROFILE_CDN_NOT_CONFIGURED(
+            HttpStatus.SERVICE_UNAVAILABLE, "FILE_006", "프로필 이미지 캐시 정리 설정이 필요합니다."),
+    REGISTRATION_POLICY_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_008", "가입 동의 문서를 불러올 수 없습니다."),
+    REGISTRATION_POLICY_CHANGED(
+            HttpStatus.CONFLICT, "MEMBER_009", "가입 동의 문서가 변경되었습니다. 새로고침 후 다시 확인해 주세요."),
+    CHAT_BOT_BUDGET_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "CHAT_010", "봇의 전체 호출 한도에 도달했습니다."),
+    CHAT_BOT_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_011", "봇 호출 한도를 확인할 수 없습니다."),
+    CHAT_BOT_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_012", "봇의 대기 요청이 많습니다."),
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "MEMBER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_003", "이미 사용 중인 닉네임입니다."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_004", "현재 비밀번호가 일치하지 않습니다."),

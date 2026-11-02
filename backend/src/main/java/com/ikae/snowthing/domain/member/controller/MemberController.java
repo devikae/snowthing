@@ -15,6 +15,7 @@ import com.ikae.snowthing.domain.email.dto.EmailRequest;
 import com.ikae.snowthing.domain.email.service.EmailAvailabilityIpRateLimiter;
 import com.ikae.snowthing.domain.email.service.EmailVerificationService;
 import com.ikae.snowthing.domain.email.service.VerifiedMemberRegistrationService;
+import com.ikae.snowthing.domain.image.service.ProfileImageLifecycleService;
 import com.ikae.snowthing.domain.member.dto.MemberPasswordChangeRequest;
 import com.ikae.snowthing.domain.member.dto.MemberProfileUpdateRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSettingsResponse;
@@ -42,6 +43,7 @@ public class MemberController {
     private final ClientIpResolver clientIpResolver;
     private final MemberSessionRegistry memberSessionRegistry;
     private final ProfileActionRateLimiter profileActionRateLimiter;
+    private final ProfileImageLifecycleService profileImages;
 
     @GetMapping("/me/settings")
     public ResponseEntity<MemberSettingsResponse> getSettings(
@@ -85,7 +87,7 @@ public class MemberController {
     @DeleteMapping("/me/profile-image")
     public ResponseEntity<Void> resetProfileImage(@AuthenticationPrincipal CustomUserDetails user) {
         profileActionRateLimiter.check(user.getUsername(), ProfileActionRateLimiter.Action.PHOTO);
-        memberService.setMyProfileImage(user.getUsername(), null);
+        profileImages.reset(user.getUsername());
         return ResponseEntity.noContent().build();
     }
 

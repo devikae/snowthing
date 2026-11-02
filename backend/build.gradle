@@ -40,6 +40,7 @@ dependencies {
     implementation 'software.amazon.jdbc:aws-advanced-jdbc-wrapper:2.3.7'
     implementation 'software.amazon.awssdk:rds:2.25.70'
     implementation 'software.amazon.awssdk:s3:2.25.70'
+    implementation 'software.amazon.awssdk:cloudfront:2.25.70'
     implementation 'software.amazon.awssdk:sesv2:2.25.70'
 
     // Image thumbnail generation (WebP decoding + resize/JPEG encoding)
@@ -80,6 +81,10 @@ tasks.named('test') {
     systemProperty 'chat.load.stage', project.findProperty('chatLoadStage') ?: 'target'
     // 대규모 MySQL Seed 테스트는 일반 단위·통합 테스트와 별도 실행한다.
     // 필요할 때만 ./gradlew test -PincludeBenchmark 로 명시적으로 포함한다.
+}
+
+tasks.named('processResources') {
+    from('../shared/registration-policies') { into 'registration-policies' }
 }
 
 spotless {

@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.chat.bot;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -11,11 +12,14 @@ import org.springframework.stereotype.Service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.ikae.snowthing.domain.chat.dto.ChatErrorResponse;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.global.config.BotProperties;
+import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.security.BotDelegationTokenService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.security.SharedRequestLimiter;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,16 +37,12 @@ public class BotMentionService {
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
     private final Executor executor;
+    private final SharedRequestLimiter sharedLimiter;
     private final Cache<Long, AtomicInteger> requestCounts =
             Caffeine.newBuilder()
                     .maximumSize(10_000)
                     .expireAfterWrite(Duration.ofMinutes(1))
                     .build();
-    // Count attempts, including gateway failures, to bound accidental paid-call loops.
-    private final Cache<String, AtomicInteger> hourlyRequests =
-            Caffeine.newBuilder().maximumSize(1).expireAfterWrite(Duration.ofHours(1)).build();
-    private final Cache<String, AtomicInteger> dailyRequests =
-            Caffeine.newBuilder().maximumSize(1).expireAfterWrite(Duration.ofDays(1)).build();
 
     public BotMentionService(
             BotProperties properties,
@@ -51,7 +51,8 @@ public class BotMentionService {
             BotGateway gateway,
             ChatService chatService,
             SimpMessagingTemplate messagingTemplate,
-            @Qualifier("botTaskExecutor") Executor executor) {
+            @Qualifier("botTaskExecutor") Executor executor,
+            SharedRequestLimiter sharedLimiter) {
         this.properties = properties;
         this.detector = detector;
         this.tokenService = tokenService;
@@ -59,6 +60,7 @@ public class BotMentionService {
         this.chatService = chatService;
         this.messagingTemplate = messagingTemplate;
         this.executor = executor;
+        this.sharedLimiter = sharedLimiter;
     }
 
     public void submit(ChatMessageResponse userMessage, CustomUserDetails userDetails) {
@@ -75,18 +77,11 @@ public class BotMentionService {
             log.warn("chat bot rate limit exceeded: messageId={}", userMessage.messageId());
             return;
         }
-        if (hourlyRequests.get("all", ignored -> new AtomicInteger()).incrementAndGet() > 60
-                || dailyRequests.get("all", ignored -> new AtomicInteger()).incrementAndGet()
-                        > 200) {
-            log.warn(
-                    "chat bot global request budget exceeded: messageId={}",
-                    userMessage.messageId());
-            return;
-        }
         try {
             executor.execute(() -> answer(userMessage, userDetails, question));
         } catch (RejectedExecutionException exception) {
             log.warn("chat bot queue full: messageId={}", userMessage.messageId());
+            notifyRequester(userDetails, ErrorCode.CHAT_BOT_BUSY, 60);
         }
     }
 
@@ -94,6 +89,24 @@ public class BotMentionService {
             ChatMessageResponse userMessage, CustomUserDetails userDetails, String question) {
         long startedAt = System.nanoTime();
         try {
+            var decision =
+                    sharedLimiter.acquire(
+                            List.of(
+                                    new SharedRequestLimiter.Limit(
+                                            "snowthing:limits:{bot}:hour", 60, Duration.ofHours(1)),
+                                    new SharedRequestLimiter.Limit(
+                                            "snowthing:limits:{bot}:day",
+                                            200,
+                                            Duration.ofDays(1))));
+            if (!decision.allowed()) {
+                notifyRequester(
+                        userDetails,
+                        decision.available()
+                                ? ErrorCode.CHAT_BOT_BUDGET_EXCEEDED
+                                : ErrorCode.CHAT_BOT_UNAVAILABLE,
+                        decision.retryAfterSeconds());
+                return;
+            }
             String token = tokenService.issue(userDetails.getPublicId(), userMessage.messageId());
             BotAnswerResponse answer =
                     gateway.answer(
@@ -116,5 +129,12 @@ public class BotMentionService {
                     (System.nanoTime() - startedAt) / 1_000_000L,
                     exception.getClass().getSimpleName());
         }
+    }
+
+    private void notifyRequester(CustomUserDetails user, ErrorCode error, long retryAfterSeconds) {
+        messagingTemplate.convertAndSendToUser(
+                user.getUsername(),
+                "/queue/errors",
+                ChatErrorResponse.retry(error, retryAfterSeconds));
     }
 }

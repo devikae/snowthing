@@ -51,7 +51,11 @@ class ImageServiceTest {
     @BeforeEach
     void setUp() {
         pngBytes = createPng(800, 600);
-        imageService = new ImageService(s3Client);
+        imageService =
+                new ImageService(
+                        s3Client,
+                        org.mockito.Mockito.mock(
+                                software.amazon.awssdk.services.cloudfront.CloudFrontClient.class));
         ReflectionTestUtils.setField(imageService, "bucketName", "snowthing-media-00001");
         ReflectionTestUtils.setField(
                 imageService, "cloudFrontBaseUrl", "https://images.snowthing.org");

@@ -43,7 +43,9 @@ for version in \
   015_migration_resort_report \
   016_migration_social_login \
   017_migration_registration_consent \
-  018_migration_notice_category; do
+  018_migration_notice_category \
+  021_migration_profile_image_cleanup \
+  022_migration_shared_request_budget; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done
@@ -79,4 +81,6 @@ done
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND table_name = 'member_registration_consent' AND constraint_name = 'fk_registration_consent_member'")" == "1" ]]
 
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM post_category WHERE code = 'NOTICE'")" == "1" ]]
-echo "Production migrations 007-018 verification passed."
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'profile_image_cleanup'")" == "1" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'request_budget_window'")" == "1" ]]
+echo "Production migrations 007-018 + 021/022 verification passed."

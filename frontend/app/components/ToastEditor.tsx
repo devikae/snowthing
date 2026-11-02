@@ -30,6 +30,7 @@ export const ToastEditor = forwardRef<ToastEditorHandle, ToastEditorProps>(
         previewStyle: "vertical",
         height: height,
         initialEditType: "wysiwyg",
+        autofocus: false,
         useCommandShortcut: true,
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
@@ -55,7 +56,7 @@ export const ToastEditor = forwardRef<ToastEditorHandle, ToastEditorProps>(
       getInstance: () => editorRef.current!,
     }));
 
-    return <div ref={containerRef} className="toast-editor-wrapper text-black" />;
+    return <div ref={containerRef} className="toast-editor-wrapper text-[var(--snow-ink)]" />;
   }
 );
 
