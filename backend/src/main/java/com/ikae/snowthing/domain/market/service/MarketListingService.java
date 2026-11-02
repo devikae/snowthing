@@ -56,6 +56,7 @@ public class MarketListingService {
     private final PostImageRepository postImageRepository;
     private final MemberRepository memberRepository;
     private final ImageUrlResolver imageUrlResolver;
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
 
     public MarketCategoryListResponse getCategories() {
         return new MarketCategoryListResponse(
@@ -119,6 +120,8 @@ public class MarketListingService {
                 postCategoryRepository
                         .findByCode(MARKET_POST_CATEGORY_CODE)
                         .orElseThrow(() -> new CustomException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+        imageLifecycle.protectAll(
+                request.imageUrls(), request.content(), userDetails.getUsername());
         List<PostImage> images = toPostImages(request.imageUrls());
 
         Post post =
@@ -181,6 +184,8 @@ public class MarketListingService {
         MarketListing listing = findForUpdate(publicId);
         validateWriter(listing.getPost(), userDetails);
         validateVersion(listing, request.version());
+        imageLifecycle.protectAll(
+                request.imageUrls(), request.content(), userDetails.getUsername());
         MarketCategory category = requireActiveCategory(request.categoryCode());
         List<PostImage> images = toPostImages(request.imageUrls());
 

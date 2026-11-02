@@ -20,7 +20,9 @@ public class ProfileActionRateLimiter {
     public enum Action {
         PASSWORD(10, Duration.ofMinutes(15)),
         NICKNAME(30, Duration.ofMinutes(1)),
-        PHOTO(20, Duration.ofHours(1));
+        PHOTO(5, Duration.ofDays(1)),
+        POST_IMAGE(30, Duration.ofHours(1)),
+        IMAGE_LEASE(60, Duration.ofHours(1));
 
         final int limit;
         final Duration window;
@@ -47,15 +49,33 @@ public class ProfileActionRateLimiter {
     }
 
     public void check(String member, Action action) {
-        if (action == Action.PASSWORD) {
+        if (action != Action.NICKNAME) {
             String memberHash = memberKey(member);
-            var decision =
-                    sharedLimiter.acquire(
+            var budgets =
+                    new java.util.ArrayList<>(
                             List.of(
                                     new SharedRequestLimiter.Limit(
-                                            "snowthing:limits:password:" + memberHash,
+                                            "snowthing:limits:"
+                                                    + action.name()
+                                                            .toLowerCase(java.util.Locale.ROOT)
+                                                    + ":"
+                                                    + memberHash,
                                             action.limit,
                                             action.window)));
+            if (action == Action.PHOTO || action == Action.POST_IMAGE) {
+                budgets.add(
+                        new SharedRequestLimiter.Limit(
+                                "snowthing:limits:images:global:hour", 300, Duration.ofHours(1)));
+                budgets.add(
+                        new SharedRequestLimiter.Limit(
+                                "snowthing:limits:images:global:day", 1000, Duration.ofDays(1)));
+            }
+            if (action == Action.PHOTO) {
+                budgets.add(
+                        new SharedRequestLimiter.Limit(
+                                "snowthing:limits:photos:global:day", 30, Duration.ofDays(1)));
+            }
+            var decision = sharedLimiter.acquire(budgets);
             if (!decision.allowed())
                 throw new CustomException(
                         decision.available()

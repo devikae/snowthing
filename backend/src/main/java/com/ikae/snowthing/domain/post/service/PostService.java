@@ -51,6 +51,7 @@ public class PostService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final ImageUrlResolver imageUrlResolver;
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
 
     @Transactional
     public PostResponse createPost(
@@ -115,6 +116,10 @@ public class PostService {
                         .anonymousPassword(encodedPassword)
                         .hasImage(false)
                         .build();
+        imageLifecycle.protectAll(
+                request.imageUrls(),
+                request.content(),
+                userDetails == null ? null : userDetails.getUsername());
         post.replaceImages(toPostImages(request.imageUrls()));
 
         return PostResponse.from(postRepository.save(post));
@@ -234,6 +239,10 @@ public class PostService {
         }
 
         post.update(request.title(), request.content(), category);
+        imageLifecycle.protectAll(
+                request.imageUrls(),
+                request.content(),
+                userDetails == null ? null : userDetails.getUsername());
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }

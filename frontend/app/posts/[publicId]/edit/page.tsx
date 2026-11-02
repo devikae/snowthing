@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import { ToastEditorHandle } from "../../../components/ToastEditor";
 import { Footer, TopNav } from "../../../components/SiteChrome";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
@@ -52,6 +53,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  useImageUploadLease(images);
   const [canUploadImages, setCanUploadImages] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
 

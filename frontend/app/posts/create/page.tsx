@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
@@ -43,6 +44,7 @@ function PostCreateForm() {
   const [title, setTitle] = useState(toolDraft?.title ?? "");
   const [anonymousPassword, setAnonymousPassword] = useState("");
   const [images, setImages] = useState<{ imageKey: string; imageUrl: string }[]>([]);
+  useImageUploadLease(images.map(image => image.imageUrl));
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [userProfile, setUserProfile] = useState<MemberProfile | null>(null);

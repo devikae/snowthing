@@ -62,6 +62,23 @@ class ImageServiceTest {
     }
 
     @Test
+    void managedImagesAreResizedAndEncodedAsJpeg() throws Exception {
+        var file = new MockMultipartFile("file", "large.png", "image/png", createPng(3000, 1500));
+        var result = imageService.uploadImage(file, "m-11111111-1111-1111-1111-111111111111");
+        var requests = ArgumentCaptor.forClass(PutObjectRequest.class);
+        var bodies = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client, times(2)).putObject(requests.capture(), bodies.capture());
+        assertThat(result.imageKey()).endsWith(".jpg");
+        assertThat(requests.getAllValues())
+                .allSatisfy(request -> assertThat(request.contentType()).isEqualTo("image/jpeg"));
+        try (var input = bodies.getAllValues().get(1).contentStreamProvider().newStream()) {
+            var image = ImageIO.read(input);
+            assertThat(image.getWidth()).isLessThanOrEqualTo(1920);
+            assertThat(image.getHeight()).isLessThanOrEqualTo(1920);
+        }
+    }
+
+    @Test
     void rejectsOversizedDimensionsBeforeDecodingOrWritingS3() {
         for (int[] size :
                 new int[][] {{10001, 1}, {5001, 5000}, {Integer.MAX_VALUE, Integer.MAX_VALUE}}) {

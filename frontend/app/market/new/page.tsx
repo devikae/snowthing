@@ -10,6 +10,7 @@ import { PageHeading } from "../../components/PageHeading";
 import type { ToastEditorHandle } from "../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { useImageUploadLease } from "../../lib/useImageUploadLease";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), { ssr: false });
 
@@ -50,6 +51,7 @@ export default function MarketCreatePage() {
   const [free, setFree] = useState(false);
   const [contact, setContact] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
+  useImageUploadLease(images.map(image => image.imageUrl));
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");

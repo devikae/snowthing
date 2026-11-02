@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ikae.snowthing.domain.image.dto.ImageUploadResponse;
-import com.ikae.snowthing.domain.image.service.ImageService;
 import com.ikae.snowthing.domain.image.service.ProfileImageLifecycleService;
 import com.ikae.snowthing.domain.member.service.MemberService;
 import com.ikae.snowthing.domain.member.service.ProfileActionRateLimiter;
@@ -26,10 +25,23 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ImageController {
 
-    private final ImageService imageService;
     private final MemberService memberService;
     private final ProfileActionRateLimiter profileActionRateLimiter;
     private final ProfileImageLifecycleService profileImages;
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService postImages;
+    private final com.ikae.snowthing.domain.image.service.ImageProcessingGate processingGate;
+
+    @PostMapping("/keep-alive")
+    public ResponseEntity<Void> keepAlive(
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody
+                    com.ikae.snowthing.domain.image.dto.ImageLeaseRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        profileActionRateLimiter.check(
+                userDetails.getUsername(), ProfileActionRateLimiter.Action.IMAGE_LEASE);
+        postImages.renew(request.imageKeys(), userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImageUploadResponse> uploadProfileImage(
@@ -41,7 +53,8 @@ public class ImageController {
         profileActionRateLimiter.check(
                 userDetails.getUsername(), ProfileActionRateLimiter.Action.PHOTO);
         memberService.getMySettings(userDetails.getUsername());
-        ImageUploadResponse response = profileImages.upload(userDetails.getUsername(), file);
+        ImageUploadResponse response =
+                processingGate.run(() -> profileImages.upload(userDetails.getUsername(), file));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -53,7 +66,10 @@ public class ImageController {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
 
-        ImageUploadResponse response = imageService.uploadImage(file);
+        profileActionRateLimiter.check(
+                userDetails.getUsername(), ProfileActionRateLimiter.Action.POST_IMAGE);
+        ImageUploadResponse response =
+                processingGate.run(() -> postImages.upload(file, userDetails.getUsername()));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
