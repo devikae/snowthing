@@ -11,6 +11,14 @@ import software.amazon.awssdk.services.s3.S3Client;
 @Configuration
 public class S3Config {
 
+    @Bean
+    public software.amazon.awssdk.services.cloudfront.CloudFrontClient cloudFrontClient() {
+        return software.amazon.awssdk.services.cloudfront.CloudFrontClient.builder()
+                .region(Region.AWS_GLOBAL)
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
     @Value("${cloud.aws.region.static:ap-northeast-2}")
     private String region;
 

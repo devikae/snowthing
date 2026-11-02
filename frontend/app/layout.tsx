@@ -3,6 +3,7 @@ import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION } from "./lib/siteMet
 import "@toast-ui/editor/dist/toastui-editor.css";
 import "./globals.css";
 import "./carpool.css";
+import "./detailForms.css";
 
 /* eslint-disable @next/next/no-page-custom-font -- App Router의 최상위 레이아웃에서 모든 화면에 공통 폰트를 로드합니다. */
 

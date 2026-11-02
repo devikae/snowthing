@@ -23,6 +23,7 @@ public class MemberSignUpRequest {
     @NotNull @AssertTrue private Boolean ageConfirmed;
     @NotNull @AssertTrue private Boolean privacyAgreed;
     @NotNull private Boolean marketingEmailAgreed;
+    @NotBlank private String privacyVersion;
 
     @NotBlank(message = "이메일은 필수 입력값입니다.")
     @Pattern(
@@ -61,7 +62,8 @@ public class MemberSignUpRequest {
             List<Long> ridingStyleIds,
             Boolean ageConfirmed,
             Boolean privacyAgreed,
-            Boolean marketingEmailAgreed) {
+            Boolean marketingEmailAgreed,
+            String privacyVersion) {
         this.email = email;
         this.password = password;
         this.emailVerificationToken = emailVerificationToken;
@@ -71,6 +73,7 @@ public class MemberSignUpRequest {
         this.ageConfirmed = ageConfirmed;
         this.privacyAgreed = privacyAgreed;
         this.marketingEmailAgreed = marketingEmailAgreed;
+        this.privacyVersion = privacyVersion;
         this.resortIds = resortIds != null ? new ArrayList<>(resortIds) : new ArrayList<>();
         this.ridingStyleIds =
                 ridingStyleIds != null ? new ArrayList<>(ridingStyleIds) : new ArrayList<>();

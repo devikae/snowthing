@@ -16,6 +16,7 @@ withLocalBrowser('camera-check',async({navigate,evaluate,waitFor,screenshot})=>{
   await waitFor('document.body.innerText.includes("현재 리조트 공식 공개 목록에 없는 카메라")');
   assert.equal(await evaluate('!!document.querySelector("video")'),false);
   await navigate('/resort-cam/alpensia/cam-01');
+  await waitFor('!!document.querySelector("iframe")');
   assert.equal(await evaluate('document.querySelector("iframe")?.src.includes("vvRfdby4YxI")'),true);
   await navigate('/resort-cam/eden-valley/cam-01');
   await waitFor('document.body.innerText.includes("영상 제공처에서 현재 재생을 제한")');
@@ -27,7 +28,9 @@ withLocalBrowser('camera-check',async({navigate,evaluate,waitFor,screenshot})=>{
   await waitFor('[...document.querySelectorAll("button")].some(button=>button.textContent==="다시 연결")');
   assert.equal(await evaluate('document.body.innerText.includes("시즌 개장 시")'),false);
   await screenshot('source-unavailable');
+  await evaluate(`(()=>{window.__retryRequests=0;const open=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(method,url,...args){if(String(url).includes('m3u8'))window.__retryRequests++;return open.call(this,method,url,...args)};const original=window.fetch;window.fetch=function(input,...rest){if(String(input?.url??input).includes('m3u8'))window.__retryRequests++;return original.call(this,input,...rest)}})()`);
   await evaluate('[...document.querySelectorAll("button")].find(button=>button.textContent==="다시 연결").click()');
+  await waitFor('window.__retryRequests>0');
   await waitFor('[...document.querySelectorAll("button")].some(button=>button.textContent==="다시 연결")');
   await evaluate('[...document.querySelectorAll("nav a")].find(a=>a.getAttribute("href")==="/resort-cam/high1").click()');
   await waitFor('location.pathname==="/resort-cam/high1" && [...document.querySelectorAll("video")].some(video=>video.readyState>=2)');

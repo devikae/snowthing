@@ -215,7 +215,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   return (
     <div className="community-page">
       <TopNav active="market" />
-      <main className="community-container market-detail-page">
+      <main className="community-container market-detail-page content-detail-page">
         <nav className="market-breadcrumb"><Link href="/market">중고장터</Link><span>/</span><span>{listing.category.name}</span></nav>
         {error && <div className="compose-error" role="alert">{error}</div>}
         <article className="market-detail-card">

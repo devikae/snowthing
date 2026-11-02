@@ -70,7 +70,7 @@ export default function CarpoolDetailPage() {
   return (
     <div className="community-page">
       <TopNav active="carpool" />
-      <main className="community-container carpool-detail-page">
+      <main className="community-container carpool-detail-page content-detail-page">
         {error ? (
           <div className="carpool-empty">모집글을 불러오지 못했습니다.</div>
         ) : !item ? (

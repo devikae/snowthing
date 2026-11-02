@@ -31,14 +31,14 @@ public class MemberProfileUpdateRequest {
 
     @NotNull
     @Size(max = 2)
-    private List<@NotNull @Positive Long> resortIds = new ArrayList<>();
+    private List<@NotNull @Positive Long> resortIds;
 
     @NotNull
     @Size(max = 50)
-    private List<@NotNull @Positive Long> ridingStyleIds = new ArrayList<>();
+    private List<@NotNull @Positive Long> ridingStyleIds;
 
     @Builder
-    public MemberProfileUpdateRequest(
+    MemberProfileUpdateRequest(
             String nickname,
             String bio,
             String departureRegion,
@@ -53,10 +53,10 @@ public class MemberProfileUpdateRequest {
     }
 
     public List<Long> getResortIds() {
-        return List.copyOf(resortIds);
+        return resortIds != null ? List.copyOf(resortIds) : null;
     }
 
     public List<Long> getRidingStyleIds() {
-        return List.copyOf(ridingStyleIds);
+        return ridingStyleIds != null ? List.copyOf(ridingStyleIds) : null;
     }
 }

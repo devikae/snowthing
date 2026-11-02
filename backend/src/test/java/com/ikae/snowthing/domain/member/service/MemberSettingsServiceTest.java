@@ -109,6 +109,8 @@ class MemberSettingsServiceTest {
         when(styles.findAllById(any())).thenReturn(List.of());
         var request =
                 MemberProfileUpdateRequest.builder()
+                        .resortIds(List.of())
+                        .ridingStyleIds(List.of())
                         .nickname("newname")
                         .resortIds(List.of(99L))
                         .build();
@@ -138,7 +140,12 @@ class MemberSettingsServiceTest {
         doThrow(new org.springframework.dao.DataIntegrityViolationException("write failed", sql))
                 .when(members)
                 .flush();
-        var request = MemberProfileUpdateRequest.builder().nickname("othername").build();
+        var request =
+                MemberProfileUpdateRequest.builder()
+                        .resortIds(List.of())
+                        .ridingStyleIds(List.of())
+                        .nickname("othername")
+                        .build();
         assertThatThrownBy(() -> service.updateMyProfile("user@example.com", request))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")

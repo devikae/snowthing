@@ -205,10 +205,9 @@ function PostCreateForm() {
   const writerInitial = writerName.trim().charAt(0) || "익";
 
   return (
-    <main className="compose-page community-container">
+    <main className="compose-page community-container content-compose-page">
       <header className="compose-top-bar">
         <div className="compose-head-left">
-          <small className="section-eyebrow">NEW POST · EDITORIAL COMPOSER</small>
           <h1>{boardName} 글쓰기</h1>
         </div>
 

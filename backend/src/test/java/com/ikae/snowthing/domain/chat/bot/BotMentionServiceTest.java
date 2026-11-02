@@ -31,6 +31,9 @@ class BotMentionServiceTest {
     private ChatService chatService;
     private BotMentionService service;
     private CustomUserDetails userDetails;
+    private com.ikae.snowthing.global.security.SharedRequestLimiter sharedLimiter;
+    private SimpMessagingTemplate messagingTemplate;
+    private BotProperties properties;
 
     @BeforeEach
     void setUp() {
@@ -38,8 +41,13 @@ class BotMentionServiceTest {
         tokenService = mock(BotDelegationTokenService.class);
         gateway = mock(BotGateway.class);
         chatService = mock(ChatService.class);
-        SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
-        BotProperties properties =
+        sharedLimiter = mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class);
+        when(sharedLimiter.acquire(any()))
+                .thenReturn(
+                        new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(
+                                true, 0));
+        messagingTemplate = mock(SimpMessagingTemplate.class);
+        properties =
                 new BotProperties(
                         true,
                         URI.create("http://127.0.0.1:3100"),
@@ -55,7 +63,8 @@ class BotMentionServiceTest {
                         gateway,
                         chatService,
                         messagingTemplate,
-                        Runnable::run);
+                        Runnable::run,
+                        sharedLimiter);
 
         Member member =
                 Member.builder()
@@ -81,6 +90,12 @@ class BotMentionServiceTest {
 
     @Test
     void globalBudgetBoundsRequestsAcrossDifferentAccounts() {
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        when(sharedLimiter.acquire(any()))
+                .thenAnswer(
+                        invocation ->
+                                new com.ikae.snowthing.global.security.SharedRequestLimiter
+                                        .Decision(true, calls.incrementAndGet() <= 60 ? 0 : 3600));
         for (long id = 1; id <= 61; id++) {
             Member member =
                     Member.builder()
@@ -95,6 +110,54 @@ class BotMentionServiceTest {
                     new CustomUserDetails(member));
         }
         verify(gateway, times(60)).answer(any());
+        verify(messagingTemplate)
+                .convertAndSendToUser(
+                        org.mockito.ArgumentMatchers.eq("account-61@example.com"),
+                        org.mockito.ArgumentMatchers.eq("/queue/errors"),
+                        any(Object.class));
+    }
+
+    @Test
+    void queueRejectionCannotConsumeSharedBudget() {
+        org.mockito.Mockito.reset(sharedLimiter);
+        service =
+                new BotMentionService(
+                        properties,
+                        detector,
+                        tokenService,
+                        gateway,
+                        chatService,
+                        messagingTemplate,
+                        task -> {
+                            throw new java.util.concurrent.RejectedExecutionException();
+                        },
+                        sharedLimiter);
+        service.submit(
+                new ChatMessageResponse("queued", null, "GENERAL", "@bot test", "now"),
+                userDetails);
+        org.mockito.Mockito.verifyNoInteractions(sharedLimiter, gateway);
+        verify(messagingTemplate)
+                .convertAndSendToUser(
+                        org.mockito.ArgumentMatchers.eq(userDetails.getUsername()),
+                        org.mockito.ArgumentMatchers.eq("/queue/errors"),
+                        any(Object.class));
+    }
+
+    @Test
+    void unavailableSharedBudgetNotifiesOnlyTheRequesterWithoutCallingGateway() {
+        when(sharedLimiter.acquire(any()))
+                .thenReturn(
+                        new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(
+                                false, 60));
+        service.submit(
+                new ChatMessageResponse("unavailable", null, "GENERAL", "@bot test", "now"),
+                userDetails);
+        org.mockito.Mockito.verifyNoInteractions(gateway);
+        verify(messagingTemplate)
+                .convertAndSendToUser(
+                        org.mockito.ArgumentMatchers.eq(userDetails.getUsername()),
+                        org.mockito.ArgumentMatchers.eq("/queue/errors"),
+                        any(Object.class));
     }
 
     @Test

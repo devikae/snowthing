@@ -19,7 +19,8 @@ if (!email || !password) throw new Error('Set local PROFILE_CHECK_EMAIL and PROF
   const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'snowthing-profile-check-'));
   const profileDir = path.join(artifacts, 'browser');
   const browser = spawn(browserPath, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${profileDir}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
-  let ws, original, csrfToken, report;
+  let ws, original, csrfToken, report, checkFailure;
+  let settingsChanged = false;
   const pending = new Map(); let nextId = 0;
   let dialogAnswer = null;
   let dialogCount = 0;
@@ -89,6 +90,7 @@ if (!email || !password) throw new Error('Set local PROFILE_CHECK_EMAIL and PROF
     const masters = await evaluate(`Promise.all([fetch(${JSON.stringify(backend + '/master/resorts')},{credentials:'include'}).then(r=>r.json()),fetch(${JSON.stringify(backend + '/master/riding-styles')},{credentials:'include'}).then(r=>r.json())])`);
     assert.ok(masters[0].length >= 2 && masters[1].length >= 1, 'Local masters are required');
     const preferenceSetup = { nickname: original.nickname, bio: original.bio, departureRegion: original.departureRegion, resortIds: masters[0].slice(0,2).map(x=>x.id), ridingStyleIds: masters[1].slice(0,1).map(x=>x.id) };
+    settingsChanged = true; // The request may commit even if the CDP response is lost.
     assert.equal(await evaluate(`fetch(${JSON.stringify(backend + '/members/me/settings')},{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json','X-XSRF-TOKEN':${JSON.stringify(csrfToken)}},body:JSON.stringify(${JSON.stringify(preferenceSetup)})}).then(r=>r.status)`),200);
     await evaluate('location.reload()');
     await waitFor('!!document.querySelector(".profile-preferences")');
@@ -174,18 +176,24 @@ if (!email || !password) throw new Error('Set local PROFILE_CHECK_EMAIL and PROF
     await evaluate('document.documentElement.dataset.theme="light"');
     await screenshot('mobile-light');
     report = { status: 'passed', checks: ['profile menu navigation', 'nickname confirmation before save', 'stale nickname response rejection', 'unsaved changes navigation guard', 'password visibility toggle', 'profile save', 'preference preservation', 'photo preview and cancellation', 'light and dark rendering', '390px horizontal overflow'], artifacts };
+  } catch (error) {
+    checkFailure = error;
   } finally {
     let restoreFailure;
     try {
-    if (original && ws?.readyState === WebSocket.OPEN) {
+    if (settingsChanged && original) {
       const restore = { nickname: original.nickname, bio: original.bio, departureRegion: original.departureRegion, resortIds: original.resorts.map(x => x.id), ridingStyleIds: original.ridingStyles.map(x => x.id) };
+      fs.writeFileSync(path.join(artifacts, 'fixture-recovery.json'), JSON.stringify({email, settings: restore}, null, 2));
+      if (ws?.readyState !== WebSocket.OPEN) throw new Error(`Fixture restoration unavailable; recover using ${path.join(artifacts, 'fixture-recovery.json')}`);
       const status = await evaluate(`fetch(${JSON.stringify(backend + '/members/me/settings')},{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json','X-XSRF-TOKEN':${JSON.stringify(csrfToken)}},body:JSON.stringify(${JSON.stringify(restore)})}).then(r=>r.status)`);
       assert.equal(status, 200, 'Local fixture restoration failed; inspect local profile');
     }
     } catch (error) { restoreFailure = error; }
     if (ws) ws.close();
     browser.kill();
+    if (checkFailure && restoreFailure) throw new AggregateError([checkFailure, restoreFailure], 'Profile check and fixture restoration both failed');
     if (restoreFailure) throw restoreFailure;
+    if (checkFailure) throw checkFailure;
   }
   console.log(JSON.stringify(report));
-})().catch(error => { console.error(error.message); process.exitCode = 1; });
+})().catch(error => { console.error(error); process.exitCode = 1; });

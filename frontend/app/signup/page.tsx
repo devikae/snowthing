@@ -1,5 +1,7 @@
 "use client";
 
+import { registrationPolicy, registrationPolicyUrl } from "../lib/registrationPolicy";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -140,7 +142,7 @@ export default function SignUpPage() {
     if (!NICKNAME_REGEX.test(nickname)) return setErrorMsg("닉네임은 2자 이상 10자 이하의 한글, 영문, 숫자로 입력해 주세요.");
     setLoading(true);
     try {
-      const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ageConfirmed: isAtLeastFourteen, privacyAgreed, marketingEmailAgreed: marketingAgreed }) });
+      const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ageConfirmed: isAtLeastFourteen, privacyAgreed, privacyVersion: registrationPolicy.version, marketingEmailAgreed: marketingAgreed }) });
       if (!response.ok) throw new Error(await readError(response, "회원가입에 실패했습니다."));
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
       router.push(loginResponse.ok ? "/" : "/login");
@@ -173,12 +175,13 @@ export default function SignUpPage() {
                 <p className="pl-7 text-xs leading-5 text-[var(--snow-muted)]">SnowThing은 만 14세 이상만 회원으로 가입할 수 있습니다. 본인의 나이를 확인해 주세요.</p>
               </div>
               <div className="rounded-lg border border-[var(--snow-border)] bg-[var(--snow-surface-low)] p-4 text-sm leading-6 text-[var(--snow-ink-soft)]">
-                <p><strong>수집 항목:</strong> 이메일, 비밀번호, 닉네임, 이메일 인증 정보</p>
-                <p><strong>수집 목적:</strong> 회원 식별, 로그인, 이메일 인증 및 계정 관리</p>
-                <p><strong>보유 및 이용 기간:</strong> 회원정보의 보관·파기 정책을 확인 중입니다.</p>
-                <p>동의를 거부할 권리가 있으며, 필수 항목에 동의하지 않으면 회원가입을 할 수 없습니다.</p>
+                <p><strong>수집 항목:</strong> {registrationPolicy.collection.items}</p>
+                <p><strong>수집 목적:</strong> {registrationPolicy.collection.purpose}</p>
+                <p><strong>보유 및 이용 기간:</strong> {registrationPolicy.collection.retention}</p>
+                <p>{registrationPolicy.collection.refusal}</p>
                 <p>개인정보 처리 및 문의 방법은 개인정보처리방침에서 확인할 수 있습니다.</p>
-                <Link href="/privacy" target="_blank" className="font-bold text-sky-600 underline">개인정보처리방침 보기</Link>
+                <Link href={registrationPolicyUrl} target="_blank" className="font-bold text-sky-600 underline">개인정보처리방침 보기</Link>
+                <p className="text-xs text-[var(--snow-muted)]">문서 버전: {registrationPolicy.version}</p>
               </div>
               <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
                 <input type="checkbox" checked={privacyAgreed} onChange={(event) => setPrivacyAgreed(event.target.checked)} className="h-4 w-4 accent-sky-700" />

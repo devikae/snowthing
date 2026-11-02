@@ -610,7 +610,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   return (
     <div className="min-h-screen bg-[var(--snow-background)]">
       <TopNav active="posts" />
-      <main className="post-detail-page community-container">
+      <main className="post-detail-page community-container content-detail-page">
         <div className="post-detail-toolbar">
           <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link>
           <button type="button" onClick={() => window.location.reload()} aria-label="새로고침"><span className="material-symbols-outlined">refresh</span></button>
@@ -626,9 +626,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             <h1>{post.title}</h1>
 
             <div className="post-detail-author">
-              {isAnonymousPost ? (
-                <span className="material-symbols-outlined post-detail-anonymous-avatar" aria-hidden="true">theater_comedy</span>
-              ) : (
+                {isAnonymousPost ? null : (
                 <Image
                   className="post-detail-author-avatar"
                   src={post.writer.profileImageUrl || "/images/default-profile-avatar.png"}
@@ -677,11 +675,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
             <div className="post-detail-reactions">
               <div>
-                <button onClick={() => handleReaction("LIKE")} className="active">
+                  <button onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
                   <span className="material-symbols-outlined text-[17px]">thumb_up</span>
                   추천 {post.likeCount}
                 </button>
-                <button onClick={() => handleReaction("DISLIKE")}>
+                  <button onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
                   <span className="material-symbols-outlined text-[17px]">thumb_down</span>
                   비추천 {post.dislikeCount}
                 </button>
@@ -804,12 +802,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           </div>
           <aside className="post-detail-sidebar">
             <section className="detail-carpool-card">
-              <header><h2><span className="material-symbols-outlined">directions_car</span>실시간 카풀/동행</h2><Link href="/carpool">전체보기</Link></header>
+              <header><h2>카풀·동행</h2><Link href="/carpool">전체보기</Link></header>
               {carpools.length === 0 ? (
                 <p className="detail-carpool-empty">등록된 카풀 모집글이 없습니다.</p>
               ) : carpools.map((item) => (
                 <article key={item.publicId}>
-                  <div><b>{item.passengerCapacity}명 모집</b><time>{new Date(item.departureAt).toLocaleString("ko-KR")}</time></div>
+                  <div><b>{item.passengerCapacity}명 모집</b><time dateTime={item.departureAt}>{new Date(item.departureAt).toLocaleString("ko-KR", {month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})}</time></div>
                   <strong>{item.departureRegion} <span>→</span> {item.destinationResortName}</strong>
                   <p><span>장비 적재 {item.equipmentLoadAvailable ? "가능" : "불가능"}</span><b>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원/인</b></p>
                   <footer><Link href={`/carpool/${item.publicId}`}>자세히 보기 <span aria-hidden="true">›</span></Link></footer>

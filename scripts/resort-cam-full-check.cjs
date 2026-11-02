@@ -59,7 +59,7 @@ withLocalBrowser('camera-full-check',async browser=>{
         const ready='document.querySelector("video")?.readyState>=2 && document.querySelector("video").videoWidth>0 && document.querySelector("video").currentTime>0.5';
         let played=false;
         for(let attempt=0;attempt<2;attempt++){
-          await waitFor(`(${ready}) || !!document.querySelector('main [role="status"]')`,20000);
+          await waitFor(attempt === 0 ? `(${ready}) || !!document.querySelector('main [role="status"]')` : ready,20000);
           if(await evaluate(ready)){played=true;break;}
           if(!result.probe?.active||attempt===1)break;
           await evaluate('[...document.querySelectorAll("main button")].find(button=>button.textContent==="다시 연결")?.click()');
@@ -105,11 +105,14 @@ withLocalBrowser('camera-full-check',async browser=>{
     results.push(result);persist();
     if(results.length%5===0||result.status==='browser-failed')console.log(JSON.stringify({checked:results.length,total:cameras.length,last:resort+':'+camera.code,status:result.status}));
   }
-  await viewport(390,844);await navigate('/resort-cam/jisan/cam-01');
+  const unavailable = results.find(result=>result.status==='source-unavailable-guide');
+  if (unavailable) {
+  await viewport(390,844);await navigate(`/resort-cam/${resortSlug(unavailable.resort)}/${cameraSlug(unavailable.camera)}`);
   await waitFor('!!document.querySelector("main [role=status]")');
   const fits=await evaluate(`(()=>{const panel=document.querySelector('main [role=status]');const box=panel.getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth&&[...panel.querySelectorAll('a,button')].every(e=>{const r=e.getBoundingClientRect();return r.top>=box.top&&r.bottom<=box.bottom&&r.left>=box.left&&r.right<=box.right;});})()`);
   if(!fits)throw new Error('Mobile status actions clipped');
   await screenshot('status-mobile-light');await evaluate('document.documentElement.dataset.theme="dark"');await screenshot('status-mobile-dark');
+  } else console.log('Mobile unavailable-source layout check skipped: all audited sources are available');
   const failures=results.filter(result=>['browser-failed','missing-failure-guide'].includes(result.status));
   return{status:failures.length?'failed':'passed',total:results.length,playing:results.filter(result=>result.status==='playing').length,sourceUnavailable:results.filter(result=>result.status==='source-unavailable-guide').length,failures};
 }).then(result=>{console.log(JSON.stringify(result));if(result.status!=='passed')process.exitCode=1;}).catch(error=>{console.error(error.message);process.exitCode=1;});

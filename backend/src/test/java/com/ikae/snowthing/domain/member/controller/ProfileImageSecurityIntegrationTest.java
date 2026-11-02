@@ -15,7 +15,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.image.dto.ImageUploadResponse;
 import com.ikae.snowthing.domain.image.service.ImageService;
@@ -25,11 +24,16 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Transactional
 class ProfileImageSecurityIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired MemberRepository members;
     @MockitoBean ImageService images;
+
+    @org.junit.jupiter.api.AfterEach
+    void cleanup() {
+        for (String email : java.util.List.of("photo-self@example.com", "photo-other@example.com"))
+            members.findByEmail(email).ifPresent(members::delete);
+    }
 
     @Test
     void uploadBindsImageOnlyToAuthenticatedMemberAndIgnoresForgedTarget() throws Exception {
@@ -48,8 +52,9 @@ class ProfileImageSecurityIntegrationTest {
                                 .password("hash")
                                 .build());
         String url = "https://images.snowthing.org/public/profiles/test.jpg";
-        when(images.uploadProfileImage(any()))
-                .thenReturn(new ImageUploadResponse(url, "public/profiles/test.jpg"));
+        when(images.profileUrl(org.mockito.ArgumentMatchers.anyString())).thenReturn(url);
+        when(images.uploadProfileImage(any(), org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> new ImageUploadResponse(url, invocation.getArgument(1)));
         mvc.perform(
                         multipart("/api/v1/images/profile")
                                 .file(

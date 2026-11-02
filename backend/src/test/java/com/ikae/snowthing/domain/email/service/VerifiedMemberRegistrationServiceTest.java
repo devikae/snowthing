@@ -62,7 +62,8 @@ class VerifiedMemberRegistrationServiceTest {
                         memberRepository,
                         memberService,
                         CLOCK,
-                        consentRepository);
+                        consentRepository,
+                        new com.ikae.snowthing.domain.member.service.RegistrationPrivacyPolicy());
     }
 
     @Test
@@ -73,6 +74,23 @@ class VerifiedMemberRegistrationServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
         org.mockito.Mockito.verifyNoInteractions(verificationRepository, consentRepository);
+    }
+
+    @Test
+    void rejectsStalePolicyBeforeConsumingAnyVerificationToken() {
+        var request =
+                MemberSignUpRequest.builder()
+                        .ageConfirmed(true)
+                        .privacyAgreed(true)
+                        .marketingEmailAgreed(false)
+                        .privacyVersion("obsolete-version")
+                        .build();
+        assertThatThrownBy(() -> service.register(request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.REGISTRATION_POLICY_CHANGED);
+        org.mockito.Mockito.verifyNoInteractions(
+                verificationRepository, consentRepository, memberService);
     }
 
     @Test
@@ -151,6 +169,7 @@ class VerifiedMemberRegistrationServiceTest {
                 .ridingStyleIds(List.of())
                 .ageConfirmed(true)
                 .privacyAgreed(true)
+                .privacyVersion("draft-2026-11-01-v1")
                 .marketingEmailAgreed(false)
                 .build();
     }

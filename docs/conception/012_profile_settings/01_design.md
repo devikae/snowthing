@@ -6,14 +6,14 @@
 
 ## 데이터 및 API
 
-- 기존 member, member_resort, member_riding_style와 resort, riding_style 마스터를 사용한다. 기존 테이블의 필드만 사용하며 새 스키마를 요구하지 않는다.
+- 기본 정보는 기존 member, member_resort, member_riding_style와 resort, riding_style 마스터를 사용한다. 리뷰 보완으로 프로필 파일 정리를 위한 021 profile_image_cleanup 및 공유 요청 한도를 위한 022 request_budget_window를 추가한다. 상세는 03_profile_image_lifecycle.md를 따른다.
 - GET /api/v1/members/me/settings: 본인의 닉네임·이메일·사진·자기소개·출발지·리조트/성향 ID와 이름, 비밀번호 변경 가능 여부를 반환한다. Entity와 비밀번호 해시는 반환하지 않는다.
 - PUT /api/v1/members/me/settings: 기존 정보 수정 DTO를 이용한다. 서버는 마스터 ID와 닉네임을 최종 검증한다. 조회 실패 시 저장을 허용하지 않는다.
 - POST /api/v1/members/me/nickname-availability: 검증된 닉네임의 사용 가능 여부를 반환한다. 본인의 현재 닉네임은 사용 가능하다. 클라이언트는 확인한 문자열을 기록하고 응답 전에 입력이 바뀌면 해당 결과를 무시한다.
 - PUT /api/v1/members/me/password: 현재 비밀번호를 검증한 뒤 8~20자 새 비밀번호로 변경한다. 커밋 후 컨트롤러/보안 계층에서 기존 세션과 라이브톡 연결을 만료한다. password=null인 소셜 전용 계정은 변경을 거부하고 공급자 계정에서 변경하도록 안내한다.
-- POST /api/v1/images/profile: 사진은 검증 후 320px 이내 JPEG로 재인코딩하여 공개 프로필 전용 경로 `public/profiles/{UUID}.jpg`에 업로드한다. 서버가 해당 요청의 인증 회원에게 즉시 연결하며 클라이언트가 임의 URL이나 대상 회원을 지정하지 못한다. 기본 이미지 복원은 DELETE /api/v1/members/me/profile-image로 DB 참조를 null로 변경한다. S3 삭제 배치를 가져오지 않는다.
+- POST /api/v1/images/profile: 사진은 검증 후 320px 이내 JPEG로 재인코딩하여 공개 프로필 전용 경로 `public/profiles/{UUID}.jpg`에 업로드한다. 서버가 해당 요청의 인증 회원에게 연결하며 클라이언트가 임의 URL이나 대상 회원을 지정하지 못한다. 기본 이미지 복원은 DELETE /api/v1/members/me/profile-image로 DB 참조를 null로 변경한다. 이전 파일·업로드 실패 파일은 영속 정리 작업을 통해 S3 삭제와 CDN 무효화를 재시도한다(03_profile_image_lifecycle.md).
 
-계정별 요청 제한은 비밀번호 변경 15분 10회, 닉네임 확인 1분 30회, 사진 변경 1시간 20회다. 단일 인스턴스 메모리 캐시 기준이며 다중 인스턴스에서는 공유 저장소로 옮겨야 한다. 변경 요청은 회원 행을 잠가 비밀번호·프로필·사진 간 동시 갱신 유실을 방지한다.
+계정별 요청 제한은 비밀번호 변경 15분 10회, 닉네임 확인 1분 30회, 사진 변경 1시간 20회다. 비밀번호 변경은 MySQL 공유 고정 창으로 확인하고 저장소 장애 시 503으로 차단한다. 키에는 이메일 원문 대신 SHA-256 값을 사용한다. 닉네임과 사진은 단일 인스턴스 메모리 캐시를 유지한다. 변경 요청은 회원 행을 잠가 비밀번호·프로필·사진 간 동시 갱신 유실을 방지한다. PUT 설정에서 두 선호 목록은 필수이며 생략/null은 400, 명시적 빈 배열만 전체 해제를 뜻한다.
 
 ## 화면 및 검증
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Footer, TopNav } from "../../components/SiteChrome";
+import { PageHeading } from "../../components/PageHeading";
 import type { ToastEditorHandle } from "../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
@@ -153,8 +154,8 @@ export default function MarketCreatePage() {
   return (
     <div className="community-page">
       <TopNav active="market" />
-      <main className="community-container market-compose-page">
-        <header className="market-compose-heading"><div><Link href="/market">중고장터</Link><span>/</span><strong>판매글 등록</strong></div><h1>판매할 상품 정보를 입력해 주세요.</h1></header>
+      <main className="community-container market-compose-page content-compose-page">
+        <PageHeading title="판매글 등록" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 작성해 주세요." />
         <form className="market-compose-card" onSubmit={submit}>
           {error && <div className="compose-error" role="alert"><span className="material-symbols-outlined">error</span>{error}</div>}
           <div className="market-form-grid">

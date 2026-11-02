@@ -42,9 +42,6 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (categoryRepository.findByCode("NOTICE").isEmpty()) {
-            categoryRepository.save(PostCategory.builder().name("공지사항").code("NOTICE").build());
-        }
         if (!memberRepository.existsByEmail("user@snowthing.com")
                 && !memberRepository.existsByNickname("스노보더1")) {
             memberRepository.save(
@@ -134,15 +131,20 @@ public class DataInitializer implements CommandLineRunner {
                                     .build()));
         }
 
-        if (categoryRepository.count() == 0) {
-            categoryRepository.saveAll(
-                    List.of(
-                            PostCategory.builder().name("자유게시판").code("FREE").build(),
-                            PostCategory.builder().name("익명게시판").code("ANONYMOUS").build(),
-                            PostCategory.builder().name("질문게시판").code("QNA").build(),
-                            PostCategory.builder().name("장비VS").code("GEAR_VS").build(),
-                            PostCategory.builder().name("맛집게시판").code("FOOD").build(),
-                            PostCategory.builder().name("카풀·동행").code("CARPOOL").build()));
+        for (PostCategory category :
+                List.of(
+                        PostCategory.builder().name("자유게시판").code("FREE").build(),
+                        PostCategory.builder().name("익명게시판").code("ANONYMOUS").build(),
+                        PostCategory.builder().name("질문게시판").code("QNA").build(),
+                        PostCategory.builder().name("장비VS").code("GEAR_VS").build(),
+                        PostCategory.builder().name("맛집게시판").code("FOOD").build(),
+                        PostCategory.builder().name("카풀·동행").code("CARPOOL").build())) {
+            if (categoryRepository.findByCode(category.getCode()).isEmpty())
+                categoryRepository.save(category);
+        }
+
+        if (categoryRepository.findByCode("NOTICE").isEmpty()) {
+            categoryRepository.save(PostCategory.builder().name("공지사항").code("NOTICE").build());
         }
 
         if (categoryRepository.findByCode("CARPOOL").isEmpty()) {

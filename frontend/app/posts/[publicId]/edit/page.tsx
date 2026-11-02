@@ -150,10 +150,9 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const writerInitial = (writerNickname || "익").trim().charAt(0) || "익";
 
   return (
-    <main className="compose-page community-container">
+    <main className="compose-page community-container content-compose-page">
       <header className="compose-top-bar">
         <div className="compose-head-left">
-          <small className="section-eyebrow">EDIT POST · EDITORIAL COMPOSER</small>
           <h1>게시글 수정</h1>
         </div>
 

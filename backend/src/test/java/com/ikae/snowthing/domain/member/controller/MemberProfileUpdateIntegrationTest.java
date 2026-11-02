@@ -41,6 +41,9 @@ import com.ikae.snowthing.domain.member.service.MemberService;
 @AutoConfigureMockMvc
 class MemberProfileUpdateIntegrationTest {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.ikae.snowthing.global.security.SharedRequestLimiter sharedLimiter;
+
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private MemberService memberService;
@@ -57,6 +60,10 @@ class MemberProfileUpdateIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.when(sharedLimiter.acquire(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(
+                        new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(
+                                true, 0));
         cleanUp();
 
         Resort r1 =
@@ -164,6 +171,29 @@ class MemberProfileUpdateIntegrationTest {
                 .andExpect(jsonPath("$.bio").value("수정전소개"))
                 .andExpect(jsonPath("$.passwordChangeAvailable").value(true))
                 .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    @Test
+    void missingOrNullPreferenceListsCannotEraseSavedSelections() throws Exception {
+        MockHttpSession session = loginForSettings("Password123!");
+        for (String payload :
+                java.util.List.of(
+                        "{\"nickname\":\"수정전닉네임\"}",
+                        "{\"nickname\":\"수정전닉네임\",\"resortIds\":[]}",
+                        "{\"nickname\":\"수정전닉네임\",\"ridingStyleIds\":[]}",
+                        "{\"nickname\":\"수정전닉네임\",\"resortIds\":null,\"ridingStyleIds\":[]}")) {
+            mockMvc.perform(
+                            put("/api/v1/members/me/settings")
+                                    .with(csrf())
+                                    .session(session)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(payload))
+                    .andExpect(status().isBadRequest());
+        }
+        mockMvc.perform(get("/api/v1/members/me/settings").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resorts[0].id").value(resortId1))
+                .andExpect(jsonPath("$.ridingStyles[0].id").value(styleId1));
     }
 
     @Test
