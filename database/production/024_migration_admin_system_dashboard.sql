@@ -77,3 +77,26 @@ DELIMITER ;
 
 CALL `apply_post_blinded_column`();
 DROP PROCEDURE IF EXISTS `apply_post_blinded_column`;
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS `apply_post_deleted_by_column`$$
+CREATE PROCEDURE `apply_post_deleted_by_column`()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'post'
+          AND column_name = 'deleted_by_member_id'
+    ) THEN
+        ALTER TABLE `post`
+            ADD COLUMN `deleted_by_member_id` BIGINT NULL AFTER `deleted_at`,
+            ADD INDEX `idx_post_deleted_by` (`deleted_by_member_id`);
+    END IF;
+END$$
+
+DELIMITER ;
+
+CALL `apply_post_deleted_by_column`();
+DROP PROCEDURE IF EXISTS `apply_post_deleted_by_column`;

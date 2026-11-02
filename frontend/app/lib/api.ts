@@ -96,6 +96,8 @@ export const API_ENDPOINTS = {
     posts: (onlyDeleted = false, page = 0, size = 20) =>
       `${API_V1_URL}/admin/posts?onlyDeleted=${onlyDeleted}&page=${page}&size=${size}`,
     blindPost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}/blind`,
+    deletePost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}`,
+    restorePost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}/restore`,
     bannedIps: `${API_V1_URL}/admin/chat/banned-ips`,
     unbanIp: (id: number) => `${API_V1_URL}/admin/chat/banned-ips/${id}`,
     banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${messageId}/ban-ip`,
@@ -173,13 +175,24 @@ export interface AdminPostItem {
   publicId: string;
   title: string;
   content: string;
-  authorNickname: string;
-  authorEmail: string;
-  resortName: string | null;
-  category: string;
+  authorMemberId: number | null;
+  writerNickname: string | null;
+  writerEmail: string | null;
+  isAnonymous: boolean;
   isDeleted: boolean;
+  deletedAt: string | null;
+  deletedByMemberId: number | null;
+  deleterNickname: string | null;
+  deleterEmail: string | null;
+  deleterRole: string | null;
+  isDeletedByAuthor: boolean;
   isBlinded: boolean;
   createdAt: string;
+  categoryName: string;
+  authorNickname?: string;
+  authorEmail?: string;
+  resortName?: string | null;
+  category?: string;
 }
 
 export interface ChatBannedIpItem {

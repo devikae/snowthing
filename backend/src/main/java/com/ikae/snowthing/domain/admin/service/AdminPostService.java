@@ -30,6 +30,24 @@ public class AdminPostService {
     }
 
     @Transactional
+    public void deletePostByAdmin(String publicId, Long adminMemberId) {
+        int updated = postRepository.softDeleteByAdmin(publicId, adminMemberId);
+        if (updated == 0) {
+            throw new CustomException(ErrorCode.POST_NOT_FOUND);
+        }
+        log.info("Post soft-deleted by admin: publicId={}, adminMemberId={}", publicId, adminMemberId);
+    }
+
+    @Transactional
+    public void restorePostByAdmin(String publicId) {
+        int updated = postRepository.restorePostByAdmin(publicId);
+        if (updated == 0) {
+            throw new CustomException(ErrorCode.POST_NOT_FOUND);
+        }
+        log.info("Post restored by admin: publicId={}", publicId);
+    }
+
+    @Transactional
     public void toggleBlindPost(String publicId, boolean blind) {
         int updated = postRepository.updateBlindedByPublicId(publicId, blind);
         if (updated == 0) {

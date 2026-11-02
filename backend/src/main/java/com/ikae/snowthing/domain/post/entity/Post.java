@@ -90,6 +90,9 @@ public class Post extends BaseTimeEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "deleted_by_member_id")
+    private Long deletedByMemberId;
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
 
@@ -143,10 +146,22 @@ public class Post extends BaseTimeEntity {
         updateImageStatus(!this.images.isEmpty());
     }
 
-    public void softDelete() {
+    public void softDelete(Long deleterMemberId) {
         this.isDeleted = true;
         this.status = PostStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
+        this.deletedByMemberId = deleterMemberId;
+    }
+
+    public void softDelete() {
+        softDelete(null);
+    }
+
+    public void restore() {
+        this.isDeleted = false;
+        this.status = PostStatus.NORMAL;
+        this.deletedAt = null;
+        this.deletedByMemberId = null;
     }
 
     public void increaseViewCount() {

@@ -1,3 +1,30 @@
+## 관리자 시스템 대시보드 및 소프트 삭제 감사 추적 관리 (2026-11-02)
+
+- 관리자 전용 대시보드 및 시스템 감사·운영 제어 기능 구축 완료:
+  1. **데이터베이스 마이그레이션 (`024_migration_admin_system_dashboard.sql`)**:
+     - `system_config`: 기능 플래그 동적 제어 (`CHAT_ANONYMOUS_ENABLED` 등) 테이블 및 초기 시드 적용.
+     - `daily_visitor_log`, `daily_visitor_stats`: SHA-256 IP 익명 해시 기반 DAU/PV/회원·비회원 방문 집계 테이블 생성.
+     - `chat_banned_ip`: 실시간 악성 사용자 채팅 IP 차단 테이블 생성.
+     - `banner`: 메인 프로모션 배너 CRUD 테이블 생성.
+     - `post.deleted_by_member_id BIGINT NULL`: 게시글 소프트 삭제 시 삭제를 실행한 회원 PK(`member_id`)를 감사 추적 컬럼으로 추가 및 인덱스(`idx_post_deleted_by`) 부여.
+  2. **백엔드 관리자 도메인 및 감사형 소프트 삭제 구현**:
+     - `Post.java`: `deletedByMemberId` 필드 매핑 및 `softDelete(Long deleterMemberId)`, `restore()` 도메인 메서드 추가.
+     - `PostService.java`: 일반 사용자 자진 삭제 시 로그인 사용자 PK(`userDetails.getMemberId()`)를 주입하여 `post.softDelete(deleterId)` 수행.
+     - `PostRepository.java`: `AdminPostProjection`에 `authorMemberId`, `deletedByMemberId`, `deleterNickname`, `deleterEmail`, `deleterRole` 프로젝션 추가. `findDeletedForAdmin` 네이티브 쿼리에 deleter 조인 추가. 관리자 즉시 소프트 삭제(`softDeleteByAdmin`) 및 복구(`restorePostByAdmin`) 네이티브 쿼리 구현.
+     - `AdminPostResponse.java`: `isDeletedByAuthor` 불리언 필드를 산출하여 작성자 본인 삭제 여부와 관리자 가리기 구분을 DTO 레벨에서 명확히 분리.
+     - `AdminPostController.java`: `GET /api/v1/admin/posts?onlyDeleted=true` (소프트 삭제된 글 전용 조회), `DELETE /api/v1/admin/posts/{publicId}` (관리자 가리기/소프트 삭제), `PATCH /api/v1/admin/posts/{publicId}/restore` (삭제글 복구) 엔드포인트 연동.
+  3. **프론트엔드 메인 피드 [가리기] UI 및 관리자 페이지 톤앤매너 전면 개편**:
+     - `HomePageClient.tsx`: 관리자(`profile?.role === 'ROLE_ADMIN'`) 로그인 시 1줄 피드 행(`.compact-post.m-row`)에 `.m-admin-blind-btn` [가리기] 버튼 노출. 클릭 시 확인 컨펌 후 관리자 소프트 삭제 API 호출 및 피드에서 즉시 실시간 제거.
+     - `globals.css`: 메인 톤앤매너와 어울리는 컴팩트 로즈 뱃지 `.m-admin-blind-btn` 스타일 추가.
+     - `frontend/app/admin/layout.tsx`: 어두운 슬레이트 테마를 Snowthing 고유의 화이트/스노우 캔버스(`--snow-background: #f4f6f9`, `--snow-canvas: #ffffff`, `--alpine-navy: #0f2942`, `--alpine-sky: #0284c7`) 디자인 시스템으로 전면 개편.
+     - `frontend/app/admin/posts/page.tsx`: 소프트 삭제된 글 전용 감사 뷰로 개편. 삭제 주체(작성자 본인 자진 삭제 vs 관리자 가리기/삭제자 닉네임·이메일 vs 비회원 비밀번호 삭제) 뱃지, 삭제 일시, 원문 열람 모달, 즉시 복구 기능 제공.
+     - `frontend/app/lib/api.ts`: `AdminPostItem` DTO 확장 및 `deletePost`, `restorePost` 엔드포인트 등록.
+  4. **검증 및 테스트**:
+     - 백엔드 전체 테스트 428+건 전수 통과 (`./gradlew test`).
+     - 프론트엔드 Next.js 정적 페이지 28개 전수 빌드 통과 (`npm run build`).
+     - 로컬 서버 통합 E2E 검증 (`verify_admin_soft_delete.py`): 일반 사용자 작성 글의 자진 삭제 (`isDeletedByAuthor: True`), 관리자 메인/콘솔 가리기 삭제 (`isDeletedByAuthor: False`, `deleterNickname: 최고관리자`), 관리자 삭제글 전용 목록 조회 및 복구 (`restore` -> 200 정상 복원) 전 과정 100% 검증 완료.
+
+
 ## 메인 화면 및 회원가입 정리 (2026-10-30 ~ 2026-10-31)
 
 - 2026-11-02 사용자 요청으로 운영 고아 이미지/프로필 교체·압축·다른 사용자 표시 경로를 점검했다. 운영 `115835b` 소스와 미커밋 로컬 보완을 분리 대조했고 프로필은 최대 320px JPEG 품질 0.8의 파일 하나, 이전 파일의 DB 정리 예약·분당 50건 배치·현재 참조 보호·실패 재시도 구조임을 확인했다. 운영 컨테이너의 CloudFront 배포 ID 누락으로 S3 삭제 후 CDN 무효화가 정상 완료될 수 없음을 확인했다. DB의 등록 프로필 URL/정리 대기는 조회 시점 각각 0건이지만, EC2 역할의 S3 ListBucket/GetLifecycleConfiguration 권한 거부로 실제 고아 수/별도 수명주기 정책은 확인하지 못했다. 일반 첨부 이미지의 앱 고아 정리기는 없고 메인/목록/채팅은 사진 URL 계약·렌더링 자체가 미연결이다. 상세/댓글은 Member의 현재 URL을 조회하지만 다른 브라우저에 실시간 변경 통지는 없다. 운영과 같은 hotfix 소스에서 프로필 관련 17개 테스트 통과(실제 MySQL·mock S3/CDN). 운영 업로드/삭제/회원 정보 변경이나 IAM/설정 수정은 수행하지 않았다. 자세한 근거·제약·후속 보완 제안은 `docs/project/profile-image-audit-20261102.md`에 기록했다.

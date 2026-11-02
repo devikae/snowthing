@@ -3684,3 +3684,26 @@ html[data-theme="dark"] .snow-empty-copy strong {
   font-size: 13px;
   font-weight: 500;
 }
+
+.m-admin-blind-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #e11d48;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+
+.m-admin-blind-btn:hover {
+  color: #ffffff;
+  background: #e11d48;
+  border-color: #e11d48;
+}
