@@ -1,5 +1,7 @@
 ## 메인 화면 및 회원가입 정리 (2026-10-30 ~ 2026-10-31)
 
+- 2026-11-02 사용자 hotfix 업로드·배포 승인으로 최신 운영 main `24ce814`에서 `hotfix/post-created-time-order`를 분리했다. CSV 작성 시각은 그대로 유지하고 게시글 offset/cursor 공통 조회를 `created_at DESC, post_id DESC` 및 같은 기준의 커서 조건으로 수정했다. 게시판별 삽입 순서가 시간순과 다를 때와 동일 시각의 페이지 경계를 검증하는 회귀 테스트 3개, API 명세·커서 설명을 함께 반영했다. 관련 Repository/Controller/Service 테스트 49개, 전체 Java 포맷 검사(Windows worktree의 JGit 경로 문제를 피하는 로컬 init script만 사용)와 bootJar를 통과했다. 첫 전체 429개 테스트 중 기존 추천 트리거 테스트 3개가 로컬 MySQL의 `log_bin_trust_function_creators=0` 때문에 실패하여 기존 CI와 동일하게 로컬 설정을 맞춘 후 전체 재검증한다. 프런트·디자인·동호회·진행 중인 리뷰 수정 및 DB 마이그레이션은 포함하지 않았다. hotfix PR의 CI 통과를 확인하고 병합·백엔드 배포 후 운영 메인과 offset/cursor 전체글 응답을 검증한다.
+
 - 2026-11-02 작업 중 PR #43/#44가 외부에서 병합된 것을 확인했다. 병합된 #44에는 추가 커밋이 들어가지 않으므로 수정분은 fix/site-renewal-review 후속 브랜치로 분리하고 최신 origin/main을 병합했다. OAuth 보안 핫픽스 파일을 되돌리는 차이가 없음을 확인했다. 최신 main 통합 후 전체 백엔드 426건(실패·오류 0, 기존 1건 skip), Spotless 및 프런트 lint/build를 재통과했다. #44 설명은 병합 당시 내용으로 복구했으며 후속 PR에서 19건 리뷰 수정과 상세/폼 보완을 설명한다. 기존 PR 재검수 명령은 closed 응답을 받았으므로 후속 PR에서 재검수를 진행한다. 직접 병합·운영 배포하지 않았다.
 
 - 2026-11-02 PR #44 CodeRabbit 19건 반영: MySQL 영속 호출 한도·큐 거절 비차감·본인 오류 알림, 070/국가번호와 절단 후 연락처 재검사, 프로필 이미지 영속 정리 및 CDN 재시도(021), 비밀번호 변경 공유 제한(022), 누락 선호 목록의 DTO/Jackson 검증, 카테고리 부분 초기화 복구, 가입 문서 불변 스냅샷/서버 버전 검증, 환경 예제와 브라우저/SEO 스크립트의 실패 탐지를 보완했다. 현재 Redis 비활성 설정을 유지하며 새 Redis 서버를 요구하지 않는다. 프런트·서버가 shared 문서를 함께 빌드하도록 Docker 컨텍스트와 CI 경로를 정리했다. 상세 근거는 docs/conception/015_local_security_review/02_pr44_review.md에 기록했다.
