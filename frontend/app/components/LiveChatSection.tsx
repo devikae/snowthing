@@ -136,8 +136,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     fetch(API_ENDPOINTS.public.configs)
       .then((res) => (res.ok ? res.json() : {} as Record<string, any>))
       .then((cfg: Record<string, any>) => {
-        if (cfg.chat_anonymous_enabled !== undefined) {
-          setAnonymousChatEnabled(cfg.chat_anonymous_enabled === "true" || cfg.chat_anonymous_enabled === true);
+        const enabled = cfg.anonymousChatEnabled ?? cfg.chat_anonymous_enabled;
+        if (enabled !== undefined) {
+          setAnonymousChatEnabled(enabled === true || enabled === "true");
         }
       })
       .catch(() => {});
@@ -165,7 +166,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             }
             if (payload.type === "CONFIG_UPDATED") {
               if (payload.key === "CHAT_ANONYMOUS_ENABLED") {
-                setAnonymousChatEnabled(Boolean(payload.value));
+                setAnonymousChatEnabled(payload.value === true || payload.value === "true");
               }
               return;
             }
@@ -380,9 +381,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       <form onSubmit={handleSubmit} className="live-chat-compose unified-capsule-form">
         <div className="capsule-select-wrap">
           <select
-            value={currentMember ? selectedResort : ""}
+            value={currentMember || anonymousChatEnabled ? selectedResort : ""}
             onChange={handleResortChange}
-            disabled={!currentMember}
+            disabled={!currentMember && !anonymousChatEnabled}
             aria-label="리조트 태그"
             className="live-chat-compose-select capsule-select"
           >
