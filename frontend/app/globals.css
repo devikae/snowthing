@@ -2263,13 +2263,18 @@ html[data-theme="dark"] .m-cat.notice {
 .live-chat-body {
   display: flex;
   flex: 1;
+  min-height: 0;
   flex-direction: column;
   gap: 14px;
 }
 
 .home-live-chat .live-chat-feed {
-  height: 404px;
-  flex: 1;
+  height: 420px;
+  max-height: 420px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--snow-border) transparent;
   gap: 16px;
   border: 1px solid var(--snow-border);
   border-radius: 16px;

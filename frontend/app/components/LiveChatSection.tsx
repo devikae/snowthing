@@ -36,6 +36,8 @@ interface ChatError {
 }
 
 const LOCAL_STORAGE_TAG_KEY = "snowthing_chat_resort";
+const GUEST_SENT_MSGS_KEY = "snowthing_guest_sent_msgs";
+const GUEST_NICKNAME_KEY = "snowthing_guest_nickname";
 const MAX_DOM_MESSAGES = 100;
 const RECONNECT_BASE_DELAY_MILLIS = 1000;
 const RECONNECT_MAX_DELAY_MILLIS = 30000;
@@ -93,6 +95,24 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const [toastError, setToastError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [localHelp, setLocalHelp] = useState<LocalChatCommand | null>(null);
+  const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(GUEST_SENT_MSGS_KEY) || "[]");
+      return new Set(stored);
+    } catch {
+      return new Set();
+    }
+  });
+  const [guestNickname, setGuestNickname] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return sessionStorage.getItem(GUEST_NICKNAME_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const pendingGuestSendsRef = useRef<{ content: string; time: number }[]>([]);
 
   const stompClientRef = useRef<Client | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -172,6 +192,30 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
               return;
             }
             const newMsg: ChatMessage = payload;
+            if (!currentMember) {
+              const matchIdx = pendingGuestSendsRef.current.findIndex(
+                (p) => p.content === newMsg.content && Math.abs(Date.now() - p.time) < 15000
+              );
+              if (matchIdx !== -1) {
+                pendingGuestSendsRef.current.splice(matchIdx, 1);
+                setMyGuestMessageIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(newMsg.messageId);
+                  try {
+                    const stored = JSON.parse(sessionStorage.getItem(GUEST_SENT_MSGS_KEY) || "[]");
+                    stored.push(newMsg.messageId);
+                    sessionStorage.setItem(GUEST_SENT_MSGS_KEY, JSON.stringify(stored.slice(-100)));
+                  } catch {}
+                  return next;
+                });
+                if (newMsg.sender?.nickname) {
+                  setGuestNickname(newMsg.sender.nickname);
+                  try {
+                    sessionStorage.setItem(GUEST_NICKNAME_KEY, newMsg.sender.nickname);
+                  } catch {}
+                }
+              }
+            }
             setMessages((previous) => mergeMessages(previous, [newMsg]));
 
             // 스크롤이 바닥 근처에 있을 때만 자동 스크롤
@@ -281,6 +325,10 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       return;
     }
 
+    if (!currentMember) {
+      pendingGuestSendsRef.current.push({ content: trimmed, time: Date.now() });
+    }
+
     const payload = {
       resortTag: selectedResort || null,
       content: trimmed,
@@ -328,12 +376,15 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             </div>
           ) : (
             messages.map((msg) => {
-              const isMine = Boolean(currentMember && msg.sender.publicId === currentMember.publicId);
+              const isMine = Boolean(
+                (currentMember && msg.sender.publicId === currentMember.publicId) ||
+                (!currentMember && myGuestMessageIds.has(msg.messageId))
+              );
               const resort = msg.resortTag ? RESORT_MAP[msg.resortTag] : null;
               return (
                 <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
                   <div className="live-chat-message-meta">
-                    {!isMine && <strong>{msg.sender.nickname}</strong>}
+                    {(!isMine || !currentMember) && <strong>{msg.sender.nickname}</strong>}
                     <span className="live-chat-message-tag">
                       <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
                       {resort ? resort.koreanName : "일반"}
@@ -411,7 +462,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             currentMember
               ? "메시지를 입력하세요"
               : anonymousChatEnabled
-              ? "비회원 라이브톡 (메시지 입력 시 랜덤 닉네임 자동 부여)"
+              ? guestNickname
+                ? `${guestNickname} (으)로 대화 참여 중...`
+                : "비회원 라이브톡 (메시지 입력 시 랜덤 닉네임 자동 부여)"
               : "로그인하고 라이브톡에 참여해보세요"
           }
           className={`live-chat-compose-input capsule-input ${!currentMember && !anonymousChatEnabled ? "cursor-pointer" : ""}`}
