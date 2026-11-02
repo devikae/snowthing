@@ -1,12 +1,11 @@
 package com.ikae.snowthing.domain.image.service;
 
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -16,6 +15,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ikae.snowthing.domain.image.dto.ImageUploadResponse;
+import com.ikae.snowthing.domain.image.entity.PostImageUpload;
+import com.ikae.snowthing.domain.image.repository.PostImageUploadRepository;
+import com.ikae.snowthing.domain.post.repository.PostImageRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -24,7 +26,8 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 @Service
 public class PostImageLifecycleService {
-    private final JdbcTemplate jdbc;
+    private final PostImageUploadRepository postImageUploadRepository;
+    private final PostImageRepository postImageRepository;
     private final ImageService images;
     private final ImageUrlResolver urls;
     private final S3Client s3;
@@ -37,19 +40,21 @@ public class PostImageLifecycleService {
     private static final String PREFIX = "public/posts/originals/";
 
     public PostImageLifecycleService(
-            JdbcTemplate jdbc,
+            PostImageUploadRepository postImageUploadRepository,
+            PostImageRepository postImageRepository,
             ImageService images,
             ImageUrlResolver urls,
             S3Client s3,
             Clock clock,
             PlatformTransactionManager manager) {
-        this.jdbc = jdbc;
+        this.postImageUploadRepository = postImageUploadRepository;
+        this.postImageRepository = postImageRepository;
         this.images = images;
         this.urls = urls;
         this.s3 = s3;
         this.clock = clock;
-        tx = new TransactionTemplate(manager);
-        tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.tx = new TransactionTemplate(manager);
+        this.tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     public ImageUploadResponse upload(MultipartFile file, String owner) {
@@ -60,21 +65,23 @@ public class PostImageLifecycleService {
         String key = prepared.key();
         tx.executeWithoutResult(
                 status ->
-                        jdbc.update(
-                                "INSERT INTO post_image_upload(image_key,owner_email,state,due_at) VALUES(?,?,'PENDING',?)",
-                                key,
-                                owner,
-                                Timestamp.from(clock.instant().plus(Duration.ofHours(1)))));
+                        postImageUploadRepository.save(
+                                PostImageUpload.builder()
+                                        .key(key)
+                                        .owner(owner)
+                                        .state("PENDING")
+                                        .due(clock.instant().plus(Duration.ofHours(1)))
+                                        .build()));
         return images.uploadPreparedImage(prepared);
     }
 
     // Must participate in the post transaction: cleanup and attachment share the same row lock.
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void protect(List<String> references, String owner) {
-        protect(references, owner, java.util.Set.of());
+        protect(references, owner, Set.of());
     }
 
-    private void protect(List<String> references, String owner, java.util.Set<String> trusted) {
+    private void protect(List<String> references, String owner, Set<String> trusted) {
         if (references == null) return;
         for (String key :
                 references.stream()
@@ -95,23 +102,18 @@ public class PostImageLifecycleService {
             if (key.contains(PREFIX + "m-") && !key.startsWith(PREFIX + "m-"))
                 throw new CustomException(ErrorCode.INVALID_INPUT);
             if (!key.startsWith("public/posts/")) continue;
-            var rows =
-                    jdbc.query(
-                            "SELECT owner_email,state FROM post_image_upload WHERE image_key=? FOR UPDATE",
-                            (row, index) -> new String[] {row.getString(1), row.getString(2)},
-                            key);
+
+            var uploadOpt = postImageUploadRepository.findByKeyForUpdate(key);
             boolean managed = key.startsWith(PREFIX + "m-");
-            if (rows.isEmpty() && !managed) continue;
-            if (rows.isEmpty()
+            if (uploadOpt.isEmpty() && !managed) continue;
+            if (uploadOpt.isEmpty()
                     || (managed
                             && !trusted.contains(key)
-                            && (owner == null || !owner.equals(rows.get(0)[0])))
-                    || !"PENDING".equals(rows.get(0)[1]))
+                            && (owner == null || !owner.equals(uploadOpt.get().getOwner())))
+                    || !"PENDING".equals(uploadOpt.get().getState()))
                 throw new CustomException(ErrorCode.INVALID_INPUT);
-            jdbc.update(
-                    "UPDATE post_image_upload SET due_at=? WHERE image_key=?",
-                    Timestamp.from(clock.instant().plus(Duration.ofHours(1))),
-                    key);
+
+            uploadOpt.get().renewDue(clock.instant().plus(Duration.ofHours(1)));
         }
     }
 
@@ -138,7 +140,7 @@ public class PostImageLifecycleService {
                 collectKeys(previousReferences, previousContent));
     }
 
-    private java.util.Set<String> collectKeys(List<String> references, String content) {
+    public Set<String> collectKeys(List<String> references, String content) {
         var matcher =
                 java.util.regex.Pattern.compile(
                                 "public/posts/(originals/)?(m-)?[0-9a-f-]{36}\\.(jpg|jpeg|png|webp)")
@@ -158,14 +160,8 @@ public class PostImageLifecycleService {
 
     @Scheduled(fixedDelayString = "${snowthing.post-images.cleanup-delay-ms:60000}")
     public void cleanup() {
-        jdbc.update(
-                "DELETE FROM post_image_upload WHERE state='DELETED' AND image_key LIKE 'public/posts/originals/m-%' AND due_at<=? LIMIT 100",
-                Timestamp.from(clock.instant()));
-        var keys =
-                jdbc.queryForList(
-                        "SELECT image_key FROM post_image_upload WHERE state<>'DELETED' AND due_at<=? ORDER BY due_at LIMIT 50",
-                        String.class,
-                        Timestamp.from(clock.instant()));
+        tx.executeWithoutResult(status -> postImageUploadRepository.deleteCompletedPurges(clock.instant()));
+        var keys = postImageUploadRepository.findKeysForCleanup(clock.instant());
         for (String key : keys) {
             try {
                 cleanOne(key);
@@ -185,41 +181,23 @@ public class PostImageLifecycleService {
                 Boolean.TRUE.equals(
                         tx.execute(
                                 status -> {
-                                    var rows =
-                                            jdbc.query(
-                                                    "SELECT due_at FROM post_image_upload WHERE image_key=? FOR UPDATE",
-                                                    (row, index) -> row.getTimestamp(1).toInstant(),
-                                                    key);
-                                    if (rows.isEmpty() || rows.get(0).isAfter(clock.instant()))
-                                        return false;
-                                    // Includes soft-deleted posts: recovery must retain their
-                                    // photos.
-                                    String filename = key.substring(key.lastIndexOf('/') + 1);
-                                    String stem = filename.substring(0, filename.lastIndexOf('.'));
-                                    Long count =
-                                            jdbc.queryForObject(
-                                                    "SELECT COUNT(*) FROM post_image WHERE image_url LIKE ?",
-                                                    Long.class,
-                                                    "%" + stem + "%");
-                                    Long inline =
-                                            jdbc.queryForObject(
-                                                    "SELECT COUNT(*) FROM post WHERE content LIKE ?",
-                                                    Long.class,
-                                                    "%" + stem + "%");
-                                    if ((count != null && count > 0)
-                                            || (inline != null && inline > 0)) {
-                                        jdbc.update(
-                                                "UPDATE post_image_upload SET due_at=? WHERE image_key=?",
-                                                Timestamp.from(
-                                                        clock.instant().plus(Duration.ofHours(1))),
-                                                key);
+                                    var uploadOpt =
+                                            postImageUploadRepository.findByKeyForUpdate(key);
+                                    if (uploadOpt.isEmpty()) return false;
+                                    var upload = uploadOpt.get();
+                                    if (upload.getDue().isAfter(clock.instant())) return false;
+
+                                    // Includes soft-deleted posts: recovery must retain their photos.
+                                    // Indexed lookup on post_image eliminates full table scan on post.content.
+                                    boolean inUse =
+                                            postImageRepository.existsByImageUrlIn(
+                                                    List.of(key, urls.toPublicUrl(key)));
+                                    if (inUse) {
+                                        upload.renewDue(clock.instant().plus(Duration.ofHours(1)));
                                         return false;
                                     }
-                                    jdbc.update(
-                                            "UPDATE post_image_upload SET state='DELETING',due_at=? WHERE image_key=?",
-                                            Timestamp.from(
-                                                    clock.instant().plus(Duration.ofMinutes(10))),
-                                            key);
+                                    upload.markDeleting(
+                                            clock.instant().plus(Duration.ofMinutes(10)));
                                     return true;
                                 }));
         if (!claimed) return;
@@ -252,9 +230,13 @@ public class PostImageLifecycleService {
         // Tombstones reject stale attempts to attach an already deleted upload.
         tx.executeWithoutResult(
                 status ->
-                        jdbc.update(
-                                "UPDATE post_image_upload SET state='DELETED',due_at=? WHERE image_key=?",
-                                Timestamp.from(clock.instant().plus(Duration.ofDays(7))),
-                                key));
+                        postImageUploadRepository
+                                .findByKeyForUpdate(key)
+                                .ifPresent(
+                                        upload -> {
+                                            upload.markDeleted();
+                                            upload.renewDue(
+                                                    clock.instant().plus(Duration.ofDays(7)));
+                                        }));
     }
 }

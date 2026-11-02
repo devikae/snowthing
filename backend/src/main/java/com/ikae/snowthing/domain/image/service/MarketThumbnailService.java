@@ -7,6 +7,7 @@ import java.util.*;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -20,6 +21,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 @Service
 public class MarketThumbnailService {
     private final JdbcTemplate jdbc;
+    private final NamedParameterJdbcTemplate namedJdbc;
     private final ImageService images;
     private final ImageUrlResolver urls;
     private final ImageProcessingGate gate;
@@ -43,6 +45,7 @@ public class MarketThumbnailService {
             PlatformTransactionManager manager,
             com.ikae.snowthing.global.security.SharedRequestLimiter limits) {
         this.jdbc = jdbc;
+        this.namedJdbc = new NamedParameterJdbcTemplate(jdbc);
         this.images = images;
         this.urls = urls;
         this.gate = gate;
@@ -66,18 +69,16 @@ public class MarketThumbnailService {
     }
 
     public Map<String, String> readyUrls(List<String> postIds) {
-        if (postIds.isEmpty()) return Map.of();
-        var placeholders = String.join(",", Collections.nCopies(postIds.size(), "?"));
+        if (postIds == null || postIds.isEmpty()) return Map.of();
         var result = new HashMap<String, String>();
-        jdbc.query(
-                "SELECT post_public_id FROM market_thumbnail WHERE source_key IS NOT NULL AND source_key=ready_source_key AND post_public_id IN ("
-                        + placeholders
-                        + ")",
+        var params = Collections.singletonMap("postIds", postIds);
+        namedJdbc.query(
+                "SELECT post_public_id FROM market_thumbnail WHERE source_key IS NOT NULL AND source_key=ready_source_key AND post_public_id IN (:postIds)",
+                params,
                 row -> {
                     String id = row.getString(1);
                     result.put(id, urls.toPublicUrl(objectKey(id)));
-                },
-                postIds.toArray());
+                });
         return Map.copyOf(result);
     }
 
@@ -89,7 +90,7 @@ public class MarketThumbnailService {
     public void process() {
         for (String id :
                 jdbc.queryForList(
-                        "SELECT post_public_id FROM market_thumbnail WHERE due_at<=? AND (lease_until IS NULL OR lease_until<=?) ORDER BY due_at LIMIT 20",
+                        "SELECT post_public_id FROM market_thumbnail WHERE due_at IS NOT NULL AND due_at<=? AND (lease_until IS NULL OR lease_until<=?) ORDER BY due_at LIMIT 20",
                         String.class,
                         Timestamp.from(clock.instant()),
                         Timestamp.from(clock.instant()))) {
@@ -116,11 +117,14 @@ public class MarketThumbnailService {
                                     jdbc.query(
                                             "SELECT source_key,ready_source_key,revision,due_at,lease_until FROM market_thumbnail WHERE post_public_id=? FOR UPDATE",
                                             (row, index) -> {
+                                                var due = row.getTimestamp(4);
                                                 var lease = row.getTimestamp(5);
                                                 if ((!orphan
-                                                                && row.getTimestamp(4)
-                                                                        .toInstant()
-                                                                        .isAfter(clock.instant()))
+                                                                && (due == null
+                                                                        || due.toInstant()
+                                                                                .isAfter(
+                                                                                        clock
+                                                                                                .instant())))
                                                         || (lease != null
                                                                 && lease.toInstant()
                                                                         .isAfter(clock.instant())))
@@ -179,10 +183,8 @@ public class MarketThumbnailService {
                         }
                         int updated =
                                 jdbc.update(
-                                        "UPDATE market_thumbnail SET ready_source_key=?,lease_until=NULL,due_at=? WHERE post_public_id=? AND revision=?",
+                                        "UPDATE market_thumbnail SET ready_source_key=?,lease_until=NULL,due_at=NULL WHERE post_public_id=? AND revision=?",
                                         job.source(),
-                                        Timestamp.from(
-                                                java.time.Instant.parse("9999-01-01T00:00:00Z")),
                                         id,
                                         job.revision());
                         if (updated == 0)

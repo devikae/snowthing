@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS post_image_upload (
     INDEX idx_image_upload_due (due_at)
 );
 
+CREATE INDEX IF NOT EXISTS idx_post_image_url ON post_image (image_url);
+
 -- Enroll existing attachments conservatively. All posts, including soft-deleted ones,
 -- remain references; existing unreferenced files require a separate reviewed manifest.
 INSERT IGNORE INTO post_image_upload(image_key, owner_email, state, due_at)

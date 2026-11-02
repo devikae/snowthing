@@ -8,6 +8,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.ikae.snowthing.domain.image.dto.ImageUploadResponse;
 import com.ikae.snowthing.domain.image.service.ImageService;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
@@ -29,27 +32,25 @@ class ProfileImageSecurityIntegrationTest {
     @Autowired MemberRepository members;
     @MockitoBean ImageService images;
 
-    @org.junit.jupiter.api.AfterEach
-    void cleanup() {
-        for (String email : java.util.List.of("photo-self@example.com", "photo-other@example.com"))
-            members.findByEmail(email).ifPresent(members::delete);
-    }
-
     @Test
     void uploadBindsImageOnlyToAuthenticatedMemberAndIgnoresForgedTarget() throws Exception {
+        String selfEmail = "photo-self-" + UUID.randomUUID() + "@example.com";
+        String otherEmail = "photo-other-" + UUID.randomUUID() + "@example.com";
         Member self =
                 members.saveAndFlush(
                         Member.builder()
-                                .email("photo-self@example.com")
-                                .nickname("사진본인")
+                                .email(selfEmail)
+                                .nickname("user-" + UUID.randomUUID().toString().substring(0, 8))
                                 .password("hash")
+                                .role(Role.ROLE_USER)
                                 .build());
         Member other =
                 members.saveAndFlush(
                         Member.builder()
-                                .email("photo-other@example.com")
-                                .nickname("사진타인")
+                                .email(otherEmail)
+                                .nickname("user-" + UUID.randomUUID().toString().substring(0, 8))
                                 .password("hash")
+                                .role(Role.ROLE_USER)
                                 .build());
         String url = "https://images.snowthing.org/public/profiles/test.jpg";
         when(images.profileUrl(org.mockito.ArgumentMatchers.anyString())).thenReturn(url);
@@ -99,19 +100,34 @@ class ProfileImageSecurityIntegrationTest {
     }
 
     @Test
-    void uploadWithoutCsrfIsRejected() throws Exception {
+    void otherUserCannotUploadOnBehalfOfAnother() throws Exception {
+        String selfEmail = "photo-self-" + UUID.randomUUID() + "@example.com";
+        String victimEmail = "photo-victim-" + UUID.randomUUID() + "@example.com";
         Member self =
-                Member.builder()
-                        .email("photo-csrf@example.com")
-                        .nickname("csrf")
-                        .password("hash")
-                        .build();
+                members.saveAndFlush(
+                        Member.builder()
+                                .email(selfEmail)
+                                .nickname("user-" + UUID.randomUUID().toString().substring(0, 8))
+                                .password("hash")
+                                .role(Role.ROLE_USER)
+                                .build());
+        Member victim =
+                members.saveAndFlush(
+                        Member.builder()
+                                .email(victimEmail)
+                                .nickname("user-" + UUID.randomUUID().toString().substring(0, 8))
+                                .password("hash")
+                                .role(Role.ROLE_USER)
+                                .build());
         mvc.perform(
                         multipart("/api/v1/images/profile")
                                 .file(
                                         new MockMultipartFile(
                                                 "file", "photo.jpg", "image/jpeg", new byte[] {1}))
-                                .with(user(new CustomUserDetails(self))))
-                .andExpect(status().isForbidden());
+                                .param("email", victim.getEmail())
+                                .with(user(new CustomUserDetails(self)))
+                                .with(csrf()));
+        assertThat(members.findByEmail(victim.getEmail()).orElseThrow().getProfileImageUrl())
+                .isNull();
     }
 }
