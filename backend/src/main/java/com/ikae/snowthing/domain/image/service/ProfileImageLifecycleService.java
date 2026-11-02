@@ -133,16 +133,24 @@ public class ProfileImageLifecycleService {
                                         jobs.findForUpdate(key)
                                                 .map(
                                                         job -> {
-                                                            if (job.getNotBefore().isAfter(clock.instant())) {
+                                                            if (job.getNotBefore()
+                                                                    .isAfter(clock.instant())) {
                                                                 return false;
                                                             }
-                                                            // Never delete a currently referenced object, even
+                                                            // Never delete a currently referenced
+                                                            // object, even
                                                             // after recovery races.
-                                                            if (members.existsByProfileImageUrl(job.getUrl())) {
+                                                            if (members.existsByProfileImageUrl(
+                                                                    job.getUrl())) {
                                                                 jobs.delete(job);
                                                                 return false;
                                                             }
-                                                            job.lease(clock.instant().plus(Duration.ofMinutes(5)));
+                                                            job.lease(
+                                                                    clock.instant()
+                                                                            .plus(
+                                                                                    Duration
+                                                                                            .ofMinutes(
+                                                                                                    5)));
                                                             return true;
                                                         })
                                                 .orElse(false)));
@@ -167,9 +175,11 @@ public class ProfileImageLifecycleService {
                                                                                 Math.min(
                                                                                         60,
                                                                                         1L
-                                                                                                << Math.min(
-                                                                                                        job.getAttempts(),
-                                                                                                        6)))));
+                                                                                                << Math
+                                                                                                        .min(
+                                                                                                                job
+                                                                                                                        .getAttempts(),
+                                                                                                                6)))));
                                                 log.warn(
                                                         "Profile image cleanup deferred: attempt={}, type={}",
                                                         job.getAttempts(),
