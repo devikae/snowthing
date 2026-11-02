@@ -381,6 +381,10 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
+  .home-live-chat .live-chat-feed {
+    height: 300px;
+    max-height: 300px;
+  }
   .community-container { width: calc(100% - 20px); }
   .alpine-logo { font-size: 18px; }
   .header-login { width: 34px; height: 34px; }
@@ -2269,8 +2273,8 @@ html[data-theme="dark"] .m-cat.notice {
 }
 
 .home-live-chat .live-chat-feed {
-  height: 420px;
-  max-height: 420px;
+  height: 660px;
+  max-height: 660px;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -2731,6 +2735,10 @@ html[data-theme="dark"] .cp-equip.ok {
     border-left: 0;
     padding: 24px 0;
   }
+  .home-live-chat .live-chat-feed {
+    height: 380px;
+    max-height: 380px;
+  }
   .home-tier-3 {
     grid-template-columns: 1fr;
     gap: 28px;
@@ -2747,6 +2755,10 @@ html[data-theme="dark"] .cp-equip.ok {
 }
 
 @media (max-width: 640px) {
+  .home-live-chat .live-chat-feed {
+    height: 300px;
+    max-height: 300px;
+  }
   .community-container {
     width: calc(100% - 28px);
   }

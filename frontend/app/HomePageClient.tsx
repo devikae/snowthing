@@ -275,11 +275,11 @@ export default function HomePageClient() {
     void (async () => {
       const results = await Promise.allSettled(
         HOME_FEED_TABS.map(async (tab) => {
-          const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+          const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
           const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
           if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
           const data = await response.json();
-          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 10) : [] };
+          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 15) : [] };
         }),
       );
 
@@ -322,12 +322,12 @@ export default function HomePageClient() {
 
   const retryFeed = async (tab: HomeFeedTab) => {
     setFeedErrors((current) => ({ ...current, [tab.key]: false }));
-    const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+    const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
     try {
       const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
       if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
       const data = await response.json();
-      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 10) : [] }));
+      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 15) : [] }));
     } catch {
       setFeedErrors((current) => ({ ...current, [tab.key]: true }));
     }
