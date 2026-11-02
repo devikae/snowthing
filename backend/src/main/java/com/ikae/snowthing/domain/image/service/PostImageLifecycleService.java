@@ -4,7 +4,6 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -54,16 +53,11 @@ public class PostImageLifecycleService {
     }
 
     public ImageUploadResponse upload(MultipartFile file, String owner) {
-        String id = "m-" + UUID.randomUUID();
-        String filename = file.getOriginalFilename();
-        if (filename == null || !filename.contains("."))
-            throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
-        String extension =
-                filename.substring(filename.lastIndexOf('.') + 1)
-                        .toLowerCase(java.util.Locale.ROOT);
-        if (!java.util.Set.of("jpg", "jpeg", "png", "webp").contains(extension))
-            throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
-        String key = PREFIX + id + ".jpg";
+        return upload(images.preparePostImage(file), owner);
+    }
+
+    public ImageUploadResponse upload(ImageService.PreparedPostImage prepared, String owner) {
+        String key = prepared.key();
         tx.executeWithoutResult(
                 status ->
                         jdbc.update(
@@ -71,17 +65,22 @@ public class PostImageLifecycleService {
                                 key,
                                 owner,
                                 Timestamp.from(clock.instant().plus(Duration.ofHours(1)))));
-        return images.uploadImage(file, id);
+        return images.uploadPreparedImage(prepared);
     }
 
     // Must participate in the post transaction: cleanup and attachment share the same row lock.
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void protect(List<String> references, String owner) {
+        protect(references, owner, java.util.Set.of());
+    }
+
+    private void protect(List<String> references, String owner, java.util.Set<String> trusted) {
         if (references == null) return;
         for (String key :
                 references.stream()
                         .map(urls::toStorageValue)
                         .filter(java.util.Objects::nonNull)
+                        .distinct()
                         .sorted()
                         .toList()) {
             if (key.contains("%")) {
@@ -104,7 +103,9 @@ public class PostImageLifecycleService {
             boolean managed = key.startsWith(PREFIX + "m-");
             if (rows.isEmpty() && !managed) continue;
             if (rows.isEmpty()
-                    || (managed && (owner == null || !owner.equals(rows.get(0)[0])))
+                    || (managed
+                            && !trusted.contains(key)
+                            && (owner == null || !owner.equals(rows.get(0)[0])))
                     || !"PENDING".equals(rows.get(0)[1]))
                 throw new CustomException(ErrorCode.INVALID_INPUT);
             jdbc.update(
@@ -121,15 +122,38 @@ public class PostImageLifecycleService {
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void protectAll(List<String> references, String content, String owner) {
+        protect(List.copyOf(collectKeys(references, content)), owner);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void protectExisting(
+            List<String> references,
+            String content,
+            String owner,
+            List<String> previousReferences,
+            String previousContent) {
+        protect(
+                List.copyOf(collectKeys(references, content)),
+                owner,
+                collectKeys(previousReferences, previousContent));
+    }
+
+    private java.util.Set<String> collectKeys(List<String> references, String content) {
         var matcher =
                 java.util.regex.Pattern.compile(
                                 "public/posts/(originals/)?(m-)?[0-9a-f-]{36}\\.(jpg|jpeg|png|webp)")
                         .matcher(content == null ? "" : content);
         var keys =
-                new java.util.ArrayList<String>(
+                new java.util.LinkedHashSet<String>(
                         references == null ? List.of() : List.copyOf(references));
-        while (matcher.find()) keys.add(matcher.group());
-        protect(keys, owner);
+        while (matcher.find()) {
+            keys.add(matcher.group());
+            if (keys.size() > 30) throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        return keys.stream()
+                .map(urls::toStorageValue)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     @Scheduled(fixedDelayString = "${snowthing.post-images.cleanup-delay-ms:60000}")
@@ -204,7 +228,7 @@ public class PostImageLifecycleService {
                 "public/posts/thumbnails/"
                         + filename.substring(0, filename.lastIndexOf('.'))
                         + ".jpg";
-        for (String object : List.of(key, thumb)) {
+        for (String object : key.startsWith(PREFIX + "m-") ? List.of(key) : List.of(key, thumb)) {
             try {
                 s3.putObjectTagging(
                         software.amazon.awssdk.services.s3.model.PutObjectTaggingRequest.builder()

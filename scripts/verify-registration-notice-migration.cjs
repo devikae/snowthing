@@ -16,7 +16,7 @@ try {
   const directory = path.join(__dirname, '../database/production');
   for (const file of fs.readdirSync(directory).filter(file => /^\d{3}_.*\.sql$/.test(file)).sort()) {
     const version = Number(file.slice(0, 3));
-    assert.ok(version <= 18 || (version >= 21 && version <= 24), 'Crew migrations must not enter this release');
+    assert.ok(version <= 18 || (version >= 21 && version <= 25), 'Crew migrations must not enter this release');
     sql(fs.readFileSync(path.join(directory, file), 'utf8'));
   }
   sql("INSERT INTO member(public_id,email,nickname) VALUES(UUID(),'migration-fixture@example.test','migration_fixture')");
@@ -35,9 +35,10 @@ try {
   sql(`DELETE FROM member WHERE member_id=${memberId}`);
   assert.equal(sql('SELECT COUNT(*) FROM member_registration_consent'), '0');
   assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='request_budget_window'"), '1');
-  assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='post_image_upload'"), '1');
+  sql(fs.readFileSync(path.join(directory, '025_migration_market_thumbnail.sql'), 'utf8'));
+  assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('post_image_upload','market_thumbnail')"), '2');
   assert.equal(sql("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='member' AND index_name='idx_member_profile_image_url'"), '1');
-  console.log('001-018 + 021-024 chain and repeated migrations: passed');
+  console.log('001-018 + 021-025 chain and repeated migrations: passed');
 } finally {
   sql(`DROP DATABASE ${database}`, false);
 }

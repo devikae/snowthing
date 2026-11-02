@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class ImageController {
 
     private final MemberService memberService;
+    private final com.ikae.snowthing.domain.image.service.ImageService imageService;
     private final ProfileActionRateLimiter profileActionRateLimiter;
     private final ProfileImageLifecycleService profileImages;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService postImages;
@@ -50,11 +51,17 @@ public class ImageController {
         if (userDetails == null) {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
-        profileActionRateLimiter.check(
-                userDetails.getUsername(), ProfileActionRateLimiter.Action.PHOTO);
         memberService.getMySettings(userDetails.getUsername());
+        var prepared =
+                processingGate.run(
+                        () -> {
+                            profileActionRateLimiter.check(
+                                    userDetails.getUsername(),
+                                    ProfileActionRateLimiter.Action.PHOTO);
+                            return imageService.prepareProfileImage(file);
+                        });
         ImageUploadResponse response =
-                processingGate.run(() -> profileImages.upload(userDetails.getUsername(), file));
+                profileImages.uploadPrepared(userDetails.getUsername(), prepared);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -66,10 +73,15 @@ public class ImageController {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
 
-        profileActionRateLimiter.check(
-                userDetails.getUsername(), ProfileActionRateLimiter.Action.POST_IMAGE);
-        ImageUploadResponse response =
-                processingGate.run(() -> postImages.upload(file, userDetails.getUsername()));
+        var prepared =
+                processingGate.run(
+                        () -> {
+                            profileActionRateLimiter.check(
+                                    userDetails.getUsername(),
+                                    ProfileActionRateLimiter.Action.POST_IMAGE);
+                            return imageService.preparePostImage(file);
+                        });
+        ImageUploadResponse response = postImages.upload(prepared, userDetails.getUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

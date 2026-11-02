@@ -238,11 +238,13 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
-        post.update(request.title(), request.content(), category);
-        imageLifecycle.protectAll(
+        imageLifecycle.protectExisting(
                 request.imageUrls(),
                 request.content(),
-                userDetails == null ? null : userDetails.getUsername());
+                userDetails == null ? null : userDetails.getUsername(),
+                post.getImages().stream().map(PostImage::getImageUrl).toList(),
+                post.getContent());
+        post.update(request.title(), request.content(), category);
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }
@@ -359,19 +361,14 @@ public class PostService {
 
     private PostListResponse toPostListResponse(Post post) {
         PostListResponse response = PostListResponse.from(post);
-        return response.withThumbnailImageUrl(
-                imageUrlResolver.toThumbnailPublicUrl(response.thumbnailImageUrl()));
+        return response.withThumbnailImageUrl(null);
     }
 
     private CursorPageResponse<PostListResponse> resolveThumbnailUrls(
             CursorPageResponse<PostListResponse> page) {
         List<PostListResponse> content =
                 page.content().stream()
-                        .map(
-                                response ->
-                                        response.withThumbnailImageUrl(
-                                                imageUrlResolver.toThumbnailPublicUrl(
-                                                        response.thumbnailImageUrl())))
+                        .map(response -> response.withThumbnailImageUrl(null))
                         .toList();
         return new CursorPageResponse<>(content, page.pageInfo());
     }

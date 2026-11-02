@@ -52,6 +52,12 @@ public class ProfileImageLifecycleService {
     public ImageUploadResponse upload(String email, MultipartFile file) {
         String key = "public/profiles/" + UUID.randomUUID() + ".jpg";
         ImageService.PreparedProfileImage prepared = images.prepareProfileImage(file, key);
+        return uploadPrepared(email, prepared);
+    }
+
+    public ImageUploadResponse uploadPrepared(
+            String email, ImageService.PreparedProfileImage prepared) {
+        String key = prepared.key();
         String url = images.profileUrl(key);
         // Commit recovery intent before touching S3, including for a process crash.
         transactions.executeWithoutResult(

@@ -45,13 +45,21 @@ response = aws('cloudfront', 'get-distribution-config', '--id', DISTRIBUTION)
 document('distribution-before.json', response)
 config = response['DistributionConfig']
 behaviors = config.get('CacheBehaviors', {}).get('Items', [])
-if not any(x['PathPattern'] == 'public/profiles/*' for x in behaviors):
+before = json.dumps(config, sort_keys=True)
+profile = next((x for x in behaviors if x['PathPattern'] == 'public/profiles/*'), None)
+if profile is None:
     default = config['DefaultCacheBehavior']
     behavior = {k: v for k, v in default.items() if k not in ('MinTTL', 'DefaultTTL', 'MaxTTL', 'ForwardedValues')}
     behavior['PathPattern'] = 'public/profiles/*'
-    behavior['CachePolicyId'] = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
-    behaviors.insert(0, behavior)
-    config['CacheBehaviors'] = {'Quantity': len(behaviors), 'Items': behaviors}
+    profile = behavior
+else:
+    behaviors.remove(profile)
+for field in ('MinTTL','DefaultTTL','MaxTTL','ForwardedValues'):
+    profile.pop(field, None)
+profile['CachePolicyId'] = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
+behaviors.insert(0, profile)
+config['CacheBehaviors'] = {'Quantity': len(behaviors), 'Items': behaviors}
+if before != json.dumps(config, sort_keys=True):
     aws('cloudfront', 'update-distribution', '--id', DISTRIBUTION, '--if-match', response['ETag'], '--distribution-config', document('distribution-after.json', config))
 print('Applied profile read/delete permissions and disabled profile caching.')
 print('Backups:', backup)

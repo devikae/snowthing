@@ -53,6 +53,11 @@ class ProfileImageSecurityIntegrationTest {
                                 .build());
         String url = "https://images.snowthing.org/public/profiles/test.jpg";
         when(images.profileUrl(org.mockito.ArgumentMatchers.anyString())).thenReturn(url);
+        when(images.prepareProfileImage(any(org.springframework.web.multipart.MultipartFile.class)))
+                .thenReturn(
+                        new ImageService.PreparedProfileImage(
+                                "public/profiles/11111111-1111-1111-1111-111111111111.jpg",
+                                new byte[] {1}));
         when(images.prepareProfileImage(any(), org.mockito.ArgumentMatchers.anyString()))
                 .thenAnswer(
                         invocation ->

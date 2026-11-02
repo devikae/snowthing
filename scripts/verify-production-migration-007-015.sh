@@ -47,7 +47,8 @@ for version in \
   021_migration_profile_image_cleanup \
   022_migration_shared_request_budget \
   023_migration_member_profile_image_url_index \
-  024_migration_post_image_upload; do
+  024_migration_post_image_upload \
+  025_migration_market_thumbnail; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done

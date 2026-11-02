@@ -143,7 +143,7 @@ Client
 | 형식 | JPG, JPEG, PNG, WebP |
 | 원본 | `public/posts/originals/` |
 | 썸네일 | `public/posts/thumbnails/` |
-| 썸네일 규격 | 최대 320×320, JPEG 품질 0.8 |
+| 썸네일 규격 | 장터 글의 첫 사진 하나만 최대 320×320, JPEG 품질 0.8 |
 | DB 저장 | 원본 객체 키 또는 기존 호환 저장값 |
 | 상세 | 원본 CloudFront URL |
 | 목록 | 첫 이미지의 썸네일 CloudFront URL |

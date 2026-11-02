@@ -67,14 +67,52 @@ class ImageServiceTest {
         var result = imageService.uploadImage(file, "m-11111111-1111-1111-1111-111111111111");
         var requests = ArgumentCaptor.forClass(PutObjectRequest.class);
         var bodies = ArgumentCaptor.forClass(RequestBody.class);
-        verify(s3Client, times(2)).putObject(requests.capture(), bodies.capture());
+        verify(s3Client, times(1)).putObject(requests.capture(), bodies.capture());
         assertThat(result.imageKey()).endsWith(".jpg");
         assertThat(requests.getAllValues())
                 .allSatisfy(request -> assertThat(request.contentType()).isEqualTo("image/jpeg"));
-        try (var input = bodies.getAllValues().get(1).contentStreamProvider().newStream()) {
+        assertThat(requests.getValue().key()).contains("/originals/");
+        try (var input = bodies.getAllValues().get(0).contentStreamProvider().newStream()) {
             var image = ImageIO.read(input);
             assertThat(image.getWidth()).isLessThanOrEqualTo(1920);
             assertThat(image.getHeight()).isLessThanOrEqualTo(1920);
+        }
+    }
+
+    @Test
+    void marketThumbnailWritesOnlyOneSmallObject() throws Exception {
+        when(s3Client.getObjectAsBytes(
+                        any(software.amazon.awssdk.services.s3.model.GetObjectRequest.class)))
+                .thenReturn(
+                        software.amazon.awssdk.core.ResponseBytes.fromByteArray(
+                                software.amazon.awssdk.services.s3.model.GetObjectResponse.builder()
+                                        .build(),
+                                createPng(1000, 600)));
+        imageService.createMarketThumbnail(
+                "public/posts/originals/m-11111111-1111-1111-1111-111111111111.jpg",
+                "public/posts/thumbnails/market-22222222-2222-2222-2222-222222222222.jpg");
+        var requests = ArgumentCaptor.forClass(PutObjectRequest.class);
+        var bodies = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client, times(1)).putObject(requests.capture(), bodies.capture());
+        assertThat(requests.getValue().key()).contains("/thumbnails/market-");
+        try (var input = bodies.getValue().contentStreamProvider().newStream()) {
+            var image = ImageIO.read(input);
+            assertThat(image.getWidth()).isLessThanOrEqualTo(320);
+            assertThat(image.getHeight()).isLessThanOrEqualTo(320);
+        }
+    }
+
+    @Test
+    void smallManagedPhotoIsNotUpscaled() throws Exception {
+        imageService.uploadImage(
+                new MockMultipartFile("file", "small.png", "image/png", createPng(100, 60)),
+                "m-11111111-1111-1111-1111-111111111111");
+        var bodies = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(any(PutObjectRequest.class), bodies.capture());
+        try (var input = bodies.getValue().contentStreamProvider().newStream()) {
+            var image = ImageIO.read(input);
+            assertThat(image.getWidth()).isEqualTo(100);
+            assertThat(image.getHeight()).isEqualTo(60);
         }
     }
 

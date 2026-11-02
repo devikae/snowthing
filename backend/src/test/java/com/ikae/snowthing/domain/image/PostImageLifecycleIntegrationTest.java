@@ -81,11 +81,11 @@ class PostImageLifecycleIntegrationTest {
     }
 
     @Test
-    void abandonedUploadDeletesBothObjectsAndRejectsStaleAttachment() throws Exception {
+    void abandonedUploadDeletesOriginalAndRejectsStaleAttachment() throws Exception {
         String key = upload();
         expire(key);
         lifecycle.cleanOne(key);
-        verify(s3, times(2)).deleteObject(any(DeleteObjectRequest.class));
+        verify(s3, times(1)).deleteObject(any(DeleteObjectRequest.class));
         assertThat(state(key)).isEqualTo("DELETED");
         assertThatThrownBy(
                         () ->
@@ -114,7 +114,74 @@ class PostImageLifecycleIntegrationTest {
                 user);
         expire(key);
         lifecycle.cleanOne(key);
-        verify(s3, times(2)).deleteObject(any(DeleteObjectRequest.class));
+        verify(s3, times(1)).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    void anonymousPasswordEditRetainsExistingPhotoButCannotIntroduceAnotherUpload()
+            throws Exception {
+        String key = upload();
+        var post =
+                posts.createPost(
+                        new PostCreateRequest(
+                                "FREE", "anonymous", "body", true, "test-password", List.of(key)),
+                        user,
+                        "127.0.0.1");
+        assertThatCode(
+                        () ->
+                                posts.updatePost(
+                                        post.publicId(),
+                                        new PostUpdateRequest(
+                                                "FREE",
+                                                "edited",
+                                                "body",
+                                                "test-password",
+                                                List.of(key)),
+                                        null))
+                .doesNotThrowAnyException();
+        String another = upload();
+        assertThatThrownBy(
+                        () ->
+                                posts.updatePost(
+                                        post.publicId(),
+                                        new PostUpdateRequest(
+                                                "FREE",
+                                                "edited",
+                                                "body",
+                                                "test-password",
+                                                List.of(key, another)),
+                                        null))
+                .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    void repeatedInlineKeysAreDeduplicatedAndDistinctKeysAreBounded() throws Exception {
+        String key = upload();
+        assertThatCode(
+                        () ->
+                                posts.createPost(
+                                        new PostCreateRequest(
+                                                "FREE",
+                                                "repeated",
+                                                (key + " ").repeat(100),
+                                                false,
+                                                null,
+                                                List.of(key)),
+                                        user,
+                                        "127.0.0.1"))
+                .doesNotThrowAnyException();
+        String many =
+                java.util.stream.IntStream.range(0, 31)
+                        .mapToObj(i -> "public/posts/originals/m-" + UUID.randomUUID() + ".jpg")
+                        .collect(java.util.stream.Collectors.joining(" "));
+        assertThatThrownBy(
+                        () ->
+                                posts.createPost(
+                                        new PostCreateRequest(
+                                                "FREE", "many", many, false, null, List.of()),
+                                        user,
+                                        "127.0.0.1"))
+                .isInstanceOf(CustomException.class);
     }
 
     @Test

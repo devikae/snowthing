@@ -28,7 +28,7 @@ public enum ErrorCode {
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     PROFILE_LIMIT_UNAVAILABLE(
-            HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "비밀번호 변경을 일시적으로 처리할 수 없습니다."),
+            HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     PROFILE_CDN_NOT_CONFIGURED(
             HttpStatus.SERVICE_UNAVAILABLE, "FILE_006", "프로필 이미지 캐시 정리 설정이 필요합니다."),
     REGISTRATION_POLICY_UNAVAILABLE(
