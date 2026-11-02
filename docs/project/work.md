@@ -21,6 +21,7 @@
      - `frontend/app/lib/api.ts`: `AdminPostItem` DTO 확장 및 `deletePost`, `restorePost` 엔드포인트 등록.
      - `DeleteConfirmModal.tsx`: 네오브루탈리즘 스타일(2px 검은 테두리, 하드 섀도우, 이탤릭 타이틀, CANCEL 영문 모노 폰트, 원색 빨간 사각 버튼)을 전면 제거하고, Snowthing 테마 토큰(`--snow-canvas`, `--snow-ink`, `--snow-border`) 기반의 모던 라운드 다이얼로그 및 국문 '취소'/'삭제' 버튼으로 리팩토링.
      - `frontend/app/admin/layout.tsx` & `admin/posts/page.tsx`: 어드민 헤더에 실시간 `AdminThemeToggle` (라이트/다크 모드 전환 버튼)을 탑재하고, 모든 어드민 뷰와 테이블, 모달을 CSS 변수 토큰으로 연동하여 라이트/다크 모드 완벽 지원.
+     - `SiteChrome.tsx` & `layout.tsx`: 새로고침/로딩 시 구글 웹폰트 합자(Ligature) 지연으로 'keyboard_arrow_down' 영문 텍스트가 번쩍이며 노출되던 FOUT(Flash of Unstyled Text) 결함을 해결. 헤더 게시판 드롭다운 화살표를 인라인 경량 SVG 컴포넌트(`<ChevronDownIcon />`)로 전면 교체하여 0ms 즉시 렌더링을 보장하고, `layout.tsx`의 Material Symbols 웹폰트 display 옵션을 `block`으로 전환하여 전체 텍스트 깜빡임 차단.
   4. **검증 및 테스트**:
      - 백엔드 전체 테스트 428+건 전수 통과 (`./gradlew test`).
      - 프론트엔드 Next.js 정적 페이지 28개 전수 빌드 통과 (`npm run build`).

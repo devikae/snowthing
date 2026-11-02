@@ -273,8 +273,8 @@ button:disabled {
 .header-board-menu { position: relative; }
 .header-board-menu > summary { cursor: pointer; list-style: none; }
 .header-board-menu > summary::-webkit-details-marker { display: none; }
-.header-board-menu > summary .material-symbols-outlined { font-size: 18px; transition: transform .16s ease; }
-.header-board-menu[open] > summary .material-symbols-outlined { transform: rotate(180deg); }
+.header-board-menu > summary .material-symbols-outlined, .header-board-menu > summary .board-arrow-icon { font-size: 18px; width: 18px; height: 18px; flex-shrink: 0; transition: transform .16s ease; }
+.header-board-menu[open] > summary .material-symbols-outlined, .header-board-menu[open] > summary .board-arrow-icon { transform: rotate(180deg); }
 .header-board-dropdown { position: absolute; top: calc(100% + 10px); left: 0; display: grid; width: 176px; gap: 3px; border: 1px solid #dbe3ed; border-radius: 12px; background: white; padding: 7px; box-shadow: 0 16px 40px rgba(15,41,66,.14); }
 .header-board-dropdown a { border-radius: 8px; padding: 10px 11px; color: #475569; font-size: 12px; font-weight: 650; }
 .header-board-dropdown a:hover,.header-board-dropdown a.nav-active { background: #f0f9ff; color: #075985; }

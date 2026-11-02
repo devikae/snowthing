@@ -55,6 +55,21 @@ function ThemeToggle() {
   );
 }
 
+function ChevronDownIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={`board-arrow-icon ${className}`}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+    </svg>
+  );
+}
+
 export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools";
 
 interface MemberUser {
@@ -135,7 +150,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <details className="header-board-menu">
                 <summary className={boardActive ? "nav-active" : ""}>
                   게시판
-                  <span className="material-symbols-outlined">keyboard_arrow_down</span>
+                  <ChevronDownIcon />
                 </summary>
                 <div className="header-board-dropdown">
                   {boardItems.map((item) => (
