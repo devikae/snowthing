@@ -145,6 +145,12 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "REPORT_005", "설질 제보는 최대 100페이지까지 조회할 수 있습니다."),
     RESORT_REPORT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "REPORT_006", "설질 제보 페이지 크기는 1 이상 100 이하이어야 합니다."),
+    CHAT_IP_BANNED(HttpStatus.FORBIDDEN, "CHAT_008", "차단된 IP입니다. 라이브톡에 참여할 수 없습니다."),
+    CHAT_ANONYMOUS_DISABLED(
+            HttpStatus.FORBIDDEN, "CHAT_009", "현재 비로그인 사용자의 라이브톡 발신이 제한되어 있습니다."),
+    CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_001", "존재하지 않는 시스템 설정입니다."),
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_002", "존재하지 않는 배너입니다."),
+    POST_BLINDED(HttpStatus.FORBIDDEN, "POST_007", "관리자에 의해 블라인드 처리된 게시글입니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

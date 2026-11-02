@@ -147,4 +147,10 @@ public class Member extends BaseTimeEntity {
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+
+    public void updateStatus(MemberStatus status) {
+        if (status != null) {
+            this.status = status;
+        }
+    }
 }

@@ -2280,3 +2280,40 @@
 - 프런트 의존성 설치 시 현재 lockfile 기준 npm 취약점 11건(중간 2, 높음 8, 치명적 1)이 보고됐다. 이번 핫픽스에서 의존성 버전은 변경하지 않았으며 별도 의존성 보안 점검이 필요하다.
 - PR #43 CodeRabbit 추가 리뷰를 반영했다. 다른 공급자 콜백은 같은 `state`를 전달받아도 원래 요청을 소비하지 않으며, 정상 공급자 콜백에서만 제거한다.
 - 신규 네이버·구글 외부 도메인 프로필은 실제 이메일로 `Member.email`을 점유하지 않는다. 제공자와 사용자 ID의 SHA-256 결과로 만든 `@users.invalid` 내부 식별 이메일을 회원 조회 키로 쓰고 실제 이메일은 `MemberSocialAccount.providerEmail`에만 저장한다. 기존 연결 회원은 데이터 변경 없이 제공자 ID 로그인을 유지하며 과거 데이터 정리는 별도 점검으로 남긴다.
+
+
+## 관리자 대시보드 및 시스템 운영 제어 콘솔 구축 (2026-11-02)
+
+- 브랜치: `feature/admin-dashboard`
+- **DB 마이그레이션 (`024_migration_admin_system_dashboard.sql`)**:
+  - `system_config` (동적 시스템 설정 저장소: 비로그인 채팅 On/Off 등)
+  - `daily_visitor_log` (일일 고유 방문자 해시 로그: `UNIQUE KEY uk_stat_date_hash`)
+  - `daily_visitor_stats` (일자별 DAU, 회원/게스트 방문자수, PV 통계)
+  - `chat_banned_ip` (채팅 IP 차단 내역 및 만료일)
+  - `banner` (메인 상단 배너 관리: 제목, 이미지, 링크, 순서, 노출여부)
+  - `post` 테이블에 `is_blinded` 컬럼 추가
+  - 마이그레이션 스크립트(`scripts/verify-registration-notice-migration.cjs`) 검증 통과 (001~018, 021~024 체인 검증).
+- **방문자 집계 및 보안 아키텍처**:
+  - IP 원문을 저장하지 않고 일자별 Salt 기반 `SHA-256(client_ip + user_agent + date)` 익명 해시 적용.
+  - Caffeine 30분 인메모리 필터 + `INSERT IGNORE`를 조합하여 동시성 DB 부하를 최소화하고 정확한 DAU 및 PV를 원자적으로 집계.
+  - `VisitorTrackingInterceptor` 및 `WebMvcConfigurer`를 통해 일반 조회 요청을 비동기 트랜잭션(`PROPAGATION_REQUIRES_NEW`)으로 무간섭 집계.
+- **실시간 라이브톡 비로그인 발신 및 IP 밴 제어**:
+  - 관리자 설정(`CHAT_ANONYMOUS_ENABLED`)이 ON일 경우 비로그인 사용자에게 귀여운 랜덤 닉네임(예: `눈사람#4812`, `슬로프요정#1234`)을 자동 부여하여 채팅 참여 허용.
+  - 비로그인 유저도 IP 기반 버스트 윈도우(1초 4회) 및 중복 메시지(3초 쿨다운) 레이트 리미트 엄격 적용.
+  - 관리자가 라이브톡 메시지에서 원클릭으로 [차단] 클릭 시, `ChatRecentHistoryBuffer`의 IP 매핑을 역추적하여 IP를 차단하고 웹소켓 `PURGE_MESSAGES` 브로드캐스트를 전송하여 모든 접속자의 화면에서 해당 악성 메시지를 실시간 동시 제거.
+- **불량 회원 및 게시글 관리**:
+  - 회원 관리: 이메일/닉네임 검색, 상태 전환(`ACTIVE` <-> `SUSPENDED`), 닉네임 강제 수정, 불쾌/음란 프로필 사진 강제 영구 삭제(`ProfileImageLifecycleService`를 통한 S3 버킷 파일 영구 삭제 및 기본 프사 초기화).
+  - 게시글 관리: 사용자가 삭제한 글(`is_deleted = true`) 원본 본문 열람 모달 지원 및 관리자 강제 숨김(`is_blinded = true`) 토글 제어.
+- **메인 배너 관리**:
+  - 배너 CRUD 및 노출 On/Off 토글, 노출 순서 관리 API 및 화면 구축.
+- **프론트엔드 관리자 UI (`/admin`)**:
+  - `/admin/layout.tsx`: 사이드바 및 `ROLE_ADMIN` 권한 검증 (비인가자 접근 시 차단 카드 및 로그인 유도).
+  - `/admin/page.tsx`: DAU/PV/회원수 KPI 카드, 비로그인 채팅 원클릭 토글 스위치, 7일/30일 추이 차트.
+  - `/admin/members/page.tsx`: 회원 목록, 검색, 상태 전환, 닉네임 변경 모달, 프사 삭제.
+  - `/admin/posts/page.tsx`: 게시글 목록, 삭제글/블라인드글 필터, 원문 열람 모달, 블라인드 토글.
+  - `/admin/chat/page.tsx`: 차단된 IP 목록, 수동 차단 추가 모달, 차단 해제.
+  - `/admin/banners/page.tsx`: 배너 목록, 배너 등록/수정 모달, 활성 토글 및 삭제.
+  - 메인 라이브톡(`LiveChatSection.tsx`): 비로그인 채팅 지원 및 관리자 접속 시 실시간 원클릭 IP 차단 버튼 제공.
+- **검증**:
+  - 백엔드 428+ 테스트 전체 통과 (`./gradlew test`)
+  - 프론트엔드 전체 Next.js 빌드 및 정적 페이지 생성 통과 (`npm run build`)

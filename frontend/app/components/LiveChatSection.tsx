@@ -77,6 +77,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputContent, setInputContent] = useState("");
+  const [anonymousChatEnabled, setAnonymousChatEnabled] = useState(false);
   const [selectedResort, setSelectedResort] = useState<string>(() => {
     if (typeof window === "undefined") return "";
 
@@ -132,6 +133,15 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
 
   // 4. 웹소켓 STOMP 클라이언트 연결 생명주기
   useEffect(() => {
+    fetch(API_ENDPOINTS.public.configs)
+      .then((res) => (res.ok ? res.json() : {} as Record<string, any>))
+      .then((cfg: Record<string, any>) => {
+        if (cfg.chat_anonymous_enabled !== undefined) {
+          setAnonymousChatEnabled(cfg.chat_anonymous_enabled === "true" || cfg.chat_anonymous_enabled === true);
+        }
+      })
+      .catch(() => {});
+
     const wsUrl = API_BASE_URL.replace(/^http/, "ws") + "/ws-chat";
 
     const client = new Client({
@@ -147,7 +157,19 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         // 메인 광장 브로드캐스트 채널 구독
         client.subscribe("/sub/chat/main", (frame) => {
           try {
-            const newMsg: ChatMessage = JSON.parse(frame.body);
+            const payload = JSON.parse(frame.body);
+            if (payload.type === "PURGE_MESSAGES") {
+              const purgedIds: string[] = payload.messageIds || [];
+              setMessages((previous) => previous.filter((m) => !purgedIds.includes(m.messageId)));
+              return;
+            }
+            if (payload.type === "CONFIG_UPDATED") {
+              if (payload.key === "CHAT_ANONYMOUS_ENABLED") {
+                setAnonymousChatEnabled(Boolean(payload.value));
+              }
+              return;
+            }
+            const newMsg: ChatMessage = payload;
             setMessages((previous) => mergeMessages(previous, [newMsg]));
 
             // 스크롤이 바닥 근처에 있을 때만 자동 스크롤
@@ -221,6 +243,22 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   }, [toastError]);
 
   // 6. 메시지 전송
+  const handleAdminBanMessage = async (messageId: string, nickname: string) => {
+    if (!window.confirm(`[${nickname}] 사용자의 IP를 차단하고 최근 채팅 메시지를 일괄 삭제하시겠습니까?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(API_ENDPOINTS.admin.banMessageIp(messageId), {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("IP 차단 처리에 실패했습니다.");
+      setMessages((prev) => prev.filter((m) => m.messageId !== messageId));
+    } catch (err: any) {
+      alert(err.message || "차단 실패");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const command = localChatCommand(inputContent);
@@ -229,7 +267,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       setInputContent("");
       return;
     }
-    if (!currentMember) {
+    if (!currentMember && !anonymousChatEnabled) {
       router.push("/login");
       return;
     }
@@ -299,6 +337,16 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
                       {resort ? resort.koreanName : "일반"}
                     </span>
                     <time>{formatRelativeTime(msg.sentAt)}</time>
+                    {currentMember?.role === "ROLE_ADMIN" && !isMine && (
+                      <button
+                        type="button"
+                        onClick={() => handleAdminBanMessage(msg.messageId, msg.sender.nickname)}
+                        title="이 사용자 IP 차단 및 최근 메시지 삭제"
+                        className="text-[10px] text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded font-bold transition ml-1"
+                      >
+                        차단
+                      </button>
+                    )}
                   </div>
                   <div className="live-chat-message-bubble">{msg.content}</div>
                 </div>
@@ -352,18 +400,20 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           value={inputContent}
           onChange={(e) => setInputContent(e.target.value)}
           onClick={() => {
-            if (!currentMember) {
+            if (!currentMember && !anonymousChatEnabled) {
               router.push("/login");
             }
           }}
           onFocus={() => {
-            if (!currentMember) {
+            if (!currentMember && !anonymousChatEnabled) {
               router.push("/login");
             }
           }}
           placeholder={
             currentMember
-              ? "메세지를 입력하세요"
+              ? "메시지를 입력하세요"
+              : anonymousChatEnabled
+              ? "비회원 라이브톡 (메시지 입력 시 랜덤 닉네임 자동 부여)"
               : "로그인하고 라이브톡에 참여해보세요"
           }
           className="live-chat-compose-input capsule-input"
@@ -371,7 +421,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
 
         <button
           type="submit"
-          disabled={Boolean(currentMember && !inputContent.trim())}
+          disabled={!inputContent.trim()}
           aria-label="메시지 전송"
           className="live-chat-compose-submit capsule-send-btn"
         >

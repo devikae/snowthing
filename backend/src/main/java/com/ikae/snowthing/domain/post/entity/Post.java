@@ -84,6 +84,9 @@ public class Post extends BaseTimeEntity {
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
 
+    @Column(name = "is_blinded", nullable = false)
+    private boolean isBlinded = false;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -116,6 +119,10 @@ public class Post extends BaseTimeEntity {
 
     public void changeStatus(PostStatus status) {
         this.status = status;
+    }
+
+    public void setBlinded(boolean blinded) {
+        this.isBlinded = blinded;
     }
 
     public void update(String title, String content, PostCategory category) {

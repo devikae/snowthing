@@ -30,4 +30,13 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM Member m WHERE m.id = :memberId")
     Optional<Member> findByIdForUpdate(@Param("memberId") Long memberId);
+
+    long countByCreatedAtAfter(java.time.LocalDateTime createdAt);
+
+    org.springframework.data.domain.Page<Member> findByEmailContainingOrNicknameContaining(
+            String email, String nickname, org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<Member> findByStatus(
+            com.ikae.snowthing.domain.member.entity.MemberStatus status,
+            org.springframework.data.domain.Pageable pageable);
 }
