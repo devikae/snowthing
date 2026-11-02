@@ -111,7 +111,7 @@ class OAuth2ExternalClientTest {
         assertThat(profile.provider()).isEqualTo(SocialProvider.GOOGLE);
         assertThat(profile.providerUserId()).isEqualTo("google-user-999");
         assertThat(profile.email()).isEqualTo("rider@gmail.com");
-        assertThat(profile.emailVerified()).isTrue();
+        assertThat(profile.emailAuthoritative()).isTrue();
         assertThat(profile.nickname()).isEqualTo("구글보더");
         mockServer.verify();
     }
@@ -163,8 +163,75 @@ class OAuth2ExternalClientTest {
         assertThat(profile.provider()).isEqualTo(SocialProvider.NAVER);
         assertThat(profile.providerUserId()).isEqualTo("naver-user-777");
         assertThat(profile.email()).isEqualTo("rider@naver.com");
-        assertThat(profile.emailVerified()).isTrue();
+        assertThat(profile.emailAuthoritative()).isFalse();
         assertThat(profile.nickname()).isEqualTo("네이버스키어");
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("Google 외부 도메인은 email_verified가 true여도 현재 소유권의 권위 있는 증명으로 취급하지 않는다")
+    void fetchUserProfile_GoogleExternalEmail_IsNotAuthoritative() {
+        mockServer
+                .expect(requestTo("https://oauth2.googleapis.com/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(
+                        withSuccess(
+                                "{\"access_token\":\"google-access-token\"}",
+                                MediaType.APPLICATION_JSON));
+        mockServer
+                .expect(requestTo("https://openidconnect.googleapis.com/v1/userinfo"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(
+                        withSuccess(
+                                """
+                                {
+                                  "sub": "google-external-1",
+                                  "email": "rider@example.com",
+                                  "email_verified": true,
+                                  "name": "외부메일"
+                                }
+                                """,
+                                MediaType.APPLICATION_JSON));
+
+        OAuthUserProfile profile =
+                oauth2ExternalClient.fetchUserProfile(
+                        SocialProvider.GOOGLE, "google-code", "state-external");
+
+        assertThat(profile.emailAuthoritative()).isFalse();
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("Google Workspace 이메일은 email_verified와 hd가 모두 있으면 권위 있는 이메일로 취급한다")
+    void fetchUserProfile_GoogleWorkspaceEmail_IsAuthoritative() {
+        mockServer
+                .expect(requestTo("https://oauth2.googleapis.com/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(
+                        withSuccess(
+                                "{\"access_token\":\"workspace-access-token\"}",
+                                MediaType.APPLICATION_JSON));
+        mockServer
+                .expect(requestTo("https://openidconnect.googleapis.com/v1/userinfo"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(
+                        withSuccess(
+                                """
+                                {
+                                  "sub": "google-workspace-1",
+                                  "email": "rider@snowthing.org",
+                                  "email_verified": true,
+                                  "hd": "snowthing.org",
+                                  "name": "워크스페이스"
+                                }
+                                """,
+                                MediaType.APPLICATION_JSON));
+
+        OAuthUserProfile profile =
+                oauth2ExternalClient.fetchUserProfile(
+                        SocialProvider.GOOGLE, "workspace-code", "workspace-state");
+
+        assertThat(profile.emailAuthoritative()).isTrue();
         mockServer.verify();
     }
 

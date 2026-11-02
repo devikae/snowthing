@@ -9,7 +9,9 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -53,6 +55,7 @@ public class OAuth2AuthController {
     private static final int DEFAULT_SESSION_TIMEOUT_SECONDS =
             (int) Duration.ofHours(1).toSeconds();
     private static final int STATE_BYTES_LENGTH = 32;
+    private static final int MAX_PENDING_AUTHORIZATIONS = 5;
 
     private final OAuth2ExternalClient oauth2ExternalClient;
     private final SocialAuthService socialAuthService;
@@ -78,8 +81,8 @@ public class OAuth2AuthController {
                     oauth2ExternalClient.buildAuthorizationUri(socialProvider, state);
 
             HttpSession session = httpRequest.getSession(true);
-            session.setAttribute(
-                    SESSION_STATE_ATTRIBUTE,
+            addPendingAuthorization(
+                    session,
                     new OAuth2AuthorizationSession(
                             socialProvider,
                             state,
@@ -131,20 +134,67 @@ public class OAuth2AuthController {
             throw new CustomException(ErrorCode.OAUTH_STATE_INVALID);
         }
         Object attribute = session.getAttribute(SESSION_STATE_ATTRIBUTE);
-        session.removeAttribute(SESSION_STATE_ATTRIBUTE);
-        if (!(attribute instanceof OAuth2AuthorizationSession savedState)) {
+        if (!(attribute instanceof OAuth2AuthorizationSessions savedStates)) {
             throw new CustomException(ErrorCode.OAUTH_STATE_INVALID);
         }
-        if (requestState == null
-                || requestState.isBlank()
-                || savedState.provider() != provider
-                || !Instant.now(clock).isBefore(savedState.expiresAt())
-                || !MessageDigest.isEqual(
-                        savedState.state().getBytes(StandardCharsets.UTF_8),
-                        requestState.getBytes(StandardCharsets.UTF_8))) {
+
+        Instant now = Instant.now(clock);
+        OAuth2AuthorizationSession matchedState = null;
+        List<OAuth2AuthorizationSession> remainingStates = new ArrayList<>();
+        for (OAuth2AuthorizationSession candidate : savedStates.pending()) {
+            boolean matches = constantTimeEquals(candidate.state(), requestState);
+            if (matches && candidate.provider() == provider) {
+                if (matchedState == null) {
+                    matchedState = candidate;
+                }
+            } else if (now.isBefore(candidate.expiresAt())) {
+                remainingStates.add(candidate);
+            }
+        }
+        storePendingAuthorizations(session, remainingStates);
+
+        if (matchedState == null
+                || matchedState.provider() != provider
+                || !now.isBefore(matchedState.expiresAt())) {
             throw new CustomException(ErrorCode.OAUTH_STATE_INVALID);
         }
-        return savedState;
+        return matchedState;
+    }
+
+    private void addPendingAuthorization(
+            HttpSession session, OAuth2AuthorizationSession authorization) {
+        Instant now = Instant.now(clock);
+        List<OAuth2AuthorizationSession> pending = new ArrayList<>();
+        Object attribute = session.getAttribute(SESSION_STATE_ATTRIBUTE);
+        if (attribute instanceof OAuth2AuthorizationSessions savedStates) {
+            savedStates.pending().stream()
+                    .filter(saved -> now.isBefore(saved.expiresAt()))
+                    .forEach(pending::add);
+        }
+        int overflow = pending.size() - MAX_PENDING_AUTHORIZATIONS + 1;
+        if (overflow > 0) {
+            pending.subList(0, overflow).clear();
+        }
+        pending.add(authorization);
+        storePendingAuthorizations(session, pending);
+    }
+
+    private void storePendingAuthorizations(
+            HttpSession session, List<OAuth2AuthorizationSession> pending) {
+        if (pending.isEmpty()) {
+            session.removeAttribute(SESSION_STATE_ATTRIBUTE);
+            return;
+        }
+        session.setAttribute(SESSION_STATE_ATTRIBUTE, new OAuth2AuthorizationSessions(pending));
+    }
+
+    private boolean constantTimeEquals(String savedState, String requestState) {
+        if (requestState == null || requestState.isBlank()) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                savedState.getBytes(StandardCharsets.UTF_8),
+                requestState.getBytes(StandardCharsets.UTF_8));
     }
 
     private void establishAuthenticatedSession(
@@ -205,4 +255,12 @@ public class OAuth2AuthController {
     record OAuth2AuthorizationSession(
             SocialProvider provider, String state, String returnUrl, Instant expiresAt)
             implements Serializable {}
+
+    record OAuth2AuthorizationSessions(List<OAuth2AuthorizationSession> pending)
+            implements Serializable {
+
+        OAuth2AuthorizationSessions {
+            pending = List.copyOf(pending);
+        }
+    }
 }
