@@ -19,6 +19,8 @@
      - `frontend/app/admin/layout.tsx`: 어두운 슬레이트 테마를 Snowthing 고유의 화이트/스노우 캔버스(`--snow-background: #f4f6f9`, `--snow-canvas: #ffffff`, `--alpine-navy: #0f2942`, `--alpine-sky: #0284c7`) 디자인 시스템으로 전면 개편.
      - `frontend/app/admin/posts/page.tsx`: 소프트 삭제된 글 전용 감사 뷰로 개편. 삭제 주체(작성자 본인 자진 삭제 vs 관리자 가리기/삭제자 닉네임·이메일 vs 비회원 비밀번호 삭제) 뱃지, 삭제 일시, 원문 열람 모달, 즉시 복구 기능 제공.
      - `frontend/app/lib/api.ts`: `AdminPostItem` DTO 확장 및 `deletePost`, `restorePost` 엔드포인트 등록.
+     - `DeleteConfirmModal.tsx`: 네오브루탈리즘 스타일(2px 검은 테두리, 하드 섀도우, 이탤릭 타이틀, CANCEL 영문 모노 폰트, 원색 빨간 사각 버튼)을 전면 제거하고, Snowthing 테마 토큰(`--snow-canvas`, `--snow-ink`, `--snow-border`) 기반의 모던 라운드 다이얼로그 및 국문 '취소'/'삭제' 버튼으로 리팩토링.
+     - `frontend/app/admin/layout.tsx` & `admin/posts/page.tsx`: 어드민 헤더에 실시간 `AdminThemeToggle` (라이트/다크 모드 전환 버튼)을 탑재하고, 모든 어드민 뷰와 테이블, 모달을 CSS 변수 토큰으로 연동하여 라이트/다크 모드 완벽 지원.
   4. **검증 및 테스트**:
      - 백엔드 전체 테스트 428+건 전수 통과 (`./gradlew test`).
      - 프론트엔드 Next.js 정적 페이지 28개 전수 빌드 통과 (`npm run build`).
