@@ -2,11 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Client } from "@stomp/stompjs";
 import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
-import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
 import { csrfFetch } from "../lib/csrfFetch";
 
 export interface MemberProfile {
@@ -94,7 +92,6 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const [isConnected, setIsConnected] = useState(false);
   const [toastError, setToastError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
-  const [localHelp, setLocalHelp] = useState<LocalChatCommand | null>(null);
   const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -307,12 +304,6 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const command = localChatCommand(inputContent);
-    if (command) {
-      setLocalHelp(command);
-      setInputContent("");
-      return;
-    }
     if (!currentMember && !anonymousChatEnabled) {
       router.push("/login");
       return;
@@ -350,17 +341,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           <small className="section-eyebrow">LIVE STREAM</small>
           <h2>라이브톡</h2>
         </div>
-        <button type="button" className="live-chat-help-toggle" aria-expanded={localHelp!==null} aria-controls="live-chat-local-help" onClick={()=>setLocalHelp(localHelp?null:"help")}>도움말</button>
       </div>
-
-      {localHelp&&<aside id="live-chat-local-help" className="live-chat-local-help" aria-label="라이브톡 도구 안내">
-        <p>이 안내는 나에게만 보여요. 계산값은 각 도구에서 입력해 주세요.</p>
-        <nav aria-label="라이더 도구 바로가기">
-          {(localHelp==="help"||localHelp==="season-pass")&&<Link href="/tools/season-pass">시즌권 본전 계산 <small>/시즌권</small></Link>}
-          {(localHelp==="help"||localHelp==="deck-size")&&<Link href="/tools/deck-size">데크 사이즈 참고 <small>/데크</small></Link>}
-        </nav>
-        <small>/도움말로 다시 열 수 있어요. 일반 대화와 봇 질문은 공개되므로 연락처·개인정보를 적지 마세요.</small>
-      </aside>}
 
       {/* 실시간 말풍선 피드 영역 */}
       <div className="live-chat-body relative">

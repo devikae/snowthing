@@ -2225,29 +2225,6 @@ html[data-theme="dark"] .m-cat.notice {
   padding: 0 2px;
 }
 
-.live-chat-help-toggle {
-  margin-left: auto;
-  padding: 4px 8px;
-  border: 1px solid var(--snow-border);
-  border-radius: 4px;
-  color: var(--snow-ink);
-  background: var(--snow-canvas);
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-.live-chat-local-help {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--snow-border);
-  color: var(--snow-ink);
-  background: var(--snow-canvas);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-.live-chat-local-help p { margin: 0 0 8px; }
-.live-chat-local-help nav { display: grid; gap: 8px; margin-bottom: 8px; }
-.live-chat-local-help a { color: var(--snow-ink); text-decoration: underline; text-underline-offset: 3px; }
-.live-chat-local-help small { color: var(--snow-ink-soft); }
-.live-chat-help-toggle:focus-visible, .live-chat-local-help a:focus-visible { outline: 2px solid var(--snow-accent); outline-offset: 3px; }
 
 .live-chat-head-title {
   display: flex;
