@@ -27,6 +27,10 @@
      - 백엔드 전체 테스트 428+건 전수 통과 (`./gradlew test`).
      - 프론트엔드 Next.js 정적 페이지 28개 전수 빌드 통과 (`npm run build`).
      - 로컬 서버 통합 E2E 검증 (`verify_admin_soft_delete.py`): 일반 사용자 작성 글의 자진 삭제 (`isDeletedByAuthor: True`), 관리자 메인/콘솔 가리기 삭제 (`isDeletedByAuthor: False`, `deleterNickname: 최고관리자`), 관리자 삭제글 전용 목록 조회 및 복구 (`restore` -> 200 정상 복원) 전 과정 100% 검증 완료.
+   5. **관리자 API CSRF 방어 연동 및 비로그인 라이브톡 런타임 제어 완비**:
+      - `admin/page.tsx`, `admin/posts/page.tsx`, `admin/members/page.tsx`, `admin/chat/page.tsx`, `admin/banners/page.tsx`: 모든 상태 변경 HTTP 요청(`PATCH`, `POST`, `DELETE`)에 `csrfFetch`를 전면 적용하여 Spring Security의 403 Forbidden 거부 오류를 완전 해소.
+      - `LiveChatSection.tsx`: 관리자 메시지 IP 차단 API에 `csrfFetch` 적용. 비로그인 라이브톡 비활성화 시 자동 포커스로 인한 강제 리다이렉트(`onFocus`)를 제거하고 `readOnly` 및 `cursor-pointer`로 전환하여 전송 클릭 시에만 로그인으로 부드럽게 유도.
+      - 무재배포 런타임 스위칭 검증: 어드민 스위치 OFF 시 DB `false` 반영 및 비로그인 STOMP 발신 백엔드 원천 차단 확인, 스위치 ON 시 즉시 랜덤 닉네임 발급 및 정상 브로드캐스트 확인.
 
 
 ## 메인 화면 및 회원가입 정리 (2026-10-30 ~ 2026-10-31)

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { csrfFetch } from "../../lib/csrfFetch";
 import { API_ENDPOINTS, BannerItem } from "../../lib/api";
 
 export default function AdminBannersPage() {
@@ -77,7 +78,7 @@ export default function AdminBannersPage() {
         : API_ENDPOINTS.admin.banners;
       const method = editingBanner ? "PATCH" : "POST";
 
-      const res = await fetch(endpoint, {
+      const res = await csrfFetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -98,7 +99,7 @@ export default function AdminBannersPage() {
   async function handleToggleActive(b: BannerItem) {
     try {
       setActionLoading(true);
-      const res = await fetch(API_ENDPOINTS.admin.bannerDetail(b.id), {
+      const res = await csrfFetch(API_ENDPOINTS.admin.bannerDetail(b.id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -122,7 +123,7 @@ export default function AdminBannersPage() {
 
     try {
       setActionLoading(true);
-      const res = await fetch(API_ENDPOINTS.admin.bannerDetail(b.id), {
+      const res = await csrfFetch(API_ENDPOINTS.admin.bannerDetail(b.id), {
         method: "DELETE",
         credentials: "include",
       });

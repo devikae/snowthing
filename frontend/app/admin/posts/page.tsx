@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { csrfFetch } from "../../lib/csrfFetch";
 import { API_ENDPOINTS, AdminPostItem } from "../../lib/api";
 
 export default function AdminPostsPage() {
@@ -45,7 +46,7 @@ export default function AdminPostsPage() {
     }
     try {
       setActionLoading(true);
-      const res = await fetch(API_ENDPOINTS.admin.restorePost(post.publicId), {
+      const res = await csrfFetch(API_ENDPOINTS.admin.restorePost(post.publicId), {
         method: "PATCH",
         credentials: "include",
       });

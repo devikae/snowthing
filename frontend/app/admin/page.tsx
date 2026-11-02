@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { csrfFetch } from "../lib/csrfFetch";
 import {
   API_ENDPOINTS,
   AdminDashboardStats,
@@ -18,7 +19,7 @@ export default function AdminDashboardPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(API_ENDPOINTS.admin.stats(selectedDays), {
+      const res = await csrfFetch(API_ENDPOINTS.admin.stats(selectedDays), {
         credentials: "include",
       });
       if (!res.ok) throw new Error("통계 데이터를 불러오지 못했습니다.");
@@ -46,7 +47,7 @@ export default function AdminDashboardPage() {
 
     try {
       setUpdatingChat(true);
-      const res = await fetch(
+      const res = await csrfFetch(
         API_ENDPOINTS.admin.updateConfig("CHAT_ANONYMOUS_ENABLED"),
         {
           method: "PATCH",

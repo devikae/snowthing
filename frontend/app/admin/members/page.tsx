@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { API_ENDPOINTS, AdminMemberItem } from "../../lib/api";
+import { csrfFetch } from "../../lib/csrfFetch";
 
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<AdminMemberItem[]>([]);
@@ -63,7 +64,7 @@ export default function AdminMembersPage() {
 
     try {
       setActionLoading(true);
-      const res = await fetch(
+      const res = await csrfFetch(
         API_ENDPOINTS.admin.updateMemberStatus(member.publicId),
         {
           method: "PATCH",
@@ -95,7 +96,7 @@ export default function AdminMembersPage() {
 
     try {
       setActionLoading(true);
-      const res = await fetch(
+      const res = await csrfFetch(
         API_ENDPOINTS.admin.deleteMemberProfileImage(member.publicId),
         {
           method: "DELETE",
@@ -122,7 +123,7 @@ export default function AdminMembersPage() {
 
     try {
       setActionLoading(true);
-      const res = await fetch(
+      const res = await csrfFetch(
         API_ENDPOINTS.admin.updateMemberNickname(selectedMember.publicId),
         {
           method: "PATCH",

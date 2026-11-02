@@ -7,6 +7,7 @@ import { Client } from "@stomp/stompjs";
 import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
 import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
+import { csrfFetch } from "../lib/csrfFetch";
 
 export interface MemberProfile {
   publicId: string;
@@ -249,7 +250,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       return;
     }
     try {
-      const res = await fetch(API_ENDPOINTS.admin.banMessageIp(messageId), {
+      const res = await csrfFetch(API_ENDPOINTS.admin.banMessageIp(messageId), {
         method: "POST",
         credentials: "include",
       });
@@ -405,11 +406,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
               router.push("/login");
             }
           }}
-          onFocus={() => {
-            if (!currentMember && !anonymousChatEnabled) {
-              router.push("/login");
-            }
-          }}
+          readOnly={!currentMember && !anonymousChatEnabled}
           placeholder={
             currentMember
               ? "메시지를 입력하세요"
@@ -417,7 +414,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
               ? "비회원 라이브톡 (메시지 입력 시 랜덤 닉네임 자동 부여)"
               : "로그인하고 라이브톡에 참여해보세요"
           }
-          className="live-chat-compose-input capsule-input"
+          className={`live-chat-compose-input capsule-input ${!currentMember && !anonymousChatEnabled ? "cursor-pointer" : ""}`}
         />
 
         <button

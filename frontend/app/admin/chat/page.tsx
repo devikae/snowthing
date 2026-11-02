@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { API_ENDPOINTS, ChatBannedIpItem } from "../../lib/api";
+import { csrfFetch } from "../../lib/csrfFetch";
 
 export default function AdminChatPage() {
   const [bannedIps, setBannedIps] = useState<ChatBannedIpItem[]>([]);
@@ -17,7 +18,7 @@ export default function AdminChatPage() {
   async function fetchBannedIps() {
     try {
       setLoading(true);
-      const res = await fetch(API_ENDPOINTS.admin.bannedIps, {
+      const res = await csrfFetch(API_ENDPOINTS.admin.bannedIps, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("차단 목록을 불러오지 못했습니다.");
@@ -44,7 +45,7 @@ export default function AdminChatPage() {
 
     try {
       setActionLoading(true);
-      const res = await fetch(API_ENDPOINTS.admin.unbanIp(item.id), {
+      const res = await csrfFetch(API_ENDPOINTS.admin.unbanIp(item.id), {
         method: "DELETE",
         credentials: "include",
       });
@@ -68,7 +69,7 @@ export default function AdminChatPage() {
         Date.now() + daysInput * 24 * 60 * 60 * 1000
       ).toISOString();
 
-      const res = await fetch(API_ENDPOINTS.admin.bannedIps, {
+      const res = await csrfFetch(API_ENDPOINTS.admin.bannedIps, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
