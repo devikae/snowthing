@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const trends = stats.trends.slice(-days);
+  const trends = (stats.visitorTrends || []).slice(-days);
   const maxVisitors = Math.max(...trends.map((t) => t.totalVisitors), 10);
 
   return (
@@ -178,14 +178,14 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900">
-              {stats.totalMemberCount.toLocaleString()}
+              {stats.totalMembers.toLocaleString()}
             </span>
             <span className="text-xs text-slate-400 font-normal">명</span>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>오늘 신규 가입</span>
             <span className="font-semibold text-sky-600">
-              +{stats.todayNewMemberCount}명
+              +{stats.todayNewMembers}명
             </span>
           </div>
         </div>
@@ -265,15 +265,15 @@ export default function AdminDashboardPage() {
               100,
               Math.max(6, (item.totalVisitors / maxVisitors) * 100)
             );
-            const dateLabel = item.statDate.slice(5); // MM-DD
+            const dateLabel = item.date.slice(5); // MM-DD
             return (
               <div
-                key={item.statDate}
+                key={item.date}
                 className="flex-1 flex flex-col items-center h-full justify-end group relative"
               >
                 {/* Tooltip */}
                 <div className="absolute -top-14 opacity-0 group-hover:opacity-100 pointer-events-none transition bg-slate-900 text-white text-[11px] py-1.5 px-2.5 rounded-lg whitespace-nowrap shadow-xl z-20">
-                  <p className="font-bold">{item.statDate}</p>
+                  <p className="font-bold">{item.date}</p>
                   <p className="text-slate-300">
                     DAU: {item.totalVisitors}명 (회원 {item.memberVisitors} / 비회원 {item.guestVisitors})
                   </p>
@@ -299,10 +299,10 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-2 mt-2">
           {trends.map((item) => (
             <div
-              key={item.statDate}
+              key={item.date}
               className="flex-1 text-center text-[10px] text-slate-400 font-medium"
             >
-              {item.statDate.slice(5)}
+              {item.date.slice(5)}
             </div>
           ))}
         </div>

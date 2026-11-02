@@ -132,7 +132,7 @@ export interface OffsetPage<T> {
 
 
 export interface DailyVisitorStat {
-  statDate: string;
+  date: string;
   totalVisitors: number;
   memberVisitors: number;
   guestVisitors: number;
@@ -144,10 +144,10 @@ export interface AdminDashboardStats {
   todayMemberVisitors: number;
   todayGuestVisitors: number;
   todayPvCount: number;
-  totalMemberCount: number;
-  todayNewMemberCount: number;
+  totalMembers: number;
+  todayNewMembers: number;
   anonymousChatEnabled: boolean;
-  trends: DailyVisitorStat[];
+  visitorTrends: DailyVisitorStat[];
 }
 
 export interface SystemConfigItem {
@@ -197,7 +197,7 @@ export interface BannerItem {
   imageUrl: string;
   linkUrl: string | null;
   displayOrder: number;
-  active: boolean;
+  isActive: boolean;
   startAt: string | null;
   endAt: string | null;
 }

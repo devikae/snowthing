@@ -15,7 +15,7 @@ export default function AdminBannersPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [displayOrder, setDisplayOrder] = useState(0);
-  const [active, setActive] = useState(true);
+  const [isActive, setIsActive] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
   async function fetchBanners() {
@@ -44,7 +44,7 @@ export default function AdminBannersPage() {
     setImageUrl("");
     setLinkUrl("");
     setDisplayOrder(banners.length);
-    setActive(true);
+    setIsActive(true);
     setShowModal(true);
   }
 
@@ -54,7 +54,7 @@ export default function AdminBannersPage() {
     setImageUrl(b.imageUrl);
     setLinkUrl(b.linkUrl || "");
     setDisplayOrder(b.displayOrder);
-    setActive(b.active);
+    setIsActive(b.isActive);
     setShowModal(true);
   }
 
@@ -69,7 +69,7 @@ export default function AdminBannersPage() {
         imageUrl: imageUrl.trim(),
         linkUrl: linkUrl.trim() || null,
         displayOrder,
-        active,
+        isActive,
       };
 
       const endpoint = editingBanner
@@ -102,12 +102,12 @@ export default function AdminBannersPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ active: !b.active }),
+        body: JSON.stringify({ active: !b.isActive }),
       });
       if (!res.ok) throw new Error("상태 변경에 실패했습니다.");
       setBanners((prev) =>
         prev.map((item) =>
-          item.id === b.id ? { ...item, active: !b.active } : item
+          item.id === b.id ? { ...item, active: !b.isActive } : item
         )
       );
     } catch (err: any) {
@@ -228,17 +228,17 @@ export default function AdminBannersPage() {
                       <button
                         onClick={() => handleToggleActive(b)}
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition ${
-                          b.active
+                          b.isActive
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                             : "bg-slate-100 text-slate-500 border border-slate-200"
                         }`}
                       >
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${
-                            b.active ? "bg-emerald-500" : "bg-slate-400"
+                            b.isActive ? "bg-emerald-500" : "bg-slate-400"
                           }`}
                         />
-                        {b.active ? "노출 중 (ON)" : "숨김 (OFF)"}
+                        {b.isActive ? "노출 중 (ON)" : "숨김 (OFF)"}
                       </button>
                     </td>
                     <td className="py-3.5 px-4 text-right">
@@ -336,8 +336,8 @@ export default function AdminBannersPage() {
                     노출 상태
                   </label>
                   <select
-                    value={active ? "true" : "false"}
-                    onChange={(e) => setActive(e.target.value === "true")}
+                    value={isActive ? "true" : "false"}
+                    onChange={(e) => setIsActive(e.target.value === "true")}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="true">노출 (ON)</option>
