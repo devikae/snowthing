@@ -53,6 +53,17 @@ class ProfileImageSecurityIntegrationTest {
                                 .build());
         String url = "https://images.snowthing.org/public/profiles/test.jpg";
         when(images.profileUrl(org.mockito.ArgumentMatchers.anyString())).thenReturn(url);
+        when(images.prepareProfileImage(any(), org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(
+                        invocation ->
+                                new ImageService.PreparedProfileImage(
+                                        invocation.getArgument(1), new byte[] {1}));
+        when(images.uploadPreparedProfileImage(any()))
+                .thenAnswer(
+                        invocation -> {
+                            ImageService.PreparedProfileImage prep = invocation.getArgument(0);
+                            return new ImageUploadResponse(url, prep.key());
+                        });
         when(images.uploadProfileImage(any(), org.mockito.ArgumentMatchers.anyString()))
                 .thenAnswer(invocation -> new ImageUploadResponse(url, invocation.getArgument(1)));
         mvc.perform(

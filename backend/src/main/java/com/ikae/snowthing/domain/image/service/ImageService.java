@@ -89,29 +89,40 @@ public class ImageService {
         }
     }
 
+    public record PreparedProfileImage(String key, byte[] normalizedBytes) {}
+
+    public PreparedProfileImage prepareProfileImage(MultipartFile file, String key) {
+        validateProfileKey(key);
+        byte[] bytes = readImageBytes(file);
+        validateFile(file, bytes);
+        byte[] normalized = createThumbnail(bytes);
+        return new PreparedProfileImage(key, normalized);
+    }
+
+    public ImageUploadResponse uploadPreparedProfileImage(PreparedProfileImage prepared) {
+        validateProfileKey(prepared.key());
+        try {
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(prepared.key())
+                            .contentType("image/jpeg")
+                            .cacheControl("no-store")
+                            .build(),
+                    RequestBody.fromBytes(prepared.normalizedBytes()));
+            return new ImageUploadResponse(
+                    cloudFrontBaseUrl.replaceAll("/+$", "") + "/" + prepared.key(), prepared.key());
+        } catch (SdkException exception) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
     public ImageUploadResponse uploadProfileImage(MultipartFile file) {
         return uploadProfileImage(file, "public/profiles/" + UUID.randomUUID() + ".jpg");
     }
 
     public ImageUploadResponse uploadProfileImage(MultipartFile file, String key) {
-        validateProfileKey(key);
-        byte[] bytes = readImageBytes(file);
-        validateFile(file, bytes);
-        byte[] normalized = createThumbnail(bytes);
-        try {
-            s3Client.putObject(
-                    PutObjectRequest.builder()
-                            .bucket(bucketName)
-                            .key(key)
-                            .contentType("image/jpeg")
-                            .cacheControl("no-store")
-                            .build(),
-                    RequestBody.fromBytes(normalized));
-            return new ImageUploadResponse(
-                    cloudFrontBaseUrl.replaceAll("/+$", "") + "/" + key, key);
-        } catch (SdkException exception) {
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
+        return uploadPreparedProfileImage(prepareProfileImage(file, key));
     }
 
     public String profileUrl(String key) {

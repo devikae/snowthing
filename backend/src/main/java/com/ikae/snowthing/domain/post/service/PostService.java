@@ -234,7 +234,9 @@ public class PostService {
         }
 
         post.update(request.title(), request.content(), category);
-        post.replaceImages(toPostImages(request.imageUrls()));
+        if (request.imageUrls() != null) {
+            post.replaceImages(toPostImages(request.imageUrls()));
+        }
         return PostResponse.from(post);
     }
 

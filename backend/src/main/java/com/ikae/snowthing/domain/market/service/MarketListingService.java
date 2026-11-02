@@ -44,7 +44,7 @@ public class MarketListingService {
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final String ORIGINAL_IMAGE_PREFIX = "public/posts/originals/";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
-    private static final int MAX_IMAGES = 5;
+    private static final int MAX_IMAGES = 10;
     private static final int MAX_PAGE = 100;
     private static final int MAX_PAGE_SIZE = 50;
     private static final int PREVIEW_LIMIT = 4;

@@ -248,7 +248,7 @@ GET /api/v1/market-listings?page=1&size=20&categoryCode=SNOWBOARD&productConditi
 | `negotiable` | 필수 | 가격 협의 가능 여부 |
 | `free` | 필수 | 무료 나눔 여부 |
 | `contact` | 필수 | 앞뒤 공백 제거 후 1~30자 일반 문자열 |
-| `imageUrls` | 선택 | 0~5개, 요청 순서가 표시 순서 |
+| `imageUrls` | 선택 | 0~10개, 요청 순서가 표시 순서 |
 
 교차 필드 검증은 다음과 같다.
 
@@ -423,7 +423,7 @@ Content-Type: multipart/form-data
 | 원본 저장 경로 | `public/posts/originals/{UUID}.{ext}` |
 | 썸네일 저장 경로 | `public/posts/thumbnails/{UUID}.jpg` |
 
-업로드 API는 파일 한 개를 처리한다. 판매글 등록·수정 요청에서 최대 5개의 이미지 URL을 허용한다.
+업로드 API는 파일 한 개를 처리한다. 판매글 등록·수정 요청에서 최대 10개의 이미지 URL을 허용한다.
 
 #### Response `201 Created`
 

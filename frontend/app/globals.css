@@ -2212,6 +2212,10 @@ html[data-theme="dark"] .m-cat.notice {
   box-shadow: none;
 }
 
+html[data-theme="dark"] .home-live-chat .live-chat-card {
+  background: transparent;
+}
+
 .live-chat-head {
   display: flex;
   align-items: flex-end;

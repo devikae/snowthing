@@ -19,7 +19,7 @@ public record MarketListingCreateRequest(
         boolean negotiable,
         boolean free,
         @NotBlank @Size(max = 30) String contact,
-        @Size(max = 5) List<String> imageUrls) {
+        @Size(max = 10) List<String> imageUrls) {
 
     public MarketListingCreateRequest {
         imageUrls = imageUrls == null ? List.of() : List.copyOf(imageUrls);

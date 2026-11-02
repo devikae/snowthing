@@ -79,7 +79,7 @@ public enum ErrorCode {
     MARKET_CATEGORY_INACTIVE(HttpStatus.BAD_REQUEST, "MARKET_003", "현재 선택할 수 없는 중고장터 상품 분류입니다."),
     MARKET_INVALID_PRICE(HttpStatus.BAD_REQUEST, "MARKET_004", "중고장터 가격과 무료 나눔 설정을 확인해 주세요."),
     MARKET_IMAGE_LIMIT_EXCEEDED(
-            HttpStatus.BAD_REQUEST, "MARKET_005", "중고장터 이미지는 최대 5장까지 등록할 수 있습니다."),
+            HttpStatus.BAD_REQUEST, "MARKET_005", "중고장터 이미지는 최대 10장까지 등록할 수 있습니다."),
     MARKET_LISTING_UPDATE_CONFLICT(
             HttpStatus.CONFLICT, "MARKET_006", "다른 화면에서 판매글이 먼저 수정됐습니다. 최신 내용을 다시 확인해 주세요."),
     MARKET_REACTION_NOT_ALLOWED(

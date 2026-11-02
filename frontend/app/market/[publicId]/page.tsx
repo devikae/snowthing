@@ -91,6 +91,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   const redirectToLogin = useCallback(() => {
@@ -199,14 +200,22 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   };
 
   const deleteListing = async () => {
-    if (!listing || !window.confirm("이 판매글을 삭제하시겠습니까?")) return;
-    const response = await csrfFetch(API_ENDPOINTS.market.delete(publicId), { method: "DELETE" });
-    if (response.ok) {
-      router.replace("/market");
-      return;
+    if (!listing || !listing.canDelete || deleting || !window.confirm("이 판매글을 삭제하시겠습니까?")) return;
+    setDeleting(true);
+    setError("");
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.market.delete(publicId), { method: "DELETE" });
+      if (response.ok) {
+        router.replace("/market");
+        return;
+      }
+      const data = await response.json().catch(() => null);
+      setError(data?.message || "판매글을 삭제하지 못했습니다.");
+    } catch {
+      setError("판매글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setDeleting(false);
     }
-    const data = await response.json().catch(() => null);
-    setError(data?.message || "판매글을 삭제하지 못했습니다.");
   };
 
   if (loading) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
@@ -232,7 +241,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
             <dl><div><dt>상품 상태</dt><dd>{conditionLabels[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회·댓글</dt><dd>{listing.viewCount} · {listing.commentCount}</dd></div></dl>
             <div className="market-seller"><Image src={listing.seller.profileImageUrl || "/images/default-profile-avatar.png"} alt="" width={44} height={44} unoptimized={Boolean(listing.seller.profileImageUrl)} /><div><small>판매자</small><strong>{listing.seller.nickname}</strong></div></div>
             <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(listing.contact)}>복사</button></div>
-            {listing.canEdit && <div className="market-owner-tools"><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link><button type="button" onClick={() => void deleteListing()}>삭제</button></div>}
+            {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중..." : "삭제"}</button>}</div>}
           </section>
         </article>
 

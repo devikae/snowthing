@@ -138,7 +138,7 @@ Client
 
 | 항목 | 정책 |
 |---|---|
-| 파일 개수 | 판매글당 0~5개 |
+| 파일 개수 | 판매글당 0~10개 |
 | 파일 크기 | 파일당 최대 5MB |
 | 형식 | JPG, JPEG, PNG, WebP |
 | 원본 | `public/posts/originals/` |
@@ -169,7 +169,7 @@ S3 Block Public Access는 유지하므로 S3 직접 URL은 접근할 수 없다.
 - 설정된 CloudFront host와 일치
 - 허용된 `public/posts/originals/` 경로
 - URL 또는 객체 키 중복 없음
-- 최대 5개
+- 최대 10개
 
 가능하면 URL 전체보다 업로드 응답의 `imageKey`만 판매글 요청에 보내는 편이 안전하다. 다만 사용자가 이미지 계약 결정을 후속으로 미뤘으므로 1차 구현은 기존 게시글의 `imageUrls` 계약을 그대로 사용한다. `imageKey` 전환은 이미지 파이프라인을 다시 다룰 때 결정한다.
 

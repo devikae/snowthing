@@ -12,6 +12,7 @@ public record PostListResponse(
         String categoryCode,
         String title,
         String writerNickname,
+        String writerProfileImageUrl,
         String thumbnailImageUrl,
         boolean hasImage,
         int viewCount,
@@ -35,6 +36,9 @@ public record PostListResponse(
                 post.getCategory().getCode(),
                 post.isDeleted() ? "[삭제된 게시글입니다]" : post.getTitle(),
                 writerNickname,
+                !post.isAnonymous() && post.getMember() != null
+                        ? post.getMember().getProfileImageUrl()
+                        : null,
                 thumbnailUrl,
                 post.isHasImage(),
                 post.getViewCount(),
@@ -53,6 +57,7 @@ public record PostListResponse(
                 categoryCode,
                 title,
                 writerNickname,
+                writerProfileImageUrl,
                 resolvedThumbnailImageUrl,
                 hasImage,
                 viewCount,
