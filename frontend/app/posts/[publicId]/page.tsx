@@ -641,7 +641,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                   size={32}
                 />
               )}
-              <div><strong>{post.writer.nickname}</strong><small>{new Date(post.createdAt).toLocaleString("ko-KR")}</small></div>
+              <div><strong>{post.writer.nickname}</strong><small>{formatPostDateTime(post.createdAt)}</small></div>
               {(() => {
                 const canEdit = Boolean(post.isAnonymous || post.categoryCode === "ANONYMOUS" || (currentUserPublicId && post.writer?.publicId === currentUserPublicId));
                 const canDelete = Boolean(isAdmin || canEdit);
@@ -1317,6 +1317,19 @@ function CommentDeleteInline({
   );
 }
 
+function formatPostDateTime(dateString: string): string {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return new Intl.DateTimeFormat("ko-KR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(d);
+  } catch {
+    return dateString;
+  }
+}
+
 function formatCommentDate(dateString: string): string {
   try {
     const d = new Date(dateString);
@@ -1325,8 +1338,7 @@ function formatCommentDate(dateString: string): string {
     const dd = String(d.getDate()).padStart(2, "0");
     const hh = String(d.getHours()).padStart(2, "0");
     const min = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    return `${mm}.${dd} ${hh}:${min}:${ss}`;
+    return `${mm}.${dd} ${hh}:${min}`;
   } catch {
     return dateString;
   }

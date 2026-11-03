@@ -74,7 +74,7 @@ function CarpoolList() {
                 <div className="carpool-card-tags"><em>{item.tripType === "ROUND_TRIP" ? "왕복" : "편도"}</em><em>{item.equipmentLoadAvailable ? "장비 적재 가능" : "장비 적재 불가"}</em></div>
                 <h2>{item.title}</h2>
                 <p className="carpool-route"><strong>{item.departureRegion}</strong><span className="material-symbols-outlined">east</span><strong>{item.destinationResortName}</strong></p>
-                <p className="carpool-meta"><span className="material-symbols-outlined">schedule</span>{new Date(item.departureAt).toLocaleString("ko-KR")}<span className="material-symbols-outlined">person</span>모집 {item.passengerCapacity}명</p>
+                <p className="carpool-meta"><span className="material-symbols-outlined">schedule</span>{new Date(item.departureAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })}<span className="material-symbols-outlined">person</span>모집 {item.passengerCapacity}명</p>
               </div>
               <div className="carpool-card-cost"><small>예상 1인 비용</small><b>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</b><span>작성자 {item.writerName}</span></div>
             </Link>)}
