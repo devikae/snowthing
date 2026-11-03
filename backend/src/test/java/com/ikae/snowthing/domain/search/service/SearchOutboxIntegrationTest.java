@@ -170,6 +170,35 @@ class SearchOutboxIntegrationTest {
     }
 
     @Test
+    @DisplayName("보관 기간이 지난 DONE 이벤트는 1,000행 단위로 반복해 모두 지우고, 최근 DONE과 PENDING은 남긴다")
+    void purgeDoneEventsRepeatsInBatches() {
+        int oldDone = SearchConsistencyService.PURGE_BATCH_SIZE * 2 + 500;
+        LocalDateTime old = LocalDateTime.now().minusDays(30);
+        List<Object[]> rows = new ArrayList<>();
+        for (int i = 0; i < oldDone; i++) {
+            rows.add(new Object[] {999_000_000L + i, old, old, old});
+        }
+        transactions.executeWithoutResult(
+                status ->
+                        jdbc.batchUpdate(
+                                "INSERT INTO search_outbox (source_type, source_id, operation,"
+                                        + " source_version, status, attempts, created_at, due_at, processed_at)"
+                                        + " VALUES ('POST', ?, 'UPSERT', 0, 'DONE', 1, ?, ?, ?)",
+                                rows));
+        long before =
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM search_outbox WHERE status <> 'DONE' OR processed_at >= ?",
+                        Long.class,
+                        LocalDateTime.now().minusDays(7));
+
+        int purged = consistency.purgeDoneEvents();
+
+        assertThat(purged).isEqualTo(oldDone);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM search_outbox", Long.class))
+                .isEqualTo(before);
+    }
+
+    @Test
     @DisplayName("게시글·댓글 작성·수정·삭제는 같은 트랜잭션에서 outbox 이벤트를 남기고, 롤백되면 이벤트도 남지 않는다")
     void writesOutboxInSameTransaction() {
         assertThat(events(SearchSourceType.POST, postId)).containsExactly("UPSERT:0");

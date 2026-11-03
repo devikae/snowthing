@@ -33,6 +33,9 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SearchConsistencyService {
 
+    static final int PURGE_BATCH_SIZE = 1000;
+    static final int PURGE_MAX_ROUNDS = 100;
+
     static final String REINDEX_JOB = "FULL";
 
     private final SearchConsistencyRepository consistency;
@@ -211,10 +214,22 @@ public class SearchConsistencyService {
                 REINDEX_JOB);
     }
 
+    /**
+     * 보관 기간이 지난 DONE 이벤트를 1,000행씩 나눠 지운다. 한 번에 지우면 잠금이 길어지고, 한 번만 지우면 재인덱싱처럼 하루 생성량이 많을 때
+     * 정리가 따라가지 못한다. 라운드 상한으로 무한 반복을 막는다.
+     */
     public int purgeDoneEvents() {
         LocalDateTime before = LocalDateTime.now(clock).minusDays(doneRetentionDays);
-        Integer purged = tx.execute(status -> outbox.purgeDone(before, 1000));
-        return purged == null ? 0 : purged;
+        int total = 0;
+        for (int round = 0; round < PURGE_MAX_ROUNDS; round++) {
+            Integer purged = tx.execute(status -> outbox.purgeDone(before, PURGE_BATCH_SIZE));
+            int count = purged == null ? 0 : purged;
+            total += count;
+            if (count < PURGE_BATCH_SIZE) {
+                break;
+            }
+        }
+        return total;
     }
 
     private void enqueue(SearchSourceType type, List<SourceVersion> sources, String operation) {

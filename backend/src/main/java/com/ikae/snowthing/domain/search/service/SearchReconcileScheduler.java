@@ -24,12 +24,17 @@ public class SearchReconcileScheduler {
 
     @Scheduled(cron = "${snowthing.search.reconcile.cron:0 30 4 * * *}", zone = "Asia/Seoul")
     public void reconcileDaily() {
+        // 대조가 실패해도 정리는 따로 실행한다. 정리가 막히면 outbox가 계속 커진다.
         try {
             consistency.reconcile();
+        } catch (RuntimeException failure) {
+            log.warn("search reconcile failed: error={}", failure.getClass().getSimpleName());
+        }
+        try {
             int purged = consistency.purgeDoneEvents();
             log.info("search outbox done events purged: count={}", purged);
         } catch (RuntimeException failure) {
-            log.warn("search reconcile failed: error={}", failure.getClass().getSimpleName());
+            log.warn("search outbox purge failed: error={}", failure.getClass().getSimpleName());
         }
     }
 }

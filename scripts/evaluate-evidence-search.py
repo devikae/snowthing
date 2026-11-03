@@ -99,6 +99,16 @@ def search_query(item):
     return text, False
 
 
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """리디렉션을 따라가지 않는다. 따라가면 urllib이 Cookie 헤더를 다른 호스트로도 보낸다."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+NO_REDIRECT_OPENER = urllib.request.build_opener(_RefuseRedirect)
+
+
 def call_search(base_url, cookie, query, item, size, timeout):
     params = urllib.parse.urlencode({
         'q': query,
@@ -112,13 +122,18 @@ def call_search(base_url, cookie, query, item, size, timeout):
         method='GET')
     started = time.perf_counter()
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with NO_REDIRECT_OPENER.open(request, timeout=timeout) as response:
             body = json.loads(response.read().decode('utf-8'))
             status = response.status
     except urllib.error.HTTPError as error:
         return error.code, None, (time.perf_counter() - started) * 1000
     except (urllib.error.URLError, TimeoutError):
         return 'network', None, (time.perf_counter() - started) * 1000
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        # 세션 만료 시 로그인 HTML처럼 200이지만 JSON이 아닌 응답이 올 수 있다. 해당 항목만 오류로 센다.
+        return 'invalid_json', None, (time.perf_counter() - started) * 1000
+    if not isinstance(body, dict) or not isinstance(body.get('items'), list):
+        return 'invalid_json', None, (time.perf_counter() - started) * 1000
     elapsed_ms = (time.perf_counter() - started) * 1000
     return status, [entry['evidenceId'] for entry in body.get('items', [])], elapsed_ms
 
