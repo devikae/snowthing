@@ -1,0 +1,3 @@
+[submodule "my_ai"]
+	path = my_ai
+	url = https://github.com/devikae/ai-skills.git
