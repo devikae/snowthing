@@ -35,6 +35,7 @@ public class SearchConsistencyService {
 
     static final int PURGE_BATCH_SIZE = 1000;
     static final int PURGE_MAX_ROUNDS = 100;
+    static final int REINDEX_MAX_BATCHES_PER_CALL = 50;
 
     static final String REINDEX_JOB = "FULL";
 
@@ -132,7 +133,9 @@ public class SearchConsistencyService {
     public SearchReindexResponse reindex() {
         boolean resumed = Boolean.TRUE.equals(tx.execute(status -> startReindex()));
         int batches = 0;
-        while (Boolean.TRUE.equals(tx.execute(status -> runReindexBatch()))) {
+        // 요청 스레드를 오래 잡지 않도록 호출당 배치 수를 제한한다. 남으면 status=RUNNING으로 돌려주고 다시 부르면 이어서 한다.
+        while (batches < REINDEX_MAX_BATCHES_PER_CALL
+                && Boolean.TRUE.equals(tx.execute(status -> runReindexBatch()))) {
             batches++;
         }
         SearchReindexResponse response = readCheckpoint(resumed, batches);
