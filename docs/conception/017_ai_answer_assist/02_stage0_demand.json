@@ -1,0 +1,55 @@
+{
+  "readOnly": true,
+  "queryMaxExecutionTimeMs": 5000,
+  "measuredAtKst": "2026-11-04 01:44:02",
+  "recentWindowDays": 90,
+  "scope": "post.status = 'NORMAL' AND post.is_deleted = 0; answers are live comments by another writer",
+  "observations": {
+    "publicPostsByCategory": {
+      "ANONYMOUS": 33,
+      "FOOD": 1,
+      "FREE": 30,
+      "MARKET": 2,
+      "QNA": 17
+    },
+    "qnaByMonth": {
+      "2026-10": 12,
+      "2026-11": 5
+    },
+    "qnaAllTime": {
+      "questions": 17,
+      "answered": 17,
+      "undetermined": 0,
+      "questionsOlderThan24h": 17,
+      "answeredWithin24h": 17,
+      "notAnsweredWithin24h": 0,
+      "firstAnswerMinutes": {
+        "n": 17,
+        "p50": 17,
+        "p90": 18,
+        "max": 18
+      },
+      "adminFirstAnswers": 0
+    },
+    "qnaRecent": {
+      "questions": 17,
+      "answered": 17,
+      "undetermined": 0,
+      "questionsOlderThan24h": 17,
+      "answeredWithin24h": 17,
+      "notAnsweredWithin24h": 0,
+      "firstAnswerMinutes": {
+        "n": 17,
+        "p50": 17,
+        "p90": 18,
+        "max": 18
+      },
+      "adminFirstAnswers": 0
+    }
+  },
+  "elapsedMs": {
+    "publicPostsByCategory": 533.33,
+    "qnaByMonth": 62.72,
+    "qnaRows": 81.91
+  }
+}
