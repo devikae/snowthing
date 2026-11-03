@@ -20,6 +20,8 @@ spring:
       - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
 
 logging:
+  image-budget:
+    path: ${SNOWTHING_IMAGE_BUDGET_LOG_PATH:logs/image_budget.jsonl}
   chat-audit:
     path: ${SNOWTHING_CHAT_AUDIT_LOG_PATH:logs/chat_audit.log}
   level:

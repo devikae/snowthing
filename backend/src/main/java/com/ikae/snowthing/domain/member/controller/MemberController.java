@@ -85,8 +85,13 @@ public class MemberController {
     }
 
     @DeleteMapping("/me/profile-image")
-    public ResponseEntity<Void> resetProfileImage(@AuthenticationPrincipal CustomUserDetails user) {
-        profileActionRateLimiter.check(user.getUsername(), ProfileActionRateLimiter.Action.PHOTO);
+    public ResponseEntity<Void> resetProfileImage(
+            @AuthenticationPrincipal CustomUserDetails user, HttpServletRequest httpRequest) {
+        profileActionRateLimiter.checkImage(
+                user.getUsername(),
+                ProfileActionRateLimiter.Action.PHOTO,
+                user.getMember().getCreatedAt(),
+                clientIpResolver.resolve(httpRequest));
         profileImages.reset(user.getUsername());
         return ResponseEntity.noContent().build();
     }

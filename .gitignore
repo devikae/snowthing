@@ -20,6 +20,7 @@ application-credentials*.yml
 *.p12
 
 # Local Project & Study Notes
+__pycache__/
 docs/study/
 docs/study/**
 docs/project/*

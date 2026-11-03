@@ -12,10 +12,18 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
 class ProfileActionRateLimiterTest {
+    private static ProfileActionRateLimiter limiter(
+            Clock clock, com.ikae.snowthing.global.security.SharedRequestLimiter shared) {
+        return new ProfileActionRateLimiter(
+                clock,
+                shared,
+                mock(com.ikae.snowthing.domain.image.service.ImageBudgetMonitor.class));
+    }
+
     @Test
     void globalBudgetDenialHasSeparateErrorCode() {
         var shared = mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class);
-        var limiter = new ProfileActionRateLimiter(Clock.systemUTC(), shared);
+        var limiter = limiter(Clock.systemUTC(), shared);
         when(shared.acquire(any()))
                 .thenReturn(
                         new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(
@@ -33,8 +41,7 @@ class ProfileActionRateLimiterTest {
         Instant start = Instant.parse("2026-11-01T00:00:00Z");
         when(clock.instant()).thenReturn(start);
         var limiter =
-                new ProfileActionRateLimiter(
-                        clock, mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class));
+                limiter(clock, mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class));
         for (int i = 0; i < 30; i++)
             limiter.check("first", ProfileActionRateLimiter.Action.NICKNAME);
         assertThatThrownBy(() -> limiter.check("first", ProfileActionRateLimiter.Action.NICKNAME))
@@ -51,7 +58,7 @@ class ProfileActionRateLimiterTest {
     @Test
     void photoUsesFivePerDaySharedBudgetAndFailsClosed() {
         var shared = mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class);
-        var limiter = new ProfileActionRateLimiter(Clock.systemUTC(), shared);
+        var limiter = limiter(Clock.systemUTC(), shared);
         when(shared.acquire(any()))
                 .thenReturn(
                         new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(
@@ -79,7 +86,7 @@ class ProfileActionRateLimiterTest {
     @Test
     void postImagesUseThirtyPerHourSharedBudget() {
         var shared = mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class);
-        var limiter = new ProfileActionRateLimiter(Clock.systemUTC(), shared);
+        var limiter = limiter(Clock.systemUTC(), shared);
         when(shared.acquire(any()))
                 .thenReturn(
                         new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(
@@ -99,7 +106,7 @@ class ProfileActionRateLimiterTest {
     @Test
     void passwordChecksUseSharedBudgetAndFailClosedDuringStoreFailure() {
         var shared = mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class);
-        var limiter = new ProfileActionRateLimiter(Clock.systemUTC(), shared);
+        var limiter = limiter(Clock.systemUTC(), shared);
         when(shared.acquire(any()))
                 .thenReturn(
                         new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(

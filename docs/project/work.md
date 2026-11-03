@@ -2287,3 +2287,15 @@
 - 검증: 첫 전체 테스트는 로컬 테스트 환경변수 누락과 request_budget_window 초기 준비 누락으로 실패했다. CI와 같은 조건을 준비한 전용 `snowthing_pr47_test`에서 검증했다. 마지막 커서 및 거절 사유 테스트를 포함한 `spotlessApply spotlessCheck test build` 성공: 전체 464개 중 실패 0개·기존 제외 1개. `git diff --check` 통과. MySQL 마이그레이션 검증 스크립트도 통과했다.
 - PR 반영: 수정 커밋 `dfa0dca`를 `hotfix/site-profile-attachments`에 푸시했다. GitHub Actions 실행 `41581483078`에서 Spotless(32초)와 모든 마이그레이션 검증 단계가 통과했다. 최종 원격 결과는 [PR #47 Checks](https://github.com/devikae/snowthing/pull/47/checks)에서 확인한다.
 - 후속 사항: 운영 배포·AWS 정책 변경은 수행하지 않았다. 전역 예산 분리·신규 계정/IP 제한·운영 경보 연결은 기존 승인 정책을 바꾸는 후속 결정 사항이다. 실제 운영 백필 규모와 실행 계획은 배포 시 확인해야 한다.
+
+### 2026-11-03 — PR #47 보류했던 피드백 전체 반영
+
+- 사용자 추가 승인: 현재 달린 모든 피드백을 처리하도록 요청받아, 이전 기록에서 보류했던 종류별 전역 예산·신규 계정/IP 제한·운영 경보·실측도 반영했다. 기존 미커밋 작업과 분리된 `.cache/pr47-fix`에서 계속 작업했다.
+- 예산: 프로필 전역 30회/일과 게시글 전역 270회/시간·970회/일을 분리했다. 기존 합산 300회/시간·1,000회/일은 비용 보호와 이전 버킷 전환을 위해 유지한다. 가입 후 24시간에는 프로필 1회/일·게시글 5회/시간을 추가하고, IP에는 프로필 10회/일·게시글 60회/시간 및 200회/일을 추가했다. 회원의 기존 created_at을 사용하므로 DB 필드·마스터 API·N:M 변경은 없다.
+- 경계: 두 이미지 업로드와 프로필 초기화 컨트롤러가 신뢰 프록시를 거친 IP와 principal의 가입 시각을 전달한다. 서비스는 웹 객체를 받지 않는다. 모든 버킷을 하나의 MySQL 트랜잭션에서 검사하므로 거절된 요청이 다른 버킷을 차감하지 않는다. 원문 IP·이메일은 기록하지 않고 IPv6는 /64로 정규화한다. 공용 NAT의 정상 사용자가 제한을 공유하는 대가는 설계 문서에 명시했다.
+- 관측: 전역 거절은 Action별 AtomicLong으로 합산하고 분당 최대 두 개의 EMF 이벤트를 전용 JSONL에 기록한다. 요청 경로에 AWS·파일 I/O를 넣지 않는다. 로컬 로그 최대 10MB·7일, CloudWatch 로그 보관 7일이다. 종료 시 미발행 집계를 기록하되 강제 종료 시 마지막 집계 손실 가능성을 문서화했다.
+- 운영 적용: AWS 세션을 재인증한 뒤 /snowthing/images/budget 로그 그룹과 `snowthing-image-global-limit-photo`, `snowthing-image-global-limit-post-image` 경보를 생성했다. 기존 SNS `snowthing-monitoring-alerts`의 확인된 구독을 사용하며 5분 합계 1 이상 ALARM·OK 알림과 notBreaching을 적용했다. 두 경보 상태는 OK다. 기존 Agent에 파일 수집 fragment만 추가하고 running/configured 및 기존 메모리·디스크 수집 보존을 재조회했다. Agent 검증은 컴파일된 TOML의 실제 inputs 구조를 읽도록 보완했다.
+- 운영 실측: SSM과 EC2 역할로 읽기 전용 SELECT·EXPLAIN만 실행했다. 소프트 삭제 포함 게시글 86개, 첨부 2개, 레거시 백필 키 2개다. 현 운영에는 024~026 테이블·image_url 인덱스가 없고 기존 조회는 ALL 스캔이다. 쿼리당 MAX_EXECUTION_TIME=5000을 적용했으며 회원·본문·개별 키 목록은 보고하지 않았다. 새 인덱스 적용은 PR 배포의 마이그레이션 단계가 담당한다.
+- 증거: `docs/conception/012_profile_settings/06_production_image_inspection.json`, `07_production_monitoring_verification.json`. 변경 전 경보 백업은 로컬 임시 디렉터리 `snowthing-image-monitoring-9v4qbnmd`, Agent 백업은 서버 `/var/lib/snowthing-monitoring-backups/image-budget-20261103T053830Z`에 있다. 재현 스크립트는 기본 plan·명시적 --apply·읽기 전용 --verify를 제공한다.
+- 검증: 예산 소진의 상호 격리·미차감, 신규 계정 제한, IPv4 별칭과 잘못된 호스트 입력, 계정 간 IP 및 IPv6 /64 공유, 1만 건 병렬 거절의 합산·분당 로그량 제한을 검증했다. 최종 `spotlessApply spotlessCheck test build` 성공: 471개 중 실패 0개·기존 제외 1개. Python 설정·실측 스크립트 컴파일과 실제 운영 --verify도 통과했다. 최종 원격 CI는 PR #47 Checks를 참조한다.
+- 배포 경계: 이번 작업은 경보·Agent 수집 설정을 적용했으며 운영 앱 교체·운영 DB 마이그레이션은 하지 않았다. 새 앱의 EMF 발행과 신규 테이블의 운영 실행 계획은 PR 배포 후에 확인할 수 있다. CodeRabbit의 자동 재리뷰 완료 판정과 코드 반영 사실은 구분한다.

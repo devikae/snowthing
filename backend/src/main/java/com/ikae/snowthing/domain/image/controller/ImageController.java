@@ -31,6 +31,7 @@ public class ImageController {
     private final ProfileImageLifecycleService profileImages;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService postImages;
     private final com.ikae.snowthing.domain.image.service.ImageProcessingGate processingGate;
+    private final com.ikae.snowthing.global.web.ClientIpResolver clientIpResolver;
 
     @PostMapping("/keep-alive")
     public ResponseEntity<Void> keepAlive(
@@ -47,6 +48,7 @@ public class ImageController {
     @PostMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImageUploadResponse> uploadProfileImage(
             @RequestParam("file") MultipartFile file,
+            jakarta.servlet.http.HttpServletRequest httpRequest,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
@@ -55,9 +57,11 @@ public class ImageController {
         var prepared =
                 processingGate.run(
                         () -> {
-                            profileActionRateLimiter.check(
+                            profileActionRateLimiter.checkImage(
                                     userDetails.getUsername(),
-                                    ProfileActionRateLimiter.Action.PHOTO);
+                                    ProfileActionRateLimiter.Action.PHOTO,
+                                    userDetails.getMember().getCreatedAt(),
+                                    clientIpResolver.resolve(httpRequest));
                             return imageService.prepareProfileImage(file);
                         });
         ImageUploadResponse response =
@@ -68,6 +72,7 @@ public class ImageController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImageUploadResponse> uploadImage(
             @RequestParam("file") MultipartFile file,
+            jakarta.servlet.http.HttpServletRequest httpRequest,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
@@ -76,9 +81,11 @@ public class ImageController {
         var prepared =
                 processingGate.run(
                         () -> {
-                            profileActionRateLimiter.check(
+                            profileActionRateLimiter.checkImage(
                                     userDetails.getUsername(),
-                                    ProfileActionRateLimiter.Action.POST_IMAGE);
+                                    ProfileActionRateLimiter.Action.POST_IMAGE,
+                                    userDetails.getMember().getCreatedAt(),
+                                    clientIpResolver.resolve(httpRequest));
                             return imageService.preparePostImage(file);
                         });
         ImageUploadResponse response = postImages.upload(prepared, userDetails.getUsername());
