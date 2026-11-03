@@ -28,7 +28,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SQLDelete(
         sql =
-                "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW() WHERE post_id = ?")
+                "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW(),"
+                        + " content_version = content_version + 1 WHERE post_id = ?")
 @SQLRestriction("is_deleted = false")
 @Check(constraints = "like_count >= 0 AND dislike_count >= 0")
 public class Post extends BaseTimeEntity {

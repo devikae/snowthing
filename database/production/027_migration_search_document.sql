@@ -4,6 +4,21 @@
 -- 2) search_document: 공개 게시글 구간과 댓글을 담는 검색 전용 복제 테이블. 원문은 post/comment가 기준이다.
 --    전체 재구축 API로만 채운다. 원문 하드 삭제와 무관하게 조회 시 원문 테이블과 조인해 공개 범위를 다시 거르므로 FK를 두지 않는다.
 
+-- 검색 API는 2자 검색어를 허용하고 2-gram 기준선을 전제로 한다. ngram_token_size가 다르면 인덱스는 오류 없이
+-- 만들어지지만 2자 검색이 0건이 되거나(3 이상) unigram 검색이 된다(1). 다른 변경을 적용하기 전에 멈춘다.
+DELIMITER $$
+DROP PROCEDURE IF EXISTS assert_ngram_token_size$$
+CREATE PROCEDURE assert_ngram_token_size()
+BEGIN
+    IF @@GLOBAL.ngram_token_size <> 2 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '027 requires ngram_token_size = 2 for search_document';
+    END IF;
+END$$
+DELIMITER ;
+CALL assert_ngram_token_size();
+DROP PROCEDURE IF EXISTS assert_ngram_token_size;
+
 DELIMITER $$
 DROP PROCEDURE IF EXISTS apply_post_content_version$$
 CREATE PROCEDURE apply_post_content_version()
