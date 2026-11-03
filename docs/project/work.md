@@ -1,3 +1,18 @@
+## 게시판 통계(댓글/조회수) 열 정렬 정규화 및 카풀 위젯 Empty State 높이·여백 균형 개선 (2026-11-03)
+
+- 게시판 목록 및 메인 피드 열 정렬(Column Alignment) 및 컴포넌트 밸런스 개선:
+  1. **게시글 목록 통계(댓글/조회수) 수직 열 고정 (Fixed Column Alignment)**:
+     - `HomePageClient.tsx` & `posts/page.tsx`: 댓글이 0개일 때 댓글 태그가 DOM에서 제거되어 조회수(`👁`)가 당겨지거나 밀려 세로 일렬 선이 어긋나던 버그 수정.
+     - 댓글 0개 시에도 동일 너비의 빈 플레이스홀더(`<span className="m-stat m-stat-comment is-empty" aria-hidden="true" />`)를 유지하고, 공지사항 목록에도 적용.
+     - `globals.css`: `.m-stat-comment`(36px)와 `.m-stat-view`(44px)에 고정폭 부여 및 `font-variant-numeric: tabular-nums`를 적용하여 댓글 유무 및 숫자 자릿수(1자리 vs 2자리)와 무관하게 모든 행의 눈 아이콘(`👁`) X좌표를 수직 일렬로 완벽 정렬.
+  2. **메인 페이지 '카풀 & 동행' 섹션 Empty State 밸런스 및 여백 교정**:
+     - `HomePageClient.tsx`: `carpool-widget-empty`에 `directions_car` 아이콘을 추가하여 중고장터 Empty State와 동일한 시각적 계층 구조 형성.
+     - `globals.css`:
+       - 카풀 글이 없을 때 상단 실선이 점선 박스에 딱 달라붙던 현상을 해결하기 위해 `.carpool-compact-list:has(.carpool-widget-empty) { border-top: none; }` 적용.
+       - Empty 박스의 높이를 기존 72px에서 140px(`min-height: 140px`)로 확대하고 넉넉한 패딩 및 `margin-top: 12px`를 부여하여 우측 중고장터 위젯과의 시각적 높이/여백 밸런스 완벽 복원.
+  3. **검증**:
+     - 프론트엔드 전체 정적/동적 28개 라우트 빌드 통과 (`npm run build`, Next.js Turbopack 0 errors).
+
 ## 관리자 시스템 대시보드 및 소프트 삭제 감사 추적 관리 (2026-11-02)
 
 - 관리자 전용 대시보드 및 시스템 감사·운영 제어 기능 구축 완료:
@@ -2364,3 +2379,12 @@
 - **검증**:
   - 백엔드 428+ 테스트 전체 통과 (`./gradlew test`)
   - 프론트엔드 전체 Next.js 빌드 및 정적 페이지 생성 통과 (`npm run build`)
+
+
+## 관리자 브랜치 미커밋 변경 확정 (2026-11-03)
+
+- 사용자 승인으로 기존 미커밋 9개 파일을 검토하고 목적별 두 커밋으로 분리했다. 소스 코드는 추가 수정하지 않았다.
+- 날짜 표시: 카풀 목록·상세, 게시글 상세·댓글의 초 단위 표시를 제거하고 분 단위로 정리한 기존 변경을 보존했다.
+- UI: 메인·게시판 댓글/조회수 열 정렬, 카풀·장터 빈 상태, 기본 프로필 아바타의 기존 변경과 작업 기록을 보존했다.
+- 검증: npm run build 성공(TypeScript 포함, 정적 페이지 28/28 생성), git diff --check 통과. npm run lint는 기존 관리자 페이지·라이브톡 등의 오류 25개·경고 7개로 실패했다. 변경 파일 HomePageClient의 any 및 미사용 함수도 HEAD에 이미 있음을 확인했다. 이번 작업에서 기존 린트 오류는 수정하지 않았다.
+- 원본 미커밋 패치를 별도 .cache에 백업하고 커밋 전후 8개 소스 파일의 SHA-256을 대조했다. main 병합·rebase·원격 push는 수행하지 않았다.

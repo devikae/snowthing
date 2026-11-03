@@ -2166,19 +2166,36 @@ html[data-theme="dark"] .m-cat.notice {
 
 .m-stats {
   display: inline-flex;
-  min-width: 92px;
+  min-width: 88px;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 6px;
   color: var(--snow-muted);
   font-family: var(--font-mono);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .m-stat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.m-stat-comment {
+  width: 36px;
+  justify-content: flex-start;
+}
+
+.m-stat-comment.is-empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.m-stat-view {
+  width: 44px;
+  justify-content: flex-start;
 }
 
 .m-stat .material-symbols-outlined {
@@ -3662,9 +3679,7 @@ html[data-theme="dark"] .snow-empty-copy strong {
   line-height: 1.45;
 }
 
-.snow-report-empty,
-.carpool-widget-empty,
-.market-preview-empty {
+.snow-report-empty {
   display: flex;
   min-height: 72px;
   align-items: center;
@@ -3677,6 +3692,34 @@ html[data-theme="dark"] .snow-empty-copy strong {
   color: var(--snow-muted);
   font-size: 13px;
   font-weight: 500;
+}
+
+.carpool-widget-empty,
+.market-preview-empty {
+  display: flex;
+  min-height: 140px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  border: 1px dashed var(--snow-border-strong);
+  border-radius: 14px;
+  background: var(--snow-surface-low);
+  padding: 24px 20px;
+  color: var(--snow-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.carpool-widget-empty .material-symbols-outlined,
+.market-preview-empty .material-symbols-outlined {
+  font-size: 28px;
+  color: var(--snow-faint);
+}
+
+.carpool-compact-list:has(.carpool-widget-empty) {
+  border-top: none;
 }
 
 .m-admin-blind-btn {

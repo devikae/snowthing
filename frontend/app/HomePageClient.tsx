@@ -394,15 +394,17 @@ export default function HomePageClient() {
                         <div className="m-row-right">
                           <PostListAuthor nickname={post.writerNickname} />
                           <span className="m-stats">
-                            {post.commentCount > 0 && (
-                              <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
+                            {post.commentCount > 0 ? (
+                              <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>
                                 <span className="material-symbols-outlined" aria-hidden="true">
                                   chat_bubble
                                 </span>
                                 {post.commentCount}
                               </span>
+                            ) : (
+                              <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                             )}
-                            <span className="m-stat" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                            <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString()}`}>
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 visibility
                               </span>
@@ -527,7 +529,12 @@ export default function HomePageClient() {
 
             <div className="carpool-compact-list">
               {carpools.length === 0 ? (
-                <p className="carpool-widget-empty">등록된 카풀 모집글이 없습니다.</p>
+                <div className="carpool-widget-empty">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    directions_car
+                  </span>
+                  <p>등록된 카풀 모집글이 없습니다.</p>
+                </div>
               ) : (
                 carpools.map((item) => (
                   <Link href={`/carpool/${item.publicId}`} className="carpool-row" key={item.publicId}>
