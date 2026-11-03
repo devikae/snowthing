@@ -55,6 +55,22 @@ snowthing:
         rest-api-key: ${SNOWTHING_KAKAO_REST_API_KEY:}
       opinet:
         api-key: ${SNOWTHING_OPINET_API_KEY:}
+  search:
+    indexer:
+      enabled: ${SNOWTHING_SEARCH_INDEXER_ENABLED:true}
+      poll-interval-ms: ${SNOWTHING_SEARCH_INDEXER_POLL_INTERVAL_MS:1000}
+      batch-size: 50
+      lease-ms: 60000
+      max-attempts: 5
+      retry-base-delay-ms: 1000
+      retry-max-delay-ms: 600000
+    reconcile:
+      enabled: ${SNOWTHING_SEARCH_RECONCILE_ENABLED:true}
+      cron: "0 30 4 * * *"
+    reindex:
+      batch-size: 500
+    outbox:
+      done-retention-days: 7
   oauth2:
     frontend-base-url: ${SNOWTHING_FRONTEND_BASE_URL:http://localhost:3000}
     connect-timeout-millis: ${SNOWTHING_OAUTH2_CONNECT_TIMEOUT_MILLIS:2000}

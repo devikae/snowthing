@@ -21,3 +21,9 @@ snowthing:
       secret: test-email-verification-secret-at-least-32-bytes
   mail:
     provider: disabled
+  # 테스트에서는 outbox 폴링·일일 대조 스케줄러를 끄고 처리기를 직접 부른다.
+  search:
+    indexer:
+      enabled: false
+    reconcile:
+      enabled: false

@@ -9,6 +9,7 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -61,6 +62,37 @@ public class SearchDocumentJdbcRepository {
      */
     public int deleteAll() {
         return jdbc.update("DELETE FROM search_document");
+    }
+
+    /** 게시글 구간과 그 글의 댓글 문서를 함께 지운다. */
+    public int deleteByPostId(long postId) {
+        return jdbc.update("DELETE FROM search_document WHERE post_id = ?", postId);
+    }
+
+    public int deleteBySource(SearchSourceType type, long sourceId) {
+        return jdbc.update(
+                "DELETE FROM search_document WHERE source_type = ? AND source_id = ?",
+                type.name(),
+                sourceId);
+    }
+
+    public List<Long> findCommentIdsOfPost(long postId) {
+        return jdbc.queryForList(
+                "SELECT DISTINCT source_id FROM search_document"
+                        + " WHERE post_id = ? AND source_type = 'COMMENT' ORDER BY source_id",
+                Long.class,
+                postId);
+    }
+
+    public Optional<Long> findPostIdOfComment(long commentId) {
+        return jdbc
+                .queryForList(
+                        "SELECT post_id FROM search_document"
+                                + " WHERE source_type = 'COMMENT' AND source_id = ? LIMIT 1",
+                        Long.class,
+                        commentId)
+                .stream()
+                .findFirst();
     }
 
     public void insertAll(List<NewSearchDocument> documents) {

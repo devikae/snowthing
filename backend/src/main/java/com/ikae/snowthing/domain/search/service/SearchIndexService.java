@@ -68,7 +68,7 @@ public class SearchIndexService {
                 posts.size(), postChunkCount, commentCount, rows.size(), removed, indexedAt);
     }
 
-    private static NewSearchDocument toDocument(
+    static NewSearchDocument toDocument(
             PostSource post, SearchChunk chunk, LocalDateTime indexedAt) {
         boolean titleChunk = chunk.chunkNo() == SearchTextChunker.TITLE_CHUNK_NO;
         return new NewSearchDocument(
@@ -89,7 +89,7 @@ public class SearchIndexService {
                 indexedAt);
     }
 
-    private static NewSearchDocument toDocument(
+    static NewSearchDocument toDocument(
             CommentSource comment, SearchChunk chunk, LocalDateTime indexedAt) {
         return new NewSearchDocument(
                 EvidenceId.of(SearchSourceType.COMMENT, comment.commentId(), chunk.chunkNo())
