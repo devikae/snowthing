@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.image.entity;
 import java.time.Instant;
 
 import jakarta.persistence.*;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,9 @@ public class MarketThumbnail {
 
     @Column(name = "revision", nullable = false)
     private long revision;
+
+    @Column(name = "attempts", nullable = false)
+    private int attempts;
 
     @Column(name = "due_at")
     private Instant dueAt;

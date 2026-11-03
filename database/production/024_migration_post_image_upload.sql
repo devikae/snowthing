@@ -6,7 +6,21 @@ CREATE TABLE IF NOT EXISTS post_image_upload (
     INDEX idx_image_upload_due (due_at)
 );
 
-CREATE INDEX IF NOT EXISTS idx_post_image_url ON post_image (image_url);
+DELIMITER $$
+DROP PROCEDURE IF EXISTS apply_post_image_url_index$$
+CREATE PROCEDURE apply_post_image_url_index()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'post_image'
+          AND index_name = 'idx_post_image_url'
+    ) THEN
+        ALTER TABLE post_image ADD INDEX idx_post_image_url (image_url);
+    END IF;
+END$$
+DELIMITER ;
+CALL apply_post_image_url_index();
+DROP PROCEDURE IF EXISTS apply_post_image_url_index;
 
 -- Enroll existing attachments conservatively. All posts, including soft-deleted ones,
 -- remain references; existing unreferenced files require a separate reviewed manifest.

@@ -160,7 +160,8 @@ public class PostImageLifecycleService {
 
     @Scheduled(fixedDelayString = "${snowthing.post-images.cleanup-delay-ms:60000}")
     public void cleanup() {
-        tx.executeWithoutResult(status -> postImageUploadRepository.deleteCompletedPurges(clock.instant()));
+        tx.executeWithoutResult(
+                status -> postImageUploadRepository.deleteCompletedPurges(clock.instant()));
         var keys = postImageUploadRepository.findKeysForCleanup(clock.instant());
         for (String key : keys) {
             try {
@@ -187,11 +188,15 @@ public class PostImageLifecycleService {
                                     var upload = uploadOpt.get();
                                     if (upload.getDue().isAfter(clock.instant())) return false;
 
-                                    // Includes soft-deleted posts: recovery must retain their photos.
-                                    // Indexed lookup on post_image eliminates full table scan on post.content.
+                                    // Includes soft-deleted posts: recovery must retain their
+                                    // photos.
+                                    // Both gallery and inline references use indexed lookups.
                                     boolean inUse =
                                             postImageRepository.existsByImageUrlIn(
-                                                    List.of(key, urls.toPublicUrl(key)));
+                                                            List.of(key, urls.toPublicUrl(key)))
+                                                    || postImageRepository.countContentReference(
+                                                                    key)
+                                                            > 0;
                                     if (inUse) {
                                         upload.renewDue(clock.instant().plus(Duration.ofHours(1)));
                                         return false;

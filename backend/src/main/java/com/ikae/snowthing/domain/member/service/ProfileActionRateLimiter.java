@@ -76,6 +76,17 @@ public class ProfileActionRateLimiter {
                                 "snowthing:limits:photos:global:day", 30, Duration.ofDays(1)));
             }
             var decision = sharedLimiter.acquire(budgets);
+            if (decision.available()
+                    && decision.deniedKey() != null
+                    && decision.deniedKey().contains(":global:")) {
+                org.slf4j.LoggerFactory.getLogger(getClass())
+                        .warn(
+                                "Image upload global budget exhausted: action={}, budget={}, retryAfterSeconds={}",
+                                action,
+                                decision.deniedKey(),
+                                decision.retryAfterSeconds());
+                throw new CustomException(ErrorCode.IMAGE_GLOBAL_LIMIT);
+            }
             if (!decision.allowed())
                 throw new CustomException(
                         decision.available()

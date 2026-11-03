@@ -93,12 +93,10 @@ public class ImageService {
         if (managed) {
             try (var input = new ByteArrayInputStream(imageBytes);
                     var output = new ByteArrayOutputStream()) {
-                var decoded = ImageIO.read(input);
-                if (decoded == null) throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
-                Thumbnails.of(decoded)
-                        .size(
-                                Math.min(1920, decoded.getWidth()),
-                                Math.min(1920, decoded.getHeight()))
+                int bound = thumbnailBound(imageBytes, 1920);
+                Thumbnails.of(input)
+                        .size(bound, bound)
+                        .useExifOrientation(true)
                         .outputFormat("jpg")
                         .outputQuality(0.82)
                         .toOutputStream(output);
@@ -298,12 +296,10 @@ public class ImageService {
     private byte[] createThumbnail(byte[] imageBytes) {
         try (ByteArrayInputStream input = new ByteArrayInputStream(imageBytes);
                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            var decoded = ImageIO.read(input);
-            if (decoded == null) throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
-            Thumbnails.of(decoded)
-                    .size(
-                            Math.min(THUMBNAIL_MAX_WIDTH, decoded.getWidth()),
-                            Math.min(THUMBNAIL_MAX_HEIGHT, decoded.getHeight()))
+            int bound = thumbnailBound(imageBytes, THUMBNAIL_MAX_WIDTH);
+            Thumbnails.of(input)
+                    .size(bound, bound)
+                    .useExifOrientation(true)
                     .outputFormat("jpg")
                     .outputQuality(THUMBNAIL_QUALITY)
                     .toOutputStream(output);
@@ -311,6 +307,28 @@ public class ImageService {
         } catch (IOException | RuntimeException e) {
             log.warn("썸네일 생성 실패: error={}", e.getMessage());
             throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+        }
+    }
+
+    // Read dimensions without discarding the original stream's EXIF orientation.
+    private int thumbnailBound(byte[] bytes, int maximum) throws IOException {
+        try (var input = new MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
+            var readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                int width = reader.getWidth(0), height = reader.getHeight(0);
+                if (width <= 0 || height <= 0)
+                    throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+                if (width > MAX_IMAGE_SIDE
+                        || height > MAX_IMAGE_SIDE
+                        || (long) width * height > MAX_IMAGE_PIXELS)
+                    throw new BusinessException(ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
+                return Math.min(maximum, Math.max(width, height));
+            } finally {
+                reader.dispose();
+            }
         }
     }
 

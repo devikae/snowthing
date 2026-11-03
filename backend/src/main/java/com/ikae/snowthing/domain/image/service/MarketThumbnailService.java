@@ -15,11 +15,20 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.*;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.BusinessException;
+import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.security.SharedRequestLimiter;
+import com.ikae.snowthing.global.security.SharedRequestLimiter.Limit;
+
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Service
 public class MarketThumbnailService {
+    private static final int MAX_ATTEMPTS = 5;
+    private static final String SOURCE_PATTERN = "public/posts/originals/m-[0-9a-f-]{36}\\.jpg";
     private final JdbcTemplate jdbc;
     private final NamedParameterJdbcTemplate namedJdbc;
     private final ImageService images;
@@ -28,12 +37,12 @@ public class MarketThumbnailService {
     private final S3Client s3;
     private final Clock clock;
     private final TransactionTemplate tx;
-    private final com.ikae.snowthing.global.security.SharedRequestLimiter limits;
+    private final SharedRequestLimiter limits;
 
     @Value("${cloud.aws.s3.bucket:snowthing-media-00001}")
     private String bucket;
 
-    private record Job(String source, String ready, long revision, boolean orphan) {}
+    private record Job(String source, String ready, long revision, boolean orphan, int attempts) {}
 
     public MarketThumbnailService(
             JdbcTemplate jdbc,
@@ -43,7 +52,7 @@ public class MarketThumbnailService {
             S3Client s3,
             Clock clock,
             PlatformTransactionManager manager,
-            com.ikae.snowthing.global.security.SharedRequestLimiter limits) {
+            SharedRequestLimiter limits) {
         this.jdbc = jdbc;
         this.namedJdbc = new NamedParameterJdbcTemplate(jdbc);
         this.images = images;
@@ -60,9 +69,9 @@ public class MarketThumbnailService {
     public void queue(String postId, String firstImage) {
         String key = urls.toStorageValue(firstImage);
         // Old uploads already have thumbnails. New uploads create none until selected here.
-        if (key != null && !key.startsWith("public/posts/originals/m-")) key = null;
+        if (key != null && !key.matches(SOURCE_PATTERN)) key = null;
         jdbc.update(
-                "INSERT INTO market_thumbnail(post_public_id,source_key,revision,due_at) VALUES(?,?,0,?) ON DUPLICATE KEY UPDATE source_key=VALUES(source_key),revision=revision+1,due_at=VALUES(due_at)",
+                "INSERT INTO market_thumbnail(post_public_id,source_key,revision,due_at,attempts) VALUES(?,?,0,?,0) ON DUPLICATE KEY UPDATE source_key=VALUES(source_key),revision=revision+1,due_at=VALUES(due_at),attempts=0",
                 postId,
                 key,
                 Timestamp.from(clock.instant()));
@@ -115,7 +124,7 @@ public class MarketThumbnailService {
                                             == 0;
                             var rows =
                                     jdbc.query(
-                                            "SELECT source_key,ready_source_key,revision,due_at,lease_until FROM market_thumbnail WHERE post_public_id=? FOR UPDATE",
+                                            "SELECT source_key,ready_source_key,revision,due_at,lease_until,attempts FROM market_thumbnail WHERE post_public_id=? FOR UPDATE",
                                             (row, index) -> {
                                                 var due = row.getTimestamp(4);
                                                 var lease = row.getTimestamp(5);
@@ -133,7 +142,8 @@ public class MarketThumbnailService {
                                                         orphan ? null : row.getString(1),
                                                         row.getString(2),
                                                         row.getLong(3),
-                                                        orphan);
+                                                        orphan,
+                                                        row.getInt(6));
                                             },
                                             id);
                             if (rows.isEmpty() || rows.get(0) == null) return null;
@@ -150,19 +160,22 @@ public class MarketThumbnailService {
                 var decision =
                         limits.acquire(
                                 List.of(
-                                        new com.ikae.snowthing.global.security.SharedRequestLimiter
-                                                .Limit(
+                                        new Limit(
                                                 "snowthing:limits:market-thumbnails:hour",
                                                 300,
                                                 Duration.ofHours(1)),
-                                        new com.ikae.snowthing.global.security.SharedRequestLimiter
-                                                .Limit(
+                                        new Limit(
                                                 "snowthing:limits:market-thumbnails:day",
                                                 1000,
                                                 Duration.ofDays(1))));
-                if (!decision.allowed())
-                    throw new com.ikae.snowthing.global.exception.CustomException(
-                            com.ikae.snowthing.global.error.ErrorCode.PROFILE_ACTION_LIMIT);
+                if (!decision.allowed()) {
+                    defer(
+                            id,
+                            job,
+                            Duration.ofSeconds(Math.max(1, decision.retryAfterSeconds())),
+                            false);
+                    return;
+                }
                 images.createMarketThumbnail(job.source(), objectKey(id), gate);
             } else if (job.source() == null)
                 s3.deleteObject(
@@ -183,7 +196,7 @@ public class MarketThumbnailService {
                         }
                         int updated =
                                 jdbc.update(
-                                        "UPDATE market_thumbnail SET ready_source_key=?,lease_until=NULL,due_at=NULL WHERE post_public_id=? AND revision=?",
+                                        "UPDATE market_thumbnail SET ready_source_key=?,lease_until=NULL,due_at=NULL,attempts=0 WHERE post_public_id=? AND revision=?",
                                         job.source(),
                                         id,
                                         job.revision());
@@ -194,31 +207,84 @@ public class MarketThumbnailService {
                                     id);
                     });
         } catch (RuntimeException failure) {
+            boolean permanent =
+                    failure instanceof S3Exception s3Failure && s3Failure.statusCode() == 404
+                            || failure instanceof CustomException custom
+                                    && custom.getErrorCode() == ErrorCode.INVALID_INPUT
+                            || failure instanceof BusinessException business
+                                    && (business.getErrorCode() == ErrorCode.INVALID_FILE_TYPE
+                                            || business.getErrorCode()
+                                                    == ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
+            int attempts = job.attempts() + 1;
+            Duration delay = Duration.ofMinutes(1L << Math.min(attempts - 1, 6));
+            if (permanent || attempts >= MAX_ATTEMPTS) {
+                tx.executeWithoutResult(
+                        status ->
+                                jdbc.update(
+                                        "UPDATE market_thumbnail SET attempts=?,due_at=NULL,lease_until=? WHERE post_public_id=? AND revision=?",
+                                        attempts,
+                                        job.orphan()
+                                                ? Timestamp.from(
+                                                        clock.instant().plus(Duration.ofHours(1)))
+                                                : null,
+                                        id,
+                                        job.revision()));
+            } else {
+                defer(id, job, delay, true);
+            }
+            // A newer queue must remain runnable even if this revision failed.
             tx.executeWithoutResult(
                     status ->
                             jdbc.update(
-                                    "UPDATE market_thumbnail SET lease_until=NULL,due_at=? WHERE post_public_id=?",
-                                    Timestamp.from(clock.instant().plus(Duration.ofMinutes(1))),
-                                    id));
+                                    "UPDATE market_thumbnail SET lease_until=NULL WHERE post_public_id=? AND revision<>?",
+                                    id,
+                                    job.revision()));
             throw failure;
         }
     }
 
+    private void defer(String id, Job job, Duration delay, boolean failed) {
+        var next = Timestamp.from(clock.instant().plus(delay));
+        tx.executeWithoutResult(
+                status -> {
+                    jdbc.update(
+                            "UPDATE market_thumbnail SET attempts=?,due_at=?,lease_until=? WHERE post_public_id=? AND revision=?",
+                            job.attempts() + (failed ? 1 : 0),
+                            next,
+                            job.orphan() ? next : null,
+                            id,
+                            job.revision());
+                    jdbc.update(
+                            "UPDATE market_thumbnail SET lease_until=NULL WHERE post_public_id=? AND revision<>?",
+                            id,
+                            job.revision());
+                });
+    }
+
     @Scheduled(fixedDelayString = "${snowthing.market-thumbnails.orphan-delay-ms:3600000}")
     public void cleanupOrphans() {
-        for (String id :
-                jdbc.queryForList(
-                        "SELECT t.post_public_id FROM market_thumbnail t LEFT JOIN post p ON p.public_id=t.post_public_id WHERE p.post_id IS NULL AND (t.lease_until IS NULL OR t.lease_until<=?) LIMIT 20",
-                        String.class,
-                        Timestamp.from(clock.instant()))) {
-            try {
-                processOne(id);
-            } catch (RuntimeException failure) {
-                org.slf4j.LoggerFactory.getLogger(getClass())
-                        .warn(
-                                "Orphan market thumbnail deferred: {}",
-                                failure.getClass().getSimpleName());
+        long deadline = System.nanoTime() + Duration.ofMinutes(2).toNanos();
+        String after = "";
+        List<String> batch;
+        do {
+            batch =
+                    jdbc.queryForList(
+                            "SELECT t.post_public_id FROM market_thumbnail t LEFT JOIN post p ON p.public_id=t.post_public_id WHERE p.post_id IS NULL AND (t.lease_until IS NULL OR t.lease_until<=?) AND t.post_public_id>? ORDER BY t.post_public_id LIMIT 20",
+                            String.class,
+                            Timestamp.from(clock.instant()),
+                            after);
+            for (String id : batch) {
+                after = id;
+                if (System.nanoTime() >= deadline) return;
+                try {
+                    processOne(id);
+                } catch (RuntimeException failure) {
+                    org.slf4j.LoggerFactory.getLogger(getClass())
+                            .warn(
+                                    "Orphan market thumbnail deferred: {}",
+                                    failure.getClass().getSimpleName());
+                }
             }
-        }
+        } while (!batch.isEmpty() && System.nanoTime() < deadline);
     }
 }

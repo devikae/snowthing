@@ -100,7 +100,7 @@ class ProfileImageSecurityIntegrationTest {
     }
 
     @Test
-    void otherUserCannotUploadOnBehalfOfAnother() throws Exception {
+    void uploadWithoutCsrfIsRejectedBeforeImageProcessing() throws Exception {
         String selfEmail = "photo-self-" + UUID.randomUUID() + "@example.com";
         String victimEmail = "photo-victim-" + UUID.randomUUID() + "@example.com";
         Member self =
@@ -125,8 +125,11 @@ class ProfileImageSecurityIntegrationTest {
                                         new MockMultipartFile(
                                                 "file", "photo.jpg", "image/jpeg", new byte[] {1}))
                                 .param("email", victim.getEmail())
-                                .with(user(new CustomUserDetails(self)))
-                                .with(csrf()));
+                                .with(user(new CustomUserDetails(self))))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(images);
+        assertThat(members.findByEmail(self.getEmail()).orElseThrow().getProfileImageUrl())
+                .isNull();
         assertThat(members.findByEmail(victim.getEmail()).orElseThrow().getProfileImageUrl())
                 .isNull();
     }

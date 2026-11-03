@@ -136,6 +136,7 @@ public class MarketListingService {
                         .hasImage(!images.isEmpty())
                         .build();
         post.replaceImages(images);
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         postRepository.save(post);
         marketThumbnails.queue(
                 post.getPublicId(), images.isEmpty() ? null : images.get(0).getImageUrl());
@@ -195,6 +196,8 @@ public class MarketListingService {
         listing.getPost()
                 .update(request.title().trim(), request.content(), listing.getPost().getCategory());
         listing.getPost().replaceImages(images);
+        listing.getPost()
+                .replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         listing.update(
                 category,
                 request.productCondition(),

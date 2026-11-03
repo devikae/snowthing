@@ -121,6 +121,7 @@ public class PostService {
                 request.content(),
                 userDetails == null ? null : userDetails.getUsername());
         post.replaceImages(toPostImages(request.imageUrls()));
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
 
         return PostResponse.from(postRepository.save(post));
     }
@@ -245,6 +246,7 @@ public class PostService {
                 post.getImages().stream().map(PostImage::getImageUrl).toList(),
                 post.getContent());
         post.update(request.title(), request.content(), category);
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }

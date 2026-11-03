@@ -81,6 +81,56 @@ class PostImageLifecycleIntegrationTest {
     }
 
     @Test
+    void inlineOnlyReferenceSurvivesExpiryAndSoftDeleteUntilContentRemovesIt() throws Exception {
+        String key = upload();
+        var post =
+                posts.createPost(
+                        new PostCreateRequest(
+                                "FREE",
+                                "inline",
+                                "![photo](https://images.snowthing.org/" + key + ")",
+                                false,
+                                null,
+                                List.of()),
+                        user,
+                        "127.0.0.1");
+        expire(key);
+        lifecycle.cleanOne(key);
+        verify(s3, never()).deleteObject(any(DeleteObjectRequest.class));
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM post_image pi JOIN post p ON pi.post_id=p.post_id WHERE p.public_id=?",
+                                Long.class,
+                                post.publicId()))
+                .isZero();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT has_image FROM post WHERE public_id=?",
+                                Boolean.class,
+                                post.publicId()))
+                .isFalse();
+        posts.updatePost(
+                post.publicId(),
+                new PostUpdateRequest("FREE", "removed", "body", null, List.of()),
+                user);
+        expire(key);
+        lifecycle.cleanOne(key);
+        verify(s3).deleteObject(any(DeleteObjectRequest.class));
+
+        String retained = upload();
+        var deleted =
+                posts.createPost(
+                        new PostCreateRequest("FREE", "deleted", retained, false, null, List.of()),
+                        user,
+                        "127.0.0.1");
+        posts.deletePost(deleted.publicId(), null, user);
+        expire(retained);
+        lifecycle.cleanOne(retained);
+        assertThat(state(retained)).isEqualTo("PENDING");
+        verify(s3, times(1)).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
     void abandonedUploadDeletesOriginalAndRejectsStaleAttachment() throws Exception {
         String key = upload();
         expire(key);

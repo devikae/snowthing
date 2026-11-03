@@ -13,6 +13,21 @@ import com.ikae.snowthing.global.exception.CustomException;
 
 class ProfileActionRateLimiterTest {
     @Test
+    void globalBudgetDenialHasSeparateErrorCode() {
+        var shared = mock(com.ikae.snowthing.global.security.SharedRequestLimiter.class);
+        var limiter = new ProfileActionRateLimiter(Clock.systemUTC(), shared);
+        when(shared.acquire(any()))
+                .thenReturn(
+                        new com.ikae.snowthing.global.security.SharedRequestLimiter.Decision(
+                                true, 1800, "snowthing:limits:images:global:hour"));
+        assertThatThrownBy(
+                        () -> limiter.check("account", ProfileActionRateLimiter.Action.POST_IMAGE))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.IMAGE_GLOBAL_LIMIT);
+    }
+
+    @Test
     void nicknameAttemptsAreBoundedPerAccountAndExpire() {
         Clock clock = mock(Clock.class);
         Instant start = Instant.parse("2026-11-01T00:00:00Z");

@@ -45,6 +45,10 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
     PROFILE_ACTION_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "MEMBER_006", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    IMAGE_GLOBAL_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "FILE_007",
+            "전체 업로드 한도에 도달하여 이미지 업로드가 일시적으로 제한됩니다. 잠시 후 다시 시도해 주세요."),
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "EMAIL_001", "이미 가입된 이메일입니다."),
     EMAIL_CODE_FORMAT_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_002", "인증번호는 숫자 6자리여야 합니다."),
     EMAIL_CODE_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_003", "인증번호가 일치하지 않습니다."),
