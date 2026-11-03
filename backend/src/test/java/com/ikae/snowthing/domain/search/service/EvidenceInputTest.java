@@ -3,6 +3,9 @@ package com.ikae.snowthing.domain.search.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDateTime;
+import java.util.Locale;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -71,6 +74,50 @@ class EvidenceInputTest {
         assertInvalid("바인딩", "21", null);
         assertInvalid("바인딩", "abc", null);
         assertInvalid("바인딩", null, "QNA;DROP");
+    }
+
+    @Test
+    @DisplayName("평가용 조건: createdBefore는 KST 초 단위 시각, excludePostPublicId는 소문자 UUID로 맞춘다")
+    void parsesEvaluationFilters() {
+        String publicId = "0F8FAD5B-D9CB-469F-A165-70867728950E";
+        EvidenceSearchCondition condition =
+                EvidenceSearchCondition.of("바인딩", null, null, " 2026-10-15T09:30:00 ", publicId);
+
+        assertThat(condition.createdBefore()).isEqualTo(LocalDateTime.of(2026, 10, 15, 9, 30, 0));
+        assertThat(condition.excludePostPublicId()).isEqualTo(publicId.toLowerCase(Locale.ROOT));
+        EvidenceSearchCondition empty = EvidenceSearchCondition.of("바인딩", null, null, "", " ");
+        assertThat(empty.createdBefore()).isNull();
+        assertThat(empty.excludePostPublicId()).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "2026-10-15",
+                "2026-10-15T09:30",
+                "2026-10-15T09:30:00.123",
+                "2026-10-15T09:30:00+09:00",
+                "2026-10-15T09:30:00Z",
+                "2026-02-30T09:30:00",
+                "2026-10-15 09:30:00",
+                "yesterday"
+            })
+    @DisplayName("createdBefore 형식이 맞지 않으면 SEARCH_001")
+    void rejectsInvalidCreatedBefore(String createdBefore) {
+        assertThatThrownBy(() -> EvidenceSearchCondition.of("바인딩", null, null, createdBefore, null))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SEARCH_INVALID_REQUEST);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"abc", "12", "0f8fad5b-d9cb-469f-a165-70867728950", "P:1:0"})
+    @DisplayName("excludePostPublicId가 UUID가 아니면 SEARCH_001")
+    void rejectsInvalidExcludePostPublicId(String publicId) {
+        assertThatThrownBy(() -> EvidenceSearchCondition.of("바인딩", null, null, null, publicId))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SEARCH_INVALID_REQUEST);
     }
 
     private static void assertInvalid(String q, String size, String categoryCode) {

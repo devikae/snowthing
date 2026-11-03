@@ -73,9 +73,13 @@ public class SearchAdminController {
     public ResponseEntity<EvidenceSearchResponse> searchEvidence(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String size,
-            @RequestParam(required = false) String categoryCode) {
+            @RequestParam(required = false) String categoryCode,
+            @RequestParam(required = false) String createdBefore,
+            @RequestParam(required = false) String excludePostPublicId) {
         return ResponseEntity.ok(
-                evidenceService.search(EvidenceSearchCondition.of(q, size, categoryCode)));
+                evidenceService.search(
+                        EvidenceSearchCondition.of(
+                                q, size, categoryCode, createdBefore, excludePostPublicId)));
     }
 
     @GetMapping("/evidence/{evidenceId}")

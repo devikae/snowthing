@@ -348,6 +348,78 @@ class SearchAdminIntegrationTest {
     }
 
     @Test
+    @DisplayName("평가용 조건: createdBefore보다 늦게 쓴 문서와 excludePostPublicId 글타래는 결과에서 빠진다")
+    void evaluationFilters() throws Exception {
+        transactions.executeWithoutResult(
+                status -> {
+                    jdbc.update(
+                            "UPDATE post SET created_at = '2026-10-01 10:00:00' WHERE post_id = ?",
+                            seed.visiblePostId());
+                    jdbc.update(
+                            "UPDATE comment SET created_at = '2026-10-02 10:00:00'"
+                                    + " WHERE comment_id = ?",
+                            seed.visibleCommentId());
+                    jdbc.update(
+                            "UPDATE comment SET created_at = '2026-10-03 10:00:00'"
+                                    + " WHERE comment_id = ?",
+                            seed.replyId());
+                });
+        rebuild();
+        String post = "P:" + seed.visiblePostId() + ":1";
+        String comment = "C:" + seed.visibleCommentId() + ":0";
+        String reply = "C:" + seed.replyId() + ":0";
+
+        assertThat(searchEvidenceIds("바인딩 각도", "2026-10-02T10:00:01", null))
+                .containsExactlyInAnyOrder(post, comment);
+        // 경계 시각과 같으면 제외한다(질문보다 먼저 쓴 글만 근거로 본다).
+        assertThat(searchEvidenceIds("바인딩 각도", "2026-10-02T10:00:00", null)).containsExactly(post);
+        assertThat(searchEvidenceIds("바인딩 각도", null, null)).contains(reply);
+        assertThat(
+                        searchEvidenceIds(
+                                "바인딩 각도",
+                                null,
+                                seed.visiblePostPublicId().toUpperCase(Locale.ROOT)))
+                .isEmpty();
+
+        CustomUserDetails adminDetails = new CustomUserDetails(admin);
+        mockMvc.perform(
+                        get(BASE + "/evidence")
+                                .param("q", "바인딩")
+                                .param("createdBefore", "2026-10-02")
+                                .with(user(adminDetails)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("SEARCH_001"));
+        mockMvc.perform(
+                        get(BASE + "/evidence")
+                                .param("q", "바인딩")
+                                .param("excludePostPublicId", "not-a-uuid")
+                                .with(user(adminDetails)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("SEARCH_001"));
+    }
+
+    private List<String> searchEvidenceIds(
+            String q, String createdBefore, String excludePostPublicId) throws Exception {
+        var request =
+                get(BASE + "/evidence")
+                        .param("q", q)
+                        .param("size", "20")
+                        .param("categoryCode", categoryCode)
+                        .with(user(new CustomUserDetails(admin)));
+        if (createdBefore != null) {
+            request.param("createdBefore", createdBefore);
+        }
+        if (excludePostPublicId != null) {
+            request.param("excludePostPublicId", excludePostPublicId);
+        }
+        List<String> ids = new ArrayList<>();
+        json(mockMvc.perform(request).andExpect(status().isOk()))
+                .get("items")
+                .forEach(item -> ids.add(item.get("evidenceId").asText()));
+        return ids;
+    }
+
+    @Test
     @DisplayName("게시글을 삭제하면 DB의 content_version이 오른다")
     void contentVersionIncrementsOnDelete() {
         transactions.executeWithoutResult(
