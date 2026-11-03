@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { API_ENDPOINTS, AdminMemberItem } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
@@ -9,6 +9,7 @@ export default function AdminMembersPage() {
   const [members, setMembers] = useState<AdminMemberItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -19,38 +20,45 @@ export default function AdminMembersPage() {
   const [newNickname, setNewNickname] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  async function fetchMembers(pageIndex = 0) {
-    try {
-      setLoading(true);
-      const res = await fetch(
+  const fetchMembers = useCallback((pageIndex = 0, signal?: AbortSignal) => {
+    return fetch(
         API_ENDPOINTS.admin.members(
-          query,
+          appliedQuery,
           statusFilter || undefined,
           pageIndex,
           20
         ),
         { credentials: "include" }
-      );
-      if (!res.ok) throw new Error("회원 목록을 불러오지 못했습니다.");
-      const data = await res.json();
+      )
+      .then((res) => {
+        if (!res.ok) throw new Error("회원 목록을 불러오지 못했습니다.");
+        return res.json();
+      })
+      .then((data) => {
+        if (signal?.aborted) return;
       setMembers(data.content || []);
       setTotalPages(data.totalPages || 1);
       setTotalElements(data.totalElements || 0);
       setPage(data.number || 0);
-    } catch (err: any) {
-      alert(err.message || "오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
+      })
+      .catch((err: unknown) => {
+        if (signal?.aborted) return;
+      alert((err instanceof Error ? err.message : "오류가 발생했습니다."));
+      })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
+  }, [appliedQuery, statusFilter]);
 
   useEffect(() => {
-    fetchMembers(0);
-  }, [statusFilter]);
+    const controller = new AbortController();
+    void fetchMembers(0, controller.signal);
+    return () => controller.abort();
+  }, [fetchMembers]);
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
-    fetchMembers(0);
+    setLoading(true);
+    if (query === appliedQuery) void fetchMembers(0);
+    else setAppliedQuery(query);
   }
 
   async function handleToggleStatus(member: AdminMemberItem) {
@@ -79,8 +87,8 @@ export default function AdminMembersPage() {
           m.publicId === member.publicId ? { ...m, status: nextStatus } : m
         )
       );
-    } catch (err: any) {
-      alert(err.message || "상태 변경 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "상태 변경 실패"));
     } finally {
       setActionLoading(false);
     }
@@ -110,8 +118,8 @@ export default function AdminMembersPage() {
         )
       );
       alert("프로필 사진이 영구 삭제 및 기본 프사로 초기화되었습니다.");
-    } catch (err: any) {
-      alert(err.message || "삭제 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "삭제 실패"));
     } finally {
       setActionLoading(false);
     }
@@ -146,8 +154,8 @@ export default function AdminMembersPage() {
       setSelectedMember(null);
       setNewNickname("");
       alert("닉네임이 성공적으로 변경되었습니다.");
-    } catch (err: any) {
-      alert(err.message || "닉네임 변경 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "닉네임 변경 실패"));
     } finally {
       setActionLoading(false);
     }
@@ -338,14 +346,14 @@ export default function AdminMembersPage() {
             <div className="flex gap-1">
               <button
                 disabled={page === 0}
-                onClick={() => fetchMembers(page - 1)}
+                onClick={() => { setLoading(true); void fetchMembers(page - 1); }}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition"
               >
                 이전
               </button>
               <button
                 disabled={page >= totalPages - 1}
-                onClick={() => fetchMembers(page + 1)}
+                onClick={() => { setLoading(true); void fetchMembers(page + 1); }}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition"
               >
                 다음

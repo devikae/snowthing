@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { API_ENDPOINTS, AdminPostItem } from "../../lib/api";
 
@@ -15,30 +15,34 @@ export default function AdminPostsPage() {
   const [viewingPost, setViewingPost] = useState<AdminPostItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  async function fetchDeletedPosts(pageIndex = 0) {
-    try {
-      setLoading(true);
-      // onlyDeleted = true (소프트 삭제된 글 전용 조회)
-      const res = await fetch(
+  const fetchDeletedPosts = useCallback((pageIndex = 0, signal?: AbortSignal) => {
+    return fetch(
         API_ENDPOINTS.admin.posts(true, pageIndex, 20),
         { credentials: "include" }
-      );
-      if (!res.ok) throw new Error("삭제된 게시글 목록을 불러오지 못했습니다.");
-      const data = await res.json();
+      )
+      .then((res) => {
+        if (!res.ok) throw new Error("삭제된 게시글 목록을 불러오지 못했습니다.");
+        return res.json();
+      })
+      .then((data) => {
+        if (signal?.aborted) return;
       setPosts(data.content || []);
       setTotalPages(data.totalPages || 1);
       setTotalElements(data.totalElements || 0);
       setPage(data.number || 0);
-    } catch (err: any) {
-      alert(err.message || "오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
+      })
+      .catch((err: unknown) => {
+        if (signal?.aborted) return;
+      alert((err instanceof Error ? err.message : "오류가 발생했습니다."));
+      })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
+  }, []);
 
   useEffect(() => {
-    fetchDeletedPosts(0);
-  }, []);
+    const controller = new AbortController();
+    void fetchDeletedPosts(0, controller.signal);
+    return () => controller.abort();
+  }, [fetchDeletedPosts]);
 
   async function handleRestore(post: AdminPostItem) {
     if (!window.confirm(`'${post.title}' 게시글을 정상 상태로 복구하시겠습니까?\n복구 시 메인 피드와 커뮤니티 목록에 다시 노출됩니다.`)) {
@@ -54,8 +58,8 @@ export default function AdminPostsPage() {
       alert("게시글이 성공적으로 복구되었습니다.");
       // 목록 갱신
       fetchDeletedPosts(page);
-    } catch (err: any) {
-      alert(err.message || "복구 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "복구 실패"));
     } finally {
       setActionLoading(false);
     }
@@ -84,7 +88,7 @@ export default function AdminPostsPage() {
 
         <button
           type="button"
-          onClick={() => fetchDeletedPosts(page)}
+          onClick={() => { setLoading(true); void fetchDeletedPosts(page); }}
           className="self-start sm:self-auto px-3.5 py-1.5 rounded-lg border border-[var(--snow-border)] bg-[var(--snow-canvas)] hover:bg-[var(--snow-surface-low)] text-[var(--snow-ink)] text-xs font-semibold shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
         >
           <span>🔄</span>
@@ -206,7 +210,7 @@ export default function AdminPostsPage() {
               <button
                 type="button"
                 disabled={page === 0}
-                onClick={() => fetchDeletedPosts(page - 1)}
+                onClick={() => { setLoading(true); void fetchDeletedPosts(page - 1); }}
                 className="px-3 py-1 rounded-lg border border-[var(--snow-border)] text-xs font-semibold text-[var(--snow-ink)] hover:bg-[var(--snow-surface-low)] disabled:opacity-40"
               >
                 이전
@@ -214,7 +218,7 @@ export default function AdminPostsPage() {
               <button
                 type="button"
                 disabled={page >= totalPages - 1}
-                onClick={() => fetchDeletedPosts(page + 1)}
+                onClick={() => { setLoading(true); void fetchDeletedPosts(page + 1); }}
                 className="px-3 py-1 rounded-lg border border-[var(--snow-border)] text-xs font-semibold text-[var(--snow-ink)] hover:bg-[var(--snow-surface-low)] disabled:opacity-40"
               >
                 다음

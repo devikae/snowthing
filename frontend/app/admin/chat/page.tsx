@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { API_ENDPOINTS, ChatBannedIpItem } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 
@@ -15,25 +15,31 @@ export default function AdminChatPage() {
   const [daysInput, setDaysInput] = useState(7);
   const [actionLoading, setActionLoading] = useState(false);
 
-  async function fetchBannedIps() {
-    try {
-      setLoading(true);
-      const res = await csrfFetch(API_ENDPOINTS.admin.bannedIps, {
+  const fetchBannedIps = useCallback((signal?: AbortSignal) => {
+    return csrfFetch(API_ENDPOINTS.admin.bannedIps, {
         credentials: "include",
-      });
-      if (!res.ok) throw new Error("차단 목록을 불러오지 못했습니다.");
-      const data = await res.json();
+        signal,
+      })
+      .then((res) => {
+        if (!res.ok) throw new Error("차단 목록을 불러오지 못했습니다.");
+        return res.json();
+      })
+      .then((data) => {
+        if (signal?.aborted) return;
       setBannedIps(data || []);
-    } catch (err: any) {
-      alert(err.message || "오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
+      })
+      .catch((err: unknown) => {
+        if (signal?.aborted) return;
+      alert((err instanceof Error ? err.message : "오류가 발생했습니다."));
+      })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
+  }, []);
 
   useEffect(() => {
-    fetchBannedIps();
-  }, []);
+    const controller = new AbortController();
+    void fetchBannedIps(controller.signal);
+    return () => controller.abort();
+  }, [fetchBannedIps]);
 
   async function handleUnban(item: ChatBannedIpItem) {
     if (
@@ -52,8 +58,8 @@ export default function AdminChatPage() {
       if (!res.ok) throw new Error("차단 해제에 실패했습니다.");
       setBannedIps((prev) => prev.filter((b) => b.id !== item.id));
       alert("차단이 해제되었습니다.");
-    } catch (err: any) {
-      alert(err.message || "차단 해제 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "차단 해제 실패"));
     } finally {
       setActionLoading(false);
     }
@@ -90,8 +96,8 @@ export default function AdminChatPage() {
       setReasonInput("");
       fetchBannedIps();
       alert("IP가 성공적으로 차단 목록에 등록되었습니다.");
-    } catch (err: any) {
-      alert(err.message || "차단 등록 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "차단 등록 실패"));
     } finally {
       setActionLoading(false);
     }

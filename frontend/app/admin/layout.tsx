@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_ENDPOINTS } from "../lib/api";
@@ -11,17 +11,21 @@ interface AdminUser {
   role: string;
 }
 
-function AdminThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+function subscribeTheme(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
 
-  useEffect(() => {
-    const current = (document.documentElement.dataset.theme as "light" | "dark") || "light";
-    setTheme(current);
-  }, []);
+function readTheme(): "light" | "dark" {
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+
+function AdminThemeToggle() {
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => "light");
 
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
     document.documentElement.dataset.theme = next;
     try {
       localStorage.setItem("snowthing-theme", next);

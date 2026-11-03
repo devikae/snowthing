@@ -139,33 +139,6 @@ export default function HomePageClient() {
   const [feedsLoading, setFeedsLoading] = useState(true);
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
 
-  const handleAdminBlind = async (e: React.MouseEvent, postPublicId: string, title: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!window.confirm(`'${title}' 게시글을 가리기(소프트 삭제) 처리하시겠습니까?\n메인 피드에서 즉시 숨겨지며 관리자 페이지에서 삭제 이력을 확인할 수 있습니다.`)) {
-      return;
-    }
-    try {
-      const res = await fetch(API_ENDPOINTS.admin.deletePost(postPublicId), {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        throw new Error("가리기 처리에 실패했습니다.");
-      }
-      setFeeds((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((k) => {
-          const feedKey = k as HomeFeedKey;
-          next[feedKey] = next[feedKey].filter((p) => p.publicId !== postPublicId);
-        });
-        return next;
-      });
-      alert("게시글이 가리기 처리되었습니다.");
-    } catch (err: any) {
-      alert(err.message || "오류가 발생했습니다.");
-    }
-  };
   const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
   const [snowReportResort, setSnowReportResort] = useState("1");
   const [snowReportContent, setSnowReportContent] = useState("");

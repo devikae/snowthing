@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { API_ENDPOINTS, BannerItem } from "../../lib/api";
@@ -19,25 +19,31 @@ export default function AdminBannersPage() {
   const [isActive, setIsActive] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  async function fetchBanners() {
-    try {
-      setLoading(true);
-      const res = await fetch(API_ENDPOINTS.admin.banners, {
+  const fetchBanners = useCallback((signal?: AbortSignal) => {
+    return fetch(API_ENDPOINTS.admin.banners, {
         credentials: "include",
-      });
-      if (!res.ok) throw new Error("배너 목록을 불러오지 못했습니다.");
-      const data = await res.json();
+        signal,
+      })
+      .then((res) => {
+        if (!res.ok) throw new Error("배너 목록을 불러오지 못했습니다.");
+        return res.json();
+      })
+      .then((data) => {
+        if (signal?.aborted) return;
       setBanners(data || []);
-    } catch (err: any) {
-      alert(err.message || "오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
+      })
+      .catch((err: unknown) => {
+        if (signal?.aborted) return;
+      alert((err instanceof Error ? err.message : "오류가 발생했습니다."));
+      })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
+  }, []);
 
   useEffect(() => {
-    fetchBanners();
-  }, []);
+    const controller = new AbortController();
+    void fetchBanners(controller.signal);
+    return () => controller.abort();
+  }, [fetchBanners]);
 
   function handleOpenCreate() {
     setEditingBanner(null);
@@ -71,6 +77,8 @@ export default function AdminBannersPage() {
         linkUrl: linkUrl.trim() || null,
         displayOrder,
         isActive,
+        startAt: editingBanner?.startAt ?? null,
+        endAt: editingBanner?.endAt ?? null,
       };
 
       const endpoint = editingBanner
@@ -89,8 +97,8 @@ export default function AdminBannersPage() {
       setShowModal(false);
       fetchBanners();
       alert("배너가 성공적으로 저장되었습니다.");
-    } catch (err: any) {
-      alert(err.message || "저장 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "저장 실패"));
     } finally {
       setActionLoading(false);
     }
@@ -112,8 +120,8 @@ export default function AdminBannersPage() {
           item.id === b.id ? { ...item, isActive: !b.isActive } : item
         )
       );
-    } catch (err: any) {
-      alert(err.message || "상태 변경 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "상태 변경 실패"));
     } finally {
       setActionLoading(false);
     }
@@ -131,8 +139,8 @@ export default function AdminBannersPage() {
       if (!res.ok) throw new Error("배너 삭제에 실패했습니다.");
       setBanners((prev) => prev.filter((item) => item.id !== b.id));
       alert("배너가 삭제되었습니다.");
-    } catch (err: any) {
-      alert(err.message || "삭제 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "삭제 실패"));
     } finally {
       setActionLoading(false);
     }

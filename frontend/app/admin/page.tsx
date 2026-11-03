@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { csrfFetch } from "../lib/csrfFetch";
 import {
   API_ENDPOINTS,
   AdminDashboardStats,
-  DailyVisitorStat,
 } from "../lib/api";
 
 export default function AdminDashboardPage() {
@@ -15,26 +14,32 @@ export default function AdminDashboardPage() {
   const [updatingChat, setUpdatingChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchStats(selectedDays: number) {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await csrfFetch(API_ENDPOINTS.admin.stats(selectedDays), {
+  const fetchStats = useCallback((selectedDays: number, signal?: AbortSignal) => {
+    return csrfFetch(API_ENDPOINTS.admin.stats(selectedDays), {
         credentials: "include",
-      });
-      if (!res.ok) throw new Error("통계 데이터를 불러오지 못했습니다.");
-      const data = await res.json();
+        signal,
+      })
+      .then((res) => {
+        if (!res.ok) throw new Error("통계 데이터를 불러오지 못했습니다.");
+        return res.json();
+      })
+      .then((data) => {
+        if (signal?.aborted) return;
+      setError(null);
       setStats(data);
-    } catch (err: any) {
-      setError(err.message || "오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
+      })
+      .catch((err: unknown) => {
+        if (signal?.aborted) return;
+      setError((err instanceof Error ? err.message : "오류가 발생했습니다."));
+      })
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
+  }, []);
 
   useEffect(() => {
-    fetchStats(days);
-  }, [days]);
+    const controller = new AbortController();
+    void fetchStats(days, controller.signal);
+    return () => controller.abort();
+  }, [days, fetchStats]);
 
   async function handleToggleAnonymousChat() {
     if (!stats || updatingChat) return;
@@ -58,8 +63,8 @@ export default function AdminDashboardPage() {
       );
       if (!res.ok) throw new Error("설정 변경에 실패했습니다.");
       setStats({ ...stats, anonymousChatEnabled: nextVal });
-    } catch (err: any) {
-      alert(err.message || "설정 변경 중 오류가 발생했습니다.");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "설정 변경 중 오류가 발생했습니다."));
     } finally {
       setUpdatingChat(false);
     }
@@ -79,7 +84,7 @@ export default function AdminDashboardPage() {
         <p className="font-semibold mb-2">데이터 로드 실패</p>
         <p className="text-sm">{error}</p>
         <button
-          onClick={() => fetchStats(days)}
+          onClick={() => { setLoading(true); void fetchStats(days); }}
           className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-medium hover:bg-rose-700 transition"
         >
           다시 시도
@@ -108,7 +113,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-3">
           <div className="inline-flex bg-slate-200/80 p-1 rounded-xl">
             <button
-              onClick={() => setDays(7)}
+              onClick={() => { if (days !== 7) { setLoading(true); setDays(7); } }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 days === 7 ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
               }`}
@@ -116,7 +121,7 @@ export default function AdminDashboardPage() {
               최근 7일
             </button>
             <button
-              onClick={() => setDays(30)}
+              onClick={() => { if (days !== 30) { setLoading(true); setDays(30); } }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 days === 30 ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
               }`}
@@ -261,12 +266,11 @@ export default function AdminDashboardPage() {
 
         {/* Bar/Trend Visualization */}
         <div className="h-64 flex items-end gap-2 pt-6 pb-2 border-b border-slate-100">
-          {trends.map((item, idx) => {
+          {trends.map((item) => {
             const heightPercent = Math.min(
               100,
               Math.max(6, (item.totalVisitors / maxVisitors) * 100)
             );
-            const dateLabel = item.date.slice(5); // MM-DD
             return (
               <div
                 key={item.date}

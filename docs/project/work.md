@@ -2416,6 +2416,10 @@
 - 검증: 백엔드 spotlessApply spotlessCheck test build 성공(480개 중 실패 0개·기존 제외 1개), 격리 MySQL 최초 적용·재실행 001~018 및 021~027 성공, 프런트 production build 성공. 기존 프런트 린트 오류는 후속 정리 중이다.
 - 원본 작업 폴더를 보존한 별도 .cache/admin-integration에서 작업했다. PR 생성 후 CodeRabbit 전체 리뷰 및 후속 검증을 진행한다. 운영 앱 배포·운영 DB 변경은 수행하지 않았다.
 
+- PR #48 생성 및 main 대상 병합 가능 상태를 확인했다. CodeRabbit에 `@coderabbitai full review`를 요청했고 봇이 Full review triggered로 응답했다. 초기 GitHub Spotless·Build and Test가 모두 통과했다.
+- 프런트 후속 정리: 기존 any 예외 처리를 unknown과 Error 판별로 바꾸고 미사용 핸들러를 제거했다. 관리자 데이터 로딩을 취소 가능한 비동기 응답 콜백으로 정리해 effect의 동기 상태 갱신 오류를 해결했다. 검색은 검색 버튼 제출 시에만 반영하고, 로그인 사용자 ID가 바뀔 때 채팅 연결이 재생성되도록 의존성을 명확히 했다. 관리자 테마는 DOM 테마 변경을 구독한다.
+- 배너 활성화·수정은 서버의 isActive 필드와 필수 필드 및 기존 노출 기간을 보존한다. 프런트 lint는 오류 0개로 통과했고 production build도 통과했다. Material Symbols의 기존 글꼴 display=block 정책 경고 1개는 아이콘 문자 깜빡임 방지를 위해 유지한다. 잠금 파일의 기존 npm audit 진단(25개)은 버전 변경 없이 기록하며 이번 통합에서 의존성 자동 업그레이드는 하지 않았다.
+
 ### 2026-11-03 — PR #47 Spotless 및 CodeRabbit 리뷰 보완
 
 - 사용자 승인 범위: PR #47의 Spotless 실패와 CodeRabbit 리뷰 수정. 기존 `feature/social-login` 미커밋 작업을 보존하고 `.cache/pr47-fix` 독립 복제본에서 작업했다. Spotless의 Git worktree 인식 실패로 일반 복제본을 사용했다.

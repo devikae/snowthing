@@ -149,11 +149,13 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     setShowScrollBottom(false);
   };
 
+  const currentMemberId = currentMember?.publicId;
+
   // 4. 웹소켓 STOMP 클라이언트 연결 생명주기
   useEffect(() => {
     fetch(API_ENDPOINTS.public.configs)
-      .then((res) => (res.ok ? res.json() : {} as Record<string, any>))
-      .then((cfg: Record<string, any>) => {
+      .then((res) => (res.ok ? res.json() : {} as Record<string, unknown>))
+      .then((cfg: Record<string, unknown>) => {
         const enabled = cfg.anonymousChatEnabled ?? cfg.chat_anonymous_enabled;
         if (enabled !== undefined) {
           setAnonymousChatEnabled(enabled === true || enabled === "true");
@@ -189,7 +191,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
               return;
             }
             const newMsg: ChatMessage = payload;
-            if (!currentMember) {
+            if (!currentMemberId) {
               const matchIdx = pendingGuestSendsRef.current.findIndex(
                 (p) => p.content === newMsg.content && Math.abs(Date.now() - p.time) < 15000
               );
@@ -276,7 +278,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       client.deactivate();
       stompClientRef.current = null;
     };
-  }, [currentMember?.publicId]);
+  }, [currentMemberId]);
 
   // 5. 토스트 에러 자동 닫기 (4초)
   useEffect(() => {
@@ -297,8 +299,8 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       });
       if (!res.ok) throw new Error("IP 차단 처리에 실패했습니다.");
       setMessages((prev) => prev.filter((m) => m.messageId !== messageId));
-    } catch (err: any) {
-      alert(err.message || "차단 실패");
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "차단 실패"));
     }
   };
 
