@@ -361,6 +361,26 @@ class SearchAdminIntegrationTest {
                 .isEqualTo(1L);
     }
 
+    @Test
+    @DisplayName("저장소 delete(@SQLDelete) 경로도 내용 버전을 올린다")
+    void sqlDeleteIncrementsContentVersion() {
+        Long before =
+                jdbc.queryForObject(
+                        "SELECT content_version FROM post WHERE post_id = ?",
+                        Long.class,
+                        seed.visiblePostId());
+
+        transactions.executeWithoutResult(
+                status -> posts.delete(posts.findById(seed.visiblePostId()).orElseThrow()));
+
+        Long after =
+                jdbc.queryForObject(
+                        "SELECT content_version FROM post WHERE post_id = ?",
+                        Long.class,
+                        seed.visiblePostId());
+        assertThat(after).isEqualTo(before + 1);
+    }
+
     private Seed createSeed() {
         String unique = UUID.randomUUID().toString();
         admin = saveMember(unique, "a", Role.ROLE_ADMIN);
