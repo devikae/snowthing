@@ -2285,4 +2285,5 @@
 - 완료: 전역 업로드 한도 거절은 FILE_007과 전용 로그로 구분한다. 기존 승인 비용 상한은 유지한다. 기존에 반영된 리뷰 항목과 후속 정책 제안은 `docs/conception/012_profile_settings/05_pr47_review.md`에 대조 기록했다.
 - DB: 운영 미적용인 024·025의 문법 및 attempts를 보완하고 026 본문 이미지 참조 테이블·인덱스·백필을 추가했다. 스키마 최초 적용·재실행·백필·물리 삭제 cascade를 로컬 MySQL 8의 별도 일회성 스키마에서 검증했다. CI 마이그레이션 검증 범위도 026까지 확장했다.
 - 검증: 첫 전체 테스트는 로컬 테스트 환경변수 누락과 request_budget_window 초기 준비 누락으로 실패했다. CI와 같은 조건을 준비한 전용 `snowthing_pr47_test`에서 검증했다. 마지막 커서 및 거절 사유 테스트를 포함한 `spotlessApply spotlessCheck test build` 성공: 전체 464개 중 실패 0개·기존 제외 1개. `git diff --check` 통과. MySQL 마이그레이션 검증 스크립트도 통과했다.
-- 남은 사항: PR 브랜치 반영 및 원격 CI 확인. 운영 배포·AWS 정책 변경은 수행하지 않았다. 전역 예산 분리·신규 계정/IP 제한·운영 경보 연결은 기존 승인 정책을 바꾸는 후속 결정 사항이다. 실제 운영 백필 규모와 실행 계획은 배포 시 확인해야 한다.
+- PR 반영: 수정 커밋 `dfa0dca`를 `hotfix/site-profile-attachments`에 푸시했다. GitHub Actions 실행 `41581483078`에서 Spotless(32초)와 모든 마이그레이션 검증 단계가 통과했다. 최종 원격 결과는 [PR #47 Checks](https://github.com/devikae/snowthing/pull/47/checks)에서 확인한다.
+- 후속 사항: 운영 배포·AWS 정책 변경은 수행하지 않았다. 전역 예산 분리·신규 계정/IP 제한·운영 경보 연결은 기존 승인 정책을 바꾸는 후속 결정 사항이다. 실제 운영 백필 규모와 실행 계획은 배포 시 확인해야 한다.
