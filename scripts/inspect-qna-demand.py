@@ -32,7 +32,8 @@ recent_from = f"DATE_SUB({now}, INTERVAL {WINDOW_DAYS} DAY)"
 statements = {
     'publicPostsByCategory': (
         "SELECT pc.code, COUNT(*) FROM post p JOIN post_category pc ON pc.category_id = p.category_id "
-        "WHERE p.status = 'NORMAL' AND p.is_deleted = 0 GROUP BY pc.code ORDER BY pc.code"),
+        "WHERE p.status = 'NORMAL' AND p.is_deleted = 0 AND pc.code <> 'MARKET' "
+        "GROUP BY pc.code ORDER BY pc.code"),
     'qnaByMonth': f"SELECT DATE_FORMAT(p.created_at, '%Y-%m'), COUNT(*) {VISIBLE_QNA} GROUP BY 1 ORDER BY 1",
     'qnaRows': (
         f"SELECT p.created_at >= {recent_from}, "
@@ -40,7 +41,7 @@ statements = {
         f"(SELECT TIMESTAMPDIFF(MINUTE, p.created_at, MIN(c.created_at)) FROM comment c WHERE {OTHER}), "
         "EXISTS (SELECT 1 FROM comment c WHERE c.post_id = p.post_id AND c.is_deleted = 0 "
         "AND p.member_id IS NULL AND c.member_id IS NULL), "
-        f"COALESCE((SELECT m.role = 'ROLE_ADMIN' FROM comment c JOIN member m ON m.member_id = c.member_id "
+        f"COALESCE((SELECT m.role = 'ROLE_ADMIN' FROM comment c LEFT JOIN member m ON m.member_id = c.member_id "
         f"WHERE {OTHER} ORDER BY c.created_at, c.comment_id LIMIT 1), 0) "
         f"{VISIBLE_QNA}"),
 }
