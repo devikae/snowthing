@@ -10,6 +10,7 @@ import { PageHeading } from "../../../components/PageHeading";
 import type { ToastEditorHandle } from "../../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
 
@@ -47,6 +48,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
   const [free, setFree] = useState(false);
   const [contact, setContact] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  useImageUploadLease(images);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -87,14 +89,13 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
 
   const uploadImages = async (files: FileList | null) => {
     if (!files?.length) return;
-    if (images.length + files.length > 5) {
-      setError("사진은 최대 5장까지 등록할 수 있습니다.");
+    if (images.length + files.length > 10) {
+      setError("사진은 최대 10장까지 등록할 수 있습니다.");
       return;
     }
     setUploading(true);
     setError("");
     try {
-      const uploadedUrls: string[] = [];
       for (const file of Array.from(files)) {
         const formData = new FormData();
         formData.append("file", file);
@@ -107,9 +108,8 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
           throw new Error(data?.message || "이미지 업로드에 실패했습니다.");
         }
         const uploaded: { imageUrl: string } = await response.json();
-        uploadedUrls.push(uploaded.imageUrl);
+        setImages((current) => [...current, uploaded.imageUrl]);
       }
-      setImages((current) => [...current, ...uploadedUrls]);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "이미지 업로드에 실패했습니다.");
     } finally {
@@ -175,8 +175,8 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
           <label className="market-form-field"><span>연락처 *</span><input value={contact} onChange={(event) => setContact(event.target.value)} maxLength={30} /></label>
           <section className="market-editor-field"><span>본문 *</span><div className="compose-editor"><ToastEditor ref={editorRef} initialValue={detail.content} height="440px" /></div></section>
           <section className="market-image-field">
-            <div><span>사진 <small>선택, 최대 5장</small></span><b>{images.length}/5</b></div>
-            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || images.length >= 5} onChange={(event) => void uploadImages(event.target.files)} />
+            <div><span>사진 <small>선택, 최대 10장</small></span><b>{images.length}/10</b></div>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />
             {images.length > 0 && <div className="market-image-previews">{images.map((imageUrl, index) => <div key={`${imageUrl}-${index}`}><Image src={imageUrl} alt={`상품 사진 ${index + 1}`} width={120} height={90} unoptimized /><button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`${index + 1}번 사진 제거`}><span className="material-symbols-outlined">close</span></button></div>)}</div>}
           </section>
           <div className="market-compose-actions"><Link href={`/market/${publicId}`}>취소</Link><button type="submit" disabled={submitting || uploading}>{submitting ? "수정 중..." : "수정 완료"}</button></div>

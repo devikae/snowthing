@@ -36,4 +36,8 @@ public class ProfileImageCleanup {
         attempts++;
         notBefore = next;
     }
+
+    public void lease(Instant until) {
+        notBefore = until;
+    }
 }

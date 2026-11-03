@@ -47,6 +47,17 @@ class ProfileImageLifecycleIntegrationTest {
                                     ? Optional.empty()
                                     : Optional.of(url.substring(prefix.length()));
                         });
+        when(images.prepareProfileImage(any(), anyString()))
+                .thenAnswer(
+                        i ->
+                                new ImageService.PreparedProfileImage(
+                                        i.getArgument(1), new byte[] {1}));
+        when(images.uploadPreparedProfileImage(any()))
+                .thenAnswer(
+                        i -> {
+                            ImageService.PreparedProfileImage prepared = i.getArgument(0);
+                            return new ImageUploadResponse(prefix + prepared.key(), prepared.key());
+                        });
         when(images.uploadProfileImage(any(), anyString()))
                 .thenAnswer(
                         i -> new ImageUploadResponse(prefix + i.getArgument(1), i.getArgument(1)));

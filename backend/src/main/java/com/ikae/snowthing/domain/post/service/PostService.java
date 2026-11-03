@@ -51,6 +51,7 @@ public class PostService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final ImageUrlResolver imageUrlResolver;
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
 
     @Transactional
     public PostResponse createPost(
@@ -115,7 +116,12 @@ public class PostService {
                         .anonymousPassword(encodedPassword)
                         .hasImage(false)
                         .build();
+        imageLifecycle.protectAll(
+                request.imageUrls(),
+                request.content(),
+                userDetails == null ? null : userDetails.getUsername());
         post.replaceImages(toPostImages(request.imageUrls()));
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
 
         return PostResponse.from(postRepository.save(post));
     }
@@ -233,8 +239,17 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
+        imageLifecycle.protectExisting(
+                request.imageUrls(),
+                request.content(),
+                userDetails == null ? null : userDetails.getUsername(),
+                post.getImages().stream().map(PostImage::getImageUrl).toList(),
+                post.getContent());
         post.update(request.title(), request.content(), category);
-        post.replaceImages(toPostImages(request.imageUrls()));
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
+        if (request.imageUrls() != null) {
+            post.replaceImages(toPostImages(request.imageUrls()));
+        }
         return PostResponse.from(post);
     }
 
@@ -348,19 +363,14 @@ public class PostService {
 
     private PostListResponse toPostListResponse(Post post) {
         PostListResponse response = PostListResponse.from(post);
-        return response.withThumbnailImageUrl(
-                imageUrlResolver.toThumbnailPublicUrl(response.thumbnailImageUrl()));
+        return response.withThumbnailImageUrl(null);
     }
 
     private CursorPageResponse<PostListResponse> resolveThumbnailUrls(
             CursorPageResponse<PostListResponse> page) {
         List<PostListResponse> content =
                 page.content().stream()
-                        .map(
-                                response ->
-                                        response.withThumbnailImageUrl(
-                                                imageUrlResolver.toThumbnailPublicUrl(
-                                                        response.thumbnailImageUrl())))
+                        .map(response -> response.withThumbnailImageUrl(null))
                         .toList();
         return new CursorPageResponse<>(content, page.pageInfo());
     }

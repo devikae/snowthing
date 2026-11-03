@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav, type ActiveNav } from "../components/SiteChrome";
 import { PostImageIcon } from "../components/PostImageIcon";
+import { PostListAuthor } from "../components/PostListAuthor";
 import { API_ENDPOINTS } from "../lib/api";
 
 interface PostItem {
@@ -13,6 +14,7 @@ interface PostItem {
   categoryCode: string;
   title: string;
   writerNickname: string;
+  writerProfileImageUrl?: string | null;
   thumbnailImageUrl: string | null;
   hasImage: boolean;
   viewCount: number;
@@ -138,7 +140,7 @@ function PostListContent() {
       setLoading(true);
       setError(false);
       try {
-        const params = new URLSearchParams({ page: String(page + 1), size: "10" });
+        const params = new URLSearchParams({ page: String(page + 1), size: "20" });
         if (currentCategory) params.set("categoryCode", currentCategory);
         if (currentView === "best") params.set("viewType", "BEST");
         if (keywordFromUrl.trim()) params.set("keyword", keywordFromUrl.trim());
@@ -306,7 +308,6 @@ function PostListContent() {
                       : post.isDeleted || post.status === "DELETED"
                         ? "[삭제된 게시글입니다]"
                         : post.title;
-                  const writerInitial = post.writerNickname ? post.writerNickname.trim().charAt(0) : "익";
                   return (
                     <Link
                       key={post.publicId}
@@ -325,12 +326,7 @@ function PostListContent() {
                         {post.hasImage && <PostImageIcon />}
                       </div>
                       <div className="m-row-right">
-                        <span className="m-author">
-                          <span className="m-avatar" aria-hidden="true">
-                            {writerInitial}
-                          </span>
-                          <b>{post.writerNickname}</b>
-                        </span>
+                        <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
                         <span className="m-stats">
                           {post.commentCount > 0 && (
                             <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>

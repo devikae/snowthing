@@ -130,6 +130,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [carpools, setCarpools] = useState<CarpoolSidebarItem[]>([]);
+  const [carpoolsLoading, setCarpoolsLoading] = useState(false);
+  const [carpoolsError, setCarpoolsError] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteModalConfig, setDeleteModalConfig] = useState({
     title: "게시글 삭제 확인",
@@ -325,24 +327,30 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     return () => window.clearTimeout(timer);
   }, [fetchComments, publicId]);
 
+  const fetchCarpools = useCallback(async (signal?: AbortSignal) => {
+    setCarpoolsLoading(true);
+    setCarpoolsError(false);
+    try {
+      const response = await fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, {
+        credentials: "include",
+        signal,
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`카풀 목록 응답 오류: ${response.status}`);
+      const data = await response.json();
+      if (!signal?.aborted) setCarpools(Array.isArray(data.content) ? data.content : []);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setCarpoolsError(true);
+    } finally {
+      if (!signal?.aborted) setCarpoolsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setCarpools(Array.isArray(data.content) ? data.content : []);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setCarpools([]);
-      });
-
-    return () => controller.abort();
-  }, []);
+    const timer = window.setTimeout(() => void fetchCarpools(controller.signal), 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [fetchCarpools]);
 
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
     try {
@@ -613,7 +621,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       <main className="post-detail-page community-container content-detail-page">
         <div className="post-detail-toolbar">
           <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link>
-          <button type="button" onClick={() => window.location.reload()} aria-label="새로고침"><span className="material-symbols-outlined">refresh</span></button>
         </div>
         <div className="post-detail-layout">
           <div className="post-detail-primary">
@@ -627,13 +634,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
             <div className="post-detail-author">
                 {isAnonymousPost ? null : (
-                <Image
+                <CommentProfileAvatar
                   className="post-detail-author-avatar"
-                  src={post.writer.profileImageUrl || "/images/default-profile-avatar.png"}
-                  alt=""
-                  width={42}
-                  height={42}
-                  unoptimized={Boolean(post.writer.profileImageUrl)}
+                  nickname={post.writer.nickname}
+                  profileImageUrl={post.writer.profileImageUrl}
+                  size={32}
                 />
               )}
               <div><strong>{post.writer.nickname}</strong><small>{new Date(post.createdAt).toLocaleString("ko-KR")}</small></div>
@@ -801,10 +806,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           </section>
           </div>
           <aside className="post-detail-sidebar">
-            <section className="detail-carpool-card">
-              <header><h2>카풀·동행</h2><Link href="/carpool">전체보기</Link></header>
-              {carpools.length === 0 ? (
-                <p className="detail-carpool-empty">등록된 카풀 모집글이 없습니다.</p>
+            <section className="detail-carpool-card" aria-busy={carpoolsLoading}>
+              <header><h2>카풀·동행</h2><div className="detail-carpool-actions"><button className="detail-carpool-refresh" type="button" onClick={() => void fetchCarpools()} disabled={carpoolsLoading} aria-label="카풀 목록 새로고침" title="카풀 목록 새로고침"><span className="material-symbols-outlined" aria-hidden="true">refresh</span></button><Link href="/carpool">전체보기</Link></div></header>
+              {carpoolsError && <p className="detail-carpool-empty" role="status">카풀 목록을 불러오지 못했습니다. 다시 시도해 주세요.</p>}
+              {!carpoolsError && carpools.length === 0 ? (
+                <p className="detail-carpool-empty">{carpoolsLoading ? "카풀 목록을 불러오는 중입니다." : "등록된 카풀 모집글이 없습니다."}</p>
               ) : carpools.map((item) => (
                 <article key={item.publicId}>
                   <div><b>{item.passengerCapacity}명 모집</b><time dateTime={item.departureAt}>{new Date(item.departureAt).toLocaleString("ko-KR", {month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})}</time></div>

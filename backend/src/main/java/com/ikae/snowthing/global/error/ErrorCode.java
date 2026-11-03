@@ -28,7 +28,7 @@ public enum ErrorCode {
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     PROFILE_LIMIT_UNAVAILABLE(
-            HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "비밀번호 변경을 일시적으로 처리할 수 없습니다."),
+            HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     PROFILE_CDN_NOT_CONFIGURED(
             HttpStatus.SERVICE_UNAVAILABLE, "FILE_006", "프로필 이미지 캐시 정리 설정이 필요합니다."),
     REGISTRATION_POLICY_UNAVAILABLE(
@@ -45,6 +45,10 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
     PROFILE_ACTION_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "MEMBER_006", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    IMAGE_GLOBAL_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "FILE_007",
+            "전체 업로드 한도에 도달하여 이미지 업로드가 일시적으로 제한됩니다. 잠시 후 다시 시도해 주세요."),
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "EMAIL_001", "이미 가입된 이메일입니다."),
     EMAIL_CODE_FORMAT_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_002", "인증번호는 숫자 6자리여야 합니다."),
     EMAIL_CODE_INVALID(HttpStatus.BAD_REQUEST, "EMAIL_003", "인증번호가 일치하지 않습니다."),
@@ -79,7 +83,7 @@ public enum ErrorCode {
     MARKET_CATEGORY_INACTIVE(HttpStatus.BAD_REQUEST, "MARKET_003", "현재 선택할 수 없는 중고장터 상품 분류입니다."),
     MARKET_INVALID_PRICE(HttpStatus.BAD_REQUEST, "MARKET_004", "중고장터 가격과 무료 나눔 설정을 확인해 주세요."),
     MARKET_IMAGE_LIMIT_EXCEEDED(
-            HttpStatus.BAD_REQUEST, "MARKET_005", "중고장터 이미지는 최대 5장까지 등록할 수 있습니다."),
+            HttpStatus.BAD_REQUEST, "MARKET_005", "중고장터 이미지는 최대 10장까지 등록할 수 있습니다."),
     MARKET_LISTING_UPDATE_CONFLICT(
             HttpStatus.CONFLICT, "MARKET_006", "다른 화면에서 판매글이 먼저 수정됐습니다. 최신 내용을 다시 확인해 주세요."),
     MARKET_REACTION_NOT_ALLOWED(

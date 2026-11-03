@@ -35,6 +35,20 @@
         <appender-ref ref="ASYNC_CHAT_AUDIT"/>
     </logger>
 
+    <springProperty scope="context" name="IMAGE_BUDGET_LOG_PATH"
+                    source="logging.image-budget.path" defaultValue="logs/image_budget.jsonl"/>
+    <appender name="IMAGE_BUDGET_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${IMAGE_BUDGET_LOG_PATH}</file>
+        <encoder><pattern>%msg%n</pattern><charset>UTF-8</charset></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${IMAGE_BUDGET_LOG_PATH}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>1MB</maxFileSize><maxHistory>7</maxHistory><totalSizeCap>10MB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+    <logger name="image.budget" level="INFO" additivity="false">
+        <appender-ref ref="IMAGE_BUDGET_FILE"/>
+    </logger>
+
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>

@@ -16,7 +16,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class SharedRequestLimiter {
     public record Limit(String key, int count, Duration duration) {}
 
-    public record Decision(boolean available, long retryAfterSeconds) {
+    public record Decision(boolean available, long retryAfterSeconds, String deniedKey) {
+        public Decision(boolean available, long retryAfterSeconds) {
+            this(available, retryAfterSeconds, null);
+        }
+
         public boolean allowed() {
             return available && retryAfterSeconds == 0;
         }
@@ -63,10 +67,16 @@ public class SharedRequestLimiter {
                                                     limit.key()));
                                 }
                                 long current = now(), retry = 0;
+                                String deniedKey = null;
                                 for (int i = 0; i < limits.size(); i++) {
                                     var window = windows.get(i);
                                     if (window.expires() > current
-                                            && window.count() >= limits.get(i).count())
+                                            && window.count() >= limits.get(i).count()) {
+                                        // Prefer the global reason when both account and global
+                                        // caps are full.
+                                        if (deniedKey == null
+                                                || limits.get(i).key().contains(":global:"))
+                                            deniedKey = limits.get(i).key();
                                         retry =
                                                 Math.max(
                                                         retry,
@@ -74,8 +84,9 @@ public class SharedRequestLimiter {
                                                                 1,
                                                                 (window.expires() - current + 999)
                                                                         / 1000));
+                                    }
                                 }
-                                if (retry > 0) return new Decision(true, retry);
+                                if (retry > 0) return new Decision(true, retry, deniedKey);
                                 for (int i = 0; i < limits.size(); i++) {
                                     var window = windows.get(i);
                                     var limit = limits.get(i);

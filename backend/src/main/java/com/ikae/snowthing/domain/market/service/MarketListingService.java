@@ -44,7 +44,7 @@ public class MarketListingService {
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final String ORIGINAL_IMAGE_PREFIX = "public/posts/originals/";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
-    private static final int MAX_IMAGES = 5;
+    private static final int MAX_IMAGES = 10;
     private static final int MAX_PAGE = 100;
     private static final int MAX_PAGE_SIZE = 50;
     private static final int PREVIEW_LIMIT = 4;
@@ -56,6 +56,8 @@ public class MarketListingService {
     private final PostImageRepository postImageRepository;
     private final MemberRepository memberRepository;
     private final ImageUrlResolver imageUrlResolver;
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
+    private final com.ikae.snowthing.domain.image.service.MarketThumbnailService marketThumbnails;
 
     public MarketCategoryListResponse getCategories() {
         return new MarketCategoryListResponse(
@@ -119,6 +121,8 @@ public class MarketListingService {
                 postCategoryRepository
                         .findByCode(MARKET_POST_CATEGORY_CODE)
                         .orElseThrow(() -> new CustomException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+        imageLifecycle.protectAll(
+                request.imageUrls(), request.content(), userDetails.getUsername());
         List<PostImage> images = toPostImages(request.imageUrls());
 
         Post post =
@@ -132,7 +136,10 @@ public class MarketListingService {
                         .hasImage(!images.isEmpty())
                         .build();
         post.replaceImages(images);
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         postRepository.save(post);
+        marketThumbnails.queue(
+                post.getPublicId(), images.isEmpty() ? null : images.get(0).getImageUrl());
 
         MarketListing listing =
                 MarketListing.builder()
@@ -181,12 +188,16 @@ public class MarketListingService {
         MarketListing listing = findForUpdate(publicId);
         validateWriter(listing.getPost(), userDetails);
         validateVersion(listing, request.version());
+        imageLifecycle.protectAll(
+                request.imageUrls(), request.content(), userDetails.getUsername());
         MarketCategory category = requireActiveCategory(request.categoryCode());
         List<PostImage> images = toPostImages(request.imageUrls());
 
         listing.getPost()
                 .update(request.title().trim(), request.content(), listing.getPost().getCategory());
         listing.getPost().replaceImages(images);
+        listing.getPost()
+                .replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         listing.update(
                 category,
                 request.productCondition(),
@@ -196,6 +207,9 @@ public class MarketListingService {
                 request.free(),
                 request.contact());
         marketListingRepository.flush();
+        marketThumbnails.queue(
+                listing.getPost().getPublicId(),
+                images.isEmpty() ? null : images.get(0).getImageUrl());
         return new MarketListingUpdateResponse(
                 publicId, listing.getVersion(), listing.getUpdatedAt());
     }
@@ -310,10 +324,17 @@ public class MarketListingService {
         }
         List<Long> postIds = listings.stream().map(item -> item.getPost().getId()).toList();
         Map<Long, String> thumbnails = new LinkedHashMap<>();
+        Map<String, String> ready =
+                marketThumbnails.readyUrls(
+                        listings.stream().map(item -> item.getPost().getPublicId()).toList());
         for (PostImage image : postImageRepository.findAllByPostIdsOrderBySortOrder(postIds)) {
             thumbnails.putIfAbsent(
                     image.getPost().getId(),
-                    imageUrlResolver.toThumbnailPublicUrl(image.getImageUrl()));
+                    ready.getOrDefault(
+                            image.getPost().getPublicId(),
+                            image.getImageUrl().startsWith("public/posts/originals/m-")
+                                    ? imageUrlResolver.toPublicUrl(image.getImageUrl())
+                                    : imageUrlResolver.toThumbnailPublicUrl(image.getImageUrl())));
         }
         return thumbnails;
     }

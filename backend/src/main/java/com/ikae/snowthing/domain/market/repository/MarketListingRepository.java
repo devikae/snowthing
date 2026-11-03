@@ -18,14 +18,14 @@ public interface MarketListingRepository
             "SELECT ml FROM MarketListing ml JOIN FETCH ml.post p JOIN FETCH p.member JOIN FETCH ml.category WHERE p.publicId = :publicId")
     Optional<MarketListing> findDetailByPostPublicId(@Param("publicId") String publicId);
 
+    // Fetch joins would propagate optimistic locks to non-versioned category/member/post entities.
+    // Associations are loaded lazily inside the service transaction; only the listing is locked.
     @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
-    @Query(
-            "SELECT ml FROM MarketListing ml JOIN FETCH ml.post p JOIN FETCH p.member JOIN FETCH ml.category WHERE p.publicId = :publicId")
+    @Query("SELECT ml FROM MarketListing ml WHERE ml.post.publicId = :publicId")
     Optional<MarketListing> findForUpdateByPostPublicId(@Param("publicId") String publicId);
 
     @Lock(LockModeType.OPTIMISTIC)
-    @Query(
-            "SELECT ml FROM MarketListing ml JOIN FETCH ml.post p JOIN FETCH p.member JOIN FETCH ml.category WHERE p.publicId = :publicId")
+    @Query("SELECT ml FROM MarketListing ml WHERE ml.post.publicId = :publicId")
     Optional<MarketListing> findForTradeStatusUpdateByPostPublicId(
             @Param("publicId") String publicId);
 

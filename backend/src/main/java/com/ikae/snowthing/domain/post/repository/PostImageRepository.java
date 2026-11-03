@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.post.repository;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,4 +16,13 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     @Query(
             "SELECT pi FROM PostImage pi WHERE pi.post.id IN :postIds ORDER BY pi.post.id ASC, pi.sortOrder ASC")
     List<PostImage> findAllByPostIdsOrderBySortOrder(@Param("postIds") List<Long> postIds);
+
+    boolean existsByImageUrlIn(Collection<String> imageUrls);
+
+    // Native lookup deliberately includes recoverable, soft-deleted posts.
+    @Query(
+            value =
+                    "SELECT EXISTS(SELECT 1 FROM post_content_image_reference WHERE image_key=:key)",
+            nativeQuery = true)
+    long countContentReference(@Param("key") String key);
 }

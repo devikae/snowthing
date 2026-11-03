@@ -1,0 +1,33 @@
+{
+  "readOnly": true,
+  "alarms": [
+    {
+      "AlarmName": "snowthing-image-global-limit-photo",
+      "StateValue": "OK",
+      "AlarmActions": [
+        "arn:aws:sns:ap-northeast-2:917286218765:snowthing-monitoring-alerts"
+      ],
+      "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "snowthing-image-global-limit-post-image",
+      "StateValue": "OK",
+      "AlarmActions": [
+        "arn:aws:sns:ap-northeast-2:917286218765:snowthing-monitoring-alerts"
+      ],
+      "TreatMissingData": "notBreaching"
+    }
+  ],
+  "retentionDays": 7,
+  "agent": {
+    "status": {
+      "status": "running",
+      "starttime": "2026-11-03T05:38:38+00:00",
+      "configstatus": "configured",
+      "version": "1.300074.0b1920"
+    },
+    "retainsMemoryMetric": true,
+    "retainsDiskMetric": true,
+    "includesImageLog": true
+  }
+}
