@@ -20,6 +20,7 @@ import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.domain.search.service.SearchOutboxWriter;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -42,7 +43,8 @@ class CarpoolWriterServiceTest {
                         mock(PostCategoryRepository.class),
                         mock(MemberRepository.class),
                         mock(ResortRepository.class),
-                        carpoolDetailRepository);
+                        carpoolDetailRepository,
+                        mock(SearchOutboxWriter.class));
         Member owner =
                 Member.builder()
                         .publicId(OWNER_PUBLIC_ID)

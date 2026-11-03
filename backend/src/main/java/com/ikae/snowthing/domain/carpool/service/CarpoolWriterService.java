@@ -35,6 +35,7 @@ public class CarpoolWriterService {
     private final MemberRepository memberRepository;
     private final ResortRepository resortRepository;
     private final CarpoolDetailRepository carpoolDetailRepository;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
 
     @Transactional
     public CarpoolResponse save(
@@ -67,6 +68,7 @@ public class CarpoolWriterService {
                         .hasImage(false)
                         .build();
         postRepository.save(post);
+        searchOutbox.postChanged(post);
 
         CarpoolDetail detail =
                 CarpoolDetail.builder()
@@ -127,6 +129,7 @@ public class CarpoolWriterService {
                         .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CARPOOL_VALUE));
 
         post.update(request.title(), request.content(), post.getCategory());
+        searchOutbox.postChanged(post);
         detail.update(
                 request.departureRegion(),
                 request.meetingPlace(),
@@ -170,6 +173,7 @@ public class CarpoolWriterService {
             throw new CustomException(ErrorCode.CARPOOL_DETAIL_REQUIRED);
         }
         post.softDelete();
+        searchOutbox.postChanged(post);
     }
 
     private void validateManagePermission(Post post, String memberPublicId, boolean admin) {

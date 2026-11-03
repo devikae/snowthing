@@ -58,6 +58,7 @@ public class MarketListingService {
     private final ImageUrlResolver imageUrlResolver;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
     private final com.ikae.snowthing.domain.image.service.MarketThumbnailService marketThumbnails;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
 
     public MarketCategoryListResponse getCategories() {
         return new MarketCategoryListResponse(
@@ -138,6 +139,7 @@ public class MarketListingService {
         post.replaceImages(images);
         post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         postRepository.save(post);
+        searchOutbox.postChanged(post);
         marketThumbnails.queue(
                 post.getPublicId(), images.isEmpty() ? null : images.get(0).getImageUrl());
 
@@ -207,6 +209,7 @@ public class MarketListingService {
                 request.free(),
                 request.contact());
         marketListingRepository.flush();
+        searchOutbox.postChanged(listing.getPost());
         marketThumbnails.queue(
                 listing.getPost().getPublicId(),
                 images.isEmpty() ? null : images.get(0).getImageUrl());
@@ -242,6 +245,7 @@ public class MarketListingService {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
         listing.getPost().softDelete();
+        searchOutbox.postChanged(listing.getPost());
     }
 
     @Transactional
@@ -258,6 +262,7 @@ public class MarketListingService {
                         .findForUpdateByPostPublicId(publicId)
                         .orElseThrow(() -> new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND));
         listing.getPost().changeStatus(status);
+        searchOutbox.postChanged(listing.getPost());
     }
 
     private MarketListingSummaryResponse toSummary(
