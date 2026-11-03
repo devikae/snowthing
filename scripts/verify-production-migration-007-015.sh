@@ -49,7 +49,9 @@ for version in \
   023_migration_member_profile_image_url_index \
   024_migration_post_image_upload \
   025_migration_market_thumbnail \
-  026_migration_post_content_image_reference   027_migration_search_document; do
+  026_migration_post_content_image_reference \
+  027_migration_search_document \
+  028_migration_search_outbox; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done
@@ -94,4 +96,8 @@ done
 [[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_document' AND index_name = 'ftx_search_document_title_body' AND index_type = 'FULLTEXT'")" == "title,body" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_document' AND index_name IN ('uk_search_document_evidence', 'idx_search_document_post', 'idx_search_document_source')")" == "3" ]]
 mysql_test --execute="SHOW CREATE TABLE search_document" | grep -q 'WITH PARSER `ngram`'
-echo "Production migrations 007-018 + 021-027 verification passed."
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name IN ('search_outbox', 'search_index_state', 'search_reindex_checkpoint')")" == "3" ]]
+[[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_outbox' AND index_name = 'idx_search_outbox_status_due'")" == "status,due_at" ]]
+[[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_index_state' AND index_name = 'PRIMARY'")" == "source_type,source_id" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'search_outbox' AND column_name IN ('content', 'title', 'body')")" == "0" ]]
+echo "Production migrations 007-018 + 021-028 verification passed."
