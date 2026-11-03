@@ -49,7 +49,8 @@ for version in \
   023_migration_member_profile_image_url_index \
   024_migration_post_image_upload \
   025_migration_market_thumbnail \
-  026_migration_post_content_image_reference; do
+  026_migration_post_content_image_reference \
+  027_migration_admin_system_dashboard; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done
@@ -89,4 +90,6 @@ done
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'request_budget_window'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'market_thumbnail' AND column_name = 'attempts'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'post_content_image_reference' AND index_name = 'idx_content_image_key'")" == "1" ]]
-echo "Production migrations 007-018 + 021-026 verification passed."
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name IN ('system_config','daily_visitor_log','daily_visitor_stats','chat_banned_ip','banner')")" == "5" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'post' AND column_name IN ('is_blinded','deleted_by_member_id')")" == "2" ]]
+echo "Production migrations 007-018 + 021-027 verification passed."

@@ -12,7 +12,7 @@ on:
         type: string
 
 concurrency:
-  group: ec2-production-deployment
+  group: deploy-backend-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -81,6 +81,9 @@ jobs:
 
   deploy-backend:
     name: Build, Push and Deploy Backend Digest
+    concurrency:
+      group: ec2-production-deployment
+      cancel-in-progress: false
     needs: [ci-backend]
     runs-on: ubuntu-latest
     environment: production-migration

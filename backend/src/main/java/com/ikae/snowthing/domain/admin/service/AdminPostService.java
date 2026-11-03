@@ -1,0 +1,64 @@
+package com.ikae.snowthing.domain.admin.service;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.ikae.snowthing.domain.admin.dto.AdminPostResponse;
+import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.CustomException;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AdminPostService {
+
+    private final PostRepository postRepository;
+
+    @Transactional(readOnly = true)
+    public Page<AdminPostResponse> getPosts(
+            boolean deletedOnly, boolean blindedOnly, Pageable pageable) {
+        Page<PostRepository.AdminPostProjection> posts =
+                blindedOnly
+                        ? postRepository.findBlindedForAdmin(deletedOnly, pageable)
+                        : deletedOnly
+                                ? postRepository.findDeletedForAdmin(pageable)
+                                : postRepository.findAllForAdmin(pageable);
+        return posts.map(AdminPostResponse::from);
+    }
+
+    @Transactional
+    public void deletePostByAdmin(String publicId, Long adminMemberId) {
+        int updated = postRepository.softDeleteByAdmin(publicId, adminMemberId);
+        if (updated == 0) {
+            throw new CustomException(ErrorCode.POST_NOT_FOUND);
+        }
+        log.info(
+                "Post soft-deleted by admin: publicId={}, adminMemberId={}",
+                publicId,
+                adminMemberId);
+    }
+
+    @Transactional
+    public void restorePostByAdmin(String publicId) {
+        int updated = postRepository.restorePostByAdmin(publicId);
+        if (updated == 0) {
+            throw new CustomException(ErrorCode.POST_NOT_FOUND);
+        }
+        log.info("Post restored by admin: publicId={}", publicId);
+    }
+
+    @Transactional
+    public void toggleBlindPost(String publicId, boolean blind) {
+        int updated = postRepository.updateBlindedByPublicId(publicId, blind);
+        if (updated == 0) {
+            throw new CustomException(ErrorCode.POST_NOT_FOUND);
+        }
+        log.info("Post blind status updated by admin: publicId={}, blinded={}", publicId, blind);
+    }
+}

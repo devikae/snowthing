@@ -16,9 +16,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.model.ResortTag;
@@ -41,11 +44,14 @@ class ChatServiceTest {
     private Member testMember;
 
     private ChatRecentHistoryBuffer chatRecentHistoryBuffer;
+    @Mock private ChatIpBanService chatIpBanService;
+    @Mock private SystemConfigService systemConfigService;
 
     @BeforeEach
     void setUp() {
         chatRecentHistoryBuffer = new ChatRecentHistoryBuffer();
-        chatService = new ChatService(chatRecentHistoryBuffer);
+        chatService =
+                new ChatService(chatRecentHistoryBuffer, chatIpBanService, systemConfigService);
         testMember =
                 Member.builder()
                         .publicId("0191a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4")

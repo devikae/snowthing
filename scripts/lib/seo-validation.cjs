@@ -28,7 +28,9 @@ function canCrawl(text, pathname, agent='Googlebot') {
     } else if(group&&['allow','disallow'].includes(field)&&value) group.rules.push({allow:field==='allow',pattern:value});
   }
   const score=g=>Math.max(-1,...g.agents.map(a=>a==='*'?0:agent.toLowerCase().includes(a)?a.length:-1));
-  const best=Math.max(-1,...groups.map(score));let match=null;
+  const best=Math.max(-1,...groups.map(score));
+  if(best<0)return true;
+  let match=null;
   for(const rule of groups.filter(g=>score(g)===best).flatMap(g=>g.rules)) {
     const pattern=rule.pattern;const terminal=pattern.endsWith('$');
     const regex='^'+pattern.slice(0,terminal?-1:undefined).split('*').map(part=>part.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('.*')+(terminal?'$':'');

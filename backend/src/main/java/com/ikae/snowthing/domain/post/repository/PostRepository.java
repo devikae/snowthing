@@ -121,4 +121,109 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
     @Query(
             "UPDATE Post p SET p.commentCount = p.commentCount - 1 WHERE p.id = :postId AND p.commentCount > 0")
     void decreaseCommentCount(@Param("postId") Long postId);
+
+    interface AdminPostProjection {
+        String getPublicId();
+
+        String getTitle();
+
+        String getContent();
+
+        Long getAuthorMemberId();
+
+        String getWriterNickname();
+
+        String getWriterEmail();
+
+        Boolean getIsAnonymous();
+
+        Boolean getIsDeleted();
+
+        java.time.LocalDateTime getDeletedAt();
+
+        Long getDeletedByMemberId();
+
+        String getDeleterNickname();
+
+        String getDeleterEmail();
+
+        String getDeleterRole();
+
+        Boolean getIsBlinded();
+
+        java.time.LocalDateTime getCreatedAt();
+
+        String getCategoryName();
+    }
+
+    @Query(
+            value =
+                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content, "
+                            + "p.member_id AS authorMemberId, m.nickname AS writerNickname, m.email AS writerEmail, "
+                            + "p.is_anonymous AS isAnonymous, p.is_deleted AS isDeleted, p.deleted_at AS deletedAt, "
+                            + "p.deleted_by_member_id AS deletedByMemberId, del.nickname AS deleterNickname, del.email AS deleterEmail, del.role AS deleterRole, "
+                            + "p.is_blinded AS isBlinded, p.created_at AS createdAt, c.name AS categoryName "
+                            + "FROM post p "
+                            + "LEFT JOIN member m ON p.member_id = m.member_id "
+                            + "LEFT JOIN member del ON p.deleted_by_member_id = del.member_id "
+                            + "JOIN post_category c ON p.category_id = c.category_id "
+                            + "ORDER BY p.post_id DESC",
+            countQuery = "SELECT COUNT(*) FROM post",
+            nativeQuery = true)
+    Page<AdminPostProjection> findAllForAdmin(Pageable pageable);
+
+    @Query(
+            value =
+                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content, "
+                            + "p.member_id AS authorMemberId, m.nickname AS writerNickname, m.email AS writerEmail, "
+                            + "p.is_anonymous AS isAnonymous, p.is_deleted AS isDeleted, p.deleted_at AS deletedAt, "
+                            + "p.deleted_by_member_id AS deletedByMemberId, del.nickname AS deleterNickname, del.email AS deleterEmail, del.role AS deleterRole, "
+                            + "p.is_blinded AS isBlinded, p.created_at AS createdAt, c.name AS categoryName "
+                            + "FROM post p "
+                            + "LEFT JOIN member m ON p.member_id = m.member_id "
+                            + "LEFT JOIN member del ON p.deleted_by_member_id = del.member_id "
+                            + "JOIN post_category c ON p.category_id = c.category_id "
+                            + "WHERE p.is_deleted = true "
+                            + "ORDER BY p.deleted_at DESC",
+            countQuery = "SELECT COUNT(*) FROM post WHERE is_deleted = true",
+            nativeQuery = true)
+    Page<AdminPostProjection> findDeletedForAdmin(Pageable pageable);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "UPDATE post SET is_blinded = :blinded WHERE public_id = :publicId",
+            nativeQuery = true)
+    int updateBlindedByPublicId(
+            @Param("publicId") String publicId, @Param("blinded") boolean blinded);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value =
+                    "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW(), deleted_by_member_id = :deleterId WHERE public_id = :publicId",
+            nativeQuery = true)
+    int softDeleteByAdmin(@Param("publicId") String publicId, @Param("deleterId") Long deleterId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value =
+                    "UPDATE post SET is_deleted = false, status = 'NORMAL', deleted_at = NULL, deleted_by_member_id = NULL WHERE public_id = :publicId",
+            nativeQuery = true)
+    int restorePostByAdmin(@Param("publicId") String publicId);
+
+    @Query(
+            value =
+                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content, "
+                            + "p.member_id AS authorMemberId, m.nickname AS writerNickname, m.email AS writerEmail, "
+                            + "p.is_anonymous AS isAnonymous, p.is_deleted AS isDeleted, p.deleted_at AS deletedAt, "
+                            + "p.deleted_by_member_id AS deletedByMemberId, del.nickname AS deleterNickname, del.email AS deleterEmail, del.role AS deleterRole, "
+                            + "p.is_blinded AS isBlinded, p.created_at AS createdAt, c.name AS categoryName "
+                            + "FROM post p LEFT JOIN member m ON p.member_id=m.member_id "
+                            + "LEFT JOIN member del ON p.deleted_by_member_id=del.member_id "
+                            + "JOIN post_category c ON p.category_id=c.category_id "
+                            + "WHERE p.is_blinded=true AND (:deletedOnly=false OR p.is_deleted=true) ORDER BY p.post_id DESC",
+            countQuery =
+                    "SELECT COUNT(*) FROM post WHERE is_blinded=true AND (:deletedOnly=false OR is_deleted=true)",
+            nativeQuery = true)
+    Page<AdminPostProjection> findBlindedForAdmin(
+            @Param("deletedOnly") boolean deletedOnly, Pageable pageable);
 }

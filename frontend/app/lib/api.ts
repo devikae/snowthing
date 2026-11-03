@@ -84,6 +84,30 @@ export const API_ENDPOINTS = {
     create: `${API_V1_URL}/resort-reports`,
     delete: (reportId: number) => `${API_V1_URL}/resort-reports/${reportId}`,
   },
+  admin: {
+    stats: (days = 7) => `${API_V1_URL}/admin/dashboard/stats?days=${days}`,
+    configs: `${API_V1_URL}/admin/configs`,
+    updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${key}`,
+    members: (query?: string, status?: string, page = 0, size = 20) =>
+      `${API_V1_URL}/admin/members?page=${page}&size=${size}${query ? `&query=${encodeURIComponent(query)}` : ""}${status ? `&status=${status}` : ""}`,
+    updateMemberStatus: (publicId: string) => `${API_V1_URL}/admin/members/${publicId}/status`,
+    updateMemberNickname: (publicId: string) => `${API_V1_URL}/admin/members/${publicId}/nickname`,
+    deleteMemberProfileImage: (publicId: string) => `${API_V1_URL}/admin/members/${publicId}/profile-image`,
+    posts: (onlyDeleted = false, page = 0, size = 20) =>
+      `${API_V1_URL}/admin/posts?onlyDeleted=${onlyDeleted}&page=${page}&size=${size}`,
+    blindPost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}/blind`,
+    deletePost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}`,
+    restorePost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}/restore`,
+    bannedIps: `${API_V1_URL}/admin/chat/banned-ips`,
+    unbanIp: (id: number) => `${API_V1_URL}/admin/chat/banned-ips/${id}`,
+    banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${messageId}/ban-ip`,
+    banners: `${API_V1_URL}/admin/banners`,
+    bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
+  },
+  public: {
+    configs: `${API_V1_URL}/public/configs`,
+    banners: `${API_V1_URL}/public/banners`,
+  },
 } as const;
 
 export interface ResortReportItem {
@@ -106,4 +130,87 @@ export interface OffsetPage<T> {
     hasNext: boolean;
     pageSize: number;
   };
+}
+
+
+export interface DailyVisitorStat {
+  date: string;
+  totalVisitors: number;
+  memberVisitors: number;
+  guestVisitors: number;
+  pvCount: number;
+}
+
+export interface AdminDashboardStats {
+  todayTotalVisitors: number;
+  todayMemberVisitors: number;
+  todayGuestVisitors: number;
+  todayPvCount: number;
+  totalMembers: number;
+  todayNewMembers: number;
+  anonymousChatEnabled: boolean;
+  visitorTrends: DailyVisitorStat[];
+}
+
+export interface SystemConfigItem {
+  key: string;
+  value: string;
+  valueType: string;
+  description: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface AdminMemberItem {
+  publicId: string;
+  email: string;
+  nickname: string;
+  status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN";
+  role: "ROLE_USER" | "ROLE_ADMIN";
+  profileImageUrl: string | null;
+  createdAt: string;
+}
+
+export interface AdminPostItem {
+  publicId: string;
+  title: string;
+  content: string;
+  authorMemberId: number | null;
+  writerNickname: string | null;
+  writerEmail: string | null;
+  isAnonymous: boolean;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  deletedByMemberId: number | null;
+  deleterNickname: string | null;
+  deleterEmail: string | null;
+  deleterRole: string | null;
+  isDeletedByAuthor: boolean;
+  isBlinded: boolean;
+  createdAt: string;
+  categoryName: string;
+  authorNickname?: string;
+  authorEmail?: string;
+  resortName?: string | null;
+  category?: string;
+}
+
+export interface ChatBannedIpItem {
+  id: number;
+  bannedIp: string;
+  reason: string;
+  bannedUntil: string | null;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface BannerItem {
+  id: number;
+  title: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  displayOrder: number;
+  isActive: boolean;
+  startAt: string | null;
+  endAt: string | null;
 }

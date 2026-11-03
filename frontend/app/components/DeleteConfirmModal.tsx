@@ -62,65 +62,74 @@ export function DeleteConfirmModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 font-sans">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded-lg border-2 border-black bg-white p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+        className="w-full max-w-md rounded-2xl border border-[var(--snow-border)] bg-[var(--snow-canvas)] p-6 shadow-2xl shadow-black/30"
       >
-        <div className="flex items-center justify-between border-b-2 border-black pb-3">
-          <h3 id={titleId} className="text-xl font-extrabold italic text-black">{title}</h3>
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-[var(--snow-line-soft)] pb-3">
+          <h3 id={titleId} className="text-base font-bold text-[var(--snow-ink)]">
+            {title}
+          </h3>
           <button
             type="button"
             onClick={handleClose}
             disabled={submitting}
             aria-label="삭제 확인 모달 닫기"
-            className="text-gray-400 hover:text-black font-bold text-lg"
+            className="text-[var(--snow-muted)] hover:text-[var(--snow-ink)] font-bold text-base p-1 rounded-lg hover:bg-[var(--snow-surface-low)] transition"
           >
             ✕
           </button>
         </div>
 
-        <p className="mt-4 text-sm font-medium text-[var(--snow-ink-soft)]">{description}</p>
+        {/* Modal Description */}
+        <p className="mt-3.5 text-xs leading-relaxed text-[var(--snow-ink-soft)]">
+          {description}
+        </p>
 
-        <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="mt-4 grid gap-3.5">
           {requirePassword && (
-            <label htmlFor={passwordId} className="grid gap-2">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--snow-muted)]">
-                익명 비밀번호 (Password)
+            <label htmlFor={passwordId} className="grid gap-1.5">
+              <span className="text-xs font-semibold text-[var(--snow-ink-soft)]">
+                비밀번호 입력
               </span>
               <input
                 id={passwordId}
                 type="password"
-                placeholder="●●●●"
+                placeholder="비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
-                className="snow-input text-sm"
+                className="snow-input text-xs"
               />
             </label>
           )}
 
           {errorMsg && (
-            <div className="rounded border border-[#fecaca] bg-[#fef2f2] p-3 text-xs font-bold text-[#dc2626]">
-              ⚠️ {errorMsg}
+            <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-900/50 p-2.5 text-xs font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+              <span>⚠️</span>
+              <span>{errorMsg}</span>
             </div>
           )}
 
-          <div className="mt-3 flex items-center justify-end gap-3 font-bold">
+          {/* Action Buttons */}
+          <div className="mt-2 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={handleClose}
               disabled={submitting}
-              className="px-4 py-2 text-xs font-mono uppercase tracking-wider text-gray-500 hover:text-black"
+              className="px-4 py-2 text-xs font-semibold rounded-xl border border-[var(--snow-border)] text-[var(--snow-ink-soft)] hover:bg-[var(--snow-surface-low)] hover:text-[var(--snow-ink)] transition"
             >
-              Cancel
+              취소
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="bg-[#dc2626] text-white px-5 py-2 text-xs font-mono uppercase tracking-wider hover:bg-black transition border-2 border-black disabled:opacity-50"
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition disabled:opacity-50"
             >
               {submitting ? submittingLabel : confirmLabel}
             </button>

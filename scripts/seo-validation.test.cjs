@@ -19,4 +19,5 @@ test('robots evaluates blanket blocks, group selection, wildcard and longest all
  assert.equal(canCrawl('User-agent: *\nAllow: /\nUser-agent: Googlebot\nDisallow: /api/','/api/v1/posts'),false);
  assert.equal(canCrawl('User-agent: *\nDisallow: /*.json$','/test.json'),false);
  assert.equal(canCrawl('User-agent: *\nDisallow: /blocked\nAllow: /blocked','/blocked'),true);
+ assert.equal(canCrawl('User-agent: Bingbot\nDisallow: /','/posts','Googlebot'),true);
 });

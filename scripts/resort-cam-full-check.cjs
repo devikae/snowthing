@@ -12,12 +12,12 @@ function loadSource(file){
 }
 const {resolveCameraSourceUrl,resortSlug,cameraSlug}=loadSource('types.ts');
 const {updateOfficialCameraSource}=loadSource('sourceUpdates.ts');
-async function probeHls(source){
-  let url=new URL(source,'http://localhost:3000');
+async function probeHls(source, localOrigin = 'http://localhost:3000'){
+  let url=new URL(source, localOrigin);
   const stages=[];
   try{
     for(let depth=0;depth<3;depth++){
-      const response=await fetch(url,{signal:AbortSignal.timeout(10000),headers:{Origin:'http://localhost:3000'}});
+      const response=await fetch(url,{signal:AbortSignal.timeout(10000),headers:{Origin: localOrigin}});
       const text=await response.text();
       stages.push({kind:'playlist',status:response.status,hls:text.trimStart().startsWith('#EXTM3U')});
       if(!response.ok||!text.trimStart().startsWith('#EXTM3U'))return{active:false,stages};
@@ -35,7 +35,7 @@ async function probeHls(source){
 }
 
 withLocalBrowser('camera-full-check',async browser=>{
-  const {navigate,evaluate,waitFor,pause,send,screenshot,artifacts,viewport}=browser;
+  const {navigate,evaluate,waitFor,pause,send,screenshot,artifacts,viewport,localOrigin}=browser;
   const metadata=await(await fetch('http://localhost:8080/api/v1/resort-cams')).json();
   const cameras=metadata.resorts.flatMap(resort=>resort.cameras.map(camera=>({
     resort:resort.code,
@@ -45,7 +45,7 @@ withLocalBrowser('camera-full-check',async browser=>{
   const probes=new Map();
   const pending=[...jobs];
   await Promise.all(Array.from({length:4},async()=>{
-    while(pending.length){const item=pending.shift();probes.set(item.resort+':'+item.camera.code,await probeHls(item.camera.sourceUrl));}
+    while(pending.length){const item=pending.shift();probes.set(item.resort+':'+item.camera.code,await probeHls(item.camera.sourceUrl,localOrigin));}
   }));
   console.log(JSON.stringify({phase:'source-probe',hls:jobs.length,active:[...probes.values()].filter(value=>value.active).length,artifacts}));
   const results=[];const photographed=new Set();

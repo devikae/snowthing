@@ -199,7 +199,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         {reply && <span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
-          <header><strong>{item.writer?.nickname || "탈퇴한 회원"}</strong><time>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></header>
+          <header><strong>{item.writer?.nickname || "탈퇴한 회원"}</strong><time>{new Date(item.createdAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })}</time></header>
           {editingId === item.commentId ? (
             <div className="comment-inline-editor">
               <textarea maxLength={1000} value={editingContent} onChange={(event) => setEditingContent(event.target.value)} />

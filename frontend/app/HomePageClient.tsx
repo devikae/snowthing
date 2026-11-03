@@ -138,6 +138,7 @@ export default function HomePageClient() {
   const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
   const [feedsLoading, setFeedsLoading] = useState(true);
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
+
   const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
   const [snowReportResort, setSnowReportResort] = useState("1");
   const [snowReportContent, setSnowReportContent] = useState("");
@@ -248,11 +249,11 @@ export default function HomePageClient() {
     void (async () => {
       const results = await Promise.allSettled(
         HOME_FEED_TABS.map(async (tab) => {
-          const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+          const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
           const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
           if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
           const data = await response.json();
-          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 10) : [] };
+          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 15) : [] };
         }),
       );
 
@@ -295,12 +296,12 @@ export default function HomePageClient() {
 
   const retryFeed = async (tab: HomeFeedTab) => {
     setFeedErrors((current) => ({ ...current, [tab.key]: false }));
-    const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+    const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
     try {
       const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
       if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
       const data = await response.json();
-      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 10) : [] }));
+      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 15) : [] }));
     } catch {
       setFeedErrors((current) => ({ ...current, [tab.key]: true }));
     }
@@ -367,15 +368,17 @@ export default function HomePageClient() {
                         <div className="m-row-right">
                           <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
                           <span className="m-stats">
-                            {post.commentCount > 0 && (
-                              <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
+                            {post.commentCount > 0 ? (
+                              <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>
                                 <span className="material-symbols-outlined" aria-hidden="true">
                                   chat_bubble
                                 </span>
                                 {post.commentCount}
                               </span>
+                            ) : (
+                              <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                             )}
-                            <span className="m-stat" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                            <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString()}`}>
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 visibility
                               </span>
@@ -500,7 +503,12 @@ export default function HomePageClient() {
 
             <div className="carpool-compact-list">
               {carpools.length === 0 ? (
-                <p className="carpool-widget-empty">등록된 카풀 모집글이 없습니다.</p>
+                <div className="carpool-widget-empty">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    directions_car
+                  </span>
+                  <p>등록된 카풀 모집글이 없습니다.</p>
+                </div>
               ) : (
                 carpools.map((item) => (
                   <Link href={`/carpool/${item.publicId}`} className="carpool-row" key={item.publicId}>

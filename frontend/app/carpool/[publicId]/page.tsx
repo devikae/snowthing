@@ -93,7 +93,7 @@ export default function CarpoolDetailPage() {
                 <p>
                   <strong>{item.writerName}</strong>
                   <span>·</span>
-                  {new Date(item.departureAt).toLocaleString("ko-KR")}
+                  {new Date(item.departureAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })}
                 </p>
                 {item.canManage && (
                   <div className="carpool-detail-actions">
@@ -182,7 +182,7 @@ export default function CarpoolDetailPage() {
                     : item.fuelPriceSource === "USER_INPUT"
                       ? "유가 사용자 직접 입력"
                       : "오피넷 유가"}{" "}
-                  {new Date(item.fuelPriceObservedAt).toLocaleString("ko-KR")} 기준
+                  {new Date(item.fuelPriceObservedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })} 기준
                 </p>
               </section>
               <section className="carpool-content-panel">

@@ -270,7 +270,8 @@ public class PostService {
 
         validateDeletePermission(post, anonymousPassword, userDetails, isAdmin);
 
-        post.softDelete();
+        Long deleterMemberId = userDetails != null ? userDetails.getMemberId() : null;
+        post.softDelete(deleterMemberId);
     }
 
     private void validateEditPermission(

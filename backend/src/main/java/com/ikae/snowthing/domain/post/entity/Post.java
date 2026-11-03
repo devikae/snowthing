@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
 @SQLDelete(
         sql =
                 "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW() WHERE post_id = ?")
-@SQLRestriction("is_deleted = false")
+@SQLRestriction("is_deleted = false AND is_blinded = false")
 @Check(constraints = "like_count >= 0 AND dislike_count >= 0")
 public class Post extends BaseTimeEntity {
 
@@ -86,8 +86,14 @@ public class Post extends BaseTimeEntity {
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
 
+    @Column(name = "is_blinded", nullable = false)
+    private boolean isBlinded = false;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by_member_id")
+    private Long deletedByMemberId;
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
@@ -138,6 +144,10 @@ public class Post extends BaseTimeEntity {
         this.status = status;
     }
 
+    public void setBlinded(boolean blinded) {
+        this.isBlinded = blinded;
+    }
+
     public void update(String title, String content, PostCategory category) {
         this.title = title;
         this.content = content;
@@ -156,10 +166,22 @@ public class Post extends BaseTimeEntity {
         updateImageStatus(!this.images.isEmpty());
     }
 
-    public void softDelete() {
+    public void softDelete(Long deleterMemberId) {
         this.isDeleted = true;
         this.status = PostStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
+        this.deletedByMemberId = deleterMemberId;
+    }
+
+    public void softDelete() {
+        softDelete(null);
+    }
+
+    public void restore() {
+        this.isDeleted = false;
+        this.status = PostStatus.NORMAL;
+        this.deletedAt = null;
+        this.deletedByMemberId = null;
     }
 
     public void increaseViewCount() {

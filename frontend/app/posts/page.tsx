@@ -261,7 +261,8 @@ function PostListContent() {
                         <b>{notice.writerNickname}</b>
                       </span>
                       <span className="m-stats">
-                        <span className="m-stat">
+                        <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
+                        <span className="m-stat m-stat-view" title={`조회 ${notice.viewCount.toLocaleString()}`}>
                           <span className="material-symbols-outlined" aria-hidden="true">
                             visibility
                           </span>
@@ -328,15 +329,17 @@ function PostListContent() {
                       <div className="m-row-right">
                         <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
                         <span className="m-stats">
-                          {post.commentCount > 0 && (
-                            <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
+                          {post.commentCount > 0 ? (
+                            <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 chat_bubble
                               </span>
                               {post.commentCount}
                             </span>
+                          ) : (
+                            <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                           )}
-                          <span className="m-stat" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                          <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString()}`}>
                             <span className="material-symbols-outlined" aria-hidden="true">
                               visibility
                             </span>

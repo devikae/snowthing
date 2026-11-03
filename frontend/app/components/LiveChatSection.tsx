@@ -2,11 +2,10 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Client } from "@stomp/stompjs";
 import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
-import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
+import { csrfFetch } from "../lib/csrfFetch";
 
 export interface MemberProfile {
   publicId: string;
@@ -35,6 +34,8 @@ interface ChatError {
 }
 
 const LOCAL_STORAGE_TAG_KEY = "snowthing_chat_resort";
+const GUEST_SENT_MSGS_KEY = "snowthing_guest_sent_msgs";
+const GUEST_NICKNAME_KEY = "snowthing_guest_nickname";
 const MAX_DOM_MESSAGES = 100;
 const RECONNECT_BASE_DELAY_MILLIS = 1000;
 const RECONNECT_MAX_DELAY_MILLIS = 30000;
@@ -77,6 +78,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputContent, setInputContent] = useState("");
+  const [anonymousChatEnabled, setAnonymousChatEnabled] = useState(false);
   const [selectedResort, setSelectedResort] = useState<string>(() => {
     if (typeof window === "undefined") return "";
 
@@ -90,7 +92,24 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const [isConnected, setIsConnected] = useState(false);
   const [toastError, setToastError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
-  const [localHelp, setLocalHelp] = useState<LocalChatCommand | null>(null);
+  const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(GUEST_SENT_MSGS_KEY) || "[]");
+      return new Set(stored);
+    } catch {
+      return new Set();
+    }
+  });
+  const [guestNickname, setGuestNickname] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return sessionStorage.getItem(GUEST_NICKNAME_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const pendingGuestSendsRef = useRef<{ content: string; time: number }[]>([]);
 
   const stompClientRef = useRef<Client | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -130,8 +149,20 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     setShowScrollBottom(false);
   };
 
+  const currentMemberId = currentMember?.publicId;
+
   // 4. 웹소켓 STOMP 클라이언트 연결 생명주기
   useEffect(() => {
+    fetch(API_ENDPOINTS.public.configs)
+      .then((res) => (res.ok ? res.json() : {} as Record<string, unknown>))
+      .then((cfg: Record<string, unknown>) => {
+        const enabled = cfg.anonymousChatEnabled ?? cfg.chat_anonymous_enabled;
+        if (enabled !== undefined) {
+          setAnonymousChatEnabled(enabled === true || enabled === "true");
+        }
+      })
+      .catch(() => {});
+
     const wsUrl = API_BASE_URL.replace(/^http/, "ws") + "/ws-chat";
 
     const client = new Client({
@@ -147,7 +178,43 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         // 메인 광장 브로드캐스트 채널 구독
         client.subscribe("/sub/chat/main", (frame) => {
           try {
-            const newMsg: ChatMessage = JSON.parse(frame.body);
+            const payload = JSON.parse(frame.body);
+            if (payload.type === "PURGE_MESSAGES") {
+              const purgedIds: string[] = payload.messageIds || [];
+              setMessages((previous) => previous.filter((m) => !purgedIds.includes(m.messageId)));
+              return;
+            }
+            if (payload.type === "CONFIG_UPDATED") {
+              if (payload.key === "CHAT_ANONYMOUS_ENABLED") {
+                setAnonymousChatEnabled(payload.value === true || payload.value === "true");
+              }
+              return;
+            }
+            const newMsg: ChatMessage = payload;
+            if (!currentMemberId) {
+              const matchIdx = pendingGuestSendsRef.current.findIndex(
+                (p) => p.content === newMsg.content && Math.abs(Date.now() - p.time) < 15000
+              );
+              if (matchIdx !== -1) {
+                pendingGuestSendsRef.current.splice(matchIdx, 1);
+                setMyGuestMessageIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(newMsg.messageId);
+                  try {
+                    const stored = JSON.parse(sessionStorage.getItem(GUEST_SENT_MSGS_KEY) || "[]");
+                    stored.push(newMsg.messageId);
+                    sessionStorage.setItem(GUEST_SENT_MSGS_KEY, JSON.stringify(stored.slice(-100)));
+                  } catch {}
+                  return next;
+                });
+                if (newMsg.sender?.nickname) {
+                  setGuestNickname(newMsg.sender.nickname);
+                  try {
+                    sessionStorage.setItem(GUEST_NICKNAME_KEY, newMsg.sender.nickname);
+                  } catch {}
+                }
+              }
+            }
             setMessages((previous) => mergeMessages(previous, [newMsg]));
 
             // 스크롤이 바닥 근처에 있을 때만 자동 스크롤
@@ -211,7 +278,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       client.deactivate();
       stompClientRef.current = null;
     };
-  }, [currentMember?.publicId]);
+  }, [currentMemberId]);
 
   // 5. 토스트 에러 자동 닫기 (4초)
   useEffect(() => {
@@ -221,15 +288,25 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   }, [toastError]);
 
   // 6. 메시지 전송
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const command = localChatCommand(inputContent);
-    if (command) {
-      setLocalHelp(command);
-      setInputContent("");
+  const handleAdminBanMessage = async (messageId: string, nickname: string) => {
+    if (!window.confirm(`[${nickname}] 사용자의 IP를 차단하고 최근 채팅 메시지를 일괄 삭제하시겠습니까?`)) {
       return;
     }
-    if (!currentMember) {
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.admin.banMessageIp(messageId), {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("IP 차단 처리에 실패했습니다.");
+      setMessages((prev) => prev.filter((m) => m.messageId !== messageId));
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : "차단 실패"));
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentMember && !anonymousChatEnabled) {
       router.push("/login");
       return;
     }
@@ -239,6 +316,10 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     if (!stompClientRef.current || !isConnected) {
       setToastError("서버와 실시간 스트림 연결 중입니다. 잠시만 기다려주세요.");
       return;
+    }
+
+    if (!currentMember) {
+      pendingGuestSendsRef.current.push({ content: trimmed, time: Date.now() });
     }
 
     const payload = {
@@ -262,17 +343,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           <small className="section-eyebrow">LIVE STREAM</small>
           <h2>라이브톡</h2>
         </div>
-        <button type="button" className="live-chat-help-toggle" aria-expanded={localHelp!==null} aria-controls="live-chat-local-help" onClick={()=>setLocalHelp(localHelp?null:"help")}>도움말</button>
       </div>
-
-      {localHelp&&<aside id="live-chat-local-help" className="live-chat-local-help" aria-label="라이브톡 도구 안내">
-        <p>이 안내는 나에게만 보여요. 계산값은 각 도구에서 입력해 주세요.</p>
-        <nav aria-label="라이더 도구 바로가기">
-          {(localHelp==="help"||localHelp==="season-pass")&&<Link href="/tools/season-pass">시즌권 본전 계산 <small>/시즌권</small></Link>}
-          {(localHelp==="help"||localHelp==="deck-size")&&<Link href="/tools/deck-size">데크 사이즈 참고 <small>/데크</small></Link>}
-        </nav>
-        <small>/도움말로 다시 열 수 있어요. 일반 대화와 봇 질문은 공개되므로 연락처·개인정보를 적지 마세요.</small>
-      </aside>}
 
       {/* 실시간 말풍선 피드 영역 */}
       <div className="live-chat-body relative">
@@ -288,17 +359,30 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             </div>
           ) : (
             messages.map((msg) => {
-              const isMine = Boolean(currentMember && msg.sender.publicId === currentMember.publicId);
+              const isMine = Boolean(
+                (currentMember && msg.sender.publicId === currentMember.publicId) ||
+                (!currentMember && myGuestMessageIds.has(msg.messageId))
+              );
               const resort = msg.resortTag ? RESORT_MAP[msg.resortTag] : null;
               return (
                 <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
                   <div className="live-chat-message-meta">
-                    {!isMine && <strong>{msg.sender.nickname}</strong>}
+                    {(!isMine || !currentMember) && <strong>{msg.sender.nickname}</strong>}
                     <span className="live-chat-message-tag">
                       <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
                       {resort ? resort.koreanName : "일반"}
                     </span>
                     <time>{formatRelativeTime(msg.sentAt)}</time>
+                    {currentMember?.role === "ROLE_ADMIN" && !isMine && (
+                      <button
+                        type="button"
+                        onClick={() => handleAdminBanMessage(msg.messageId, msg.sender.nickname)}
+                        title="이 사용자 IP 차단 및 최근 메시지 삭제"
+                        className="text-[10px] text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded font-bold transition ml-1"
+                      >
+                        차단
+                      </button>
+                    )}
                   </div>
                   <div className="live-chat-message-bubble">{msg.content}</div>
                 </div>
@@ -332,9 +416,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       <form onSubmit={handleSubmit} className="live-chat-compose unified-capsule-form">
         <div className="capsule-select-wrap">
           <select
-            value={currentMember ? selectedResort : ""}
+            value={currentMember || anonymousChatEnabled ? selectedResort : ""}
             onChange={handleResortChange}
-            disabled={!currentMember}
+            disabled={!currentMember && !anonymousChatEnabled}
             aria-label="리조트 태그"
             className="live-chat-compose-select capsule-select"
           >
@@ -352,26 +436,26 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           value={inputContent}
           onChange={(e) => setInputContent(e.target.value)}
           onClick={() => {
-            if (!currentMember) {
+            if (!currentMember && !anonymousChatEnabled) {
               router.push("/login");
             }
           }}
-          onFocus={() => {
-            if (!currentMember) {
-              router.push("/login");
-            }
-          }}
+          readOnly={!currentMember && !anonymousChatEnabled}
           placeholder={
             currentMember
-              ? "메세지를 입력하세요"
+              ? "메시지를 입력하세요"
+              : anonymousChatEnabled
+              ? guestNickname
+                ? `${guestNickname} (으)로 대화 참여 중...`
+                : "비회원 라이브톡 (메시지 입력 시 랜덤 닉네임 자동 부여)"
               : "로그인하고 라이브톡에 참여해보세요"
           }
-          className="live-chat-compose-input capsule-input"
+          className={`live-chat-compose-input capsule-input ${!currentMember && !anonymousChatEnabled ? "cursor-pointer" : ""}`}
         />
 
         <button
           type="submit"
-          disabled={Boolean(currentMember && !inputContent.trim())}
+          disabled={!inputContent.trim()}
           aria-label="메시지 전송"
           className="live-chat-compose-submit capsule-send-btn"
         >

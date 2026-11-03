@@ -17,6 +17,7 @@ import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.global.config.BotProperties;
 import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.BotDelegationTokenService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.SharedRequestLimiter;
@@ -95,9 +96,13 @@ public class BotMentionService {
                                     new SharedRequestLimiter.Limit(
                                             "snowthing:limits:{bot}:hour", 60, Duration.ofHours(1)),
                                     new SharedRequestLimiter.Limit(
-                                            "snowthing:limits:{bot}:day",
-                                            200,
-                                            Duration.ofDays(1))));
+                                            "snowthing:limits:{bot}:day", 200, Duration.ofDays(1)),
+                                    new SharedRequestLimiter.Limit(
+                                            "snowthing:limits:{bot}:account:"
+                                                    + userDetails.getPublicId()
+                                                    + ":hour",
+                                            5,
+                                            Duration.ofHours(1))));
             if (!decision.allowed()) {
                 notifyRequester(
                         userDetails,
@@ -122,6 +127,13 @@ public class BotMentionService {
                     "chat bot completed: messageId={}, durationMs={}",
                     userMessage.messageId(),
                     (System.nanoTime() - startedAt) / 1_000_000L);
+        } catch (CustomException exception) {
+            log.warn(
+                    "chat bot business error: messageId={}, errorCode={}, durationMs={}",
+                    userMessage.messageId(),
+                    exception.getErrorCode(),
+                    (System.nanoTime() - startedAt) / 1_000_000L);
+            notifyRequester(userDetails, exception.getErrorCode(), 0);
         } catch (Exception exception) {
             log.warn(
                     "chat bot failed: messageId={}, durationMs={}, type={}",
@@ -132,9 +144,10 @@ public class BotMentionService {
     }
 
     private void notifyRequester(CustomUserDetails user, ErrorCode error, long retryAfterSeconds) {
-        messagingTemplate.convertAndSendToUser(
-                user.getUsername(),
-                "/queue/errors",
-                ChatErrorResponse.retry(error, retryAfterSeconds));
+        ChatErrorResponse response =
+                retryAfterSeconds > 0
+                        ? ChatErrorResponse.retry(error, retryAfterSeconds)
+                        : ChatErrorResponse.from(error);
+        messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/errors", response);
     }
 }
