@@ -96,9 +96,7 @@ public class BotMentionService {
                                     new SharedRequestLimiter.Limit(
                                             "snowthing:limits:{bot}:hour", 60, Duration.ofHours(1)),
                                     new SharedRequestLimiter.Limit(
-                                            "snowthing:limits:{bot}:day",
-                                            200,
-                                            Duration.ofDays(1)),
+                                            "snowthing:limits:{bot}:day", 200, Duration.ofDays(1)),
                                     new SharedRequestLimiter.Limit(
                                             "snowthing:limits:{bot}:account:"
                                                     + userDetails.getPublicId()
@@ -150,9 +148,6 @@ public class BotMentionService {
                 retryAfterSeconds > 0
                         ? ChatErrorResponse.retry(error, retryAfterSeconds)
                         : ChatErrorResponse.from(error);
-        messagingTemplate.convertAndSendToUser(
-                user.getUsername(),
-                "/queue/errors",
-                response);
+        messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/errors", response);
     }
 }

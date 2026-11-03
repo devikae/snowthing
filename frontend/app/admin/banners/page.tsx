@@ -103,12 +103,13 @@ export default function AdminBannersPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ active: !b.isActive }),
+        body: JSON.stringify({ title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl,
+          displayOrder: b.displayOrder, isActive: !b.isActive, startAt: b.startAt, endAt: b.endAt }),
       });
       if (!res.ok) throw new Error("상태 변경에 실패했습니다.");
       setBanners((prev) =>
         prev.map((item) =>
-          item.id === b.id ? { ...item, active: !b.isActive } : item
+          item.id === b.id ? { ...item, isActive: !b.isActive } : item
         )
       );
     } catch (err: any) {

@@ -62,6 +62,88 @@ class ImageServiceTest {
     }
 
     @Test
+    void managedImagesAreResizedAndEncodedAsJpeg() throws Exception {
+        var file = new MockMultipartFile("file", "large.png", "image/png", createPng(3000, 1500));
+        var result = imageService.uploadImage(file, "m-11111111-1111-1111-1111-111111111111");
+        var requests = ArgumentCaptor.forClass(PutObjectRequest.class);
+        var bodies = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client, times(1)).putObject(requests.capture(), bodies.capture());
+        assertThat(result.imageKey()).endsWith(".jpg");
+        assertThat(requests.getAllValues())
+                .allSatisfy(request -> assertThat(request.contentType()).isEqualTo("image/jpeg"));
+        assertThat(requests.getValue().key()).contains("/originals/");
+        try (var input = bodies.getAllValues().get(0).contentStreamProvider().newStream()) {
+            var image = ImageIO.read(input);
+            assertThat(image.getWidth()).isLessThanOrEqualTo(1920);
+            assertThat(image.getHeight()).isLessThanOrEqualTo(1920);
+        }
+    }
+
+    @Test
+    void marketThumbnailWritesOnlyOneSmallObject() throws Exception {
+        when(s3Client.getObjectAsBytes(
+                        any(software.amazon.awssdk.services.s3.model.GetObjectRequest.class)))
+                .thenReturn(
+                        software.amazon.awssdk.core.ResponseBytes.fromByteArray(
+                                software.amazon.awssdk.services.s3.model.GetObjectResponse.builder()
+                                        .build(),
+                                createPng(1000, 600)));
+        imageService.createMarketThumbnail(
+                "public/posts/originals/m-11111111-1111-1111-1111-111111111111.jpg",
+                "public/posts/thumbnails/market-22222222-2222-2222-2222-222222222222.jpg");
+        var requests = ArgumentCaptor.forClass(PutObjectRequest.class);
+        var bodies = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client, times(1)).putObject(requests.capture(), bodies.capture());
+        assertThat(requests.getValue().key()).contains("/thumbnails/market-");
+        try (var input = bodies.getValue().contentStreamProvider().newStream()) {
+            var image = ImageIO.read(input);
+            assertThat(image.getWidth()).isLessThanOrEqualTo(320);
+            assertThat(image.getHeight()).isLessThanOrEqualTo(320);
+        }
+    }
+
+    @Test
+    void exifRotationIsAppliedToManagedPhotosAndProfileThumbnailsWithoutUpscaling()
+            throws Exception {
+        // APP1 Exif / little-endian TIFF with orientation=6 (90 degrees clockwise).
+        var jpeg = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(100, 60, BufferedImage.TYPE_INT_RGB), "jpg", jpeg);
+        byte[] app1 =
+                java.util.HexFormat.of()
+                        .parseHex(
+                                "ffe1002245786966000049492a0008000000010012010300010000000600000000000000");
+        var oriented = new ByteArrayOutputStream();
+        byte[] original = jpeg.toByteArray();
+        oriented.write(original, 0, 2);
+        oriented.write(app1);
+        oriented.write(original, 2, original.length - 2);
+        var file =
+                new MockMultipartFile("file", "portrait.jpg", "image/jpeg", oriented.toByteArray());
+        var managed = imageService.preparePostImage(file);
+        var profile = imageService.prepareProfileImage(file);
+        for (byte[] bytes : List.of(managed.bytes(), profile.normalizedBytes())) {
+            var image = ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+            assertThat(image.getWidth()).isEqualTo(60);
+            assertThat(image.getHeight()).isEqualTo(100);
+        }
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    void smallManagedPhotoIsNotUpscaled() throws Exception {
+        imageService.uploadImage(
+                new MockMultipartFile("file", "small.png", "image/png", createPng(100, 60)),
+                "m-11111111-1111-1111-1111-111111111111");
+        var bodies = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(any(PutObjectRequest.class), bodies.capture());
+        try (var input = bodies.getValue().contentStreamProvider().newStream()) {
+            var image = ImageIO.read(input);
+            assertThat(image.getWidth()).isEqualTo(100);
+            assertThat(image.getHeight()).isEqualTo(60);
+        }
+    }
+
+    @Test
     void rejectsOversizedDimensionsBeforeDecodingOrWritingS3() {
         for (int[] size :
                 new int[][] {{10001, 1}, {5001, 5000}, {Integer.MAX_VALUE, Integer.MAX_VALUE}}) {

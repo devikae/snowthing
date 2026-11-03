@@ -66,7 +66,7 @@ html .content-compose-page :is(.carpool-form label,.market-radio-field label,.ma
 html .content-compose-page :is(.market-form-grid,.carpool-form-grid) { gap: 16px; }
 html .content-compose-page .market-compose-card { display: grid; gap: 24px; }
 html .content-compose-page :is(.market-form-field,.market-form-grid > label) { display: grid; gap: 8px; }
-html .content-compose-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea) {
+html .content-compose-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea):not(:where(.compose-anon-pw-pill input,.compose-title-bar input)) {
   min-width: 0;
   border: 1px solid var(--snow-border-strong);
   border-radius: 8px;
@@ -79,13 +79,17 @@ html .content-compose-page :is(input:not([type="checkbox"]):not([type="radio"]):
   box-shadow: none;
   transition: border-color 300ms cubic-bezier(.22,1,.36,1);
 }
-html .content-compose-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select) { min-height: 44px; }
-html .content-compose-page :is(input,select,textarea):focus-visible {
+html .content-compose-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select):not(:where(.compose-anon-pw-pill input,.compose-title-bar input)) { min-height: 44px; }
+html .content-compose-page :is(input,select,textarea):not(:where(.compose-anon-pw-pill input,.compose-title-bar input)):focus-visible {
   border-color: var(--snow-ink-soft);
   outline: 2px solid var(--snow-border-strong);
   outline-offset: 2px;
 }
 html .content-compose-page :is(input,textarea)::placeholder { color: var(--snow-muted); }
+html .content-compose-page .compose-anon-pw-pill { width: 224px; max-width: 100%; height: 44px; gap: 8px; border-color: var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); padding: 0 12px; box-shadow: none; }
+html .content-compose-page .compose-anon-pw-pill input { flex: 1; width: 0; min-width: 0; border: 0; padding: 0; background: transparent; color: var(--snow-ink); font: 400 14px/20px var(--font-hanken); outline: none; box-shadow: none; }
+html .content-compose-page .compose-anon-pw-pill:focus-within { border-color: var(--snow-ink-soft); outline: 2px solid var(--snow-border-strong); outline-offset: 2px; }
+html .content-compose-page .compose-anon-pw-pill input:focus-visible { outline: 0; box-shadow: none; }
 html .content-compose-page :is(input[type="checkbox"],input[type="radio"]) { accent-color: var(--snow-ink); }
 html .content-compose-page :is(.carpool-form-grid label,.market-editor-field,.market-image-field) { min-width: 0; }
 html .content-compose-page .market-radio-field { margin: 0; padding: 0; border: 0; }
@@ -95,9 +99,13 @@ html .content-compose-page :is(.market-form-field small,.market-editor-field > p
   color: var(--snow-muted);
   font: 400 12px/20px var(--font-hanken);
 }
-html .content-compose-page .compose-title-bar { min-height: 48px; border-radius: 8px; background: var(--snow-canvas); }
-html .content-compose-page .compose-title-bar input { border: 0; background: transparent; padding: 8px 0; }
-html .content-compose-page .compose-title-tag { font-size: 14px; color: var(--snow-ink-soft); }
+html .content-compose-page .compose-title-bar { height:48px; min-height:48px; gap:12px; border-color:var(--snow-border-strong); border-radius:8px; background:var(--snow-canvas); padding-inline:12px; box-shadow:none; }
+html .content-compose-page .compose-title-bar input { flex:1; width:0; min-width:0; height:auto; min-height:0; border:0; border-radius:0; background:transparent; padding:0; color:var(--snow-ink); font:500 14px/20px var(--font-hanken); outline:none; box-shadow:none; }
+html .content-compose-page .compose-title-bar input:focus-visible { outline:0; box-shadow:none; }
+html .content-compose-page .compose-title-bar:focus-within { border-color:var(--snow-ink-soft); outline:2px solid var(--snow-border-strong); outline-offset:2px; box-shadow:none; }
+html .content-compose-page .compose-title-tag { height:auto; border:0; padding:0; color:var(--snow-ink-soft); font:500 14px/20px var(--font-hanken); }
+html .content-compose-page .compose-title-count { color:var(--snow-muted); font:400 12px/20px var(--font-hanken); font-variant-numeric:tabular-nums; }
+html .content-compose-page .compose-title-bar input::placeholder { color:var(--snow-muted); font-weight:400; }
 html .content-compose-page :is(.compose-sheet,.compose-editor) { border-color: var(--snow-border); border-radius: 8px; }
 html .content-compose-page .compose-sheet-attach { border-color: var(--snow-border); background: var(--snow-surface-low); padding: 12px 16px; }
 html .content-compose-page .kakao-map { height: 240px; border-radius: 8px; background: var(--snow-surface-mid); }
@@ -146,7 +154,7 @@ html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-deta
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card,.post-comments-card,.carpool-detail-card,.market-description) { border: 0; border-radius: 0; background: transparent; padding: 0; box-shadow: none; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-card { margin-bottom: 32px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card > h1,.carpool-detail-head > h1,.market-detail-summary > h1) { margin: 16px 0; color: var(--snow-ink); font: 700 24px/32px var(--font-hanken); letter-spacing: -.03em; overflow-wrap: anywhere; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author { margin: 0; padding: 0 0 20px; border-color: var(--snow-border); }
+html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author { margin: 0; padding: 0 0 20px; border-color: var(--snow-border); background: transparent; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author-avatar { width: 32px; height: 32px; flex: 0 0 32px; }
 
 /* Keep the image itself circular, without a decorative frame or background. */
@@ -171,6 +179,12 @@ html .content-detail-page .detail-carpool-refresh:focus-visible { outline: 2px s
 
 html .m-anonymous-badge { flex: none; border-radius: 4px; background: var(--snow-surface-mid); padding: 2px 4px; color: var(--snow-ink-soft); font-size: 12px; font-weight: 500; line-height: 16px; }
 html .m-author-anonymous b { flex: none; font-variant-numeric: tabular-nums; }
+html img.m-avatar { object-fit: cover; }
+html .content-compose-page .compose-attach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+html .content-compose-page .compose-attach-grid:empty { display: none; }
+html .content-compose-page .compose-attach-grid .compose-attach-preview { position: relative; display: block; min-width: 0; aspect-ratio: 1; padding: 0; overflow: hidden; border-radius: 8px; }
+html .content-compose-page .compose-attach-grid .compose-attach-preview img { display: block; width: 100%; height: 100%; max-height: none; border-radius: 0; object-fit: cover; }
+html .content-compose-page .compose-attach-grid .compose-attach-remove { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 28px; height: 28px; margin: 0; padding: 0; border-radius: 50%; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author strong { color: var(--snow-ink); font-size: 14px; font-weight: 600; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-author time,.post-detail-meta-top,.post-detail-meta-top > div) { color: var(--snow-muted); font-size: 12px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-content-panel { min-height: 200px; padding: 24px 0; border: 0; border-radius: 0; background: transparent; }

@@ -34,14 +34,14 @@ public class AdminBannerController {
     }
 
     @PostMapping
-    public ResponseEntity<BannerResponse> createBanner(@Valid @RequestBody BannerCreateRequest request) {
+    public ResponseEntity<BannerResponse> createBanner(
+            @Valid @RequestBody BannerCreateRequest request) {
         return ResponseEntity.ok(bannerService.createBanner(request));
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<BannerResponse> updateBanner(
-            @PathVariable("id") Long id,
-            @Valid @RequestBody BannerUpdateRequest request) {
+            @PathVariable("id") Long id, @Valid @RequestBody BannerUpdateRequest request) {
         return ResponseEntity.ok(bannerService.updateBanner(id, request));
     }
 

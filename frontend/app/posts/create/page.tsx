@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
@@ -42,8 +43,8 @@ function PostCreateForm() {
   const [toolDraft] = useState(() => readDeckQuestionDraft(searchParams.get("draft") === "deck" && initialCat === "QNA"));
   const [title, setTitle] = useState(toolDraft?.title ?? "");
   const [anonymousPassword, setAnonymousPassword] = useState("");
-  const [imageKey, setImageKey] = useState("");
-  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [images, setImages] = useState<{ imageKey: string; imageUrl: string }[]>([]);
+  useImageUploadLease(images.map(image => image.imageUrl));
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [userProfile, setUserProfile] = useState<MemberProfile | null>(null);
@@ -109,15 +110,19 @@ function PostCreateForm() {
     setCategoryCode(nextCode);
   };
 
-  const handleImageUpload = async (file: File | undefined) => {
-    if (!file) return;
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files?.length || uploadingImage) return;
+    if (images.length + files.length > 10) {
+      setErrorMsg("사진은 최대 10장까지 등록할 수 있습니다.");
+      return;
+    }
 
     setUploadingImage(true);
     setErrorMsg("");
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
+      for (const file of Array.from(files)) {
+      const formData = new FormData();
+      formData.append("file", file);
       const response = await csrfFetch(API_ENDPOINTS.images.upload, {
         method: "POST",
         body: formData,
@@ -129,8 +134,8 @@ function PostCreateForm() {
       }
 
       const uploaded: { imageUrl: string; imageKey: string } = await response.json();
-      setImageKey(uploaded.imageKey);
-      setImagePreviewUrl(uploaded.imageUrl);
+      setImages((current) => [...current, uploaded]);
+      }
     } catch {
       setErrorMsg("이미지 업로드 중 서버 통신 오류가 발생했습니다.");
     } finally {
@@ -172,7 +177,7 @@ function PostCreateForm() {
           content: editorContent.trim(),
           isAnonymous: isAnonCategory,
           anonymousPassword: isAnonCategory && !userProfile ? anonymousPassword : null,
-          imageUrls: imageKey ? [imageKey] : [],
+          imageUrls: images.map((image) => image.imageKey),
         }),
       });
 
@@ -284,17 +289,18 @@ function PostCreateForm() {
             <div className="compose-attach-row">
               <label
                 htmlFor="post-image"
-                className={`compose-attach-btn ${!userProfile || uploadingImage ? "disabled" : ""}`}
+                className={`compose-attach-btn ${!userProfile || uploadingImage || images.length >= 10 ? "disabled" : ""}`}
               >
                 <span className="material-symbols-outlined">image</span>
-                <span>{uploadingImage ? "업로드 중..." : imageKey ? "첨부 사진 변경" : "사진 첨부"}</span>
+                <span>{uploadingImage ? "업로드 중..." : "사진 첨부"}</span>
               </label>
               <input
                 id="post-image"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                disabled={!userProfile || uploadingImage}
-                onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                multiple
+                disabled={!userProfile || uploadingImage || images.length >= 10}
+                onChange={(e) => { void handleImageUpload(e.target.files); e.target.value = ""; }}
                 hidden
               />
               <span className="compose-attach-hint">
@@ -302,17 +308,15 @@ function PostCreateForm() {
                   ? "이미지 첨부는 로그인한 회원만 사용할 수 있습니다."
                   : uploadingImage
                     ? "이미지를 서버에 업로드하고 있습니다..."
-                    : imageKey
-                      ? "대표 이미지 1장이 첨부되었습니다."
-                      : "JPG, PNG, WebP · 최대 5MB"}
+                    : `JPG, PNG, WebP · 장당 최대 5MB · ${images.length}/10장`}
               </span>
             </div>
 
-            {imagePreviewUrl && (
-              <div className="compose-attach-preview">
+            <div className="compose-attach-grid">{images.map((image, index) => (
+              <div className="compose-attach-preview" key={image.imageKey}>
                 <Image
-                  src={imagePreviewUrl}
-                  alt="첨부 이미지 미리보기"
+                  src={image.imageUrl}
+                  alt={`첨부 이미지 ${index + 1}`}
                   width={320}
                   height={180}
                   unoptimized
@@ -320,16 +324,13 @@ function PostCreateForm() {
                 <button
                   type="button"
                   className="compose-attach-remove"
-                  onClick={() => {
-                    setImageKey("");
-                    setImagePreviewUrl("");
-                  }}
+                  aria-label={`${index + 1}번째 사진 제거`}
+                  onClick={() => setImages((current) => current.filter((item) => item.imageKey !== image.imageKey))}
                 >
                   <span className="material-symbols-outlined">close</span>
-                  첨부 취소
                 </button>
               </div>
-            )}
+            ))}</div>
           </div>
         </div>
 
@@ -337,7 +338,7 @@ function PostCreateForm() {
           <Link href={`/posts${categoryCode ? `?category=${categoryCode}` : ""}`} className="compose-cancel-pill">
             <span className="material-symbols-outlined">arrow_back</span> 목록으로
           </Link>
-          <button type="submit" disabled={submitting} className="compose-submit-pill">
+          <button type="submit" disabled={submitting || uploadingImage} className="compose-submit-pill">
             <span className="material-symbols-outlined">check</span>
             {submitting ? "등록 처리 중..." : `${isAnonCategory ? "익명 " : ""}게시글 등록`}
           </button>

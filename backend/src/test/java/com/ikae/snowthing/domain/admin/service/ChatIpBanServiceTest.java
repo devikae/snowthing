@@ -1,7 +1,6 @@
 package com.ikae.snowthing.domain.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,14 +26,11 @@ import com.ikae.snowthing.domain.chat.service.ChatRecentHistoryBuffer;
 @ExtendWith(MockitoExtension.class)
 class ChatIpBanServiceTest {
 
-    @Mock
-    private ChatBannedIpRepository repository;
+    @Mock private ChatBannedIpRepository repository;
 
-    @Mock
-    private ChatRecentHistoryBuffer recentHistoryBuffer;
+    @Mock private ChatRecentHistoryBuffer recentHistoryBuffer;
 
-    @Mock
-    private SimpMessagingTemplate messagingTemplate;
+    @Mock private SimpMessagingTemplate messagingTemplate;
 
     private ChatIpBanService chatIpBanService;
 
@@ -56,7 +52,8 @@ class ChatIpBanServiceTest {
 
         when(repository.save(any(ChatBannedIp.class))).thenReturn(entity);
 
-        ChatBannedIpResponse res = chatIpBanService.banIp("127.0.0.1", "도배", LocalDateTime.now().plusDays(1), "admin");
+        ChatBannedIpResponse res =
+                chatIpBanService.banIp("127.0.0.1", "도배", LocalDateTime.now().plusDays(1), "admin");
 
         assertThat(res.bannedIp()).isEqualTo("127.0.0.1");
         assertThat(chatIpBanService.isBanned("127.0.0.1")).isTrue();
@@ -65,11 +62,7 @@ class ChatIpBanServiceTest {
     @Test
     @DisplayName("IP 차단 해제 시 캐시와 DB에서 제거된다")
     void unbanIp_success() {
-        ChatBannedIp entity =
-                ChatBannedIp.builder()
-                        .bannedIp("127.0.0.1")
-                        .reason("도배")
-                        .build();
+        ChatBannedIp entity = ChatBannedIp.builder().bannedIp("127.0.0.1").reason("도배").build();
         ReflectionTestUtils.setField(entity, "id", 1L);
 
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
@@ -84,8 +77,10 @@ class ChatIpBanServiceTest {
     @DisplayName("원클릭 메시지 ID 차단 시 버퍼에서 IP를 찾아 차단하고 삭제 메시지를 브로드캐스트한다")
     void banIpByMessageId_success() {
         when(recentHistoryBuffer.getIpForMessage("msg-123")).thenReturn("192.168.1.100");
-        when(recentHistoryBuffer.removeByIp("192.168.1.100")).thenReturn(List.of("msg-123", "msg-124"));
-        when(repository.save(any(ChatBannedIp.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(recentHistoryBuffer.removeByIp("192.168.1.100"))
+                .thenReturn(List.of("msg-123", "msg-124"));
+        when(repository.save(any(ChatBannedIp.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         chatIpBanService.banIpByMessageId("msg-123", "admin");
 

@@ -63,18 +63,63 @@ public class ImageService {
     private String cloudFrontBaseUrl;
 
     public ImageUploadResponse uploadImage(MultipartFile file) {
+        return uploadImage(file, UUID.randomUUID().toString());
+    }
+
+    public ImageUploadResponse uploadImage(MultipartFile file, String imageId) {
+        return uploadPreparedImage(prepareImage(file, imageId));
+    }
+
+    public record PreparedPostImage(
+            String key,
+            String contentType,
+            byte[] bytes,
+            String thumbnailKey,
+            byte[] thumbnailBytes) {}
+
+    public PreparedPostImage preparePostImage(MultipartFile file) {
+        return prepareImage(file, "m-" + UUID.randomUUID());
+    }
+
+    private PreparedPostImage prepareImage(MultipartFile file, String imageId) {
         byte[] imageBytes = readImageBytes(file);
         validateFile(file, imageBytes);
 
-        String extension = extractExtension(file.getOriginalFilename());
-        String imageId = UUID.randomUUID().toString();
+        boolean managed = imageId.startsWith("m-");
+        String extension = managed ? "jpg" : extractExtension(file.getOriginalFilename());
         String imageKey = ORIGINAL_PREFIX + imageId + "." + extension;
         String thumbnailKey = THUMBNAIL_PREFIX + imageId + ".jpg";
-        byte[] thumbnailBytes = createThumbnail(imageBytes);
+        byte[] thumbnailBytes = managed ? null : createThumbnail(imageBytes);
+        if (managed) {
+            try (var input = new ByteArrayInputStream(imageBytes);
+                    var output = new ByteArrayOutputStream()) {
+                int bound = thumbnailBound(imageBytes, 1920);
+                Thumbnails.of(input)
+                        .size(bound, bound)
+                        .useExifOrientation(true)
+                        .outputFormat("jpg")
+                        .outputQuality(0.82)
+                        .toOutputStream(output);
+                imageBytes = output.toByteArray();
+            } catch (IOException | RuntimeException failure) {
+                throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+            }
+        }
 
+        return new PreparedPostImage(
+                imageKey,
+                managed ? "image/jpeg" : file.getContentType(),
+                imageBytes,
+                managed ? null : thumbnailKey,
+                thumbnailBytes);
+    }
+
+    public ImageUploadResponse uploadPreparedImage(PreparedPostImage prepared) {
+        String imageKey = prepared.key();
         try {
-            putObject(thumbnailKey, "image/jpeg", thumbnailBytes);
-            putObject(imageKey, file.getContentType(), imageBytes);
+            if (prepared.thumbnailKey() != null)
+                putObject(prepared.thumbnailKey(), "image/jpeg", prepared.thumbnailBytes());
+            putObject(imageKey, prepared.contentType(), prepared.bytes());
 
             String imageUrl = cloudFrontBaseUrl.replaceAll("/+$", "") + "/" + imageKey;
             log.info("S3 이미지 업로드 성공: bucket={}, key={}", bucketName, imageKey);
@@ -90,6 +135,43 @@ public class ImageService {
     }
 
     public record PreparedProfileImage(String key, byte[] normalizedBytes) {}
+
+    public PreparedProfileImage prepareProfileImage(MultipartFile file) {
+        return prepareProfileImage(file, "public/profiles/" + UUID.randomUUID() + ".jpg");
+    }
+
+    public void createMarketThumbnail(String sourceKey, String targetKey) {
+        createMarketThumbnail(sourceKey, targetKey, new ImageProcessingGate());
+    }
+
+    public void createMarketThumbnail(
+            String sourceKey, String targetKey, ImageProcessingGate gate) {
+        if (!sourceKey.matches("public/posts/originals/m-[0-9a-f-]{36}\\.jpg")
+                || !targetKey.matches("public/posts/thumbnails/market-[0-9a-f-]{36}\\.jpg"))
+            throw new com.ikae.snowthing.global.exception.CustomException(ErrorCode.INVALID_INPUT);
+        byte[] source =
+                s3Client.getObjectAsBytes(
+                                software.amazon.awssdk.services.s3.model.GetObjectRequest.builder()
+                                        .bucket(bucketName)
+                                        .key(sourceKey)
+                                        .overrideConfiguration(
+                                                c ->
+                                                        c.apiCallTimeout(
+                                                                java.time.Duration.ofSeconds(20)))
+                                        .build())
+                        .asByteArray();
+        byte[] thumbnail = gate.run(() -> createThumbnail(source));
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(targetKey)
+                        .contentType("image/jpeg")
+                        .cacheControl("public, max-age=60")
+                        .overrideConfiguration(
+                                c -> c.apiCallTimeout(java.time.Duration.ofSeconds(20)))
+                        .build(),
+                RequestBody.fromBytes(thumbnail));
+    }
 
     public PreparedProfileImage prepareProfileImage(MultipartFile file, String key) {
         validateProfileKey(key);
@@ -108,6 +190,8 @@ public class ImageService {
                             .key(prepared.key())
                             .contentType("image/jpeg")
                             .cacheControl("no-store")
+                            .overrideConfiguration(
+                                    c -> c.apiCallTimeout(java.time.Duration.ofSeconds(20)))
                             .build(),
                     RequestBody.fromBytes(prepared.normalizedBytes()));
             return new ImageUploadResponse(
@@ -146,12 +230,20 @@ public class ImageService {
 
     public void deleteProfileImage(String key) {
         validateProfileKey(key);
-        s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
+        s3Client.deleteObject(
+                DeleteObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .overrideConfiguration(
+                                c -> c.apiCallTimeout(java.time.Duration.ofSeconds(20)))
+                        .build());
         if (distributionId == null || distributionId.isBlank())
             throw new com.ikae.snowthing.global.exception.CustomException(
                     ErrorCode.PROFILE_CDN_NOT_CONFIGURED);
         cloudFrontClient.createInvalidation(
                 CreateInvalidationRequest.builder()
+                        .overrideConfiguration(
+                                c -> c.apiCallTimeout(java.time.Duration.ofSeconds(20)))
                         .distributionId(distributionId)
                         .invalidationBatch(
                                 InvalidationBatch.builder()
@@ -191,7 +283,12 @@ public class ImageService {
                         .bucket(bucketName)
                         .key(key)
                         .contentType(contentType)
-                        .cacheControl(IMMUTABLE_CACHE_CONTROL)
+                        .overrideConfiguration(
+                                c -> c.apiCallTimeout(java.time.Duration.ofSeconds(20)))
+                        .cacheControl(
+                                key.contains("/m-")
+                                        ? "public, max-age=3600"
+                                        : IMMUTABLE_CACHE_CONTROL)
                         .build();
         s3Client.putObject(putRequest, RequestBody.fromBytes(bytes));
     }
@@ -199,8 +296,10 @@ public class ImageService {
     private byte[] createThumbnail(byte[] imageBytes) {
         try (ByteArrayInputStream input = new ByteArrayInputStream(imageBytes);
                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            int bound = thumbnailBound(imageBytes, THUMBNAIL_MAX_WIDTH);
             Thumbnails.of(input)
-                    .size(THUMBNAIL_MAX_WIDTH, THUMBNAIL_MAX_HEIGHT)
+                    .size(bound, bound)
+                    .useExifOrientation(true)
                     .outputFormat("jpg")
                     .outputQuality(THUMBNAIL_QUALITY)
                     .toOutputStream(output);
@@ -208,6 +307,28 @@ public class ImageService {
         } catch (IOException | RuntimeException e) {
             log.warn("썸네일 생성 실패: error={}", e.getMessage());
             throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+        }
+    }
+
+    // Read dimensions without discarding the original stream's EXIF orientation.
+    private int thumbnailBound(byte[] bytes, int maximum) throws IOException {
+        try (var input = new MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
+            var readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                int width = reader.getWidth(0), height = reader.getHeight(0);
+                if (width <= 0 || height <= 0)
+                    throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+                if (width > MAX_IMAGE_SIDE
+                        || height > MAX_IMAGE_SIDE
+                        || (long) width * height > MAX_IMAGE_PIXELS)
+                    throw new BusinessException(ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
+                return Math.min(maximum, Math.max(width, height));
+            } finally {
+                reader.dispose();
+            }
         }
     }
 

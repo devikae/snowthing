@@ -2,7 +2,9 @@ package com.ikae.snowthing.domain.post.entity;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import jakarta.persistence.*;
@@ -26,7 +28,7 @@ import lombok.NoArgsConstructor;
 @SQLDelete(
         sql =
                 "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW() WHERE post_id = ?")
-@SQLRestriction("is_deleted = false")
+@SQLRestriction("is_deleted = false AND is_blinded = false")
 @Check(constraints = "like_count >= 0 AND dislike_count >= 0")
 public class Post extends BaseTimeEntity {
 
@@ -95,6 +97,24 @@ public class Post extends BaseTimeEntity {
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(
+            name = "post_content_image_reference",
+            joinColumns = @JoinColumn(name = "post_id"),
+            uniqueConstraints =
+                    @UniqueConstraint(
+                            name = "uk_post_content_image",
+                            columnNames = {"post_id", "image_key"}),
+            indexes = @Index(name = "idx_content_image_key", columnList = "image_key"))
+    @Column(name = "image_key", nullable = false, length = 160)
+    private Set<String> contentImageKeys = new HashSet<>();
+
+    public void replaceContentImageKeys(Set<String> keys) {
+        var copy = Set.copyOf(keys);
+        contentImageKeys.clear();
+        contentImageKeys.addAll(copy);
+    }
 
     @Builder
     public Post(

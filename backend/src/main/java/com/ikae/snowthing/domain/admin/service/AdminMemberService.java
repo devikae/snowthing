@@ -68,7 +68,10 @@ public class AdminMemberService {
                 member.getBio(),
                 member.getDepartureRegion(),
                 member.getProfileImageUrl());
-        log.info("Member nickname changed by admin: memberId={}, newNickname={}", publicId, newNickname);
+        log.info(
+                "Member nickname changed by admin: memberId={}, newNickname={}",
+                publicId,
+                newNickname);
     }
 
     public void resetProfileImage(String publicId) {

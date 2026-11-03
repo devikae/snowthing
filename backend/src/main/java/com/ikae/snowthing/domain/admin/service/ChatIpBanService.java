@@ -114,16 +114,19 @@ public class ChatIpBanService {
             }
             return;
         }
-        banIp(
-                ip,
-                "관리자 메시지 신고 차단 (" + messageId + ")",
-                LocalDateTime.now().plusDays(7),
-                createdBy);
+        banIp(ip, "관리자 메시지 신고 차단 (" + messageId + ")", LocalDateTime.now().plusDays(7), createdBy);
     }
 
     private void broadcastPurge(List<String> messageIds) {
         try {
-            messagingTemplate.convertAndSend((String) "/sub/chat/main", (Object) Map.of("type", "PURGE_MESSAGES", "messageIds", List.copyOf(messageIds)));
+            messagingTemplate.convertAndSend(
+                    (String) "/sub/chat/main",
+                    (Object)
+                            Map.of(
+                                    "type",
+                                    "PURGE_MESSAGES",
+                                    "messageIds",
+                                    List.copyOf(messageIds)));
         } catch (Exception e) {
             log.warn("Failed to broadcast message purge: {}", e.getMessage());
         }

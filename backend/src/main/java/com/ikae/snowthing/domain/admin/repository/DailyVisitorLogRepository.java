@@ -18,8 +18,8 @@ public interface DailyVisitorLogRepository
     @Query(
             value =
                     "INSERT IGNORE INTO daily_visitor_log (visit_date, visitor_hash, is_member,"
-                        + " first_visited_at) VALUES (:visitDate, :visitorHash, :isMember,"
-                        + " :firstVisitedAt)",
+                            + " first_visited_at) VALUES (:visitDate, :visitorHash, :isMember,"
+                            + " :firstVisitedAt)",
             nativeQuery = true)
     int insertIgnore(
             @Param("visitDate") LocalDate visitDate,

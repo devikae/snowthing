@@ -35,7 +35,8 @@ public class AdminMemberController {
     public ResponseEntity<Page<AdminMemberResponse>> searchMembers(
             @RequestParam(name = "query", required = false) String query,
             @RequestParam(name = "status", required = false) MemberStatus status,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+                    Pageable pageable) {
         Page<AdminMemberResponse> members = adminMemberService.getMembers(query, status, pageable);
         return ResponseEntity.ok(members);
     }
@@ -57,8 +58,7 @@ public class AdminMemberController {
     }
 
     @DeleteMapping("/{publicId}/profile-image")
-    public ResponseEntity<Void> deleteProfileImage(
-            @PathVariable("publicId") String publicId) {
+    public ResponseEntity<Void> deleteProfileImage(@PathVariable("publicId") String publicId) {
         adminMemberService.resetProfileImage(publicId);
         return ResponseEntity.noContent().build();
     }

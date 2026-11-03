@@ -50,8 +50,7 @@ public class SystemConfigService {
 
     @Transactional(readOnly = true)
     public List<SystemConfigResponse> getAllConfigs() {
-        return List.copyOf(
-                repository.findAll().stream().map(SystemConfigResponse::from).toList());
+        return List.copyOf(repository.findAll().stream().map(SystemConfigResponse::from).toList());
     }
 
     @Transactional(readOnly = true)
@@ -74,13 +73,14 @@ public class SystemConfigService {
             try {
                 messagingTemplate.convertAndSend(
                         "/sub/chat/main",
-                        (Object) Map.of(
-                                "type",
-                                "CONFIG_UPDATED",
-                                "key",
-                                key,
-                                "value",
-                                Boolean.parseBoolean(value)));
+                        (Object)
+                                Map.of(
+                                        "type",
+                                        "CONFIG_UPDATED",
+                                        "key",
+                                        key,
+                                        "value",
+                                        Boolean.parseBoolean(value)));
             } catch (Exception e) {
                 log.warn("Failed to broadcast config update via websocket: {}", e.getMessage());
             }

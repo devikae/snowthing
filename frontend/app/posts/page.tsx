@@ -14,6 +14,7 @@ interface PostItem {
   categoryCode: string;
   title: string;
   writerNickname: string;
+  writerProfileImageUrl?: string | null;
   thumbnailImageUrl: string | null;
   hasImage: boolean;
   viewCount: number;
@@ -326,7 +327,7 @@ function PostListContent() {
                         {post.hasImage && <PostImageIcon />}
                       </div>
                       <div className="m-row-right">
-                        <PostListAuthor nickname={post.writerNickname} />
+                        <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
                         <span className="m-stats">
                           {post.commentCount > 0 ? (
                             <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>

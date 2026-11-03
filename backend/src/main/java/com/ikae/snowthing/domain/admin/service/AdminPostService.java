@@ -21,11 +21,14 @@ public class AdminPostService {
     private final PostRepository postRepository;
 
     @Transactional(readOnly = true)
-    public Page<AdminPostResponse> getPosts(boolean deletedOnly, Pageable pageable) {
+    public Page<AdminPostResponse> getPosts(
+            boolean deletedOnly, boolean blindedOnly, Pageable pageable) {
         Page<PostRepository.AdminPostProjection> posts =
-                deletedOnly
-                        ? postRepository.findDeletedForAdmin(pageable)
-                        : postRepository.findAllForAdmin(pageable);
+                blindedOnly
+                        ? postRepository.findBlindedForAdmin(deletedOnly, pageable)
+                        : deletedOnly
+                                ? postRepository.findDeletedForAdmin(pageable)
+                                : postRepository.findAllForAdmin(pageable);
         return posts.map(AdminPostResponse::from);
     }
 
@@ -35,7 +38,10 @@ public class AdminPostService {
         if (updated == 0) {
             throw new CustomException(ErrorCode.POST_NOT_FOUND);
         }
-        log.info("Post soft-deleted by admin: publicId={}, adminMemberId={}", publicId, adminMemberId);
+        log.info(
+                "Post soft-deleted by admin: publicId={}, adminMemberId={}",
+                publicId,
+                adminMemberId);
     }
 
     @Transactional

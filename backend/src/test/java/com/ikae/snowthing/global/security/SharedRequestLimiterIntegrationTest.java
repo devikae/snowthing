@@ -81,6 +81,26 @@ class SharedRequestLimiterIntegrationTest {
     }
 
     @Test
+    void globalDenialIsReportedWithoutSpendingAccountBudget() {
+        var budgets =
+                List.of(
+                        new SharedRequestLimiter.Limit(
+                                prefix + ":account", 10, Duration.ofHours(1)),
+                        new SharedRequestLimiter.Limit(
+                                prefix + ":global:hour", 1, Duration.ofHours(1)));
+        assertThat(limiter.acquire(budgets).allowed()).isTrue();
+        var denied = limiter.acquire(budgets);
+        assertThat(denied.deniedKey()).isEqualTo(prefix + ":global:hour");
+        assertThat(denied.retryAfterSeconds()).isPositive();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT used_count FROM request_budget_window WHERE budget_key=?",
+                                Integer.class,
+                                prefix + ":account"))
+                .isEqualTo(1);
+    }
+
+    @Test
     void unavailableStoreCannotEnableUnlimitedFallback() {
         var unavailable = org.mockito.Mockito.mock(JdbcTemplate.class);
         org.mockito.Mockito.when(

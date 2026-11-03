@@ -120,7 +120,9 @@ public class VisitorStatsService {
                 visitorStatsRepository.findByStatDateBetweenOrderByStatDateAsc(startDay, today);
         Map<LocalDate, DailyVisitorStats> statsMap =
                 statsList.stream()
-                        .collect(Collectors.toMap(DailyVisitorStats::getStatDate, Function.identity()));
+                        .collect(
+                                Collectors.toMap(
+                                        DailyVisitorStats::getStatDate, Function.identity()));
 
         List<DailyVisitorStatDto> trends = new ArrayList<>();
         for (LocalDate d = startDay; !d.isAfter(today); d = d.plusDays(1)) {

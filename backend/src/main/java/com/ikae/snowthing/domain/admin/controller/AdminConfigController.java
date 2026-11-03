@@ -38,8 +38,12 @@ public class AdminConfigController {
             @PathVariable("configKey") String configKey,
             @Valid @RequestBody SystemConfigUpdateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        String updatedBy = (userDetails != null && userDetails.getUsername() != null) ? userDetails.getUsername() : "ADMIN";
-        SystemConfigResponse response = systemConfigService.updateConfig(configKey, request.value(), updatedBy);
+        String updatedBy =
+                (userDetails != null && userDetails.getUsername() != null)
+                        ? userDetails.getUsername()
+                        : "ADMIN";
+        SystemConfigResponse response =
+                systemConfigService.updateConfig(configKey, request.value(), updatedBy);
         return ResponseEntity.ok(response);
     }
 }

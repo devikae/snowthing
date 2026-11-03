@@ -15,7 +15,7 @@ public record PostCreateRequest(
         @NotBlank(message = "본문은 필수 입력값입니다.") String content,
         boolean isAnonymous,
         String anonymousPassword,
-        List<String> imageUrls) {
+        @Size(max = 10, message = "첨부 사진은 최대 10장까지 등록할 수 있습니다.") List<String> imageUrls) {
     public PostCreateRequest {
         if (imageUrls == null) {
             imageUrls = List.of();

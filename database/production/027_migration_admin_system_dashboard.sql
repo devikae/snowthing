@@ -1,4 +1,4 @@
--- Migration 024: Admin system dashboard, feature flags, visitor stats, chat IP ban, and banners
+-- Migration 027: Admin system dashboard, feature flags, visitor stats, chat IP ban, and banners
 CREATE TABLE IF NOT EXISTS system_config (
     config_key VARCHAR(50) NOT NULL PRIMARY KEY,
     config_value VARCHAR(255) NOT NULL,

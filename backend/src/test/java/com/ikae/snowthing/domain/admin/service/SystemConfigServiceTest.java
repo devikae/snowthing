@@ -23,11 +23,9 @@ import com.ikae.snowthing.global.exception.CustomException;
 @ExtendWith(MockitoExtension.class)
 class SystemConfigServiceTest {
 
-    @Mock
-    private SystemConfigRepository repository;
+    @Mock private SystemConfigRepository repository;
 
-    @Mock
-    private SimpMessagingTemplate messagingTemplate;
+    @Mock private SimpMessagingTemplate messagingTemplate;
 
     private SystemConfigService service;
 
@@ -46,12 +44,9 @@ class SystemConfigServiceTest {
     @Test
     @DisplayName("설정 업데이트 성공 및 캐시 갱신")
     void updateConfig_success() {
-        SystemConfig config = new SystemConfig(
-                "CHAT_ANONYMOUS_ENABLED",
-                "false",
-                "BOOLEAN",
-                "비로그인 채팅 허용 여부",
-                "SYSTEM");
+        SystemConfig config =
+                new SystemConfig(
+                        "CHAT_ANONYMOUS_ENABLED", "false", "BOOLEAN", "비로그인 채팅 허용 여부", "SYSTEM");
 
         when(repository.findById("CHAT_ANONYMOUS_ENABLED")).thenReturn(Optional.of(config));
 

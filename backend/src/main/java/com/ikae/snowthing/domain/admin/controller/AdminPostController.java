@@ -33,8 +33,10 @@ public class AdminPostController {
     public ResponseEntity<Page<AdminPostResponse>> getPosts(
             @RequestParam(name = "onlyDeleted", defaultValue = "true") boolean onlyDeleted,
             @RequestParam(name = "onlyBlinded", defaultValue = "false") boolean onlyBlinded,
-            @PageableDefault(size = 20, sort = "deleted_at", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<AdminPostResponse> posts = adminPostService.getPosts(onlyDeleted, pageable);
+            @PageableDefault(size = 20, sort = "deleted_at", direction = Sort.Direction.DESC)
+                    Pageable pageable) {
+        Page<AdminPostResponse> posts =
+                adminPostService.getPosts(onlyDeleted, onlyBlinded, pageable);
         return ResponseEntity.ok(posts);
     }
 
@@ -55,8 +57,7 @@ public class AdminPostController {
 
     @PatchMapping("/{publicId}/blind")
     public ResponseEntity<Void> setBlinded(
-            @PathVariable("publicId") String publicId,
-            @RequestBody AdminPostBlindRequest request) {
+            @PathVariable("publicId") String publicId, @RequestBody AdminPostBlindRequest request) {
         adminPostService.toggleBlindPost(publicId, request.blinded());
         return ResponseEntity.noContent().build();
     }

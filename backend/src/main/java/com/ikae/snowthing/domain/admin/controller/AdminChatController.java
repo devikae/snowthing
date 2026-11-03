@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.ikae.snowthing.domain.admin.dto.AdminChatMessageBanRequest;
 import com.ikae.snowthing.domain.admin.dto.ChatBannedIpCreateRequest;
 import com.ikae.snowthing.domain.admin.dto.ChatBannedIpResponse;
 import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
@@ -39,11 +38,13 @@ public class AdminChatController {
     public ResponseEntity<ChatBannedIpResponse> banIp(
             @Valid @RequestBody ChatBannedIpCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        String createdBy = (userDetails != null && userDetails.getUsername() != null)
-                ? userDetails.getUsername()
-                : "ADMIN";
-        ChatBannedIpResponse response = chatIpBanService.banIp(
-                request.bannedIp(), request.reason(), request.bannedUntil(), createdBy);
+        String createdBy =
+                (userDetails != null && userDetails.getUsername() != null)
+                        ? userDetails.getUsername()
+                        : "ADMIN";
+        ChatBannedIpResponse response =
+                chatIpBanService.banIp(
+                        request.bannedIp(), request.reason(), request.bannedUntil(), createdBy);
         return ResponseEntity.ok(response);
     }
 
@@ -57,9 +58,10 @@ public class AdminChatController {
     public ResponseEntity<Void> banByMessageId(
             @PathVariable("messageId") String messageId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        String createdBy = (userDetails != null && userDetails.getUsername() != null)
-                ? userDetails.getUsername()
-                : "ADMIN";
+        String createdBy =
+                (userDetails != null && userDetails.getUsername() != null)
+                        ? userDetails.getUsername()
+                        : "ADMIN";
         chatIpBanService.banIpByMessageId(messageId, createdBy);
         return ResponseEntity.noContent().build();
     }
