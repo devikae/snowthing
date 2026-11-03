@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -89,6 +90,13 @@ public class Post extends BaseTimeEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /**
+     * 검색 근거용 내용 버전. 제목·본문·카테고리·상태·삭제가 바뀔 때만 1 올린다. 낙관적 락(@Version)이 아니다. 조회수·반응 수 갱신과 비관적 락 경로에는
+     * 영향을 주지 않는다.
+     */
+    @Column(name = "content_version", nullable = false)
+    private long contentVersion = 0L;
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
 
@@ -135,13 +143,31 @@ public class Post extends BaseTimeEntity {
     }
 
     public void changeStatus(PostStatus status) {
+        if (this.status != status) {
+            this.contentVersion++;
+        }
         this.status = status;
     }
 
     public void update(String title, String content, PostCategory category) {
+        if (!Objects.equals(this.title, title)
+                || !Objects.equals(this.content, content)
+                || !isSameCategory(this.category, category)) {
+            this.contentVersion++;
+        }
         this.title = title;
         this.content = content;
         this.category = category;
+    }
+
+    private static boolean isSameCategory(PostCategory current, PostCategory next) {
+        if (current == next) {
+            return true;
+        }
+        if (current == null || next == null || current.getId() == null) {
+            return false;
+        }
+        return current.getId().equals(next.getId());
     }
 
     public void updateImageStatus(boolean hasImage) {
@@ -157,6 +183,9 @@ public class Post extends BaseTimeEntity {
     }
 
     public void softDelete() {
+        if (!this.isDeleted) {
+            this.contentVersion++;
+        }
         this.isDeleted = true;
         this.status = PostStatus.DELETED;
         this.deletedAt = LocalDateTime.now();

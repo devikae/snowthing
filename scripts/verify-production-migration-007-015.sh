@@ -49,7 +49,7 @@ for version in \
   023_migration_member_profile_image_url_index \
   024_migration_post_image_upload \
   025_migration_market_thumbnail \
-  026_migration_post_content_image_reference; do
+  026_migration_post_content_image_reference   027_migration_search_document; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done
@@ -89,4 +89,9 @@ done
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'request_budget_window'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'market_thumbnail' AND column_name = 'attempts'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'post_content_image_reference' AND index_name = 'idx_content_image_key'")" == "1" ]]
-echo "Production migrations 007-018 + 021-026 verification passed."
+[[ "$(mysql_test --execute="SELECT CONCAT(data_type, ':', is_nullable, ':', column_default) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'post' AND column_name = 'content_version'")" == "bigint:NO:0" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'search_document'")" == "1" ]]
+[[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_document' AND index_name = 'ftx_search_document_title_body' AND index_type = 'FULLTEXT'")" == "title,body" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_document' AND index_name IN ('uk_search_document_evidence', 'idx_search_document_post', 'idx_search_document_source')")" == "3" ]]
+mysql_test --execute="SHOW CREATE TABLE search_document" | grep -q 'WITH PARSER `ngram`'
+echo "Production migrations 007-018 + 021-027 verification passed."
