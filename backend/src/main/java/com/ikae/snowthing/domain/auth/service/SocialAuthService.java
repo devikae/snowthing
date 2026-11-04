@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import com.ikae.snowthing.domain.member.entity.MemberSocialAccount;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
+import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
@@ -39,6 +41,7 @@ public class SocialAuthService {
     private final EmailNormalizer emailNormalizer;
     private final SocialNicknameGenerator socialNicknameGenerator;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Member authenticateOrRegister(OAuthUserProfile profile) {
@@ -79,6 +82,8 @@ public class SocialAuthService {
                         .providerEmail(providerEmail)
                         .connectedAt(now)
                         .build());
+        eventPublisher.publishEvent(
+                new MemberSignedUpEvent(newMember.getNickname(), profile.provider().name()));
         return newMember;
     }
 

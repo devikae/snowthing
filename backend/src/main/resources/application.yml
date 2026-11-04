@@ -60,6 +60,11 @@ snowthing:
         rest-api-key: ${SNOWTHING_KAKAO_REST_API_KEY:}
       opinet:
         api-key: ${SNOWTHING_OPINET_API_KEY:}
+  weather:
+    connect-timeout-millis: ${SNOWTHING_WEATHER_CONNECT_TIMEOUT_MILLIS:1000}
+    read-timeout-millis: ${SNOWTHING_WEATHER_READ_TIMEOUT_MILLIS:2000}
+    kma:
+      service-key: ${SNOWTHING_KMA_SERVICE_KEY:}
   search:
     indexer:
       enabled: ${SNOWTHING_SEARCH_INDEXER_ENABLED:true}
@@ -96,6 +101,11 @@ snowthing:
         api-key: ${SNOWTHING_SEARCH_EMBEDDING_API_KEY:}
         connect-timeout-millis: 2000
         read-timeout-millis: 10000
+  discord:
+    # IKA-18. 비어 있으면 그 채널 알림은 꺼진다. 웹훅 URL은 비밀값이라 운영 prod.env에만 둔다.
+    alert-webhook: ${DISCORD_WEBHOOK_ALERT:}
+    event-webhook: ${DISCORD_WEBHOOK_EVENT:}
+    timeout: 3s
   admin:
     # IKA-12. 쉼표 구분 이메일. 기동할 때 해당 활성 회원을 ROLE_ADMIN으로 올린다. 목록에서 빼도 권한은 거두지 않는다.
     bootstrap-emails: ${SNOWTHING_ADMIN_BOOTSTRAP_EMAILS:}

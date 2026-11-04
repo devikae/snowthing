@@ -146,6 +146,63 @@
   font-size: 13px;
 }
 
+.ddayMeta {
+  border-radius: 6px;
+  background: var(--community-accent-soft, #eff6ff);
+  padding: 3px 8px;
+  color: var(--community-accent, #2563eb);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.resortHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.weatherChip,
+.weatherChipPlaceholder {
+  min-height: 52px;
+}
+
+.weatherChipPlaceholder {
+  width: 150px;
+}
+
+.weatherChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--snow-border, #e4e4e7);
+  border-radius: 10px;
+  background: var(--snow-canvas, #fff);
+  padding: 7px 14px 7px 10px;
+}
+
+.weatherChip > span {
+  color: var(--snow-ink-soft, #64748b);
+  font-size: 22px;
+}
+
+.weatherChip strong {
+  display: block;
+  color: var(--snow-ink, #0f172a);
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.weatherChip small {
+  display: block;
+  margin-top: 2px;
+  color: var(--snow-muted, #71717a);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .backLink {
   display: inline-flex;
   min-height: 38px;

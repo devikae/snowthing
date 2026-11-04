@@ -27,6 +27,56 @@
 - 남은 항목: 머지 후 운영 배포.
 - 알려진 한계: 비로그인 IP는 원문 그대로 키로 쓴다. IPv6 주소를 바꿔 가며 보내면 우회할 수 있다(후속 후보). 같은 공유기 뒤 비로그인 사용자는 버킷을 함께 쓴다.
 - 사용자 결정 필요: 제한 수치가 적당한지.
+## 리조트 기온·개장 D-DAY (IKA-17, 2026-11-04)
+
+- 상태: 구현·로컬 검증 완료, 커밋·PR 전. 브랜치 `ika-17-resort-weather-dday`(워크트리 `snowthing-ika-17`).
+- 계획: 슬로프캠 헤더 기온 칩과 개장 D-DAY 태그, 메인 첫 개장 D-DAY 배너. 설계 `docs/conception/019_resort_weather_dday/01_design.md`, 대안 기록 `ADR-1901-weather-collection-and-cache.md`.
+- 완료
+  - 조사: 개장일 API 없음, 정상/베이스 기온 제공 리조트 없음, 13개 공식 사이트 수집 가능 여부 실측.
+  - 백엔드 `domain/resortweather`: `GET /api/v1/resort-cams/{code}/weather`(200/204/404, Cache-Control), 공식 소스 6곳(하이원·모나용평·무주 웨더아이, 웰리힐리 Nuxt 상태, 곤지암, 오투) + 기상청 초단기실황 대체, 요청 시 수집 + 미리 갱신(8분/30분, 실패 5분 대기, 전용 2스레드), `WeatherSnapshotStore`·`WeatherRefreshCoordinator` 인터페이스. Jsoup 1.21.1, `SNOWTHING_KMA_SERVICE_KEY`(선택), 공개 경로·봇 위임 허용 경로 추가.
+  - 프론트: `seasonOpening.ts` 개장일 상수(휘닉스·모나용평·하이원 11/27, 비발디·무주 12/4, 오크밸리 12/11, 모두 예상), `useKstToday`, 슬로프캠 D-DAY 태그·기온 칩, 메인 배너.
+- 결정
+  - 알펜시아는 기상청으로: 인증서 루트(OISTE WISeKey Global Root GB CA)가 JDK 신뢰 저장소에 없어 HTTPS 실패. 검증 끄기·신뢰 저장소 변경은 하지 않았다.
+  - 소스 클래스를 종류별로 나누지 않고 `OfficialWeatherSource` + 파서 함수로 합쳤다(공통 동작이 "URL 하나 받아 파싱"). 파서는 실제 응답 픽스처로 테스트.
+  - 기상청 키가 없으면 기상청 소스를 등록하지 않는다(키 없이도 배포 가능, 해당 리조트는 호출 없이 204).
+  - 격자 좌표는 DataInitializer 리조트 마스터 좌표를 그대로 쓴다.
+  - 모나용평 "흐 림" 같은 한 글자 띄어쓰기만 붙인다. 시각 없는 소스는 수집 시각을 분 단위로.
+  - D-DAY는 `useSyncExternalStore`로 브라우저에서만 계산(React lint의 effect 내 setState 금지 규칙, 하이드레이션 불일치 방지).
+  - Spring 컨텍스트를 새로 만드는 컨트롤러 테스트는 넣지 않았다: `@MockitoBean`은 연결 수 초과, `@DirtiesContext`는 test 프로필 create-drop으로 공유 스키마를 지웠다. 응답·헤더는 standalone MockMvc로, 비로그인 접근은 로컬 서버 curl로 확인.
+- 발견된 이슈
+  - 같은 폴더에서 다른 세션이 19:17에 `ika-14-ai-member-test-ddl`로 브랜치를 바꾸고 커밋했다. 그 커밋 `c2dc011`에 이 작업의 `globals.css` 배너 스타일(약 60줄)이 섞여 들어가 push됐다. 이 작업은 별도 워크트리로 옮겼다.
+  - 로컬 MySQL `snowthing_test`를 여러 세션이 동시에 쓰면 전체 테스트가 연결 수 초과·스키마 삭제로 깨진다. 별도 DB `snowthing_test_ika17`을 만들어 시도했다(정리 안 함).
+- 검증
+  - 백엔드: `spotlessCheck test` 651건 통과(실패 0, 기존 skip 1). 이 실행은 공유 폴더에서 다른 세션의 테스트 설정 커밋(73de3a2)이 들어간 상태였다. 워크트리(main 기준)에서 전체 테스트는 다른 세션 테스트와 DB 경합으로 깨끗한 결과를 얻지 못했다. 기온 기능 테스트 27건은 워크트리에서 통과.
+  - 실제 수집: 로컬 8081에서 하이원·모나용평·무주·웰리힐리·곤지암·오투 200(OFFICIAL), 두 번째 요청 약 2ms(캐시), 키 없는 리조트 204, 소문자·없는 코드 404, Cache-Control 확인.
+  - 프론트: `npm run lint`, `npm run build` 통과. D-DAY KST 자정 경계를 임시 스크립트로 확인. 브라우저(3001)에서 D-DAY 태그·배너, 칩 실패 시 숨김, 실제 응답을 주입한 칩 렌더링, 모바일·다크모드 확인. 기상청 실제 호출은 키가 없어 미실행.
+- 남은 항목: 기상청 키 발급 후 실제 호출 확인, PR #58 리뷰·머지.
+- 정리: `c2dc011`에 섞였던 배너 CSS는 #57로 main에 먼저 들어갔고, main 병합 때 한 벌만 남는 것을 확인했다.
+- 사용자 결정 필요: 기상청 키 발급.
+
+## Discord 장애 및 서비스 이벤트 알림 (IKA-18, 2026-11-04)
+
+- 상태: 구현과 로컬 검증 완료, PR 전. 운영 prod.env 반영과 Lambda 운영 적용은 하지 않았다.
+- 계획: #장애 채널은 500 에러와 CloudWatch 경보, #이벤트 채널은 신규 가입과 매일 09:00 KST 전날 요약. 설계 `docs/conception/020_discord_notification/01_design.md`.
+- 완료
+  - 백엔드 `global/notification`: `DiscordNotifier`(웹훅 비면 꺼짐, 전용 풀 1~2/큐 100, 3초 타임아웃, 1900자 자르기, `allowed_mentions` 비움, 실패는 warn만), `ErrorAlertThrottle`(예외 클래스+첫 프로젝트 프레임 키, 5분 억제와 억제 횟수), `ServerErrorAlerter`, `SignUpNotificationListener`(AFTER_COMMIT), `DailySummaryScheduler`와 `DailySummaryQueryRepository`.
+  - `GlobalExceptionHandler` 미처리 예외에서 알림 요청. `MemberService.signUp`(EMAIL), `SocialAuthService` 신규 소셜 가입(제공자 이름)에서 `MemberSignedUpEvent` 발행.
+  - `application.yml` `snowthing.discord.*`, `compose.prod.yml` `DISCORD_WEBHOOK_ALERT`, `DISCORD_WEBHOOK_EVENT` 전달(기본 빈 값).
+  - `scripts/lambda/discord_alarm_forwarder.py`(표준 라이브러리, SNS 경보를 KST 메시지로 변환)와 `scripts/configure-discord-alarm-forwarder.py`(기본 계획 출력, `--apply`, `--verify`, 웹훅은 환경변수에서만 읽음).
+- 결정
+  - `GlobalExceptionHandler`는 `ObjectProvider<ServerErrorAlerter>`로 받는다: 웹 슬라이스 테스트처럼 알림 빈이 없는 컨텍스트에서도 핸들러가 떠야 한다. 다른 선택지는 직접 주입(슬라이스 테스트마다 빈 추가 필요).
+  - 일일 요약은 네이티브 SQL로 센다: 엔티티의 `@SQLRestriction`을 피해 그날 작성 후 삭제된 글도 작성 수에 넣는다. AI는 `@snowthing.invalid` 이메일로 구분해 AI 기능을 꺼도 구분이 유지된다.
+  - `post`, `comment`, `member`에 `created_at` 인덱스가 없지만 하루 한 번 count라 추가하지 않았다.
+  - 통합 테스트는 IKA-14 수정(#57)과 같이 풀 2, `ddl-auto=update`, 클래스 종료 시 컨텍스트 정리로 둔다.
+- 검증
+  - 백엔드 `./gradlew test`: 643건 통과(실패 0, 기존 skip 1). 새 테스트는 `DiscordNotifier`, `ErrorAlertThrottle`, `ServerErrorAlerter`, `DailySummaryScheduler` 단위 테스트와 실제 MySQL 통합 테스트(커밋 시 알림, 롤백 시 미알림, 집계 구간과 AI 구분, 삭제 글 포함).
+  - Spotless: worktree에서는 `ratchetFrom`의 JGit이 저장소를 찾지 못해, 바뀐 Java 파일만 대상으로 `spotlessApply`와 `spotlessCheck`를 돌려 통과했다(build.gradle은 되돌림).
+  - Lambda: `python -I -m unittest discover -s scripts/lambda` 6건 통과. 설정 스크립트는 계획 출력과 zip 내용만 확인했고 AWS 호출은 하지 않았다.
+  - 로컬 테스트 환경 이슈: 다른 세션이 같은 `snowthing_test`에서 동시에 테스트를 돌려 스키마 삭제, 데드락, "Too many connections"로 대량 실패했다(변경 없는 origin/main도 14건 실패). 전용 DB `snowthing_test_ika18`(`SNOWTHING_TEST_DB_URL`, `_USERNAME`, `_PASSWORD` 함께 지정)과 로컬 Docker MySQL `SET GLOBAL max_connections = 400`(재시작 시 원복)으로 격리해 통과시켰다.
+  - 실제 Discord 전송은 하지 않았다.
+- 남은 항목: PR, 운영 prod.env 웹훅 2개 반영과 백엔드 재생성(사용자 확인 후), Lambda `--apply`(사용자 확인 후), 실제 채널 수신 확인.
+- 후속: 문의게시판이 생기면 등록 문의글도 #이벤트 알림(사용자 요청, 게시판 미구현이라 이번 범위 밖).
+- 사용자 결정 필요: 운영 적용 시점.
 
 ## AI 멤버 초반 리젠 기능 (IKA-14, 2026-11-04)
 
