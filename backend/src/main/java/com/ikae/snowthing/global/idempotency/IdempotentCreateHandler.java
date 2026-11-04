@@ -1,8 +1,7 @@
 package com.ikae.snowthing.global.idempotency;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.security.GeneralSecurityException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -11,8 +10,12 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -47,21 +50,36 @@ public class IdempotentCreateHandler {
             Pattern.compile(
                     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final String HMAC_ALGORITHM = "HmacSHA256";
+    private static final String HMAC_DOMAIN = "snowthing-idempotency-v1:";
+    private static final int MIN_SECRET_LENGTH = 32;
 
     private final IdempotencyRecordRepository records;
     private final TransactionTemplate transactions;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final SecretKeySpec hmacKey;
 
+    /**
+     * @param secret 작성자 키와 요청 해시의 HMAC 비밀값. 따로 두지 않으면 운영에 이미 있는 이메일 인증 비밀값을 쓴다. 비밀값을 바꾸면 보관 중인(최대
+     *     24시간) 기록과 해시가 달라져 그 사이 재전송은 새 요청으로 처리된다.
+     */
     public IdempotentCreateHandler(
             IdempotencyRecordRepository records,
             PlatformTransactionManager transactionManager,
             ObjectMapper objectMapper,
-            Clock clock) {
+            Clock clock,
+            @Value("${snowthing.idempotency.hmac-secret:${snowthing.email.verification.secret}}")
+                    String secret) {
+        if (secret == null || secret.length() < MIN_SECRET_LENGTH) {
+            throw new IllegalStateException(
+                    "Idempotency HMAC secret must contain at least 32 characters");
+        }
         this.records = records;
         this.transactions = new TransactionTemplate(transactionManager);
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.hmacKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM);
     }
 
     /**
@@ -85,7 +103,7 @@ public class IdempotentCreateHandler {
         }
         String key = normalizeKey(rawKey);
         String authorKey = authorKey(userDetails, clientIp);
-        String requestHash = sha256(objectMapper.writeValueAsString(fingerprint));
+        String requestHash = hmac("request", objectMapper.writeValueAsString(fingerprint));
 
         Optional<IdempotencyRecord> committed = find(authorKey, target, key);
         if (committed.isPresent()) {
@@ -110,8 +128,9 @@ public class IdempotentCreateHandler {
                                 return result;
                             });
             return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (DataIntegrityViolationException e) {
-            // 같은 키를 먼저 커밋한 요청이 있으면 그 결과를 돌려준다. 없으면 글 쪽 제약 위반이라 그대로 던진다.
+        } catch (DataIntegrityViolationException | PessimisticLockingFailureException e) {
+            // 같은 키를 먼저 커밋한 요청이 있으면 그 결과를 돌려준다. 없으면 글 쪽 오류라 그대로 던진다.
+            // 교착(PessimisticLockingFailure)은 먼저 온 요청이 롤백되고 같은 키를 기다리던 요청이 여럿일 때 생길 수 있다.
             return find(authorKey, target, key)
                     .map(existing -> replay(existing, requestHash))
                     .orElseThrow(() -> e);
@@ -126,14 +145,14 @@ public class IdempotentCreateHandler {
         return key.toLowerCase(Locale.ROOT);
     }
 
-    static String authorKey(CustomUserDetails userDetails, String clientIp) {
+    String authorKey(CustomUserDetails userDetails, String clientIp) {
         if (userDetails != null
                 && userDetails.getMember() != null
                 && userDetails.getMember().getId() != null) {
             return "member:" + userDetails.getMember().getId();
         }
         String ip = clientIp == null || clientIp.isBlank() ? "unknown" : clientIp;
-        return "ip:" + sha256(ip).substring(0, 32);
+        return "ip:" + hmac("author-ip", ip).substring(0, 32);
     }
 
     private Optional<IdempotencyRecord> find(
@@ -151,13 +170,20 @@ public class IdempotentCreateHandler {
                 .body(record.getResponseBody().getBytes(StandardCharsets.UTF_8));
     }
 
-    private static String sha256(String value) {
+    /**
+     * 서버 비밀값으로 만든 HMAC-SHA256. 비밀값 없이 해시만으로는 IPv4 전체를 대입해 IP를 되찾거나, 요청 해시로 익명 비밀번호 후보를 맞춰 볼 수 없게
+     * 한다. 용도 접두사를 붙여 같은 비밀값을 쓰는 다른 기능의 해시와 섞이지 않게 한다.
+     */
+    private String hmac(String purpose, String value) {
         try {
+            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
+            mac.init(hmacKey);
             return HexFormat.of()
                     .formatHex(
-                            MessageDigest.getInstance("SHA-256")
-                                    .digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
+                            mac.doFinal(
+                                    (HMAC_DOMAIN + purpose + ":" + value)
+                                            .getBytes(StandardCharsets.UTF_8)));
+        } catch (GeneralSecurityException e) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, e);
         }
     }

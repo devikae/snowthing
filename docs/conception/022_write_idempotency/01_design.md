@@ -32,10 +32,10 @@ IKA-19에서 프론트 동기 잠금과 작성자별 쓰기 제한(3초에서 10
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
 | `idempotency_record_id` | BIGINT PK | |
-| `author_key` | VARCHAR(80) bin | 회원은 `member:{회원 ID}`, 비로그인은 `ip:{IP SHA-256 앞 32자}`. IP 원문은 남기지 않는다 |
+| `author_key` | VARCHAR(80) bin | 회원은 `member:{회원 ID}`, 비로그인은 `ip:{IP HMAC-SHA256 앞 32자}`. IP 원문은 남기지 않는다 |
 | `target_type` | VARCHAR(30) | `POST`, `COMMENT`, `RESORT_REPORT`, `CARPOOL`, `MARKET_LISTING` (CHECK) |
 | `idempotency_key` | VARCHAR(36) bin | 소문자로 맞춘 UUID |
-| `request_hash` | CHAR(64) | 요청 본문(댓글은 게시글 `publicId` 포함) JSON의 SHA-256 |
+| `request_hash` | CHAR(64) | 요청 본문(댓글은 게시글 `publicId` 포함) JSON의 HMAC-SHA256 |
 | `response_body` | MEDIUMTEXT NULL | 처음 201 응답 JSON. insert 직후에는 비어 있고 같은 트랜잭션 끝에서 채운다 |
 | `created_at` | DATETIME(6) | KST |
 
@@ -113,6 +113,8 @@ InnoDB에서 먼저 insert한 트랜잭션 A가 UNIQUE 인덱스 레코드에 �
 
 - **커넥션 점유**: 헤더가 있으면 서비스 전체가 한 트랜잭션에 들어간다. 원래 트랜잭션 밖에서 하던 익명 댓글 비밀번호 해시(bcrypt), 카풀 경로와 유가 외부 조회 동안에도 커넥션을 쥔다. 카풀은 시간당 10건 제한이라 영향이 작다. 서비스 파일을 고쳐 기록 insert를 안쪽 트랜잭션에 끼우는 안은 다섯 서비스(특히 병렬 작업 중인 댓글 작성 서비스)를 건드려 뺐다.
 - **비로그인 작성자 키**: IP 기준이라 같은 공유기 뒤 사용자는 같은 작성자로 묶인다. 키가 무작위 UUID라 우연히 겹칠 일은 사실상 없다. 반대로 모바일에서 IP가 바뀐 뒤 재전송하면 새 요청으로 처리된다 (기존과 같음).
+- **해시 비밀값**: `author_key`의 IP 부분과 `request_hash`는 서버 비밀값으로 만든 HMAC-SHA256이다. 비밀값 없는 SHA-256이면 표나 백업을 본 사람이 IPv4 전체를 대입해 IP를 되찾거나, 요청 해시로 익명 비밀번호 후보를 맞춰 볼 수 있다(CodeRabbit 지적). 비밀값은 `snowthing.idempotency.hmac-secret`(32자 이상), 따로 두지 않으면 운영에 이미 있는 `SNOWTHING_EMAIL_VERIFICATION_SECRET`을 용도 접두사(`snowthing-idempotency-v1:`)를 붙여 쓴다. 새 운영 환경변수가 필요 없다. 비밀값을 바꾸면 보관 중인 기록과 해시가 맞지 않아 그 사이 재전송은 새 요청으로 처리된다.
+- **교착 처리**: 먼저 온 요청이 롤백되고 같은 키를 기다리던 요청이 여럿이면 MySQL 교착 오류가 날 수 있다. 중복 키 충돌과 같이 `PessimisticLockingFailureException`도 기록을 다시 조회해, 먼저 커밋된 기록이 있으면 그 응답을 돌려주고 없으면 오류를 그대로 던진다.
 - **보관 기간 24시간**: 재시도는 길어야 몇 분 안이라 충분하다. 24시간이 지난 같은 키는 새 요청으로 처리된다.
 - **AI 멤버, 답변 초안**: 컨트롤러를 거치지 않아 영향 없음.
 - **CORS**: `allowedHeaders("*")`라 헤더 추가 설정이 필요 없다.

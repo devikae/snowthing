@@ -88,7 +88,7 @@ class IdempotentCreateIntegrationTest {
                                 .build());
         userDetails = new CustomUserDetails(member);
         authorKeys.add("member:" + member.getId());
-        authorKeys.add(IdempotentCreateHandler.authorKey(null, "127.0.0.1"));
+        authorKeys.add(handler.authorKey(null, "127.0.0.1"));
     }
 
     @AfterEach
