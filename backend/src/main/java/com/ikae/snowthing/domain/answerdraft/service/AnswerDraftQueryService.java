@@ -58,7 +58,9 @@ class AnswerDraftQueryService {
                 PageRequest.of(
                         page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         Page<AnswerDraft> result =
-                status == null ? drafts.findAll(pageable) : drafts.findByStatus(status, pageable);
+                status == null
+                        ? drafts.findAllWithCreator(pageable)
+                        : drafts.findByStatus(status, pageable);
         List<AnswerDraftListResponse.Item> items =
                 result.getContent().stream()
                         .map(

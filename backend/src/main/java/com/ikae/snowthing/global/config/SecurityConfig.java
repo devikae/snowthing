@@ -136,8 +136,14 @@ public class SecurityConfig {
                                         .ignoringRequestMatchers("/ws-chat/**")
                                         // API 토큰은 쿠키가 아니라 Authorization 헤더로만 온다. 토큰이 틀리면
                                         // ApiTokenAuthenticationFilter가 401로 끝내므로 세션으로 넘어가지 않는다.
+                                        // 토큰 허용 경로만 CSRF를 건너뛴다. 로그아웃처럼 토큰 필터보다 앞에서 도는
+                                        // 세션 처리에 가짜 Bearer 헤더로 CSRF 없이 들어오지 못하게 한다.
                                         .ignoringRequestMatchers(
-                                                ApiTokenAuthenticationFilter::isApiTokenRequest))
+                                                request ->
+                                                        ApiTokenAuthenticationFilter
+                                                                        .isApiTokenRequest(request)
+                                                                && ApiTokenAuthenticationFilter
+                                                                        .isAllowed(request)))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .securityContext(

@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -25,5 +26,13 @@ public interface AnswerDraftRepository extends JpaRepository<AnswerDraft, Long> 
 
     Optional<AnswerDraft> findByCreatedByIdAndIdempotencyKey(Long memberId, String idempotencyKey);
 
+    long countByCreatedByIdAndStatus(Long memberId, AnswerDraftStatus status);
+
+    // 관리자 목록은 행마다 작성자 닉네임을 쓰므로 작성자를 함께 읽는다(ToOne이라 페이징에 안전).
+    @EntityGraph(attributePaths = "createdBy")
     Page<AnswerDraft> findByStatus(AnswerDraftStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = "createdBy")
+    @Query("SELECT d FROM AnswerDraft d")
+    Page<AnswerDraft> findAllWithCreator(Pageable pageable);
 }

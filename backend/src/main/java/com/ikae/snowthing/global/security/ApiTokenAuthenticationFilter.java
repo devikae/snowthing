@@ -85,7 +85,7 @@ public class ApiTokenAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    private static boolean isAllowed(HttpServletRequest request) {
+    public static boolean isAllowed(HttpServletRequest request) {
         String path = request.getRequestURI();
         return ALLOWED_ROUTES.stream()
                 .anyMatch(

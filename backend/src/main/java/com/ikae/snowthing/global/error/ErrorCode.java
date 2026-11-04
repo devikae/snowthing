@@ -183,6 +183,10 @@ public enum ErrorCode {
             HttpStatus.CONFLICT, "DRAFT_010", "승인한 회원이 더 이상 활성 관리자가 아니어서 게시할 수 없습니다."),
     ANSWER_DRAFT_UPDATE_CONFLICT(
             HttpStatus.CONFLICT, "DRAFT_011", "다른 요청이 초안을 먼저 바꿨습니다. 새로고침 후 다시 시도해 주세요."),
+    ANSWER_DRAFT_TOO_MANY_PENDING(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "DRAFT_012",
+            "검토 대기 초안이 너무 많습니다. 기존 초안을 처리한 뒤 다시 저장해 주세요."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

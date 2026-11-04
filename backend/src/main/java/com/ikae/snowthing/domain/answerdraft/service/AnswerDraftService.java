@@ -30,6 +30,8 @@ public class AnswerDraftService {
 
     static final int MAX_LIST_SIZE = 50;
     static final int MAX_REJECT_REASON_LENGTH = 255;
+    // 토큰이 새거나 에이전트가 반복 호출해도 검토 대기열과 DB 부하가 한없이 늘지 않게 하는 상한.
+    public static final int MAX_PENDING_PER_CREATOR = 50;
 
     private final AnswerDraftCommandService commands;
     private final AnswerDraftQueryService queries;
@@ -51,6 +53,10 @@ public class AnswerDraftService {
         var replay = commands.findReplay(memberId, input.idempotencyKey(), input.requestHash());
         if (replay.isPresent()) {
             return new SaveResult(replay.get(), true);
+        }
+        if (drafts.countByCreatedByIdAndStatus(memberId, AnswerDraftStatus.REVIEW_REQUIRED)
+                >= MAX_PENDING_PER_CREATOR) {
+            throw new CustomException(ErrorCode.ANSWER_DRAFT_TOO_MANY_PENDING);
         }
         try {
             return new SaveResult(commands.save(input, memberId, tokenId), false);

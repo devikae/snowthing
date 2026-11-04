@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS answer_draft (
     target_post_public_id VARCHAR(36) NOT NULL,
     body VARCHAR(1000) NOT NULL COMMENT '게시될 댓글 본문. 댓글 제한과 같은 1,000자',
     status VARCHAR(20) NOT NULL,
-    idempotency_key VARCHAR(100) NOT NULL COMMENT '작성자별 유일',
+    idempotency_key VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '작성자별 유일, 대소문자 구분',
     request_hash CHAR(64) NOT NULL COMMENT '같은 키로 다른 내용을 보냈는지 판별하는 요청 해시',
     created_by_member_id BIGINT NOT NULL,
     created_by_token_id BIGINT NULL COMMENT '토큰으로 저장했으면 api_token_id, 관리자 세션이면 NULL',

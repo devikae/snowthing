@@ -48,7 +48,9 @@ public class AdminBootstrap {
                         .toList();
     }
 
+    // 같은 빈 안에서 promote()를 부르면 프록시를 거치지 않아 트랜잭션이 없다. 리스너 자체를 트랜잭션으로 묶는다.
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
     public void onApplicationReady() {
         promote();
     }
@@ -74,7 +76,8 @@ public class AdminBootstrap {
         }
         int changed =
                 jdbc.update(
-                        "UPDATE member SET role = 'ROLE_ADMIN' WHERE member_id IN (:ids)",
+                        "UPDATE member SET role = 'ROLE_ADMIN' WHERE member_id IN (:ids)"
+                                + " AND status = 'ACTIVE' AND role <> 'ROLE_ADMIN'",
                         new MapSqlParameterSource("ids", targets));
         log.info("Admin bootstrap: promoted {} member(s), memberIds={}", changed, targets);
         return changed;

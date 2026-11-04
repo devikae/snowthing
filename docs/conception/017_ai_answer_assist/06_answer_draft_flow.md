@@ -57,7 +57,7 @@ stateDiagram-v2
 - `last_used_at`은 1분이 지났을 때만 갱신한다(요청마다 쓰기를 만들지 않으려고).
 - 토큰 인증 회원에게는 ROLE_ADMIN을 주지 않고 범위 권한만 준다. 그래서 `/api/v1/admin/**` 중 아래 표에서 범위로 연 경로 말고는 모두 403이다. 승인, 거절, 게시, 목록, 토큰 발급은 어떤 토큰으로도 할 수 없다.
 - 필터는 두 겹이다. `ApiTokenAuthenticationFilter`가 허용 경로(메서드 + 정규식) 밖이면 403으로 끊고, `SecurityConfig`가 범위 권한을 다시 검사한다.
-- CSRF: `Authorization: Bearer snt_...` 요청은 CSRF 검사를 건너뛴다. 브라우저가 Authorization 헤더를 자동으로 붙이지 않으므로 CSRF 대상이 아니다. 토큰이 틀리면 세션 인증으로 넘기지 않고 401로 끝내므로, 가짜 Bearer 헤더로 세션 쿠키 요청의 CSRF 검사를 우회할 수 없다.
+- CSRF: `Authorization: Bearer snt_...` 요청 중 **아래 표의 토큰 허용 경로만** CSRF 검사를 건너뛴다(로그아웃처럼 토큰 필터보다 앞에서 도는 세션 처리에 가짜 Bearer 헤더로 들어오지 못하게 하려고). 브라우저가 Authorization 헤더를 자동으로 붙이지 않으므로 CSRF 대상이 아니다. 토큰이 틀리면 세션 인증으로 넘기지 않고 401로 끝내므로, 가짜 Bearer 헤더로 세션 쿠키 요청의 CSRF 검사를 우회할 수 없다.
 - 세션: 토큰 요청은 보안 컨텍스트를 세션에 저장하지 않는다.
 
 | 경로 | READ | DRAFT | 관리자 세션 |
@@ -115,7 +115,7 @@ stateDiagram-v2
 | targetPostPublicId | UUID 형식. 근거 검색과 같은 공개 범위 안의 게시글 |
 | body | 공백만은 불가, 1~1,000자 (댓글 제한과 같음) |
 | evidence | 1~20개. `evidenceId`는 근거 ID 형식(03 문서 §5), 중복 불가. `chunkHash`는 64자 hex 필수(검색이나 근거 조회 응답의 `chunkHash`) |
-| idempotencyKey | 8~100자, `[A-Za-z0-9._:-]`. 토큰 소유 회원 기준으로 유일 |
+| idempotencyKey | 8~100자, `[A-Za-z0-9._:-]`. 토큰 소유 회원 기준으로 유일. 대소문자를 구분한다(컬럼 `utf8mb4_bin`) |
 | 그 밖의 필드 | 읽지 않고 버린다. `confirmed`, `approved`, `publish`, `status` 등을 보내도 결과는 같다 |
 
 - 처리 순서: 형식 검사 → 같은 회원의 같은 멱등성 키 확인 → 대상 공개 여부 → 근거마다 `getEvidence(evidenceId, chunkHash)` (공개 범위 먼저, 그다음 해시) → 저장(REVIEW_REQUIRED) → 감사 기록 SAVE(토큰 ID 포함).
@@ -133,6 +133,7 @@ stateDiagram-v2
 | 404 | EVIDENCE_001 | 근거 원문이 없거나 볼 수 없음 |
 | 409 | EVIDENCE_002 | 근거 해시가 지금 원문과 다름 (다시 검색) |
 | 409 | DRAFT_004 | 같은 키로 다른 내용 |
+| 429 | DRAFT_012 | 작성자의 검토 대기(REVIEW_REQUIRED) 초안이 50개 이상. 같은 키 재시도는 상한과 상관없이 기존 초안을 돌려준다 |
 
 - 같은 키 요청이 동시에 오면 한쪽은 유일 제약에 걸리고, 서버가 먼저 저장된 초안을 다시 읽어 200으로 돌려준다.
 

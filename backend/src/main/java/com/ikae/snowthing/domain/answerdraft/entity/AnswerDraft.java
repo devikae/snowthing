@@ -24,6 +24,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.common.BaseTimeEntity;
 import com.ikae.snowthing.global.error.ErrorCode;
@@ -85,7 +87,12 @@ public class AnswerDraft extends BaseTimeEntity {
     @Column(name = "status", nullable = false, length = 20)
     private AnswerDraftStatus status;
 
-    @Column(name = "idempotency_key", nullable = false, length = 100)
+    // 키 형식은 대소문자를 구분하므로 비교도 이진 정렬로 한다(029와 같다).
+    @Column(
+            name = "idempotency_key",
+            nullable = false,
+            length = 100,
+            columnDefinition = "varchar(100) character set utf8mb4 collate utf8mb4_bin")
     private String idempotencyKey;
 
     /** 멱등성 키 재사용 판별용. 대상, 본문, 근거 목록을 정해진 순서로 이어 만든 SHA-256. */
@@ -144,8 +151,10 @@ public class AnswerDraft extends BaseTimeEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
+    // 목록에서 근거 수를 셀 때 초안마다 따로 읽지 않고 한 번에 묶어 읽는다.
     @OneToMany(mappedBy = "draft", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
+    @BatchSize(size = 50)
     private List<AnswerDraftEvidence> evidences = new ArrayList<>();
 
     public static AnswerDraft create(

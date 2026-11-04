@@ -265,6 +265,37 @@ class AnswerDraftFlowIntegrationTest {
         }
 
         @Test
+        @DisplayName("멱등성 키는 대소문자를 구분한다")
+        void idempotencyKeyIsCaseSensitive() throws Exception {
+            String token = createToken(admin, "DRAFT");
+            String lower = saveDraft(token, "key-case-abcd");
+            mockMvc.perform(
+                            withToken(post(DRAFTS), token)
+                                    .content(write(draftBody("KEY-CASE-ABCD", "다른 본문"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.draftId").value(org.hamcrest.Matchers.not(lower)));
+        }
+
+        @Test
+        @DisplayName("작성자별 검토 대기 초안이 상한에 닿으면 429")
+        void pendingDraftsAreCapped() throws Exception {
+            String token = createToken(admin, "DRAFT");
+            for (int i = 0; i < AnswerDraftService.MAX_PENDING_PER_CREATOR; i++) {
+                saveDraft(token, "key-cap-" + String.format("%04d", i));
+            }
+            mockMvc.perform(
+                            withToken(post(DRAFTS), token)
+                                    .content(write(draftBody("key-cap-over", "본문"))))
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.code").value("DRAFT_012"));
+            // 같은 키 재시도는 상한과 상관없이 기존 초안을 돌려준다.
+            mockMvc.perform(
+                            withToken(post(DRAFTS), token)
+                                    .content(write(draftBody("key-cap-0000", "답변 초안 본문"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
         @DisplayName("토큰은 자기 소유자가 만든 초안의 상태만 볼 수 있다")
         void statusIsScopedToOwner() throws Exception {
             String ownerToken = createToken(admin, "DRAFT");
@@ -334,6 +365,18 @@ class AnswerDraftFlowIntegrationTest {
             // 승인을 우회하려는 경로도 모두 막혀 상태가 그대로다.
             assertThat(draftStatus(draftId)).isEqualTo("REVIEW_REQUIRED");
             assertThat(commentCount(target.getId())).isZero();
+        }
+
+        @Test
+        @DisplayName("토큰 허용 경로가 아니면 Bearer 헤더가 있어도 CSRF 검사를 건너뛰지 않는다")
+        void bearerHeaderDoesNotSkipCsrfOutsideTokenRoutes() throws Exception {
+            mockMvc.perform(
+                            post("/api/v1/auth/logout")
+                                    .with(user(details(admin)))
+                                    .header(
+                                            HttpHeaders.AUTHORIZATION,
+                                            "Bearer snt_" + "A".repeat(43)))
+                    .andExpect(status().isForbidden());
         }
 
         @Test
