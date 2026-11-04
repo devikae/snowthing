@@ -201,6 +201,14 @@ public enum ErrorCode {
             "DRAFT_012",
             "검토 대기 초안이 너무 많습니다. 기존 초안을 처리한 뒤 다시 저장해 주세요."),
 
+    // 작성 API Idempotency-Key (032)
+    IDEMPOTENCY_KEY_INVALID(
+            HttpStatus.BAD_REQUEST, "IDEMPOTENCY_001", "Idempotency-Key 헤더는 UUID 형식이어야 합니다."),
+    IDEMPOTENCY_KEY_REUSED(
+            HttpStatus.CONFLICT,
+            "IDEMPOTENCY_002",
+            "같은 요청 키로 다른 내용이 이미 등록됐습니다. 새로고침 후 다시 작성해 주세요."),
+
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

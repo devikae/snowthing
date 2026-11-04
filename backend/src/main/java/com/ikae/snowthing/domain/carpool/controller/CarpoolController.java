@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +19,8 @@ import com.ikae.snowthing.domain.carpool.dto.CarpoolSummaryResponse;
 import com.ikae.snowthing.domain.carpool.service.CarpoolAutoCalculationService;
 import com.ikae.snowthing.domain.carpool.service.CarpoolExternalApiRateLimiter;
 import com.ikae.snowthing.domain.carpool.service.CarpoolService;
+import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
+import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -36,6 +37,7 @@ public class CarpoolController {
     private final CarpoolExternalApiRateLimiter externalApiRateLimiter;
     private final ClientIpResolver clientIpResolver;
     private final ContentWriteRateLimiter contentWriteRateLimiter;
+    private final IdempotentCreateHandler idempotentCreateHandler;
 
     @GetMapping("/places")
     public ResponseEntity<List<CarpoolPlaceResponse>> searchPlaces(
@@ -52,16 +54,25 @@ public class CarpoolController {
     }
 
     @PostMapping
-    public ResponseEntity<CarpoolResponse> create(
+    public ResponseEntity<Object> create(
             @Valid @RequestBody CarpoolCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = IdempotentCreateHandler.HEADER, required = false)
+                    String idempotencyKey,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
-        contentWriteRateLimiter.check(
-                userDetails, clientIp, ContentWriteRateLimiter.Action.CARPOOL);
-        externalApiRateLimiter.checkPreview(clientIp);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(carpoolService.create(request, userDetails, clientIp));
+        return idempotentCreateHandler.create(
+                IdempotencyTarget.CARPOOL,
+                idempotencyKey,
+                userDetails,
+                clientIp,
+                request,
+                () -> {
+                    contentWriteRateLimiter.check(
+                            userDetails, clientIp, ContentWriteRateLimiter.Action.CARPOOL);
+                    externalApiRateLimiter.checkPreview(clientIp);
+                },
+                () -> carpoolService.create(request, userDetails, clientIp));
     }
 
     @PutMapping("/{publicId}")

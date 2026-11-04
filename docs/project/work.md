@@ -1,3 +1,33 @@
+## 작성 API Idempotency-Key 멱등 처리 (IKA-21, 2026-11-05)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 032 운영 적용과 배포는 하지 않았다.
+- 계획: 게시글, 댓글(대댓글 포함), 설질 제보, 카풀, 마켓 작성 API가 `Idempotency-Key`(UUID)로 같은 요청을 한 번만 처리하고 재전송에는 처음 201 응답을 그대로 돌려준다. 설계 `docs/conception/022_write_idempotency/01_design.md`, API 명세 `docs/conception/sprint01/05.api-spec.md` 7절.
+- 완료
+  - DB: `032_migration_idempotency_record.sql`. 공통 표 `idempotency_record`, UNIQUE(author_key, target_type, idempotency_key), created_at 인덱스, 대상 종류 CHECK.
+  - 백엔드: `global/idempotency` 패키지. `IdempotentCreateHandler`가 컨트롤러에서 서비스 호출을 감싼다. 커밋된 기록 조회 → 쓰기 제한 → 한 트랜잭션에서 기록 insert, 작성, 응답 JSON 저장. 중복 키 충돌이면 먼저 커밋된 응답을 돌려준다. 같은 키 다른 내용 409(`IDEMPOTENCY_002`), 키 형식 오류 400(`IDEMPOTENCY_001`).
+  - 백엔드: `IdempotencyRecordCleanupScheduler` 매시 35분, 24시간 지난 기록을 1,000건씩 삭제.
+  - 프론트: `lib/idempotencyKey.ts`의 `useIdempotencyKey()`. 게시글 작성, 댓글(게시글 상세, 장터 상세, 공용 댓글 컴포넌트), 설질 제보, 카풀 등록(수정 제외), 마켓 등록에 적용.
+- 결정
+  - 기록을 글과 같은 트랜잭션에 묶는 위치는 컨트롤러의 `TransactionTemplate`으로 정했다. 서비스의 `@Transactional`(REQUIRED)이 합류한다. 다른 선택지는 다섯 쓰기 서비스 안에 기록 insert를 넣는 것인데, 병렬 작업 중인 댓글 작성 서비스(IKA-22)와 충돌하고 파일 수정이 많다. 대가: 헤더가 있으면 익명 댓글 bcrypt와 카풀 외부 경로 조회 동안 커넥션을 쥔다(카풀은 시간당 10건 제한).
+  - 기록을 글 저장 전에 insert한다: 같은 키의 두 번째 요청이 UNIQUE 잠금에서 기다리다 충돌해 글 저장이나 외부 호출을 하지 않는다. 글 저장 뒤 insert도 원자성은 같지만 두 번째 요청이 일을 다 하고 롤백한다.
+  - 재응답은 처음 응답 JSON을 저장해 바이트 그대로 보낸다. 리소스 ID로 다시 조회하는 안은 도메인마다 재조회 로직이 필요하고, 그 사이 수정되면 다른 응답이 나간다. 대가: 행 크기 증가(24시간 보관).
+  - 재전송 확인을 쓰기 제한보다 먼저 한다: 응답이 사라져 바로 다시 누른 사용자가 429 대신 처음 응답을 받는다. 쓰기 제한을 트랜잭션 안으로 넣는 안은 `REQUIRES_NEW`가 커넥션을 하나 더 잡아 풀 교착 위험이 있어 뺐다. 한계: 같은 키가 동시에 오면 두 번째가 429를 받을 수 있다(글은 1건).
+  - 응답 저장은 JPQL UPDATE로 한다: 댓글 작성의 `clearAutomatically` 벌크 쿼리가 영속성 컨텍스트를 비워 변경 감지가 동작하지 않았다(대댓글 재전송 테스트에서 발견).
+  - 비로그인 작성자 키는 IP의 HMAC-SHA256 앞 32자, 요청 해시도 HMAC-SHA256. IP 원문은 저장하지 않는다. 비밀값은 `snowthing.idempotency.hmac-secret`, 없으면 운영에 이미 있는 이메일 인증 비밀값을 쓴다(CodeRabbit 지적 반영: 비밀값 없는 해시는 IPv4 전체 대입으로 IP를 되찾거나 요청 해시로 익명 비밀번호 후보를 맞춰 볼 수 있다).
+  - 프론트 키는 본문이 같으면 유지, 바뀌면 새로 만든다: 실패 후 내용을 고친 글이 409에 걸리지 않게 한다.
+  - 설계 폴더 번호 022를 썼다. 병렬 작업 중인 IKA-22, IKA-23은 다음 번호를 써야 한다.
+  - 컨트롤러 작성 메서드 반환형이 `ResponseEntity<Object>`로 바뀌었다(재응답은 저장된 JSON 바이트). JSON 모양은 같다.
+- 발견된 이슈
+  - Spotless의 `ratchetFrom`이 git worktree를 인식하지 못해(JGit) 별도 복제본에서 포맷과 테스트를 돌렸다.
+  - 댓글 응답의 `@JsonSerialize(ToStringSerializer)`가 Jackson 2 어노테이션이라 Jackson 3 MVC에서 무시되고 `commentId`가 숫자로 나간다(기존 동작, 이번 범위 밖).
+- 검증
+  - `IdempotentCreateIntegrationTest` 13건 통과: 재전송 1건 저장과 같은 본문, 대소문자 키, 다른 내용 409, 형식 오류 400, 헤더 없음 기존 동작, 대상 분리, 대댓글 재전송, 다른 게시글 댓글 409, 비로그인 IP 기준, 쓰기 제한보다 재전송 우선, 실패 시 기록 롤백, 같은 키 8개 동시 전송 시 글 1건과 기록 1건, 정리 스케줄러.
+  - 백엔드 `./gradlew spotlessCheck test`: 706건 통과(실패 0, 기존 skip 1). 로컬 MySQL 8의 전용 스키마 `snowthing_ika21_test`.
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 032 마이그레이션을 운영 DB에 적용하지 않았다. 브라우저로 화면을 직접 확인하지 않았다.
+- 남은 항목: PR 리뷰 반영, 032 운영 적용과 배포(사용자 확인 후).
+- 사용자 결정 필요: 없음.
+
 ## 헤더 로고 눈꽃 마크 (2026-11-05)
 
 - 상태: 구현과 로컬 검증 완료, `fix/header-logo-mark` 브랜치. 티켓 없이 진행.

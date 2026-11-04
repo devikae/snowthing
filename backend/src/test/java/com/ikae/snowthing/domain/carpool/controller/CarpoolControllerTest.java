@@ -22,6 +22,7 @@ import com.ikae.snowthing.domain.carpool.entity.CarpoolRouteSource;
 import com.ikae.snowthing.domain.carpool.service.CarpoolAutoCalculationService;
 import com.ikae.snowthing.domain.carpool.service.CarpoolExternalApiRateLimiter;
 import com.ikae.snowthing.domain.carpool.service.CarpoolService;
+import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
@@ -40,7 +41,8 @@ class CarpoolControllerTest {
                                         calculationService,
                                         mock(CarpoolExternalApiRateLimiter.class),
                                         mock(ClientIpResolver.class),
-                                        mock(ContentWriteRateLimiter.class)))
+                                        mock(ContentWriteRateLimiter.class),
+                                        mock(IdempotentCreateHandler.class)))
                         .build();
     }
 
