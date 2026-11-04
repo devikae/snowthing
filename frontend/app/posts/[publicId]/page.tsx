@@ -397,7 +397,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleCreateComment = async (parentId: string | null) => {
     if (isSubmittingCommentRef.current || submittingComment) return;
-    isSubmittingCommentRef.current = true;
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
       alert("댓글 내용을 입력해주세요.");
@@ -428,6 +427,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       anonymousPassword = null;
     }
 
+    isSubmittingCommentRef.current = true;
     setSubmittingComment(true);
     try {
       const res = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {

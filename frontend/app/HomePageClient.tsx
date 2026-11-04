@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
@@ -148,6 +148,7 @@ export default function HomePageClient() {
   const [resortMasterList, setResortMasterList] = useState<{ id: number; name: string }[]>([]);
   const [resortMasterError, setResortMasterError] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
+  const isSubmittingReportRef = useRef(false);
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const reportSeasonOpen = isResortReportSeason(new Date());
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
@@ -188,7 +189,7 @@ export default function HomePageClient() {
 
   const handleSnowReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!snowReportContent.trim() || submittingReport) return;
+    if (!snowReportContent.trim() || submittingReport || isSubmittingReportRef.current) return;
     if (!reportSeasonOpen) {
       alert("설질 제보는 10월부터 다음 해 4월까지만 등록할 수 있습니다.");
       return;
@@ -203,6 +204,7 @@ export default function HomePageClient() {
       return;
     }
 
+    isSubmittingReportRef.current = true;
     setSubmittingReport(true);
     try {
       const res = await csrfFetch(API_ENDPOINTS.resortReports.create, {
@@ -223,6 +225,7 @@ export default function HomePageClient() {
     } catch {
       alert("서버 통신 중 오류가 발생했습니다.");
     } finally {
+      isSubmittingReportRef.current = false;
       setSubmittingReport(false);
     }
   };

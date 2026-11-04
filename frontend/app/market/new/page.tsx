@@ -54,6 +54,7 @@ export default function MarketCreatePage() {
   useImageUploadLease(images.map(image => image.imageUrl));
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -106,6 +107,7 @@ export default function MarketCreatePage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (submitting || isSubmittingRef.current) return;
     const content = editorRef.current?.getInstance().getMarkdown()?.trim() ?? "";
     if (!categoryCode || !title.trim() || !content || !contact.trim()) {
       setError("상품 분류, 제목, 본문, 연락처를 모두 입력해 주세요.");
@@ -116,6 +118,7 @@ export default function MarketCreatePage() {
       setError("가격은 1원 이상 2,000만원 이하로 입력해 주세요.");
       return;
     }
+    isSubmittingRef.current = true;
     setSubmitting(true);
     setError("");
     try {
@@ -148,6 +151,7 @@ export default function MarketCreatePage() {
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "판매글을 등록하지 못했습니다.");
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };
