@@ -343,12 +343,12 @@ export default function HomePageClient() {
                   ))}
                 </div>
                 <div className="board-tabs-actions">
+                  <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
+                    더보기 ↗
+                  </Link>
                   <Link href={writeHref} className="board-tabs-write">
                     <span className="material-symbols-outlined" aria-hidden="true">edit</span>
                     글쓰기
-                  </Link>
-                  <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
-                    더보기 ↗
                   </Link>
                 </div>
               </nav>
