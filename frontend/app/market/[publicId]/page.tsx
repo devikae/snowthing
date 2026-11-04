@@ -9,6 +9,7 @@ import { Footer, TopNav } from "../../components/SiteChrome";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -92,6 +93,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const isSubmittingCommentRef = useRef(false);
+  const commentIdempotencyKey = useIdempotencyKey();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
@@ -157,10 +159,11 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
     isSubmittingCommentRef.current = true;
     setSubmitting(true);
     try {
+      const body = JSON.stringify({ parentId, content, isAnonymous: false, anonymousPassword: null });
       const response = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId, content, isAnonymous: false, anonymousPassword: null }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: commentIdempotencyKey.keyFor(body) },
+        body,
       });
       if (response.status === 401) {
         redirectToLogin();
@@ -170,6 +173,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         const data = await response.json().catch(() => null);
         throw new Error(data?.message || "댓글을 등록하지 못했습니다.");
       }
+      commentIdempotencyKey.reset();
       if (parentId) {
         setReply("");
         setReplyParentId(null);

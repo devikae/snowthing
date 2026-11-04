@@ -14,6 +14,7 @@ import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
 import { RESORT_MAP } from "./lib/resortTags";
 import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName, isResortReportSeason } from "./lib/resortReports";
 import { csrfFetch } from "./lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
 
 interface HomePost {
   publicId: string;
@@ -150,6 +151,7 @@ export default function HomePageClient() {
   const [resortMasterError, setResortMasterError] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
   const isSubmittingReportRef = useRef(false);
+  const reportIdempotencyKey = useIdempotencyKey();
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const reportSeasonOpen = isResortReportSeason(new Date());
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
@@ -211,15 +213,17 @@ export default function HomePageClient() {
     isSubmittingReportRef.current = true;
     setSubmittingReport(true);
     try {
+      const body = JSON.stringify({
+        resortId,
+        content: snowReportContent.trim(),
+      });
       const res = await csrfFetch(API_ENDPOINTS.resortReports.create, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resortId,
-          content: snowReportContent.trim(),
-        }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: reportIdempotencyKey.keyFor(body) },
+        body,
       });
       if (res.ok) {
+        reportIdempotencyKey.reset();
         setSnowReportContent("");
         await loadTodayReports();
       } else {

@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +14,8 @@ import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.domain.post.service.ReactionService;
+import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
+import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.AnonymousVoterCookieManager;
@@ -37,16 +38,26 @@ public class PostController {
     private final ViewCountCookieManager viewCountCookieManager;
     private final AnonymousVoterCookieManager anonymousVoterCookieManager;
     private final ContentWriteRateLimiter contentWriteRateLimiter;
+    private final IdempotentCreateHandler idempotentCreateHandler;
 
     @PostMapping
-    public ResponseEntity<PostResponse> createPost(
+    public ResponseEntity<Object> createPost(
             @Valid @RequestBody PostCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = IdempotentCreateHandler.HEADER, required = false)
+                    String idempotencyKey,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
-        contentWriteRateLimiter.check(userDetails, clientIp, ContentWriteRateLimiter.Action.POST);
-        PostResponse response = postService.createPost(request, userDetails, clientIp);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return idempotentCreateHandler.create(
+                IdempotencyTarget.POST,
+                idempotencyKey,
+                userDetails,
+                clientIp,
+                request,
+                () ->
+                        contentWriteRateLimiter.check(
+                                userDetails, clientIp, ContentWriteRateLimiter.Action.POST),
+                () -> postService.createPost(request, userDetails, clientIp));
     }
 
     @GetMapping("/{publicId}")

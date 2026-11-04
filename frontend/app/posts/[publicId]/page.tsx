@@ -9,6 +9,7 @@ import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import dynamic from "next/dynamic";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
@@ -116,6 +117,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const isSubmittingCommentRef = useRef(false);
+  const commentIdempotencyKey = useIdempotencyKey();
   const [activeReplyParentId, setActiveReplyParentId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
@@ -430,18 +432,20 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     isSubmittingCommentRef.current = true;
     setSubmittingComment(true);
     try {
+      const body = JSON.stringify({
+        parentId,
+        content: text.trim(),
+        isAnonymous,
+        anonymousPassword,
+      });
       const res = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          parentId,
-          content: text.trim(),
-          isAnonymous,
-          anonymousPassword,
-        }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: commentIdempotencyKey.keyFor(body) },
+        body,
       });
 
       if (res.ok) {
+        commentIdempotencyKey.reset();
         const createdComment: CommentItem = await res.json();
         if (parentId) {
           setReplyText("");
