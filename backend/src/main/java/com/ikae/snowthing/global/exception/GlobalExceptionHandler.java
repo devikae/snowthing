@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import com.ikae.snowthing.domain.answerdraft.entity.AnswerDraft;
 import com.ikae.snowthing.domain.market.entity.MarketListing;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
@@ -56,7 +57,9 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode =
                 MarketListing.class.equals(e.getPersistentClass())
                         ? ErrorCode.MARKET_LISTING_UPDATE_CONFLICT
-                        : ErrorCode.COMMENT_UPDATE_CONFLICT;
+                        : AnswerDraft.class.equals(e.getPersistentClass())
+                                ? ErrorCode.ANSWER_DRAFT_UPDATE_CONFLICT
+                                : ErrorCode.COMMENT_UPDATE_CONFLICT;
         return ResponseEntity.status(errorCode.getStatus()).body(ErrorResponse.from(errorCode));
     }
 

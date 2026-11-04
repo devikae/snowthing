@@ -47,7 +47,9 @@ public class BotDelegationAuthenticationFilter extends OncePerRequestFilter {
             HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+        if (authorization == null
+                || !authorization.startsWith(BEARER_PREFIX)
+                || ApiTokenAuthenticationFilter.isApiTokenRequest(request)) {
             filterChain.doFilter(request, response);
             return;
         }

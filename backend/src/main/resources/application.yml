@@ -71,6 +71,12 @@ snowthing:
       batch-size: 500
     outbox:
       done-retention-days: 7
+  admin:
+    # IKA-12. 쉼표 구분 이메일. 기동할 때 해당 활성 회원을 ROLE_ADMIN으로 올린다. 목록에서 빼도 권한은 거두지 않는다.
+    bootstrap-emails: ${SNOWTHING_ADMIN_BOOTSTRAP_EMAILS:}
+  answer-draft:
+    # IKA-12. 승인된 답변 초안의 댓글 게시. 운영 기본값은 꺼짐(읽기 전용). 켜도 사람이 관리자 세션에서 승인하고 게시해야 한다.
+    publish-enabled: ${SNOWTHING_ANSWER_DRAFT_PUBLISH_ENABLED:false}
   oauth2:
     frontend-base-url: ${SNOWTHING_FRONTEND_BASE_URL:http://localhost:3000}
     connect-timeout-millis: ${SNOWTHING_OAUTH2_CONNECT_TIMEOUT_MILLIS:2000}
