@@ -1,3 +1,35 @@
+## 회원 간 1:1 쪽지와 차단 (IKA-23, 2026-11-05)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 034 운영 적용과 배포는 하지 않았다. 머지는 IKA-21, IKA-22 다음 순서.
+- 계획: 편지함형 쪽지(`direct_message`)와 회원 차단(`member_block`). 설계 `docs/conception/022_direct_message/01_design.md`.
+- 완료
+  - DB: `database/production/034_migration_direct_message.sql`. 받은함 `(receiver_id, receiver_deleted_at, direct_message_id)`, 보낸함 `(sender_id, sender_deleted_at, direct_message_id)`, 차단 UNIQUE `(blocker_id, blocked_id)`와 `(blocked_id, blocker_id)`.
+  - 백엔드 `domain/message`: 보내기, 받은함, 보낸함(`direct_message_id DESC` 커서), 상세(수신자가 처음 열 때만 `read_at`), 내 쪽 삭제, 안 읽은 수. 남의 쪽지와 내가 지운 쪽지는 404. 목록과 상세는 `Cache-Control: no-store`.
+  - 거부 규칙: 자기 자신 400, 정지와 탈퇴와 AI 회원과 없는 회원과 나를 차단한 회원은 같은 문구 "보낼 수 없는 회원입니다." 400, 내가 차단한 회원은 "차단한 회원에게는 보낼 수 없습니다." 400. 판매글 `publicId` 연결 시 수신자가 판매글 작성자가 아니면 400, 없거나 볼 수 없는 판매글은 404.
+  - 백엔드 `domain/member`: `MemberBlock`, 차단(멱등), 해제(멱등), 내 차단 목록(최근 순 최대 500). `ContentWriteRateLimiter.Action.DIRECT_MESSAGE(5초, 시간당 30건)`.
+  - 프론트: 헤더 쪽지 아이콘과 안 읽은 수 배지(`MessageNavLink`, 페이지 이동, 탭이 다시 보일 때, 탭이 보이는 동안 60초 폴링, 쪽지를 읽거나 지우면 이벤트로 즉시 갱신). `/messages` 받은함과 보낸함 탭, `/messages/[id]` 상세와 답장(원문 인용), `/messages/new` 작성. 게시글과 댓글(게시글 상세, 카풀 댓글, 중고장터 댓글) 작성자 닉네임 메뉴 "쪽지 보내기", "차단". 중고장터 판매글 "쪽지 보내기" 버튼(로그인했고 본인 글이 아닐 때). 내 정보 수정 화면 차단 목록과 해제.
+- 결정
+  - 마이그레이션 번호를 설계의 032에서 034로 바꿨다: 함께 진행 중인 IKA-21이 032, IKA-22가 033을 쓴다. 설계 문서 참조도 고쳤다.
+  - 판매글은 JPA 연관 대신 `market_listing_id` 값만 엔티티에 둔다(DB FK는 유지): `Post`의 `@SQLRestriction("is_deleted = false")` 때문에 삭제된 판매글을 연관으로 읽으면 엔티티를 못 찾는다. 한 페이지의 판매글을 ID 묶음으로 한 번 조회하고 없으면 "삭제된 판매글". 다른 선택지는 연관 + 예외 처리(삭제 판매글마다 예외 경로).
+  - 차단은 `INSERT ... ON DUPLICATE KEY UPDATE`로 넣는다: UNIQUE 위반 예외는 트랜잭션을 롤백 전용으로 만들고, 존재 확인 후 INSERT는 동시 요청에서 경쟁한다. `post_reaction`과 같은 방식.
+  - 목록 첫 페이지와 다음 페이지 쿼리를 나눴다: `(:cursor IS NULL OR id < :cursor)`는 실행 계획이 범위 조건을 못 쓸 수 있다.
+  - AI 회원 판단은 `AiMemberRoster.memberIds()`(AI 기능을 켰을 때만 빈이 있음)와 `@snowthing.invalid` 이메일 도메인 둘 다 본다: 기능을 꺼도 AI 계정은 남는다. 일일 요약 집계와 같은 기준.
+  - 없는 회원 `publicId`도 404 대신 "보낼 수 없는 회원입니다." 400으로 합쳤다: 거부 이유를 구분하지 않는다는 설계 원칙에 맞췄다.
+  - 화면에서 AI 회원에게 닉네임 메뉴를 숨기지 않는다(설계와 다름): 게시글, 댓글 응답에 AI 여부가 없고, 넣으면 "누가 AI인지 공개하지 않는다"는 AI 멤버 방침과 충돌한다. 보내면 같은 문구로 거부된다. 본인, 익명 글과 익명 게시판, 삭제된 댓글, 비로그인에는 메뉴를 숨긴다.
+  - 답장은 판매글을 다시 참조하지 않는다: 판매자가 구매자에게 답장하면 받는 회원이 판매글 작성자가 아니라 규칙에 걸린다. 원문 인용으로 맥락을 대신한다. 다른 선택지는 규칙을 "보내는 회원이나 받는 회원이 작성자"로 넓히는 것(설계 변경이라 하지 않음).
+  - 헤더는 `SiteChrome`에 한 줄(`MessageNavLink`)만 넣고, API 주소와 스타일은 `lib/messageApi.ts`, `components/messages.module.css`로 따로 뒀다: IKA-22 알림 배지와 `api.ts`, `globals.css` 충돌을 줄인다. 같은 이유로 `ActiveNav`에 값을 추가하지 않고 쪽지 화면은 `profile`로 둔다.
+  - 차단 목록은 페이징 없이 최근 순 최대 500명: 설정 화면에서 한 번에 보여 준다.
+  - CodeRabbit이 rate limit으로 리뷰하지 못해 직접 리뷰했다. 숫자가 아닌 쪽지 ID와 커서가 공통 처리기에서 500과 Discord 장애 알림이 되던 것을 컨트롤러 안의 처리기로 404(쪽지 ID), 400(커서)으로 바꿨다(`GlobalExceptionHandler`는 공유 파일이라 건드리지 않음). 작성 화면 취소는 이전 화면이 없으면 쪽지함으로 보낸다.
+- 검증
+  - EXPLAIN(로컬 MySQL 8.0.46 임시 DB, 회원 1,000명, 쪽지 200,000통): 받은함 첫 페이지 `ref` + `idx_direct_message_receiver` + `Backward index scan`(filesort 없음), 다음 페이지 `range`(key_len 25), 보낸함은 `idx_direct_message_sender`로 같은 모양, 안 읽은 수 `ref` + 같은 인덱스. `EXPLAIN ANALYZE` 받은함 첫 페이지 21행만 읽고 약 0.1ms. 034를 두 번 적용해도 오류 없음.
+  - 백엔드 `DirectMessageServiceTest` 19건, `MemberBlockServiceTest` 4건(실제 MySQL), `DirectMessageControllerTest` 4건(standalone MockMvc) 통과.
+  - 백엔드 전체 `test`: 716건 통과(실패 0, 기존 skip 1). 전용 DB `snowthing_test_ika23`, 로컬 Docker MySQL `SET GLOBAL max_connections = 400`(재시작 시 원복). 첫 실행은 다른 세션과 겹쳐 "Too many connections"로 84건 실패, 두 번째는 `PostRepositoryCustomTest` 1건이 실행 순서에 따라 남은 FREE 글 1개 때문에 실패(단독 실행은 통과, 세 번째 전체 실행은 통과). 리뷰 반영 후 전체 다시 실행해 720건 통과(실패 0, skip 1). 이번 변경과 무관한 테스트 격리 문제로 보고 후속 후보로 남긴다.
+  - Spotless: worktree에서는 `ratchetFrom`의 JGit이 저장소를 못 찾아 `./gradlew spotlessCheck`가 바로 실패한다. init script로 `ratchetFrom`을 끄고 origin/main 대비 바뀐 Java 22개 파일만 대상으로 `spotlessCheck` 통과(build.gradle은 바꾸지 않음).
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 브라우저로 화면을 직접 확인하지는 않았다.
+- 남은 항목: 034 운영 적용과 배포(사용자 확인 후), 브라우저 화면 확인.
+- 후속: 알림 도메인이 생기면 배지 조회 이전, 쪽지 신고, 같이타요와 카풀에서 차단 재사용, 양쪽 삭제 행 정리 정책.
+
 ## 댓글, 답글, 문의 답변 사용자 알림 (IKA-22, 2026-11-05)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. 033 운영 적용과 배포는 하지 않았다(머지하면 배포 파이프라인이 적용한다).

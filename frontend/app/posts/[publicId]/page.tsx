@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
+import { AuthorMenu } from "../../components/AuthorMenu";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import dynamic from "next/dynamic";
 import { csrfFetch } from "../../lib/csrfFetch";
@@ -648,7 +649,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                   size={32}
                 />
               )}
-              <div><strong>{post.writer.nickname}</strong><small>{formatPostDateTime(post.createdAt)}</small></div>
+              <div><AuthorMenu publicId={isAnonymousPost ? null : post.writer.publicId} nickname={post.writer.nickname} /><small>{formatPostDateTime(post.createdAt)}</small></div>
               {(() => {
                 const canEdit = Boolean(post.isAnonymous || post.categoryCode === "ANONYMOUS" || (currentUserPublicId && post.writer?.publicId === currentUserPublicId));
                 const canDelete = Boolean(isAdmin || canEdit);
@@ -924,9 +925,11 @@ function CommentRow({
         {!isAnonymousPost && <CommentProfileAvatar nickname={getWriterName(item)} profileImageUrl={item.writer?.profileImageUrl} />}
         <div className="comment-youtube-body">
           <header>
-            <strong className={item.isDeleted ? "deleted" : ""}>
-              {isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
-            </strong>
+            <AuthorMenu
+              className={item.isDeleted ? "deleted" : ""}
+              publicId={isAnonymousPost || item.isAnonymous || item.isDeleted ? null : item.writer?.publicId}
+              nickname={isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
+            />
             <time>{formatCommentDate(item.createdAt)}</time>
             {canDelete && (
               <CommentDeleteInline
@@ -1102,9 +1105,11 @@ function ReplyRow({
         {!isAnonymousPost && <CommentProfileAvatar nickname={getWriterName(item)} profileImageUrl={item.writer?.profileImageUrl} />}
         <div className="comment-youtube-body">
           <header>
-            <strong className={item.isDeleted ? "deleted" : ""}>
-              {isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
-            </strong>
+            <AuthorMenu
+              className={item.isDeleted ? "deleted" : ""}
+              publicId={isAnonymousPost || item.isAnonymous || item.isDeleted ? null : item.writer?.publicId}
+              nickname={isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
+            />
             <time>{formatCommentDate(item.createdAt)}</time>
           {canDelete && (
             <CommentDeleteInline

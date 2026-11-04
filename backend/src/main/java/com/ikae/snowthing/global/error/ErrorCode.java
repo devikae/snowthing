@@ -105,6 +105,15 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "MARKET_010", "중고장터 페이지 크기는 1 이상 50 이하이어야 합니다."),
     MARKET_PAGE_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "MARKET_011", "중고장터는 최대 100페이지까지 조회할 수 있습니다."),
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MESSAGE_001", "존재하지 않거나 삭제된 쪽지입니다."),
+    MESSAGE_RECEIVER_UNAVAILABLE(HttpStatus.BAD_REQUEST, "MESSAGE_002", "보낼 수 없는 회원입니다."),
+    MESSAGE_RECEIVER_BLOCKED(HttpStatus.BAD_REQUEST, "MESSAGE_003", "차단한 회원에게는 보낼 수 없습니다."),
+    MESSAGE_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "MESSAGE_004", "자기 자신에게는 쪽지를 보낼 수 없습니다."),
+    MESSAGE_MARKET_RECEIVER_MISMATCH(
+            HttpStatus.BAD_REQUEST, "MESSAGE_005", "판매글 작성자에게만 쪽지를 보낼 수 있습니다."),
+    MESSAGE_INVALID_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST, "MESSAGE_006", "쪽지 페이지 크기는 1 이상 50 이하이어야 합니다."),
+    MEMBER_BLOCK_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "BLOCK_001", "자기 자신은 차단할 수 없습니다."),
     INVALID_CARPOOL_SCHEDULE(HttpStatus.BAD_REQUEST, "CARPOOL_001", "카풀 출발·복귀 일정을 확인해 주세요."),
     INVALID_CARPOOL_VALUE(HttpStatus.BAD_REQUEST, "CARPOOL_002", "카풀 인원·연비·거리·통행료 값을 확인해 주세요."),
     CARPOOL_DETAIL_REQUIRED(HttpStatus.BAD_REQUEST, "CARPOOL_003", "카풀 상세 정보가 필요합니다."),
