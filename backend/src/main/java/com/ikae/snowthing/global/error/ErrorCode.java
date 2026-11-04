@@ -79,6 +79,9 @@ public enum ErrorCode {
     INVALID_COMMENT_PARENT(HttpStatus.BAD_REQUEST, "COMMENT_003", "동일한 게시글의 댓글에만 대댓글을 달 수 있습니다."),
     COMMENT_REPLY_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "COMMENT_004", "루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다."),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),
+    NOTIFICATION_LOGIN_REQUIRED(
+            HttpStatus.UNAUTHORIZED, "NOTIFICATION_002", "로그인 후 알림을 확인할 수 있습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "COMMON_002", "페이지 크기는 1 이상 100 이하이어야 합니다."),
     CONTENT_WRITE_LIMIT(
@@ -209,6 +212,14 @@ public enum ErrorCode {
             HttpStatus.TOO_MANY_REQUESTS,
             "DRAFT_012",
             "검토 대기 초안이 너무 많습니다. 기존 초안을 처리한 뒤 다시 저장해 주세요."),
+
+    // 작성 API Idempotency-Key (032)
+    IDEMPOTENCY_KEY_INVALID(
+            HttpStatus.BAD_REQUEST, "IDEMPOTENCY_001", "Idempotency-Key 헤더는 UUID 형식이어야 합니다."),
+    IDEMPOTENCY_KEY_REUSED(
+            HttpStatus.CONFLICT,
+            "IDEMPOTENCY_002",
+            "같은 요청 키로 다른 내용이 이미 등록됐습니다. 새로고침 후 다시 작성해 주세요."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

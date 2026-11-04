@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +16,8 @@ import com.ikae.snowthing.domain.market.entity.ProductCondition;
 import com.ikae.snowthing.domain.market.entity.TradeStatus;
 import com.ikae.snowthing.domain.market.service.MarketListingService;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
+import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
+import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -36,6 +37,7 @@ public class MarketListingController {
     private final ClientIpResolver clientIpResolver;
     private final ViewCountCookieManager viewCountCookieManager;
     private final ContentWriteRateLimiter contentWriteRateLimiter;
+    private final IdempotentCreateHandler idempotentCreateHandler;
 
     @GetMapping("/preview")
     public ResponseEntity<MarketPreviewResponse> getPreview() {
@@ -58,15 +60,25 @@ public class MarketListingController {
     }
 
     @PostMapping
-    public ResponseEntity<MarketListingCreateResponse> create(
+    public ResponseEntity<Object> create(
             @Valid @RequestBody MarketListingCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = IdempotentCreateHandler.HEADER, required = false)
+                    String idempotencyKey,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
-        contentWriteRateLimiter.check(
-                userDetails, clientIp, ContentWriteRateLimiter.Action.MARKET_LISTING);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(marketListingService.create(request, userDetails, clientIp));
+        return idempotentCreateHandler.create(
+                IdempotencyTarget.MARKET_LISTING,
+                idempotencyKey,
+                userDetails,
+                clientIp,
+                request,
+                () ->
+                        contentWriteRateLimiter.check(
+                                userDetails,
+                                clientIp,
+                                ContentWriteRateLimiter.Action.MARKET_LISTING),
+                () -> marketListingService.create(request, userDetails, clientIp));
     }
 
     @GetMapping("/{publicId}")

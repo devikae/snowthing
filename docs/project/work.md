@@ -29,6 +29,64 @@
   - 브라우저로 화면을 직접 확인하지는 않았다.
 - 남은 항목: 034 운영 적용과 배포(사용자 확인 후), 브라우저 화면 확인.
 - 후속: 알림 도메인이 생기면 배지 조회 이전, 쪽지 신고, 같이타요와 카풀에서 차단 재사용, 양쪽 삭제 행 정리 정책.
+
+## 댓글, 답글, 문의 답변 사용자 알림 (IKA-22, 2026-11-05)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 033 운영 적용과 배포는 하지 않았다(머지하면 배포 파이프라인이 적용한다).
+- 계획: 댓글 저장 시 `CommentCreatedEvent`를 발행하고, 커밋 뒤 리스너가 새 트랜잭션에서 받는 사람을 계산해 `notification`에 저장한다. 알림 API 4개, 90일 삭제 스케줄러, 헤더 종 아이콘과 `/notifications` 페이지. 설계 `docs/conception/022_notification/01_design.md`.
+- 완료
+  - 백엔드: `CommentCommandService`에 이벤트 발행 한 줄. `NotificationEventListener`(AFTER_COMMIT, 실패는 `log.warn`), `NotificationWriter`(REQUIRES_NEW), 받는 사람 규칙 `NotificationRecipients`(우선순위 INQUIRY_ANSWER, COMMENT_REPLY, POST_COMMENT, 본인과 비회원 제외), 탈퇴 회원 제외.
+  - API: `GET /api/v1/notifications`(ID 내림차순 커서, `unreadOnly`, size 최대 50), `GET /unread-count`, `PUT /{id}/read`(남의 알림 404), `PUT /read-all`. 비로그인 401, 봇 위임 토큰과 API 토큰도 401.
+  - `NotificationCleanupScheduler`: 매일 04:00 KST, 90일 지난 알림을 1,000건씩 최대 200번 지운다.
+  - `033_migration_notification.sql`: notification 테이블, `idx_notification_receiver_read_id (receiver_id, is_read, notification_id)`, receiver FK.
+  - 프론트: `NotificationBell`(배지 9+, 드롭다운 최근 10개, 모두 읽음, 전체 보기), `/notifications`(전체, 안 읽음 탭, 더 보기), 글과 장터 상세 댓글 영역에 `id="comments"`.
+- 결정
+  - 마이그레이션 번호 032 → 033: IKA-21이 032, IKA-23이 034를 쓴다(감독 결정).
+  - `post_category_code` 컬럼 추가(설계에 없던 변경): 중고장터 글은 `/posts` 상세가 404라 `/market/{publicId}`로 보내야 한다. 다른 선택지는 목록 조회 때 post JOIN(설계의 JOIN 없는 목록 원칙과 충돌), 프론트에서 실패 후 재시도(요청 두 번). 응답에 `postCategoryCode`가 추가된다.
+  - REQUIRES_NEW를 리스너 메서드가 아니라 `NotificationWriter`에 뒀다: 리스너의 try/catch가 새 트랜잭션의 커밋 실패까지 잡아 경고 로그로 남긴다. 동작(커밋 후, 새 트랜잭션)은 설계와 같다.
+  - 익명 표시: 회원 익명 댓글과 비회원 댓글 모두 "익명"으로 저장한다. 비회원 댓글의 IP 마스킹 이름도 알림에는 넣지 않는다.
+  - 답글의 부모는 저장된 댓글의 부모(루트 댓글)다. 답글은 루트 아래로 평탄화되고, 화면은 루트 댓글에만 답글 버튼이 있어 같은 결과다. API로 답글에 답글을 달면 루트 작성자가 알림을 받는다.
+  - 알림 API는 로그인 세션 회원만: 라이브톡 봇 위임 토큰과 API 토큰이 남의 알림 상태를 바꾸지 않게 한다(IKA-20의 문의 규칙과 같은 판단).
+  - 전체 목록은 filesort를 감수하고 `(receiver_id, notification_id)` 인덱스를 추가하지 않았다: 회원당 200건에서 실측 0.36ms(설계 예상과 같음).
+  - 보관 기간 삭제는 `DELETE ... ORDER BY notification_id LIMIT 1000`: 오래된 행이 PK 앞쪽이라 created_at 인덱스 없이 앞에서 읽다 멈춘다. 지울 행이 없는 날은 PK 전체를 한 번 읽는다(90일 보관이라 작음).
+  - 알림 FK로 회원 행 삭제가 막히므로 회원을 지우는 테스트 3개(`AiMemberIntegrationTest`, `AnswerDraftFlowIntegrationTest`, `SearchOutboxIntegrationTest`)의 정리 순서에 알림 삭제를 넣었다. 운영은 회원을 지우지 않는다.
+- 검증
+  - EXPLAIN(로컬 MySQL 8, 회원 500명 x 알림 200건 = 10만 건): 배지 개수 `ref (const,const) Using index`, 안 읽은 목록 `ref Backward index scan`(filesort 없음), 안 읽은 커서 `range Backward index scan`, 전체 목록 `ref Using filesort`(200행 정렬, 0.36ms), 읽음 조회 `const PRIMARY`, 모두 읽음 `range` 복합 인덱스. 033은 두 번 적용해도 오류 없음.
+  - 백엔드 `spotlessCheck test`: 717건 통과(실패 0, 기존 skip 1). 워크트리에서는 Spotless의 `ratchetFrom`이 Git 저장소를 못 찾아, 비교 기준을 끄는 init 스크립트로 전체 파일을 검사했다(더 넓은 검사). 중간 실행 두 번은 다른 작업의 병렬 테스트로 MySQL "Too many connections"와 공유 스키마 충돌(`MarketThumbnailIntegrationTest`, 단독 실행 통과)이 나서 다시 돌렸다. 알림 관련 신규 테스트 24건(받는 사람 규칙, 롤백, 저장 실패, API, 삭제).
+  - 프론트 `npm run lint` 오류 0, `npm run build` 성공(`/notifications` 정적 페이지 생성).
+  - 브라우저로 화면을 직접 확인하지는 않았다.
+- 리뷰: PR #67. CodeRabbit은 무료 리뷰 한도 초과(Review rate limited)로 리뷰하지 못해 AI가 직접 리뷰했다. 수정 0건, 보류 3건(동기 리스너의 커넥션 2개 사용, 지울 행이 없는 날의 PK 전체 읽기, 전체 목록 filesort). 이유는 PR 댓글에 있다.
+- 남은 항목: 머지(감독이 21, 22, 23 순서로), 033 운영 적용과 배포, 브라우저 확인.
+- 후속: 해당 댓글 위치로 바로 스크롤, 추천 알림, 알림 끄기, 실시간 푸시.
+
+## 작성 API Idempotency-Key 멱등 처리 (IKA-21, 2026-11-05)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 032 운영 적용과 배포는 하지 않았다.
+- 계획: 게시글, 댓글(대댓글 포함), 설질 제보, 카풀, 마켓 작성 API가 `Idempotency-Key`(UUID)로 같은 요청을 한 번만 처리하고 재전송에는 처음 201 응답을 그대로 돌려준다. 설계 `docs/conception/022_write_idempotency/01_design.md`, API 명세 `docs/conception/sprint01/05.api-spec.md` 7절.
+- 완료
+  - DB: `032_migration_idempotency_record.sql`. 공통 표 `idempotency_record`, UNIQUE(author_key, target_type, idempotency_key), created_at 인덱스, 대상 종류 CHECK.
+  - 백엔드: `global/idempotency` 패키지. `IdempotentCreateHandler`가 컨트롤러에서 서비스 호출을 감싼다. 커밋된 기록 조회 → 쓰기 제한 → 한 트랜잭션에서 기록 insert, 작성, 응답 JSON 저장. 중복 키 충돌이면 먼저 커밋된 응답을 돌려준다. 같은 키 다른 내용 409(`IDEMPOTENCY_002`), 키 형식 오류 400(`IDEMPOTENCY_001`).
+  - 백엔드: `IdempotencyRecordCleanupScheduler` 매시 35분, 24시간 지난 기록을 1,000건씩 삭제.
+  - 프론트: `lib/idempotencyKey.ts`의 `useIdempotencyKey()`. 게시글 작성, 댓글(게시글 상세, 장터 상세, 공용 댓글 컴포넌트), 설질 제보, 카풀 등록(수정 제외), 마켓 등록에 적용.
+- 결정
+  - 기록을 글과 같은 트랜잭션에 묶는 위치는 컨트롤러의 `TransactionTemplate`으로 정했다. 서비스의 `@Transactional`(REQUIRED)이 합류한다. 다른 선택지는 다섯 쓰기 서비스 안에 기록 insert를 넣는 것인데, 병렬 작업 중인 댓글 작성 서비스(IKA-22)와 충돌하고 파일 수정이 많다. 대가: 헤더가 있으면 익명 댓글 bcrypt와 카풀 외부 경로 조회 동안 커넥션을 쥔다(카풀은 시간당 10건 제한).
+  - 기록을 글 저장 전에 insert한다: 같은 키의 두 번째 요청이 UNIQUE 잠금에서 기다리다 충돌해 글 저장이나 외부 호출을 하지 않는다. 글 저장 뒤 insert도 원자성은 같지만 두 번째 요청이 일을 다 하고 롤백한다.
+  - 재응답은 처음 응답 JSON을 저장해 바이트 그대로 보낸다. 리소스 ID로 다시 조회하는 안은 도메인마다 재조회 로직이 필요하고, 그 사이 수정되면 다른 응답이 나간다. 대가: 행 크기 증가(24시간 보관).
+  - 재전송 확인을 쓰기 제한보다 먼저 한다: 응답이 사라져 바로 다시 누른 사용자가 429 대신 처음 응답을 받는다. 쓰기 제한을 트랜잭션 안으로 넣는 안은 `REQUIRES_NEW`가 커넥션을 하나 더 잡아 풀 교착 위험이 있어 뺐다. 한계: 같은 키가 동시에 오면 두 번째가 429를 받을 수 있다(글은 1건).
+  - 응답 저장은 JPQL UPDATE로 한다: 댓글 작성의 `clearAutomatically` 벌크 쿼리가 영속성 컨텍스트를 비워 변경 감지가 동작하지 않았다(대댓글 재전송 테스트에서 발견).
+  - 비로그인 작성자 키는 IP의 HMAC-SHA256 앞 32자, 요청 해시도 HMAC-SHA256. IP 원문은 저장하지 않는다. 비밀값은 `snowthing.idempotency.hmac-secret`, 없으면 운영에 이미 있는 이메일 인증 비밀값을 쓴다(CodeRabbit 지적 반영: 비밀값 없는 해시는 IPv4 전체 대입으로 IP를 되찾거나 요청 해시로 익명 비밀번호 후보를 맞춰 볼 수 있다).
+  - 프론트 키는 본문이 같으면 유지, 바뀌면 새로 만든다: 실패 후 내용을 고친 글이 409에 걸리지 않게 한다.
+  - 설계 폴더 번호 022를 썼다. 병렬 작업 중인 IKA-22, IKA-23은 다음 번호를 써야 한다.
+  - 컨트롤러 작성 메서드 반환형이 `ResponseEntity<Object>`로 바뀌었다(재응답은 저장된 JSON 바이트). JSON 모양은 같다.
+- 발견된 이슈
+  - Spotless의 `ratchetFrom`이 git worktree를 인식하지 못해(JGit) 별도 복제본에서 포맷과 테스트를 돌렸다.
+  - 댓글 응답의 `@JsonSerialize(ToStringSerializer)`가 Jackson 2 어노테이션이라 Jackson 3 MVC에서 무시되고 `commentId`가 숫자로 나간다(기존 동작, 이번 범위 밖).
+- 검증
+  - `IdempotentCreateIntegrationTest` 13건 통과: 재전송 1건 저장과 같은 본문, 대소문자 키, 다른 내용 409, 형식 오류 400, 헤더 없음 기존 동작, 대상 분리, 대댓글 재전송, 다른 게시글 댓글 409, 비로그인 IP 기준, 쓰기 제한보다 재전송 우선, 실패 시 기록 롤백, 같은 키 8개 동시 전송 시 글 1건과 기록 1건, 정리 스케줄러.
+  - 백엔드 `./gradlew spotlessCheck test`: 706건 통과(실패 0, 기존 skip 1). 로컬 MySQL 8의 전용 스키마 `snowthing_ika21_test`.
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 032 마이그레이션을 운영 DB에 적용하지 않았다. 브라우저로 화면을 직접 확인하지 않았다.
+- 남은 항목: PR 리뷰 반영, 032 운영 적용과 배포(사용자 확인 후).
 - 사용자 결정 필요: 없음.
 
 ## 헤더 로고 눈꽃 마크 (2026-11-05)

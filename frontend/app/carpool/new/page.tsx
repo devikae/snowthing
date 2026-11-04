@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { PageHeading } from "../../components/PageHeading";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
 import KakaoMapPicker, { MapPlace } from "../KakaoMapPicker";
 
@@ -156,6 +157,7 @@ export default function NewCarpoolPage() {
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const isSubmittingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
   const todayIsoDate = new Date().toISOString().split("T")[0];
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
@@ -470,14 +472,7 @@ export default function NewCarpoolPage() {
     setWorking(true);
     setError("");
     try {
-      const response = await csrfFetch(
-        editPublicId
-          ? API_ENDPOINTS.carpool.update(editPublicId)
-          : API_ENDPOINTS.carpool.create,
-        {
-        method: editPublicId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const body = JSON.stringify({
           ...form,
           destinationResortId: Number(form.destinationResortId),
           passengerCapacity: Number(form.passengerCapacity),
@@ -514,8 +509,16 @@ export default function NewCarpoolPage() {
                   form.returnMinute,
                 )
               : null,
-        }),
       });
+      // 새 모집글만 멱등 키를 보낸다. 수정(PUT)은 대상이 정해져 있어 다시 보내도 결과가 같다.
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (!editPublicId) headers[IDEMPOTENCY_HEADER] = idempotencyKey.keyFor(body);
+      const response = await csrfFetch(
+        editPublicId
+          ? API_ENDPOINTS.carpool.update(editPublicId)
+          : API_ENDPOINTS.carpool.create,
+        { method: editPublicId ? "PUT" : "POST", headers, body },
+      );
       if (!response.ok) {
         const apiError = await readApiError(
           response,
@@ -533,6 +536,7 @@ export default function NewCarpoolPage() {
         }
         throw new Error(apiError.message);
       }
+      idempotencyKey.reset();
       const data = await response.json();
       router.push(`/carpool/${data.publicId}`);
     } catch (submitError) {

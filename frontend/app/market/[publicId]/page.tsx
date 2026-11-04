@@ -11,6 +11,7 @@ import { AuthorMenu } from "../../components/AuthorMenu";
 import { MarketMessageButton } from "../../components/MarketMessageButton";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -94,6 +95,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const isSubmittingCommentRef = useRef(false);
+  const commentIdempotencyKey = useIdempotencyKey();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
@@ -159,10 +161,11 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
     isSubmittingCommentRef.current = true;
     setSubmitting(true);
     try {
+      const body = JSON.stringify({ parentId, content, isAnonymous: false, anonymousPassword: null });
       const response = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId, content, isAnonymous: false, anonymousPassword: null }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: commentIdempotencyKey.keyFor(body) },
+        body,
       });
       if (response.status === 401) {
         redirectToLogin();
@@ -172,6 +175,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         const data = await response.json().catch(() => null);
         throw new Error(data?.message || "댓글을 등록하지 못했습니다.");
       }
+      commentIdempotencyKey.reset();
       if (parentId) {
         setReply("");
         setReplyParentId(null);
@@ -253,7 +257,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
 
         <section className="market-description"><h2>상품 설명</h2><ToastViewer content={listing.content} /></section>
 
-        <section className="market-comments post-comments-card unified-comments-card">
+        <section id="comments" className="market-comments post-comments-card unified-comments-card">
           <header><h2>댓글 <span>{listing.commentCount}</span></h2></header>
           <div className="post-comment-compose"><textarea className="post-comment-textarea" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="판매자에게 궁금한 내용을 남겨보세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !comment.trim()} onClick={() => void createComment(null)}>댓글 등록</button></div></div>
           <div className="market-comment-list post-comment-list">

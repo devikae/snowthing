@@ -100,6 +100,7 @@ class AiMemberIntegrationTest {
     @AfterEach
     void tearDown() {
         for (Long memberId : List.of(aiMember.memberId(), userId)) {
+            jdbc.update("DELETE FROM notification WHERE receiver_id = ?", memberId);
             jdbc.update("DELETE FROM comment WHERE member_id = ?", memberId);
             jdbc.update(
                     "DELETE FROM comment WHERE post_id IN (SELECT post_id FROM post WHERE member_id = ?)",

@@ -1,17 +1,19 @@
 package com.ikae.snowthing.domain.comment.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.service.CommentService;
+import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
+import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -26,19 +28,27 @@ public class CommentController {
     private final CommentService commentService;
     private final ClientIpResolver clientIpResolver;
     private final ContentWriteRateLimiter contentWriteRateLimiter;
+    private final IdempotentCreateHandler idempotentCreateHandler;
 
     @PostMapping("/posts/{publicId}/comments")
-    public ResponseEntity<CommentResponse> createComment(
+    public ResponseEntity<Object> createComment(
             @PathVariable String publicId,
             @Valid @RequestBody CommentCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = IdempotentCreateHandler.HEADER, required = false)
+                    String idempotencyKey,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
-        contentWriteRateLimiter.check(
-                userDetails, clientIp, ContentWriteRateLimiter.Action.COMMENT);
-        CommentResponse response =
-                commentService.createComment(publicId, request, userDetails, clientIp);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return idempotentCreateHandler.create(
+                IdempotencyTarget.COMMENT,
+                idempotencyKey,
+                userDetails,
+                clientIp,
+                List.of(publicId, request),
+                () ->
+                        contentWriteRateLimiter.check(
+                                userDetails, clientIp, ContentWriteRateLimiter.Action.COMMENT),
+                () -> commentService.createComment(publicId, request, userDetails, clientIp));
     }
 
     @GetMapping("/posts/{publicId}/comments")

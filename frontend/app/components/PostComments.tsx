@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { AuthorMenu } from "./AuthorMenu";
 
@@ -69,6 +70,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   const [working, setWorking] = useState(false);
   // state는 다음 렌더에 반영되므로 연타는 ref로 동기 차단한다.
   const isCreatingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -110,15 +112,17 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     setWorking(true);
     setError("");
     try {
+      const body = JSON.stringify({ parentId, content: value, isAnonymous: false, anonymousPassword: null });
       const response = await csrfFetch(API_ENDPOINTS.posts.comments(postPublicId), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId, content: value, isAnonymous: false, anonymousPassword: null }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: idempotencyKey.keyFor(body) },
+        body,
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || "댓글을 등록하지 못했습니다.");
       }
+      idempotencyKey.reset();
       const created: CommentItem = await response.json();
       if (parentId) {
         setComments((current) => current.map((root) => root.commentId === parentId
