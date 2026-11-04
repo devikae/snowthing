@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
+import { BlockedMembersSection } from "../components/BlockedMembersSection";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import "./profile.css";
@@ -180,6 +181,7 @@ export default function ProfilePage() {
         <fieldset className="profile-preferences"><legend>라이딩 스타일</legend><p className="profile-saved-preferences">저장된 스타일: {profile.ridingStyles.map(x => x.name).join(" · ") || "선택한 스타일이 없습니다."}</p><div>{styles.map(x => <label key={x.id}><input type="checkbox" checked={form.ridingStyleIds.includes(x.id)} onChange={() => toggle("ridingStyleIds", x.id)} />{x.name}</label>)}</div></fieldset>
         <div className="profile-actions"><button className="profile-button-cancel" type="button" onClick={() => { if (!profileDirty || window.confirm("수정한 정보를 취소할까요?")) { setForm(toForm(profile)); setCheckedNickname(null); setNicknameMessage(""); } }}>수정 취소</button><button type="submit" className="profile-button-primary" disabled={!profileDirty || (form.nickname !== profile.nickname && checkedNickname !== form.nickname)}>{busy === "save" ? "저장 중" : "정보 저장"}</button></div>
       </div></fieldset></form>
+      <BlockedMembersSection />
 
     </>}
   </main><Footer /></div>;

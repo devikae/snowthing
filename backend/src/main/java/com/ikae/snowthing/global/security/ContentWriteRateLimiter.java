@@ -22,7 +22,8 @@ public class ContentWriteRateLimiter {
         COMMENT(Duration.ofSeconds(3), 60),
         RESORT_REPORT(Duration.ofSeconds(10), 10),
         CARPOOL(Duration.ofSeconds(10), 10),
-        MARKET_LISTING(Duration.ofSeconds(10), 10);
+        MARKET_LISTING(Duration.ofSeconds(10), 10),
+        DIRECT_MESSAGE(Duration.ofSeconds(5), 30);
 
         // 짧은 간격마다 1건, 1시간마다 hourlyLimit건까지 허용한다. 서비스 검증에서 실패한 요청도 횟수를 쓰므로
         // 간격은 연타만 막을 만큼 짧게 둔다(오류를 고쳐 바로 다시 보내는 사용자를 막지 않도록).

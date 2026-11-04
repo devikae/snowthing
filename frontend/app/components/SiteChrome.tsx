@@ -7,6 +7,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 import { RotatingWordmark } from "./RotatingWordmark";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
+import { MessageNavLink } from "./MessageNavLink";
 
 type ThemeSetting = "light" | "dark";
 
@@ -221,6 +222,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               </button>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
             </form>
+            {!loading && user && <MessageNavLink />}
             {!loading && (user ? (
               <div className="header-profile-wrap">
                 <details ref={profileMenuRef} className="header-profile-menu">

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
+import { AuthorMenu } from "./AuthorMenu";
 
 interface WriterInfo {
   publicId: string | null;
@@ -206,7 +207,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         {reply && <span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
-          <header><strong>{item.writer?.nickname || "탈퇴한 회원"}</strong><time>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></header>
+          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></header>
           {editingId === item.commentId ? (
             <div className="comment-inline-editor">
               <textarea maxLength={1000} value={editingContent} onChange={(event) => setEditingContent(event.target.value)} />
