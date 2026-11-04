@@ -1,6 +1,6 @@
 ## 회원 전용 1:1 문의 게시판 (IKA-20, 2026-11-04)
 
-- 상태: 구현과 로컬 검증 완료, PR 전. 031 운영 적용과 배포는 하지 않았다.
+- 상태: 구현과 로컬 검증 완료, PR 생성. 031 운영 적용과 배포는 하지 않았다.
 - 계획: 게시글에 `INQUIRY` 카테고리를 추가하고 게시글과 댓글을 재사용한다. 회원은 본인 문의만, 관리자는 전체를 보고 댓글로 답변한다. 설계 `docs/conception/021_inquiry_board/01_design.md`.
 - 완료
   - 백엔드: 비공개 카테고리 기준 `PostCategoryCodes.HIDDEN_FROM_PUBLIC`({MARKET, INQUIRY})과 접근 규칙 `InquiryAccess`(작성자와 관리자 외 `POST_NOT_FOUND`). 게시글 목록과 스크롤, `PostRepository` JPQL, `SearchVisibilitySql`이 같은 기준을 쓴다.
@@ -17,7 +17,7 @@
   - 브랜치는 origin/main에서 땄다. 머지 전인 IKA-19(작성 연타 제한)가 `PostController`를 바꾸므로 나중에 머지 충돌이 날 수 있다.
 - 검증
   - 백엔드 `InquiryBoardTest` 통과(작성, 목록 범위, 공개 목록 제외, 답변 상태, 상세와 삭제 404, 카테고리 전환, 댓글과 대댓글 404, 익명 댓글, 반응, 근거 검색 원문과 AI 멤버 조회 제외).
-  - 백엔드 `./gradlew spotlessCheck test`: 658건 통과(실패 0, 기존 skip 1). `InquiryBoardTest` 15건(봇 위임 차단 포함).
+  - 백엔드 `./gradlew spotlessCheck test`: 658건 통과(실패 0, 기존 skip 1). origin/main(IKA-17) 병합 후 다시 실행해 688건 통과(실패 0, 기존 skip 1), 프론트 lint와 build도 다시 통과. `InquiryBoardTest` 15건(봇 위임 차단 포함).
   - 프론트 `npm run lint`, `npm run build` 통과.
   - 브라우저로 화면을 직접 확인하지는 않았다.
 - 남은 항목: PR, 031 운영 적용과 배포(사용자 확인 후), 브라우저 화면 확인.
