@@ -1,3 +1,18 @@
+## 파비콘 추가 (2026-11-05)
+
+- 상태: 파일 생성과 로컬 빌드 검증 완료, `fix/main-ui-polish` 브랜치에 커밋 전. 티켓 없이 진행.
+- 완료
+  - `frontend/app/icon.svg`: 검정 둥근 타일(#111111) 안에 속이 찬 둥근 흰 눈꽃(시안 R3). 팔 6개, 팔마다 V자 가지 한 쌍, 선 끝과 꺾임 모두 둥글게.
+  - `frontend/app/favicon.ico`: 16, 32, 48px PNG 3장을 담은 ICO. SVG 아이콘을 못 읽는 브라우저와 검색엔진용.
+  - `frontend/app/apple-icon.png`: 180px, iOS 홈 화면용.
+- 결정
+  - Next.js App Router 파일 규칙(`app/icon.*`, `app/favicon.ico`, `app/apple-icon.*`)을 써서 `layout.tsx` 메타데이터는 고치지 않았다. Next가 `<link rel="icon">`과 `apple-touch-icon`을 자동으로 넣는다.
+  - 파비콘은 타일형으로 했다: 검정 선만 쓰면 다크 모드 브라우저 탭에서 안 보인다.
+  - apple-icon은 모서리를 둥글리지 않은 꽉 찬 사각형이다: iOS가 직접 모서리를 깎는다.
+  - 시안 과정에서 마스코트(눈 달린 눈꽃), 외곽선 한 줄 눈꽃을 거쳤고 사용자가 캐릭터 없이 검정 타일과 속이 찬 둥근 눈꽃으로 결정했다.
+- 검증: `npm run lint`, `npm run build` 통과. 빌드 결과 HTML에 `favicon.ico`(48x48), `icon.svg`(any), `apple-touch-icon`(180x180) 링크 3개가 들어간 것을 확인. 180px PNG를 직접 열어 모양 확인. 운영 배포 후 실제 탭 표시는 확인하지 않았다.
+- 남은 항목: 헤더 로고와 D-DAY 바 아이콘에 같은 눈꽃을 쓸지 결정, 커밋과 배포.
+
 ## 메인 화면 UI 개선: 헤더 닉네임, 작성자 사진 확대, 글쓰기 버튼, 라이브톡 도움말 제거 (2026-11-04)
 
 - 상태: 구현과 로컬 검증 완료, `fix/main-ui-polish` 브랜치 커밋. 티켓 없이 진행(사용자 결정). PR 머지와 배포는 하지 않았다.
