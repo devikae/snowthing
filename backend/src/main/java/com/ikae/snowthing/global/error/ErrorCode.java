@@ -78,6 +78,10 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "COMMENT_004", "루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "COMMON_002", "페이지 크기는 1 이상 100 이하이어야 합니다."),
+    CONTENT_WRITE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "COMMON_003", "작성 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    CONTENT_WRITE_LIMIT_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE, "COMMON_004", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     MARKET_LISTING_NOT_FOUND(HttpStatus.NOT_FOUND, "MARKET_001", "존재하지 않거나 조회할 수 없는 중고장터 판매글입니다."),
     MARKET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "MARKET_002", "존재하지 않는 중고장터 상품 분류입니다."),
     MARKET_CATEGORY_INACTIVE(HttpStatus.BAD_REQUEST, "MARKET_003", "현재 선택할 수 없는 중고장터 상품 분류입니다."),
