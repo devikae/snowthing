@@ -306,7 +306,11 @@ function PostListContent() {
               ) : posts.length === 0 ? (
                 <div className="board-state">
                   <span className="material-symbols-outlined">edit_note</span>
-                  <strong>{isInquiry ? "남긴 문의가 없습니다." : "등록된 게시글이 없습니다."}</strong>
+                  <strong>
+                    {isInquiry
+                      ? isAdmin ? "들어온 문의가 없습니다." : "남긴 문의가 없습니다."
+                      : "등록된 게시글이 없습니다."}
+                  </strong>
                   {(currentCategory !== "NOTICE" || isAdmin) && (
                     <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}>
                       {isInquiry ? "문의하기" : "첫 글 작성하기"}
