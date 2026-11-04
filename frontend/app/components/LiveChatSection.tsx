@@ -262,16 +262,16 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           <small className="section-eyebrow">LIVE STREAM</small>
           <h2>라이브톡</h2>
         </div>
-        <button type="button" className="live-chat-help-toggle" aria-expanded={localHelp!==null} aria-controls="live-chat-local-help" onClick={()=>setLocalHelp(localHelp?null:"help")}>도움말</button>
       </div>
 
       {localHelp&&<aside id="live-chat-local-help" className="live-chat-local-help" aria-label="라이브톡 도구 안내">
+        <button type="button" className="live-chat-local-help-close" aria-label="안내 닫기" onClick={()=>setLocalHelp(null)}><span className="material-symbols-outlined" aria-hidden="true">close</span></button>
         <p>이 안내는 나에게만 보여요. 계산값은 각 도구에서 입력해 주세요.</p>
         <nav aria-label="라이더 도구 바로가기">
           {(localHelp==="help"||localHelp==="season-pass")&&<Link href="/tools/season-pass">시즌권 본전 계산 <small>/시즌권</small></Link>}
           {(localHelp==="help"||localHelp==="deck-size")&&<Link href="/tools/deck-size">데크 사이즈 참고 <small>/데크</small></Link>}
         </nav>
-        <small>/도움말로 다시 열 수 있어요. 일반 대화와 봇 질문은 공개되므로 연락처·개인정보를 적지 마세요.</small>
+        <small>일반 대화와 봇 질문은 공개되므로 연락처·개인정보를 적지 마세요.</small>
       </aside>}
 
       {/* 실시간 말풍선 피드 영역 */}
