@@ -3,10 +3,13 @@ package com.ikae.snowthing.domain.resortweather.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -14,7 +17,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,8 +50,9 @@ class ResortWeatherServiceTest {
     void setUp() {
         resortRepository = mock(ResortRepository.class);
         Resort active = mock(Resort.class);
-        when(active.isActive()).thenReturn(true);
-        when(resortRepository.findByCode(RESORT)).thenReturn(Optional.of(active));
+        when(active.getCode()).thenReturn(RESORT);
+        when(resortRepository.findAllByActiveTrueOrderByDisplayOrderAscIdAsc())
+                .thenReturn(List.of(active));
         registry = mock(ResortWeatherSourceRegistry.class);
         when(registry.sourcesFor(RESORT)).thenReturn(List.of(official, kma));
         service =
@@ -166,19 +169,38 @@ class ResortWeatherServiceTest {
     }
 
     @Test
-    @DisplayName("활성 리조트가 아니면 RESORT_NOT_FOUND")
-    void inactiveResortIsNotFound() {
-        Resort inactive = mock(Resort.class);
-        when(resortRepository.findByCode("CLOSED")).thenReturn(Optional.of(inactive));
+    @DisplayName("파서가 예상 밖 예외를 던져도 기상청으로 대체하고, 모두 실패하면 5분 동안 다시 수집하지 않는다")
+    void unexpectedParserExceptionFallsBackAndBacksOff() {
+        official.willThrow(new DateTimeException("24:00"));
+        kma.willReturn("-1.0");
 
+        assertThat(service.getWeather(RESORT).orElseThrow().source())
+                .isEqualTo(WeatherSourceType.KMA);
+
+        clock.advance(Duration.ofMinutes(31));
+        kma.willThrow(new IllegalStateException("broken"));
+        assertThat(service.getWeather(RESORT)).isEmpty();
+        clock.advance(Duration.ofMinutes(4));
+        assertThat(service.getWeather(RESORT)).isEmpty();
+        assertThat(official.calls).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("활성 리조트가 아니면 RESORT_NOT_FOUND이고, 없는 코드가 계속 와도 DB는 한 번만 조회한다")
+    void inactiveResortIsNotFoundWithoutRepeatedLookups() {
         assertThatThrownBy(() -> service.getWeather("CLOSED")).isInstanceOf(CustomException.class);
         assertThatThrownBy(() -> service.getWeather("UNKNOWN")).isInstanceOf(CustomException.class);
+        assertThatThrownBy(() -> service.getWeather("RANDOM_1"))
+                .isInstanceOf(CustomException.class);
+
+        verify(resortRepository, times(1)).findAllByActiveTrueOrderByDisplayOrderAscIdAsc();
     }
 
     private static final class FakeSource implements ResortWeatherSource {
 
         private final WeatherSourceType type;
         private final Deque<String> results = new ArrayDeque<>();
+        private RuntimeException failure;
         private int calls;
 
         private FakeSource(WeatherSourceType type) {
@@ -187,11 +209,17 @@ class ResortWeatherServiceTest {
 
         void willReturn(String temperature) {
             results.clear();
+            failure = null;
             results.push(temperature);
         }
 
         void willFail() {
+            willThrow(new WeatherFetchException("fake failure"));
+        }
+
+        void willThrow(RuntimeException exception) {
             results.clear();
+            failure = exception;
         }
 
         @Override
@@ -204,7 +232,7 @@ class ResortWeatherServiceTest {
             calls++;
             String temperature = results.peek();
             if (temperature == null) {
-                throw new WeatherFetchException("fake failure");
+                throw failure;
             }
             return new WeatherReading(
                     new BigDecimal(temperature), null, now.atOffset(ZoneOffset.ofHours(9)), type);

@@ -5,6 +5,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -43,15 +45,16 @@ public class ResortWeatherService {
     static final Duration FRESH_FOR = Duration.ofMinutes(8);
     static final Duration USABLE_FOR = Duration.ofMinutes(30);
     static final Duration FAILURE_BACKOFF = Duration.ofMinutes(5);
-    private static final Duration RESORT_LOOKUP_CACHE = Duration.ofHours(1);
+    private static final Duration ACTIVE_CODES_CACHE = Duration.ofMinutes(5);
+    private static final String ACTIVE_CODES_KEY = "active";
 
     private final ResortRepository resortRepository;
     private final ResortWeatherSourceRegistry registry;
     private final WeatherSnapshotStore store;
     private final WeatherRefreshCoordinator coordinator;
     private final Clock clock;
-    private final Cache<String, Boolean> activeResorts =
-            Caffeine.newBuilder().expireAfterWrite(RESORT_LOOKUP_CACHE).maximumSize(64).build();
+    private final Cache<String, Set<String>> activeResortCodes =
+            Caffeine.newBuilder().expireAfterWrite(ACTIVE_CODES_CACHE).maximumSize(1).build();
 
     @Autowired
     public ResortWeatherService(
@@ -112,13 +115,17 @@ public class ResortWeatherService {
                 WeatherSnapshot snapshot = WeatherSnapshot.success(reading, now);
                 store.put(key, snapshot);
                 return snapshot;
-            } catch (WeatherFetchException exception) {
-                // 같은 리조트는 실패 후 5분 동안 다시 수집하지 않으므로 이 로그도 그 이상 자주 찍히지 않는다.
+            } catch (RuntimeException exception) {
+                // 파서의 DateTimeException 같은 예상 밖 예외도 다음 소스로 넘겨 대체와 실패 대기가 적용되게 한다.
+                // 예상 밖 예외는 메시지 대신 종류만 남긴다. 같은 리조트는 실패 후 5분 동안 다시 수집하지 않아 로그도 그 이상
+                // 자주 찍히지 않는다.
                 log.warn(
                         "리조트 기온 수집 실패 resort={} source={} reason={}",
                         resortCode,
                         source.type(),
-                        exception.getMessage());
+                        exception instanceof WeatherFetchException
+                                ? exception.getMessage()
+                                : exception.getClass().getSimpleName());
             }
         }
         WeatherSnapshot failed = WeatherSnapshot.failure(store.get(key), now);
@@ -126,16 +133,18 @@ public class ResortWeatherService {
         return failed;
     }
 
+    /** 활성 리조트 코드 전체(십여 건)를 한 번에 캐시한다. 공개 API라 없는 코드마다 DB를 조회하지 않게 한다. */
     private void requireActiveResort(String resortCode) {
-        Boolean active =
-                activeResorts.get(
-                        resortCode,
-                        code ->
+        Set<String> codes =
+                activeResortCodes.get(
+                        ACTIVE_CODES_KEY,
+                        key ->
                                 resortRepository
-                                        .findByCode(code)
-                                        .map(Resort::isActive)
-                                        .orElse(false));
-        if (!Boolean.TRUE.equals(active)) {
+                                        .findAllByActiveTrueOrderByDisplayOrderAscIdAsc()
+                                        .stream()
+                                        .map(Resort::getCode)
+                                        .collect(Collectors.toUnmodifiableSet()));
+        if (!codes.contains(resortCode)) {
             throw new CustomException(ErrorCode.RESORT_NOT_FOUND);
         }
     }
