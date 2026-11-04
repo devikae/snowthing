@@ -112,7 +112,7 @@ public class SearchOutboxProcessor {
                 handleFailure(event, failure);
             }
         }
-        embeddings.refreshMissing();
+        embeddings.refreshMissing(done > 0);
         return done;
     }
 

@@ -115,13 +115,16 @@ public class SearchEmbeddingJdbcRepository {
     /**
      * 공개 범위와 평가용 조건을 통과한 구간의 현재 벡터를 모두 읽는다. 코사인 계산은 앱에서 한다(MySQL 8.0에 벡터 타입과 벡터 인덱스가 없음). 구간 수에 비례해
      * 읽으므로 수천 구간을 넘으면 다른 저장소가 필요하다(08 문서 §2).
+     *
+     * @param limit 최대 행 수. 호출자는 상한 + 1을 넘겨 상한 초과 여부를 판단한다
      */
     public List<VectorCandidate> findVisibleVectors(
             String modelId,
             int dimension,
             String categoryCode,
             LocalDateTime createdBefore,
-            String excludePostPublicId) {
+            String excludePostPublicId,
+            int limit) {
         List<Object> args = new ArrayList<>();
         args.add(modelId);
         args.add(dimension);
@@ -134,7 +137,8 @@ public class SearchEmbeddingJdbcRepository {
                         .append(VISIBLE_WHERE);
         SearchDocumentJdbcRepository.appendFilters(
                 sql, args, categoryCode, createdBefore, excludePostPublicId);
-        sql.append(" ORDER BY d.document_id");
+        sql.append(" ORDER BY d.document_id LIMIT ?");
+        args.add(limit);
         return jdbc.query(
                 sql.toString(),
                 (rs, rowNum) ->

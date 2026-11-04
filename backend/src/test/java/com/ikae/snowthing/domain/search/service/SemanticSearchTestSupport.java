@@ -144,10 +144,11 @@ abstract class SemanticSearchTestSupport {
                 .commentId();
     }
 
-    /** 제공자 실패 뒤의 쉬는 시간을 끝낸다. 다른 테스트로 상태가 넘어가지 않게 매 테스트 전에도 부른다. */
+    /** 제공자 실패 뒤의 쉬는 시간과 유휴 조회 간격을 끝낸다. 다른 테스트로 상태가 넘어가지 않게 매 테스트 전에도 부른다. */
     void resumeEmbeddingRefresh() {
         ReflectionTestUtils.setField(indexer, "pausedUntil", null);
         ReflectionTestUtils.setField(indexer, "consecutiveFailures", 0);
+        ReflectionTestUtils.setField(indexer, "nextIdleCheckAt", null);
     }
 
     void processAll() {

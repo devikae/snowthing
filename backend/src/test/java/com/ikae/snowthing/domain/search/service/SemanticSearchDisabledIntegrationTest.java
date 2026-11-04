@@ -20,7 +20,9 @@ import com.ikae.snowthing.testsupport.CountingEmbeddingProvider;
 @SpringBootTest(
         properties = {
             "snowthing.search.semantic.enabled=false",
-            "spring.datasource.hikari.maximum-pool-size=4"
+            "spring.datasource.hikari.maximum-pool-size=4",
+            // 이 컨텍스트를 닫을 때 create-drop이 공유 테스트 스키마를 지우면 캐시된 다른 컨텍스트의 테스트가 깨진다.
+            "spring.jpa.hibernate.ddl-auto=update"
         })
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)

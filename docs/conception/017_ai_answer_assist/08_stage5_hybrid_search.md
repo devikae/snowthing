@@ -56,6 +56,7 @@ MySQL 8.0에는 벡터 타입과 벡터 인덱스가 없다(01 설계 §2).
 - 하이브리드 검색 한 번이 공개 범위와 조건을 통과한 현재 벡터를 **모두** 읽어 앱에서 코사인을 계산한다. 읽는 양은 `구간 수 x 차원 x 4바이트`다. 1536차원이면 구간 하나에 약 6KB다.
 - 계산 예(측정 아님): 1,000구간이면 질의당 약 6MB, 5,000구간이면 약 30MB를 DB에서 읽는다. 대략 수천 구간을 넘으면 질의당 전송량과 GC 부담이 커져 맞지 않는다고 본다. 그 전에 (1) 인스턴스 메모리 캐시 + 해시 기반 무효화, (2) 벡터 DB 도입, (3) MySQL 엔진 업그레이드 중 하나를 다시 정한다.
 - 운영 구간 수는 재지 않았다. 재인덱싱 뒤 `SELECT COUNT(*) FROM search_document`로 확인한다.
+- 안전장치(리뷰 반영): `max-vector-scan`(기본 5,000). 벡터 조회에 `LIMIT 상한 + 1`을 걸고, 공개 범위와 조건을 통과한 벡터가 상한을 넘으면 하이브리드 검색을 409 SEARCH_002로 거절한다. 일부만 비교하면 결과가 조용히 틀어지기 때문이다. 이 오류가 나면 위 대안 중 하나를 정할 때다.
 
 ## 3. 벡터 갱신과 정합성 (outbox에 연결)
 
@@ -75,6 +76,7 @@ sequenceDiagram
 
 - 이벤트 트랜잭션 안(`SearchEmbeddingIndexer.removeOutdatedOfPost/Comment`): 게시글 이벤트면 그 글과 댓글의 벡터 중, 같은 근거 ID와 같은 해시의 문서가 없는 것을 지운다. 댓글 이벤트면 그 댓글 벡터만. 삭제, 숨김, MARKET 이동, 내용 변경이 모두 여기서 정리된다. **의미 검색이 꺼져 있어도 지운다.** 지운 원문에서 나온 파생 데이터를 남기지 않기 위해서다. DB 문장 하나이고 제공자 호출은 없다.
 - 오래된 이벤트: 처리기가 버전 비교로 문서를 건드리지 않고 끝내므로(05 문서 §4) 벡터 삭제도 부르지 않는다. 벡터도 그대로다.
+- 유휴 간격(리뷰 반영): 처리한 이벤트가 없는 폴링에서는 "벡터 없는 구간" 조인 조회를 `refresh-idle-interval-ms`(기본 30초)에 한 번만 한다. 이벤트를 처리한 폴링은 바로 조회하고, 배치 상한까지 채우고도 남았으면 다음 폴링이 간격 없이 잇는다. 제공자 실패 뒤 쉬는 시간은 이벤트가 있어도 지킨다.
 - 배치 뒤(`refreshMissing`): 켜져 있을 때만. `search_document LEFT JOIN search_embedding`(같은 model, 같은 해시)으로 현재 벡터가 없는 구간을 document_id 순으로 32개씩, 폴링 한 번에 최대 4배치 가져와 제공자에 보낸다. 처음 켰을 때 기존 구간 전체 채우기도 같은 경로다.
 - 저장 조건: `INSERT INTO search_embedding ... SELECT ... FROM search_document WHERE evidence_id = ? AND chunk_hash = ?`. 제공자를 부르는 사이 처리기가 구간을 바꿨으면 SELECT가 비어 아무것도 쓰지 않는다. 옛 해시로 만든 벡터가 새 구간에 붙지 않는다.
 - 외부 호출을 이벤트 트랜잭션 밖에 둔 이유: 처리 트랜잭션은 상태 행 잠금을 잡는다. 그 안에서 수 초짜리 HTTP 호출을 하면 같은 글의 다른 이벤트가 그동안 기다린다. 제공자 장애가 키워드 색인까지 막지 않게 하려는 목적도 있다.
@@ -137,6 +139,8 @@ sequenceDiagram
 | `snowthing.search.semantic.rrf-k` | 60 | `SNOWTHING_SEARCH_SEMANTIC_RRF_K` |
 | `snowthing.search.semantic.candidate-k` | 50 (최대 200) | `SNOWTHING_SEARCH_SEMANTIC_CANDIDATE_K` |
 | `snowthing.search.semantic.refresh-batch-size` / `refresh-max-batches` | 32 / 4 | |
+| `snowthing.search.semantic.refresh-idle-interval-ms` | 30000 | |
+| `snowthing.search.semantic.max-vector-scan` | 5000 | `SNOWTHING_SEARCH_SEMANTIC_MAX_VECTOR_SCAN` |
 | `snowthing.search.semantic.http.base-url` | 빈 값 | `SNOWTHING_SEARCH_EMBEDDING_BASE_URL` |
 | `snowthing.search.semantic.http.model` | 빈 값 | `SNOWTHING_SEARCH_EMBEDDING_MODEL` |
 | `snowthing.search.semantic.http.dimension` | 0 | `SNOWTHING_SEARCH_EMBEDDING_DIMENSION` |
@@ -169,7 +173,7 @@ sequenceDiagram
 
 운영에는 관리자 계정이 없다. IKA-10 배포 뒤 `POST /api/v1/admin/search/reconcile`이나 `/reindex`를 부를 사람이 없고, 기존 게시글은 search_document에 들어 있지 않다. 매일 04:30 대조가 결국 메우지만 배포 직후부터 최대 하루 동안 색인이 빈다.
 
-`SearchIndexBootstrap`이 ApplicationReadyEvent에서 아래를 모두 만족하면 2단계의 체크포인트 재인덱싱(`SearchConsistencyService.reindex()`)을 DONE이 될 때까지(최대 50번 호출) 부른다. 재인덱싱은 outbox에 게시글 이벤트만 넣고, 실제 색인은 평소 처리기가 한다.
+`SearchIndexBootstrap`이 ApplicationReadyEvent에서 전용 데몬 스레드(`search-index-bootstrap`) 하나를 띄워 아래를 모두 만족하면 2단계의 체크포인트 재인덱싱(`SearchConsistencyService.reindex()`)을 DONE이 될 때까지(최대 50번 호출) 부른다. 재인덱싱은 outbox에 게시글 이벤트만 넣고, 실제 색인은 평소 처리기가 한다.
 
 1. `snowthing.search.indexer.enabled=true` (처리기가 없으면 넣어도 반영되지 않는다)
 2. `snowthing.search.bootstrap-on-empty=true` (기본)
@@ -179,6 +183,7 @@ sequenceDiagram
 
 - 여러 인스턴스: FULL 행이 없으면 `INSERT IGNORE`로 RUNNING 행을 먼저 만든 인스턴스만 시작한다. 늦은 인스턴스는 RUNNING이면 이어서 부르고 DONE이면 건너뛴다. 재인덱싱 배치는 체크포인트 행 `FOR UPDATE` 잠금 안에서 `last_source_id`를 옮기므로(05 문서 §7) 두 인스턴스가 함께 이어서 해도 같은 배치를 두 번 넣지 않는다. 겹쳐 들어간 이벤트가 있더라도 처리기가 멱등이라 결과는 같다.
 - 처리기가 아직 이벤트를 하나도 반영하지 않은 사이 다른 인스턴스가 뜨면, 상태는 비어 있지만 체크포인트가 DONE이라 다시 넣지 않는다.
+- 기동 스레드를 잡지 않는다(리뷰 반영). 한 번만 쓰는 작업이라 공용 비동기 실행기(`AsyncConfig`)의 스레드를 빌리지 않고 전용 스레드를 쓴다.
 - 실패해도 기동은 막지 않고 예외 종류만 로그에 남긴다. 다음 기동이나 매일 대조가 메운다.
 - 끄려면 `SNOWTHING_SEARCH_BOOTSTRAP_ON_EMPTY=false`.
 - 테스트: 빈 색인이면 재인덱싱이 DONE까지 가고 처리 뒤 문서가 생김, 그 뒤 다시 부르면 실행 안 함. 상태 행이 있으면 실행 안 함. 플래그나 처리기가 꺼져 있으면 실행 안 함. 체크포인트 DONE이면 건너뛰고 RUNNING이면 이어서 함(`SearchIndexBootstrapIntegrationTest`).
@@ -273,9 +278,10 @@ Remove-Item Env:SNOWTHING_EVAL_COOKIE
 | `SemanticSearchUnitTest` (단위 5) | float32 BLOB 왕복, 코사인 경계, 해시 제공자 결정성, 검색 방식 파싱, 설정 기본값과 키 가림 |
 | `HybridEvidenceSearchTest` (단위 2) | 벡터 순위 동점은 document_id, 재정렬 결과 정리 |
 | `HttpEmbeddingProviderContractTest` (3) | 요청 형식과 Bearer 헤더, index 순서 정렬, 토큰 메타데이터, 차원 불일치와 서버 오류 시 키와 응답 본문 미노출, https와 필수 설정 검사. 외부 호출 없음 |
-| `SemanticSearchIntegrationTest` (실제 MySQL, 9) | 처리 뒤 모든 구간에 현재 벡터, 다시 처리해도 추가 호출 없음. 하이브리드가 키워드 밖 벡터 후보를 결합하고 `mode`와 `usage` 반환. 숨김, 삭제, MARKET 글과 삭제 댓글 제외(색인에 남아 있어도). createdBefore, excludePostPublicId 양쪽 적용. 바뀐 구간만 다시 임베딩, 해시가 맞지 않는 벡터는 검색에서 빠지고 다시 채워짐. 옛 해시 저장 거부. 게시글, 댓글 삭제 시 벡터 삭제. 제공자 실패 시 키워드 색인은 끝나고 갱신만 쉼, 질문 임베딩 실패 503. 재정렬기 없음 409, 모르는 방식 400 |
+| `SearchEmbeddingIndexerTest` (단위 3) | 유휴 폴링 30초 간격, 이벤트 처리 시 바로 조회, 남은 작업은 다음 폴링이 이어서, 실패 쉬기가 이벤트보다 우선 |
+| `SemanticSearchIntegrationTest` (실제 MySQL, 10) | max-vector-scan 초과 시 409. | 처리 뒤 모든 구간에 현재 벡터, 다시 처리해도 추가 호출 없음. 하이브리드가 키워드 밖 벡터 후보를 결합하고 `mode`와 `usage` 반환. 숨김, 삭제, MARKET 글과 삭제 댓글 제외(색인에 남아 있어도). createdBefore, excludePostPublicId 양쪽 적용. 바뀐 구간만 다시 임베딩, 해시가 맞지 않는 벡터는 검색에서 빠지고 다시 채워짐. 옛 해시 저장 거부. 게시글, 댓글 삭제 시 벡터 삭제. 제공자 실패 시 키워드 색인은 끝나고 갱신만 쉼, 질문 임베딩 실패 503. 재정렬기 없음 409, 모르는 방식 400 |
 | `SemanticSearchDisabledIntegrationTest` (실제 MySQL, 2) | 꺼져 있으면 작성, 수정, 삭제, 처리, 검색 모두 제공자 호출 0, 벡터 0, hybrid 409. 꺼져 있어도 수정, 삭제로 맞지 않게 된 기존 벡터는 지움 |
-| `SearchIndexBootstrapIntegrationTest` (실제 MySQL, 4) | §8 |
+| `SearchIndexBootstrapIntegrationTest` (실제 MySQL, 5) | §8, 전용 스레드 실행과 실패 시 예외 미전파 |
 
 - 마이그레이션: 빈 스키마에 001 + 002 + 전체 마이그레이션 적용과 재실행(검증 스크립트에 030 검사 추가), 030 직접 2회 재실행, 길이가 맞지 않는 벡터가 CHECK로 거부됨, 마이그레이션 결과 스키마에 `ddl-auto: validate` 기동 성공(030을 지우면 실패).
 - 전체 테스트, Spotless 결과는 `docs/project/work.md` IKA-11 항목에 적는다.

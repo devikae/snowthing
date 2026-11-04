@@ -25,9 +25,12 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>이벤트 처리 트랜잭션 안: {@link #removeOutdatedOfPost}와 {@link #removeOutdatedOfComment}가 현재 구간과 맞지
  *       않는 벡터(삭제, 비공개, 내용 변경)를 문서 교체와 함께 지운다. tombstone이 되면 벡터도 같은 커밋에서 사라진다. 원문에서 나온 파생 데이터라 의미
  *       검색이 꺼져 있어도 지운다(DB 문장만 있고 제공자 호출은 없다).
- *   <li>배치 처리 뒤, 트랜잭션 밖: {@link #refreshMissing()}이 현재 벡터가 없는 구간을 제공자로 보내고, 그 구간이 아직 같은 해시일 때만
+ *   <li>배치 처리 뒤, 트랜잭션 밖: {@link #refreshMissing(boolean)}이 현재 벡터가 없는 구간을 제공자로 보내고, 그 구간이 아직 같은 해시일 때만
  *       저장한다. 외부 호출을 행 잠금을 잡은 트랜잭션 안에서 하지 않기 위해 분리했다. 의미 검색이 꺼져 있으면 아무 쿼리도, 제공자 호출도 하지 않는다.
  * </ol>
+ *
+ * <p>처리한 이벤트가 없는 폴링에서는 "벡터 없는 구간" 조회를 {@code refresh-idle-interval-ms}(기본 30초)에 한 번만 한다. 폴링마다
+ * 조인 쿼리를 돌리지 않기 위해서다. 이벤트를 처리했으면 바로 조회한다. 배치 상한까지 채우고도 남았으면 다음 폴링에서 이어서 한다.
  *
  * <p>오래된 이벤트는 처리기가 문서를 건드리지 않고 끝내므로 벡터도 그대로다. 제공자가 실패하면 문서 색인은 그대로 두고, 지수 백오프 동안 갱신을 쉰다.
  */
@@ -44,6 +47,7 @@ public class SearchEmbeddingIndexer {
 
     private int consecutiveFailures;
     private LocalDateTime pausedUntil;
+    private LocalDateTime nextIdleCheckAt;
 
     public SearchEmbeddingIndexer(
             SearchEmbeddingJdbcRepository embeddings, SemanticSearchSupport semantic, Clock clock) {
@@ -60,12 +64,18 @@ public class SearchEmbeddingIndexer {
         embeddings.deleteOutdatedOfSource(SearchSourceType.COMMENT, commentId);
     }
 
+    /** 간격 제한 없이 바로 채운다. */
+    public int refreshMissing() {
+        return refreshMissing(true);
+    }
+
     /**
-     * 현재 벡터가 없는 구간을 배치로 채운다.
+     * 현재 벡터가 없는 구간을 배치로 채운다. 제공자 실패 뒤의 쉬는 시간은 indexChanged와 관계없이 지킨다.
      *
+     * @param indexChanged 이번 폴링에서 이벤트를 처리했는지. false면 간격 제한을 적용한다
      * @return 저장한 벡터 수
      */
-    public synchronized int refreshMissing() {
+    public synchronized int refreshMissing(boolean indexChanged) {
         if (!semantic.enabled()) {
             return 0;
         }
@@ -73,8 +83,12 @@ public class SearchEmbeddingIndexer {
         if (pausedUntil != null && now.isBefore(pausedUntil)) {
             return 0;
         }
+        if (!indexChanged && nextIdleCheckAt != null && now.isBefore(nextIdleCheckAt)) {
+            return 0;
+        }
         EmbeddingProvider provider = semantic.provider();
         int saved = 0;
+        boolean drained = false;
         try {
             for (int batch = 0;
                     batch < semantic.properties().effectiveRefreshMaxBatches();
@@ -85,12 +99,19 @@ public class SearchEmbeddingIndexer {
                                 provider.dimension(),
                                 semantic.properties().effectiveRefreshBatchSize());
                 if (missing.isEmpty()) {
+                    drained = true;
                     break;
                 }
                 saved += embedAndSave(provider, missing);
             }
             consecutiveFailures = 0;
             pausedUntil = null;
+            nextIdleCheckAt =
+                    drained
+                            ? now.plus(
+                                    Duration.ofMillis(
+                                            semantic.properties().effectiveRefreshIdleIntervalMs()))
+                            : null;
         } catch (RuntimeException failure) {
             consecutiveFailures++;
             long pauseMs =

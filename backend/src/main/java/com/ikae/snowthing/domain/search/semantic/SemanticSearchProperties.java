@@ -13,6 +13,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param candidateK 키워드와 벡터 각각에서 가져올 후보 수. 0 이하면 50, 최대 200
  * @param refreshBatchSize 벡터 갱신 한 번에 제공자로 보낼 구간 수. 0 이하면 32
  * @param refreshMaxBatches 폴링 한 번에 연속으로 보낼 최대 배치 수. 0 이하면 4
+ * @param refreshIdleIntervalMs 처리한 이벤트가 없는 폴링에서 "벡터 없는 구간" 조회를 다시 하기까지의 최소 간격. 0 이하면 30000
+ * @param maxVectorScan 하이브리드 검색 한 번에 읽을 최대 벡터 수. 넘으면 SEARCH_002로 거절한다. 0 이하면 5000
  */
 @ConfigurationProperties(prefix = "snowthing.search.semantic")
 public record SemanticSearchProperties(
@@ -22,6 +24,8 @@ public record SemanticSearchProperties(
         int candidateK,
         int refreshBatchSize,
         int refreshMaxBatches,
+        long refreshIdleIntervalMs,
+        int maxVectorScan,
         Http http) {
 
     static final int MAX_CANDIDATE_K = 200;
@@ -40,6 +44,14 @@ public record SemanticSearchProperties(
 
     public int effectiveRefreshMaxBatches() {
         return refreshMaxBatches > 0 ? refreshMaxBatches : 4;
+    }
+
+    public long effectiveRefreshIdleIntervalMs() {
+        return refreshIdleIntervalMs > 0 ? refreshIdleIntervalMs : 30_000;
+    }
+
+    public int effectiveMaxVectorScan() {
+        return maxVectorScan > 0 ? maxVectorScan : 5_000;
     }
 
     public Http httpOrEmpty() {

@@ -62,6 +62,7 @@ public class HybridEvidenceSearch {
                                                         ErrorCode.SEARCH_MODE_UNAVAILABLE))
                         : null;
         int candidateK = semantic.properties().effectiveCandidateK();
+        int maxScan = semantic.properties().effectiveMaxVectorScan();
 
         List<EvidenceSearchRow> keyword =
                 documents.search(
@@ -89,7 +90,12 @@ public class HybridEvidenceSearch {
                         provider.dimension(),
                         condition.categoryCode(),
                         condition.createdBefore(),
-                        condition.excludePostPublicId());
+                        condition.excludePostPublicId(),
+                        maxScan + 1);
+        if (candidates.size() > maxScan) {
+            // 전수 비교의 한계를 넘었다. 일부만 비교하면 결과가 조용히 틀어지므로 거절한다(08 문서 §2).
+            throw new CustomException(ErrorCode.SEARCH_MODE_UNAVAILABLE);
+        }
         List<EvidenceSearchRow> vector = topByCosine(queryVector, candidates, candidateK);
 
         Map<String, EvidenceSearchRow> rows = new HashMap<>();

@@ -79,11 +79,13 @@ class SemanticSearchUnitTest {
                 new SemanticSearchProperties.Http(
                         "https://example.invalid/v1", "m", 8, "sk-secret-value", 0, 0);
         SemanticSearchProperties properties =
-                new SemanticSearchProperties(false, "none", 0, 999, 0, 0, http);
+                new SemanticSearchProperties(false, "none", 0, 999, 0, 0, 0, 0, http);
 
         assertThat(properties.effectiveRrfK()).isEqualTo(60);
         assertThat(properties.effectiveCandidateK()).isEqualTo(200);
         assertThat(properties.effectiveRefreshBatchSize()).isEqualTo(32);
+        assertThat(properties.effectiveRefreshIdleIntervalMs()).isEqualTo(30_000);
+        assertThat(properties.effectiveMaxVectorScan()).isEqualTo(5_000);
         assertThat(properties.toString()).doesNotContain("sk-secret-value").contains("****");
         assertThat(http.effectiveReadTimeoutMillis()).isEqualTo(10000);
     }

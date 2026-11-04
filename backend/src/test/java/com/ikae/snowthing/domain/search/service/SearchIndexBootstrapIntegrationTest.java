@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -131,6 +132,25 @@ class SearchIndexBootstrapIntegrationTest {
         // 한 번 색인된 뒤에는 다시 기동해도 실행하지 않는다.
         assertThat(bootstrap.bootstrapIfEmpty()).isNull();
         assertThat(postEvents()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("기동 이벤트는 전용 스레드에서 실행하고, 실패해도 예외를 밖으로 던지지 않는다")
+    void runsOffStartupThreadAndSwallowsFailure() throws Exception {
+        SearchReindexResponse response = bootstrap.startAsync().get(30, TimeUnit.SECONDS);
+        assertThat(response).isNotNull();
+        assertThat(response.status()).isEqualTo("DONE");
+        assertThat(postEvents()).isEqualTo(1);
+
+        clearSearchTables();
+        Object consistency = ReflectionTestUtils.getField(bootstrap, "consistency");
+        try {
+            ReflectionTestUtils.setField(bootstrap, "consistency", null);
+            assertThat(bootstrap.startAsync().get(30, TimeUnit.SECONDS)).isNull();
+        } finally {
+            ReflectionTestUtils.setField(bootstrap, "consistency", consistency);
+        }
+        assertThat(postEvents()).isZero();
     }
 
     @Test

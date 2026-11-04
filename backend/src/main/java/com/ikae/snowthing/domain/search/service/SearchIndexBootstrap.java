@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.search.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -19,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
  * 빈 색인 첫 채우기. 운영에는 관리자 계정이 없어 IKA-10 배포 뒤 {@code POST /reindex}를 부를 사람이 없고, 기존 게시글은
  * search_document에 없다.
  *
- * <p>앱이 뜰 때(ApplicationReadyEvent) 아래를 모두 만족하면 기존 체크포인트 재인덱싱({@link
+ * <p>앱이 뜰 때(ApplicationReadyEvent) 별도 스레드에서 아래를 모두 만족하면 기존 체크포인트 재인덱싱({@link
  * SearchConsistencyService#reindex()})을 DONE이 될 때까지 부른다. 재인덱싱은 outbox에 게시글 이벤트만 넣고, 실제 색인은 평소 처리기가
  * 한다.
  *
@@ -41,6 +42,8 @@ public class SearchIndexBootstrap {
 
     /** 재인덱싱 한 번은 최대 50배치(25,000건). 이 상한이면 125만 건까지 한 번 기동에 넣는다. 그 이상은 다음 기동이나 대조가 잇는다. */
     static final int MAX_REINDEX_CALLS = 50;
+
+    static final String THREAD_NAME = "search-index-bootstrap";
 
     private final SearchConsistencyService consistencyService;
     private final SearchConsistencyRepository consistency;
@@ -66,11 +69,33 @@ public class SearchIndexBootstrap {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        try {
-            bootstrapIfEmpty();
-        } catch (RuntimeException failure) {
-            log.warn("search index bootstrap failed: error={}", failure.getClass().getSimpleName());
-        }
+        startAsync();
+    }
+
+    /**
+     * 기동 스레드를 잡지 않도록 전용 데몬 스레드 하나에서 실행한다. 한 번만 쓰는 작업이라 공용 실행기(AsyncConfig)의 스레드를 빌리지 않는다. 실패는 로그만 남기고
+     * 결과를 null로 끝낸다(기동을 막지 않는다).
+     *
+     * @return 끝나면 {@link #bootstrapIfEmpty()}의 결과
+     */
+    CompletableFuture<SearchReindexResponse> startAsync() {
+        CompletableFuture<SearchReindexResponse> result = new CompletableFuture<>();
+        Thread worker =
+                new Thread(
+                        () -> {
+                            try {
+                                result.complete(bootstrapIfEmpty());
+                            } catch (RuntimeException failure) {
+                                log.warn(
+                                        "search index bootstrap failed: error={}",
+                                        failure.getClass().getSimpleName());
+                                result.complete(null);
+                            }
+                        },
+                        THREAD_NAME);
+        worker.setDaemon(true);
+        worker.start();
+        return result;
     }
 
     /**

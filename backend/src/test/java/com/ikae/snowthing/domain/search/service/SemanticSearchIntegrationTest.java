@@ -13,10 +13,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.search.repository.SearchEmbeddingJdbcRepository;
+import com.ikae.snowthing.domain.search.semantic.SemanticSearchProperties;
+import com.ikae.snowthing.domain.search.semantic.SemanticSearchSupport;
 import com.ikae.snowthing.domain.search.semantic.VectorMath;
 import com.ikae.snowthing.testsupport.CountingEmbeddingProvider;
 
@@ -28,7 +31,9 @@ import com.ikae.snowthing.testsupport.CountingEmbeddingProvider;
 @SpringBootTest(
         properties = {
             "snowthing.search.semantic.enabled=true",
-            "spring.datasource.hikari.maximum-pool-size=4"
+            "spring.datasource.hikari.maximum-pool-size=4",
+            // 이 컨텍스트를 닫을 때 create-drop이 공유 테스트 스키마를 지우면 캐시된 다른 컨텍스트의 테스트가 깨진다.
+            "spring.jpa.hibernate.ddl-auto=update"
         })
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -38,6 +43,7 @@ class SemanticSearchIntegrationTest extends SemanticSearchTestSupport {
     private static final String QUERY = "바인딩 각도";
 
     @Autowired private SearchEmbeddingJdbcRepository embeddingRepository;
+    @Autowired private SemanticSearchSupport semantic;
 
     @Test
     @DisplayName("outbox 처리 뒤 모든 구간에 현재 벡터가 생기고, 다시 처리해도 제공자를 다시 부르지 않는다")
@@ -209,7 +215,13 @@ class SemanticSearchIntegrationTest extends SemanticSearchTestSupport {
                 .extracting(SearchEmbeddingJdbcRepository.MissingEmbedding::evidenceId)
                 .containsExactly(otherBody);
 
+        // 처리한 이벤트가 없는 폴링은 유휴 간격(30초) 안이면 조회하지 않는다.
         provider.reset();
+        processor.processBatch();
+        assertThat(provider.calls()).isZero();
+        assertThat(embeddingHash(otherBody)).isEqualTo("f".repeat(64));
+
+        resumeEmbeddingRefresh();
         processor.processBatch();
         assertThat(provider.texts()).containsExactly("시즌 전에 왁스를 바릅니다.");
         assertThat(embeddingHash(otherBody)).isEqualTo(documentHash(otherBody));
@@ -280,6 +292,43 @@ class SemanticSearchIntegrationTest extends SemanticSearchTestSupport {
         search(QUERY, "hybrid")
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("SEARCH_003"));
+    }
+
+    @Test
+    @DisplayName("공개 범위를 통과한 벡터가 max-vector-scan을 넘으면 일부만 비교하지 않고 409 SEARCH_002로 거절한다")
+    void rejectsWhenVectorScanLimitExceeded() throws Exception {
+        createPost("덕스탠스 세팅 질문", "바인딩 각도 글");
+        createPost("왁스 관리", "왁스 글");
+        processAll();
+        assertThat(embeddedEvidenceIds()).hasSize(4);
+        SemanticSearchProperties original = semantic.properties();
+        try {
+            ReflectionTestUtils.setField(semantic, "properties", withMaxVectorScan(original, 3));
+            search(QUERY, "hybrid")
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("SEARCH_002"));
+
+            ReflectionTestUtils.setField(semantic, "properties", withMaxVectorScan(original, 4));
+            search(QUERY, "hybrid")
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.usage.vectorCandidates").value(4));
+        } finally {
+            ReflectionTestUtils.setField(semantic, "properties", original);
+        }
+    }
+
+    private static SemanticSearchProperties withMaxVectorScan(
+            SemanticSearchProperties p, int maxVectorScan) {
+        return new SemanticSearchProperties(
+                p.enabled(),
+                p.provider(),
+                p.rrfK(),
+                p.candidateK(),
+                p.refreshBatchSize(),
+                p.refreshMaxBatches(),
+                p.refreshIdleIntervalMs(),
+                maxVectorScan,
+                p.http());
     }
 
     @Test
