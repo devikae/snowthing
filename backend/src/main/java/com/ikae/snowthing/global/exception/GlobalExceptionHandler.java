@@ -1,5 +1,8 @@
 package com.ikae.snowthing.global.exception;
 
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,12 +19,18 @@ import com.ikae.snowthing.domain.answerdraft.entity.AnswerDraft;
 import com.ikae.snowthing.domain.market.entity.MarketListing;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
+import com.ikae.snowthing.global.notification.ServerErrorAlerter;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    /** 웹 슬라이스 테스트처럼 알림 빈이 없는 컨텍스트에서도 핸들러가 뜨도록 선택 주입한다. */
+    private final ObjectProvider<ServerErrorAlerter> serverErrorAlerter;
 
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
@@ -106,8 +115,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneralException(Exception e) {
+    public ResponseEntity<ErrorResponse> handleGeneralException(
+            Exception e, HttpServletRequest request) {
         log.error("서버 내부 미처리 예외 발생: ", e);
+        serverErrorAlerter.ifAvailable(alerter -> alerter.report(request, e));
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.from(ErrorCode.INTERNAL_SERVER_ERROR));
     }

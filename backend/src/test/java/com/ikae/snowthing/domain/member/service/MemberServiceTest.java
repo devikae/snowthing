@@ -13,12 +13,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,6 +29,8 @@ class MemberServiceTest {
     @Mock private MemberRepository memberRepository;
 
     @Mock private PasswordEncoder passwordEncoder;
+
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @Spy private EmailNormalizer emailNormalizer = new EmailNormalizer();
 
@@ -60,6 +64,7 @@ class MemberServiceTest {
         assertThat(response.getEmail()).isEqualTo("newuser@snowthing.com");
         assertThat(response.getNickname()).isEqualTo("신규보더");
         verify(memberRepository).saveAndFlush(any(Member.class));
+        verify(eventPublisher).publishEvent(new MemberSignedUpEvent("신규보더", "EMAIL"));
     }
 
     @Test

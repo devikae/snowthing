@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import com.ikae.snowthing.domain.member.dto.MemberSettingsResponse;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.entity.*;
+import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.*;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
@@ -35,6 +37,7 @@ public class MemberService {
     private final MemberRidingStyleRepository memberRidingStyleRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailNormalizer emailNormalizer;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Member requireMember(String email) {
         return memberRepository
@@ -151,6 +154,7 @@ public class MemberService {
             memberRidingStyleRepository.saveAll(memberRidingStyles);
         }
 
+        eventPublisher.publishEvent(new MemberSignedUpEvent(savedMember.getNickname(), "EMAIL"));
         return MemberSignUpResponse.from(savedMember);
     }
 
