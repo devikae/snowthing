@@ -35,6 +35,21 @@ interface CarpoolDetail {
   canManage: boolean;
 }
 
+function formatCarpoolDateTime(isoString: string): string {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return isoString;
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const dayName = days[d.getDay()];
+  const h = d.getHours();
+  const min = d.getMinutes().toString().padStart(2, "0");
+  const period = h < 12 ? "오전" : "오후";
+  const displayHour = h % 12 === 0 ? 12 : h % 12;
+  return `${m}.${day} (${dayName}) ${period} ${displayHour}:${min}`;
+}
+
 export default function CarpoolDetailPage() {
   const { publicId } = useParams<{ publicId: string }>();
   const router = useRouter();
@@ -83,17 +98,24 @@ export default function CarpoolDetailPage() {
               </Link>
               <div className="carpool-detail-head">
                 <div className="carpool-detail-badges">
-                  <span>{item.tripType === "ROUND_TRIP" ? "왕복" : "편도"}</span>
-                  <span className={item.equipmentLoadAvailable ? "equipment-available" : "equipment-unavailable"}>
-                    <span className="material-symbols-outlined">luggage</span>
-                    장비 적재 {item.equipmentLoadAvailable ? "가능" : "불가능"}
+                  <span className={`carpool-trip-badge ${item.tripType === "ROUND_TRIP" ? "round-trip" : "one-way"}`}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }} aria-hidden="true">
+                      {item.tripType === "ROUND_TRIP" ? "sync_alt" : "trending_flat"}
+                    </span>
+                    {item.tripType === "ROUND_TRIP" ? "왕복 카풀" : "편도 카풀"}
+                  </span>
+                  <span className={`carpool-equip-badge ${item.equipmentLoadAvailable ? "available" : "unavailable"}`}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }} aria-hidden="true">
+                      {item.equipmentLoadAvailable ? "downhill_skiing" : "block"}
+                    </span>
+                    {item.equipmentLoadAvailable ? "스키·보드 장비 적재 가능" : "장비 적재 불가 (몸만 탑승)"}
                   </span>
                 </div>
                 <h1>{item.title}</h1>
-                <p>
+                <p className="carpool-detail-meta">
                   <strong>{item.writerName}</strong>
-                  <span>·</span>
-                  {new Date(item.departureAt).toLocaleString("ko-KR")}
+                  <span className="carpool-meta-dot">·</span>
+                  <time>{formatCarpoolDateTime(item.departureAt)} 출발</time>
                 </p>
                 {item.canManage && (
                   <div className="carpool-detail-actions">
@@ -104,7 +126,7 @@ export default function CarpoolDetailPage() {
                   </div>
                 )}
               </div>
-              <section className="carpool-detail-route" aria-label="이동 경로">
+              <section className="carpool-detail-route" aria-label="이동 경로 및 일정">
                 <div className="carpool-route-point start">
                   <i />
                   <div>
@@ -113,15 +135,29 @@ export default function CarpoolDetailPage() {
                     <span>{item.meetingPlace}</span>
                   </div>
                 </div>
-                <div className="carpool-route-line">
-                  <span className="material-symbols-outlined">arrow_forward</span>
+                <div className="carpool-route-center">
+                  <div className="carpool-schedule-badge">
+                    <div className="schedule-main">
+                      <span className="material-symbols-outlined" aria-hidden="true">schedule</span>
+                      <strong>{formatCarpoolDateTime(item.departureAt)} 출발</strong>
+                    </div>
+                    {item.returnAt && (
+                      <div className="schedule-return">
+                        <span className="material-symbols-outlined" aria-hidden="true">event_repeat</span>
+                        <small>복귀: {formatCarpoolDateTime(item.returnAt)}</small>
+                      </div>
+                    )}
+                  </div>
+                  <div className="carpool-route-arrow-line">
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </div>
                 </div>
                 <div className="carpool-route-point end">
                   <i />
                   <div>
                     <small>도착 리조트</small>
                     <strong>{item.destinationResortName}</strong>
-                    <span>{new Date(item.departureAt).toLocaleDateString("ko-KR")} 출발</span>
+                    <span className="resort-dest-label">목적지 스키장</span>
                   </div>
                 </div>
               </section>
@@ -182,7 +218,7 @@ export default function CarpoolDetailPage() {
                     : item.fuelPriceSource === "USER_INPUT"
                       ? "유가 사용자 직접 입력"
                       : "오피넷 유가"}{" "}
-                  {new Date(item.fuelPriceObservedAt).toLocaleString("ko-KR")} 기준
+                  {new Date(item.fuelPriceObservedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })} 기준
                 </p>
               </section>
               <section className="carpool-content-panel">

@@ -372,11 +372,17 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         <button
           type="submit"
           disabled={Boolean(currentMember && !inputContent.trim())}
-          aria-label="메시지 전송"
+          aria-label={!currentMember ? "로그인" : "메시지 전송"}
           className="live-chat-compose-submit capsule-send-btn"
         >
-          <span className="material-symbols-outlined">arrow_upward</span>
-          <span>전송</span>
+          {!currentMember ? (
+            <span>로그인</span>
+          ) : (
+            <>
+              <span className="material-symbols-outlined">arrow_upward</span>
+              <span>전송</span>
+            </>
+          )}
         </button>
       </form>
     </section>

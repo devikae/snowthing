@@ -1,29 +1,133 @@
-## 근거 검색 3단계 의미 검색 RRF 비교 구조 (2026-11-04, IKA-11)
+## 메인 홈 라이브톡 및 오늘의 설질 비로그인 시 로그인 유도 통일 (2026-11-04)
 
-- 상태: 로컬 구현과 검증 완료, PR 생성(머지, 배포, 운영 030 적용 안 함). **품질, 비용, 지연 결과는 미측정**: 사람 정답 라벨이 없고 임베딩 비용 승인 전이다.
-- 완료: `030_migration_search_embedding.sql`(구간별 float32 BLOB 벡터, 모델 ID, 차원, content_hash), `EmbeddingProvider`(해시 제공자는 로컬 확인용, OpenAI 호환 HTTP 제공자는 호출하지 않음), outbox 처리기 연결(이벤트 트랜잭션 안에서 맞지 않는 벡터 삭제, 배치 뒤 트랜잭션 밖에서 현재 벡터가 없는 구간 채우기), 관리자 근거 검색 `mode=keyword|hybrid|hybrid_rerank`와 RRF(k=60), 응답 `mode`와 `usage` 추가, 오류 코드 SEARCH_002(409), SEARCH_003(503), 평가 실행기 `--modes`, 방식별 n/N과 P50/P95와 비용 집계, 라벨링 양식 `07_gold_labels_template.jsonl`, 기동 시 빈 색인 채우기(`SearchIndexBootstrap`). 설계와 실행 방법은 `docs/conception/017_ai_answer_assist/08_stage5_hybrid_search.md`.
-- 결정: MySQL 8.0에 벡터 타입이 없어 BLOB 저장 + 앱 코사인 전수 비교로 했다. 공개 글 약 100건 규모에서는 충분하고, 대략 수천 구간을 넘으면 캐시나 벡터 DB를 다시 정한다(계산 예, 측정 아님). 다른 선택지: 벡터 DB(동기화 대상 증가), MySQL 9(엔진 업그레이드 범위 밖).
-- 결정: 기본 꺼짐(`snowthing.search.semantic.enabled=false`). 꺼져 있으면 제공자를 한 번도 부르지 않는다. 켰는데 제공자가 없으면 기동을 멈춰 조용히 키워드끼리 비교하는 일을 막는다.
-- 결정: 외부 임베딩 호출은 이벤트 트랜잭션 밖에서 한다. 처리 트랜잭션이 상태 행 잠금을 잡고 있어 그 안에서 HTTP를 부르면 같은 글의 처리가 막히기 때문이다. 저장은 구간이 아직 같은 해시일 때만 해서 옛 해시 벡터가 붙지 않는다. 벡터 삭제는 꺼져 있어도 한다(지운 원문의 파생 데이터를 남기지 않기 위해, 제공자 호출 없음).
-- 결정: 재정렬기는 인터페이스와 비교 경로만 두고 구현하지 않았다. 비용과 지연이 커서 hybrid가 기준선보다 나을 때만 따로 승인받는다.
-- 결정(계획 외, 코디네이터 요청): 운영에 관리자 계정이 없어 `/reindex`를 부를 수 없으므로, 처리기가 켜져 있고 `search_index_state`가 비어 있고 공개 글이 있으면 기동 때 체크포인트 재인덱싱을 한 번 넣는다(`snowthing.search.bootstrap-on-empty`, 기본 true). 여러 인스턴스는 `INSERT IGNORE` 체크포인트 선점과 배치별 체크포인트 행 잠금으로 같은 배치를 두 번 넣지 않는다.
-- 채택 규칙(데이터 보기 전 고정): eval 분할에서 hit@10, recall@10이 1건 이상 늘고 hit@1이 줄지 않으며 P95가 기준선 + 300ms 이하이고 비용을 사용자가 수용할 때만 채택. 아니면 "개선 없음, 도입 안 함"으로 기록하고 꺼 둔다.
-- 검증: 전용 테스트 DB `snowthing_ika11_test`에서 `./gradlew test --rerun` 567개 중 실패, 오류 0개, 기존 제외 1개. 첫 두 번의 전체 실행은 로컬 MySQL `Too many connections`(max_connections 151, 로컬 앱 연결 포함)로 실패했다. 새 테스트 클래스 두 개가 속성이 달라 컨텍스트를 하나씩 더 만들었기 때문이라, 연결 풀을 4로 줄이고 클래스가 끝나면 컨텍스트를 닫게 한 뒤 통과했다. 마이그레이션 검증 스크립트(030 검사 추가)를 빈 스키마에서 001+002+전체 적용과 재실행 통과, 030 직접 재실행 2회 성공, 길이가 맞지 않는 벡터 CHECK 거부 확인, 그 스키마로 `ddl-auto: validate` 기동 성공(030 테이블을 지우면 실패). 실행기는 로컬 stub 서버로 방식별 집계, mode_mismatch, 리디렉션 거부, JSON 아닌 응답, 비용 합산, 자리표시자 거부를 확인했다(harness check, not a measurement). Spotless 결과는 PR 본문에 적는다.
-- 리뷰 반영(PR #53): CI에서 `SecurityAuthFailureTest`가 테이블 없음으로 실패했다. 새 테스트 두 클래스가 `@DirtiesContext`로 컨텍스트를 닫을 때 create-drop이 공유 테스트 스키마를 지웠기 때문이라, 두 클래스는 `ddl-auto=update`로 바꿨다(코디네이터 수정). CodeRabbit 3건: 벡터 조회 상한 `max-vector-scan`(기본 5,000, 넘으면 409), 기동 채우기를 전용 데몬 스레드로, 이벤트 없는 폴링의 벡터 없는 구간 조회를 30초 간격으로 제한. 검색 패키지와 `SecurityAuthFailureTest` 99개 통과, 전체 572개 중 실패 0, 기존 제외 1.
-- 남은 것(사용자): QNA 17건 라벨링(07 양식을 저장소 밖으로 복사), 임베딩 제공자와 모델 선택과 비용 승인, 승인 뒤 `--modes keyword,hybrid` 실행과 08 문서 §10 결과 기록. 운영 030 적용은 앱 배포보다 먼저(배포 파이프라인 선행 단계). IKA-12 브랜치도 검증 스크립트를 고치면 충돌이 날 수 있다.
+- 메인 페이지의 인라인 입력 폼(`LiveChatSection`, `HomePageClient`의 설질 제보) 비로그인 인터랙션 정합성 일원화:
+  1. **라이브톡**:
+     - 비로그인(익명 채팅 비활성) 상태 시 버튼 텍스트를 `[로그인]`으로 변경.
+     - 입력창 또는 버튼 클릭 시 로그인 페이지(`/login`)로 이동하도록 유도.
+  2. **오늘의 설질**:
+     - 비로그인 상태 시 입력을 허용했다가 `alert`을 띄우던 기존 방식 제거.
+     - 입력창을 `readOnly` 및 `cursor-pointer` 처리하고 클릭 시 로그인 페이지(`/login`)로 이동.
+     - 버튼을 비활성화 회색 버튼에서 활성 `[로그인]` 버튼으로 전환하여 클릭 시 즉시 로그인 페이지로 안내.
+  3. **사용자 경험 일치**:
+     - 두 위젯 모두 비로그인 시 `[로그인하고 ... 참여/제보해보세요]` + `[로그인]` 버튼으로 통일되어 일관된 사용자 경험 제공.
 
-## 2026-11-04 — IKA-12 제한 API 토큰과 답변 초안 승인 게시 흐름 (IKA-5 4단계)
+## 모바일 하단 검색바 및 글쓰기 버튼 깨짐/잘림 수정 (2026-11-04)
 
-- 상태: 로컬 구현과 검증 완료, 브랜치 `ika-12-answer-draft-flow`에서 PR 생성. 머지, 운영 DB 029 적용, 배포, bootstrap 이메일 설정, 게시 플래그 켜기는 하지 않았다(사용자 확인 필요).
-- 계획: 0단계 판정으로 보류했던 IKA-12를 사용자 지시로 진행. 운영 기본값은 읽기 전용(게시 플래그 꺼짐)으로 둔다.
-- 완료: `029_migration_answer_draft.sql`(`api_token`, `answer_draft`, `answer_draft_evidence`, `answer_draft_audit`). Bearer `snt_` 토큰 필터(범위 READ, DRAFT, 게시 범위 없음), 토큰 발급, 목록, 폐기 관리자 API. 초안 저장과 상태 조회(`/api/v1/answer-drafts`), 관리자 목록, 상세, 승인, 거절, 게시(`/api/v1/admin/answer-drafts`). 첫 관리자 지정(`SNOWTHING_ADMIN_BOOTSTRAP_EMAILS`). 관리자 화면(답변 초안, API 토큰, 검색 인덱스 대조와 outbox 상태)과 헤더의 관리자 전용 링크. 계약은 `docs/conception/017_ai_answer_assist/06_answer_draft_flow.md`.
-- 결정: 댓글 작성자는 초안 작성자(D7)가 아니라 승인한 관리자다. 사람 승인 책임이 작성자로 보여야 하고 토큰 소유자와 승인자가 다를 수 있다.
-- 결정: MCP `publish_approved_draft`는 서버를 호출하지 않고 검토 화면 안내만 한다. 토큰에는 ROLE_ADMIN을 주지 않아 승인, 게시 경로가 구조적으로 막힌다.
-- 결정: 게시 멱등성은 초안 행 비관적 잠금과 상태 재확인, 댓글 생성과 PUBLISHED 전환을 한 트랜잭션으로, `published_comment_id` 유일 제약을 마지막 방어선으로 둔다. 대상 게시글 행도 잠가 검사와 댓글 작성 사이의 수정을 막는다. 근거 원문 행은 잠그지 않는다(짧은 틈을 문서에 기록).
-- 결정: 근거는 JSON 컬럼이 아니라 자식 테이블(유일 제약, 해시 NOT NULL, 역방향 조회). 게시 거절은 트랜잭션을 되돌린 뒤 별도 트랜잭션으로 기록한다.
-- 결정: bootstrap 목록에서 이메일을 빼도 강등하지 않는다. 회수 API는 만들지 않았다(DB에서 명시적으로).
-- 검증: 전용 테스트 DB `snowthing_ika12_test`에서 `./gradlew test --rerun` 557개 중 실패, 오류 0개, 기존 제외 1개. 새 테스트 21개(초안 흐름 18, bootstrap 3). 첫 두 번의 전체 실행은 같은 MySQL을 쓰는 다른 세션 테스트와 겹쳐 "Too many connections"로 문맥 로딩이 실패했다(37, 50건). 새 DB에 022(`request_budget_window`)를 적용하고 Hikari 풀 4, 테스트 문맥 캐시 4로 실행 환경만 줄여 재실행해 통과했다. 001+002+전체 마이그레이션 체인 검증 스크립트(029 검사 추가) 적용, 재실행 통과(로컬 mysql 클라이언트가 없어 MySQL 컨테이너 안에서 실행), 029 직접 2회 실행 성공, 그 스키마로 `ddl-auto: validate` 앱 기동 성공. 프런트 `npm run lint`, `npm run build` 통과(`npm ci --legacy-peer-deps`, CI와 같음). 관리자 화면을 브라우저로 직접 눌러 보지는 않았다.
-- 남은 것: 운영 029 적용(앱 배포보다 먼저), 운영 `prod.env`에 bootstrap 이메일 추가 후 재배포와 재로그인, MCP 서버 도구 구현(mcp-server), 필요하면 게시 플래그 켜기.
+- 모바일 게시판 하단 내비게이션 영역 깨짐 수정:
+  1. **글쓰기 버튼 깨짐 및 글자 잘림 해결**:
+     - 기존 CSS에서 `.board-write-button { width: 36px; color: transparent; }`로 아이콘 원형 버튼을 시도했으나, 다크모드 및 리뉴얼 스타일의 `color: var(--snow-canvas)`와 패딩이 덮어씌워지며 텍스트 "글쓰기"가 반토막 잘린 채 우측 화면 밖으로 튀어나가던 버그 수정.
+     - 모바일(`<= 640px`)에서는 페이지네이션 바로 아래에 터치하기 편한 전폭(Full Width) 직관적 `[✏️ 글쓰기]` 버튼으로 배치 (`order: -1`).
+  2. **검색 폼 모바일 전폭 확보**:
+     - 검색바를 1줄 전체 너비(`width: 100%`)로 확장하여, `[제목+내용]` 셀렉트와 검색어 입력창, `[검색]` 버튼이 화면 너비에 맞춰 시원하게 정렬되도록 개선.
+  3. **게시글 목록 제목 모바일 가독성 개선**:
+     - 모바일 목록에서 불필요한 조회수 숨김 및 카테고리 폭 슬림화, 제목 2줄 말줄임 대응으로 제목 가용 너비를 대폭 확장.
+
+## 게시글 목록 작성자 기본 프로필 아바타 적용 및 텍스트 이니셜 제거 (2026-11-04)
+
+- 게시글 목록(메인 피드 및 게시판 목록)의 작성자 프로필 표시 개선:
+  1. **텍스트 이니셜 아바타 제거**:
+     - 기존 `PostListAuthor.tsx`에서 프로필 사진이 없는 사용자에게 닉네임 첫 글자(`스`, `s`, `보`, `최` 등)를 회색 원형 배경에 글자로 출력하던 레거시 로직 제거.
+  2. **원형 프로필 및 기본 프로필 SVG 통일**:
+     - `CommentProfileAvatar` 연동: 프로필 이미지가 등록된 회원은 테두리 없는 원형 사진으로 렌더링.
+     - 프로필 사진이 미등록되었거나 정보가 없는 경우 텍스트 글자 대신 깔끔한 유저 실루엣 기본 프로필 SVG 아바타(`size={18}`)로 일관성 있게 표시.
+     - `globals.css`: `.m-avatar`, `img.m-avatar`, `svg.m-avatar` 스타일 정돈 (border: 0, background: transparent).
+
+## 상단 헤더 프로필 아바타 리디자인 및 로그아웃 버튼 드롭다운 통합 (2026-11-04)
+
+- 상단 헤더(메인 및 전체 서브 페이지 공통 `TopNav`) 프로필 UI 및 로그아웃 접근성 개편:
+  1. **로그아웃 버튼 위치 변경**:
+     - 기존에 헤더 바 아바타 우측에 노출되어 있던 텍스트 버튼을 제거하고, 프로필 아바타 클릭 시 노출되는 드롭다운 메뉴 내부([내 정보 수정] 아래)로 이동.
+     - `globals.css`: 드롭다운 내부에 구분선(`border-top: 1px solid var(--snow-border)`) 및 hover 시 감각적인 레드 피드백(`.header-dropdown-logout:hover { color: #ef4444; }`) 적용.
+  2. **프로필 사진 테두리 및 하늘색 배경 제거, 깔끔한 원형 렌더링**:
+     - `.header-profile`의 `border: 1px solid #cbd5e1` 및 `background: #e0f2fe`를 제거(`border: none; background: transparent;`).
+     - `SiteChrome.tsx`의 기존 불투명 기본 PNG 대신 `<CommentProfileAvatar>`를 연동하여, 프로필 이미지가 등록된 경우 사진만 원형으로 깔끔하게 채우고, 미등록 회원은 미니멀 실루엣 SVG 기본 프로필 아바타가 표시되도록 개편.
+  3. **프로필 메뉴 외부 클릭(Click Outside) 및 라우트 이동 시 자동 닫힘**:
+     - `profileMenuRef`를 추가하여 GNB 게시판 메뉴와 마찬가지로 외부 클릭 또는 페이지 이동 시 드롭다운이 자동으로 닫히도록 완비.
+  4. **검증**:
+     - 프론트엔드 전체 28개 라우트 빌드 통과 (`npm run build`, Next.js Turbopack 0 errors).
+
+## 카풀 상세 시각적 위계 개편 및 사용자 편의/안정성 개선 (2026-11-04)
+
+- 사용자 피드백 기반 7대 UI/UX 및 기능 무결성 패치 완료:
+  1. **카풀 상세 페이지 핵심 정보(편도/장비/출발시간) 시각적 위계 대폭 강화**:
+     - `carpool/[publicId]/page.tsx` & `globals.css`: 금액 박스 대비 왜소했던 상단 뱃지를 대형 볼드 뱃지(`.carpool-trip-badge`, `.carpool-equip-badge`)로 승격.
+     - 경로 카드(`carpool-detail-route`) 중앙에 **출발 일시 하이라이트 박스(`.carpool-schedule-badge`)**를 신설하여 `11. 04 (수) 오전 09:00 출발` 및 복귀 일시를 선명한 15px 볼드로 상단 노출.
+     - 닉네임 뒤의 하늘색 점 뱃지 버그 해결: `.carpool-detail-head span`에서 누수되던 CSS 셀렉터를 `.carpool-detail-badges`로 한정하여 구분점(`·`) 본래 스타일로 복구.
+  2. **GNB 상단바 게시판 드롭다운 닫힘 개선**:
+     - `SiteChrome.tsx`: 드롭다운 메뉴 링크 클릭 시 즉시 닫힘, `usePathname` 감지를 통한 라우트 이동 시 자동 닫힘, 드롭다운 외부 영역 클릭(Click Outside) 시 자동 닫힘 이벤트 리스너 완비.
+  3. **루트 댓글 답글 달기 위치 UX 개선**:
+     - `posts/[publicId]/page.tsx`: 대댓글이 많을 때 답글 작성창이 대댓글 맨 아래로 밀려나던 문제를 해결하여, 루트 댓글의 [답글] 클릭 시 루트 댓글 바로 아래에 입력창이 직관적으로 배치되도록 수정.
+  4. **게시글 및 댓글 등록 버튼 더블클릭(따닥) 중복 등록 방지**:
+     - `posts/create/page.tsx` & `posts/[publicId]/page.tsx` & `carpool/new/page.tsx`: React 비동기 배치 업데이트 지연을 우회하기 위해 `useRef(false)` 동기 락(Sync Lock)을 도입하여 연타 클릭 시 중복 글 생성을 원천 차단.
+  5. **카풀 출발 장소 '현재 위치 잡기' 기능 탑재**:
+     - `KakaoMapPicker.tsx` & `globals.css`: 검색창 옆에 `[📍 현재 위치]` 버튼 추가. 브라우저 Geolocation API 및 카카오 지도 Geocoder 연동으로 현재 GPS 좌표 역지오코딩 및 마커 세팅.
+  6. **카풀 모집글 유효성 검사 및 누락 항목 안내**:
+     - `carpool/new/page.tsx`: 필수값 미입력 시 버튼이 비활성화된 채 멈추던 문제를 해결. 클릭 시 누락된 필드(제목, 출발지, 도착 리조트, 출발일시, 비용 계산 등)를 정밀 검사하여 에러 메시지 노출.
+  7. **카풀 출발시간 과거 차단, 요일 표기, 폰트 가독성 확대**:
+     - `min={today}` 제약으로 과거 날짜 선택 원천 차단, 날짜 선택 시 실시간 `(수요일)` 요일 뱃지 노출, 시간 선택 셀렉트 박스 크기 및 폰트 확대.
+  8. **검증**:
+     - Next.js Turbopack 28개 정적/동적 라우트 프로덕션 빌드 통과 (`npm run build`, 0 errors).
+
+## 게시판 통계(댓글/조회수) 열 정렬 정규화 및 카풀 위젯 Empty State 높이·여백 균형 개선 (2026-11-03)
+
+- 게시판 목록 및 메인 피드 열 정렬(Column Alignment) 및 컴포넌트 밸런스 개선:
+  1. **게시글 목록 통계(댓글/조회수) 수직 열 고정 (Fixed Column Alignment)**:
+     - `HomePageClient.tsx` & `posts/page.tsx`: 댓글이 0개일 때 댓글 태그가 DOM에서 제거되어 조회수(`👁`)가 당겨지거나 밀려 세로 일렬 선이 어긋나던 버그 수정.
+     - 댓글 0개 시에도 동일 너비의 빈 플레이스홀더(`<span className="m-stat m-stat-comment is-empty" aria-hidden="true" />`)를 유지하고, 공지사항 목록에도 적용.
+     - `globals.css`: `.m-stat-comment`(36px)와 `.m-stat-view`(44px)에 고정폭 부여 및 `font-variant-numeric: tabular-nums`를 적용하여 댓글 유무 및 숫자 자릿수(1자리 vs 2자리)와 무관하게 모든 행의 눈 아이콘(`👁`) X좌표를 수직 일렬로 완벽 정렬.
+  2. **메인 페이지 '카풀 & 동행' 섹션 Empty State 밸런스 및 여백 교정**:
+     - `HomePageClient.tsx`: `carpool-widget-empty`에 `directions_car` 아이콘을 추가하여 중고장터 Empty State와 동일한 시각적 계층 구조 형성.
+     - `globals.css`:
+       - 카풀 글이 없을 때 상단 실선이 점선 박스에 딱 달라붙던 현상을 해결하기 위해 `.carpool-compact-list:has(.carpool-widget-empty) { border-top: none; }` 적용.
+       - Empty 박스의 높이를 기존 72px에서 140px(`min-height: 140px`)로 확대하고 넉넉한 패딩 및 `margin-top: 12px`를 부여하여 우측 중고장터 위젯과의 시각적 높이/여백 밸런스 완벽 복원.
+  3. **검증**:
+     - 프론트엔드 전체 정적/동적 28개 라우트 빌드 통과 (`npm run build`, Next.js Turbopack 0 errors).
+
+## 관리자 시스템 대시보드 및 소프트 삭제 감사 추적 관리 (2026-11-02)
+
+- 관리자 전용 대시보드 및 시스템 감사·운영 제어 기능 구축 완료:
+  1. **데이터베이스 마이그레이션 (`024_migration_admin_system_dashboard.sql`)**:
+     - `system_config`: 기능 플래그 동적 제어 (`CHAT_ANONYMOUS_ENABLED` 등) 테이블 및 초기 시드 적용.
+     - `daily_visitor_log`, `daily_visitor_stats`: SHA-256 IP 익명 해시 기반 DAU/PV/회원·비회원 방문 집계 테이블 생성.
+     - `chat_banned_ip`: 실시간 악성 사용자 채팅 IP 차단 테이블 생성.
+     - `banner`: 메인 프로모션 배너 CRUD 테이블 생성.
+     - `post.deleted_by_member_id BIGINT NULL`: 게시글 소프트 삭제 시 삭제를 실행한 회원 PK(`member_id`)를 감사 추적 컬럼으로 추가 및 인덱스(`idx_post_deleted_by`) 부여.
+  2. **백엔드 관리자 도메인 및 감사형 소프트 삭제 구현**:
+     - `Post.java`: `deletedByMemberId` 필드 매핑 및 `softDelete(Long deleterMemberId)`, `restore()` 도메인 메서드 추가.
+     - `PostService.java`: 일반 사용자 자진 삭제 시 로그인 사용자 PK(`userDetails.getMemberId()`)를 주입하여 `post.softDelete(deleterId)` 수행.
+     - `PostRepository.java`: `AdminPostProjection`에 `authorMemberId`, `deletedByMemberId`, `deleterNickname`, `deleterEmail`, `deleterRole` 프로젝션 추가. `findDeletedForAdmin` 네이티브 쿼리에 deleter 조인 추가. 관리자 즉시 소프트 삭제(`softDeleteByAdmin`) 및 복구(`restorePostByAdmin`) 네이티브 쿼리 구현.
+     - `AdminPostResponse.java`: `isDeletedByAuthor` 불리언 필드를 산출하여 작성자 본인 삭제 여부와 관리자 가리기 구분을 DTO 레벨에서 명확히 분리.
+     - `AdminPostController.java`: `GET /api/v1/admin/posts?onlyDeleted=true` (소프트 삭제된 글 전용 조회), `DELETE /api/v1/admin/posts/{publicId}` (관리자 가리기/소프트 삭제), `PATCH /api/v1/admin/posts/{publicId}/restore` (삭제글 복구) 엔드포인트 연동.
+  3. **프론트엔드 메인 피드 [가리기] UI 및 관리자 페이지 톤앤매너 전면 개편**:
+     - `HomePageClient.tsx`: 관리자(`profile?.role === 'ROLE_ADMIN'`) 로그인 시 1줄 피드 행(`.compact-post.m-row`)에 `.m-admin-blind-btn` [가리기] 버튼 노출. 클릭 시 확인 컨펌 후 관리자 소프트 삭제 API 호출 및 피드에서 즉시 실시간 제거.
+     - `globals.css`: 메인 톤앤매너와 어울리는 컴팩트 로즈 뱃지 `.m-admin-blind-btn` 스타일 추가.
+     - `frontend/app/admin/layout.tsx`: 어두운 슬레이트 테마를 Snowthing 고유의 화이트/스노우 캔버스(`--snow-background: #f4f6f9`, `--snow-canvas: #ffffff`, `--alpine-navy: #0f2942`, `--alpine-sky: #0284c7`) 디자인 시스템으로 전면 개편.
+     - `frontend/app/admin/posts/page.tsx`: 소프트 삭제된 글 전용 감사 뷰로 개편. 삭제 주체(작성자 본인 자진 삭제 vs 관리자 가리기/삭제자 닉네임·이메일 vs 비회원 비밀번호 삭제) 뱃지, 삭제 일시, 원문 열람 모달, 즉시 복구 기능 제공.
+     - `frontend/app/lib/api.ts`: `AdminPostItem` DTO 확장 및 `deletePost`, `restorePost` 엔드포인트 등록.
+     - `DeleteConfirmModal.tsx`: 네오브루탈리즘 스타일(2px 검은 테두리, 하드 섀도우, 이탤릭 타이틀, CANCEL 영문 모노 폰트, 원색 빨간 사각 버튼)을 전면 제거하고, Snowthing 테마 토큰(`--snow-canvas`, `--snow-ink`, `--snow-border`) 기반의 모던 라운드 다이얼로그 및 국문 '취소'/'삭제' 버튼으로 리팩토링.
+     - `frontend/app/admin/layout.tsx` & `admin/posts/page.tsx`: 어드민 헤더에 실시간 `AdminThemeToggle` (라이트/다크 모드 전환 버튼)을 탑재하고, 모든 어드민 뷰와 테이블, 모달을 CSS 변수 토큰으로 연동하여 라이트/다크 모드 완벽 지원.
+     - `SiteChrome.tsx` & `layout.tsx`: 새로고침/로딩 시 구글 웹폰트 합자(Ligature) 지연으로 'keyboard_arrow_down' 영문 텍스트가 번쩍이며 노출되던 FOUT(Flash of Unstyled Text) 결함을 해결. 헤더 게시판 드롭다운 화살표를 인라인 경량 SVG 컴포넌트(`<ChevronDownIcon />`)로 전면 교체하여 0ms 즉시 렌더링을 보장하고, `layout.tsx`의 Material Symbols 웹폰트 display 옵션을 `block`으로 전환하여 전체 텍스트 깜빡임 차단.
+     - `LiveChatSection.tsx`: 비로그인 라이브톡 활성화 결함 해결. 백엔드 public config 응답 키(`anonymousChatEnabled`)와 프론트엔드 조회 키(`chat_anonymous_enabled`) 불일치로 비회원 입력창이 영구 차단되고 로그인 페이지로 튕기던 버그를 정규화하고, 웹소켓 `CONFIG_UPDATED` 실시간 동기화 및 리조트 태그 select box 비활성화 해제 적용.
+  4. **검증 및 테스트**:
+     - 백엔드 전체 테스트 428+건 전수 통과 (`./gradlew test`).
+     - 프론트엔드 Next.js 정적 페이지 28개 전수 빌드 통과 (`npm run build`).
+     - 로컬 서버 통합 E2E 검증 (`verify_admin_soft_delete.py`): 일반 사용자 작성 글의 자진 삭제 (`isDeletedByAuthor: True`), 관리자 메인/콘솔 가리기 삭제 (`isDeletedByAuthor: False`, `deleterNickname: 최고관리자`), 관리자 삭제글 전용 목록 조회 및 복구 (`restore` -> 200 정상 복원) 전 과정 100% 검증 완료.
+   5. **관리자 API CSRF 방어 연동 및 비로그인 라이브톡 런타임 제어 완비**:
+      - `admin/page.tsx`, `admin/posts/page.tsx`, `admin/members/page.tsx`, `admin/chat/page.tsx`, `admin/banners/page.tsx`: 모든 상태 변경 HTTP 요청(`PATCH`, `POST`, `DELETE`)에 `csrfFetch`를 전면 적용하여 Spring Security의 403 Forbidden 거부 오류를 완전 해소.
+      - `LiveChatSection.tsx`: 관리자 메시지 IP 차단 API에 `csrfFetch` 적용. 비로그인 라이브톡 비활성화 시 자동 포커스로 인한 강제 리다이렉트(`onFocus`)를 제거하고 `readOnly` 및 `cursor-pointer`로 전환하여 전송 클릭 시에만 로그인으로 부드럽게 유도.
+      - 무재배포 런타임 스위칭 검증: 어드민 스위치 OFF 시 DB `false` 반영 및 비로그인 STOMP 발신 백엔드 원천 차단 확인, 스위치 ON 시 즉시 랜덤 닉네임 발급 및 정상 브로드캐스트 확인.
+   6. **라이브톡 비회원 메시지 오른쪽 정렬 및 420px 내부 스크롤 고정**:
+      - `globals.css`: `.home-live-chat .live-chat-feed`와 `.live-chat-body`에 `min-height: 0`, `height: 420px`, `max-height: 420px`, `overflow-y: auto`를 적용하여 메시지가 다수 누적되어도 전체 창이 무한정 길어지지 않고 420px 높이 내에서 매끄럽게 내부 스크롤되도록 CSS Flexbox 팽창 결함 수정.
+      - `LiveChatSection.tsx`: 비회원이 발송한 메시지도 세션 스토리지 기반 추적으로 로그인 회원과 동일하게 오른쪽(`mine`, 기존 Snowthing 다크 잉크 말풍선)으로 정렬.
+      - 조건부 닉네임 렌더링: 로그인 회원은 자기 닉네임을 미표시하고 시간/태그만 우측 정렬하며, 비회원은 자신이 발송한 글 상단에 랜덤 닉네임(예: `슬로프요정#6235`)이 선명하게 표시되도록 처리. 비회원 발송 후 인풋 플레이스홀더에 `"{닉네임} (으)로 대화 참여 중..."` 동적 안내 연동.
+   7. **메인 피드 15개 노출 및 반응형 채팅창 높이 동기화**:
+      - `HomePageClient.tsx`: 메인 화면 탭별 게시글 조회(`size`) 및 슬라이스 건수를 10개에서 15개로 확대.
+      - `globals.css`: 15개 게시글 높이(~790px)에 맞춰 데스크톱 라이브톡 피드 높이를 `660px`(`height: 660px; max-height: 660px;`)로 상향 조정하여 좌우 수평 균형 정렬.
+      - 모바일/태블릿 반응형 보장: 태블릿(<=1024px)에서는 1열 축소에 맞춰 `380px`, 모바일(<=640px)에서는 화면 전체를 가리지 않도록 컴팩트한 `300px`로 자동 조정.
+   8. **라이브톡 군더더기 [도움말] 버튼 및 로컬 패널 완전 제거**:
+      - `LiveChatSection.tsx`: 상단 `[도움말]` 버튼, `localHelp` 패널, 미사용 로컬 명령어 가로채기 로직 및 미사용 `Link` import 완전 제거.
+      - `globals.css`: `.live-chat-help-toggle`, `.live-chat-local-help` 미사용 레거시 CSS 정리.
+      - 라이브톡 상단 헤더를 'LIVE STREAM 라이브톡' 타이틀만 남겨 심플하고 세련된 실시간 메신저 헤더로 정돈.
 
 ## 게시판·프로필·장터 핫픽스 (2026-11-02)
 
@@ -45,6 +149,31 @@
 
 
 ## 메인 화면 및 회원가입 정리 (2026-10-30 ~ 2026-10-31)
+
+- 2026-11-02 사용자 요청으로 운영 고아 이미지/프로필 교체·압축·다른 사용자 표시 경로를 점검했다. 운영 `115835b` 소스와 미커밋 로컬 보완을 분리 대조했고 프로필은 최대 320px JPEG 품질 0.8의 파일 하나, 이전 파일의 DB 정리 예약·분당 50건 배치·현재 참조 보호·실패 재시도 구조임을 확인했다. 운영 컨테이너의 CloudFront 배포 ID 누락으로 S3 삭제 후 CDN 무효화가 정상 완료될 수 없음을 확인했다. DB의 등록 프로필 URL/정리 대기는 조회 시점 각각 0건이지만, EC2 역할의 S3 ListBucket/GetLifecycleConfiguration 권한 거부로 실제 고아 수/별도 수명주기 정책은 확인하지 못했다. 일반 첨부 이미지의 앱 고아 정리기는 없고 메인/목록/채팅은 사진 URL 계약·렌더링 자체가 미연결이다. 상세/댓글은 Member의 현재 URL을 조회하지만 다른 브라우저에 실시간 변경 통지는 없다. 운영과 같은 hotfix 소스에서 프로필 관련 17개 테스트 통과(실제 MySQL·mock S3/CDN). 운영 업로드/삭제/회원 정보 변경이나 IAM/설정 수정은 수행하지 않았다. 자세한 근거·제약·후속 보완 제안은 `docs/project/profile-image-audit-20261102.md`에 기록했다.
+
+- 2026-11-02 사용자 추가 피드백 5건을 `fix/site-renewal-review` 로컬 작업 파일에 반영했다. (1) 게시글 작성자 사진의 32px CSS 크기와 기존 42px flex-basis 불일치를 고쳐 정원으로 표시하고 작성자/댓글 공통 프로필의 border/background/shadow를 제거했다. 회색 원과 체크무늬가 이미지 자체에 박힌 기본 PNG 대신 해당 작성자/댓글의 사진 없음 표시는 배경 없는 코드 SVG 실루엣으로 바꿨다. (2) 게시글 전체 reload 버튼을 제거하고 카풀 카드 헤더에 전용 재조회 버튼을 두었다. 카풀 API만 no-store로 호출하며 중복 요청 방지·실패 안내·기존 목록 보존을 처리했다. 댓글 초안/스크롤/게시글·댓글 조회를 유지함을 브라우저에서 확인했다. (3) 게시판 페이지 크기를 20개로 늘리고 메인 10개는 유지했다. 2페이지 요청도 size=20인지 검증했다. (4) PostListAuthor 공통 컴포넌트를 메인/게시판에 적용해 익명은 `익명` 배지와 IP 앞 두 구간만 표시하도록 맞췄다. 회원 아바타/닉네임은 유지한다. (5) 운영 로그에서 중고장터 삭제 시 버전 없는 MarketCategory에 OPTIMISTIC_FORCE_INCREMENT가 적용되는 예외를 확인했다. 잠금 조회에서 fetch join을 제거해 버전 있는 MarketListing만 잠그고 연관 객체는 서비스 트랜잭션 내에서 지연 로딩하도록 수정했다. 동일 문제가 있는 거래 상태 잠금 조회도 함께 정리했다. 관리자 canDelete와 작성자 canEdit를 UI에서 분리하고 삭제 중 상태/네트워크 실패/재시도 처리를 추가했다.
+- 위 변경 검증: PC/모바일·라이트/다크·기본/업로드 프로필 8개 캡처에서 사진 정사각 크기·50% 원형·테두리/배경/그림자 없음·가로 넘침 없음을 확인하고 주요 캡처를 직접 검수했다. 카풀 재조회 시 해당 GET 1회만 발생하며 댓글 초안·스크롤이 보존되고 실패 시 기존 목록이 유지됨을 확인했다. 게시판 20개/페이지 전환, 메인 10개, 두 목록의 익명 배지/최대 길이 IP 잘림 없음도 검증했다. 장터 UI는 관리자 삭제 노출·서버 거절·네트워크 실패·CSRF·204 후 목록 이동을 읽기/응답 mock으로 검증했다. 장터 관련 실제 MySQL 테스트 22개가 통과했고, 작성자/관리자 삭제·타인 거절·삭제 후 상세/목록 제외 및 별도 트랜잭션에서 실제 COMMIT된 soft delete를 검증했다. 테스트 초기에는 Docker Desktop이 꺼져 DB 연결에 실패해 로컬 Docker를 시작한 후 재검증했다. 프런트 lint/build, 장터 변경 Java 3개 파일 Spotless 및 bootJar 통과. 근거: `docs/project/ui-fixes-20261102/`. 로컬 프런트 3000/백엔드 8080을 현재 브랜치에서 실행하고 HTTP 200을 확인했다. 운영 글을 삭제하거나 변경하지 않았으며 이번 추가 수정의 커밋·푸시·PR·운영 배포는 아직 하지 않았다.
+
+- 2026-11-02 사용자 hotfix 업로드·배포 승인에 따라 최신 운영 main에서 `hotfix/post-created-time-order`를 분리하고 정렬·커서 수정과 회귀 테스트/API/작업 기록 5개 파일만 커밋(`a5214ef`)·푸시했다. PR #46의 전체 CI 통과 후 squash 병합했으며 main `115835b219106c7bb861204f07f0afa00346449a`의 백엔드 배포 성공을 확인했다(https://github.com/devikae/snowthing/actions/runs/41403673692). 운영 환경 승인도 사용자 배포 지시 범위에서 처리했다. 로컬 전체 테스트 429개 실패·오류 0, 기존 조건부 skip 1, 전체 포맷/bootJar 및 GitHub 검사 통과. 로컬 테스트용 MySQL 트리거 설정은 검증 후 기존 값 0으로 복원했다. EC2 HEAD·실행 이미지 digest(`sha256:08f24a4a7aa71021fc3b27937ac2eae3495bcc7446658bf13ef4d87bae542048`)·새 컨테이너 시작과 실제 코드의 작성 시간 정렬을 확인했다. 운영 공개글 80건을 offset/cursor 양쪽으로 전부 조회해 DB의 시간·ID 순서와 동일하며 누락·중복이 없음을 검증했고 자유/익명/질문 개별 목록도 검증했다. 실제 운영 메인 브라우저 캡처에서 세 카테고리 혼합을 직접 확인했다. 근거는 `docs/project/post-order-hotfix-20261102/`에 보관한다. 기존 디자인/리뷰 작업 파일과 프런트 컨테이너는 유지했고 운영 시드 시간·ID 수정이나 재삽입은 하지 않았다.
+
+- 2026-11-02 사용자 배포 완료 지적 후 운영 상태를 실제 확인하여 직전 미배포 단정을 정정했다. PR #45는 15:36:49 KST에 병합됐고 main `24ce814eee43d9f4d85cf657cfcd46623cbf0c00`의 백엔드/프런트 CI 배포가 성공했다. EC2 HEAD도 같은 커밋이며 백엔드 컨테이너는 15:46:44 KST에 시작됐다. 배포된 소스에는 여전히 `post.id.desc()`와 ID 단일 커서가 들어 있다. 정렬 변경은 로컬 `fix/site-renewal-review` 작업 파일에만 있고 원격 head `ad274da`에는 없어, 사용자가 병합/배포한 PR에 포함되지 않은 것이 원인이다. '브랜치에 추가'와 '원격 커밋에 포함'을 명확히 구별해 전달하지 못했다. 테스트 완료된 정렬 수정 4개 파일은 그대로 유지하며, 후속 커밋·푸시/PR·배포는 수행하지 않았다.
+
+- 2026-11-02 사용자 첨부 메인 전체글 화면의 질문글 편중을 재확인했다. HomePageClient의 전체글 탭은 카테고리 필터 없이 공통 게시글 API를 사용하며 별도 클라이언트 재정렬은 없다. 공개 운영 API의 상위 10건이 첨부 화면과 같은 질문글 10건으로 반환됨을 확인했다. `fix/site-renewal-review`의 정렬 수정은 로컬 작업 파일에만 존재하며 아직 커밋·푸시·운영 배포되지 않았으므로 운영 응답은 기존 ID 역순이다. 앞서 사용자는 별도 즉시 배포 대신 디자인 작업 브랜치에 변경 추가를 요청했으므로 이번 확인에서도 운영 배포나 데이터 재삽입은 수행하지 않았다.
+
+- 2026-11-02 사용자 요청으로 `feature/site-renewal`에서 검증한 게시글 작성 시간 정렬 수정을 현재 디자인 작업 브랜치 `fix/site-renewal-review`에 추가했다. PostRepositoryCustomImpl의 공통 정렬을 `created_at DESC, post_id DESC`로 바꾸고 커서도 동일 시각/ID 복합 조건으로 맞췄다. 전체글·개별 게시판·베스트 모두 적용하며 기존 커서 토큰 형식을 유지한다. 게시판별 삽입 순서와 작성 시간이 다른 경우 및 같은 시각의 페이지 경계 누락/중복을 검증하는 회귀 테스트 3개와 API/커서 설명을 함께 반영했다. 이 브랜치에서 관련 Repository/Controller/Service 테스트 49개 실패·오류 없이 통과, bootJar 및 이번 Java 변경 3개 파일의 SpotlessCheck 통과. 브랜치 전체 SpotlessCheck는 기존 작업 중인 BotMentionService, ProfileImageLifecycleService 및 관련 테스트 등의 포맷 위반으로 실패했으며 해당 파일은 수정하지 않았다. 전송 전 수정 중이던 기존 16개 파일의 SHA256 불변을 확인했고 work.md는 기존 기록에 이 항목만 추가했다. 운영 DB 재삽입·ID/시각 변경, 커밋·푸시·운영 배포는 수행하지 않았다.
+
+- 2026-11-02 PR #45 CodeRabbit 검토 지적 사항(9건) 전수 해결 및 검증 완료:
+  1. 배포 동시성 분리: `.github/workflows/deploy-backend.yml` 및 `deploy-frontend.yml`에서 워크플로우 동시성 그룹을 서비스별로 분리하고, EC2 실제 배포 작업(`deploy-backend`, `deploy-frontend`, `rollback-frontend`)에만 `group: ec2-production-deployment, cancel-in-progress: false`를 지정하여 CI 병렬 실행 및 배포 직렬화 보장.
+  2. 챗봇 단일 계정 시간당 예산 추가: `BotMentionService.java`에서 전역 시간/일간 예산 외에 `snowthing:limits:{bot}:account:{publicId}:hour` (시간당 5회)를 `sharedLimiter.acquire()`에 단일 트랜잭션으로 원자적 검사하여 전역 예산 독점 방지.
+  3. 챗봇 비즈니스 예외 요청자 통지: `BotMentionService.answer`에서 `CustomException` 분리 catch 후 `ChatErrorResponse.from(errorCode)`를 통해 요청자에게 에러 메시지(070 검증 실패 등)를 정확히 노출.
+  4. 프로필 이미지 업로드 검증 선행: `ProfileImageLifecycleService.java`에서 복구 저널 DB 저장 전에 `images.prepareProfileImage`로 파일 형식/크기 및 썸네일 변환을 선행 검증하여 무효한 업로드 요청 시 불필요한 저널 레코드 생성 차단.
+  5. 프로필 이미지 정리 DB 락 분리: `ProfileImageLifecycleService.cleanOne`에서 짧은 트랜잭션으로 5분 임대(Lease, `ProfileImageCleanup.lease`)를 갱신하고 트랜잭션 및 DB 행 락을 해제한 상태에서 S3/CloudFront 외부 I/O를 수행하도록 분리. 성공 시 레코드 삭제, 실패 시 지수 백오프 스케줄링.
+  6. 프로필 이미지 URL 인덱스: `database/production/023_migration_member_profile_image_url_index.sql` 추가 및 `scripts/verify-registration-notice-migration.cjs`에 마이그레이션 023과 `idx_member_profile_image_url` 인덱스 검증 추가.
+  7. CloudFront 배포 ID 환경변수 fail-fast: `compose.prod.yml`에서 `${SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID:?SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID must be set}` 적용.
+  8. HLS 스트림 프로브 origin 전달: `scripts/lib/local-browser.cjs`에서 `localOrigin`을 노출하고 `scripts/resort-cam-full-check.cjs`의 `probeHls`에 전달하여 상대 경로 URL 해석 및 Origin 헤더 지정.
+  9. robots.txt 미일치 user-agent 허용 처리: `scripts/lib/seo-validation.cjs`에서 일치하는 User-agent 그룹이 없을 때(`best < 0`) 크롤링 허용(RFC 9309 준수)하도록 수정 및 단위 테스트 추가.
+- 검증: 백엔드 전체 테스트 428건 통과 (실패 0, 건너뜀 1), 마이그레이션 검증 통과 (001~018 + 021/022/023 체인 및 인덱스 단언), SEO 검증 3건 통과, 프론트엔드 프로덕션 빌드(Turbopack Next.js 16) 통과.
 
 - 2026-11-02 사용자 hotfix 업로드·배포 승인으로 최신 운영 main `24ce814`에서 `hotfix/post-created-time-order`를 분리했다. CSV 작성 시각은 그대로 유지하고 게시글 offset/cursor 공통 조회를 `created_at DESC, post_id DESC` 및 같은 기준의 커서 조건으로 수정했다. 게시판별 삽입 순서가 시간순과 다를 때와 동일 시각의 페이지 경계를 검증하는 회귀 테스트 3개, API 명세·커서 설명을 함께 반영했다. 관련 Repository/Controller/Service 테스트 49개, 전체 Java 포맷 검사(Windows worktree의 JGit 경로 문제를 피하는 로컬 init script만 사용)와 bootJar를 통과했다. 첫 전체 429개 테스트 중 기존 추천 트리거 테스트 3개가 로컬 MySQL의 `log_bin_trust_function_creators=0` 때문에 실패하여 기존 CI와 동일하게 로컬 설정을 맞춘 후 전체 재검증한다. 프런트·디자인·동호회·진행 중인 리뷰 수정 및 DB 마이그레이션은 포함하지 않았다. hotfix PR의 CI 통과를 확인하고 병합·백엔드 배포 후 운영 메인과 offset/cursor 전체글 응답을 검증한다.
 
@@ -2304,6 +2433,63 @@
 - PR #43 CodeRabbit 추가 리뷰를 반영했다. 다른 공급자 콜백은 같은 `state`를 전달받아도 원래 요청을 소비하지 않으며, 정상 공급자 콜백에서만 제거한다.
 - 신규 네이버·구글 외부 도메인 프로필은 실제 이메일로 `Member.email`을 점유하지 않는다. 제공자와 사용자 ID의 SHA-256 결과로 만든 `@users.invalid` 내부 식별 이메일을 회원 조회 키로 쓰고 실제 이메일은 `MemberSocialAccount.providerEmail`에만 저장한다. 기존 연결 회원은 데이터 변경 없이 제공자 ID 로그인을 유지하며 과거 데이터 정리는 별도 점검으로 남긴다.
 
+
+## 관리자 대시보드 및 시스템 운영 제어 콘솔 구축 (2026-11-02)
+
+- 브랜치: `feature/admin-dashboard`
+- **DB 마이그레이션 (`024_migration_admin_system_dashboard.sql`)**:
+  - `system_config` (동적 시스템 설정 저장소: 비로그인 채팅 On/Off 등)
+  - `daily_visitor_log` (일일 고유 방문자 해시 로그: `UNIQUE KEY uk_stat_date_hash`)
+  - `daily_visitor_stats` (일자별 DAU, 회원/게스트 방문자수, PV 통계)
+  - `chat_banned_ip` (채팅 IP 차단 내역 및 만료일)
+  - `banner` (메인 상단 배너 관리: 제목, 이미지, 링크, 순서, 노출여부)
+  - `post` 테이블에 `is_blinded` 컬럼 추가
+  - 마이그레이션 스크립트(`scripts/verify-registration-notice-migration.cjs`) 검증 통과 (001~018, 021~024 체인 검증).
+- **방문자 집계 및 보안 아키텍처**:
+  - IP 원문을 저장하지 않고 일자별 Salt 기반 `SHA-256(client_ip + user_agent + date)` 익명 해시 적용.
+  - Caffeine 30분 인메모리 필터 + `INSERT IGNORE`를 조합하여 동시성 DB 부하를 최소화하고 정확한 DAU 및 PV를 원자적으로 집계.
+  - `VisitorTrackingInterceptor` 및 `WebMvcConfigurer`를 통해 일반 조회 요청을 비동기 트랜잭션(`PROPAGATION_REQUIRES_NEW`)으로 무간섭 집계.
+- **실시간 라이브톡 비로그인 발신 및 IP 밴 제어**:
+  - 관리자 설정(`CHAT_ANONYMOUS_ENABLED`)이 ON일 경우 비로그인 사용자에게 귀여운 랜덤 닉네임(예: `눈사람#4812`, `슬로프요정#1234`)을 자동 부여하여 채팅 참여 허용.
+  - 비로그인 유저도 IP 기반 버스트 윈도우(1초 4회) 및 중복 메시지(3초 쿨다운) 레이트 리미트 엄격 적용.
+  - 관리자가 라이브톡 메시지에서 원클릭으로 [차단] 클릭 시, `ChatRecentHistoryBuffer`의 IP 매핑을 역추적하여 IP를 차단하고 웹소켓 `PURGE_MESSAGES` 브로드캐스트를 전송하여 모든 접속자의 화면에서 해당 악성 메시지를 실시간 동시 제거.
+- **불량 회원 및 게시글 관리**:
+  - 회원 관리: 이메일/닉네임 검색, 상태 전환(`ACTIVE` <-> `SUSPENDED`), 닉네임 강제 수정, 불쾌/음란 프로필 사진 강제 영구 삭제(`ProfileImageLifecycleService`를 통한 S3 버킷 파일 영구 삭제 및 기본 프사 초기화).
+  - 게시글 관리: 사용자가 삭제한 글(`is_deleted = true`) 원본 본문 열람 모달 지원 및 관리자 강제 숨김(`is_blinded = true`) 토글 제어.
+- **메인 배너 관리**:
+  - 배너 CRUD 및 노출 On/Off 토글, 노출 순서 관리 API 및 화면 구축.
+- **프론트엔드 관리자 UI (`/admin`)**:
+  - `/admin/layout.tsx`: 사이드바 및 `ROLE_ADMIN` 권한 검증 (비인가자 접근 시 차단 카드 및 로그인 유도).
+  - `/admin/page.tsx`: DAU/PV/회원수 KPI 카드, 비로그인 채팅 원클릭 토글 스위치, 7일/30일 추이 차트.
+  - `/admin/members/page.tsx`: 회원 목록, 검색, 상태 전환, 닉네임 변경 모달, 프사 삭제.
+  - `/admin/posts/page.tsx`: 게시글 목록, 삭제글/블라인드글 필터, 원문 열람 모달, 블라인드 토글.
+  - `/admin/chat/page.tsx`: 차단된 IP 목록, 수동 차단 추가 모달, 차단 해제.
+  - `/admin/banners/page.tsx`: 배너 목록, 배너 등록/수정 모달, 활성 토글 및 삭제.
+  - 메인 라이브톡(`LiveChatSection.tsx`): 비로그인 채팅 지원 및 관리자 접속 시 실시간 원클릭 IP 차단 버튼 제공.
+- **검증**:
+  - 백엔드 428+ 테스트 전체 통과 (`./gradlew test`)
+  - 프론트엔드 전체 Next.js 빌드 및 정적 페이지 생성 통과 (`npm run build`)
+
+
+## 관리자 브랜치 미커밋 변경 확정 (2026-11-03)
+
+- 사용자 승인으로 기존 미커밋 9개 파일을 검토하고 목적별 두 커밋으로 분리했다. 소스 코드는 추가 수정하지 않았다.
+- 날짜 표시: 카풀 목록·상세, 게시글 상세·댓글의 초 단위 표시를 제거하고 분 단위로 정리한 기존 변경을 보존했다.
+- UI: 메인·게시판 댓글/조회수 열 정렬, 카풀·장터 빈 상태, 기본 프로필 아바타의 기존 변경과 작업 기록을 보존했다.
+- 검증: npm run build 성공(TypeScript 포함, 정적 페이지 28/28 생성), git diff --check 통과. npm run lint는 기존 관리자 페이지·라이브톡 등의 오류 25개·경고 7개로 실패했다. 변경 파일 HomePageClient의 any 및 미사용 함수도 HEAD에 이미 있음을 확인했다. 이번 작업에서 기존 린트 오류는 수정하지 않았다.
+- 원본 미커밋 패치를 별도 .cache에 백업하고 커밋 전후 8개 소스 파일의 SHA-256을 대조했다. main 병합·rebase·원격 push는 수행하지 않았다.
+
+## 관리자 브랜치 main 통합 및 PR 검증 (2026-11-03)
+
+- 사용자 승인으로 최신 main 9af648a(PR #47)를 관리자 브랜치에 병합했다. 12개 충돌을 해결하면서 기존 13개 관리자/UI 커밋과 main의 이미지 보안·수명주기·EXIF·프로필 개선을 보존했다.
+- 관리자 마이그레이션을 027로 분리하고 Node·CI의 통합 마이그레이션 검사에 포함했다. 블라인드 게시글은 일반 ORM 조회에서 제외하되 관리자 native 감사 조회와 onlyBlinded 필터를 유지한다. 배너 활성화 요청은 서버 DTO의 isActive 및 필수 필드와 일치시켰다.
+- 검증: 백엔드 spotlessApply spotlessCheck test build 성공(480개 중 실패 0개·기존 제외 1개), 격리 MySQL 최초 적용·재실행 001~018 및 021~027 성공, 프런트 production build 성공. 기존 프런트 린트 오류는 후속 정리 중이다.
+- 원본 작업 폴더를 보존한 별도 .cache/admin-integration에서 작업했다. PR 생성 후 CodeRabbit 전체 리뷰 및 후속 검증을 진행한다. 운영 앱 배포·운영 DB 변경은 수행하지 않았다.
+
+- PR #48 생성 및 main 대상 병합 가능 상태를 확인했다. CodeRabbit에 `@coderabbitai full review`를 요청했고 봇이 Full review triggered로 응답했다. 초기 GitHub Spotless·Build and Test가 모두 통과했다.
+- 프런트 후속 정리: 기존 any 예외 처리를 unknown과 Error 판별로 바꾸고 미사용 핸들러를 제거했다. 관리자 데이터 로딩을 취소 가능한 비동기 응답 콜백으로 정리해 effect의 동기 상태 갱신 오류를 해결했다. 검색은 검색 버튼 제출 시에만 반영하고, 로그인 사용자 ID가 바뀔 때 채팅 연결이 재생성되도록 의존성을 명확히 했다. 관리자 테마는 DOM 테마 변경을 구독한다.
+- 배너 활성화·수정은 서버의 isActive 필드와 필수 필드 및 기존 노출 기간을 보존한다. 프런트 lint는 오류 0개로 통과했고 production build도 통과했다. Material Symbols의 기존 글꼴 display=block 정책 경고 1개는 아이콘 문자 깜빡임 방지를 위해 유지한다. 잠금 파일의 기존 npm audit 진단(25개)은 버전 변경 없이 기록하며 이번 통합에서 의존성 자동 업그레이드는 하지 않았다.
+
 ### 2026-11-03 — PR #47 Spotless 및 CodeRabbit 리뷰 보완
 
 - 사용자 승인 범위: PR #47의 Spotless 실패와 CodeRabbit 리뷰 수정. 기존 `feature/social-login` 미커밋 작업을 보존하고 `.cache/pr47-fix` 독립 복제본에서 작업했다. Spotless의 Git worktree 인식 실패로 일반 복제본을 사용했다.
@@ -2326,47 +2512,3 @@
 - 증거: `docs/conception/012_profile_settings/06_production_image_inspection.json`, `07_production_monitoring_verification.json`. 변경 전 경보 백업은 로컬 임시 디렉터리 `snowthing-image-monitoring-9v4qbnmd`, Agent 백업은 서버 `/var/lib/snowthing-monitoring-backups/image-budget-20261103T053830Z`에 있다. 재현 스크립트는 기본 plan·명시적 --apply·읽기 전용 --verify를 제공한다.
 - 검증: 예산 소진의 상호 격리·미차감, 신규 계정 제한, IPv4 별칭과 잘못된 호스트 입력, 계정 간 IP 및 IPv6 /64 공유, 1만 건 병렬 거절의 합산·분당 로그량 제한을 검증했다. 최종 `spotlessApply spotlessCheck test build` 성공: 471개 중 실패 0개·기존 제외 1개. Python 설정·실측 스크립트 컴파일과 실제 운영 --verify도 통과했다. 최종 원격 CI는 PR #47 Checks를 참조한다.
 - 배포 경계: 이번 작업은 경보·Agent 수집 설정을 적용했으며 운영 앱 교체·운영 DB 마이그레이션은 하지 않았다. 새 앱의 EMF 발행과 신규 테이블의 운영 실행 계획은 PR 배포 후에 확인할 수 있다. CodeRabbit의 자동 재리뷰 완료 판정과 코드 반영 사실은 구분한다.
-
-### 2026-11-04 — IKA-6 질문 게시판 답변 수요 규모 조사 (IKA-5 0단계)
-
-- 상태: 0단계 완료. 판정 결과 답변 보조(IKA-12)는 보류하고 요약·검색 지원으로 범위를 줄인다
-- 계획: 데이터를 보기 전에 판정 기준을 고정하고, 집계만 반환하는 읽기 전용 스크립트로 운영 QNA 수요를 잰다.
-- 완료: `docs/conception/017_ai_answer_assist/01_design.md`(현재 코드 기준 사실, 착수 전 결정 D1~D8, 단계별 완료 기준, 0단계 판정 기준), `scripts/inspect-qna-demand.py`(SSM 운영 실행·`--local` 검증 모드, 쿼리당 5초, 세션 읽기 전용 트랜잭션, 원문·회원·게시글 ID 미반환).
-- 결정: 착수 전 확정 사항은 사용자 지시로 질문 없이 초안 기본안 기준으로 정했다(설계 문서 §3). 기존 운영 조회에서 전체 게시글이 86개였으므로 답변 초안 기능이 과할 수 있다는 점을 판정 기준(D2)에 반영했다.
-- 검증: 로컬 MySQL 임시 스키마에 기대값을 미리 계산한 고정 데이터를 넣어 실행, 4개 집계 검사 모두 일치. 읽기 전용 세션에서 DELETE 거부(ERROR 1792) 확인. 운영 실행은 미실행.
-- 사용자 결정·협조 필요: 운영 읽기 전용 조회 실행 승인(또는 직접 실행), 공개 QNA 게시판을 보고 반복 질문 사례 표시.
-- 운영 결과(2026-11-04 01:44 KST, 사용자가 직접 실행): MARKET 제외 공개 게시글 81, QNA 17(전부 2026-10 이후), 17건 모두 다른 사람이 17~18분 안에 첫 답변, 운영자 첫 답변 0. 90일 QNA 30건 미만이라 D2 기준 미충족. 17건이 모두 17~18분 안에 답변된 분포는 시드 글일 가능성이 있어 사용자 확인이 필요하다.
-- 리뷰 반영: CodeRabbit 2건(MARKET 제외, 운영자 첫 답변 판정에서 비회원 답변 누락) 수정. 실행된 운영 결과의 해석에는 영향 없음(설계 문서 §6).
-
-### 2026-11-04 — IKA-7 근거 검색 1단계 키워드 기준선 (IKA-5 1단계)
-
-- 상태: 로컬 구현·검증 완료, 로컬 커밋만 함. push·PR·운영 DB 마이그레이션·배포는 하지 않았다.
-- 완료: `027_migration_search_document.sql`(`post.content_version`, `search_document`, FULLTEXT ngram 인덱스), `Post`의 내용 버전 증가(제목·본문·카테고리·상태·삭제가 실제로 바뀔 때만), 관리자 전용 `POST /api/v1/admin/search/rebuild`, `GET /api/v1/admin/search/evidence`, `GET /api/v1/admin/search/evidence/{evidenceId}`. 오류 코드 SEARCH_001, EVIDENCE_001(404), EVIDENCE_002(409) 추가. 설계는 `docs/conception/017_ai_answer_assist/03_stage1_keyword_search.md`.
-- 결정: 쓰기·FULLTEXT 검색·원문 읽기는 JDBC, `SearchDocument` 엔티티는 테스트 스키마 생성·운영 validate·단건 조회용으로 둔다. MATCH는 JPQL로 표현할 수 없고, 원문을 엔티티로 읽으면 연관과 LONGTEXT가 영속성 컨텍스트에 올라가기 때문이다.
-- 결정: 게시글 0번 구간은 제목만, 1번부터 본문을 문단 단위 800자 이하로 묶는다. 제목을 모든 구간에 넣으면 제목 단어가 중복 집계된다. 게시글 본문은 Toast UI `getMarkdown()` 결과라 이미지·링크 주소·태그·강조 표시를 걷어낸 뒤 해시한다. 댓글은 일반 텍스트라 공백만 정리한다.
-- 결정: ngram 기본 불용어가 `a`가 들어간 영어 2-gram을 버려 `wax` 같은 단어를 못 찾는 것을 로컬 MySQL에서 확인했다. 027은 인덱스 생성 동안만 세션 단위로 불용어를 끈다. 서버 전역 설정은 바꾸지 않는다.
-- 결정: 공개 범위 조건(NORMAL·미삭제·MARKET 제외, 댓글 미삭제)을 한 곳에 두고 재구축·검색 후보 생성·근거 조회에 같이 쓴다. 검색 점수는 반환하지 않는다. 쿼리 파라미터는 문자열로 받아 직접 검증한다(기본 변환 실패는 전역 처리기에서 500이 됨). `search_document`에는 FK를 두지 않는다(재구축 가능한 복제본, 조회 시 원문 조인으로 거름).
-- 검증: 전용 테스트 DB `snowthing_ika7_test`에서 `./gradlew test --rerun` 510개 중 실패·오류 0개, 기존 제외 1개. 첫 전체 실행은 테스트 DB 사용자·비밀번호 환경변수 누락(문맥 로딩 실패 44건)과 빈 DB에 `request_budget_window`가 없어 생긴 503(1건)으로 실패했고, 환경변수를 모두 넣은 재실행에서 통과했다. Spotless는 Git worktree 인식 실패로 같은 커밋 기준 일반 복제본에서 변경 파일에 대해 apply·check 통과. 마이그레이션은 001+002+전체 마이그레이션 적용·재실행 검증 스크립트(027 검사 추가) 통과, 027 파일 직접 재실행 2회 성공, 마이그레이션 결과 스키마에 `ddl-auto: validate`로 앱 기동 성공(`content_version`을 지우면 validate 실패 확인). `git diff --check` 통과.
-- 남은 것: 원문 변경의 증분 반영(IKA-10), MCP 도구 연결(IKA-8), 기준선 측정(IKA-9). 운영 적용 전 `@@ngram_token_size` 확인과 027 적용 순서(앱 배포보다 먼저)를 지켜야 한다. `docs/conception/017_ai_answer_assist/01_design.md`는 IKA-6 브랜치에만 있어 병합 순서에 따라 링크가 잠시 끊길 수 있다.
-
-### 2026-11-04 — IKA-10 근거 검색 2단계 정합성 (IKA-5 2단계)
-
-- 상태: 로컬 구현·검증 완료, 로컬 커밋만 함(브랜치 `ika-10-search-outbox-eval`, IKA-7 브랜치 위). push·PR·운영 DB 마이그레이션·배포는 하지 않았다.
-- 완료: `028_migration_search_outbox.sql`(`search_outbox`, `search_index_state`, `search_reindex_checkpoint`), 게시글·카풀·장터·댓글 변경 11곳에서 같은 트랜잭션으로 outbox 기록, 폴링 처리기(SKIP LOCKED + lease, 현재 원문 재조회, 버전 비교, tombstone, 지수 백오프 5회 후 FAILED), 관리자 API `GET /outbox/summary`, `POST /outbox/retry-failed`, `POST /reconcile`, `POST /reindex`(모두 `/api/v1/admin/search` 아래), 일일 대조 스케줄. 설계·검증은 `docs/conception/017_ai_answer_assist/05_stage2_consistency.md`.
-- 결정: outbox 기록은 서비스에서 명시적으로 부른다(`Propagation.MANDATORY`). 댓글 삭제가 JPQL 일괄 UPDATE라 엔티티 콜백이 불리지 않고, BEFORE_COMMIT 리스너도 결국 지점마다 발행이 필요하기 때문이다. 다른 선택지: 엔티티 리스너, AFTER_COMMIT 비동기(이벤트 유실). 부작용: 새 변경 경로에서 기록을 빠뜨리면 다음 대조까지 늦어진다.
-- 결정: 처리기는 이벤트 내용이 아니라 현재 원문을 다시 읽고, 이벤트 버전이 적용 버전보다 작을 때만 건너뛴다. 댓글 삭제는 version을 올리지 않아(기존 낙관적 락 동작 유지) 같은 버전 이벤트도 다시 처리해야 하기 때문이다. 같은 게시글 처리는 게시글 상태 행 잠금으로 직렬화하고 READ COMMITTED로 읽는다.
-- 결정: 게시글 이벤트가 그 글의 댓글 문서까지 다시 만든다. 숨김·삭제 글의 댓글 문서가 색인에 남지 않게 하고, 재인덱싱은 게시글만 넣으면 된다.
-- 결정: 재인덱싱은 세대 전환 대신 원문 단위 교체 + 배치 체크포인트로 했다. 처리기가 원문 단위로 원자적으로 교체해 검색이 끊기지 않고, 현재 규모에 세대 컬럼·전환 절차는 과하다. 01_design D6의 "새 세대 생성 후 전환·롤백"은 하지 않았다. IKA-7 `POST /rebuild`는 동작을 유지하고 deprecated로 표시했다.
-- 결정(계획 외 스키마): `search_index_state.document_count`를 추가했다. 버전만으로는 본문 구간 하나가 빠진 손상을 대조가 찾지 못해서다.
-- 검증: 전용 테스트 DB `snowthing_ika10_test`에서 `./gradlew test --rerun` 534개 중 실패·오류 0개, 기존 제외 1개. 브랜치 생성 직후 기준 실행은 510개 중 1개 실패였다(`ProfileImageSecurityIntegrationTest` 503, 새 DB에 `request_budget_window`가 없던 환경 원인, IKA-7 기록과 같음). Spotless는 Git worktree에서 JGit 인식이 안 되어 같은 기준 커밋의 일반 복제본에서 변경 Java 31개에 apply 후 `spotlessCheck` 통과(15개 파일 서식 반영). 마이그레이션 검증 스크립트(028 검사 추가)를 빈 스키마에서 001+002+전체 적용·재실행 통과, 028 직접 재실행 2회 성공. 그 스키마로 `ddl-auto: validate` 앱 기동 성공.
-- 로컬 반영 지연(LOCAL, 운영 아님): 게시글 1건 100번 수정, 0~300ms 무작위 간격. 폴링 1000ms: P50 444.6ms, P95 939.8ms (N=100). 폴링 200ms: P50 106.1ms, P95 197.6ms (N=100). Windows 11·24코어·Java 21.0.8·Docker MySQL 8.0.46 같은 머신.
-- 남은 것: 운영 028 적용(앱 배포보다 먼저), 배포 뒤 `POST /reconcile` 한 번, 운영 폴링 쿼리 EXPLAIN 확인. 사용자 확인 필요.
-
-### 2026-11-04 — IKA-9 근거 검색 기준선 평가 실행기 (IKA-5 1단계)
-
-- 상태: 실행기와 검색 조건 구현 완료, **평가 결과 없음(사람 라벨링 대기)**. IKA-10과 같은 브랜치에서 로컬 커밋만 함.
-- 완료: 관리자 근거 검색 API에 평가용 선택 파라미터 `createdBefore`(KST `YYYY-MM-DDTHH:mm:ss`, `source_created_at` 미만), `excludePostPublicId`(질문 글타래 제외) 추가와 입력 검증·통합 테스트. `scripts/evaluate-evidence-search.py`(저장소 밖 JSONL, 쿠키는 환경 변수, hit@k·recall@k를 n/N으로, 근거 없음 항목 분리, 지연 P50/P95, 집계만 출력). 라벨링 방법과 사용자 할 일은 `docs/conception/017_ai_answer_assist/04_evaluation.md`.
-- 결정: 지표를 비율이 아니라 n/N으로만 쓴다. 실제 QNA 질문이 17건뿐이라 백분율이 차이를 과장한다(0단계 결과). 근거 없음 항목은 상위 1건 유무만 세고 정밀도로 해석하지 않는다.
-- 결정: 평가 자료는 저장소 밖에 두고 실행기가 저장소 안 경로를 거부한다. 공개 저장소에 운영 원문을 커밋하지 않기 위해서다(D8).
-- 검증: 로컬 임시 스키마에 직접 만든 게시글 4건·댓글 3건으로 실행기 동작만 확인했다(harness check, not a measurement). 수치는 기록하지 않는다.
-- 남은 것(사용자): QNA 17건 라벨링, tuning/eval 분리, 실행기 실행 후 집계 공유.
