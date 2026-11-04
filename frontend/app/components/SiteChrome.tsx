@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 import { RotatingWordmark } from "./RotatingWordmark";
+import { SnowflakeMark } from "./SnowflakeMark";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 
 type ThemeSetting = "light" | "dark";
@@ -176,6 +177,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
         <div className="community-container community-header-inner">
           <div className="community-header-left">
             <Link href="/" aria-label="눈팅 SnowThing 홈" className="alpine-logo">
+              <SnowflakeMark />
               <RotatingWordmark />
             </Link>
             <nav className="community-main-nav" aria-label="메인 메뉴">
