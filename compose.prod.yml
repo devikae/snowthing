@@ -43,6 +43,9 @@ services:
       - SNOWTHING_AI_MEMBERS_PERSONA_FILE=/etc/snowthing-ai/personas.yml
       - SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT=${SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT:-100}
       - SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS=${SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS:-}
+      # Discord 알림(IKA-18). 비어 있으면 그 채널 알림은 꺼진다.
+      - DISCORD_WEBHOOK_ALERT=${DISCORD_WEBHOOK_ALERT:-}
+      - DISCORD_WEBHOOK_EVENT=${DISCORD_WEBHOOK_EVENT:-}
       - JAVA_TOOL_OPTIONS=-javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
       - TZ=Asia/Seoul
     volumes:

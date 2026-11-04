@@ -96,6 +96,11 @@ snowthing:
         api-key: ${SNOWTHING_SEARCH_EMBEDDING_API_KEY:}
         connect-timeout-millis: 2000
         read-timeout-millis: 10000
+  discord:
+    # IKA-18. 비어 있으면 그 채널 알림은 꺼진다. 웹훅 URL은 비밀값이라 운영 prod.env에만 둔다.
+    alert-webhook: ${DISCORD_WEBHOOK_ALERT:}
+    event-webhook: ${DISCORD_WEBHOOK_EVENT:}
+    timeout: 3s
   admin:
     # IKA-12. 쉼표 구분 이메일. 기동할 때 해당 활성 회원을 ROLE_ADMIN으로 올린다. 목록에서 빼도 권한은 거두지 않는다.
     bootstrap-emails: ${SNOWTHING_ADMIN_BOOTSTRAP_EMAILS:}
