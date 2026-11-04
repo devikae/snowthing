@@ -60,6 +60,11 @@ snowthing:
         rest-api-key: ${SNOWTHING_KAKAO_REST_API_KEY:}
       opinet:
         api-key: ${SNOWTHING_OPINET_API_KEY:}
+  weather:
+    connect-timeout-millis: ${SNOWTHING_WEATHER_CONNECT_TIMEOUT_MILLIS:1000}
+    read-timeout-millis: ${SNOWTHING_WEATHER_READ_TIMEOUT_MILLIS:2000}
+    kma:
+      service-key: ${SNOWTHING_KMA_SERVICE_KEY:}
   search:
     indexer:
       enabled: ${SNOWTHING_SEARCH_INDEXER_ENABLED:true}

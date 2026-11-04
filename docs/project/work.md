@@ -1,3 +1,30 @@
+## 리조트 기온·개장 D-DAY (IKA-17, 2026-11-04)
+
+- 상태: 구현·로컬 검증 완료, 커밋·PR 전. 브랜치 `ika-17-resort-weather-dday`(워크트리 `snowthing-ika-17`).
+- 계획: 슬로프캠 헤더 기온 칩과 개장 D-DAY 태그, 메인 첫 개장 D-DAY 배너. 설계 `docs/conception/019_resort_weather_dday/01_design.md`, 대안 기록 `ADR-1901-weather-collection-and-cache.md`.
+- 완료
+  - 조사: 개장일 API 없음, 정상/베이스 기온 제공 리조트 없음, 13개 공식 사이트 수집 가능 여부 실측.
+  - 백엔드 `domain/resortweather`: `GET /api/v1/resort-cams/{code}/weather`(200/204/404, Cache-Control), 공식 소스 6곳(하이원·모나용평·무주 웨더아이, 웰리힐리 Nuxt 상태, 곤지암, 오투) + 기상청 초단기실황 대체, 요청 시 수집 + 미리 갱신(8분/30분, 실패 5분 대기, 전용 2스레드), `WeatherSnapshotStore`·`WeatherRefreshCoordinator` 인터페이스. Jsoup 1.21.1, `SNOWTHING_KMA_SERVICE_KEY`(선택), 공개 경로·봇 위임 허용 경로 추가.
+  - 프론트: `seasonOpening.ts` 개장일 상수(휘닉스·모나용평·하이원 11/27, 비발디·무주 12/4, 오크밸리 12/11, 모두 예상), `useKstToday`, 슬로프캠 D-DAY 태그·기온 칩, 메인 배너.
+- 결정
+  - 알펜시아는 기상청으로: 인증서 루트(OISTE WISeKey Global Root GB CA)가 JDK 신뢰 저장소에 없어 HTTPS 실패. 검증 끄기·신뢰 저장소 변경은 하지 않았다.
+  - 소스 클래스를 종류별로 나누지 않고 `OfficialWeatherSource` + 파서 함수로 합쳤다(공통 동작이 "URL 하나 받아 파싱"). 파서는 실제 응답 픽스처로 테스트.
+  - 기상청 키가 없으면 기상청 소스를 등록하지 않는다(키 없이도 배포 가능, 해당 리조트는 호출 없이 204).
+  - 격자 좌표는 DataInitializer 리조트 마스터 좌표를 그대로 쓴다.
+  - 모나용평 "흐 림" 같은 한 글자 띄어쓰기만 붙인다. 시각 없는 소스는 수집 시각을 분 단위로.
+  - D-DAY는 `useSyncExternalStore`로 브라우저에서만 계산(React lint의 effect 내 setState 금지 규칙, 하이드레이션 불일치 방지).
+  - Spring 컨텍스트를 새로 만드는 컨트롤러 테스트는 넣지 않았다: `@MockitoBean`은 연결 수 초과, `@DirtiesContext`는 test 프로필 create-drop으로 공유 스키마를 지웠다. 응답·헤더는 standalone MockMvc로, 비로그인 접근은 로컬 서버 curl로 확인.
+- 발견된 이슈
+  - 같은 폴더에서 다른 세션이 19:17에 `ika-14-ai-member-test-ddl`로 브랜치를 바꾸고 커밋했다. 그 커밋 `c2dc011`에 이 작업의 `globals.css` 배너 스타일(약 60줄)이 섞여 들어가 push됐다. 이 작업은 별도 워크트리로 옮겼다.
+  - 로컬 MySQL `snowthing_test`를 여러 세션이 동시에 쓰면 전체 테스트가 연결 수 초과·스키마 삭제로 깨진다. 별도 DB `snowthing_test_ika17`을 만들어 시도했다(정리 안 함).
+- 검증
+  - 백엔드: `spotlessCheck test` 651건 통과(실패 0, 기존 skip 1). 이 실행은 공유 폴더에서 다른 세션의 테스트 설정 커밋(73de3a2)이 들어간 상태였다. 워크트리(main 기준)에서 전체 테스트는 다른 세션 테스트와 DB 경합으로 깨끗한 결과를 얻지 못했다. 기온 기능 테스트 27건은 워크트리에서 통과.
+  - 실제 수집: 로컬 8081에서 하이원·모나용평·무주·웰리힐리·곤지암·오투 200(OFFICIAL), 두 번째 요청 약 2ms(캐시), 키 없는 리조트 204, 소문자·없는 코드 404, Cache-Control 확인.
+  - 프론트: `npm run lint`, `npm run build` 통과. D-DAY KST 자정 경계를 임시 스크립트로 확인. 브라우저(3001)에서 D-DAY 태그·배너, 칩 실패 시 숨김, 실제 응답을 주입한 칩 렌더링, 모바일·다크모드 확인. 기상청 실제 호출은 키가 없어 미실행.
+- 남은 항목: 기상청 키 발급 후 실제 호출 확인, PR #58 리뷰·머지.
+- 정리: `c2dc011`에 섞였던 배너 CSS는 #57로 main에 먼저 들어갔고, main 병합 때 한 벌만 남는 것을 확인했다.
+- 사용자 결정 필요: 기상청 키 발급.
+
 ## Discord 장애 및 서비스 이벤트 알림 (IKA-18, 2026-11-04)
 
 - 상태: 구현과 로컬 검증 완료, PR 전. 운영 prod.env 반영과 Lambda 운영 적용은 하지 않았다.
