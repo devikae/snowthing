@@ -38,12 +38,18 @@ services:
       - SNOWTHING_BOT_DELEGATION_SECRET=${SNOWTHING_BOT_DELEGATION_SECRET:-}
       - SNOWTHING_BOT_DELEGATION_TTL=${SNOWTHING_BOT_DELEGATION_TTL:-60s}
       - SNOWTHING_BOT_REQUEST_TIMEOUT=${SNOWTHING_BOT_REQUEST_TIMEOUT:-15s}
+      # AI 멤버(IKA-14). 페르소나 파일은 저장소 밖 호스트 디렉터리에 둔다.
+      - SNOWTHING_AI_MEMBERS_ENABLED=${SNOWTHING_AI_MEMBERS_ENABLED:-false}
+      - SNOWTHING_AI_MEMBERS_PERSONA_FILE=/etc/snowthing-ai/personas.yml
+      - SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT=${SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT:-100}
+      - SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS=${SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS:-}
       - JAVA_TOOL_OPTIONS=-javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
       - TZ=Asia/Seoul
     volumes:
       - /var/log/snowthing-chat:/var/log/snowthing-chat
       - /opt/pinpoint-agent-3.1.0:/opt/pinpoint-agent:ro
       - /var/log/pinpoint-agent:/opt/pinpoint-agent/logs
+      - /opt/snowthing-ai:/etc/snowthing-ai:ro
 
   frontend:
     image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:latest}
