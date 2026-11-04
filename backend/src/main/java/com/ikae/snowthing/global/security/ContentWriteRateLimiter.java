@@ -18,13 +18,14 @@ import com.ikae.snowthing.global.exception.CustomException;
 @Component
 public class ContentWriteRateLimiter {
     public enum Action {
-        POST(Duration.ofSeconds(30), 20),
+        POST(Duration.ofSeconds(10), 20),
         COMMENT(Duration.ofSeconds(3), 60),
         RESORT_REPORT(Duration.ofSeconds(10), 10),
-        CARPOOL(Duration.ofSeconds(30), 10),
-        MARKET_LISTING(Duration.ofSeconds(30), 10);
+        CARPOOL(Duration.ofSeconds(10), 10),
+        MARKET_LISTING(Duration.ofSeconds(10), 10);
 
-        // 짧은 간격마다 1건, 1시간마다 hourlyLimit건까지 허용한다.
+        // 짧은 간격마다 1건, 1시간마다 hourlyLimit건까지 허용한다. 서비스 검증에서 실패한 요청도 횟수를 쓰므로
+        // 간격은 연타만 막을 만큼 짧게 둔다(오류를 고쳐 바로 다시 보내는 사용자를 막지 않도록).
         final Duration interval;
         final int hourlyLimit;
 
@@ -35,7 +36,8 @@ public class ContentWriteRateLimiter {
     }
 
     private final SharedRequestLimiter sharedLimiter;
-    private final boolean enabled;
+    // 테스트 DB에는 제한 테이블이 없어 꺼 두고, 통합 테스트만 공유 컨텍스트의 빈에서 잠시 켠다.
+    private boolean enabled;
 
     public ContentWriteRateLimiter(
             SharedRequestLimiter sharedLimiter,

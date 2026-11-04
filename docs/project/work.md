@@ -7,7 +7,7 @@
   - 프론트: 댓글 폼이 `working` state로만 막았다. state는 다음 렌더에 반영되어 렌더 전에 들어온 클릭이 통과했다. 게시글, 마켓, 카풀, 설질 폼은 이미 ref 잠금이 있었다.
 - 완료
   - `ContentWriteRateLimiter`(global/security): 기존 `SharedRequestLimiter`(request_budget_window, 노드 공유)로 작성자별 짧은 간격 1건 + 시간당 상한. 로그인은 회원, 비로그인 작성은 IP로 묶는다.
-    - 게시글 30초 1건, 시간당 20 / 댓글 3초 1건, 시간당 60 / 설질 10초 1건, 시간당 10(기존 하루 5건 유지) / 카풀, 마켓 30초 1건, 시간당 10
+    - 게시글 10초 1건, 시간당 20 / 댓글 3초 1건, 시간당 60 / 설질 10초 1건, 시간당 10(기존 하루 5건 유지) / 카풀, 마켓 10초 1건, 시간당 10
   - 초과 시 429 `COMMON_003`, 제한 저장소 장애 시 503 `COMMON_004`(기존 리미터와 같은 fail-closed).
   - 댓글 폼 `useRef` 잠금, 서버 에러 메시지(429 문구) 표시.
 - 결정
@@ -18,7 +18,13 @@
   - 새 테스트: 단위 4건, 통합 1건(같은 댓글 연속 요청 시 201 후 429) 통과.
   - 프론트 `npm run lint`, `npm run build` 통과.
   - 백엔드 `./gradlew spotlessCheck test` 전체 실행은 629건 중 56건 실패. 실패는 모두 "Too many connections"로 인한 컨텍스트 로딩 실패와 그 여파였고, 같은 시각 다른 worktree의 채팅 부하 테스트 JVM이 같은 로컬 MySQL을 쓰고 있었다. 실패한 클래스(CommentUpdate, MarketThumbnail, Post/ProfileImageLifecycle, MemberProfileUpdate, ProfileImageSecurity, ReactionConcurrency, ResortReportController, SemanticSearch 등)를 따로 다시 돌려 모두 통과했다. 전체 실행 무실패는 확인하지 못했다.
-- 남은 항목: CodeRabbit 리뷰, 머지 후 운영 배포.
+- 리뷰: CodeRabbit이 rate limit으로 리뷰하지 않아 직접 리뷰했다.
+  - 수정: 제한 횟수는 서비스 검증 전에 쓰여서, 400으로 실패한 뒤 고쳐 다시 보내면 30초 동안 429가 났다. 게시글, 카풀, 마켓 간격을 10초로 줄였다. 시간당 상한은 그대로다.
+  - 수정: 통합 테스트가 final 필드를 리플렉션으로 바꾸던 것을 non-final 필드로 바꿨다(최신 JDK는 final 필드 변경을 막는 방향).
+  - 확인만: `ClientIpResolver`는 사설망 프록시만 신뢰해 X-Real-IP 위조가 어렵다. API 토큰과 봇 위임 인증은 작성 경로를 허용하지 않아 영향이 없다. 게시글, 마켓, 카풀 폼은 이미 서버 메시지를 보여준다.
+  - 보류: 429에 Retry-After 헤더 없음, 비로그인 IPv6 /64 묶기. 후속 후보.
+- 재검증: 공유 MySQL을 쓰는 다른 테스트가 없을 때 별도 worktree에서 `./gradlew test` 전체 BUILD SUCCESSFUL(실패 0).
+- 남은 항목: 머지 후 운영 배포.
 - 알려진 한계: 비로그인 IP는 원문 그대로 키로 쓴다. IPv6 주소를 바꿔 가며 보내면 우회할 수 있다(후속 후보). 같은 공유기 뒤 비로그인 사용자는 버킷을 함께 쓴다.
 - 사용자 결정 필요: 제한 수치가 적당한지.
 
