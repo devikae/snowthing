@@ -149,6 +149,12 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "REPORT_005", "설질 제보는 최대 100페이지까지 조회할 수 있습니다."),
     RESORT_REPORT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "REPORT_006", "설질 제보 페이지 크기는 1 이상 100 이하이어야 합니다."),
+    SEARCH_INVALID_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "SEARCH_001",
+            "검색어는 2자 이상 100자 이하, 결과 수는 1 이상 20 이하, 근거 ID와 해시는 정해진 형식이어야 합니다."),
+    EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVIDENCE_001", "존재하지 않거나 볼 수 없는 근거입니다."),
+    EVIDENCE_HASH_MISMATCH(HttpStatus.CONFLICT, "EVIDENCE_002", "근거 원문이 검색 이후 바뀌었습니다. 다시 검색해 주세요."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

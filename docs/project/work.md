@@ -2310,3 +2310,14 @@
 - 사용자 결정·협조 필요: 운영 읽기 전용 조회 실행 승인(또는 직접 실행), 공개 QNA 게시판을 보고 반복 질문 사례 표시.
 - 운영 결과(2026-11-04 01:44 KST, 사용자가 직접 실행): MARKET 제외 공개 게시글 81, QNA 17(전부 2026-10 이후), 17건 모두 다른 사람이 17~18분 안에 첫 답변, 운영자 첫 답변 0. 90일 QNA 30건 미만이라 D2 기준 미충족. 17건이 모두 17~18분 안에 답변된 분포는 시드 글일 가능성이 있어 사용자 확인이 필요하다.
 - 리뷰 반영: CodeRabbit 2건(MARKET 제외, 운영자 첫 답변 판정에서 비회원 답변 누락) 수정. 실행된 운영 결과의 해석에는 영향 없음(설계 문서 §6).
+
+### 2026-11-04 — IKA-7 근거 검색 1단계 키워드 기준선 (IKA-5 1단계)
+
+- 상태: 로컬 구현·검증 완료, 로컬 커밋만 함. push·PR·운영 DB 마이그레이션·배포는 하지 않았다.
+- 완료: `027_migration_search_document.sql`(`post.content_version`, `search_document`, FULLTEXT ngram 인덱스), `Post`의 내용 버전 증가(제목·본문·카테고리·상태·삭제가 실제로 바뀔 때만), 관리자 전용 `POST /api/v1/admin/search/rebuild`, `GET /api/v1/admin/search/evidence`, `GET /api/v1/admin/search/evidence/{evidenceId}`. 오류 코드 SEARCH_001, EVIDENCE_001(404), EVIDENCE_002(409) 추가. 설계는 `docs/conception/017_ai_answer_assist/03_stage1_keyword_search.md`.
+- 결정: 쓰기·FULLTEXT 검색·원문 읽기는 JDBC, `SearchDocument` 엔티티는 테스트 스키마 생성·운영 validate·단건 조회용으로 둔다. MATCH는 JPQL로 표현할 수 없고, 원문을 엔티티로 읽으면 연관과 LONGTEXT가 영속성 컨텍스트에 올라가기 때문이다.
+- 결정: 게시글 0번 구간은 제목만, 1번부터 본문을 문단 단위 800자 이하로 묶는다. 제목을 모든 구간에 넣으면 제목 단어가 중복 집계된다. 게시글 본문은 Toast UI `getMarkdown()` 결과라 이미지·링크 주소·태그·강조 표시를 걷어낸 뒤 해시한다. 댓글은 일반 텍스트라 공백만 정리한다.
+- 결정: ngram 기본 불용어가 `a`가 들어간 영어 2-gram을 버려 `wax` 같은 단어를 못 찾는 것을 로컬 MySQL에서 확인했다. 027은 인덱스 생성 동안만 세션 단위로 불용어를 끈다. 서버 전역 설정은 바꾸지 않는다.
+- 결정: 공개 범위 조건(NORMAL·미삭제·MARKET 제외, 댓글 미삭제)을 한 곳에 두고 재구축·검색 후보 생성·근거 조회에 같이 쓴다. 검색 점수는 반환하지 않는다. 쿼리 파라미터는 문자열로 받아 직접 검증한다(기본 변환 실패는 전역 처리기에서 500이 됨). `search_document`에는 FK를 두지 않는다(재구축 가능한 복제본, 조회 시 원문 조인으로 거름).
+- 검증: 전용 테스트 DB `snowthing_ika7_test`에서 `./gradlew test --rerun` 510개 중 실패·오류 0개, 기존 제외 1개. 첫 전체 실행은 테스트 DB 사용자·비밀번호 환경변수 누락(문맥 로딩 실패 44건)과 빈 DB에 `request_budget_window`가 없어 생긴 503(1건)으로 실패했고, 환경변수를 모두 넣은 재실행에서 통과했다. Spotless는 Git worktree 인식 실패로 같은 커밋 기준 일반 복제본에서 변경 파일에 대해 apply·check 통과. 마이그레이션은 001+002+전체 마이그레이션 적용·재실행 검증 스크립트(027 검사 추가) 통과, 027 파일 직접 재실행 2회 성공, 마이그레이션 결과 스키마에 `ddl-auto: validate`로 앱 기동 성공(`content_version`을 지우면 validate 실패 확인). `git diff --check` 통과.
+- 남은 것: 원문 변경의 증분 반영(IKA-10), MCP 도구 연결(IKA-8), 기준선 측정(IKA-9). 운영 적용 전 `@@ngram_token_size` 확인과 027 적용 순서(앱 배포보다 먼저)를 지켜야 한다. `docs/conception/017_ai_answer_assist/01_design.md`는 IKA-6 브랜치에만 있어 병합 순서에 따라 링크가 잠시 끊길 수 있다.
