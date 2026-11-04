@@ -3932,7 +3932,7 @@ html[data-theme="dark"] .snow-empty-copy strong {
   background: #e11d48;
   border-color: #e11d48;
 }
-/* 메인 첫 개장 D-DAY 배너 (IKA-17). 시즌이 시작되면 컴포넌트와 함께 지운다. */
+/* 메인 개장 D-DAY 배너 (IKA-17). 확정된 리조트를 나열한다. 시즌이 시작되면 컴포넌트와 함께 지운다. */
 .opening-dday-banner {
   display: flex;
   flex-wrap: wrap;
@@ -3952,22 +3952,35 @@ html[data-theme="dark"] .snow-empty-copy strong {
   border-color: var(--snow-border-strong);
 }
 
-.opening-dday-banner > .material-symbols-outlined {
-  color: var(--community-accent);
-  font-size: 22px;
-}
-
 .opening-dday-banner strong {
   font-size: 15px;
   font-weight: 800;
 }
 
-.opening-dday-banner em {
-  color: var(--community-accent);
-  font-style: normal;
+.opening-dday-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.opening-dday-detail {
+.opening-dday-list li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.opening-dday-list em {
+  color: var(--community-accent);
+  font-style: normal;
+  font-weight: 850;
+}
+
+.opening-dday-list small {
   color: var(--snow-muted);
   font-size: 12px;
   font-weight: 600;
