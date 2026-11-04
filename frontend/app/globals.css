@@ -1805,6 +1805,12 @@ html[data-theme="dark"] .community-header {
   letter-spacing: -0.04em;
 }
 
+.snowflake-mark {
+  flex: none;
+  width: 1.45em;
+  height: 1.45em;
+}
+
 .community-main-nav > a,
 .header-board-menu > summary {
   height: 36px;
