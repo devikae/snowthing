@@ -1,0 +1,46 @@
+/* 헤더 종 아이콘과 드롭다운 */
+.header-notification-menu { position: relative; display: flex; align-items: center; }
+.header-notification-menu summary { list-style: none; }
+.header-notification-menu summary::-webkit-details-marker { display: none; }
+.header-notification-button { position: relative; display: grid; width: 36px; height: 36px; place-items: center; color: #64748b; cursor: pointer; transition: color .16s ease; }
+.header-notification-button:hover, .header-notification-button:focus-visible { color: #0369a1; }
+.header-notification-button .material-symbols-outlined { font-size: 20px; line-height: 1; }
+.header-notification-badge { position: absolute; top: 3px; right: 1px; min-width: 16px; height: 16px; border-radius: 999px; background: #ef4444; padding: 0 4px; color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-sizing: border-box; }
+.header-notification-dropdown { position: absolute; z-index: 80; top: calc(100% + 8px); right: -44px; width: min(340px, calc(100vw - 32px)); border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-canvas); box-shadow: 0 8px 24px rgba(0,0,0,.12); overflow: hidden; }
+.notification-dropdown-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--snow-border); padding: 10px 14px; }
+.notification-dropdown-head strong { color: var(--snow-ink); font-size: 14px; }
+.notification-dropdown-head button, .notifications-read-all { border: 0; background: transparent; color: var(--community-accent, #0f6fbd); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.notification-dropdown-head button:disabled, .notifications-read-all:disabled { color: var(--snow-muted); cursor: default; }
+.notification-dropdown-body { max-height: 360px; overflow-y: auto; }
+.notification-dropdown-all { display: block; border-top: 1px solid var(--snow-border); padding: 10px 14px; color: var(--snow-ink-soft); font-size: 13px; font-weight: 500; text-align: center; text-decoration: none; }
+.notification-dropdown-all:hover, .notification-dropdown-all:focus-visible { background: var(--snow-surface-mid); color: var(--community-accent, #0f6fbd); }
+
+/* 알림 항목 (드롭다운과 알림 페이지 공통) */
+.notification-list { margin: 0; padding: 0; list-style: none; }
+.notification-list li + li { border-top: 1px solid var(--snow-border); }
+.notification-item { display: flex; width: 100%; flex-direction: column; gap: 3px; border: 0; background: transparent; padding: 11px 14px; color: var(--snow-ink); text-align: left; cursor: pointer; font-family: inherit; box-sizing: border-box; transition: background .15s ease; }
+.notification-item:hover, .notification-item:focus-visible { background: var(--snow-surface-mid); }
+.notification-item.unread { background: var(--community-accent-soft, #e0f2fe); }
+.notification-item.unread:hover, .notification-item.unread:focus-visible { background: var(--snow-surface-mid); }
+.notification-item-title { font-size: 13px; font-weight: 600; line-height: 1.4; }
+.notification-item-preview { overflow: hidden; color: var(--snow-ink-soft); font-size: 12px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.notification-item-time { color: var(--snow-muted); font-size: 11px; }
+.notification-empty { margin: 0; padding: 24px 14px; color: var(--snow-muted); font-size: 13px; text-align: center; }
+.notification-error { margin: 0; padding: 12px 14px; color: #ef4444; font-size: 13px; }
+
+/* /notifications 페이지 */
+.notifications-page { max-width: 720px; padding-top: 32px; padding-bottom: 48px; }
+.notifications-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.notifications-head h1 { margin: 0; color: var(--snow-ink); font-size: 22px; font-weight: 700; }
+.notifications-read-all { font-size: 13px; }
+.notifications-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--snow-border); }
+.notifications-tabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 8px 14px; color: var(--snow-muted); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.notifications-tabs button.active { border-bottom-color: var(--community-accent, #0f6fbd); color: var(--snow-ink); }
+.notifications-panel { border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-canvas); overflow: hidden; }
+.notifications-panel .notification-item { padding: 14px 18px; }
+.notifications-more { display: block; width: 100%; border: 0; border-top: 1px solid var(--snow-border); background: transparent; padding: 12px; color: var(--snow-ink-soft); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.notifications-more:hover, .notifications-more:focus-visible { background: var(--snow-surface-mid); }
+
+@media (max-width: 640px) {
+  .header-notification-dropdown { position: fixed; top: 64px; right: 16px; left: 16px; width: auto; }
+}

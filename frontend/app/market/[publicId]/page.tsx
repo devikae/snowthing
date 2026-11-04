@@ -250,7 +250,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
 
         <section className="market-description"><h2>상품 설명</h2><ToastViewer content={listing.content} /></section>
 
-        <section className="market-comments post-comments-card unified-comments-card">
+        <section id="comments" className="market-comments post-comments-card unified-comments-card">
           <header><h2>댓글 <span>{listing.commentCount}</span></h2></header>
           <div className="post-comment-compose"><textarea className="post-comment-textarea" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="판매자에게 궁금한 내용을 남겨보세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !comment.trim()} onClick={() => void createComment(null)}>댓글 등록</button></div></div>
           <div className="market-comment-list post-comment-list">

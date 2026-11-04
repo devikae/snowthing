@@ -133,6 +133,7 @@ class AnswerDraftFlowIntegrationTest {
                     }
                     jdbc.update("DELETE FROM post_category WHERE category_id = ?", categoryId);
                     for (Long memberId : memberIds) {
+                        jdbc.update("DELETE FROM notification WHERE receiver_id = ?", memberId);
                         jdbc.update("DELETE FROM member WHERE member_id = ?", memberId);
                     }
                 });
