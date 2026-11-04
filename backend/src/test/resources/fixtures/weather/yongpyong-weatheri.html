@@ -1,0 +1,499 @@
+	
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+<head>
+<title>YONG PYONG 모나용평 - 날씨 정보</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="description" content="YONG PYONG,YONGPYONG, YONGPYONG RESORT, YONG PYONG WEBSITE, 모나용평, 모나용평 국문 웹사이트, 모나용평 웹사이트, 모나용평 홈페이지" />
+<meta name="keywords" content="YONG PYONG 모나용평" />
+<meta name="author" content="Media4th &amp; Company" />
+
+<link rel="stylesheet" type="text/css" href="common/css/common.css" />
+<!--[if IE 7]><link rel="stylesheet" type="text/css" href="/kor/common/css/ie7lte.css" /><![endif]-->
+<script type="text/javascript" src="common/js/jquery.min.js"></script>
+<script type="text/javascript" src="common/js/ui.js"></script>
+</head>
+<body>
+
+		<!-- 날씨 아이콘 큰사이즈 정리
+			<img src="images/kor/ico/weather/ico_w_b01.png" alt="맑음" />
+			<img src="images/kor/ico/weather/ico_w_b02.png" alt="구름 조금" />
+			<img src="images/kor/ico/weather/ico_w_b03.png" alt="흐림" />
+			<img src="images/kor/ico/weather/ico_w_b04.png" alt="비" />
+			<img src="images/kor/ico/weather/ico_w_b05.png" alt="눈" />
+			<img src="images/kor/ico/weather/ico_w_b06.png" alt="눈비" />
+			<img src="images/kor/ico/weather/ico_w_b07.png" alt="소나기" />
+			<img src="images/kor/ico/weather/ico_w_b08.png" alt="소낙눈" />
+			<img src="images/kor/ico/weather/ico_w_b09.png" alt="안개" />
+			<img src="images/kor/ico/weather/ico_w_b10.png" alt="뇌우" />
+			<img src="images/kor/ico/weather/ico_w_b11.png" alt="차차 흐려짐" />
+			<img src="images/kor/ico/weather/ico_w_b12.png" alt="흐려져 뇌우" />
+			<img src="images/kor/ico/weather/ico_w_b13.png" alt="흐려져 비" />
+			<img src="images/kor/ico/weather/ico_w_b14.png" alt="흐려져 눈" />
+			<img src="images/kor/ico/weather/ico_w_b15.png" alt="흐려져 눈비" />
+			<img src="images/kor/ico/weather/ico_w_b16.png" alt="흐린 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_b17.png" alt="뇌우 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_b18.png" alt="비 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_b19.png" alt="눈 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_b20.png" alt="눈비 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_b21.png" alt="구름 많음" />
+			<img src="images/kor/ico/weather/ico_w_b22.png" alt="황사" />
+		-->
+
+		<!-- 날씨 아이콘 작은 사이즈 정리
+			<img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" />
+			<img src="images/kor/ico/weather/ico_w_s02.png" alt="구름 조금" />
+			<img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" />
+			<img src="images/kor/ico/weather/ico_w_s04.png" alt="비" />
+			<img src="images/kor/ico/weather/ico_w_s05.png" alt="눈" />
+			<img src="images/kor/ico/weather/ico_w_s06.png" alt="눈비" />
+			<img src="images/kor/ico/weather/ico_w_s07.png" alt="소나기" />
+			<img src="images/kor/ico/weather/ico_w_s08.png" alt="소낙눈" />
+			<img src="images/kor/ico/weather/ico_w_s09.png" alt="안개" />
+			<img src="images/kor/ico/weather/ico_w_s10.png" alt="뇌우" />
+			<img src="images/kor/ico/weather/ico_w_s11.png" alt="차차 흐려짐" />
+			<img src="images/kor/ico/weather/ico_w_s12.png" alt="흐려져 뇌우" />
+			<img src="images/kor/ico/weather/ico_w_s13.png" alt="흐려져 비" />
+			<img src="images/kor/ico/weather/ico_w_s14.png" alt="흐려져 눈" />
+			<img src="images/kor/ico/weather/ico_w_s15.png" alt="흐려져 눈비" />
+			<img src="images/kor/ico/weather/ico_w_s16.png" alt="흐린 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_s17.png" alt="뇌우 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_s18.png" alt="비 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_s19.png" alt="눈 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_s20.png" alt="눈비 후 갬" />
+			<img src="images/kor/ico/weather/ico_w_s21.png" alt="구름 많음" />
+			<img src="images/kor/ico/weather/ico_w_s22.png" alt="황사" />
+		-->
+				
+				<div class="contArea">
+					<h4 class="sectionTit">모나용평 현재 날씨</h4>
+					<div class="weatherArea">
+						<div class="today">
+							<div class="weatherIco">
+								<img src="images/kor/ico/weather/ico_w_b03.png" alt="�������� " />
+							</div>
+							<div class="notice">
+								<em class="nowTime">18시 현재</em>
+								<strong class="temp"><span>5.6</span> C°</strong>
+								<span class="nowWt">구름많음 </span>
+								<p class="info">
+									<span class="lt">강수량  </span>
+									<span>0시 이후 강수량 mm</span>
+								</p>
+							</div>
+						</div>
+						<dl>
+							<dt>풍향</dt>
+							<dd>서 </dd>
+						</dl>
+						<dl>
+							<dt>풍속</dt>
+							<dd>0.3  <span class="unit">m/s</span></dd>
+						</dl>
+						<dl>
+							<dt>습도</dt>
+							<dd>61.0  <span class="unit">%</span></dd>
+						</dl>
+						<dl>
+							<dt>불쾌지수</dt>
+							<dd>48 </dd>
+						</dl>
+					</div>
+				</div>
+
+				<div class="contArea">
+					<div class="hWrap">
+						<h4 class="sectionTit">모나용평 인근지역 현재날씨</h4>
+						<p class="reverse txtBold">관측시간 11/04 18:00</p>
+					</div>
+					<table class="tblY type05" summary="지역별, 기온, 풍향, 풍속, 시간당 강수량, 0시이후 강수량, 습도, 불쾌지수 항목을 포함한 모나용평 인근지역 현재날씨 정보 표">
+						<caption>모나용평 인근지역 현재날씨 정보 표</caption>
+						<colgroup>
+							<col width="108px" />
+							<col width="116px" />
+							<col width="116px" />
+							<col width="116px" />
+							<col width="116px" />
+							<col width="116px" />
+							<col width="116px" />
+							<col width="116px" />
+						</colgroup>
+						<thead>
+							<tr>
+								<th scope="col" class="brln">지역</th>
+								<th scope="col">기온 (C°)</th>
+								<th scope="col">풍향</th>
+								<th scope="col">풍속 (m/s)</th>
+								<th scope="col">시간당 강수량<br />(mm/h)</th>
+								<th scope="col">0시 이후<br />강수량 (mm)</th>
+								<th scope="col">습도 (%)</th>
+								<th scope="col">불쾌지수</th>
+							</tr>
+						</thead>
+												<tbody>
+							<tr>
+								<th scope="row" class="brln bgBlue">강릉</th>
+								<td>14.6</td>
+								<td>남서</td>
+								<td>1.0</td>
+								<td>0.0</td>
+								<td>0.0</td>
+								<td>48.3</td>
+								<td>58</td>
+							</tr>
+														<tr>
+								<th scope="row" class="brln bgBlue">대관령</th>
+								<td>7.5</td>
+								<td>북북서</td>
+								<td>1.0</td>
+								<td>0.0</td>
+								<td>0.0</td>
+								<td>53.5</td>
+								<td>48</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="contArea">
+					<div class="hWrap">
+						<h4 class="sectionTit">모나용평 3일간 상세예보</h4>
+						<p class="reverse txtBold">예보시간 11/04 18:00</p>
+					</div>
+					<table class="tblY tblWeather" summary="날짜별 시간, 날씨, 기온, 강수확률, 풍속, 최저/최고, 요약날씨 항목을 포함한 모나용평 3일간 상세예보 정보 표">
+						<caption>모나용평 3일간 상세예보 정보 표</caption>
+						<colgroup>
+							<col width="102px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="35px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="35px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+							<col width="34px" />
+						</colgroup>
+						<thead>
+							<tr>
+								<th scope="col" class="brln">날짜</th>
+																	<th scope="col" colspan="8"><strong class="txtBold">오늘</strong> 11월4일(수)</th>
+																<th scope="col" colspan="8"><strong class="txtBold">내일</strong> 11월5일(목)</th>
+																<th scope="col" colspan="8"><strong class="txtBold">모레</strong> 11월6일(금)</th>
+															</tr>
+						</thead>
+
+						<tbody>
+							<tr>
+								<th scope="row" class="brln bgBlue">시간</th>
+								<td>00</td>
+								<td>03</td>
+								<td>06</td>
+								<td>09</td>
+								<td>12</td>
+								<td>15</td>
+								<td>18</td>
+								<td>21</td>
+								<td class="lineBoldLt">00</td>
+								<td>03</td>
+								<td>06</td>
+								<td>09</td>
+								<td>12</td>
+								<td>15</td>
+								<td>18</td>
+								<td>21</td>
+								<td class="lineBoldLt">00</td>
+								<td>03</td>
+								<td>06</td>
+								<td>09</td>
+								<td>12</td>
+								<td>15</td>
+								<td>18</td>
+								<td>21</td>
+							</tr>
+							<tr class="topBold imgW">
+								<th scope="row" class="brln bgBlue">날씨</th>
+								 								<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td class="lineBoldLt"><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s04.png" alt="비" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s04.png" alt="비" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s04.png" alt="비" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td class="lineBoldLt"><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+																<td ><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+																
+							</tr>
+							<tr class="topBold">
+								<th scope="row" class="brln bgBlue">기온</th>
+																			<td  >  2</td>
+																	<td  >  2</td>
+																	<td  >  0</td>
+																	<td  >  7</td>
+																	<td  >  12</td>
+																	<td  >  13</td>
+																	<td  >  7</td>
+																	<td  >  6</td>
+																	<td  class="lineBoldLt">  6</td>
+																	<td  >  5</td>
+																	<td  >  5</td>
+																	<td  >  8</td>
+																	<td  >  9</td>
+																	<td  >  10</td>
+																	<td  >  7</td>
+																	<td  >  6</td>
+																	<td  class="lineBoldLt">  5</td>
+																	<td  >  5</td>
+																	<td  >  2</td>
+																	<td  >  3</td>
+																	<td  >  6</td>
+																	<td  >  5</td>
+																	<td  >  0</td>
+																	<td  >  -2</td>
+																</tr>
+							<tr class="topBold">
+								<th scope="row" class="brln bgBlue">강수확률 (%)</th>
+																<td  >  20</td>
+																	<td  >  20</td>
+																	<td  >  20</td>
+																	<td  >  20</td>
+																	<td  >  20</td>
+																	<td  >  10</td>
+																	<td  >  10</td>
+																	<td  >  20</td>
+																	<td  class="lineBoldLt">  20</td>
+																	<td  >  30</td>
+																	<td  >  30</td>
+																	<td  >  30</td>
+																	<td  >  50</td>
+																	<td  >  60</td>
+																	<td  >  40</td>
+																	<td  >  30</td>
+																	<td  class="lineBoldLt">  30</td>
+																	<td  >  30</td>
+																	<td  >  10</td>
+																	<td  >  0</td>
+																	<td  >  0</td>
+																	<td  >  0</td>
+																	<td  >  0</td>
+																	<td  >  0</td>
+																
+							</tr>
+							<tr>
+								<th scope="row" class="brln bgBlue">풍속</th>
+																<td  >  1</td>
+																	<td  >  1</td>
+																	<td  >  1</td>
+																	<td  >  1</td>
+																	<td  >  1</td>
+																	<td  >  2</td>
+																	<td  >  1</td>
+																	<td  >  2</td>
+																	<td  class="lineBoldLt">  2</td>
+																	<td  >  1</td>
+																	<td  >  2</td>
+																	<td  >  1</td>
+																	<td  >  1</td>
+																	<td  >  2</td>
+																	<td  >  3</td>
+																	<td  >  6</td>
+																	<td  class="lineBoldLt">  6</td>
+																	<td  >  4</td>
+																	<td  >  6</td>
+																	<td  >  6</td>
+																	<td  >  7</td>
+																	<td  >  7</td>
+																	<td  >  5</td>
+																	<td  >  6</td>
+																
+							</tr>
+							<tr class="topBold">
+								<th scope="row" class="brln bgBlue">최저 / 최고</th>
+								 								<td colspan="8" class="temperature ">0.0℃ / 13.0℃</td>
+																<td colspan="8" class="temperature lineBoldLt">4.0℃ / 11.0℃</td>
+																<td colspan="8" class="temperature lineBoldLt">2.0℃ / 5.0℃</td>
+															</tr>
+							<tr class="topBold">
+								<th scope="row" class="brln bgBlue">요약날씨</th>
+									 								<td colspan="8" class="temperature ">구름많음</td>
+																<td colspan="8" class="temperature lineBoldLt">비</td>
+																<td colspan="8" class="temperature lineBoldLt">구름조금</td>
+															</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="contArea last">
+					<h4 class="sectionTit">모나용평 주간예보</h4>
+					<table class="tblY" summary="오늘과 내일의 오전오후별 날씨, 기온, 강수확률, 최저 최고기온 내용을 포함한 모나용평 날씨 정보 표">
+						<caption>모나용평 날씨 정보 표</caption>
+						<colgroup>
+							<col width="230px" />
+							<col width="230px" />
+							<col width="230px" />
+							<col width="230px" />
+						</colgroup>
+						<thead>
+							<tr>
+							   
+								<th scope="col" colspan="2"><strong class="txtBold">11/7 (토)</strong> </th>
+								 
+								<th scope="col" colspan="2"><strong class="txtBold">11/8 (일)</strong> </th>
+															</tr>
+						</thead>
+						<tbody>
+							<tr>
+															<td>
+									<div class="weekWeather">
+										<img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음">
+										<span class="nowWt">맑음</span>
+										<span class="rain">강수확률 0%</span>
+									</div>
+								</td>
+								<td>
+									<div class="weekWeather">
+										<img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음">
+										<span class="nowWt">맑음</span>
+										<span class="rain">강수확률 0%</span>
+									</div>
+								</td>
+																	<td>
+									<div class="weekWeather">
+										<img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림">
+										<span class="nowWt">흐림</span>
+										<span class="rain">강수확률 30%</span>
+									</div>
+								</td>
+								<td>
+									<div class="weekWeather">
+										<img src="images/kor/ico/weather/ico_w_s03.png" alt="흐림">
+										<span class="nowWt">흐림</span>
+										<span class="rain">강수확률 30%</span>
+									</div>
+								</td>
+																</tr>
+							<tr>
+															<th>최저 -6.0°C / 최고 5.0°C</th>
+								<th>최저 -6.0°C / 최고 5.0°C</th>
+																<th>최저 -3.0°C / 최고 5.0°C</th>
+								<th>최저 -3.0°C / 최고 5.0°C</th>
+															</tr>
+						</tbody>
+					</table>
+
+					<table class="tblX week" summary="날짜별과 오전오후별 날씨, 기온, 강수확률 내용을 포함한 모나용평 날씨 정보 표">
+						<caption>모나용평 날씨 정보 표</caption>
+						<colgroup>
+							<col width="230px" />
+							<col width="70px" />
+							<col width="275px" />
+							<col width="70px" />
+							<col width="275px" />
+						</colgroup>
+						<tbody>
+														<tr>
+								<th scope="row" class="bgBlue">9일 (월)</th>
+								<td class="txtR">
+								                      
+                      
+								<img src="images/kor/ico/weather/ico_w_s21.png" alt="흐린 후 갬" /></td>
+								<td class="tdLeftNone">
+									<div class="weekWeather">
+										<strong class="temp">오전 <span>-1.0</span> C°</strong>
+										<span class="nowWt">구름많음</span> /
+										<span class="rain">강수확률 20%</span>
+								</div>
+								</td>
+								<td class="txtR"><img src="images/kor/ico/weather/ico_w_s01.png" alt="흐린 후 갬" /></td>
+								<td class="tdLeftNone">
+									<div class="weekWeather">
+										<strong class="temp">오후 <span>5.0</span> C°</strong>
+										<span class="nowWt">맑음</span> /
+										<span class="rain">강수확률 10%</span>
+								</div>
+								</td>
+							</tr>
+															<tr>
+								<th scope="row" class="bgBlue">10일 (화)</th>
+								<td class="txtR">
+								                      
+                      
+								<img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+								<td class="tdLeftNone">
+									<div class="weekWeather">
+										<strong class="temp">오전 <span>-2.0</span> C°</strong>
+										<span class="nowWt">맑음</span> /
+										<span class="rain">강수확률 10%</span>
+								</div>
+								</td>
+								<td class="txtR"><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+								<td class="tdLeftNone">
+									<div class="weekWeather">
+										<strong class="temp">오후 <span>6.0</span> C°</strong>
+										<span class="nowWt">맑음</span> /
+										<span class="rain">강수확률 10%</span>
+								</div>
+								</td>
+							</tr>
+															<tr>
+								<th scope="row" class="bgBlue">11일 (수)</th>
+								<td class="txtR">
+								                      
+                      
+								<img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+								<td class="tdLeftNone">
+									<div class="weekWeather">
+										<strong class="temp">오전 <span>-1.0</span> C°</strong>
+										<span class="nowWt">맑음</span> /
+										<span class="rain">강수확률 10%</span>
+								</div>
+								</td>
+								<td class="txtR"><img src="images/kor/ico/weather/ico_w_s01.png" alt="맑음" /></td>
+								<td class="tdLeftNone">
+									<div class="weekWeather">
+										<strong class="temp">오후 <span>9.0</span> C°</strong>
+										<span class="nowWt">맑음</span> /
+										<span class="rain">강수확률 10%</span>
+								</div>
+								</td>
+							</tr>
+														
+						</tbody>
+					</table>
+
+
+				</div>
+
+</body>
+</html>
