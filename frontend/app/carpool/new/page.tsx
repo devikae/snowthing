@@ -679,16 +679,33 @@ export default function NewCarpoolPage() {
                 </select>
               </label>
               <label>
-                출발 날짜 {form.departureDate && <strong className="text-sky-600 font-bold ml-1">{getDayOfWeek(form.departureDate)}</strong>}
-                <input
-                  required
-                  type="date"
-                  min={todayIsoDate}
-                  value={form.departureDate}
-                  onChange={(event) =>
-                    update("departureDate", event.target.value)
-                  }
-                />
+                출발 날짜
+                <div className="carpool-date-input-container">
+                  <input
+                    type="text"
+                    readOnly
+                    tabIndex={-1}
+                    className="carpool-date-text-display"
+                    placeholder="날짜 선택"
+                    value={form.departureDate ? `${form.departureDate}${getDayOfWeek(form.departureDate)}` : ""}
+                  />
+                  <span className="material-symbols-outlined carpool-date-icon">calendar_month</span>
+                  <input
+                    required
+                    type="date"
+                    min={todayIsoDate}
+                    value={form.departureDate}
+                    onChange={(event) =>
+                      update("departureDate", event.target.value)
+                    }
+                    onClick={(event) => {
+                      try {
+                        (event.currentTarget as HTMLInputElement).showPicker();
+                      } catch {}
+                    }}
+                    className="carpool-native-date-input"
+                  />
+                </div>
               </label>
               <label>
                 출발 시간
@@ -736,16 +753,33 @@ export default function NewCarpoolPage() {
               {tripType === "ROUND_TRIP" && (
                 <>
                   <label>
-                    복귀 날짜 {form.returnDate && <strong className="text-sky-600 font-bold ml-1">{getDayOfWeek(form.returnDate)}</strong>}
-                    <input
-                      required
-                      type="date"
-                      min={form.departureDate || todayIsoDate}
-                      value={form.returnDate}
-                      onChange={(event) =>
-                        update("returnDate", event.target.value)
-                      }
-                    />
+                    복귀 날짜
+                    <div className="carpool-date-input-container">
+                      <input
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        className="carpool-date-text-display"
+                        placeholder="날짜 선택"
+                        value={form.returnDate ? `${form.returnDate}${getDayOfWeek(form.returnDate)}` : ""}
+                      />
+                      <span className="material-symbols-outlined carpool-date-icon">calendar_month</span>
+                      <input
+                        required
+                        type="date"
+                        min={form.departureDate || todayIsoDate}
+                        value={form.returnDate}
+                        onChange={(event) =>
+                          update("returnDate", event.target.value)
+                        }
+                        onClick={(event) => {
+                          try {
+                            (event.currentTarget as HTMLInputElement).showPicker();
+                          } catch {}
+                        }}
+                        className="carpool-native-date-input"
+                      />
+                    </div>
                   </label>
                   <label>
                     복귀 시간
