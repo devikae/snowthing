@@ -17,6 +17,7 @@ import com.ikae.snowthing.domain.market.entity.ProductCondition;
 import com.ikae.snowthing.domain.market.entity.TradeStatus;
 import com.ikae.snowthing.domain.market.service.MarketListingService;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
+import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 import com.ikae.snowthing.global.web.ViewCountCookieManager;
@@ -34,6 +35,7 @@ public class MarketListingController {
     private final MarketListingService marketListingService;
     private final ClientIpResolver clientIpResolver;
     private final ViewCountCookieManager viewCountCookieManager;
+    private final ContentWriteRateLimiter contentWriteRateLimiter;
 
     @GetMapping("/preview")
     public ResponseEntity<MarketPreviewResponse> getPreview() {
@@ -60,10 +62,11 @@ public class MarketListingController {
             @Valid @RequestBody MarketListingCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        contentWriteRateLimiter.check(
+                userDetails, clientIp, ContentWriteRateLimiter.Action.MARKET_LISTING);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(
-                        marketListingService.create(
-                                request, userDetails, clientIpResolver.resolve(httpRequest)));
+                .body(marketListingService.create(request, userDetails, clientIp));
     }
 
     @GetMapping("/{publicId}")

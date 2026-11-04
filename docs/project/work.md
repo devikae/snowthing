@@ -1,3 +1,27 @@
+## 작성 API 연타 중복 등록 핫픽스 (IKA-19, 2026-11-04)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 운영 배포는 하지 않았다.
+- 계획: 등록 버튼 연타(오토클릭)로 글과 댓글이 요청 수만큼 등록되는 문제를 서버 작성 제한(B)과 프론트 동기 잠금(A)으로 막는다.
+- 원인
+  - 백엔드: `POST /posts`, `/posts/{id}/comments`(대댓글 포함), `/resort-reports`, `/carpools`, `/market-listings`에 작성 횟수 제한이 없었다.
+  - 프론트: 댓글 폼이 `working` state로만 막았다. state는 다음 렌더에 반영되어 렌더 전에 들어온 클릭이 통과했다. 게시글, 마켓, 카풀, 설질 폼은 이미 ref 잠금이 있었다.
+- 완료
+  - `ContentWriteRateLimiter`(global/security): 기존 `SharedRequestLimiter`(request_budget_window, 노드 공유)로 작성자별 짧은 간격 1건 + 시간당 상한. 로그인은 회원, 비로그인 작성은 IP로 묶는다.
+    - 게시글 30초 1건, 시간당 20 / 댓글 3초 1건, 시간당 60 / 설질 10초 1건, 시간당 10(기존 하루 5건 유지) / 카풀, 마켓 30초 1건, 시간당 10
+  - 초과 시 429 `COMMON_003`, 제한 저장소 장애 시 503 `COMMON_004`(기존 리미터와 같은 fail-closed).
+  - 댓글 폼 `useRef` 잠금, 서버 에러 메시지(429 문구) 표시.
+- 결정
+  - 컨트롤러에서 검사: AI 멤버(`AiMemberActionService`)는 서비스를 직접 불러 제한 대상이 아니다. 다른 선택지는 서비스 계층 검사였으나 AI 멤버 예외 처리가 필요해 제외.
+  - budget_key가 `VARCHAR(100)`이라 해시 앞 32자만 쓴다. 통합 테스트에서 101자 키로 모든 작성이 503이 되는 것을 발견해 고쳤다.
+  - 테스트 설정에서 `snowthing.write-limit.enabled=false`: 테스트 DB에는 request_budget_window가 없어서. 통합 테스트는 새 컨텍스트 대신 공유 컨텍스트 빈을 테스트 동안만 켠다(새 컨텍스트는 로컬 MySQL 연결 수 초과를 일으켰다).
+- 검증
+  - 새 테스트: 단위 4건, 통합 1건(같은 댓글 연속 요청 시 201 후 429) 통과.
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 백엔드 `./gradlew spotlessCheck test` 전체 실행은 629건 중 56건 실패. 실패는 모두 "Too many connections"로 인한 컨텍스트 로딩 실패와 그 여파였고, 같은 시각 다른 worktree의 채팅 부하 테스트 JVM이 같은 로컬 MySQL을 쓰고 있었다. 실패한 클래스(CommentUpdate, MarketThumbnail, Post/ProfileImageLifecycle, MemberProfileUpdate, ProfileImageSecurity, ReactionConcurrency, ResortReportController, SemanticSearch 등)를 따로 다시 돌려 모두 통과했다. 전체 실행 무실패는 확인하지 못했다.
+- 남은 항목: CodeRabbit 리뷰, 머지 후 운영 배포.
+- 알려진 한계: 비로그인 IP는 원문 그대로 키로 쓴다. IPv6 주소를 바꿔 가며 보내면 우회할 수 있다(후속 후보). 같은 공유기 뒤 비로그인 사용자는 버킷을 함께 쓴다.
+- 사용자 결정 필요: 제한 수치가 적당한지.
+
 ## AI 멤버 초반 리젠 기능 (IKA-14, 2026-11-04)
 
 - 상태: 구현·로컬 검증 완료, PR 전. 운영 배포·페르소나 파일 작성·공지 글은 하지 않았다.
