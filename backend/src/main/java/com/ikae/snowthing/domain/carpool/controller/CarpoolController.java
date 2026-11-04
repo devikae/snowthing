@@ -20,6 +20,7 @@ import com.ikae.snowthing.domain.carpool.dto.CarpoolSummaryResponse;
 import com.ikae.snowthing.domain.carpool.service.CarpoolAutoCalculationService;
 import com.ikae.snowthing.domain.carpool.service.CarpoolExternalApiRateLimiter;
 import com.ikae.snowthing.domain.carpool.service.CarpoolService;
+import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
@@ -34,6 +35,7 @@ public class CarpoolController {
     private final CarpoolAutoCalculationService carpoolAutoCalculationService;
     private final CarpoolExternalApiRateLimiter externalApiRateLimiter;
     private final ClientIpResolver clientIpResolver;
+    private final ContentWriteRateLimiter contentWriteRateLimiter;
 
     @GetMapping("/places")
     public ResponseEntity<List<CarpoolPlaceResponse>> searchPlaces(
@@ -55,6 +57,8 @@ public class CarpoolController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
+        contentWriteRateLimiter.check(
+                userDetails, clientIp, ContentWriteRateLimiter.Action.CARPOOL);
         externalApiRateLimiter.checkPreview(clientIp);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(carpoolService.create(request, userDetails, clientIp));

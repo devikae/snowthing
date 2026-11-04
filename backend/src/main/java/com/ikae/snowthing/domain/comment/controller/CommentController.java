@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.service.CommentService;
+import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
@@ -24,6 +25,7 @@ public class CommentController {
 
     private final CommentService commentService;
     private final ClientIpResolver clientIpResolver;
+    private final ContentWriteRateLimiter contentWriteRateLimiter;
 
     @PostMapping("/posts/{publicId}/comments")
     public ResponseEntity<CommentResponse> createComment(
@@ -32,6 +34,8 @@ public class CommentController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
+        contentWriteRateLimiter.check(
+                userDetails, clientIp, ContentWriteRateLimiter.Action.COMMENT);
         CommentResponse response =
                 commentService.createComment(publicId, request, userDetails, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

@@ -27,3 +27,7 @@ snowthing:
       enabled: false
     reconcile:
       enabled: false
+
+  # 작성 API 연타 제한(request_budget_window)은 테스트 DB에 테이블이 없어 기본으로 끈다.
+  write-limit:
+    enabled: false

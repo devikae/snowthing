@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
@@ -66,6 +66,8 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [working, setWorking] = useState(false);
+  // state는 다음 렌더에 반영되므로 연타는 ref로 동기 차단한다.
+  const isCreatingRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -102,7 +104,8 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
 
   const createComment = async (parentId: string | null) => {
     const value = (parentId ? replyContent : content).trim();
-    if (!currentUserPublicId || !value || working) return;
+    if (!currentUserPublicId || !value || working || isCreatingRef.current) return;
+    isCreatingRef.current = true;
     setWorking(true);
     setError("");
     try {
@@ -111,7 +114,10 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parentId, content: value, isAnonymous: false, anonymousPassword: null }),
       });
-      if (!response.ok) throw new Error("댓글을 등록하지 못했습니다.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "댓글을 등록하지 못했습니다.");
+      }
       const created: CommentItem = await response.json();
       if (parentId) {
         setComments((current) => current.map((root) => root.commentId === parentId
@@ -127,6 +133,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "댓글을 등록하지 못했습니다.");
     } finally {
+      isCreatingRef.current = false;
       setWorking(false);
     }
   };

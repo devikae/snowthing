@@ -13,6 +13,7 @@ import com.ikae.snowthing.domain.resortreport.service.ResortReportService;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class ResortReportController {
 
     private final ResortReportService resortReportService;
+    private final ContentWriteRateLimiter contentWriteRateLimiter;
 
     @PostMapping
     public ResponseEntity<ResortReportResponse> createReport(
@@ -31,6 +33,8 @@ public class ResortReportController {
         if (userDetails == null || userDetails.getMember() == null) {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
+        contentWriteRateLimiter.check(
+                userDetails, null, ContentWriteRateLimiter.Action.RESORT_REPORT);
         ResortReportResponse response =
                 resortReportService.createReport(userDetails.getMember().getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

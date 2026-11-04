@@ -15,6 +15,7 @@ import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.domain.post.service.ReactionService;
+import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.AnonymousVoterCookieManager;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -35,6 +36,7 @@ public class PostController {
     private final ClientIpResolver clientIpResolver;
     private final ViewCountCookieManager viewCountCookieManager;
     private final AnonymousVoterCookieManager anonymousVoterCookieManager;
+    private final ContentWriteRateLimiter contentWriteRateLimiter;
 
     @PostMapping
     public ResponseEntity<PostResponse> createPost(
@@ -42,6 +44,7 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
+        contentWriteRateLimiter.check(userDetails, clientIp, ContentWriteRateLimiter.Action.POST);
         PostResponse response = postService.createPost(request, userDetails, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
