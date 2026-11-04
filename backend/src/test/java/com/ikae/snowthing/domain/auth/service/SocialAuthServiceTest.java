@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -30,6 +31,7 @@ import com.ikae.snowthing.domain.member.entity.MemberSocialAccount;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
+import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
@@ -42,6 +44,7 @@ class SocialAuthServiceTest {
 
     @Mock private MemberRepository memberRepository;
     @Mock private MemberSocialAccountRepository memberSocialAccountRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private SocialAuthService socialAuthService;
 
@@ -55,7 +58,8 @@ class SocialAuthServiceTest {
                         memberSocialAccountRepository,
                         new EmailNormalizer(),
                         new SocialNicknameGenerator(),
-                        fixedClock);
+                        fixedClock,
+                        eventPublisher);
     }
 
     @Test
@@ -94,6 +98,7 @@ class SocialAuthServiceTest {
         assertThat(socialCaptor.getValue().getProviderUserId()).isEqualTo("naver-1001");
         assertThat(socialCaptor.getValue().getProviderEmail()).isEqualTo("newrider@naver.com");
         verify(memberRepository, never()).findByEmail("newrider@naver.com");
+        verify(eventPublisher).publishEvent(new MemberSignedUpEvent("네이버보더", "NAVER"));
     }
 
     @Test
@@ -228,6 +233,7 @@ class SocialAuthServiceTest {
         assertThat(authenticated).isSameAs(linkedMember);
         assertThat(authenticated.getEmailVerifiedAt()).isNull();
         verify(memberRepository, never()).findByEmail(any());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test

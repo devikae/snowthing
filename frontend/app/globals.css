@@ -3679,6 +3679,38 @@ html[data-theme="dark"] .market-comments .post-comment-submit-button {
   box-shadow: 0 0 0 3px var(--community-accent-soft);
 }
 
+.carpool-date-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.carpool-date-text-display {
+  width: 100%;
+  padding-right: 38px !important;
+  cursor: pointer;
+}
+.carpool-date-icon {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: #64748b;
+  font-size: 20px;
+}
+.carpool-native-date-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+.carpool-date-input-container:focus-within .carpool-date-text-display {
+  border-color: var(--snow-ink);
+  box-shadow: 0 0 0 3px var(--community-accent-soft);
+}
+
 .carpool-form footer {
   border-top: 1px solid var(--snow-border);
 }

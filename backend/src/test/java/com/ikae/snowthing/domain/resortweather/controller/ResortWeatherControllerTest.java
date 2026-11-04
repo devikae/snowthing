@@ -13,6 +13,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -20,14 +21,21 @@ import com.ikae.snowthing.domain.resortweather.dto.ResortWeatherResponse;
 import com.ikae.snowthing.domain.resortweather.service.ResortWeatherService;
 import com.ikae.snowthing.domain.resortweather.source.WeatherSourceType;
 import com.ikae.snowthing.global.exception.GlobalExceptionHandler;
+import com.ikae.snowthing.global.notification.ServerErrorAlerter;
 
-/** 응답 형태와 캐시 헤더만 본다. 인증 없이 접근되는지는 ResortWeatherApiAccessTest에서 실제 보안 설정으로 본다. */
+/**
+ * 응답 형태와 캐시 헤더만 본다. Spring 컨텍스트를 새로 만들면 로컬 공유 테스트 DB와 충돌해 standalone으로 둔다. 비로그인 접근은 SecurityConfig
+ * 공개 경로로 열었다.
+ */
 class ResortWeatherControllerTest {
 
     private final ResortWeatherService resortWeatherService = mock(ResortWeatherService.class);
     private final MockMvc mockMvc =
             MockMvcBuilders.standaloneSetup(new ResortWeatherController(resortWeatherService))
-                    .setControllerAdvice(new GlobalExceptionHandler())
+                    .setControllerAdvice(
+                            new GlobalExceptionHandler(
+                                    new StaticListableBeanFactory()
+                                            .getBeanProvider(ServerErrorAlerter.class)))
                     .build();
 
     @Test

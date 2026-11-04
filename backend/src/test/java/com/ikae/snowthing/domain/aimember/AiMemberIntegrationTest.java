@@ -39,7 +39,9 @@ import com.ikae.snowthing.global.security.SharedRequestLimiter.Decision;
         properties = {
             "snowthing.ai-members.enabled=true",
             "snowthing.ai-members.persona-file=",
-            "spring.datasource.hikari.maximum-pool-size=2"
+            "spring.datasource.hikari.maximum-pool-size=2",
+            // 클래스가 끝나면 컨텍스트를 닫는다. create-drop이면 닫힐 때 공유 테스트 스키마를 지워 다른 컨텍스트가 깨진다.
+            "spring.jpa.hibernate.ddl-auto=update"
         })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AiMemberIntegrationTest {
