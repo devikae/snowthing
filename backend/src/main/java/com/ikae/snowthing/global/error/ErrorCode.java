@@ -161,6 +161,38 @@ public enum ErrorCode {
             "의미 검색 제공자를 호출하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVIDENCE_001", "존재하지 않거나 볼 수 없는 근거입니다."),
     EVIDENCE_HASH_MISMATCH(HttpStatus.CONFLICT, "EVIDENCE_002", "근거 원문이 검색 이후 바뀌었습니다. 다시 검색해 주세요."),
+    API_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "API_TOKEN_001", "유효하지 않거나 만료되었거나 폐기된 API 토큰입니다."),
+    API_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "API_TOKEN_002", "존재하지 않는 API 토큰입니다."),
+    API_TOKEN_INVALID_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "API_TOKEN_003",
+            "토큰 이름은 1자 이상 50자 이하, 범위는 READ 또는 DRAFT, 만료 기간은 1일 이상 30일 이하여야 합니다."),
+    API_TOKEN_LIMIT_EXCEEDED(
+            HttpStatus.CONFLICT, "API_TOKEN_004", "사용 중인 API 토큰은 최대 10개까지 만들 수 있습니다."),
+    ANSWER_DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_001", "존재하지 않는 답변 초안입니다."),
+    ANSWER_DRAFT_INVALID_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "DRAFT_002",
+            "대상 게시글 ID, 본문(1자 이상 1,000자 이하), 근거(1개 이상 20개 이하, 중복 없음, 해시 필수), 멱등성 키 형식을 확인해 주세요."),
+    ANSWER_DRAFT_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_003", "답변 대상 게시글이 없거나 볼 수 없습니다."),
+    ANSWER_DRAFT_IDEMPOTENCY_CONFLICT(
+            HttpStatus.CONFLICT, "DRAFT_004", "같은 멱등성 키로 다른 내용의 초안이 이미 저장되어 있습니다."),
+    ANSWER_DRAFT_INVALID_STATUS(HttpStatus.CONFLICT, "DRAFT_005", "현재 초안 상태에서는 할 수 없는 작업입니다."),
+    ANSWER_DRAFT_PUBLISH_DISABLED(HttpStatus.FORBIDDEN, "DRAFT_006", "답변 게시 기능이 꺼져 있습니다."),
+    ANSWER_DRAFT_TARGET_UNAVAILABLE(
+            HttpStatus.CONFLICT, "DRAFT_007", "대상 게시글이 삭제되었거나 볼 수 없게 되어 게시할 수 없습니다."),
+    ANSWER_DRAFT_TARGET_CHANGED(
+            HttpStatus.CONFLICT, "DRAFT_008", "승인 이후 대상 게시글이 수정되었습니다. 다시 검토해 주세요."),
+    ANSWER_DRAFT_EVIDENCE_CHANGED(
+            HttpStatus.CONFLICT, "DRAFT_009", "초안 저장 이후 근거 원문이 바뀌었거나 볼 수 없게 되었습니다."),
+    ANSWER_DRAFT_APPROVER_INVALID(
+            HttpStatus.CONFLICT, "DRAFT_010", "승인한 회원이 더 이상 활성 관리자가 아니어서 게시할 수 없습니다."),
+    ANSWER_DRAFT_UPDATE_CONFLICT(
+            HttpStatus.CONFLICT, "DRAFT_011", "다른 요청이 초안을 먼저 바꿨습니다. 새로고침 후 다시 시도해 주세요."),
+    ANSWER_DRAFT_TOO_MANY_PENDING(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "DRAFT_012",
+            "검토 대기 초안이 너무 많습니다. 기존 초안을 처리한 뒤 다시 저장해 주세요."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

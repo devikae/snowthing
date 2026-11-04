@@ -84,6 +84,17 @@ export const API_ENDPOINTS = {
     create: `${API_V1_URL}/resort-reports`,
     delete: (reportId: number) => `${API_V1_URL}/resort-reports/${reportId}`,
   },
+  admin: {
+    answerDrafts: (status: string, page: number, size = 20) =>
+      `${API_V1_URL}/admin/answer-drafts?page=${page}&size=${size}${status ? `&status=${encodeURIComponent(status)}` : ""}`,
+    answerDraft: (draftId: string) => `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}`,
+    answerDraftAction: (draftId: string, action: "approve" | "reject" | "publish") =>
+      `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}/${action}`,
+    apiTokens: `${API_V1_URL}/admin/api-tokens`,
+    revokeApiToken: (tokenId: string) => `${API_V1_URL}/admin/api-tokens/${encodeURIComponent(tokenId)}/revoke`,
+    searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
+    searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
+  },
 } as const;
 
 export interface ResortReportItem {

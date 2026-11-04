@@ -6,6 +6,7 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,11 +28,15 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.domain.apitoken.entity.ApiTokenScope;
+import com.ikae.snowthing.domain.apitoken.service.ApiTokenService;
+import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.config.websocket.ChatConnectionRegistry;
 import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
+import com.ikae.snowthing.global.security.ApiTokenAuthenticationFilter;
 import com.ikae.snowthing.global.security.BotDelegationAuthenticationFilter;
 import com.ikae.snowthing.global.security.BotDelegationTokenService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -97,10 +102,30 @@ public class SecurityConfig {
     }
 
     @Bean
+    public ApiTokenAuthenticationFilter apiTokenAuthenticationFilter(
+            ApiTokenService apiTokenService) {
+        return new ApiTokenAuthenticationFilter(apiTokenService, objectMapper);
+    }
+
+    /** 보안 필터 체인 안에서만 돌게 하고 서블릿 컨테이너에는 따로 등록하지 않는다. */
+    @Bean
+    public FilterRegistrationBean<ApiTokenAuthenticationFilter> apiTokenFilterRegistration(
+            ApiTokenAuthenticationFilter filter) {
+        FilterRegistrationBean<ApiTokenAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(
-            HttpSecurity http, BotDelegationAuthenticationFilter botDelegationAuthenticationFilter)
+            HttpSecurity http,
+            BotDelegationAuthenticationFilter botDelegationAuthenticationFilter,
+            ApiTokenAuthenticationFilter apiTokenAuthenticationFilter)
             throws Exception {
         http.addFilterBefore(
+                        apiTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(
                         botDelegationAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -108,7 +133,17 @@ public class SecurityConfig {
                         csrf ->
                                 csrf.csrfTokenRepository(
                                                 CookieCsrfTokenRepository.withHttpOnlyFalse())
-                                        .ignoringRequestMatchers("/ws-chat/**"))
+                                        .ignoringRequestMatchers("/ws-chat/**")
+                                        // API 토큰은 쿠키가 아니라 Authorization 헤더로만 온다. 토큰이 틀리면
+                                        // ApiTokenAuthenticationFilter가 401로 끝내므로 세션으로 넘어가지 않는다.
+                                        // 토큰 허용 경로만 CSRF를 건너뛴다. 로그아웃처럼 토큰 필터보다 앞에서 도는
+                                        // 세션 처리에 가짜 Bearer 헤더로 CSRF 없이 들어오지 못하게 한다.
+                                        .ignoringRequestMatchers(
+                                                request ->
+                                                        ApiTokenAuthenticationFilter
+                                                                        .isApiTokenRequest(request)
+                                                                && ApiTokenAuthenticationFilter
+                                                                        .isAllowed(request)))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .securityContext(
@@ -224,6 +259,23 @@ public class SecurityConfig {
                                                 "/ws-chat/**",
                                                 "/api/v1/chat/**")
                                         .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/admin/search/evidence",
+                                                "/api/v1/admin/search/evidence/*")
+                                        .hasAnyAuthority(
+                                                Role.ROLE_ADMIN.getKey(),
+                                                ApiTokenScope.READ.getAuthority())
+                                        .requestMatchers(HttpMethod.POST, "/api/v1/answer-drafts")
+                                        .hasAnyAuthority(
+                                                Role.ROLE_ADMIN.getKey(),
+                                                ApiTokenScope.DRAFT.getAuthority())
+                                        .requestMatchers(HttpMethod.GET, "/api/v1/answer-drafts/*")
+                                        .hasAnyAuthority(
+                                                Role.ROLE_ADMIN.getKey(),
+                                                ApiTokenScope.DRAFT.getAuthority())
+                                        .requestMatchers("/api/v1/answer-drafts/**")
+                                        .denyAll()
                                         .requestMatchers("/api/admin/**", "/api/v1/admin/**")
                                         .hasRole("ADMIN")
                                         .anyRequest()
