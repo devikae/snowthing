@@ -102,6 +102,8 @@ function PostCreateForm() {
   }, [searchParams, router]);
 
   const isAnonCategory = categoryCode === "ANONYMOUS";
+  // 1:1 문의는 다른 게시판으로 옮길 수 없으므로 카테고리 선택을 숨기고 고정한다.
+  const isInquiry = categoryCode === "INQUIRY";
 
   const handleCategorySelect = (nextCode: string) => {
     if (!userProfile && nextCode !== "ANONYMOUS") {
@@ -208,8 +210,9 @@ function PostCreateForm() {
     );
   }
 
-  const boardName =
-    COMPOSE_CATEGORIES.find((item) => item.code === categoryCode)?.label ?? "자유게시판";
+  const boardName = isInquiry
+    ? "1:1 문의"
+    : (COMPOSE_CATEGORIES.find((item) => item.code === categoryCode)?.label ?? "자유게시판");
   const writerName = isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자";
   const writerInitial = writerName.trim().charAt(0) || "익";
 
@@ -243,6 +246,7 @@ function PostCreateForm() {
         </div>
       </header>
 
+      {!isInquiry && (
       <nav className="compose-category-bar" aria-label="작성할 게시판 선택">
         <div className="filter-pills">
           {COMPOSE_CATEGORIES.filter((cat) => !cat.adminOnly || userProfile?.role === "ROLE_ADMIN").map((cat) => (
@@ -257,6 +261,7 @@ function PostCreateForm() {
           ))}
         </div>
       </nav>
+      )}
 
       <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (

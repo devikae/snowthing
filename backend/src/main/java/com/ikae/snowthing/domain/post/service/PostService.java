@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.post.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.image.service.ImageUrlResolver;
 import com.ikae.snowthing.domain.member.entity.Member;
-import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.*;
@@ -34,10 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 public class PostService {
 
     private static final String ANONYMOUS_CATEGORY_CODE = "ANONYMOUS";
-    private static final String MARKET_CATEGORY_CODE = "MARKET";
     private static final String CREW_CATEGORY_CODE = "CREW";
     private static final String SEASON_ROOM_CATEGORY_CODE = "SEASON_ROOM";
-    private static final String NOTICE_CATEGORY_CODE = "NOTICE";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
     private static final int MAX_OFFSET_PAGE = 100;
@@ -64,8 +62,12 @@ public class PostService {
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
         rejectMarketCategory(category);
         requireNoticeAdmin(category, userDetails);
-        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && request.isAnonymous()) {
+        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode())
+                && request.isAnonymous()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
+        if (PostCategoryCodes.isInquiry(category.getCode()) && userDetails == null) {
+            throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
         }
 
         if (isAnonymousDisallowedCategory(category.getCode())) {
@@ -146,6 +148,7 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
         rejectMarketPost(post);
+        InquiryAccess.requireReadable(post, userDetails);
 
         if (post.getStatus() != PostStatus.NORMAL) {
             if (!isAdmin(userDetails)) {
@@ -183,31 +186,72 @@ public class PostService {
 
         Page<Post> posts;
         if (categoryCode != null && !categoryCode.isBlank()) {
-            posts = postRepository.findByCategoryCodeWithMemberAndCategory(categoryCode, pageable);
+            posts =
+                    postRepository.findByCategoryCodeWithMemberAndCategory(
+                            categoryCode, PostCategoryCodes.HIDDEN_FROM_PUBLIC, pageable);
         } else {
-            posts = postRepository.findAllWithMemberAndCategory(pageable);
+            posts =
+                    postRepository.findAllWithMemberAndCategory(
+                            PostCategoryCodes.HIDDEN_FROM_PUBLIC, pageable);
         }
 
         return posts.map(this::toPostListResponse);
     }
 
-    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
-            searchPostsByOffset(PostSearchRequest request) {
+    public CursorPageResponse<PostListResponse> searchPostsByOffset(PostSearchRequest request) {
+        return searchPostsByOffset(request, null);
+    }
+
+    public CursorPageResponse<PostListResponse> searchPostsByOffset(
+            PostSearchRequest request, CustomUserDetails userDetails) {
         if (request.page() != null && request.page() > MAX_OFFSET_PAGE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_LIMIT);
         }
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return resolveThumbnailUrls(postRepository.findPostsByOffset(request));
+        PostSearchRequest scoped = scopeInquiry(request, userDetails);
+        return withAnswered(scoped, resolveThumbnailUrls(postRepository.findPostsByOffset(scoped)));
     }
 
-    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
-            searchPostsByCursor(PostSearchRequest request) {
+    public CursorPageResponse<PostListResponse> searchPostsByCursor(PostSearchRequest request) {
+        return searchPostsByCursor(request, null);
+    }
+
+    public CursorPageResponse<PostListResponse> searchPostsByCursor(
+            PostSearchRequest request, CustomUserDetails userDetails) {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return resolveThumbnailUrls(postRepository.findPostsByCursor(request));
+        PostSearchRequest scoped = scopeInquiry(request, userDetails);
+        return withAnswered(scoped, resolveThumbnailUrls(postRepository.findPostsByCursor(scoped)));
+    }
+
+    /** 1:1 문의 목록은 로그인이 필요하고, 관리자가 아니면 본인 글로 좁힌다. 요청에 담긴 작성자 값은 믿지 않는다. */
+    private PostSearchRequest scopeInquiry(
+            PostSearchRequest request, CustomUserDetails userDetails) {
+        if (!PostCategoryCodes.isInquiry(request.categoryCode())) {
+            return request.withWriterPublicId(null);
+        }
+        if (userDetails == null) {
+            throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
+        }
+        return request.withWriterPublicId(isAdmin(userDetails) ? null : userDetails.getPublicId());
+    }
+
+    private CursorPageResponse<PostListResponse> withAnswered(
+            PostSearchRequest request, CursorPageResponse<PostListResponse> page) {
+        if (!PostCategoryCodes.isInquiry(request.categoryCode()) || page.content().isEmpty()) {
+            return page;
+        }
+        Set<String> answered =
+                postRepository.findPublicIdsAnsweredByAdmin(
+                        page.content().stream().map(PostListResponse::publicId).toList());
+        List<PostListResponse> content =
+                page.content().stream()
+                        .map(item -> item.withAnswered(answered.contains(item.publicId())))
+                        .toList();
+        return new CursorPageResponse<>(content, page.pageInfo());
     }
 
     @Transactional
@@ -222,6 +266,7 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
 
+        InquiryAccess.requireReadable(post, userDetails);
         // 수정 권한: 작성자 본인만 수정 가능 (관리자 수정 불가)
         validateEditPermission(post, request.anonymousPassword(), userDetails);
 
@@ -232,9 +277,10 @@ public class PostService {
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
         rejectMarketPost(post);
         rejectMarketCategory(category);
+        rejectInquiryBoundaryChange(post.getCategory(), category);
         requireNoticeAdmin(post.getCategory(), userDetails);
         requireNoticeAdmin(category, userDetails);
-        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && post.isAnonymous()) {
+        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode()) && post.isAnonymous()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
@@ -269,6 +315,7 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
         rejectMarketPost(post);
+        InquiryAccess.requireReadable(post, userDetails);
 
         boolean isAdmin = isAdmin(userDetails);
 
@@ -338,32 +385,40 @@ public class PostService {
     }
 
     private void rejectMarketPost(Post post) {
-        if (MARKET_CATEGORY_CODE.equalsIgnoreCase(post.getCategory().getCode())) {
+        if (PostCategoryCodes.MARKET.equalsIgnoreCase(post.getCategory().getCode())) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
     }
 
     private void rejectMarketCategory(PostCategory category) {
-        if (MARKET_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+        if (PostCategoryCodes.MARKET.equalsIgnoreCase(category.getCode())) {
             throw new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND);
         }
     }
 
     private void requireNoticeAdmin(PostCategory category, CustomUserDetails userDetails) {
-        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && !isAdmin(userDetails)) {
+        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode())
+                && !isAdmin(userDetails)) {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /** 문의에서 나가면 관리자 답변이 공개되고, 문의로 들어오면 기존 댓글 작성자가 자기 댓글을 못 본다. */
+    private void rejectInquiryBoundaryChange(PostCategory current, PostCategory requested) {
+        if (PostCategoryCodes.isInquiry(current.getCode())
+                != PostCategoryCodes.isInquiry(requested.getCode())) {
+            throw new CustomAuthException(ErrorCode.INQUIRY_CATEGORY_CHANGE_NOT_ALLOWED);
         }
     }
 
     private boolean isAnonymousDisallowedCategory(String categoryCode) {
         return CREW_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
-                || SEASON_ROOM_CATEGORY_CODE.equalsIgnoreCase(categoryCode);
+                || SEASON_ROOM_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
+                || PostCategoryCodes.isInquiry(categoryCode);
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {
-        return userDetails != null
-                && userDetails.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals(Role.ROLE_ADMIN.getKey()));
+        return InquiryAccess.isAdmin(userDetails);
     }
 
     private PostListResponse toPostListResponse(Post post) {

@@ -21,7 +21,8 @@ public record PostListResponse(
         int dislikeCount,
         PostStatus status,
         boolean isDeleted,
-        LocalDateTime createdAt) {
+        LocalDateTime createdAt,
+        Boolean answered) {
     public static PostListResponse from(Post post) {
         String writerNickname =
                 WriterDisplayFormatter.format(
@@ -47,7 +48,8 @@ public record PostListResponse(
                 post.getDislikeCount(),
                 post.getStatus(),
                 post.isDeleted(),
-                post.getCreatedAt());
+                post.getCreatedAt(),
+                null);
     }
 
     public PostListResponse withThumbnailImageUrl(String resolvedThumbnailImageUrl) {
@@ -66,6 +68,28 @@ public record PostListResponse(
                 dislikeCount,
                 status,
                 isDeleted,
-                createdAt);
+                createdAt,
+                answered);
+    }
+
+    /** 1:1 문의 목록에서만 채운다. 관리자 댓글이 하나라도 있으면 답변 완료다. */
+    public PostListResponse withAnswered(Boolean resolvedAnswered) {
+        return new PostListResponse(
+                publicId,
+                categoryName,
+                categoryCode,
+                title,
+                writerNickname,
+                writerProfileImageUrl,
+                thumbnailImageUrl,
+                hasImage,
+                viewCount,
+                commentCount,
+                likeCount,
+                dislikeCount,
+                status,
+                isDeleted,
+                createdAt,
+                resolvedAnswered);
     }
 }

@@ -681,6 +681,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
               </div>
             )}
 
+            {post.categoryCode !== "INQUIRY" && (
             <div className="post-detail-reactions">
               <div>
                   <button onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
@@ -695,6 +696,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
             </div>
+            )}
           </article>
 
           <section className="post-comments-card">

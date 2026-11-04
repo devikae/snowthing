@@ -24,6 +24,7 @@ interface PostItem {
   status: string;
   isDeleted: boolean;
   createdAt: string;
+  answered?: boolean | null;
 }
 
 interface BoardConfig {
@@ -61,6 +62,7 @@ const boardConfigs: Record<string, BoardConfig> = {
   FOOD: { name: "리조트 맛집", navKey: "food" },
   CREW: { name: "동호회 모집", navKey: "crew" },
   SEASON_ROOM: { name: "시즌방 모집", navKey: "seasonRoom" },
+  INQUIRY: { name: "1:1 문의", navKey: "inquiry" },
 };
 
 function formatCompactTime(isoString: string): string {
@@ -110,6 +112,7 @@ function PostListContent() {
   const page = Math.max(0, Number(searchParams.get("page") ?? "1") - 1 || 0);
   const keywordFromUrl = searchParams.get("keyword") ?? "";
   const config = boardConfigs[currentCategory];
+  const isInquiry = currentCategory === "INQUIRY";
 
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [notices, setNotices] = useState<PostItem[]>([]);
@@ -148,6 +151,10 @@ function PostListContent() {
           credentials: "include",
           signal,
         });
+        if (response.status === 401 && currentCategory === "INQUIRY") {
+          router.replace(`/login?returnUrl=${encodeURIComponent("/posts?category=INQUIRY")}`);
+          return;
+        }
         if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
         const data = await response.json();
         if (signal?.aborted) return;
@@ -162,7 +169,7 @@ function PostListContent() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [currentCategory, currentView, keywordFromUrl, page],
+    [currentCategory, currentView, keywordFromUrl, page, router],
   );
 
   useEffect(() => {
@@ -231,6 +238,12 @@ function PostListContent() {
       <main className="community-container board-page">
         <div className="board-layout">
           <section className="board-primary">
+            {isInquiry ? (
+              <section className="board-filter-panel board-inquiry-guide" aria-label="1:1 문의 안내">
+                <strong>{isAdmin ? "전체 문의" : "1:1 문의"}</strong>
+                <p>{isAdmin ? "회원이 남긴 모든 문의입니다. 댓글로 답변해 주세요." : "내가 남긴 문의만 보입니다. 답변은 운영자가 댓글로 남깁니다."}</p>
+              </section>
+            ) : (
             <nav className="board-filter-panel" aria-label="게시판 선택">
               <div className="board-category-tabs filter-pills">
                 {categories.map((category) => (
@@ -245,8 +258,9 @@ function PostListContent() {
                 ))}
               </div>
             </nav>
+            )}
 
-            {currentCategory !== "NOTICE" && notices.length > 0 && (
+            {currentCategory !== "NOTICE" && !isInquiry && notices.length > 0 && (
               <section className="board-notices" aria-label="게시판 공지">
                 {notices.map((notice) => (
                   <article key={notice.publicId} className="m-row">
@@ -292,10 +306,10 @@ function PostListContent() {
               ) : posts.length === 0 ? (
                 <div className="board-state">
                   <span className="material-symbols-outlined">edit_note</span>
-                  <strong>등록된 게시글이 없습니다.</strong>
+                  <strong>{isInquiry ? "남긴 문의가 없습니다." : "등록된 게시글이 없습니다."}</strong>
                   {(currentCategory !== "NOTICE" || isAdmin) && (
                     <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}>
-                      첫 글 작성하기
+                      {isInquiry ? "문의하기" : "첫 글 작성하기"}
                     </Link>
                   )}
                 </div>
@@ -319,6 +333,11 @@ function PostListContent() {
                         {!currentCategory && (
                           <span className={`m-cat ${post.categoryCode === "NOTICE" ? "notice" : post.categoryCode === "QNA" ? "accent" : ""}`}>
                             {formatShortCategory(post.categoryCode, post.categoryName)}
+                          </span>
+                        )}
+                        {post.answered != null && (
+                          <span className={`m-cat ${post.answered ? "accent" : ""}`}>
+                            {post.answered ? "답변 완료" : "답변 대기"}
                           </span>
                         )}
                         {post.likeCount >= 50 && <em className="board-hot-badge">HOT</em>}
@@ -392,7 +411,8 @@ function PostListContent() {
                     href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}
                     className="board-write-button"
                   >
-                    <span className="material-symbols-outlined">edit</span>글쓰기
+                    <span className="material-symbols-outlined">edit</span>
+                    {isInquiry ? "문의하기" : "글쓰기"}
                   </Link>
                 )}
               </div>

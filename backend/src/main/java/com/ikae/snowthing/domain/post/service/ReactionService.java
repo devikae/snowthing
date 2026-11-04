@@ -14,6 +14,7 @@ import com.ikae.snowthing.domain.post.dto.ReactionCountMismatch;
 import com.ikae.snowthing.domain.post.dto.ReactionReconciliationResult;
 import com.ikae.snowthing.domain.post.dto.ReactionResponse;
 import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.event.PostReactionEvent;
@@ -93,6 +94,9 @@ public class ReactionService {
     public Set<ReactionType> findActiveTypes(
             String publicId, CustomUserDetails userDetails, String anonymousVoterId) {
         Post post = findPost(publicId);
+        if (PostCategoryCodes.isInquiry(post)) {
+            return Set.of();
+        }
         if (userDetails != null) {
             Member member = findMember(userDetails);
             return Set.copyOf(
@@ -149,7 +153,10 @@ public class ReactionService {
 
     private Post findAvailablePost(String publicId) {
         Post post = findPost(publicId);
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+        // 1:1 문의는 반응 대상이 아니다. 남의 문의 존재를 드러내지 않도록 작성자에게도 같은 404를 준다.
+        if (post.isDeleted()
+                || post.getStatus() != PostStatus.NORMAL
+                || PostCategoryCodes.isInquiry(post)) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
         return post;

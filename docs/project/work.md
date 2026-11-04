@@ -1,3 +1,28 @@
+## 회원 전용 1:1 문의 게시판 (IKA-20, 2026-11-04)
+
+- 상태: 구현과 로컬 검증 완료, PR 전. 031 운영 적용과 배포는 하지 않았다.
+- 계획: 게시글에 `INQUIRY` 카테고리를 추가하고 게시글과 댓글을 재사용한다. 회원은 본인 문의만, 관리자는 전체를 보고 댓글로 답변한다. 설계 `docs/conception/021_inquiry_board/01_design.md`.
+- 완료
+  - 백엔드: 비공개 카테고리 기준 `PostCategoryCodes.HIDDEN_FROM_PUBLIC`({MARKET, INQUIRY})과 접근 규칙 `InquiryAccess`(작성자와 관리자 외 `POST_NOT_FOUND`). 게시글 목록과 스크롤, `PostRepository` JPQL, `SearchVisibilitySql`이 같은 기준을 쓴다.
+  - 문의 목록: 비로그인 401(`INQUIRY_LOGIN_REQUIRED`), 회원은 서버가 본인 `publicId`로 좁히고 관리자는 전체. `PostListResponse.answered`(문의 목록만, 관리자 댓글 여부).
+  - 작성 로그인 필수와 익명 금지, 상세와 수정과 삭제와 댓글(작성, 목록, 대댓글) 404, 반응 404와 상세 반응 상태 빈 값, 카테고리 전환 양방향 거부(`INQUIRY_CATEGORY_CHANGE_NOT_ALLOWED`).
+  - `031_migration_inquiry_category.sql`, `DataInitializer` 시드.
+  - 프론트: 프로필 메뉴, 모바일 메뉴(로그인 시), 푸터에 `1:1 문의` 링크. 목록 안내와 답변 배지, 401이면 로그인으로 이동. 작성과 수정 화면의 카테고리 선택 숨김, 상세의 반응과 공유 숨김.
+- 결정
+  - 답변 상태는 목록 쿼리의 `EXISTS` 대신 목록 조회 후 글 ID 묶음으로 한 번 더 조회한다: 기존 목록이 ID 선별 후 본문 조회 구조라 서브쿼리를 넣으면 조회 결과 형태를 바꿔야 한다. 쿼리 1회 증가, N+1 없음.
+  - 댓글 작성 검사는 `CommentService`(트랜잭션 밖이라 카테고리와 작성자를 fetch join으로 읽음)와 `CommentCommandService`(트랜잭션 안) 두 곳에서 한다: `open-in-view: false`라 지연 로딩에 기대지 않는다.
+  - 남의 문의 삭제 시도도 403 대신 404로 바꿨다: 존재 여부를 드러내지 않는다는 설계 원칙을 삭제에도 맞췄다.
+  - 설계 폴더 번호를 019에서 021로 바꿨다: 머지 전인 IKA-17 브랜치가 `019_resort_weather_dday`를, main의 Discord 설계가 020을 쓴다.
+  - 브랜치는 origin/main에서 땄다. 머지 전인 IKA-19(작성 연타 제한)가 `PostController`를 바꾸므로 나중에 머지 충돌이 날 수 있다.
+- 검증
+  - 백엔드 `InquiryBoardTest` 14건 통과(작성, 목록 범위, 공개 목록 제외, 답변 상태, 상세와 삭제 404, 카테고리 전환, 댓글과 대댓글 404, 익명 댓글, 반응, 근거 검색 원문과 AI 멤버 조회 제외).
+  - 백엔드 `./gradlew spotlessCheck test`: 657건 통과(실패 0, 기존 skip 1).
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 브라우저로 화면을 직접 확인하지는 않았다.
+- 남은 항목: PR, 031 운영 적용과 배포(사용자 확인 후), 브라우저 화면 확인.
+- 후속: 답변 알림, IKA-18에서 남긴 문의 등록 #이벤트 Discord 알림.
+- 사용자 결정 필요: 없음.
+
 ## Discord 장애 및 서비스 이벤트 알림 (IKA-18, 2026-11-04)
 
 - 상태: 구현과 로컬 검증 완료, PR 전. 운영 prod.env 반영과 Lambda 운영 적용은 하지 않았다.

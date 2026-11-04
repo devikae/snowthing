@@ -17,6 +17,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.domain.post.service.InquiryAccess;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -46,11 +47,13 @@ public class CommentService {
             CommentCreateRequest request,
             CustomUserDetails userDetails,
             String clientIp) {
+        // 트랜잭션 밖이라 카테고리와 작성자를 함께 읽어 둔다. 작성 트랜잭션에서 한 번 더 검사한다.
         Post targetPost =
                 postRepository
-                        .findByPublicId(postPublicId)
+                        .findWithMemberAndCategoryByPublicId(postPublicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
         validateMarketAccess(targetPost, userDetails, request.isAnonymous());
+        InquiryAccess.requireReadable(targetPost, userDetails);
         Member member = null;
         String encodedPassword = null;
 
@@ -108,6 +111,7 @@ public class CommentService {
 
         validatePostVisibility(post);
         validateMarketAccess(post, userDetails, false);
+        InquiryAccess.requireReadable(post, userDetails);
 
         if (cursor != null && !commentRepository.existsRootCursor(post.getId(), cursor)) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
@@ -164,6 +168,7 @@ public class CommentService {
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
         validatePostVisibility(post);
         validateMarketAccess(post, userDetails, false);
+        InquiryAccess.requireReadable(post, userDetails);
 
         if (root.getParent() != null) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);

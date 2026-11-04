@@ -65,7 +65,8 @@
 | `PUT/DELETE /posts/{publicId}/reaction` | `INQUIRY`이면 404 |
 
 - `PostListResponse`에 `answered`(Boolean)를 추가한다. `INQUIRY`일 때만 값을 채우고 다른 카테고리는 `null`이다.
-- `answered`는 `ROLE_ADMIN` 회원이 작성한 삭제되지 않은 댓글이 있는지로 계산한다. 목록 쿼리에 `EXISTS` 서브쿼리로 붙이며 새 컬럼은 두지 않는다.
+- `answered`는 `ROLE_ADMIN` 회원이 작성한 삭제되지 않은 댓글이 있는지로 계산한다. 새 컬럼은 두지 않는다.
+- 구현에서는 목록 쿼리의 `EXISTS` 서브쿼리 대신, 목록을 가져온 뒤 그 글 ID 묶음으로 관리자 댓글이 있는 글을 한 번 더 조회한다. 기존 목록 쿼리가 ID 선별, 본문 조회로 나뉜 구조라 서브쿼리를 넣으면 조회 결과 형태를 바꿔야 한다. 쿼리는 한 번 늘지만 N+1은 없다.
 - 기존 응답 필드는 바뀌지 않는다.
 
 ## 데이터

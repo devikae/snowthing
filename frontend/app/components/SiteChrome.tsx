@@ -70,7 +70,7 @@ function ChevronDownIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools";
+export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools" | "inquiry";
 
 interface MemberUser {
   publicId: string;
@@ -239,6 +239,12 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                     >
                       내 정보 수정
                     </Link>
+                    <Link
+                      href="/posts?category=INQUIRY"
+                      onClick={() => profileMenuRef.current?.removeAttribute("open")}
+                    >
+                      1:1 문의
+                    </Link>
                     <button
                       type="button"
                       onClick={() => {
@@ -276,6 +282,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀·동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
+              {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}
             </nav>
           </div>
         </div>
@@ -293,7 +300,7 @@ export function Footer() {
     <footer className="community-footer">
       <div className="community-container community-footer-inner">
         <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>스노보드 커뮤니티</span></div>
-        <nav aria-label="사이트 안내"><Link href="/privacy">개인정보처리방침</Link><Link href="/posts?category=NOTICE">공지사항</Link><a href="mailto:82snowthing@gmail.com">82snowthing@gmail.com</a></nav>
+        <nav aria-label="사이트 안내"><Link href="/privacy">개인정보처리방침</Link><Link href="/posts?category=NOTICE">공지사항</Link><Link href="/posts?category=INQUIRY">1:1 문의</Link><a href="mailto:82snowthing@gmail.com">82snowthing@gmail.com</a></nav>
       </div>
       <div className="community-container community-copyright">Copyright © SNOWTHING Alpine Community. All rights reserved.</div>
     </footer>
