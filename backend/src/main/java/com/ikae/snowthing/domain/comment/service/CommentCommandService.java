@@ -1,11 +1,13 @@
 package com.ikae.snowthing.domain.comment.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
 import com.ikae.snowthing.domain.comment.entity.Comment;
+import com.ikae.snowthing.domain.comment.event.CommentCreatedEvent;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -28,6 +30,7 @@ class CommentCommandService {
     private final PostRepository postRepository;
     private final MarketListingRepository marketListingRepository;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     CommentResponse createComment(
@@ -91,6 +94,7 @@ class CommentCommandService {
                         encodedPassword);
         Comment saved = commentRepository.save(comment);
         searchOutbox.commentChanged(saved, false);
+        eventPublisher.publishEvent(CommentCreatedEvent.from(saved));
         CommentResponse response =
                 CommentResponse.from(saved)
                         .withViewerPermissions(

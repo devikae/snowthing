@@ -703,7 +703,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             )}
           </article>
 
-          <section className="post-comments-card">
+          <section id="comments" className="post-comments-card">
             <header><h2>댓글 <span>{totalCommentCount}</span></h2></header>
 
             <div className="post-comment-compose">

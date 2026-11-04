@@ -1,3 +1,32 @@
+## 댓글, 답글, 문의 답변 사용자 알림 (IKA-22, 2026-11-05)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 033 운영 적용과 배포는 하지 않았다(머지하면 배포 파이프라인이 적용한다).
+- 계획: 댓글 저장 시 `CommentCreatedEvent`를 발행하고, 커밋 뒤 리스너가 새 트랜잭션에서 받는 사람을 계산해 `notification`에 저장한다. 알림 API 4개, 90일 삭제 스케줄러, 헤더 종 아이콘과 `/notifications` 페이지. 설계 `docs/conception/022_notification/01_design.md`.
+- 완료
+  - 백엔드: `CommentCommandService`에 이벤트 발행 한 줄. `NotificationEventListener`(AFTER_COMMIT, 실패는 `log.warn`), `NotificationWriter`(REQUIRES_NEW), 받는 사람 규칙 `NotificationRecipients`(우선순위 INQUIRY_ANSWER, COMMENT_REPLY, POST_COMMENT, 본인과 비회원 제외), 탈퇴 회원 제외.
+  - API: `GET /api/v1/notifications`(ID 내림차순 커서, `unreadOnly`, size 최대 50), `GET /unread-count`, `PUT /{id}/read`(남의 알림 404), `PUT /read-all`. 비로그인 401, 봇 위임 토큰과 API 토큰도 401.
+  - `NotificationCleanupScheduler`: 매일 04:00 KST, 90일 지난 알림을 1,000건씩 최대 200번 지운다.
+  - `033_migration_notification.sql`: notification 테이블, `idx_notification_receiver_read_id (receiver_id, is_read, notification_id)`, receiver FK.
+  - 프론트: `NotificationBell`(배지 9+, 드롭다운 최근 10개, 모두 읽음, 전체 보기), `/notifications`(전체, 안 읽음 탭, 더 보기), 글과 장터 상세 댓글 영역에 `id="comments"`.
+- 결정
+  - 마이그레이션 번호 032 → 033: IKA-21이 032, IKA-23이 034를 쓴다(감독 결정).
+  - `post_category_code` 컬럼 추가(설계에 없던 변경): 중고장터 글은 `/posts` 상세가 404라 `/market/{publicId}`로 보내야 한다. 다른 선택지는 목록 조회 때 post JOIN(설계의 JOIN 없는 목록 원칙과 충돌), 프론트에서 실패 후 재시도(요청 두 번). 응답에 `postCategoryCode`가 추가된다.
+  - REQUIRES_NEW를 리스너 메서드가 아니라 `NotificationWriter`에 뒀다: 리스너의 try/catch가 새 트랜잭션의 커밋 실패까지 잡아 경고 로그로 남긴다. 동작(커밋 후, 새 트랜잭션)은 설계와 같다.
+  - 익명 표시: 회원 익명 댓글과 비회원 댓글 모두 "익명"으로 저장한다. 비회원 댓글의 IP 마스킹 이름도 알림에는 넣지 않는다.
+  - 답글의 부모는 저장된 댓글의 부모(루트 댓글)다. 답글은 루트 아래로 평탄화되고, 화면은 루트 댓글에만 답글 버튼이 있어 같은 결과다. API로 답글에 답글을 달면 루트 작성자가 알림을 받는다.
+  - 알림 API는 로그인 세션 회원만: 라이브톡 봇 위임 토큰과 API 토큰이 남의 알림 상태를 바꾸지 않게 한다(IKA-20의 문의 규칙과 같은 판단).
+  - 전체 목록은 filesort를 감수하고 `(receiver_id, notification_id)` 인덱스를 추가하지 않았다: 회원당 200건에서 실측 0.36ms(설계 예상과 같음).
+  - 보관 기간 삭제는 `DELETE ... ORDER BY notification_id LIMIT 1000`: 오래된 행이 PK 앞쪽이라 created_at 인덱스 없이 앞에서 읽다 멈춘다. 지울 행이 없는 날은 PK 전체를 한 번 읽는다(90일 보관이라 작음).
+  - 알림 FK로 회원 행 삭제가 막히므로 회원을 지우는 테스트 3개(`AiMemberIntegrationTest`, `AnswerDraftFlowIntegrationTest`, `SearchOutboxIntegrationTest`)의 정리 순서에 알림 삭제를 넣었다. 운영은 회원을 지우지 않는다.
+- 검증
+  - EXPLAIN(로컬 MySQL 8, 회원 500명 x 알림 200건 = 10만 건): 배지 개수 `ref (const,const) Using index`, 안 읽은 목록 `ref Backward index scan`(filesort 없음), 안 읽은 커서 `range Backward index scan`, 전체 목록 `ref Using filesort`(200행 정렬, 0.36ms), 읽음 조회 `const PRIMARY`, 모두 읽음 `range` 복합 인덱스. 033은 두 번 적용해도 오류 없음.
+  - 백엔드 `spotlessCheck test`: 717건 통과(실패 0, 기존 skip 1). 워크트리에서는 Spotless의 `ratchetFrom`이 Git 저장소를 못 찾아, 비교 기준을 끄는 init 스크립트로 전체 파일을 검사했다(더 넓은 검사). 중간 실행 두 번은 다른 작업의 병렬 테스트로 MySQL "Too many connections"와 공유 스키마 충돌(`MarketThumbnailIntegrationTest`, 단독 실행 통과)이 나서 다시 돌렸다. 알림 관련 신규 테스트 24건(받는 사람 규칙, 롤백, 저장 실패, API, 삭제).
+  - 프론트 `npm run lint` 오류 0, `npm run build` 성공(`/notifications` 정적 페이지 생성).
+  - 브라우저로 화면을 직접 확인하지는 않았다.
+- 리뷰: PR #67. CodeRabbit은 무료 리뷰 한도 초과(Review rate limited)로 리뷰하지 못해 AI가 직접 리뷰했다. 수정 0건, 보류 3건(동기 리스너의 커넥션 2개 사용, 지울 행이 없는 날의 PK 전체 읽기, 전체 목록 filesort). 이유는 PR 댓글에 있다.
+- 남은 항목: 머지(감독이 21, 22, 23 순서로), 033 운영 적용과 배포, 브라우저 확인.
+- 후속: 해당 댓글 위치로 바로 스크롤, 추천 알림, 알림 끄기, 실시간 푸시.
+
 ## 작성 API Idempotency-Key 멱등 처리 (IKA-21, 2026-11-05)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. 032 운영 적용과 배포는 하지 않았다.
