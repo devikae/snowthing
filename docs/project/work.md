@@ -1,3 +1,16 @@
+## 2026-11-04 — IKA-12 제한 API 토큰과 답변 초안 승인 게시 흐름 (IKA-5 4단계)
+
+- 상태: 로컬 구현과 검증 완료, 브랜치 `ika-12-answer-draft-flow`에서 PR 생성. 머지, 운영 DB 029 적용, 배포, bootstrap 이메일 설정, 게시 플래그 켜기는 하지 않았다(사용자 확인 필요).
+- 계획: 0단계 판정으로 보류했던 IKA-12를 사용자 지시로 진행. 운영 기본값은 읽기 전용(게시 플래그 꺼짐)으로 둔다.
+- 완료: `029_migration_answer_draft.sql`(`api_token`, `answer_draft`, `answer_draft_evidence`, `answer_draft_audit`). Bearer `snt_` 토큰 필터(범위 READ, DRAFT, 게시 범위 없음), 토큰 발급, 목록, 폐기 관리자 API. 초안 저장과 상태 조회(`/api/v1/answer-drafts`), 관리자 목록, 상세, 승인, 거절, 게시(`/api/v1/admin/answer-drafts`). 첫 관리자 지정(`SNOWTHING_ADMIN_BOOTSTRAP_EMAILS`). 관리자 화면(답변 초안, API 토큰, 검색 인덱스 대조와 outbox 상태)과 헤더의 관리자 전용 링크. 계약은 `docs/conception/017_ai_answer_assist/06_answer_draft_flow.md`.
+- 결정: 댓글 작성자는 초안 작성자(D7)가 아니라 승인한 관리자다. 사람 승인 책임이 작성자로 보여야 하고 토큰 소유자와 승인자가 다를 수 있다.
+- 결정: MCP `publish_approved_draft`는 서버를 호출하지 않고 검토 화면 안내만 한다. 토큰에는 ROLE_ADMIN을 주지 않아 승인, 게시 경로가 구조적으로 막힌다.
+- 결정: 게시 멱등성은 초안 행 비관적 잠금과 상태 재확인, 댓글 생성과 PUBLISHED 전환을 한 트랜잭션으로, `published_comment_id` 유일 제약을 마지막 방어선으로 둔다. 대상 게시글 행도 잠가 검사와 댓글 작성 사이의 수정을 막는다. 근거 원문 행은 잠그지 않는다(짧은 틈을 문서에 기록).
+- 결정: 근거는 JSON 컬럼이 아니라 자식 테이블(유일 제약, 해시 NOT NULL, 역방향 조회). 게시 거절은 트랜잭션을 되돌린 뒤 별도 트랜잭션으로 기록한다.
+- 결정: bootstrap 목록에서 이메일을 빼도 강등하지 않는다. 회수 API는 만들지 않았다(DB에서 명시적으로).
+- 검증: 전용 테스트 DB `snowthing_ika12_test`에서 `./gradlew test --rerun` 557개 중 실패, 오류 0개, 기존 제외 1개. 새 테스트 21개(초안 흐름 18, bootstrap 3). 첫 두 번의 전체 실행은 같은 MySQL을 쓰는 다른 세션 테스트와 겹쳐 "Too many connections"로 문맥 로딩이 실패했다(37, 50건). 새 DB에 022(`request_budget_window`)를 적용하고 Hikari 풀 4, 테스트 문맥 캐시 4로 실행 환경만 줄여 재실행해 통과했다. 001+002+전체 마이그레이션 체인 검증 스크립트(029 검사 추가) 적용, 재실행 통과(로컬 mysql 클라이언트가 없어 MySQL 컨테이너 안에서 실행), 029 직접 2회 실행 성공, 그 스키마로 `ddl-auto: validate` 앱 기동 성공. 프런트 `npm run lint`, `npm run build` 통과(`npm ci --legacy-peer-deps`, CI와 같음). 관리자 화면을 브라우저로 직접 눌러 보지는 않았다.
+- 남은 것: 운영 029 적용(앱 배포보다 먼저), 운영 `prod.env`에 bootstrap 이메일 추가 후 재배포와 재로그인, MCP 서버 도구 구현(mcp-server), 필요하면 게시 플래그 켜기.
+
 ## 게시판·프로필·장터 핫픽스 (2026-11-02)
 
 - 썸네일 추가 요청 반영: 일반 업로드는 압축 사진 한 파일만 저장하고 일반 게시판 목록의 썸네일 URL은 제외했다. 장터는 025의 DB 작업으로 첫 사진만 변환해 글당 썸네일 파일 하나를 유지하며 대표 사진 변경·전체 제거·물리 삭제·실패 재시도를 처리한다. 이전 버전 파일의 일괄 삭제는 하지 않았다.
