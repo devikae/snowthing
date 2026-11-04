@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
 
@@ -52,6 +53,7 @@ function PostCreateForm() {
   const [errorMsg, setErrorMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
 
   const editorRef = useRef<ToastEditorHandle>(null);
   const hasAlertedRef = useRef(false);
@@ -173,20 +175,22 @@ function PostCreateForm() {
     setErrorMsg("");
 
     try {
+      const body = JSON.stringify({
+        categoryCode,
+        title: title.trim(),
+        content: editorContent.trim(),
+        isAnonymous: isAnonCategory,
+        anonymousPassword: isAnonCategory && !userProfile ? anonymousPassword : null,
+        imageUrls: images.map((image) => image.imageKey),
+      });
       const res = await csrfFetch(API_ENDPOINTS.posts.create, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoryCode,
-          title: title.trim(),
-          content: editorContent.trim(),
-          isAnonymous: isAnonCategory,
-          anonymousPassword: isAnonCategory && !userProfile ? anonymousPassword : null,
-          imageUrls: images.map((image) => image.imageKey),
-        }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: idempotencyKey.keyFor(body) },
+        body,
       });
 
       if (res.ok) {
+        idempotencyKey.reset();
         const data = await res.json();
         if (toolDraft) { try { sessionStorage.removeItem(DECK_QUESTION_KEY); } catch { /* Draft cleanup must not prevent navigation. */ } }
         router.push(`/posts/${data.publicId}`);

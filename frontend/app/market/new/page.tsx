@@ -10,6 +10,7 @@ import { PageHeading } from "../../components/PageHeading";
 import type { ToastEditorHandle } from "../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), { ssr: false });
@@ -55,6 +56,7 @@ export default function MarketCreatePage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -122,21 +124,22 @@ export default function MarketCreatePage() {
     setSubmitting(true);
     setError("");
     try {
+      const body = JSON.stringify({
+        categoryCode,
+        title: title.trim(),
+        content,
+        productCondition,
+        transactionMethod,
+        price: numericPrice,
+        negotiable: free ? false : negotiable,
+        free,
+        contact: contact.trim(),
+        imageUrls: images.map((image) => image.imageUrl),
+      });
       const response = await csrfFetch(API_ENDPOINTS.market.create, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoryCode,
-          title: title.trim(),
-          content,
-          productCondition,
-          transactionMethod,
-          price: numericPrice,
-          negotiable: free ? false : negotiable,
-          free,
-          contact: contact.trim(),
-          imageUrls: images.map((image) => image.imageUrl),
-        }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: idempotencyKey.keyFor(body) },
+        body,
       });
       if (response.status === 401) {
         router.replace(`/login?returnUrl=${encodeURIComponent("/market/new")}`);
@@ -146,6 +149,7 @@ export default function MarketCreatePage() {
         const data = await response.json();
         throw new Error(data.message || "판매글을 등록하지 못했습니다.");
       }
+      idempotencyKey.reset();
       const data: { publicId: string } = await response.json();
       router.push(`/market/${data.publicId}`);
     } catch (submitError) {
