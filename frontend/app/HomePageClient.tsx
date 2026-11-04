@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
 import { CompactSelect } from "./components/CompactSelect";
+import { OpeningDdayBanner } from "./components/OpeningDdayBanner";
 import { PostImageIcon } from "./components/PostImageIcon";
 import { PostListAuthor } from "./components/PostListAuthor";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
@@ -316,6 +317,7 @@ export default function HomePageClient() {
     <div className="community-page">
       <TopNav active="home" />
       <main className="community-container home-main">
+        <OpeningDdayBanner />
         {/* TIER 1: Left Board Feed + Right Live Chat */}
         <div className="home-tier-1">
           <section className="home-feed tier-1-left">
