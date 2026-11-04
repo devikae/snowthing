@@ -96,9 +96,11 @@ export function ResortCamView({
               ) : (
                 <span className={styles.officialMeta}>공식 스트리밍 센터</span>
               )}
+            </div>
+            <div className={styles.resortTitle}>
+              <h2>{selectedCamera ? selectedCamera.name : selectedResort.name}</h2>
               <OpeningDdayTag resortCode={selectedResort.code} />
             </div>
-            <h2>{selectedCamera ? selectedCamera.name : selectedResort.name}</h2>
           </div>
           <div className={styles.resortHeaderActions}>
             <ResortWeatherChip resortCode={selectedResort.code} />

@@ -146,13 +146,31 @@
   font-size: 13px;
 }
 
-.ddayMeta {
-  border-radius: 6px;
-  background: var(--community-accent-soft, #eff6ff);
-  padding: 3px 8px;
-  color: var(--community-accent, #2563eb);
+.resortTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 리조트 이름 옆 개장 D-DAY 배지. 다크모드에서도 대비가 나도록 글자색은 배경(캔버스)색을 쓴다. */
+.ddayBadge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  border-radius: 999px;
+  background: var(--community-accent, #2563eb);
+  padding: 4px 11px;
+  color: var(--snow-canvas, #fff);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.ddayBadge small {
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
+  opacity: 0.85;
 }
 
 .resortHeaderActions {
@@ -181,9 +199,29 @@
   padding: 7px 14px 7px 10px;
 }
 
-.weatherChip > span {
-  color: var(--snow-ink-soft, #64748b);
-  font-size: 22px;
+.skyIcon {
+  color: #64748b;
+  font-size: 28px;
+}
+
+.skyIcon[data-tone="sun"] {
+  color: #f59e0b;
+}
+
+.skyIcon[data-tone="night"] {
+  color: #6366f1;
+}
+
+.skyIcon[data-tone="rain"] {
+  color: #0ea5e9;
+}
+
+.skyIcon[data-tone="snow"] {
+  color: #38bdf8;
+}
+
+.skyIcon[data-tone="fog"] {
+  color: #94a3b8;
 }
 
 .weatherChip strong {
