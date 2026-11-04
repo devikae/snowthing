@@ -6,7 +6,9 @@ import static com.ikae.snowthing.domain.search.repository.SearchVisibilitySql.PO
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -78,6 +80,51 @@ public class SearchSourceRepository {
                 .findFirst();
     }
 
+    /** 공개 여부와 관계없이 현재 content_version. 게시글이 없으면 빈 값. */
+    public Optional<Long> findPostVersion(long postId) {
+        return jdbc
+                .queryForList(
+                        "SELECT content_version FROM post WHERE post_id = ?", Long.class, postId)
+                .stream()
+                .findFirst();
+    }
+
+    public List<CommentSource> findVisibleCommentsOfPost(long postId) {
+        return jdbc.query(
+                COMMENT_COLUMNS
+                        + " WHERE cm.post_id = ? AND "
+                        + COMMENT_VISIBLE
+                        + " AND "
+                        + POST_VISIBLE
+                        + " ORDER BY cm.comment_id",
+                SearchSourceRepository::mapComment,
+                postId);
+    }
+
+    /** 삭제된 댓글을 포함한 게시글의 모든 댓글 ID와 version. ID 오름차순. */
+    public Map<Long, Long> findCommentVersionsOfPost(long postId) {
+        Map<Long, Long> versions = new LinkedHashMap<>();
+        jdbc.query(
+                "SELECT comment_id, version FROM comment WHERE post_id = ? ORDER BY comment_id",
+                rs -> {
+                    versions.put(rs.getLong("comment_id"), rs.getLong("version"));
+                },
+                postId);
+        return versions;
+    }
+
+    /** 공개 여부와 관계없이 댓글의 부모 게시글과 version. 댓글이 없으면 빈 값. */
+    public Optional<CommentRef> findCommentRef(long commentId) {
+        return jdbc
+                .query(
+                        "SELECT post_id, version FROM comment WHERE comment_id = ?",
+                        (rs, rowNum) ->
+                                new CommentRef(rs.getLong("post_id"), rs.getLong("version")),
+                        commentId)
+                .stream()
+                .findFirst();
+    }
+
     private static PostSource mapPost(ResultSet rs, int rowNum) throws SQLException {
         return new PostSource(
                 rs.getLong("post_id"),
@@ -125,4 +172,6 @@ public class SearchSourceRepository {
             String postPublicId,
             String postTitle,
             String categoryCode) {}
+
+    public record CommentRef(long postId, long version) {}
 }

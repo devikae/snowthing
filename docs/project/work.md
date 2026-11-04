@@ -2321,3 +2321,25 @@
 - 결정: 공개 범위 조건(NORMAL·미삭제·MARKET 제외, 댓글 미삭제)을 한 곳에 두고 재구축·검색 후보 생성·근거 조회에 같이 쓴다. 검색 점수는 반환하지 않는다. 쿼리 파라미터는 문자열로 받아 직접 검증한다(기본 변환 실패는 전역 처리기에서 500이 됨). `search_document`에는 FK를 두지 않는다(재구축 가능한 복제본, 조회 시 원문 조인으로 거름).
 - 검증: 전용 테스트 DB `snowthing_ika7_test`에서 `./gradlew test --rerun` 510개 중 실패·오류 0개, 기존 제외 1개. 첫 전체 실행은 테스트 DB 사용자·비밀번호 환경변수 누락(문맥 로딩 실패 44건)과 빈 DB에 `request_budget_window`가 없어 생긴 503(1건)으로 실패했고, 환경변수를 모두 넣은 재실행에서 통과했다. Spotless는 Git worktree 인식 실패로 같은 커밋 기준 일반 복제본에서 변경 파일에 대해 apply·check 통과. 마이그레이션은 001+002+전체 마이그레이션 적용·재실행 검증 스크립트(027 검사 추가) 통과, 027 파일 직접 재실행 2회 성공, 마이그레이션 결과 스키마에 `ddl-auto: validate`로 앱 기동 성공(`content_version`을 지우면 validate 실패 확인). `git diff --check` 통과.
 - 남은 것: 원문 변경의 증분 반영(IKA-10), MCP 도구 연결(IKA-8), 기준선 측정(IKA-9). 운영 적용 전 `@@ngram_token_size` 확인과 027 적용 순서(앱 배포보다 먼저)를 지켜야 한다. `docs/conception/017_ai_answer_assist/01_design.md`는 IKA-6 브랜치에만 있어 병합 순서에 따라 링크가 잠시 끊길 수 있다.
+
+### 2026-11-04 — IKA-10 근거 검색 2단계 정합성 (IKA-5 2단계)
+
+- 상태: 로컬 구현·검증 완료, 로컬 커밋만 함(브랜치 `ika-10-search-outbox-eval`, IKA-7 브랜치 위). push·PR·운영 DB 마이그레이션·배포는 하지 않았다.
+- 완료: `028_migration_search_outbox.sql`(`search_outbox`, `search_index_state`, `search_reindex_checkpoint`), 게시글·카풀·장터·댓글 변경 11곳에서 같은 트랜잭션으로 outbox 기록, 폴링 처리기(SKIP LOCKED + lease, 현재 원문 재조회, 버전 비교, tombstone, 지수 백오프 5회 후 FAILED), 관리자 API `GET /outbox/summary`, `POST /outbox/retry-failed`, `POST /reconcile`, `POST /reindex`(모두 `/api/v1/admin/search` 아래), 일일 대조 스케줄. 설계·검증은 `docs/conception/017_ai_answer_assist/05_stage2_consistency.md`.
+- 결정: outbox 기록은 서비스에서 명시적으로 부른다(`Propagation.MANDATORY`). 댓글 삭제가 JPQL 일괄 UPDATE라 엔티티 콜백이 불리지 않고, BEFORE_COMMIT 리스너도 결국 지점마다 발행이 필요하기 때문이다. 다른 선택지: 엔티티 리스너, AFTER_COMMIT 비동기(이벤트 유실). 부작용: 새 변경 경로에서 기록을 빠뜨리면 다음 대조까지 늦어진다.
+- 결정: 처리기는 이벤트 내용이 아니라 현재 원문을 다시 읽고, 이벤트 버전이 적용 버전보다 작을 때만 건너뛴다. 댓글 삭제는 version을 올리지 않아(기존 낙관적 락 동작 유지) 같은 버전 이벤트도 다시 처리해야 하기 때문이다. 같은 게시글 처리는 게시글 상태 행 잠금으로 직렬화하고 READ COMMITTED로 읽는다.
+- 결정: 게시글 이벤트가 그 글의 댓글 문서까지 다시 만든다. 숨김·삭제 글의 댓글 문서가 색인에 남지 않게 하고, 재인덱싱은 게시글만 넣으면 된다.
+- 결정: 재인덱싱은 세대 전환 대신 원문 단위 교체 + 배치 체크포인트로 했다. 처리기가 원문 단위로 원자적으로 교체해 검색이 끊기지 않고, 현재 규모에 세대 컬럼·전환 절차는 과하다. 01_design D6의 "새 세대 생성 후 전환·롤백"은 하지 않았다. IKA-7 `POST /rebuild`는 동작을 유지하고 deprecated로 표시했다.
+- 결정(계획 외 스키마): `search_index_state.document_count`를 추가했다. 버전만으로는 본문 구간 하나가 빠진 손상을 대조가 찾지 못해서다.
+- 검증: 전용 테스트 DB `snowthing_ika10_test`에서 `./gradlew test --rerun` 534개 중 실패·오류 0개, 기존 제외 1개. 브랜치 생성 직후 기준 실행은 510개 중 1개 실패였다(`ProfileImageSecurityIntegrationTest` 503, 새 DB에 `request_budget_window`가 없던 환경 원인, IKA-7 기록과 같음). Spotless는 Git worktree에서 JGit 인식이 안 되어 같은 기준 커밋의 일반 복제본에서 변경 Java 31개에 apply 후 `spotlessCheck` 통과(15개 파일 서식 반영). 마이그레이션 검증 스크립트(028 검사 추가)를 빈 스키마에서 001+002+전체 적용·재실행 통과, 028 직접 재실행 2회 성공. 그 스키마로 `ddl-auto: validate` 앱 기동 성공.
+- 로컬 반영 지연(LOCAL, 운영 아님): 게시글 1건 100번 수정, 0~300ms 무작위 간격. 폴링 1000ms: P50 444.6ms, P95 939.8ms (N=100). 폴링 200ms: P50 106.1ms, P95 197.6ms (N=100). Windows 11·24코어·Java 21.0.8·Docker MySQL 8.0.46 같은 머신.
+- 남은 것: 운영 028 적용(앱 배포보다 먼저), 배포 뒤 `POST /reconcile` 한 번, 운영 폴링 쿼리 EXPLAIN 확인. 사용자 확인 필요.
+
+### 2026-11-04 — IKA-9 근거 검색 기준선 평가 실행기 (IKA-5 1단계)
+
+- 상태: 실행기와 검색 조건 구현 완료, **평가 결과 없음(사람 라벨링 대기)**. IKA-10과 같은 브랜치에서 로컬 커밋만 함.
+- 완료: 관리자 근거 검색 API에 평가용 선택 파라미터 `createdBefore`(KST `YYYY-MM-DDTHH:mm:ss`, `source_created_at` 미만), `excludePostPublicId`(질문 글타래 제외) 추가와 입력 검증·통합 테스트. `scripts/evaluate-evidence-search.py`(저장소 밖 JSONL, 쿠키는 환경 변수, hit@k·recall@k를 n/N으로, 근거 없음 항목 분리, 지연 P50/P95, 집계만 출력). 라벨링 방법과 사용자 할 일은 `docs/conception/017_ai_answer_assist/04_evaluation.md`.
+- 결정: 지표를 비율이 아니라 n/N으로만 쓴다. 실제 QNA 질문이 17건뿐이라 백분율이 차이를 과장한다(0단계 결과). 근거 없음 항목은 상위 1건 유무만 세고 정밀도로 해석하지 않는다.
+- 결정: 평가 자료는 저장소 밖에 두고 실행기가 저장소 안 경로를 거부한다. 공개 저장소에 운영 원문을 커밋하지 않기 위해서다(D8).
+- 검증: 로컬 임시 스키마에 직접 만든 게시글 4건·댓글 3건으로 실행기 동작만 확인했다(harness check, not a measurement). 수치는 기록하지 않는다.
+- 남은 것(사용자): QNA 17건 라벨링, tuning/eval 분리, 실행기 실행 후 집계 공유.

@@ -9,6 +9,7 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -63,6 +64,37 @@ public class SearchDocumentJdbcRepository {
         return jdbc.update("DELETE FROM search_document");
     }
 
+    /** 게시글 구간과 그 글의 댓글 문서를 함께 지운다. */
+    public int deleteByPostId(long postId) {
+        return jdbc.update("DELETE FROM search_document WHERE post_id = ?", postId);
+    }
+
+    public int deleteBySource(SearchSourceType type, long sourceId) {
+        return jdbc.update(
+                "DELETE FROM search_document WHERE source_type = ? AND source_id = ?",
+                type.name(),
+                sourceId);
+    }
+
+    public List<Long> findCommentIdsOfPost(long postId) {
+        return jdbc.queryForList(
+                "SELECT DISTINCT source_id FROM search_document"
+                        + " WHERE post_id = ? AND source_type = 'COMMENT' ORDER BY source_id",
+                Long.class,
+                postId);
+    }
+
+    public Optional<Long> findPostIdOfComment(long commentId) {
+        return jdbc
+                .queryForList(
+                        "SELECT post_id FROM search_document"
+                                + " WHERE source_type = 'COMMENT' AND source_id = ? LIMIT 1",
+                        Long.class,
+                        commentId)
+                .stream()
+                .findFirst();
+    }
+
     public void insertAll(List<NewSearchDocument> documents) {
         jdbc.batchUpdate(
                 INSERT_SQL,
@@ -94,14 +126,30 @@ public class SearchDocumentJdbcRepository {
     /**
      * 공개 범위를 후보 생성 쿼리에서 바로 거른다. 색인 뒤에 숨김·삭제된 원문은 원문 테이블 조인 조건에서 빠진다. 점수는 정렬에만 쓰고 반환하지 않는다. 같은 점수는
      * document_id로 순서를 고정한다.
+     *
+     * <p>createdBefore·excludePostPublicId는 평가용 조건이다. 질문 시점 이후에 작성된 문서와 질문 자신의 글타래를 빼서, 질문 당시 존재하던
+     * 다른 글로만 답을 찾을 수 있는지 본다.
      */
-    public List<EvidenceSearchRow> search(String query, String categoryCode, int size) {
+    public List<EvidenceSearchRow> search(
+            String query,
+            String categoryCode,
+            LocalDateTime createdBefore,
+            String excludePostPublicId,
+            int size) {
         List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder(SEARCH_SQL_PREFIX);
         args.add(query);
         if (categoryCode != null) {
             sql.append(" AND pc.code = ?");
             args.add(categoryCode);
+        }
+        if (createdBefore != null) {
+            sql.append(" AND d.source_created_at < ?");
+            args.add(createdBefore);
+        }
+        if (excludePostPublicId != null) {
+            sql.append(" AND d.post_public_id <> ?");
+            args.add(excludePostPublicId);
         }
         sql.append(" ORDER BY ").append(MATCH).append(" DESC, d.document_id ASC LIMIT ?");
         args.add(query);

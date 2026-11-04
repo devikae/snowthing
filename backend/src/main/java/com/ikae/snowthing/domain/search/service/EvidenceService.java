@@ -44,7 +44,12 @@ public class EvidenceService {
     public EvidenceSearchResponse search(EvidenceSearchCondition condition) {
         List<EvidenceSearchItemResponse> items =
                 searchDocuments
-                        .search(condition.query(), condition.categoryCode(), condition.size())
+                        .search(
+                                condition.query(),
+                                condition.categoryCode(),
+                                condition.createdBefore(),
+                                condition.excludePostPublicId(),
+                                condition.size())
                         .stream()
                         .map(EvidenceService::toItem)
                         .toList();

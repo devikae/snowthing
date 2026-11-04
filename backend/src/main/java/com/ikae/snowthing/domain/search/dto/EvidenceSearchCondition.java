@@ -1,5 +1,9 @@
 package com.ikae.snowthing.domain.search.dto;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -12,8 +16,15 @@ import com.ikae.snowthing.global.exception.CustomException;
  * @param query 앞뒤 공백을 제거한 검색어 (2~100자)
  * @param size 결과 수 (1~20)
  * @param categoryCode 현재 게시판 코드 필터. null이면 전체
+ * @param createdBefore 평가용. 원문 작성 시각(source_created_at, KST)이 이 시각보다 앞선 문서만. null이면 제한 없음
+ * @param excludePostPublicId 평가용. 이 게시글과 그 댓글을 결과에서 뺀다(질문 자신의 글타래). null이면 제외 없음
  */
-public record EvidenceSearchCondition(String query, int size, String categoryCode) {
+public record EvidenceSearchCondition(
+        String query,
+        int size,
+        String categoryCode,
+        LocalDateTime createdBefore,
+        String excludePostPublicId) {
 
     public static final int MIN_QUERY_LENGTH = 2;
     public static final int MAX_QUERY_LENGTH = 100;
@@ -21,14 +32,56 @@ public record EvidenceSearchCondition(String query, int size, String categoryCod
     public static final int MAX_SIZE = 20;
 
     private static final Pattern CATEGORY_CODE = Pattern.compile("^[A-Z][A-Z0-9_]{0,49}$");
+    private static final Pattern PUBLIC_ID =
+            Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+    private static final DateTimeFormatter KST_SECONDS =
+            DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss")
+                    .withResolverStyle(ResolverStyle.STRICT);
 
     public static EvidenceSearchCondition of(String q, String size, String categoryCode) {
+        return of(q, size, categoryCode, null, null);
+    }
+
+    public static EvidenceSearchCondition of(
+            String q,
+            String size,
+            String categoryCode,
+            String createdBefore,
+            String excludePostPublicId) {
         String query = q == null ? "" : q.strip();
         int queryLength = query.codePointCount(0, query.length());
         if (queryLength < MIN_QUERY_LENGTH || queryLength > MAX_QUERY_LENGTH) {
             throw invalid();
         }
-        return new EvidenceSearchCondition(query, parseSize(size), parseCategory(categoryCode));
+        return new EvidenceSearchCondition(
+                query,
+                parseSize(size),
+                parseCategory(categoryCode),
+                parseCreatedBefore(createdBefore),
+                parsePublicId(excludePostPublicId));
+    }
+
+    /** KST 기준 {@code YYYY-MM-DDTHH:mm:ss}만 받는다. 시간대 표기·밀리초·날짜만 있는 값은 오류다. */
+    private static LocalDateTime parseCreatedBefore(String createdBefore) {
+        if (createdBefore == null || createdBefore.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(createdBefore.strip(), KST_SECONDS);
+        } catch (DateTimeParseException e) {
+            throw invalid();
+        }
+    }
+
+    private static String parsePublicId(String publicId) {
+        if (publicId == null || publicId.isBlank()) {
+            return null;
+        }
+        String id = publicId.strip().toLowerCase(Locale.ROOT);
+        if (!PUBLIC_ID.matcher(id).matches()) {
+            throw invalid();
+        }
+        return id;
     }
 
     private static int parseSize(String size) {

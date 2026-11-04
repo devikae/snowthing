@@ -39,6 +39,7 @@ public class CommentService {
     private final MarketListingRepository marketListingRepository;
     private final PasswordEncoder passwordEncoder;
     private final CommentCommandService commentCommandService;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
 
     public CommentResponse createComment(
             String postPublicId,
@@ -218,6 +219,7 @@ public class CommentService {
 
         comment.updateContent(request.content());
         commentRepository.flush();
+        searchOutbox.commentChanged(comment, false);
 
         return new CommentUpdateResponse(
                 comment.getId(), comment.getContent(), comment.getUpdatedAt());
@@ -258,7 +260,9 @@ public class CommentService {
 
         validateDeletePermission(comment, anonymousPassword, userDetails);
 
-        commentRepository.softDeleteIfActive(commentId, LocalDateTime.now());
+        if (commentRepository.softDeleteIfActive(commentId, LocalDateTime.now()) > 0) {
+            searchOutbox.commentChanged(comment, true);
+        }
     }
 
     private void validateDeletePermission(

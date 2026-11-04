@@ -25,6 +25,7 @@ class CommentCommandService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final MarketListingRepository marketListingRepository;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
 
     @Transactional
     CommentResponse createComment(
@@ -82,8 +83,10 @@ class CommentCommandService {
                         clientIp != null ? clientIp : "127.0.0.1",
                         request.isAnonymous(),
                         encodedPassword);
+        Comment saved = commentRepository.save(comment);
+        searchOutbox.commentChanged(saved, false);
         CommentResponse response =
-                CommentResponse.from(commentRepository.save(comment))
+                CommentResponse.from(saved)
                         .withViewerPermissions(
                                 userDetails == null ? null : userDetails.getPublicId());
         postRepository.increaseCommentCount(post.getId());

@@ -52,6 +52,7 @@ public class PostService {
     private final PasswordEncoder passwordEncoder;
     private final ImageUrlResolver imageUrlResolver;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
 
     @Transactional
     public PostResponse createPost(
@@ -123,7 +124,9 @@ public class PostService {
         post.replaceImages(toPostImages(request.imageUrls()));
         post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
 
-        return PostResponse.from(postRepository.save(post));
+        Post saved = postRepository.save(post);
+        searchOutbox.postChanged(saved);
+        return PostResponse.from(saved);
     }
 
     @Transactional
@@ -250,6 +253,7 @@ public class PostService {
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }
+        searchOutbox.postChanged(post);
         return PostResponse.from(post);
     }
 
@@ -271,6 +275,7 @@ public class PostService {
         validateDeletePermission(post, anonymousPassword, userDetails, isAdmin);
 
         post.softDelete();
+        searchOutbox.postChanged(post);
     }
 
     private void validateEditPermission(
