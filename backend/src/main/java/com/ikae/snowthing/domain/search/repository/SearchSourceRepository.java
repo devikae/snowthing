@@ -55,6 +55,17 @@ public class SearchSourceRepository {
                 .findFirst();
     }
 
+    /** 답변 초안 대상 게시글 확인용. 근거 검색과 같은 공개 범위 조건을 쓴다. */
+    public Optional<PostSource> findVisiblePostByPublicId(String publicId) {
+        return jdbc
+                .query(
+                        POST_COLUMNS + " WHERE p.public_id = ? AND " + POST_VISIBLE,
+                        SearchSourceRepository::mapPost,
+                        publicId)
+                .stream()
+                .findFirst();
+    }
+
     public List<CommentSource> findVisibleComments() {
         return jdbc.query(
                 COMMENT_COLUMNS

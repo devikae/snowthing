@@ -62,6 +62,7 @@ interface MemberUser {
   email: string;
   nickname: string;
   profileImageUrl: string | null;
+  role?: string;
 }
 
 interface NavItem {
@@ -186,6 +187,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                 </summary>
                 <div className="header-profile-dropdown">
                   <Link href="/profile" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>내 정보 수정</Link>
+                  {user.role === "ROLE_ADMIN" && (
+                    <Link href="/admin/answer-drafts" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>관리자</Link>
+                  )}
                 </div>
                 </details>
                 <button type="button" onClick={handleLogout} className="header-logout">로그아웃</button>
