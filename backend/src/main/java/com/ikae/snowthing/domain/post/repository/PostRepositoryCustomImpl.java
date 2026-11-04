@@ -1,18 +1,24 @@
 package com.ikae.snowthing.domain.post.repository;
 
+import static com.ikae.snowthing.domain.comment.entity.QComment.comment;
 import static com.ikae.snowthing.domain.post.entity.QPost.post;
 import static com.ikae.snowthing.domain.post.entity.QPostCategory.postCategory;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
+import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.post.dto.PostListResponse;
 import com.ikae.snowthing.domain.post.dto.PostSearchRequest;
 import com.ikae.snowthing.domain.post.dto.PostViewType;
 import com.ikae.snowthing.domain.post.dto.SearchType;
 import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse.PageInfo;
 import com.ikae.snowthing.global.util.CursorUtils;
@@ -28,7 +34,6 @@ import lombok.RequiredArgsConstructor;
 public class PostRepositoryCustomImpl implements PostRepositoryCustom {
 
     private static final int BEST_MINIMUM_LIKE_COUNT = 30;
-    private static final String MARKET_CATEGORY_CODE = "MARKET";
 
     private final JPAQueryFactory queryFactory;
 
@@ -46,7 +51,8 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
-                                marketExcluded(),
+                                visibleCategory(request.categoryCode()),
+                                writerEq(request.writerPublicId()),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 post.status.eq(
@@ -70,7 +76,8 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
-                                marketExcluded(),
+                                visibleCategory(request.categoryCode()),
+                                writerEq(request.writerPublicId()),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 post.status.eq(
@@ -120,7 +127,8 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .fetchJoin()
                         .where(
                                 categoryEq(request.categoryCode()),
-                                marketExcluded(),
+                                visibleCategory(request.categoryCode()),
+                                writerEq(request.writerPublicId()),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
                                 cursorCondition(cursorValue),
@@ -156,8 +164,15 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         return postCategory.code.equalsIgnoreCase(categoryCode);
     }
 
-    private BooleanExpression marketExcluded() {
-        return postCategory.code.ne(MARKET_CATEGORY_CODE);
+    /** 1:1 문의를 직접 지정한 조회만 문의를 포함한다. 작성자 조건은 서비스가 붙인다. 그 외 조회는 비공개 카테고리를 제외한다. */
+    private BooleanExpression visibleCategory(String categoryCode) {
+        if (PostCategoryCodes.isInquiry(categoryCode)) return null;
+        return postCategory.code.notIn(PostCategoryCodes.HIDDEN_FROM_PUBLIC);
+    }
+
+    private BooleanExpression writerEq(String writerPublicId) {
+        if (!StringUtils.hasText(writerPublicId)) return null;
+        return post.member.publicId.eq(writerPublicId);
     }
 
     private BooleanExpression bestEligibility(PostViewType viewType) {
@@ -188,5 +203,20 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
 
     private OrderSpecifier<?>[] getLatestSortOrders() {
         return new OrderSpecifier<?>[] {post.createdAt.desc(), post.id.desc()};
+    }
+
+    @Override
+    public Set<String> findPublicIdsAnsweredByAdmin(Collection<String> postPublicIds) {
+        if (postPublicIds.isEmpty()) return Set.of();
+        return new HashSet<>(
+                queryFactory
+                        .select(comment.post.publicId)
+                        .distinct()
+                        .from(comment)
+                        .where(
+                                comment.post.publicId.in(postPublicIds),
+                                comment.member.role.eq(Role.ROLE_ADMIN),
+                                comment.isDeleted.isFalse())
+                        .fetch());
     }
 }

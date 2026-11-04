@@ -10,8 +10,10 @@ import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.domain.post.service.InquiryAccess;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -49,6 +51,10 @@ class CommentCommandService {
             if (request.isAnonymous()) {
                 throw new CustomAuthException(ErrorCode.MARKET_ANONYMOUS_COMMENT_NOT_ALLOWED);
             }
+        }
+        InquiryAccess.requireReadable(post, userDetails);
+        if (PostCategoryCodes.isInquiry(post) && request.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
         Comment parent = null;
         if (request.parentId() != null) {

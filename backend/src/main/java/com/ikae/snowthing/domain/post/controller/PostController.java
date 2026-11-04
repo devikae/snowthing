@@ -74,11 +74,12 @@ public class PostController {
                     @RequestParam(required = false) String keyword,
                     @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false, defaultValue = "1") Integer page,
-                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size) {
+                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size,
+                    @AuthenticationPrincipal CustomUserDetails userDetails) {
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, page, null, size);
-        return ResponseEntity.ok(postService.searchPostsByOffset(request));
+        return ResponseEntity.ok(postService.searchPostsByOffset(request, userDetails));
     }
 
     @GetMapping("/scroll")
@@ -90,11 +91,12 @@ public class PostController {
                     @RequestParam(required = false) String keyword,
                     @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false) String cursor,
-                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size) {
+                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size,
+                    @AuthenticationPrincipal CustomUserDetails userDetails) {
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, null, cursor, size);
-        return ResponseEntity.ok(postService.searchPostsByCursor(request));
+        return ResponseEntity.ok(postService.searchPostsByCursor(request, userDetails));
     }
 
     @PutMapping("/{publicId}")

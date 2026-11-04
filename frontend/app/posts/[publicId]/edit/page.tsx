@@ -207,6 +207,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
         </div>
       </header>
 
+      {categoryCode !== "INQUIRY" && (
       <nav className="compose-category-bar" aria-label="게시판 변경">
         <div className="filter-pills">
           {categoryOptions.map((option) => (
@@ -221,6 +222,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
           ))}
         </div>
       </nav>
+      )}
 
       <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (

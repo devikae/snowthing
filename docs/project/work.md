@@ -1,32 +1,29 @@
-## 작성 API 연타 중복 등록 핫픽스 (IKA-19, 2026-11-04)
+## 회원 전용 1:1 문의 게시판 (IKA-20, 2026-11-04)
 
-- 상태: 구현과 로컬 검증 완료, PR 생성. 운영 배포는 하지 않았다.
-- 계획: 등록 버튼 연타(오토클릭)로 글과 댓글이 요청 수만큼 등록되는 문제를 서버 작성 제한(B)과 프론트 동기 잠금(A)으로 막는다.
-- 원인
-  - 백엔드: `POST /posts`, `/posts/{id}/comments`(대댓글 포함), `/resort-reports`, `/carpools`, `/market-listings`에 작성 횟수 제한이 없었다.
-  - 프론트: 댓글 폼이 `working` state로만 막았다. state는 다음 렌더에 반영되어 렌더 전에 들어온 클릭이 통과했다. 게시글, 마켓, 카풀, 설질 폼은 이미 ref 잠금이 있었다.
+- 상태: 구현과 로컬 검증 완료, PR 생성. 031 운영 적용과 배포는 하지 않았다.
+- 계획: 게시글에 `INQUIRY` 카테고리를 추가하고 게시글과 댓글을 재사용한다. 회원은 본인 문의만, 관리자는 전체를 보고 댓글로 답변한다. 설계 `docs/conception/021_inquiry_board/01_design.md`.
 - 완료
-  - `ContentWriteRateLimiter`(global/security): 기존 `SharedRequestLimiter`(request_budget_window, 노드 공유)로 작성자별 짧은 간격 1건 + 시간당 상한. 로그인은 회원, 비로그인 작성은 IP로 묶는다.
-    - 게시글 10초 1건, 시간당 20 / 댓글 3초 1건, 시간당 60 / 설질 10초 1건, 시간당 10(기존 하루 5건 유지) / 카풀, 마켓 10초 1건, 시간당 10
-  - 초과 시 429 `COMMON_003`, 제한 저장소 장애 시 503 `COMMON_004`(기존 리미터와 같은 fail-closed).
-  - 댓글 폼 `useRef` 잠금, 서버 에러 메시지(429 문구) 표시.
+  - 백엔드: 비공개 카테고리 기준 `PostCategoryCodes.HIDDEN_FROM_PUBLIC`({MARKET, INQUIRY})과 접근 규칙 `InquiryAccess`(작성자와 관리자 외 `POST_NOT_FOUND`). 게시글 목록과 스크롤, `PostRepository` JPQL, `SearchVisibilitySql`이 같은 기준을 쓴다.
+  - 문의 목록: 비로그인 401(`INQUIRY_LOGIN_REQUIRED`), 회원은 서버가 본인 `publicId`로 좁히고 관리자는 전체. `PostListResponse.answered`(문의 목록만, 관리자 댓글 여부).
+  - 작성 로그인 필수와 익명 금지, 상세와 수정과 삭제와 댓글(작성, 목록, 대댓글) 404, 반응 404와 상세 반응 상태 빈 값, 카테고리 전환 양방향 거부(`INQUIRY_CATEGORY_CHANGE_NOT_ALLOWED`).
+  - `031_migration_inquiry_category.sql`, `DataInitializer` 시드.
+  - 프론트: 프로필 메뉴, 모바일 메뉴(로그인 시), 푸터에 `1:1 문의` 링크. 목록 안내와 답변 배지, 401이면 로그인으로 이동. 작성과 수정 화면의 카테고리 선택 숨김, 상세의 반응과 공유 숨김.
 - 결정
-  - 컨트롤러에서 검사: AI 멤버(`AiMemberActionService`)는 서비스를 직접 불러 제한 대상이 아니다. 다른 선택지는 서비스 계층 검사였으나 AI 멤버 예외 처리가 필요해 제외.
-  - budget_key가 `VARCHAR(100)`이라 해시 앞 32자만 쓴다. 통합 테스트에서 101자 키로 모든 작성이 503이 되는 것을 발견해 고쳤다.
-  - 테스트 설정에서 `snowthing.write-limit.enabled=false`: 테스트 DB에는 request_budget_window가 없어서. 통합 테스트는 새 컨텍스트 대신 공유 컨텍스트 빈을 테스트 동안만 켠다(새 컨텍스트는 로컬 MySQL 연결 수 초과를 일으켰다).
+  - 답변 상태는 목록 쿼리의 `EXISTS` 대신 목록 조회 후 글 ID 묶음으로 한 번 더 조회한다: 기존 목록이 ID 선별 후 본문 조회 구조라 서브쿼리를 넣으면 조회 결과 형태를 바꿔야 한다. 쿼리 1회 증가, N+1 없음.
+  - 댓글 작성 검사는 `CommentService`(트랜잭션 밖이라 카테고리와 작성자를 fetch join으로 읽음)와 `CommentCommandService`(트랜잭션 안) 두 곳에서 한다: `open-in-view: false`라 지연 로딩에 기대지 않는다.
+  - 문의는 로그인 세션으로만 읽는다(셀프 리뷰에서 발견): 라이브톡 봇 위임 필터가 `GET /api/v1/posts`, `/posts/{id}`를 허용해, 질문한 회원의 문의와 관리자 답변을 봇이 읽어 공개 채팅에 올릴 수 있었다. `BotDelegatedUserDetails`, `ApiTokenUserDetails`는 본인 문의도 401 또는 404. 다른 선택지는 위임 필터 허용 경로에서 문의 카테고리 쿼리를 막는 것(경로 기반이라 상세 조회를 못 막음).
+  - 남의 문의 삭제 시도도 403 대신 404로 바꿨다: 존재 여부를 드러내지 않는다는 설계 원칙을 삭제에도 맞췄다.
+  - 설계 폴더 번호를 019에서 021로 바꿨다: 머지 전인 IKA-17 브랜치가 `019_resort_weather_dday`를, main의 Discord 설계가 020을 쓴다.
+  - 브랜치는 origin/main에서 땄다. 머지 전인 IKA-19(작성 연타 제한)가 `PostController`를 바꾸므로 나중에 머지 충돌이 날 수 있다.
 - 검증
-  - 새 테스트: 단위 4건, 통합 1건(같은 댓글 연속 요청 시 201 후 429) 통과.
+  - 백엔드 `InquiryBoardTest` 통과(작성, 목록 범위, 공개 목록 제외, 답변 상태, 상세와 삭제 404, 카테고리 전환, 댓글과 대댓글 404, 익명 댓글, 반응, 근거 검색 원문과 AI 멤버 조회 제외).
+  - 백엔드 `./gradlew spotlessCheck test`: 658건 통과(실패 0, 기존 skip 1). origin/main(IKA-17) 병합 후 다시 실행해 688건 통과(실패 0, 기존 skip 1), 프론트 lint와 build도 다시 통과. `InquiryBoardTest` 15건(봇 위임 차단 포함).
   - 프론트 `npm run lint`, `npm run build` 통과.
-  - 백엔드 `./gradlew spotlessCheck test` 전체 실행은 629건 중 56건 실패. 실패는 모두 "Too many connections"로 인한 컨텍스트 로딩 실패와 그 여파였고, 같은 시각 다른 worktree의 채팅 부하 테스트 JVM이 같은 로컬 MySQL을 쓰고 있었다. 실패한 클래스(CommentUpdate, MarketThumbnail, Post/ProfileImageLifecycle, MemberProfileUpdate, ProfileImageSecurity, ReactionConcurrency, ResortReportController, SemanticSearch 등)를 따로 다시 돌려 모두 통과했다. 전체 실행 무실패는 확인하지 못했다.
-- 리뷰: CodeRabbit이 rate limit으로 리뷰하지 않아 직접 리뷰했다.
-  - 수정: 제한 횟수는 서비스 검증 전에 쓰여서, 400으로 실패한 뒤 고쳐 다시 보내면 30초 동안 429가 났다. 게시글, 카풀, 마켓 간격을 10초로 줄였다. 시간당 상한은 그대로다.
-  - 수정: 통합 테스트가 final 필드를 리플렉션으로 바꾸던 것을 non-final 필드로 바꿨다(최신 JDK는 final 필드 변경을 막는 방향).
-  - 확인만: `ClientIpResolver`는 사설망 프록시만 신뢰해 X-Real-IP 위조가 어렵다. API 토큰과 봇 위임 인증은 작성 경로를 허용하지 않아 영향이 없다. 게시글, 마켓, 카풀 폼은 이미 서버 메시지를 보여준다.
-  - 보류: 429에 Retry-After 헤더 없음, 비로그인 IPv6 /64 묶기. 후속 후보.
-- 재검증: 공유 MySQL을 쓰는 다른 테스트가 없을 때 별도 worktree에서 `./gradlew test` 전체 BUILD SUCCESSFUL(실패 0).
-- 남은 항목: 머지 후 운영 배포.
-- 알려진 한계: 비로그인 IP는 원문 그대로 키로 쓴다. IPv6 주소를 바꿔 가며 보내면 우회할 수 있다(후속 후보). 같은 공유기 뒤 비로그인 사용자는 버킷을 함께 쓴다.
-- 사용자 결정 필요: 제한 수치가 적당한지.
+  - 브라우저로 화면을 직접 확인하지는 않았다.
+- 남은 항목: PR, 031 운영 적용과 배포(사용자 확인 후), 브라우저 화면 확인.
+- 후속: 답변 알림, IKA-18에서 남긴 문의 등록 #이벤트 Discord 알림.
+- 사용자 결정 필요: 없음.
+
 ## 리조트 기온·개장 D-DAY (IKA-17, 2026-11-04)
 
 - 상태: 구현·로컬 검증 완료, 커밋·PR 전. 브랜치 `ika-17-resort-weather-dday`(워크트리 `snowthing-ika-17`).
