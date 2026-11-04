@@ -23,7 +23,8 @@
   - 백엔드 `spotlessCheck test`: 717건 통과(실패 0, 기존 skip 1). 워크트리에서는 Spotless의 `ratchetFrom`이 Git 저장소를 못 찾아, 비교 기준을 끄는 init 스크립트로 전체 파일을 검사했다(더 넓은 검사). 중간 실행 두 번은 다른 작업의 병렬 테스트로 MySQL "Too many connections"와 공유 스키마 충돌(`MarketThumbnailIntegrationTest`, 단독 실행 통과)이 나서 다시 돌렸다. 알림 관련 신규 테스트 24건(받는 사람 규칙, 롤백, 저장 실패, API, 삭제).
   - 프론트 `npm run lint` 오류 0, `npm run build` 성공(`/notifications` 정적 페이지 생성).
   - 브라우저로 화면을 직접 확인하지는 않았다.
-- 남은 항목: CodeRabbit 리뷰 반영, 머지(감독이 21, 22, 23 순서로), 033 운영 적용과 배포, 브라우저 확인.
+- 리뷰: PR #67. CodeRabbit은 무료 리뷰 한도 초과(Review rate limited)로 리뷰하지 못해 AI가 직접 리뷰했다. 수정 0건, 보류 3건(동기 리스너의 커넥션 2개 사용, 지울 행이 없는 날의 PK 전체 읽기, 전체 목록 filesort). 이유는 PR 댓글에 있다.
+- 남은 항목: 머지(감독이 21, 22, 23 순서로), 033 운영 적용과 배포, 브라우저 확인.
 - 후속: 해당 댓글 위치로 바로 스크롤, 추천 알림, 알림 끄기, 실시간 푸시.
 - 사용자 결정 필요: 없음.
 
