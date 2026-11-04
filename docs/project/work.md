@@ -19,10 +19,11 @@
   - 답장은 판매글을 다시 참조하지 않는다: 판매자가 구매자에게 답장하면 받는 회원이 판매글 작성자가 아니라 규칙에 걸린다. 원문 인용으로 맥락을 대신한다. 다른 선택지는 규칙을 "보내는 회원이나 받는 회원이 작성자"로 넓히는 것(설계 변경이라 하지 않음).
   - 헤더는 `SiteChrome`에 한 줄(`MessageNavLink`)만 넣고, API 주소와 스타일은 `lib/messageApi.ts`, `components/messages.module.css`로 따로 뒀다: IKA-22 알림 배지와 `api.ts`, `globals.css` 충돌을 줄인다. 같은 이유로 `ActiveNav`에 값을 추가하지 않고 쪽지 화면은 `profile`로 둔다.
   - 차단 목록은 페이징 없이 최근 순 최대 500명: 설정 화면에서 한 번에 보여 준다.
+  - CodeRabbit이 rate limit으로 리뷰하지 못해 직접 리뷰했다. 숫자가 아닌 쪽지 ID와 커서가 공통 처리기에서 500과 Discord 장애 알림이 되던 것을 컨트롤러 안의 처리기로 404(쪽지 ID), 400(커서)으로 바꿨다(`GlobalExceptionHandler`는 공유 파일이라 건드리지 않음). 작성 화면 취소는 이전 화면이 없으면 쪽지함으로 보낸다.
 - 검증
   - EXPLAIN(로컬 MySQL 8.0.46 임시 DB, 회원 1,000명, 쪽지 200,000통): 받은함 첫 페이지 `ref` + `idx_direct_message_receiver` + `Backward index scan`(filesort 없음), 다음 페이지 `range`(key_len 25), 보낸함은 `idx_direct_message_sender`로 같은 모양, 안 읽은 수 `ref` + 같은 인덱스. `EXPLAIN ANALYZE` 받은함 첫 페이지 21행만 읽고 약 0.1ms. 034를 두 번 적용해도 오류 없음.
-  - 백엔드 `DirectMessageServiceTest` 19건, `MemberBlockServiceTest` 4건 통과(실제 MySQL).
-  - 백엔드 전체 `test`: 716건 통과(실패 0, 기존 skip 1). 전용 DB `snowthing_test_ika23`, 로컬 Docker MySQL `SET GLOBAL max_connections = 400`(재시작 시 원복). 첫 실행은 다른 세션과 겹쳐 "Too many connections"로 84건 실패, 두 번째는 `PostRepositoryCustomTest` 1건이 실행 순서에 따라 남은 FREE 글 1개 때문에 실패(단독 실행은 통과, 세 번째 전체 실행은 통과). 이번 변경과 무관한 테스트 격리 문제로 보고 후속 후보로 남긴다.
+  - 백엔드 `DirectMessageServiceTest` 19건, `MemberBlockServiceTest` 4건(실제 MySQL), `DirectMessageControllerTest` 4건(standalone MockMvc) 통과.
+  - 백엔드 전체 `test`: 716건 통과(실패 0, 기존 skip 1). 전용 DB `snowthing_test_ika23`, 로컬 Docker MySQL `SET GLOBAL max_connections = 400`(재시작 시 원복). 첫 실행은 다른 세션과 겹쳐 "Too many connections"로 84건 실패, 두 번째는 `PostRepositoryCustomTest` 1건이 실행 순서에 따라 남은 FREE 글 1개 때문에 실패(단독 실행은 통과, 세 번째 전체 실행은 통과). 리뷰 반영 후 전체 다시 실행해 720건 통과(실패 0, skip 1). 이번 변경과 무관한 테스트 격리 문제로 보고 후속 후보로 남긴다.
   - Spotless: worktree에서는 `ratchetFrom`의 JGit이 저장소를 못 찾아 `./gradlew spotlessCheck`가 바로 실패한다. init script로 `ratchetFrom`을 끄고 origin/main 대비 바뀐 Java 22개 파일만 대상으로 `spotlessCheck` 통과(build.gradle은 바꾸지 않음).
   - 프론트 `npm run lint`, `npm run build` 통과.
   - 브라우저로 화면을 직접 확인하지는 않았다.
