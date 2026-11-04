@@ -51,6 +51,7 @@ function PostCreateForm() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const editorRef = useRef<ToastEditorHandle>(null);
   const hasAlertedRef = useRef(false);
@@ -145,6 +146,7 @@ function PostCreateForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current || submitting) return;
     const editorContent = editorRef.current?.getInstance().getMarkdown() || "";
 
     if (!title.trim()) {
@@ -164,6 +166,7 @@ function PostCreateForm() {
       return;
     }
 
+    isSubmittingRef.current = true;
     setSubmitting(true);
     setErrorMsg("");
 
@@ -192,6 +195,7 @@ function PostCreateForm() {
     } catch {
       setErrorMsg("서버 통신 오류가 발생했습니다.");
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };

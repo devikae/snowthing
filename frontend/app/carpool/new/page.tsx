@@ -99,6 +99,15 @@ const HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) =>
 );
 const MINUTE_OPTIONS = ["00", "10", "20", "30", "40", "50"];
 const PREVIEW_DEBOUNCE_MILLISECONDS = 500;
+
+function getDayOfWeek(dateString: string): string {
+  if (!dateString) return "";
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  const d = new Date(`${dateString}T00:00:00`);
+  if (isNaN(d.getTime())) return "";
+  return `(${days[d.getDay()]}요일)`;
+}
+
 const MAX_PASSENGER_CAPACITY = 20;
 const MAX_FUEL_EFFICIENCY = 100;
 const MAX_MANUAL_COST_PER_PERSON = 1_000_000;
@@ -146,6 +155,8 @@ export default function NewCarpoolPage() {
   const [calculation, setCalculation] = useState<Calculation | null>(null);
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const todayIsoDate = new Date().toISOString().split("T")[0];
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [editPublicId, setEditPublicId] = useState<string | null>(null);
@@ -424,10 +435,38 @@ export default function NewCarpoolPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if ((routeSource === "KAKAO" && !selectedPlace) || !calculation) {
-      setError("출발 장소를 선택하고 예상 비용을 먼저 계산해 주세요.");
+    if (isSubmittingRef.current || working) return;
+
+    if (!form.title.trim()) {
+      setError("모집글 제목을 입력해 주세요.");
       return;
     }
+    if (routeSource === "KAKAO" && !selectedPlace) {
+      setError("출발 장소를 지도에서 검색하거나 [현재 위치] 버튼으로 지정해 주세요.");
+      return;
+    }
+    if (!form.destinationResortId) {
+      setError("도착 리조트를 선택해 주세요.");
+      return;
+    }
+    if (!form.departureDate) {
+      setError("출발 날짜를 선택해 주세요.");
+      return;
+    }
+    if (!form.departureHour || !form.departureMinute) {
+      setError("출발 시간을 선택해 주세요.");
+      return;
+    }
+    if (tripType === "ROUND_TRIP" && (!form.returnDate || !form.returnHour || !form.returnMinute)) {
+      setError("왕복인 경우 복귀 날짜와 시간을 입력해 주세요.");
+      return;
+    }
+    if (!calculation) {
+      setError("출발 장소 및 리조트 확인 후 '예상 비용 재계산'을 완료해 주세요.");
+      return;
+    }
+
+    isSubmittingRef.current = true;
     setWorking(true);
     setError("");
     try {
@@ -503,6 +542,7 @@ export default function NewCarpoolPage() {
           : "등록에 실패했습니다.",
       );
     } finally {
+      isSubmittingRef.current = false;
       setWorking(false);
     }
   };
@@ -639,10 +679,11 @@ export default function NewCarpoolPage() {
                 </select>
               </label>
               <label>
-                출발 날짜
+                출발 날짜 {form.departureDate && <strong className="text-sky-600 font-bold ml-1">{getDayOfWeek(form.departureDate)}</strong>}
                 <input
                   required
                   type="date"
+                  min={todayIsoDate}
                   value={form.departureDate}
                   onChange={(event) =>
                     update("departureDate", event.target.value)
@@ -695,10 +736,11 @@ export default function NewCarpoolPage() {
               {tripType === "ROUND_TRIP" && (
                 <>
                   <label>
-                    복귀 날짜
+                    복귀 날짜 {form.returnDate && <strong className="text-sky-600 font-bold ml-1">{getDayOfWeek(form.returnDate)}</strong>}
                     <input
                       required
                       type="date"
+                      min={form.departureDate || todayIsoDate}
                       value={form.returnDate}
                       onChange={(event) =>
                         update("returnDate", event.target.value)
@@ -955,9 +997,9 @@ export default function NewCarpoolPage() {
             <button
               className="carpool-primary-button"
               type="submit"
-              disabled={working || !calculation}
+              disabled={working}
             >
-              모집글 {editPublicId ? "수정" : "등록"}
+              {working ? "등록 처리 중..." : `모집글 ${editPublicId ? "수정" : "등록"}`}
             </button>
           </footer>
         </form>}

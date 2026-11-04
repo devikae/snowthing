@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
 import { CompactSelect } from "./components/CompactSelect";
@@ -132,12 +133,14 @@ function formatCarpoolShortDate(isoString: string): string {
 }
 
 export default function HomePageClient() {
+  const router = useRouter();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [activeFeed, setActiveFeed] = useState<HomeFeedKey>("all");
   const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(emptyFeeds);
   const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
   const [feedsLoading, setFeedsLoading] = useState(true);
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
+
   const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
   const [snowReportResort, setSnowReportResort] = useState("1");
   const [snowReportContent, setSnowReportContent] = useState("");
@@ -145,6 +148,7 @@ export default function HomePageClient() {
   const [resortMasterList, setResortMasterList] = useState<{ id: number; name: string }[]>([]);
   const [resortMasterError, setResortMasterError] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
+  const isSubmittingReportRef = useRef(false);
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const reportSeasonOpen = isResortReportSeason(new Date());
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
@@ -185,13 +189,13 @@ export default function HomePageClient() {
 
   const handleSnowReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!snowReportContent.trim() || submittingReport) return;
+    if (!snowReportContent.trim() || submittingReport || isSubmittingReportRef.current) return;
     if (!reportSeasonOpen) {
       alert("설질 제보는 10월부터 다음 해 4월까지만 등록할 수 있습니다.");
       return;
     }
     if (!profile) {
-      alert("설질 제보는 로그인 후 등록할 수 있습니다.");
+      router.push("/login");
       return;
     }
     const resortId = Number(snowReportResort);
@@ -200,6 +204,7 @@ export default function HomePageClient() {
       return;
     }
 
+    isSubmittingReportRef.current = true;
     setSubmittingReport(true);
     try {
       const res = await csrfFetch(API_ENDPOINTS.resortReports.create, {
@@ -220,6 +225,7 @@ export default function HomePageClient() {
     } catch {
       alert("서버 통신 중 오류가 발생했습니다.");
     } finally {
+      isSubmittingReportRef.current = false;
       setSubmittingReport(false);
     }
   };
@@ -248,11 +254,11 @@ export default function HomePageClient() {
     void (async () => {
       const results = await Promise.allSettled(
         HOME_FEED_TABS.map(async (tab) => {
-          const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+          const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
           const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
           if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
           const data = await response.json();
-          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 10) : [] };
+          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 15) : [] };
         }),
       );
 
@@ -295,12 +301,12 @@ export default function HomePageClient() {
 
   const retryFeed = async (tab: HomeFeedTab) => {
     setFeedErrors((current) => ({ ...current, [tab.key]: false }));
-    const params = new URLSearchParams({ page: "1", size: "10", ...tab.query });
+    const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
     try {
       const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
       if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
       const data = await response.json();
-      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 10) : [] }));
+      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 15) : [] }));
     } catch {
       setFeedErrors((current) => ({ ...current, [tab.key]: true }));
     }
@@ -367,15 +373,17 @@ export default function HomePageClient() {
                         <div className="m-row-right">
                           <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
                           <span className="m-stats">
-                            {post.commentCount > 0 && (
-                              <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
+                            {post.commentCount > 0 ? (
+                              <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>
                                 <span className="material-symbols-outlined" aria-hidden="true">
                                   chat_bubble
                                 </span>
                                 {post.commentCount}
                               </span>
+                            ) : (
+                              <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                             )}
-                            <span className="m-stat" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                            <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString()}`}>
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 visibility
                               </span>
@@ -428,23 +436,30 @@ export default function HomePageClient() {
             <input
               value={snowReportContent}
               onChange={(event) => setSnowReportContent(event.target.value)}
+              onClick={() => {
+                if (!profile) {
+                  router.push("/login");
+                }
+              }}
+              readOnly={!profile}
               maxLength={100}
               placeholder={
                 !reportSeasonOpen
                   ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다"
                   : profile
                     ? "지금 슬로프 설질·대기시간·정설 상태를 한 줄(100자 이내)로 공유해주세요..."
-                    : "로그인 후 오늘의 설질 제보를 남겨주세요"
+                    : "로그인하고 오늘의 설질을 제보해보세요"
               }
               aria-label="설질 제보 내용"
+              className={!profile ? "cursor-pointer" : undefined}
               disabled={!reportSeasonOpen || resortMasterError}
             />
             <button
               type="submit"
               className="capsule-send-btn"
-              disabled={!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0}
+              disabled={profile ? (!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0) : false}
             >
-              {submittingReport ? "등록중" : "제보 등록"}
+              {profile ? (submittingReport ? "등록중" : "제보 등록") : "로그인"}
             </button>
           </form>
 
@@ -500,7 +515,12 @@ export default function HomePageClient() {
 
             <div className="carpool-compact-list">
               {carpools.length === 0 ? (
-                <p className="carpool-widget-empty">등록된 카풀 모집글이 없습니다.</p>
+                <div className="carpool-widget-empty">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    directions_car
+                  </span>
+                  <p>등록된 카풀 모집글이 없습니다.</p>
+                </div>
               ) : (
                 carpools.map((item) => (
                   <Link href={`/carpool/${item.publicId}`} className="carpool-row" key={item.publicId}>

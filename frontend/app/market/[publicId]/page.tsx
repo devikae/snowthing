@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
@@ -91,6 +91,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingCommentRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
@@ -152,7 +153,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
 
   const createComment = async (parentId: string | null) => {
     const content = (parentId ? reply : comment).trim();
-    if (!content || submitting) return;
+    if (!content || submitting || isSubmittingCommentRef.current) return;
+    isSubmittingCommentRef.current = true;
     setSubmitting(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {
@@ -179,6 +181,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "댓글을 등록하지 못했습니다.");
     } finally {
+      isSubmittingCommentRef.current = false;
       setSubmitting(false);
     }
   };

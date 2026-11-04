@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 import { RotatingWordmark } from "./RotatingWordmark";
+import { CommentProfileAvatar } from "./CommentProfileAvatar";
 
 type ThemeSetting = "light" | "dark";
 
@@ -55,6 +55,21 @@ function ThemeToggle() {
   );
 }
 
+function ChevronDownIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={`board-arrow-icon ${className}`}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+    </svg>
+  );
+}
+
 export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools";
 
 interface MemberUser {
@@ -62,7 +77,6 @@ interface MemberUser {
   email: string;
   nickname: string;
   profileImageUrl: string | null;
-  role?: string;
 }
 
 interface NavItem {
@@ -84,6 +98,38 @@ const boardItems: NavItem[] = [
 
 export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const boardMenuRef = useRef<HTMLDetailsElement>(null);
+  const profileMenuRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (boardMenuRef.current?.hasAttribute("open")) {
+      boardMenuRef.current.removeAttribute("open");
+    }
+    if (profileMenuRef.current?.hasAttribute("open")) {
+      profileMenuRef.current.removeAttribute("open");
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        boardMenuRef.current?.hasAttribute("open") &&
+        !boardMenuRef.current.contains(target)
+      ) {
+        boardMenuRef.current.removeAttribute("open");
+      }
+      if (
+        profileMenuRef.current?.hasAttribute("open") &&
+        !profileMenuRef.current.contains(target)
+      ) {
+        profileMenuRef.current.removeAttribute("open");
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
   const [user, setUser] = useState<MemberUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -133,10 +179,10 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <RotatingWordmark />
             </Link>
             <nav className="community-main-nav" aria-label="메인 메뉴">
-              <details className="header-board-menu">
+              <details className="header-board-menu" ref={boardMenuRef}>
                 <summary className={boardActive ? "nav-active" : ""}>
                   게시판
-                  <span className="material-symbols-outlined">keyboard_arrow_down</span>
+                  <ChevronDownIcon />
                 </summary>
                 <div className="header-board-dropdown">
                   {boardItems.map((item) => (
@@ -145,6 +191,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                       href={item.href}
                       className={isBoardItemActive(item.key) ? "nav-active" : ""}
                       aria-current={isBoardItemActive(item.key) ? "page" : undefined}
+                      onClick={() => {
+                        boardMenuRef.current?.removeAttribute("open");
+                      }}
                     >
                       {item.label}
                     </Link>
@@ -174,25 +223,34 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
             </form>
             {!loading && (user ? (
               <div className="header-profile-wrap">
-                <details className="header-profile-menu">
-                <summary className="header-profile" title={`${user.nickname} 프로필`} aria-label="프로필 메뉴">
-                  <Image
-                    src={user.profileImageUrl || "/images/default-profile-avatar.png"}
-                    alt=""
-                    width={30}
-                    height={30}
-                    unoptimized={Boolean(user.profileImageUrl)}
-                    className={user.profileImageUrl ? undefined : "header-default-profile"}
-                  />
-                </summary>
-                <div className="header-profile-dropdown">
-                  <Link href="/profile" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>내 정보 수정</Link>
-                  {user.role === "ROLE_ADMIN" && (
-                    <Link href="/admin/answer-drafts" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>관리자</Link>
-                  )}
-                </div>
+                <details ref={profileMenuRef} className="header-profile-menu">
+                  <summary className="header-profile" title={`${user.nickname} 프로필`} aria-label="프로필 메뉴">
+                    <CommentProfileAvatar
+                      nickname={user.nickname}
+                      profileImageUrl={user.profileImageUrl}
+                      size={32}
+                      className="header-profile-avatar"
+                    />
+                  </summary>
+                  <div className="header-profile-dropdown">
+                    <Link
+                      href="/profile"
+                      onClick={() => profileMenuRef.current?.removeAttribute("open")}
+                    >
+                      내 정보 수정
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        profileMenuRef.current?.removeAttribute("open");
+                        handleLogout();
+                      }}
+                      className="header-dropdown-logout"
+                    >
+                      로그아웃
+                    </button>
+                  </div>
                 </details>
-                <button type="button" onClick={handleLogout} className="header-logout">로그아웃</button>
               </div>
             ) : (
               <Link href="/login" className="header-login" aria-label="로그인" title="로그인"><span className="material-symbols-outlined">person</span></Link>

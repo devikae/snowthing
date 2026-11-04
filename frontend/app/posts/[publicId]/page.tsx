@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -115,6 +115,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const [newCommentText, setNewCommentText] = useState("");
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
+  const isSubmittingCommentRef = useRef(false);
   const [activeReplyParentId, setActiveReplyParentId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyAnonPassword, setReplyAnonPassword] = useState("");
@@ -395,7 +396,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
 
   const handleCreateComment = async (parentId: string | null) => {
-    if (submittingComment) return;
+    if (isSubmittingCommentRef.current || submittingComment) return;
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
       alert("댓글 내용을 입력해주세요.");
@@ -426,6 +427,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       anonymousPassword = null;
     }
 
+    isSubmittingCommentRef.current = true;
     setSubmittingComment(true);
     try {
       const res = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {
@@ -480,6 +482,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
     } catch {
       alert("서버 통신 중 오류가 발생했습니다.");
     } finally {
+      isSubmittingCommentRef.current = false;
       setSubmittingComment(false);
     }
   };
@@ -641,7 +644,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                   size={32}
                 />
               )}
-              <div><strong>{post.writer.nickname}</strong><small>{new Date(post.createdAt).toLocaleString("ko-KR")}</small></div>
+              <div><strong>{post.writer.nickname}</strong><small>{formatPostDateTime(post.createdAt)}</small></div>
               {(() => {
                 const canEdit = Boolean(post.isAnonymous || post.categoryCode === "ANONYMOUS" || (currentUserPublicId && post.writer?.publicId === currentUserPublicId));
                 const canDelete = Boolean(isAdmin || canEdit);
@@ -958,6 +961,39 @@ function CommentRow({
         </div>
       </div>
 
+      {activeReplyParentId === item.commentId && (
+          <div className="post-reply-compose">
+            <textarea
+              rows={2}
+              value={replyText}
+              onChange={(event) => setReplyText(event.target.value)}
+              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
+              className="post-comment-textarea"
+            />
+            <div className="post-comment-compose-footer">
+              {isAnonymousPost && !currentUserPublicId && (
+                <label className="post-comment-password">
+                  <span>비밀번호</span>
+                    <input
+                      type="password"
+                      placeholder="비밀번호를 입력하세요"
+                      value={replyAnonPassword}
+                      onChange={(event) => setReplyAnonPassword(event.target.value)}
+                    />
+                </label>
+              )}
+              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
+              <button
+                disabled={submittingComment}
+                onClick={() => void handleCreateComment(item.commentId)}
+                className="post-comment-submit-button"
+              >
+                답글 등록
+              </button>
+            </div>
+          </div>
+      )}
+
       {item.previewReplies.length > 0 && (
           <div className="comment-reply-list">
             {item.previewReplies.map((reply) => (
@@ -999,39 +1035,6 @@ function CommentRow({
             >
               {isLoadingReplies ? "답글을 불러오는 중..." : `답글 더보기 (총 ${item.replyCount}개)`}
             </button>
-          </div>
-      )}
-
-      {activeReplyParentId === item.commentId && (
-          <div className="post-reply-compose">
-            <textarea
-              rows={2}
-              value={replyText}
-              onChange={(event) => setReplyText(event.target.value)}
-              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
-              className="post-comment-textarea"
-            />
-            <div className="post-comment-compose-footer">
-              {isAnonymousPost && !currentUserPublicId && (
-                <label className="post-comment-password">
-                  <span>비밀번호</span>
-                    <input
-                      type="password"
-                      placeholder="비밀번호를 입력하세요"
-                      value={replyAnonPassword}
-                      onChange={(event) => setReplyAnonPassword(event.target.value)}
-                    />
-                </label>
-              )}
-              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
-              <button
-                disabled={submittingComment}
-                onClick={() => void handleCreateComment(item.commentId)}
-                className="post-comment-submit-button"
-              >
-                답글 등록
-              </button>
-            </div>
           </div>
       )}
     </div>
@@ -1317,6 +1320,19 @@ function CommentDeleteInline({
   );
 }
 
+function formatPostDateTime(dateString: string): string {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return new Intl.DateTimeFormat("ko-KR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(d);
+  } catch {
+    return dateString;
+  }
+}
+
 function formatCommentDate(dateString: string): string {
   try {
     const d = new Date(dateString);
@@ -1325,8 +1341,7 @@ function formatCommentDate(dateString: string): string {
     const dd = String(d.getDate()).padStart(2, "0");
     const hh = String(d.getHours()).padStart(2, "0");
     const min = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    return `${mm}.${dd} ${hh}:${min}:${ss}`;
+    return `${mm}.${dd} ${hh}:${min}`;
   } catch {
     return dateString;
   }
