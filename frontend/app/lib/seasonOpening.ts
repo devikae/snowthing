@@ -9,12 +9,15 @@ export type SeasonOpening = {
 };
 
 export const SEASON_OPENINGS: SeasonOpening[] = [
-  { resortCode: "PHOENIX", name: "휘닉스파크", date: "2026-11-27", confirmed: false },
-  { resortCode: "YONGPYONG", name: "모나용평", date: "2026-11-27", confirmed: false },
-  { resortCode: "HIGH1", name: "하이원", date: "2026-11-27", confirmed: false },
+  { resortCode: "PHOENIX", name: "휘닉스파크", date: "2026-11-20", confirmed: true },
+  { resortCode: "YONGPYONG", name: "모나용평", date: "2026-11-20", confirmed: true },
+  { resortCode: "HIGH1", name: "하이원", date: "2026-11-27", confirmed: true },
+  { resortCode: "O2_RESORT", name: "오투리조트", date: "2026-11-27", confirmed: false },
   { resortCode: "VIVALDI", name: "비발디파크", date: "2026-12-04", confirmed: false },
+  { resortCode: "WELLI_HILLI", name: "웰리힐리파크", date: "2026-12-04", confirmed: false },
   { resortCode: "MUJU", name: "무주덕유산", date: "2026-12-04", confirmed: false },
   { resortCode: "OAK_VALLEY", name: "오크밸리", date: "2026-12-11", confirmed: false },
+  { resortCode: "KONJIAM", name: "곤지암", date: "2026-12-11", confirmed: false },
 ];
 
 const DAY_MILLIS = 24 * 60 * 60 * 1000;
@@ -49,11 +52,10 @@ export function upcomingOpening(resortCode: string, today: string): UpcomingOpen
   return days >= 0 ? { opening, days } : null;
 }
 
-/** 아직 개장하지 않은 리조트 중 가장 빠른 날짜와 그날 여는 리조트들. 모두 개장했으면 null. */
-export function nextOpenings(today: string): { days: number; openings: SeasonOpening[] } | null {
-  const upcoming = SEASON_OPENINGS.map((opening) => ({ opening, days: daysUntil(opening.date, today) }))
-    .filter((item) => item.days >= 0);
-  if (upcoming.length === 0) return null;
-  const days = Math.min(...upcoming.map((item) => item.days));
-  return { days, openings: upcoming.filter((item) => item.days === days).map((item) => item.opening) };
+/** 개장일이 확정됐고 아직 개장 전인 리조트 전부, 개장일 순. 메인 배너에는 예상일을 걸지 않는다. */
+export function confirmedUpcomingOpenings(today: string): UpcomingOpening[] {
+  return SEASON_OPENINGS.filter((opening) => opening.confirmed)
+    .map((opening) => ({ opening, days: daysUntil(opening.date, today) }))
+    .filter((item) => item.days >= 0)
+    .sort((a, b) => a.days - b.days || a.opening.name.localeCompare(b.opening.name, "ko"));
 }
