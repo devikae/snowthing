@@ -23,10 +23,7 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * 답변 초안 흐름의 입구. 트랜잭션을 직접 열지 않고, 트랜잭션 서비스를 부른 뒤 그 바깥에서 할 일(멱등성 경합 처리, 게시 거절 기록, 근거 재확인)을
- * 한다.
- */
+/** 답변 초안 흐름의 입구. 트랜잭션을 직접 열지 않고, 트랜잭션 서비스를 부른 뒤 그 바깥에서 할 일(멱등성 경합 처리, 게시 거절 기록, 근거 재확인)을 한다. */
 @Service
 @RequiredArgsConstructor
 public class AnswerDraftService {
@@ -49,8 +46,7 @@ public class AnswerDraftService {
     public SaveResult save(AnswerDraftSaveRequest request, CustomUserDetails principal) {
         AnswerDraftInput input = AnswerDraftInput.from(request);
         Long memberId = principal.getMember().getId();
-        Long tokenId =
-                principal instanceof ApiTokenUserDetails token ? token.getTokenId() : null;
+        Long tokenId = principal instanceof ApiTokenUserDetails token ? token.getTokenId() : null;
 
         var replay = commands.findReplay(memberId, input.idempotencyKey(), input.requestHash());
         if (replay.isPresent()) {
@@ -121,7 +117,8 @@ public class AnswerDraftService {
 
     public AnswerDraftStatusResponse reject(
             String publicId, AnswerDraftRejectRequest request, CustomUserDetails admin) {
-        String reason = request == null || request.reason() == null ? null : request.reason().strip();
+        String reason =
+                request == null || request.reason() == null ? null : request.reason().strip();
         if (reason != null && reason.isEmpty()) {
             reason = null;
         }
@@ -131,9 +128,7 @@ public class AnswerDraftService {
         return commands.reject(publicId, admin.getMember().getId(), reason);
     }
 
-    /**
-     * 게시. 플래그가 꺼져 있으면 초안을 건드리지 않고 거절한다. 게시 직전 검사에서 거절되면 게시 트랜잭션을 되돌린 뒤 거절 사유를 따로 기록한다.
-     */
+    /** 게시. 플래그가 꺼져 있으면 초안을 건드리지 않고 거절한다. 게시 직전 검사에서 거절되면 게시 트랜잭션을 되돌린 뒤 거절 사유를 따로 기록한다. */
     public AnswerDraftPublishResponse publish(
             String publicId, CustomUserDetails admin, String clientIp) {
         Long adminId = admin.getMember().getId();
@@ -178,6 +173,8 @@ public class AnswerDraftService {
         }
     }
 
-    /** @param replayed 같은 멱등성 키의 기존 초안을 돌려줬으면 true */
+    /**
+     * @param replayed 같은 멱등성 키의 기존 초안을 돌려줬으면 true
+     */
     public record SaveResult(AnswerDraftStatusResponse draft, boolean replayed) {}
 }

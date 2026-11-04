@@ -36,8 +36,8 @@ import lombok.NoArgsConstructor;
 /**
  * AI가 저장하고 사람이 검토해 게시하는 답변 초안 (029).
  *
- * <p>대상 게시글은 ID만 들고 연관으로 잡지 않는다. Post에는 {@code @SQLRestriction("is_deleted = false")}가 있어 삭제된 게시글을 연관으로
- * 읽으면 엔티티를 찾지 못한다. 게시 직전 검사는 어차피 원문을 JDBC로 다시 읽는다.
+ * <p>대상 게시글은 ID만 들고 연관으로 잡지 않는다. Post에는 {@code @SQLRestriction("is_deleted = false")}가 있어 삭제된 게시글을
+ * 연관으로 읽으면 엔티티를 찾지 못한다. 게시 직전 검사는 어차피 원문을 JDBC로 다시 읽는다.
  *
  * <p>{@code published_comment_id}는 유일 제약이 있어 한 댓글이 두 초안의 게시 결과가 될 수 없다. 같은 초안을 두 번 게시하지 않는 것은 게시
  * 트랜잭션이 초안 행을 비관적 잠금으로 잡고 상태를 다시 확인해서 보장한다.

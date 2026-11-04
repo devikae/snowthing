@@ -48,15 +48,15 @@ class AnswerDraftQueryService {
         if (creatorMemberId != null && !creatorMemberId.equals(draft.getCreatedBy().getId())) {
             throw new CustomException(ErrorCode.ANSWER_DRAFT_NOT_FOUND);
         }
-        return AnswerDraftStatusResponse.from(draft, visibleTarget(draft).map(this::url).orElse(null));
+        return AnswerDraftStatusResponse.from(
+                draft, visibleTarget(draft).map(this::url).orElse(null));
     }
 
-    AnswerDraftListResponse list(AnswerDraftStatus status, int page, int size, boolean publishEnabled) {
+    AnswerDraftListResponse list(
+            AnswerDraftStatus status, int page, int size, boolean publishEnabled) {
         PageRequest pageable =
                 PageRequest.of(
-                        page,
-                        size,
-                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+                        page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         Page<AnswerDraft> result =
                 status == null ? drafts.findAll(pageable) : drafts.findByStatus(status, pageable);
         List<AnswerDraftListResponse.Item> items =

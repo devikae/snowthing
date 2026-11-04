@@ -59,7 +59,10 @@ class AdminBootstrapIntegrationTest {
     @DisplayName("목록의 활성 회원만 관리자가 되고 없는 이메일과 탈퇴 회원은 건너뛴다. 다시 실행해도 같다")
     void promotesOnlyListedActiveMembersIdempotently() {
         String config =
-                " " + target.getEmail().toUpperCase() + " ,nobody-x@test.invalid," + withdrawn.getEmail();
+                " "
+                        + target.getEmail().toUpperCase()
+                        + " ,nobody-x@test.invalid,"
+                        + withdrawn.getEmail();
 
         assertThat(bootstrap(config).promote()).isEqualTo(1);
         assertThat(roleOf(target)).isEqualTo("ROLE_ADMIN");

@@ -13,7 +13,9 @@ import com.ikae.snowthing.domain.answerdraft.entity.AnswerDraftStatus;
 public record AnswerDraftListResponse(
         List<Item> items, int page, int size, boolean hasNext, boolean publishEnabled) {
 
-    /** @param bodyPreview 본문 앞부분 최대 120자 */
+    /**
+     * @param bodyPreview 본문 앞부분 최대 120자
+     */
     public record Item(
             String draftId,
             AnswerDraftStatus status,

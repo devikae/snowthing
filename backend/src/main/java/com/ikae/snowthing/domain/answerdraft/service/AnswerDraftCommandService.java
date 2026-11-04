@@ -93,9 +93,7 @@ class AnswerDraftCommandService {
                 draft, EvidenceUrls.postUrl(target.categoryCode(), target.publicId()));
     }
 
-    /**
-     * 사람이 승인한다. 승인 시점에도 대상 게시글과 근거를 다시 확인하고, 그때의 대상 게시글 content_version을 남긴다. 게시 직전에 이 값과 비교한다.
-     */
+    /** 사람이 승인한다. 승인 시점에도 대상 게시글과 근거를 다시 확인하고, 그때의 대상 게시글 content_version을 남긴다. 게시 직전에 이 값과 비교한다. */
     AnswerDraftStatusResponse approve(String publicId, Long adminMemberId) {
         AnswerDraft draft = lockDraft(publicId);
         if (draft.getStatus() != AnswerDraftStatus.REVIEW_REQUIRED) {
@@ -189,8 +187,7 @@ class AnswerDraftCommandService {
                         .orElseThrow(() -> new CustomException(ErrorCode.ANSWER_DRAFT_NOT_FOUND));
         published.markPublished(comment.commentId(), publisher, LocalDateTime.now());
         drafts.flush();
-        auditWriter.record(
-                draftId, AnswerDraftAuditAction.PUBLISH, publisherMemberId, null, null);
+        auditWriter.record(draftId, AnswerDraftAuditAction.PUBLISH, publisherMemberId, null, null);
         return toPublishResponse(published, false);
     }
 

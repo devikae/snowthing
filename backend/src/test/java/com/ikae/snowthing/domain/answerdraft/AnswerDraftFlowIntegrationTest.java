@@ -177,13 +177,14 @@ class AnswerDraftFlowIntegrationTest {
                                     saved.get("draftId").asText()))
                     .isEqualTo(1);
 
-            mockMvc.perform(
-                            withToken(get(DRAFTS + "/{id}", saved.get("draftId").asText()), token))
+            mockMvc.perform(withToken(get(DRAFTS + "/{id}", saved.get("draftId").asText()), token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("REVIEW_REQUIRED"))
                     .andExpect(
                             jsonPath("$.reviewUrl")
-                                    .value("/admin/answer-drafts/" + saved.get("draftId").asText()));
+                                    .value(
+                                            "/admin/answer-drafts/"
+                                                    + saved.get("draftId").asText()));
         }
 
         @Test
@@ -191,15 +192,14 @@ class AnswerDraftFlowIntegrationTest {
         void idempotentSave() throws Exception {
             String token = createToken(admin, "DRAFT");
             String first =
-                    json(
-                                    mockMvc.perform(
-                                                    withToken(post(DRAFTS), token)
-                                                            .content(
-                                                                    write(
-                                                                            draftBody(
-                                                                                    "key-idem-0001",
-                                                                                    "같은 본문"))))
-                                            .andExpect(status().isCreated()))
+                    json(mockMvc.perform(
+                                            withToken(post(DRAFTS), token)
+                                                    .content(
+                                                            write(
+                                                                    draftBody(
+                                                                            "key-idem-0001",
+                                                                            "같은 본문"))))
+                                    .andExpect(status().isCreated()))
                             .get("draftId")
                             .asText();
 
@@ -363,7 +363,8 @@ class AnswerDraftFlowIntegrationTest {
 
             String demoted = createToken(secondAdmin, "DRAFT");
             jdbc.update(
-                    "UPDATE member SET role = 'ROLE_USER' WHERE member_id = ?", secondAdmin.getId());
+                    "UPDATE member SET role = 'ROLE_USER' WHERE member_id = ?",
+                    secondAdmin.getId());
             mockMvc.perform(
                             withToken(post(DRAFTS), demoted)
                                     .content(write(draftBody("key-demoted-1", "본문"))))
@@ -613,8 +614,7 @@ class AnswerDraftFlowIntegrationTest {
         @Test
         @DisplayName("승인은 승인자와 그때의 대상 content_version을 남긴다")
         void approvalRecordsApproverAndVersion() throws Exception {
-            jdbc.update(
-                    "UPDATE post SET content_version = 7 WHERE post_id = ?", target.getId());
+            jdbc.update("UPDATE post SET content_version = 7 WHERE post_id = ?", target.getId());
             String draftId = approvedDraft("key-approve-01");
 
             Map<String, Object> row =
@@ -768,10 +768,9 @@ class AnswerDraftFlowIntegrationTest {
         admin = saveMember(unique, "a", Role.ROLE_ADMIN);
         secondAdmin = saveMember(unique, "b", Role.ROLE_ADMIN);
         user = saveMember(unique, "u", Role.ROLE_USER);
-        String code =
-                "ADRF_"
-                        + unique.replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
-        PostCategory category = categories.save(PostCategory.builder().code(code).name("초안 테스트").build());
+        String code = "ADRF_" + unique.replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
+        PostCategory category =
+                categories.save(PostCategory.builder().code(code).name("초안 테스트").build());
         categoryId = category.getId();
 
         target = savePost(category, "덕스탠스 각도 질문", "처음 덕스탠스를 하는데 각도를 어떻게 잡나요?", PostStatus.NORMAL);
@@ -780,7 +779,13 @@ class AnswerDraftFlowIntegrationTest {
         evidenceComment =
                 comments.save(
                         Comment.create(
-                                evidencePost, user, null, EVIDENCE_COMMENT, "127.0.0.1", false, null));
+                                evidencePost,
+                                user,
+                                null,
+                                EVIDENCE_COMMENT,
+                                "127.0.0.1",
+                                false,
+                                null));
     }
 
     private Member saveMember(String unique, String suffix, Role role) {

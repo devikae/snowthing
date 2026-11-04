@@ -168,8 +168,7 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "DRAFT_002",
             "대상 게시글 ID, 본문(1자 이상 1,000자 이하), 근거(1개 이상 20개 이하, 중복 없음, 해시 필수), 멱등성 키 형식을 확인해 주세요."),
-    ANSWER_DRAFT_TARGET_NOT_FOUND(
-            HttpStatus.NOT_FOUND, "DRAFT_003", "답변 대상 게시글이 없거나 볼 수 없습니다."),
+    ANSWER_DRAFT_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_003", "답변 대상 게시글이 없거나 볼 수 없습니다."),
     ANSWER_DRAFT_IDEMPOTENCY_CONFLICT(
             HttpStatus.CONFLICT, "DRAFT_004", "같은 멱등성 키로 다른 내용의 초안이 이미 저장되어 있습니다."),
     ANSWER_DRAFT_INVALID_STATUS(HttpStatus.CONFLICT, "DRAFT_005", "현재 초안 상태에서는 할 수 없는 작업입니다."),

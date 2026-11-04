@@ -29,7 +29,8 @@ record AnswerDraftInput(
     static final int MAX_EVIDENCE_COUNT = 20;
 
     private static final Pattern UUID_FORMAT =
-            Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+            Pattern.compile(
+                    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
     private static final Pattern IDEMPOTENCY_KEY_FORMAT =
             Pattern.compile("^[A-Za-z0-9._:-]{8,100}$");
     private static final Pattern SHA256_HEX = Pattern.compile("^[0-9a-fA-F]{64}$");
@@ -91,7 +92,8 @@ record AnswerDraftInput(
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of()
-                    .formatHex(digest.digest(canonical.toString().getBytes(StandardCharsets.UTF_8)));
+                    .formatHex(
+                            digest.digest(canonical.toString().getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available", e);
         }

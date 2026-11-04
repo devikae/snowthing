@@ -29,13 +29,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ikae.snowthing.domain.apitoken.entity.ApiTokenScope;
+import com.ikae.snowthing.domain.apitoken.service.ApiTokenService;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.config.websocket.ChatConnectionRegistry;
 import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
-import com.ikae.snowthing.domain.apitoken.service.ApiTokenService;
 import com.ikae.snowthing.global.security.ApiTokenAuthenticationFilter;
 import com.ikae.snowthing.global.security.BotDelegationAuthenticationFilter;
 import com.ikae.snowthing.global.security.BotDelegationTokenService;
@@ -123,7 +123,8 @@ public class SecurityConfig {
             BotDelegationAuthenticationFilter botDelegationAuthenticationFilter,
             ApiTokenAuthenticationFilter apiTokenAuthenticationFilter)
             throws Exception {
-        http.addFilterBefore(apiTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        http.addFilterBefore(
+                        apiTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(
                         botDelegationAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)
