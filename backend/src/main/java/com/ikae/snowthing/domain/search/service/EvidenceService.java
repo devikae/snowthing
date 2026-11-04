@@ -7,12 +7,15 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.search.dto.EvidenceDetailResponse;
 import com.ikae.snowthing.domain.search.dto.EvidenceSearchCondition;
 import com.ikae.snowthing.domain.search.dto.EvidenceSearchItemResponse;
 import com.ikae.snowthing.domain.search.dto.EvidenceSearchResponse;
+import com.ikae.snowthing.domain.search.dto.SearchMode;
+import com.ikae.snowthing.domain.search.dto.SearchUsage;
 import com.ikae.snowthing.domain.search.entity.SearchDocument;
 import com.ikae.snowthing.domain.search.entity.SearchSourceType;
 import com.ikae.snowthing.domain.search.repository.SearchDocumentJdbcRepository;
@@ -40,20 +43,46 @@ public class EvidenceService {
     private final SearchDocumentJdbcRepository searchDocuments;
     private final SearchDocumentRepository documentRepository;
     private final SearchSourceRepository sources;
+    private final HybridEvidenceSearch hybridSearch;
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public EvidenceSearchResponse search(EvidenceSearchCondition condition) {
-        List<EvidenceSearchItemResponse> items =
-                searchDocuments
-                        .search(
-                                condition.query(),
-                                condition.categoryCode(),
-                                condition.createdBefore(),
-                                condition.excludePostPublicId(),
-                                condition.size())
-                        .stream()
-                        .map(EvidenceService::toItem)
-                        .toList();
-        return new EvidenceSearchResponse(condition.query(), condition.size(), items);
+        return search(condition, SearchMode.KEYWORD);
+    }
+
+    /**
+     * 키워드(기본)는 1단계와 같다. 하이브리드와 재정렬은 {@link HybridEvidenceSearch}가 같은 공개 범위와 조건으로 후보를 만든다. 의미 검색이 꺼져
+     * 있으면 SEARCH_002이고 제공자를 부르지 않는다.
+     *
+     * <p>트랜잭션 없이 실행한다. 하이브리드는 외부 제공자를 부르므로 그동안 DB 연결과 스냅샷을 잡지 않는다. 각 쿼리는 단일 SELECT다.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public EvidenceSearchResponse search(EvidenceSearchCondition condition, SearchMode mode) {
+        if (mode != SearchMode.KEYWORD) {
+            HybridEvidenceSearch.Result result = hybridSearch.search(condition, mode);
+            return new EvidenceSearchResponse(
+                    condition.query(),
+                    condition.size(),
+                    mode,
+                    result.usage(),
+                    result.rows().stream().map(EvidenceService::toItem).toList());
+        }
+        List<EvidenceSearchRow> rows = keywordRows(condition, condition.size());
+        return new EvidenceSearchResponse(
+                condition.query(),
+                condition.size(),
+                SearchMode.KEYWORD,
+                SearchUsage.keyword(rows.size()),
+                rows.stream().map(EvidenceService::toItem).toList());
+    }
+
+    private List<EvidenceSearchRow> keywordRows(EvidenceSearchCondition condition, int limit) {
+        return searchDocuments.search(
+                condition.query(),
+                condition.categoryCode(),
+                condition.createdBefore(),
+                condition.excludePostPublicId(),
+                limit);
     }
 
     /**

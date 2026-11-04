@@ -36,23 +36,31 @@ public class SearchDocumentJdbcRepository {
                     + " chunk_hash, title, body, source_created_at, source_updated_at, indexed_at)"
                     + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    private static final String SEARCH_SQL_PREFIX =
-            "SELECT d.evidence_id, d.source_type, d.source_id, d.chunk_no, d.post_public_id,"
-                    + " d.parent_comment_id, d.source_version, d.chunk_hash, d.title, d.body,"
-                    + " d.source_created_at, d.source_updated_at, d.indexed_at,"
-                    + " p.title AS post_title, pc.code AS category_code"
-                    + " FROM search_document d"
-                    + " JOIN post p ON p.post_id = d.post_id"
+    /** 검색 결과 행 컬럼. 키워드 검색과 의미 검색(SearchEmbeddingJdbcRepository)이 같은 행 모양을 쓴다. */
+    static final String RESULT_COLUMNS =
+            "SELECT d.document_id, d.evidence_id, d.source_type, d.source_id, d.chunk_no,"
+                    + " d.post_public_id, d.parent_comment_id, d.source_version, d.chunk_hash,"
+                    + " d.title, d.body, d.source_created_at, d.source_updated_at, d.indexed_at,"
+                    + " p.title AS post_title, pc.code AS category_code";
+
+    /** 원문 테이블 조인. 공개 범위는 {@link #VISIBLE_WHERE}로 건다. */
+    static final String VISIBLE_JOINS =
+            " JOIN post p ON p.post_id = d.post_id"
                     + " JOIN post_category pc ON pc.category_id = p.category_id"
                     + " LEFT JOIN comment cm"
-                    + " ON d.source_type = 'COMMENT' AND cm.comment_id = d.source_id"
+                    + " ON d.source_type = 'COMMENT' AND cm.comment_id = d.source_id";
+
+    static final String VISIBLE_WHERE =
+            POST_VISIBLE + " AND (d.source_type = 'POST' OR (" + COMMENT_VISIBLE + "))";
+
+    private static final String SEARCH_SQL_PREFIX =
+            RESULT_COLUMNS
+                    + " FROM search_document d"
+                    + VISIBLE_JOINS
                     + " WHERE "
                     + MATCH
                     + " AND "
-                    + POST_VISIBLE
-                    + " AND (d.source_type = 'POST' OR ("
-                    + COMMENT_VISIBLE
-                    + "))";
+                    + VISIBLE_WHERE;
 
     private final JdbcTemplate jdbc;
 
@@ -139,6 +147,20 @@ public class SearchDocumentJdbcRepository {
         List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder(SEARCH_SQL_PREFIX);
         args.add(query);
+        appendFilters(sql, args, categoryCode, createdBefore, excludePostPublicId);
+        sql.append(" ORDER BY ").append(MATCH).append(" DESC, d.document_id ASC LIMIT ?");
+        args.add(query);
+        args.add(size);
+        return jdbc.query(sql.toString(), SearchDocumentJdbcRepository::mapRow, args.toArray());
+    }
+
+    /** 카테고리와 평가용 조건. 키워드 검색과 의미 검색이 같은 조건을 쓴다. */
+    static void appendFilters(
+            StringBuilder sql,
+            List<Object> args,
+            String categoryCode,
+            LocalDateTime createdBefore,
+            String excludePostPublicId) {
         if (categoryCode != null) {
             sql.append(" AND pc.code = ?");
             args.add(categoryCode);
@@ -151,14 +173,11 @@ public class SearchDocumentJdbcRepository {
             sql.append(" AND d.post_public_id <> ?");
             args.add(excludePostPublicId);
         }
-        sql.append(" ORDER BY ").append(MATCH).append(" DESC, d.document_id ASC LIMIT ?");
-        args.add(query);
-        args.add(size);
-        return jdbc.query(sql.toString(), SearchDocumentJdbcRepository::mapRow, args.toArray());
     }
 
-    private static EvidenceSearchRow mapRow(ResultSet rs, int rowNum) throws SQLException {
+    static EvidenceSearchRow mapRow(ResultSet rs, int rowNum) throws SQLException {
         return new EvidenceSearchRow(
+                rs.getLong("document_id"),
                 rs.getString("evidence_id"),
                 SearchSourceType.valueOf(rs.getString("source_type")),
                 rs.getLong("source_id"),
@@ -193,7 +212,11 @@ public class SearchDocumentJdbcRepository {
             LocalDateTime sourceUpdatedAt,
             LocalDateTime indexedAt) {}
 
+    /**
+     * @param documentId 같은 점수일 때 순서를 고정하는 보조 기준. 응답에는 넣지 않는다
+     */
     public record EvidenceSearchRow(
+            long documentId,
             String evidenceId,
             SearchSourceType sourceType,
             long sourceId,

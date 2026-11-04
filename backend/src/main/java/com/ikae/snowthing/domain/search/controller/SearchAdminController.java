@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ikae.snowthing.domain.search.dto.EvidenceDetailResponse;
 import com.ikae.snowthing.domain.search.dto.EvidenceSearchCondition;
 import com.ikae.snowthing.domain.search.dto.EvidenceSearchResponse;
+import com.ikae.snowthing.domain.search.dto.SearchMode;
 import com.ikae.snowthing.domain.search.dto.SearchOutboxSummaryResponse;
 import com.ikae.snowthing.domain.search.dto.SearchRebuildResponse;
 import com.ikae.snowthing.domain.search.dto.SearchReconcileResponse;
@@ -69,17 +70,24 @@ public class SearchAdminController {
         return ResponseEntity.ok(new SearchRetryFailedResponse(consistencyService.retryFailed()));
     }
 
+    /**
+     * 근거 검색. {@code mode}는 선택이며 기본 {@code keyword}(1단계와 같음). {@code hybrid}, {@code hybrid_rerank}는
+     * IKA-11 비교 실험용이고 의미 검색이 꺼진 서버에서는 409 SEARCH_002다.
+     */
     @GetMapping("/evidence")
     public ResponseEntity<EvidenceSearchResponse> searchEvidence(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String size,
             @RequestParam(required = false) String categoryCode,
             @RequestParam(required = false) String createdBefore,
-            @RequestParam(required = false) String excludePostPublicId) {
+            @RequestParam(required = false) String excludePostPublicId,
+            @RequestParam(required = false) String mode) {
+        SearchMode searchMode = SearchMode.parse(mode);
         return ResponseEntity.ok(
                 evidenceService.search(
                         EvidenceSearchCondition.of(
-                                q, size, categoryCode, createdBefore, excludePostPublicId)));
+                                q, size, categoryCode, createdBefore, excludePostPublicId),
+                        searchMode));
     }
 
     @GetMapping("/evidence/{evidenceId}")
