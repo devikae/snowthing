@@ -295,7 +295,8 @@ button:disabled {
 .header-profile-dropdown a:hover, .header-profile-dropdown a:focus-visible { background: var(--snow-surface-mid); color: var(--community-accent, #0f6fbd); }
 .header-dropdown-logout { margin-top: 4px; border-top: 1px solid var(--snow-border); border-radius: 0 0 5px 5px; padding-top: 8px; color: var(--snow-muted); }
 .header-dropdown-logout:hover, .header-dropdown-logout:focus-visible { background: var(--snow-surface-mid); color: #ef4444; }
-.header-profile { display: grid; width: 32px; height: 32px; place-items: center; overflow: hidden; border: 0; border-radius: 50%; background: transparent; color: var(--snow-muted); cursor: pointer; padding: 0; outline: none; }
+.header-profile { display: flex; height: 32px; align-items: center; gap: 8px; border: 0; border-radius: 999px; background: transparent; color: var(--snow-muted); cursor: pointer; padding: 0; outline: none; }
+.header-profile-name { max-width: 120px; overflow: hidden; color: var(--snow-ink); font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .header-profile:hover, .header-profile:focus-visible { opacity: .88; }
 .header-profile-avatar, .header-profile img, .header-profile svg { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: block; }
 .header-logout { border: 0; background: transparent; color: #64748b; font-size: 11px; font-weight: 600; }
@@ -391,6 +392,7 @@ button:disabled {
   .community-container { width: calc(100% - 20px); }
   .alpine-logo { font-size: 18px; }
   .header-login { width: 34px; height: 34px; }
+  .header-profile-name { display: none; }
   .home-main { padding-top: 10px; }
   .panel-heading h2 { align-items: flex-start; font-size: 12px; }.panel-heading h2 small { display: block; }.panel-heading a { display: none; }
   .resort-card { flex-basis: 245px; }.compact-post { grid-template-columns: minmax(0,1fr); min-height: 68px; gap: 8px; padding-inline: 9px; }.compact-post > img { display: none; }.post-summary strong { font-size: 12px; }.post-summary p span:last-child { display: none; }
@@ -823,7 +825,7 @@ html[data-theme="dark"] .community-mobile-panel nav a.active {
   color: #7dd3fc;
 }
 
-html[data-theme="dark"] .header-profile {
+html[data-theme="dark"] .header-profile-avatar {
   border-color: var(--snow-border-strong);
   background: var(--community-accent-soft);
   color: #7dd3fc;
@@ -1803,6 +1805,12 @@ html[data-theme="dark"] .community-header {
   letter-spacing: -0.04em;
 }
 
+.snowflake-mark {
+  flex: none;
+  width: 1.45em;
+  height: 1.45em;
+}
+
 .community-main-nav > a,
 .header-board-menu > summary {
   height: 36px;
@@ -1929,6 +1937,31 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
 .board-tabs-more:hover {
   color: var(--snow-ink);
 }
+
+.board-tabs-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+}
+
+.board-tabs .board-tabs-write {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--snow-border);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--snow-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: border-color 0.14s ease, color 0.14s ease;
+}
+
+.board-tabs-write .material-symbols-outlined { font-size: 15px; line-height: 1; }
+
+.board-tabs .board-tabs-write:hover { border-color: var(--community-accent, #0f6fbd); color: var(--community-accent, #0f6fbd); }
 
 .btn-outline-pill {
   display: inline-flex;
@@ -2189,6 +2222,78 @@ svg.m-avatar {
   flex-shrink: 0;
 }
 
+.m-avatar-button {
+  display: inline-flex;
+  flex: none;
+  border-radius: 50%;
+  cursor: zoom-in;
+}
+
+.m-avatar-button:hover, .m-avatar-button:focus-visible {
+  outline: 2px solid var(--community-accent, #0f6fbd);
+  outline-offset: 1px;
+}
+
+.author-zoom-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .55);
+  padding: 16px;
+  cursor: zoom-out;
+}
+
+.author-zoom-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(260px, 100%);
+  border: 1px solid var(--snow-border);
+  border-radius: 12px;
+  background: var(--snow-canvas);
+  padding: 32px 20px 22px;
+  cursor: default;
+}
+
+.author-zoom-card strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--snow-ink);
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.author-zoom-avatar {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  object-fit: cover;
+  color: var(--snow-muted);
+}
+
+.author-zoom-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--snow-muted);
+  cursor: pointer;
+}
+
+.author-zoom-close:hover, .author-zoom-close:focus-visible { background: var(--snow-surface-mid); color: var(--snow-ink); }
+
 .m-stats {
   display: inline-flex;
   min-width: 88px;
@@ -2270,6 +2375,11 @@ html[data-theme="dark"] .home-live-chat .live-chat-card {
   margin-bottom: 4px;
   padding: 0 2px;
 }
+
+.live-chat-local-help { position: relative; padding-right: 36px; }
+.live-chat-local-help-close { position: absolute; top: 4px; right: 4px; display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--snow-muted); cursor: pointer; }
+.live-chat-local-help-close .material-symbols-outlined { font-size: 18px; }
+.live-chat-local-help-close:hover, .live-chat-local-help-close:focus-visible { background: var(--snow-surface-mid); color: var(--snow-ink); }
 
 
 .live-chat-head-title {
