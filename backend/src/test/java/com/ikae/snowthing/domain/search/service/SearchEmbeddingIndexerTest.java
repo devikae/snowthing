@@ -48,7 +48,8 @@ class SearchEmbeddingIndexerTest {
         when(semantic.enabled()).thenReturn(true);
         when(semantic.provider()).thenReturn(provider);
         when(semantic.properties())
-                .thenReturn(new SemanticSearchProperties(true, "test", 0, 0, 2, 2, 30_000, 0, null));
+                .thenReturn(
+                        new SemanticSearchProperties(true, "test", 0, 0, 2, 2, 30_000, 0, null));
         when(repository.findMissing(anyString(), anyInt(), anyInt())).thenReturn(List.of());
         indexer = new SearchEmbeddingIndexer(repository, semantic, clock);
     }
@@ -76,9 +77,7 @@ class SearchEmbeddingIndexerTest {
         MissingEmbedding item = new MissingEmbedding("P:1:1", "a".repeat(64), "본문");
         when(repository.findMissing(anyString(), anyInt(), anyInt())).thenReturn(List.of(item));
         when(provider.embed(List.of("본문")))
-                .thenReturn(
-                        new EmbeddingResult(
-                                List.of(new float[] {1, 0}), null));
+                .thenReturn(new EmbeddingResult(List.of(new float[] {1, 0}), null));
 
         indexer.refreshMissing(false);
         indexer.refreshMissing(false);
