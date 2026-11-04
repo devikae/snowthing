@@ -21,6 +21,7 @@ import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.util.ContactFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,20 +36,7 @@ public class ChatService {
     private static final long DUPLICATE_COOLDOWN_MILLIS = 5000L;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private static final Pattern URL_PATTERN =
-            Pattern.compile(
-                    "(?i)(?:https?://|www\\.)\\S+"
-                            + "|\\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+"
-                            + "(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})(?::\\d{1,5})?(?:/\\S*)?"
-                            + "|\\b(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}"
-                            + "(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?::\\d{1,5})?(?:/\\S*)?");
-    private static final Pattern MESSENGER_IDENTIFIER_PATTERN =
-            Pattern.compile(
-                    "(?i)(?:\\bt\\.me/\\S+|\\btelegram\\b|\\bopen\\.kakao\\.com/\\S+|(?<![\\w.])@[a-z0-9_]{3,})");
     private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
-    private static final Pattern BOT_PHONE_PATTERN =
-            Pattern.compile(
-                    "(?<![0-9])(?:\\+82[ .-]?(?:1[016789]|2|[3-6][1-5]|70)|0(?:1[016789]|2|[3-6][1-5]|70))[ .-]?[0-9]{3,4}[ .-]?[0-9]{4}(?![0-9])");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
@@ -122,8 +110,7 @@ public class ChatService {
 
     public ChatMessageResponse createBotMessage(String resortTag, String content) {
         String safeContent = content == null ? "" : content.trim();
-        if (containsForbiddenContact(safeContent)
-                || BOT_PHONE_PATTERN.matcher(safeContent).find()) {
+        if (containsForbiddenContact(safeContent) || ContactFilter.containsPhone(safeContent)) {
             throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
         if (safeContent.length() > MAX_CONTENT_LENGTH) {
@@ -137,7 +124,7 @@ public class ChatService {
         }
         if (safeContent.isEmpty()
                 || containsForbiddenContact(safeContent)
-                || BOT_PHONE_PATTERN.matcher(safeContent).find()) {
+                || ContactFilter.containsPhone(safeContent)) {
             throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
         ChatMessageResponse response =
@@ -160,8 +147,7 @@ public class ChatService {
 
     private boolean containsForbiddenContact(String content) {
         String contactCheckTarget = BOT_MENTION_PREFIX.matcher(content).replaceFirst("");
-        return URL_PATTERN.matcher(contactCheckTarget).find()
-                || MESSENGER_IDENTIFIER_PATTERN.matcher(contactCheckTarget).find();
+        return ContactFilter.containsLinkOrMessenger(contactCheckTarget);
     }
 
     private void validateAbuseLimits(Long memberId, String normalizedContent, long now) {

@@ -1,3 +1,21 @@
+## AI 멤버 초반 리젠 기능 (IKA-14, 2026-11-04)
+
+- 상태: 구현·로컬 검증 완료, PR 전. 운영 배포·페르소나 파일 작성·공지 글은 하지 않았다.
+- 계획: 캐릭터 4명이 자유·익명·질문 게시판과 라이브톡에서 KST 07~09·12~13·18~24시에 랜덤하게 글·댓글·채팅을 남긴다. 기본 꺼짐(`SNOWTHING_AI_MEMBERS_ENABLED=false`). 설계 `docs/conception/018_ai_members/01_design.md`.
+- 완료
+  - 봇 서버(snowthing-mcp-server `ika-14-ai-members`): `POST /internal/v1/ai-members/compose`, 도구 없는 `OpenAiClient.compose`(JSON 스키마 출력), moderation·길이·화자 검사, 실패 422. 테스트 8건 추가.
+  - 백엔드: `AiMemberProperties`, 저장소 밖 페르소나 YAML 로더, 기동 시 계정 연결(`AiMemberBootstrap`), 하루 계획(`AiActivityPlanner`), 댓글 판단(`AiReactionPolicy`, 스레드당 답글 2개 상한), 1분 주기 스케줄러, 실행 서비스(일일 호출 상한 `SharedRequestLimiter`, 연락처·중복 제목 검사, 기존 Post/Comment/ChatService 경로), `ContactFilter` 분리, `compose.prod.yml` 환경변수와 `/opt/snowthing-ai` 읽기 전용 마운트.
+- 결정
+  - 계정은 031 시드 대신 기동 시 생성: 닉네임이 공개 저장소·마이그레이션에 남지 않는다. 다른 선택지는 031 시드 후 운영에서 닉네임 수동 변경.
+  - 판단용 조회는 새 `AiMemberQueryRepository`(JDBC)에 모았다: 기존 리포지토리 변경 없이 읽기 전용으로 한정. 다른 선택지는 Post/CommentRepository에 쿼리 추가.
+  - 시드 난수는 `SplittableRandom`: 연속 시드에서 `java.util.Random` 첫 값이 거의 같아 모든 캐릭터가 같은 판단을 하던 문제를 테스트로 발견.
+- 검증
+  - 봇 서버: lint, typecheck, build, 테스트 66건 통과. `prettier --check`는 Windows CRLF 체크아웃 때문에 기존 파일 전체가 걸려 `--end-of-line auto`로 확인했다.
+  - 백엔드: `./gradlew spotlessCheck test` 최종 실행에서 624건 통과(실패 0, 기존 skip 1). AI 멤버 테스트 23건(실제 MySQL을 쓰는 통합 2건 포함). 중간 실행에서 `MarketThumbnailIntegrationTest` 1건이 한 번 실패했으나 단독 3회와 최종 전체 실행에서 통과했다. 새 통합 테스트가 Spring 컨텍스트를 하나 더 만들어 로컬 MySQL "Too many connections"로 검색 통합 테스트가 깨진 것을 확인하고, 풀 크기 2와 클래스 종료 시 컨텍스트 정리로 고쳤다.
+  - 실제 OpenAI 호출, 실제 봇 서버와 백엔드를 붙인 실행은 하지 않았다.
+- 남은 항목: PR 2개(봇 서버 `Refs IKA-14`, 백엔드 `Closes IKA-14`), 운영 페르소나 파일과 공지 글(운영자), 배포 후 첫 주 비용 확인.
+- 사용자 결정 필요: 없음.
+
 ## 메인 홈 라이브톡 및 오늘의 설질 비로그인 시 로그인 유도 통일 (2026-11-04)
 
 - 메인 페이지의 인라인 입력 폼(`LiveChatSection`, `HomePageClient`의 설질 제보) 비로그인 인터랙션 정합성 일원화:

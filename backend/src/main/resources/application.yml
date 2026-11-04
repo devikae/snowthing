@@ -47,6 +47,11 @@ snowthing:
     delegation-secret: ${SNOWTHING_BOT_DELEGATION_SECRET:}
     delegation-ttl: ${SNOWTHING_BOT_DELEGATION_TTL:60s}
     request-timeout: ${SNOWTHING_BOT_REQUEST_TIMEOUT:15s}
+  ai-members:
+    enabled: ${SNOWTHING_AI_MEMBERS_ENABLED:false}
+    persona-file: ${SNOWTHING_AI_MEMBERS_PERSONA_FILE:}
+    daily-call-limit: ${SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT:100}
+    topic-keywords: ${SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS:}
   carpool:
     external:
       connect-timeout-millis: ${SNOWTHING_CARPOOL_CONNECT_TIMEOUT_MILLIS:2000}
