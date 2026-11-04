@@ -71,6 +71,24 @@ snowthing:
       batch-size: 500
     outbox:
       done-retention-days: 7
+    # 색인이 비어 있고(search_index_state 0행) 공개 게시글이 있으면 기동 때 재인덱싱을 한 번 넣는다 (indexer.enabled=true일 때만)
+    bootstrap-on-empty: ${SNOWTHING_SEARCH_BOOTSTRAP_ON_EMPTY:true}
+    # IKA-11 의미 검색 비교 실험. 기본 꺼짐: 제공자 호출과 비용이 없고 근거 검색은 키워드만 쓴다.
+    # provider: none | hashing(로컬 파이프라인 확인용, 의미 모델 아님) | http(OpenAI 호환, 호출마다 비용 가능, 사용자 승인 후)
+    semantic:
+      enabled: ${SNOWTHING_SEARCH_SEMANTIC_ENABLED:false}
+      provider: ${SNOWTHING_SEARCH_SEMANTIC_PROVIDER:none}
+      rrf-k: ${SNOWTHING_SEARCH_SEMANTIC_RRF_K:60}
+      candidate-k: ${SNOWTHING_SEARCH_SEMANTIC_CANDIDATE_K:50}
+      refresh-batch-size: 32
+      refresh-max-batches: 4
+      http:
+        base-url: ${SNOWTHING_SEARCH_EMBEDDING_BASE_URL:}
+        model: ${SNOWTHING_SEARCH_EMBEDDING_MODEL:}
+        dimension: ${SNOWTHING_SEARCH_EMBEDDING_DIMENSION:0}
+        api-key: ${SNOWTHING_SEARCH_EMBEDDING_API_KEY:}
+        connect-timeout-millis: 2000
+        read-timeout-millis: 10000
   oauth2:
     frontend-base-url: ${SNOWTHING_FRONTEND_BASE_URL:http://localhost:3000}
     connect-timeout-millis: ${SNOWTHING_OAUTH2_CONNECT_TIMEOUT_MILLIS:2000}

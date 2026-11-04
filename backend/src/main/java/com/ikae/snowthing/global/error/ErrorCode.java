@@ -153,6 +153,10 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "SEARCH_001",
             "검색어는 2자 이상 100자 이하, 결과 수는 1 이상 20 이하, 근거 ID와 해시는 정해진 형식이어야 합니다."),
+    SEARCH_MODE_UNAVAILABLE(
+            HttpStatus.CONFLICT, "SEARCH_002", "요청한 검색 방식(의미 검색 또는 재정렬)이 이 서버에서 꺼져 있습니다."),
+    SEARCH_PROVIDER_FAILED(
+            HttpStatus.SERVICE_UNAVAILABLE, "SEARCH_003", "의미 검색 제공자를 호출하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVIDENCE_001", "존재하지 않거나 볼 수 없는 근거입니다."),
     EVIDENCE_HASH_MISMATCH(HttpStatus.CONFLICT, "EVIDENCE_002", "근거 원문이 검색 이후 바뀌었습니다. 다시 검색해 주세요."),
 

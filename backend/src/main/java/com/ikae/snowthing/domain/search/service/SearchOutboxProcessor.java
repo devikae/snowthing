@@ -56,6 +56,7 @@ public class SearchOutboxProcessor {
     private final SearchIndexStateRepository states;
     private final SearchDocumentJdbcRepository documents;
     private final SearchSourceRepository sources;
+    private final SearchEmbeddingIndexer embeddings;
     private final Clock clock;
     private final TransactionTemplate tx;
 
@@ -79,18 +80,23 @@ public class SearchOutboxProcessor {
             SearchIndexStateRepository states,
             SearchDocumentJdbcRepository documents,
             SearchSourceRepository sources,
+            SearchEmbeddingIndexer embeddings,
             Clock clock,
             PlatformTransactionManager transactionManager) {
         this.outbox = outbox;
         this.states = states;
         this.documents = documents;
         this.sources = sources;
+        this.embeddings = embeddings;
         this.clock = clock;
         this.tx = new TransactionTemplate(transactionManager);
         this.tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
-    /** 한 배치를 가져와 처리한다. 완료 처리한 건수(오래된 이벤트 포함)를 돌려준다. */
+    /**
+     * 한 배치를 가져와 처리한다. 완료 처리한 건수(오래된 이벤트 포함)를 돌려준다. 의미 검색이 켜져 있으면 끝에 현재 벡터가 없는 구간을 채운다(트랜잭션 밖,
+     * {@link SearchEmbeddingIndexer#refreshMissing()}). 벡터 갱신 결과는 반환값에 넣지 않는다.
+     */
     public int processBatch() {
         LocalDateTime now = LocalDateTime.now(clock);
         List<ClaimedEvent> events =
@@ -106,6 +112,7 @@ public class SearchOutboxProcessor {
                 handleFailure(event, failure);
             }
         }
+        embeddings.refreshMissing();
         return done;
     }
 
@@ -115,6 +122,7 @@ public class SearchOutboxProcessor {
             long applied = states.lock(SearchSourceType.POST, event.sourceId(), now);
             if (event.version() >= applied) {
                 applyPost(event.sourceId(), Math.max(applied, event.version()), now);
+                embeddings.removeOutdatedOfPost(event.sourceId());
             }
         } else {
             Optional<CommentRef> ref = sources.findCommentRef(event.sourceId());
@@ -126,6 +134,7 @@ public class SearchOutboxProcessor {
             if (event.version() >= applied) {
                 long missingVersion = Math.max(applied, event.version());
                 applyComment(event.sourceId(), missingVersion, now);
+                embeddings.removeOutdatedOfComment(event.sourceId());
             }
         }
         outbox.markDone(event.eventId(), now);
