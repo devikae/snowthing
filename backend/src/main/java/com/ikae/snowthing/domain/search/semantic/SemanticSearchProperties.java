@@ -3,8 +3,8 @@ package com.ikae.snowthing.domain.search.semantic;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 의미 검색 실험 설정 ({@code snowthing.search.semantic}). 기본은 꺼짐이다. 꺼져 있으면 임베딩 제공자를 한 번도 부르지 않고, 하이브리드 검색 요청은
- * SEARCH_002로 거절한다.
+ * 의미 검색 실험 설정 ({@code snowthing.search.semantic}). 기본은 꺼짐이다. 꺼져 있으면 임베딩 제공자를 한 번도 부르지 않고, 하이브리드 검색
+ * 요청은 SEARCH_002로 거절한다.
  *
  * @param enabled 의미 검색과 벡터 갱신을 켠다
  * @param provider {@code none}(기본), {@code hashing}(로컬 파이프라인 확인용, 비용 없음, 의미 모델 아님), {@code http}

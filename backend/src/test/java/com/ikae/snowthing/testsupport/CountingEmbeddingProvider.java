@@ -15,8 +15,8 @@ import com.ikae.snowthing.domain.search.semantic.EmbeddingResult;
 import com.ikae.snowthing.domain.search.semantic.HashingEmbeddingProvider;
 
 /**
- * 테스트용 결정적 임베딩 제공자. 외부 호출 없이 {@link HashingEmbeddingProvider}로 벡터를 만들고 호출 수와 받은 텍스트를 센다. 다음 호출을 실패시킬 수
- * 있다. 입력 토큰은 글자 수로 흉내 낸다(비용 메타데이터 전달 확인용).
+ * 테스트용 결정적 임베딩 제공자. 외부 호출 없이 {@link HashingEmbeddingProvider}로 벡터를 만들고 호출 수와 받은 텍스트를 센다. 다음 호출을
+ * 실패시킬 수 있다. 입력 토큰은 글자 수로 흉내 낸다(비용 메타데이터 전달 확인용).
  */
 public class CountingEmbeddingProvider implements EmbeddingProvider {
 

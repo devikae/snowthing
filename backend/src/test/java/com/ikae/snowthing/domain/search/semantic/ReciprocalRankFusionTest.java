@@ -29,7 +29,10 @@ class ReciprocalRankFusionTest {
 
         assertThat(ReciprocalRankFusion.fuse(rankings, 60).getFirst()).isEqualTo("b");
         // k=1이면 1위 하나(1/2)가 4위 두 번(1/5 + 1/5)보다 크다.
-        assertThat(ReciprocalRankFusion.fuse(List.of(List.of("a", "x", "y", "b"), List.of("c", "z", "w", "b")), 1))
+        assertThat(
+                        ReciprocalRankFusion.fuse(
+                                List.of(List.of("a", "x", "y", "b"), List.of("c", "z", "w", "b")),
+                                1))
                 .startsWith("a", "c");
     }
 

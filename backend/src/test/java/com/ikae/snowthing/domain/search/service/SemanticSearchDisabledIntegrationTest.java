@@ -16,9 +16,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import com.ikae.snowthing.domain.search.semantic.VectorMath;
 import com.ikae.snowthing.testsupport.CountingEmbeddingProvider;
 
-/**
- * 기본 설정(의미 검색 꺼짐)에서는 제공자 빈이 있어도 한 번도 부르지 않는다. 운영 기본 동작이 1단계와 같고 비용이 없음을 확인한다.
- */
+/** 기본 설정(의미 검색 꺼짐)에서는 제공자 빈이 있어도 한 번도 부르지 않는다. 운영 기본 동작이 1단계와 같고 비용이 없음을 확인한다. */
 @SpringBootTest(
         properties = {
             "snowthing.search.semantic.enabled=false",

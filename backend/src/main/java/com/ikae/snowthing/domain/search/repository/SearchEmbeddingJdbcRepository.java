@@ -20,7 +20,8 @@ import lombok.RequiredArgsConstructor;
  * search_embedding 읽기와 쓰기 (IKA-11 의미 검색 실험).
  *
  * <ul>
- *   <li>벡터는 (evidence_id, model_id)마다 하나다. content_hash가 현재 search_document.chunk_hash와 같은 벡터만 "현재 벡터"다.
+ *   <li>벡터는 (evidence_id, model_id)마다 하나다. content_hash가 현재 search_document.chunk_hash와 같은 벡터만 "현재
+ *       벡터"다.
  *   <li>검색은 키워드 검색과 같은 원문 조인과 공개 범위 조건({@link SearchVisibilitySql}), 같은 평가용 조건을 쓴다.
  *   <li>저장은 "그 구간이 아직 같은 해시일 때만" 한다. 제공자를 부르는 사이 원문이 바뀌었으면 아무것도 쓰지 않는다(오래된 벡터 저장 방지).
  * </ul>

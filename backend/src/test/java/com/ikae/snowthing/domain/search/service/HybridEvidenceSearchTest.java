@@ -41,8 +41,7 @@ class HybridEvidenceSearchTest {
                         HybridEvidenceSearch.reorder(
                                 List.of("a", "b", "c", "d"), List.of("c", "zzz", "a", "c")))
                 .containsExactly("c", "a", "b", "d");
-        assertThat(HybridEvidenceSearch.reorder(List.of("a", "b"), null))
-                .containsExactly("a", "b");
+        assertThat(HybridEvidenceSearch.reorder(List.of("a", "b"), null)).containsExactly("a", "b");
     }
 
     private static VectorCandidate candidate(long documentId, String evidenceId, float[] vector) {
@@ -51,7 +50,9 @@ class HybridEvidenceSearchTest {
                 new EvidenceSearchRow(
                         documentId,
                         evidenceId,
-                        evidenceId.startsWith("C") ? SearchSourceType.COMMENT : SearchSourceType.POST,
+                        evidenceId.startsWith("C")
+                                ? SearchSourceType.COMMENT
+                                : SearchSourceType.POST,
                         1L,
                         evidenceId.startsWith("C") ? 0 : 1,
                         "00000000-0000-0000-0000-000000000001",
@@ -67,5 +68,4 @@ class HybridEvidenceSearchTest {
                         now);
         return new VectorCandidate(row, VectorMath.toBytes(vector));
     }
-
 }

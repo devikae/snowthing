@@ -117,7 +117,8 @@ abstract class SemanticSearchTestSupport {
         String publicId =
                 postService
                         .createPost(
-                                new PostCreateRequest(categoryCode, title, body, false, null, List.of()),
+                                new PostCreateRequest(
+                                        categoryCode, title, body, false, null, List.of()),
                                 details(user),
                                 "127.0.0.1")
                         .publicId();
@@ -166,7 +167,8 @@ abstract class SemanticSearchTestSupport {
     }
 
     String embeddingHash(String evidenceId) {
-        return jdbc.queryForList(
+        return jdbc
+                .queryForList(
                         "SELECT content_hash FROM search_embedding WHERE evidence_id = ?",
                         String.class,
                         evidenceId)

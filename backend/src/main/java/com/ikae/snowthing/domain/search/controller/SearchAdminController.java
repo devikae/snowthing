@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ikae.snowthing.domain.search.dto.EvidenceDetailResponse;
 import com.ikae.snowthing.domain.search.dto.EvidenceSearchCondition;
 import com.ikae.snowthing.domain.search.dto.EvidenceSearchResponse;
+import com.ikae.snowthing.domain.search.dto.SearchMode;
 import com.ikae.snowthing.domain.search.dto.SearchOutboxSummaryResponse;
 import com.ikae.snowthing.domain.search.dto.SearchRebuildResponse;
 import com.ikae.snowthing.domain.search.dto.SearchReconcileResponse;
-import com.ikae.snowthing.domain.search.dto.SearchMode;
 import com.ikae.snowthing.domain.search.dto.SearchReindexResponse;
 import com.ikae.snowthing.domain.search.dto.SearchRetryFailedResponse;
 import com.ikae.snowthing.domain.search.service.EvidenceService;
@@ -71,8 +71,8 @@ public class SearchAdminController {
     }
 
     /**
-     * 근거 검색. {@code mode}는 선택이며 기본 {@code keyword}(1단계와 같음). {@code hybrid}, {@code hybrid_rerank}는 IKA-11
-     * 비교 실험용이고 의미 검색이 꺼진 서버에서는 409 SEARCH_002다.
+     * 근거 검색. {@code mode}는 선택이며 기본 {@code keyword}(1단계와 같음). {@code hybrid}, {@code hybrid_rerank}는
+     * IKA-11 비교 실험용이고 의미 검색이 꺼진 서버에서는 409 SEARCH_002다.
      */
     @GetMapping("/evidence")
     public ResponseEntity<EvidenceSearchResponse> searchEvidence(

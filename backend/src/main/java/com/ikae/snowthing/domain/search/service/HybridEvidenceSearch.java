@@ -40,8 +40,8 @@ import lombok.RequiredArgsConstructor;
  *   <li>재정렬 방식이면 결합 상위 K를 재정렬기에 넘긴다
  * </ol>
  *
- * <p>결과 행은 두 검색 모두 같은 원문 조인과 {@code SearchVisibilitySql} 조건을 거친 행이므로 숨김, 삭제, MARKET 원문은 어느 경로로도 들어오지
- * 않는다. 점수는 응답에 넣지 않는다.
+ * <p>결과 행은 두 검색 모두 같은 원문 조인과 {@code SearchVisibilitySql} 조건을 거친 행이므로 숨김, 삭제, MARKET 원문은 어느 경로로도
+ * 들어오지 않는다. 점수는 응답에 넣지 않는다.
  */
 @Component
 @RequiredArgsConstructor
@@ -57,7 +57,9 @@ public class HybridEvidenceSearch {
                 mode == SearchMode.HYBRID_RERANK
                         ? semantic.reranker()
                                 .orElseThrow(
-                                        () -> new CustomException(ErrorCode.SEARCH_MODE_UNAVAILABLE))
+                                        () ->
+                                                new CustomException(
+                                                        ErrorCode.SEARCH_MODE_UNAVAILABLE))
                         : null;
         int candidateK = semantic.properties().effectiveCandidateK();
 

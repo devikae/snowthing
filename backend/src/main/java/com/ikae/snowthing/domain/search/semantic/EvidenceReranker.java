@@ -3,8 +3,8 @@ package com.ikae.snowthing.domain.search.semantic;
 import java.util.List;
 
 /**
- * 재정렬기(선택). 결합된 후보를 질문과 함께 다시 정렬한다. 기본 구현은 없다. cross-encoder나 LLM 재정렬은 비용과 지연이 커서, 하이브리드 결과를 먼저 잰
- * 뒤 사용자 승인을 받고 붙인다.
+ * 재정렬기(선택). 결합된 후보를 질문과 함께 다시 정렬한다. 기본 구현은 없다. cross-encoder나 LLM 재정렬은 비용과 지연이 커서, 하이브리드 결과를 먼저 잰 뒤
+ * 사용자 승인을 받고 붙인다.
  */
 public interface EvidenceReranker {
 

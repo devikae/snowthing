@@ -16,10 +16,12 @@ import com.ikae.snowthing.domain.search.repository.SearchConsistencyRepository;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 빈 색인 첫 채우기. 운영에는 관리자 계정이 없어 IKA-10 배포 뒤 {@code POST /reindex}를 부를 사람이 없고, 기존 게시글은 search_document에 없다.
+ * 빈 색인 첫 채우기. 운영에는 관리자 계정이 없어 IKA-10 배포 뒤 {@code POST /reindex}를 부를 사람이 없고, 기존 게시글은
+ * search_document에 없다.
  *
  * <p>앱이 뜰 때(ApplicationReadyEvent) 아래를 모두 만족하면 기존 체크포인트 재인덱싱({@link
- * SearchConsistencyService#reindex()})을 DONE이 될 때까지 부른다. 재인덱싱은 outbox에 게시글 이벤트만 넣고, 실제 색인은 평소 처리기가 한다.
+ * SearchConsistencyService#reindex()})을 DONE이 될 때까지 부른다. 재인덱싱은 outbox에 게시글 이벤트만 넣고, 실제 색인은 평소 처리기가
+ * 한다.
  *
  * <ul>
  *   <li>{@code snowthing.search.indexer.enabled=true} (처리기가 없으면 넣어도 반영되지 않는다)
@@ -30,8 +32,8 @@ import lombok.extern.slf4j.Slf4j;
  * </ul>
  *
  * <p>여러 인스턴스: 체크포인트가 없을 때는 {@code INSERT IGNORE}로 FULL 체크포인트 행을 먼저 만든 인스턴스만 시작한다. 이미 RUNNING이면 이어서
- * 부른다. 재인덱싱 배치는 체크포인트 행 {@code FOR UPDATE} 잠금 안에서 last_source_id를 옮기므로 두 인스턴스가 같이 이어서 해도 같은 배치를 두 번 넣지
- * 않는다. 혹시 겹쳐 들어간 이벤트가 있어도 처리기가 멱등이라 결과는 같다. 실패해도 기동을 막지 않고 로그만 남긴다(매일 대조가 메운다).
+ * 부른다. 재인덱싱 배치는 체크포인트 행 {@code FOR UPDATE} 잠금 안에서 last_source_id를 옮기므로 두 인스턴스가 같이 이어서 해도 같은 배치를 두 번
+ * 넣지 않는다. 혹시 겹쳐 들어간 이벤트가 있어도 처리기가 멱등이라 결과는 같다. 실패해도 기동을 막지 않고 로그만 남긴다(매일 대조가 메운다).
  */
 @Slf4j
 @Component

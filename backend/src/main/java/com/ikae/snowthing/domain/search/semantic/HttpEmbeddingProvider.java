@@ -17,11 +17,11 @@ import org.springframework.web.client.RestClientException;
 import tools.jackson.databind.JsonNode;
 
 /**
- * OpenAI 호환 embeddings 엔드포인트 호출 ({@code POST {baseUrl}/embeddings}, 본문 {@code {"model", "input": [...]}},
- * 응답 {@code data[].embedding}, {@code usage.prompt_tokens}).
+ * OpenAI 호환 embeddings 엔드포인트 호출 ({@code POST {baseUrl}/embeddings}, 본문 {@code {"model", "input":
+ * [...]}}, 응답 {@code data[].embedding}, {@code usage.prompt_tokens}).
  *
- * <p>호출마다 비용이 생길 수 있다. {@code snowthing.search.semantic.enabled=true}와 {@code provider=http}를 함께 설정해야만
- * 쓰인다. 키는 환경 변수로만 받고 로그, 예외 메시지, toString에 넣지 않는다. 리디렉션은 따라가지 않는다(키가 다른 호스트로 가지 않게).
+ * <p>호출마다 비용이 생길 수 있다. {@code snowthing.search.semantic.enabled=true}와 {@code provider=http}를 함께
+ * 설정해야만 쓰인다. 키는 환경 변수로만 받고 로그, 예외 메시지, toString에 넣지 않는다. 리디렉션은 따라가지 않는다(키가 다른 호스트로 가지 않게).
  */
 public class HttpEmbeddingProvider implements EmbeddingProvider {
 
@@ -58,7 +58,8 @@ public class HttpEmbeddingProvider implements EmbeddingProvider {
         URI uri = URI.create(http.baseUrl().strip());
         boolean local = "localhost".equals(uri.getHost()) || "127.0.0.1".equals(uri.getHost());
         if (!"https".equals(uri.getScheme()) && !local) {
-            throw new IllegalStateException("snowthing.search.semantic.http.base-url must be https");
+            throw new IllegalStateException(
+                    "snowthing.search.semantic.http.base-url must be https");
         }
         return http;
     }

@@ -212,7 +212,9 @@ public class SearchDocumentJdbcRepository {
             LocalDateTime sourceUpdatedAt,
             LocalDateTime indexedAt) {}
 
-    /** @param documentId 같은 점수일 때 순서를 고정하는 보조 기준. 응답에는 넣지 않는다 */
+    /**
+     * @param documentId 같은 점수일 때 순서를 고정하는 보조 기준. 응답에는 넣지 않는다
+     */
     public record EvidenceSearchRow(
             long documentId,
             String evidenceId,

@@ -22,11 +22,11 @@ import lombok.extern.slf4j.Slf4j;
  * 구간 벡터 갱신 (IKA-11). outbox 처리기에 두 지점으로 붙는다.
  *
  * <ol>
- *   <li>이벤트 처리 트랜잭션 안: {@link #removeOutdatedOfPost}와 {@link #removeOutdatedOfComment}가 현재 구간과 맞지 않는 벡터(삭제,
- *       비공개, 내용 변경)를 문서 교체와 함께 지운다. tombstone이 되면 벡터도 같은 커밋에서 사라진다. 원문에서 나온 파생 데이터라 의미 검색이 꺼져 있어도
- *       지운다(DB 문장만 있고 제공자 호출은 없다).
- *   <li>배치 처리 뒤, 트랜잭션 밖: {@link #refreshMissing()}이 현재 벡터가 없는 구간을 제공자로 보내고, 그 구간이 아직 같은 해시일 때만 저장한다.
- *       외부 호출을 행 잠금을 잡은 트랜잭션 안에서 하지 않기 위해 분리했다. 의미 검색이 꺼져 있으면 아무 쿼리도, 제공자 호출도 하지 않는다.
+ *   <li>이벤트 처리 트랜잭션 안: {@link #removeOutdatedOfPost}와 {@link #removeOutdatedOfComment}가 현재 구간과 맞지
+ *       않는 벡터(삭제, 비공개, 내용 변경)를 문서 교체와 함께 지운다. tombstone이 되면 벡터도 같은 커밋에서 사라진다. 원문에서 나온 파생 데이터라 의미
+ *       검색이 꺼져 있어도 지운다(DB 문장만 있고 제공자 호출은 없다).
+ *   <li>배치 처리 뒤, 트랜잭션 밖: {@link #refreshMissing()}이 현재 벡터가 없는 구간을 제공자로 보내고, 그 구간이 아직 같은 해시일 때만
+ *       저장한다. 외부 호출을 행 잠금을 잡은 트랜잭션 안에서 하지 않기 위해 분리했다. 의미 검색이 꺼져 있으면 아무 쿼리도, 제공자 호출도 하지 않는다.
  * </ol>
  *
  * <p>오래된 이벤트는 처리기가 문서를 건드리지 않고 끝내므로 벡터도 그대로다. 제공자가 실패하면 문서 색인은 그대로 두고, 지수 백오프 동안 갱신을 쉰다.
@@ -76,7 +76,9 @@ public class SearchEmbeddingIndexer {
         EmbeddingProvider provider = semantic.provider();
         int saved = 0;
         try {
-            for (int batch = 0; batch < semantic.properties().effectiveRefreshMaxBatches(); batch++) {
+            for (int batch = 0;
+                    batch < semantic.properties().effectiveRefreshMaxBatches();
+                    batch++) {
                 List<MissingEmbedding> missing =
                         embeddings.findMissing(
                                 provider.modelId(),
@@ -92,9 +94,7 @@ public class SearchEmbeddingIndexer {
         } catch (RuntimeException failure) {
             consecutiveFailures++;
             long pauseMs =
-                    Math.min(
-                            PAUSE_MAX_MS,
-                            PAUSE_BASE_MS << Math.min(consecutiveFailures - 1, 10));
+                    Math.min(PAUSE_MAX_MS, PAUSE_BASE_MS << Math.min(consecutiveFailures - 1, 10));
             pausedUntil = now.plus(Duration.ofMillis(pauseMs));
             // 예외 메시지에는 원문이나 응답 본문이 섞일 수 있어 종류만 남긴다.
             log.warn(

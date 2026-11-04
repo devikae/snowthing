@@ -32,7 +32,8 @@ class SemanticSearchUnitTest {
     @Test
     @DisplayName("코사인 유사도: 같은 방향 1, 반대 -1, 직교 0, 0 벡터와 길이가 다른 벡터는 0")
     void cosine() {
-        assertThat(VectorMath.cosine(new float[] {1, 2}, new float[] {2, 4})).isCloseTo(1.0, within());
+        assertThat(VectorMath.cosine(new float[] {1, 2}, new float[] {2, 4}))
+                .isCloseTo(1.0, within());
         assertThat(VectorMath.cosine(new float[] {1, 0}, new float[] {-1, 0}))
                 .isCloseTo(-1.0, within());
         assertThat(VectorMath.cosine(new float[] {1, 0}, new float[] {0, 1})).isZero();

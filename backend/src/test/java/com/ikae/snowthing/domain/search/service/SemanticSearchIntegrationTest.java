@@ -71,18 +71,26 @@ class SemanticSearchIntegrationTest extends SemanticSearchTestSupport {
         provider.reset();
 
         JsonNode keyword =
-                json(search(QUERY, null).andExpect(status().isOk())
-                        .andExpect(jsonPath("$.mode").value("keyword"))
-                        .andExpect(jsonPath("$.usage.embeddingCalls").value(0)));
+                json(
+                        search(QUERY, null)
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.mode").value("keyword"))
+                                .andExpect(jsonPath("$.usage.embeddingCalls").value(0)));
         JsonNode hybrid =
-                json(search(QUERY, "hybrid").andExpect(status().isOk())
-                        .andExpect(jsonPath("$.mode").value("hybrid"))
-                        .andExpect(jsonPath("$.usage.embeddingCalls").value(1))
-                        .andExpect(jsonPath("$.usage.embeddingInputTokens").value(QUERY.length()))
-                        .andExpect(jsonPath("$.usage.vectorCandidates").value(4)));
+                json(
+                        search(QUERY, "hybrid")
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.mode").value("hybrid"))
+                                .andExpect(jsonPath("$.usage.embeddingCalls").value(1))
+                                .andExpect(
+                                        jsonPath("$.usage.embeddingInputTokens")
+                                                .value(QUERY.length()))
+                                .andExpect(jsonPath("$.usage.vectorCandidates").value(4)));
 
         String waxBody = "P:" + wax.id() + ":1";
-        assertThat(evidenceIds(keyword)).contains("P:" + binding.id() + ":1").doesNotContain(waxBody);
+        assertThat(evidenceIds(keyword))
+                .contains("P:" + binding.id() + ":1")
+                .doesNotContain(waxBody);
         assertThat(evidenceIds(hybrid)).contains("P:" + binding.id() + ":1", waxBody);
         assertThat(evidenceIds(hybrid).getFirst()).isEqualTo("P:" + binding.id() + ":1");
         assertThat(hybrid.get("items").get(0).has("score")).isFalse();
@@ -117,7 +125,8 @@ class SemanticSearchIntegrationTest extends SemanticSearchTestSupport {
         transactions.executeWithoutResult(
                 status -> {
                     jdbc.update("UPDATE post SET status = 'HIDDEN' WHERE post_id = ?", hidden.id());
-                    jdbc.update("UPDATE post SET is_deleted = true WHERE post_id = ?", deleted.id());
+                    jdbc.update(
+                            "UPDATE post SET is_deleted = true WHERE post_id = ?", deleted.id());
                     jdbc.update(
                             "UPDATE post SET category_id = ? WHERE post_id = ?",
                             marketCategory,
@@ -129,8 +138,10 @@ class SemanticSearchIntegrationTest extends SemanticSearchTestSupport {
         assertThat(embeddedEvidenceIds()).hasSize(10);
 
         JsonNode hybrid =
-                json(search(QUERY, "hybrid").andExpect(status().isOk())
-                        .andExpect(jsonPath("$.usage.vectorCandidates").value(3)));
+                json(
+                        search(QUERY, "hybrid")
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.usage.vectorCandidates").value(3)));
 
         assertThat(evidenceIds(hybrid))
                 .containsExactlyInAnyOrder(
@@ -153,16 +164,18 @@ class SemanticSearchIntegrationTest extends SemanticSearchTestSupport {
                                 old.id()));
 
         JsonNode before =
-                json(search(QUERY, "hybrid", "createdBefore", "2026-06-01T00:00:00")
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.usage.vectorCandidates").value(2)));
+                json(
+                        search(QUERY, "hybrid", "createdBefore", "2026-06-01T00:00:00")
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.usage.vectorCandidates").value(2)));
         assertThat(evidenceIds(before))
                 .containsExactlyInAnyOrder("P:" + old.id() + ":0", "P:" + old.id() + ":1");
 
         JsonNode excluded =
-                json(search(QUERY, "hybrid", "excludePostPublicId", recent.publicId())
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.usage.vectorCandidates").value(2)));
+                json(
+                        search(QUERY, "hybrid", "excludePostPublicId", recent.publicId())
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.usage.vectorCandidates").value(2)));
         assertThat(evidenceIds(excluded)).noneMatch(id -> id.startsWith("P:" + recent.id() + ":"));
     }
 

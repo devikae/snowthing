@@ -6,8 +6,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * 임베딩 제공자 선택. {@code provider}가 {@code none}(기본)이면 제공자 빈이 없다. 제공자 빈이 있어도 {@code enabled=false}면 {@link
- * SemanticSearchSupport}가 부르지 않는다.
+ * 임베딩 제공자 선택. {@code provider}가 {@code none}(기본)이면 제공자 빈이 없다. 제공자 빈이 있어도 {@code enabled=false}면
+ * {@link SemanticSearchSupport}가 부르지 않는다.
  */
 @Configuration
 @EnableConfigurationProperties(SemanticSearchProperties.class)
