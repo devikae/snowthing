@@ -66,7 +66,8 @@ public class PostService {
                 && request.isAnonymous()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
-        if (PostCategoryCodes.isInquiry(category.getCode()) && userDetails == null) {
+        if (PostCategoryCodes.isInquiry(category.getCode())
+                && !InquiryAccess.isSessionUser(userDetails)) {
             throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
         }
 
@@ -233,7 +234,7 @@ public class PostService {
         if (!PostCategoryCodes.isInquiry(request.categoryCode())) {
             return request.withWriterPublicId(null);
         }
-        if (userDetails == null) {
+        if (!InquiryAccess.isSessionUser(userDetails)) {
             throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
         }
         return request.withWriterPublicId(isAdmin(userDetails) ? null : userDetails.getPublicId());

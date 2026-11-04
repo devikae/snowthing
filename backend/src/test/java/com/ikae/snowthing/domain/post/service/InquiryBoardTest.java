@@ -32,6 +32,7 @@ import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.search.repository.SearchSourceRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 /** 1:1 문의가 작성자와 관리자 외에는 어떤 경로로도 보이지 않는지 확인한다. */
@@ -306,6 +307,23 @@ class InquiryBoardTest {
                     .noneMatch(source -> inquiryId.equals(source.publicId()));
             assertThat(aiMemberQueryRepository.findRecentPosts(LocalDateTime.now().minusDays(1)))
                     .noneMatch(view -> inquiryId.equals(view.publicId()));
+        }
+
+        @Test
+        @DisplayName("라이브톡 봇 위임으로는 작성자 본인의 문의도 읽지 못한다")
+        void botDelegationCannotRead() {
+            CustomUserDetails delegated = new BotDelegatedUserDetails(writer.getMember());
+
+            assertThatThrownBy(() -> postService.searchPostsByOffset(inquiryList(), delegated))
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INQUIRY_LOGIN_REQUIRED);
+            assertThatThrownBy(() -> postService.getPostDetail(inquiryId, delegated, false))
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
+            assertThatThrownBy(
+                            () -> commentService.getCommentsByPost(inquiryId, null, 20, delegated))
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
         }
     }
 
