@@ -153,6 +153,9 @@ export default function HomePageClient() {
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const reportSeasonOpen = isResortReportSeason(new Date());
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
+  // 공지는 관리자만 쓰므로 일반 글쓰기로 보내고, 나머지 탭은 해당 게시판을 미리 골라 둔다.
+  const writeCategory = activeFeedConfig.query.categoryCode;
+  const writeHref = writeCategory && writeCategory !== "NOTICE" ? `/posts/create?category=${writeCategory}` : "/posts/create";
 
   const loadTodayReports = async () => {
     try {
@@ -335,9 +338,15 @@ export default function HomePageClient() {
                     </button>
                   ))}
                 </div>
-                <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
-                  더보기 ↗
-                </Link>
+                <div className="board-tabs-actions">
+                  <Link href={writeHref} className="board-tabs-write">
+                    <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+                    글쓰기
+                  </Link>
+                  <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
+                    더보기 ↗
+                  </Link>
+                </div>
               </nav>
 
               <div className="compact-post-list">

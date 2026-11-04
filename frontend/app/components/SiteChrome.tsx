@@ -231,6 +231,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                       size={32}
                       className="header-profile-avatar"
                     />
+                    <span className="header-profile-name">{user.nickname}</span>
                   </summary>
                   <div className="header-profile-dropdown">
                     <Link
