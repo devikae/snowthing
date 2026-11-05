@@ -209,7 +209,7 @@ content-type:application/json
 | 에러 코드 | Enum 상수명 | HTTP 대응 | 설명 및 안내 메시지 |
 | :--- | :--- | :---: | :--- |
 | **`CHAT_001`** | `CHAT_EXTERNAL_LINK_FORBIDDEN` | 400 | 외부 링크 및 메신저 연락처는 전송할 수 없습니다. |
-| **`CHAT_002`** | `CHAT_DUPLICATE_MESSAGE` | 429 | 동일한 메시지를 연속으로 보낼 수 없습니다 (5초간 대기). |
+| **`CHAT_002`** | `CHAT_DUPLICATE_MESSAGE` | 429 | 같은 메시지를 짧은 시간에 반복해서 보낼 수 없습니다. |
 | **`CHAT_003`** | `CHAT_BURST_RATE_LIMIT` | 429 | 메시지 전송 속도가 너무 빠릅니다. 잠시 후 다시 시도해 주세요. |
 | **`CHAT_004`** | `CHAT_MESSAGE_EMPTY` | 400 | 공백 메시지는 전송할 수 없습니다. |
 | **`CHAT_005`** | `CHAT_MESSAGE_TOO_LONG` | 400 | 메시지는 최대 100자까지 작성할 수 있습니다. |
