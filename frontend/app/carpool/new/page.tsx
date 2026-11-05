@@ -309,7 +309,17 @@ export default function NewCarpoolPage() {
     if (nextMode === costMode) return;
     previewAbortController.current?.abort();
     // 직접 입력에서는 지도가 사라지므로, 돌아올 때 고른 장소를 다시 보여 준다.
-    if (nextMode === "AUTO") setInitialMapPlace(selectedPlace);
+    if (nextMode === "AUTO") {
+      setInitialMapPlace(selectedPlace);
+      // 경로는 지도 좌표로 계산하므로 직접 입력에서 고친 글자가 좌표와 어긋나지 않게 되돌린다.
+      if (selectedPlace) {
+        setForm((current) => ({
+          ...current,
+          departureRegion: selectedPlace.addressName,
+          meetingPlace: selectedPlace.name,
+        }));
+      }
+    }
     setCostMode(nextMode);
     setWorking(false);
     setError("");
