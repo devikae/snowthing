@@ -36,6 +36,7 @@ interface ChatError {
 
 const LOCAL_STORAGE_TAG_KEY = "snowthing_chat_resort";
 const MAX_DOM_MESSAGES = 100;
+const SEND_INTERVAL_MILLIS = 1000;
 const RECONNECT_BASE_DELAY_MILLIS = 1000;
 const RECONNECT_MAX_DELAY_MILLIS = 30000;
 const RECONNECT_JITTER_MILLIS = 1000;
@@ -94,6 +95,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
 
   const stompClientRef = useRef<Client | null>(null);
   const reconnectAttemptRef = useRef(0);
+  const lastSentAtRef = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const isAtBottomRef = useRef<boolean>(true);
 
@@ -240,6 +242,14 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       setToastError("서버와 실시간 스트림 연결 중입니다. 잠시만 기다려주세요.");
       return;
     }
+
+    // 서버는 1초에 1건만 받는다. 거절될 전송으로 입력이 지워지지 않게 여기서 먼저 막는다.
+    const now = Date.now();
+    if (now - lastSentAtRef.current < SEND_INTERVAL_MILLIS) {
+      setToastError("메시지 전송 속도가 너무 빠릅니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    lastSentAtRef.current = now;
 
     const payload = {
       resortTag: selectedResort || null,

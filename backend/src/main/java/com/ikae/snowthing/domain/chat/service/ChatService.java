@@ -1,12 +1,14 @@
 package com.ikae.snowthing.domain.chat.service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
@@ -30,31 +32,69 @@ import lombok.RequiredArgsConstructor;
 public class ChatService {
 
     private static final int MAX_CONTENT_LENGTH = 100;
-    private static final int BURST_ATTEMPT_LIMIT = 5;
     private static final int MAX_RATE_LIMIT_ENTRIES = 10_000;
-    private static final long BURST_WINDOW_MILLIS = 1_000L;
-    private static final long DUPLICATE_COOLDOWN_MILLIS = 5000L;
+    private static final long SEND_INTERVAL_MILLIS = 1_000L;
+    private static final long MINUTE_WINDOW_MILLIS = 60_000L;
+    private static final int MINUTE_MESSAGE_LIMIT = 20;
+    private static final long DUPLICATE_WINDOW_MILLIS = 30_000L;
+    private static final int DUPLICATE_HISTORY_SIZE = 5;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
+    private final Clock clock;
 
-    private final Cache<Long, LastMessageInfo> recentMessageCache =
+    private final Cache<Long, AbuseState> abuseStateCache =
             Caffeine.newBuilder()
                     .maximumSize(MAX_RATE_LIMIT_ENTRIES)
-                    .expireAfterWrite(Duration.ofMillis(DUPLICATE_COOLDOWN_MILLIS))
-                    .build();
-    private final Cache<Long, BurstWindow> burstWindowCache =
-            Caffeine.newBuilder()
-                    .maximumSize(MAX_RATE_LIMIT_ENTRIES)
-                    .expireAfterWrite(Duration.ofMillis(BURST_WINDOW_MILLIS))
+                    .expireAfterWrite(Duration.ofMillis(MINUTE_WINDOW_MILLIS))
                     .build();
 
-    private record LastMessageInfo(String normalizedContent, long sentAtMillis) {}
+    private record SentMessage(String normalizedContent, long sentAtMillis) {}
 
-    private record BurstWindow(long startedAtMillis, int attempts) {}
+    /** 회원별 도배 판정 상태. 전송된 메시지만 기록하므로 거절된 문장은 다음 시도의 중복 판정에 들어가지 않는다. */
+    private record AbuseState(
+            long minuteStartedAtMillis, int minuteCount, List<SentMessage> recentMessages) {
+
+        private static AbuseState empty(long now) {
+            return new AbuseState(now, 0, List.of());
+        }
+
+        private ErrorCode rejectionFor(String normalizedContent, long now) {
+            boolean duplicated =
+                    recentMessages.stream()
+                            .anyMatch(
+                                    message ->
+                                            message.normalizedContent().equals(normalizedContent)
+                                                    && now - message.sentAtMillis()
+                                                            < DUPLICATE_WINDOW_MILLIS);
+            if (duplicated) {
+                return ErrorCode.CHAT_DUPLICATE_MESSAGE;
+            }
+            if (!recentMessages.isEmpty()
+                    && now - recentMessages.getLast().sentAtMillis() < SEND_INTERVAL_MILLIS) {
+                return ErrorCode.CHAT_BURST_RATE_LIMIT;
+            }
+            if (now - minuteStartedAtMillis < MINUTE_WINDOW_MILLIS
+                    && minuteCount >= MINUTE_MESSAGE_LIMIT) {
+                return ErrorCode.CHAT_BURST_RATE_LIMIT;
+            }
+            return null;
+        }
+
+        private AbuseState withSent(String normalizedContent, long now) {
+            List<SentMessage> updated = new ArrayList<>(recentMessages);
+            updated.add(new SentMessage(normalizedContent, now));
+            if (updated.size() > DUPLICATE_HISTORY_SIZE) {
+                updated.removeFirst();
+            }
+            return now - minuteStartedAtMillis >= MINUTE_WINDOW_MILLIS
+                    ? new AbuseState(now, 1, List.copyOf(updated))
+                    : new AbuseState(minuteStartedAtMillis, minuteCount + 1, List.copyOf(updated));
+        }
+    }
 
     public ChatMessageResponse processMessage(
             ChatMessageRequest request, CustomUserDetails userDetails, String clientIp) {
@@ -80,13 +120,13 @@ public class ChatService {
             throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
 
-        // 4. Per-member burst and duplicate checks
+        // 4. Per-member duplicate, send interval and per-minute checks
         String normalizedContent =
                 NORMALIZATION_IGNORED_PATTERN
                         .matcher(trimmedContent)
                         .replaceAll("")
                         .toLowerCase(Locale.ROOT);
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
         validateAbuseLimits(member.getId(), normalizedContent, now);
 
         // 5. Resort tag resolution
@@ -140,8 +180,7 @@ public class ChatService {
 
     /** Cache eviction for tests or periodic maintenance */
     public void clearCache() {
-        recentMessageCache.invalidateAll();
-        burstWindowCache.invalidateAll();
+        abuseStateCache.invalidateAll();
         chatRecentHistoryBuffer.clear();
     }
 
@@ -151,50 +190,20 @@ public class ChatService {
     }
 
     private void validateAbuseLimits(Long memberId, String normalizedContent, long now) {
-        validateBurstLimit(memberId, now);
-        validateDuplicateMessage(memberId, normalizedContent, now);
-    }
-
-    private void validateBurstLimit(Long memberId, long now) {
-        AtomicBoolean rejected = new AtomicBoolean();
-        burstWindowCache
+        AtomicReference<ErrorCode> rejection = new AtomicReference<>();
+        abuseStateCache
                 .asMap()
                 .compute(
                         memberId,
                         (ignored, current) -> {
-                            BurstWindow updated =
-                                    current == null
-                                                    || now - current.startedAtMillis()
-                                                            >= BURST_WINDOW_MILLIS
-                                            ? new BurstWindow(now, 1)
-                                            : new BurstWindow(
-                                                    current.startedAtMillis(),
-                                                    current.attempts() + 1);
-                            rejected.set(updated.attempts() >= BURST_ATTEMPT_LIMIT);
-                            return updated;
+                            AbuseState state = current == null ? AbuseState.empty(now) : current;
+                            rejection.set(state.rejectionFor(normalizedContent, now));
+                            return rejection.get() == null
+                                    ? state.withSent(normalizedContent, now)
+                                    : state;
                         });
-        if (rejected.get()) {
-            throw new CustomException(ErrorCode.CHAT_BURST_RATE_LIMIT);
-        }
-    }
-
-    private void validateDuplicateMessage(Long memberId, String normalizedContent, long now) {
-        AtomicBoolean rejected = new AtomicBoolean();
-        recentMessageCache
-                .asMap()
-                .compute(
-                        memberId,
-                        (ignored, current) -> {
-                            if (current != null
-                                    && current.normalizedContent().equals(normalizedContent)
-                                    && now - current.sentAtMillis() < DUPLICATE_COOLDOWN_MILLIS) {
-                                rejected.set(true);
-                                return current;
-                            }
-                            return new LastMessageInfo(normalizedContent, now);
-                        });
-        if (rejected.get()) {
-            throw new CustomException(ErrorCode.CHAT_DUPLICATE_MESSAGE);
+        if (rejection.get() != null) {
+            throw new CustomException(rejection.get());
         }
     }
 }
