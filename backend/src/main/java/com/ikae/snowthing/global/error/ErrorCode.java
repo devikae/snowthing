@@ -142,7 +142,7 @@ public enum ErrorCode {
     CHAT_EXTERNAL_LINK_FORBIDDEN(
             HttpStatus.BAD_REQUEST, "CHAT_001", "외부 링크 및 메신저 연락처는 전송할 수 없습니다."),
     CHAT_DUPLICATE_MESSAGE(
-            HttpStatus.TOO_MANY_REQUESTS, "CHAT_002", "동일한 메시지를 연속으로 보낼 수 없습니다 (5초간 대기)."),
+            HttpStatus.TOO_MANY_REQUESTS, "CHAT_002", "같은 메시지를 짧은 시간에 반복해서 보낼 수 없습니다."),
     CHAT_BURST_RATE_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "CHAT_003", "메시지 전송 속도가 너무 빠릅니다. 잠시 후 다시 시도해 주세요."),
     CHAT_MESSAGE_EMPTY(HttpStatus.BAD_REQUEST, "CHAT_004", "공백 메시지는 전송할 수 없습니다."),

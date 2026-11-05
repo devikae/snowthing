@@ -1406,56 +1406,14 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 @media (max-width: 640px) { .carpool-page { padding-block: 24px 38px; }.carpool-heading { align-items: flex-start; flex-direction: column; gap: 14px; }.carpool-heading h1 { font-size: 22px; }.carpool-primary-button { align-self: stretch; justify-content: center; }.carpool-card { align-items: flex-start; flex-direction: column; gap: 13px; padding: 16px 13px; }.carpool-card-cost { width: 100%; align-items: flex-start; }.carpool-card h2 { font-size: 14px; }.carpool-route { font-size: 13px; }
 }
 .carpool-compose-page,.carpool-detail-page { min-height: calc(100vh - 142px); padding-block: 28px 56px; }
-.carpool-compose-heading { margin-bottom: 18px; }.carpool-compose-heading a,.carpool-back { color: #0284c7; font-size: 12px; font-weight: 700; }.carpool-compose-heading h1 { margin: 8px 0 5px; color: #0f2942; font-size: 24px; }.carpool-compose-heading p { margin: 0; color: #64748b; font-size: 13px; }
+.carpool-compose-heading { margin-bottom: 18px; }.carpool-compose-heading a { color: #0284c7; font-size: 12px; font-weight: 700; }.carpool-compose-heading h1 { margin: 8px 0 5px; color: #0f2942; font-size: 24px; }.carpool-compose-heading p { margin: 0; color: #64748b; font-size: 13px; }
 .carpool-form { display: flex; max-width: 900px; flex-direction: column; gap: 22px; border: 1px solid #dbe3ed; border-radius: 13px; background: #fff; padding: 25px; box-shadow: 0 2px 6px rgba(15,23,42,.04); }.carpool-form section { display: flex; flex-direction: column; gap: 12px; }.carpool-form h2 { margin: 0; color: #0f2942; font-size: 15px; }.carpool-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }.carpool-form label { display: flex; flex-direction: column; gap: 7px; color: #334155; font-size: 12px; font-weight: 700; }.carpool-form input,.carpool-form textarea { width: 100%; box-sizing: border-box; border: 1px solid #dbe3ed; border-radius: 8px; background: #fbfdff; padding: 11px 12px; color: #1e293b; font: inherit; font-size: 13px; outline: 0; }.carpool-form input:focus,.carpool-form textarea:focus { border-color: #38a3d1; box-shadow: 0 0 0 3px rgba(56,163,209,.12); }.carpool-form textarea { min-height: 150px; resize: vertical; }.carpool-contact-field { max-width: 440px; }.carpool-check { flex-direction: row !important; align-items: center; font-weight: 500 !important; }.carpool-check input { width: 16px; }.carpool-form footer { display: flex; align-items: center; justify-content: flex-end; gap: 9px; border-top: 1px solid #edf2f7; padding-top: 18px; }.carpool-form footer > a { border: 1px solid #dbe3ed; border-radius: 8px; padding: 10px 15px; color: #64748b; font-size: 13px; }.carpool-form-error { margin: 0; color: #dc2626; font-size: 12px; }
-.carpool-detail-card { max-width: 900px; border: 1px solid #dbe3ed; border-radius: 13px; background: #fff; padding: 25px; box-shadow: 0 2px 6px rgba(15,23,42,.04); }.carpool-detail-head { margin-top: 20px; border-bottom: 1px solid #edf2f7; padding-bottom: 18px; }.carpool-detail-badges span { border-radius: 4px; background: #e0f2fe; padding: 4px 7px; color: #0369a1; font-size: 10px; font-weight: 750; }.carpool-detail-head h1 { margin: 10px 0 7px; color: #0f2942; font-size: 24px; }.carpool-detail-head p { margin: 0; color: #94a3b8; font-size: 12px; }.carpool-detail-route { display: flex; align-items: center; gap: 22px; margin: 22px 0; border-radius: 10px; background: #f5f9fc; padding: 18px; }.carpool-detail-route > div { display: flex; min-width: 0; flex-direction: column; gap: 4px; }.carpool-detail-route small { color: #0284c7; font-size: 10px; font-weight: 800; }.carpool-detail-route strong { color: #1e293b; font-size: 16px; }.carpool-detail-route span:not(.material-symbols-outlined) { color: #64748b; font-size: 12px; }.carpool-detail-route .material-symbols-outlined { color: #38a3d1; }.carpool-detail-content { min-height: 100px; margin: 0 0 20px; color: #334155; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }.carpool-cost-panel { border: 1px solid #bae6fd; border-radius: 10px; background: #f0f9ff; padding: 18px; }.carpool-cost-panel h2 { margin: 0 0 13px; color: #0f2942; font-size: 14px; }.carpool-cost-panel div { display: flex; justify-content: space-between; padding: 6px 0; color: #475569; font-size: 13px; }.carpool-cost-panel b { color: #0f2942; font-size: 16px; }.carpool-cost-panel small { display: block; margin-top: 8px; color: #64748b; font-size: 11px; }.carpool-contact-result { margin: 18px 0 0; border-radius: 8px; background: #f8fafc; padding: 12px; color: #334155; font-size: 13px; }
-@media (max-width: 640px) { .carpool-compose-page,.carpool-detail-page { padding-block: 18px 38px; }.carpool-form { padding: 18px 15px; }.carpool-form-grid { grid-template-columns: 1fr; }.carpool-detail-card { padding: 18px 15px; }.carpool-detail-head h1 { font-size: 20px; }.carpool-detail-route { align-items: stretch; flex-direction: column; gap: 10px; }.carpool-detail-route .material-symbols-outlined { transform: rotate(90deg); align-self: center; } }
-.carpool-cost-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-bottom: 1px solid #dbeafe; padding-bottom: 13px; }.carpool-cost-summary > div { display: flex; flex-direction: column; gap: 4px; }.carpool-cost-summary span { color: #64748b; font-size: 11px; }.carpool-cost-summary b,.carpool-cost-summary strong { color: #0f2942; font-size: 18px; }.carpool-cost-summary strong { color: #0369a1; }.carpool-cost-breakdown { margin-top: 8px; }.carpool-cost-breakdown div { padding: 3px 0; color: #64748b; font-size: 11px; }.carpool-cost-breakdown b { color: #475569; font-size: 11px; font-weight: 600; }
-@media (max-width: 640px) { .carpool-cost-summary { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .carpool-compose-page,.carpool-detail-page { padding-block: 18px 38px; }.carpool-form { padding: 18px 15px; }.carpool-form-grid { grid-template-columns: 1fr; }}
 .carpool-comments-card { max-width: 900px; margin-top: 18px; }.carpool-comments-card .post-comment-write { display: flex; gap: 8px; }.carpool-comments-card textarea { min-height: 72px; flex: 1; resize: vertical; border: 1px solid #dbe3ed; border-radius: 8px; padding: 10px; font: inherit; font-size: 13px; }.carpool-comments-card button { align-self: flex-end; border: 0; border-radius: 7px; background: #0f2942; padding: 10px 14px; color: white; font-size: 12px; }.carpool-comments-empty { color: #94a3b8; font-size: 13px; text-align: center; }.carpool-comments-list article { border-top: 1px solid #edf2f7; padding: 13px 0 0; margin-top: 13px; }.carpool-comments-list article div { display: flex; justify-content: space-between; color: #64748b; font-size: 11px; }.carpool-comments-list article p { margin: 7px 0 0; color: #334155; font-size: 13px; white-space: pre-wrap; }
-.carpool-content-panel { margin-top: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; padding: 20px; }.carpool-content-panel h2 { margin: 0 0 14px; color: #0f2942; font-size: 14px; }.carpool-content-panel p { min-height: 100px; margin: 0; color: #334155; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
 .carpool-pagination { display: flex; justify-content: center; gap: 6px; margin-top: 22px; }.carpool-pagination a { display: inline-flex; min-width: 36px; height: 36px; align-items: center; justify-content: center; border: 1px solid #dbe3ed; border-radius: 8px; background: #fff; padding: 0 10px; color: #475569; font-size: 12px; font-weight: 700; }.carpool-pagination a.active { border-color: #0f2942; background: #0f2942; color: #fff; }.carpool-pagination a.disabled { pointer-events: none; opacity: .35; }
-.carpool-auth-gate { display: grid; justify-items: center; gap: 12px; border: 1px solid #dbe3ed; border-radius: 14px; background: #fff; padding: 54px 24px; text-align: center; }.carpool-auth-gate > .material-symbols-outlined { color: #0284c7; font-size: 34px; }.carpool-auth-gate h2,.carpool-auth-gate p { margin: 0; }.carpool-auth-gate h2 { color: #0f2942; font-size: 20px; }.carpool-auth-gate p { color: #64748b; font-size: 13px; }.carpool-auth-gate > div { display: flex; align-items: center; gap: 14px; margin-top: 8px; }.carpool-equipment-check { align-self: end; min-height: 44px; }
+.carpool-auth-gate { display: grid; justify-items: center; gap: 12px; border: 1px solid #dbe3ed; border-radius: 14px; background: #fff; padding: 54px 24px; text-align: center; }.carpool-auth-gate > .material-symbols-outlined { color: #0284c7; font-size: 34px; }.carpool-auth-gate h2,.carpool-auth-gate p { margin: 0; }.carpool-auth-gate h2 { color: #0f2942; font-size: 20px; }.carpool-auth-gate p { color: #64748b; font-size: 13px; }.carpool-auth-gate > div { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
 .comment-profile-avatar { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 50%; object-fit: cover; }.comment-profile-fallback { display: inline-flex; align-items: center; justify-content: center; background: #0ea5e9; color: #fff; font-size: 14px; font-weight: 800; }.comment-author-with-avatar { display: flex; align-items: center; gap: 10px; }.comment-youtube-row { display: flex; align-items: flex-start; gap: 11px; }.comment-youtube-body { min-width: 0; flex: 1; }.comment-youtube-body header { display: flex; align-items: center; gap: 8px; }.comment-youtube-body time { color: #94a3b8; font-size: 10px; }.comment-youtube-body p { margin: 6px 0 0; color: #334155; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }.comment-youtube-body p.deleted { color: #94a3b8; font-style: italic; }.comment-youtube-actions { display: flex; gap: 12px; margin-top: 7px; }.comment-youtube-actions button,.comment-inline-editor button { border: 0; background: transparent; padding: 0; color: #475569; font-size: 11px; font-weight: 750; }.comment-reply-arrow { margin-top: 7px; color: #94a3b8; }.comment-inline-editor textarea { display: block; width: 100%; min-height: 70px; margin: 8px 0; border: 1px solid #dbe3ed; border-radius: 8px; padding: 9px; }.comment-inline-editor { display: flex; flex-wrap: wrap; gap: 10px; }.comment-inline-editor textarea { flex-basis: 100%; }.reply-more { margin: 10px 0 0 50px; }.comment-login-guide { display: flex; align-items: center; gap: 10px; border-radius: 9px; background: #f8fafc; padding: 13px 15px; }.comment-login-guide p { flex: 1; margin: 0; color: #64748b; font-size: 12px; }.comment-login-guide a { color: #0369a1; font-size: 12px; font-weight: 800; }.market-comment-author { display: flex !important; align-items: center; justify-content: flex-start !important; gap: 9px; }.market-comment-author time { margin-left: auto; }
 .carpool-widget-empty { margin: 0; padding: 18px 4px; color: #94a3b8; font-size: 11px; text-align: center; }.carpool-widget-more { display: block; border-top: 1px solid #f1f5f9; padding: 10px 12px; color: #0284c7; font-size: 10px; font-weight: 750; text-align: center; }
-
-/* Carpool detail hierarchy */
-.carpool-detail-page .carpool-detail-card,
-.carpool-detail-page .carpool-comments-card { width: min(100%, 860px); box-sizing: border-box; margin-inline: auto; }
-.carpool-detail-page .carpool-detail-card { border-color: #e5eaf0; border-radius: 18px; padding: 30px 32px 32px; box-shadow: 0 12px 32px rgba(15, 41, 66, .06); }
-.carpool-detail-page .carpool-back { display: inline-flex; align-items: center; color: #64748b; transition: color .15s ease; }
-.carpool-detail-page .carpool-back:hover { color: #0284c7; }
-.carpool-detail-page .carpool-detail-head { margin-top: 28px; padding-bottom: 22px; }
-.carpool-detail-page .carpool-detail-badges { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
-.carpool-trip-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; background: #0f2942; padding: 6px 12px; color: #ffffff; font-size: 13px; font-weight: 800; letter-spacing: -.01em; box-shadow: 0 2px 4px rgba(15,41,66,.12); }
-.carpool-equip-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; padding: 6px 13px; font-size: 13px; font-weight: 800; letter-spacing: -.01em; }
-.carpool-equip-badge.available { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
-.carpool-equip-badge.unavailable { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
-.carpool-detail-page .carpool-detail-head h1 { margin: 14px 0 9px; font-size: clamp(23px, 3vw, 30px); line-height: 1.35; letter-spacing: -.02em; }
-.carpool-detail-page .carpool-detail-meta { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b; margin-top: 6px; }
-.carpool-detail-page .carpool-detail-meta strong { color: #334155; font-weight: 700; }
-.carpool-meta-dot { color: #cbd5e1; margin: 0 2px; }
-.carpool-detail-page .carpool-detail-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-.carpool-detail-page .carpool-detail-actions a,.carpool-detail-page .carpool-detail-actions button { border: 1px solid #dbe3ed; border-radius: 7px; background: #fff; padding: 7px 11px; color: #475569; font-size: 12px; font-weight: 700; }
-.carpool-detail-page .carpool-detail-actions button { color: #dc2626; cursor: pointer; }
-.carpool-detail-page .carpool-detail-actions button:disabled { cursor: wait; opacity: .55; }
-
-.carpool-detail-page .carpool-detail-route { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(200px, 1.4fr) minmax(0, 1.2fr); align-items: center; gap: 16px; margin: 24px 0; border: 1px solid #bae6fd; border-radius: 16px; background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%); padding: 24px 28px; box-shadow: 0 4px 14px rgba(2, 132, 199, .06); }
-.carpool-detail-page .carpool-route-point { display: flex; min-width: 0; flex-direction: row; align-items: flex-start; gap: 11px; padding: 0; }
-.carpool-detail-page .carpool-route-point i { width: 12px; height: 12px; flex: 0 0 12px; margin-top: 4px; border: 3px solid #0ea5e9; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px #e0f2fe; }
-.carpool-detail-page .carpool-route-point.end i { border-color: #0f2942; box-shadow: 0 0 0 4px #e2e8f0; }
-.carpool-detail-page .carpool-route-point > div { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
-.carpool-detail-page .carpool-route-point small { color: #64748b; font-size: 11px; font-weight: 700; }
-.carpool-detail-page .carpool-route-point strong { overflow: hidden; font-size: 17px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; color: #0f2942; }
-.carpool-detail-page .resort-dest-label { color: #0284c7; font-size: 12px; font-weight: 700; }
-
-.carpool-route-center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
-.carpool-schedule-badge { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; border: 1.5px solid #0284c7; border-radius: 12px; padding: 10px 18px; box-shadow: 0 4px 14px rgba(2, 132, 199, .12); }
-.carpool-schedule-badge .schedule-main { display: flex; align-items: center; gap: 6px; color: #0284c7; }
-.carpool-schedule-badge .schedule-main .material-symbols-outlined { font-size: 18px; }
-.carpool-schedule-badge .schedule-main strong { font-size: 15px; font-weight: 850; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.carpool-schedule-badge .schedule-return { display: flex; align-items: center; gap: 4px; color: #64748b; font-size: 11.5px; font-weight: 600; margin-top: 3px; }
-.carpool-route-arrow-line { display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 16px; margin-top: 2px; }
 
 .carpool-gps-btn { display: inline-flex; align-items: center; gap: 5px; height: 38px; border: 1px solid #bae6fd; border-radius: 8px; background: #f0f9ff; padding: 0 12px; color: #0284c7; font-size: 13px; font-weight: 750; cursor: pointer; white-space: nowrap; transition: all .15s ease; }
 .carpool-gps-btn:hover:not(:disabled) { background: #e0f2fe; border-color: #7dd3fc; }
@@ -1463,50 +1421,6 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 
 .carpool-time-selects select { height: 44px; font-size: 14.5px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 10px; background: #fbfdff; color: #1e293b; }
 .carpool-time-selects select:focus { border-color: #0284c7; outline: 0; }
-
-.carpool-detail-page .carpool-cost-panel { overflow: hidden; border: 1px solid #bae6fd; border-radius: 16px; background: linear-gradient(135deg, #f0f9ff 0%, #f8fcff 100%); padding: 0; }
-.carpool-detail-page .carpool-cost-heading { display: grid; grid-template-columns: 1.2fr 1fr; align-items: stretch; padding: 24px 26px; }
-.carpool-detail-page .carpool-cost-heading > div { padding: 0; }
-.carpool-detail-page .carpool-cost-heading > div:first-child { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; }
-.carpool-detail-page .carpool-cost-heading > div:first-child > span { color: #0369a1; font-size: 12px; font-weight: 800; }
-.carpool-detail-page .carpool-cost-heading > div:first-child > strong { color: #075985; font-size: 32px; line-height: 1; letter-spacing: -.04em; }
-.carpool-detail-page .carpool-cost-heading > div:first-child > strong small { display: inline; margin: 0 0 0 3px; color: #075985; font-size: 15px; }
-.carpool-detail-page .carpool-cost-totals { display: grid; grid-template-columns: 1fr 1fr; border-left: 1px solid #d7edf8; }
-.carpool-detail-page .carpool-cost-totals > div { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 18px; }
-.carpool-detail-page .carpool-cost-totals > div + div { border-left: 1px solid #d7edf8; }
-.carpool-detail-page .carpool-cost-totals span { color: #64748b; font-size: 11px; }
-.carpool-detail-page .carpool-cost-totals b { font-size: 17px; }
-.carpool-detail-page .carpool-cost-breakdown { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 0; border-top: 1px solid #d7edf8; background: #d7edf8; }
-.carpool-detail-page .carpool-cost-breakdown > div { display: flex; align-items: center; justify-content: flex-start; gap: 9px; background: rgba(255,255,255,.72); padding: 14px 15px; }
-.carpool-detail-page .carpool-cost-breakdown > div > .material-symbols-outlined { color: #38a3d1; font-size: 19px; }
-.carpool-detail-page .carpool-cost-breakdown p { display: flex; min-width: 0; flex-direction: column; gap: 3px; margin: 0; }
-.carpool-detail-page .carpool-cost-breakdown small { margin: 0; color: #94a3b8; font-size: 9px; }
-.carpool-detail-page .carpool-cost-breakdown b { font-size: 12px; white-space: nowrap; }
-.carpool-detail-page .carpool-fuel-time { margin: 0; border-top: 1px solid #d7edf8; background: rgba(255,255,255,.54); padding: 8px 15px; color: #94a3b8; font-size: 9px; text-align: right; }
-
-.carpool-detail-page .carpool-content-panel { margin-top: 24px; border-color: #e5eaf0; border-radius: 14px; padding: 22px 24px; }
-.carpool-detail-page .carpool-content-panel h2 { display: flex; align-items: center; gap: 7px; margin-bottom: 16px; font-size: 14px; }
-.carpool-detail-page .carpool-content-panel h2 .material-symbols-outlined { color: #38a3d1; font-size: 18px; }
-.carpool-detail-page .carpool-content-panel p { min-height: 0; font-size: 14px; line-height: 1.85; }
-.carpool-detail-page .carpool-contact-result { display: flex; align-items: center; gap: 11px; margin-top: 14px; border: 1px solid #e5eaf0; border-radius: 12px; background: #f8fafc; padding: 14px 16px; }
-.carpool-detail-page .carpool-contact-result > .material-symbols-outlined { color: #0284c7; }
-.carpool-detail-page .carpool-contact-result > div { display: flex; flex-direction: column; gap: 3px; }
-.carpool-detail-page .carpool-contact-result small { color: #94a3b8; font-size: 9px; }
-.carpool-detail-page .carpool-contact-result strong { color: #334155; font-size: 12px; overflow-wrap: anywhere; }
-
-@media (max-width: 700px) {
-  .carpool-detail-page .carpool-detail-card { border-radius: 12px; padding: 20px 16px; }
-  .carpool-detail-page .carpool-detail-head { margin-top: 20px; }
-  .carpool-detail-page .carpool-detail-route { grid-template-columns: 1fr; gap: 12px; padding: 18px; }
-  .carpool-detail-page .carpool-route-line { min-height: 24px; justify-content: flex-start; padding-left: 1px; }
-  .carpool-detail-page .carpool-route-line::before,.carpool-detail-page .carpool-route-line::after { display: none; }
-  .carpool-detail-page .carpool-route-line .material-symbols-outlined { transform: rotate(90deg); }
-  .carpool-detail-page .carpool-cost-heading { grid-template-columns: 1fr; gap: 22px; padding: 22px 18px; }
-  .carpool-detail-page .carpool-cost-totals { border-top: 1px solid #d7edf8; border-left: 0; padding-top: 18px; }
-  .carpool-detail-page .carpool-cost-totals > div { padding: 0 12px 0 0; }
-  .carpool-detail-page .carpool-cost-breakdown { grid-template-columns: 1fr 1fr; }
-  .carpool-detail-page .carpool-content-panel { padding: 18px; }
-}
 
 /* Shared comment presentation: posts, market and carpool */
 .post-comments-card,
@@ -1682,50 +1596,6 @@ html[data-theme="dark"] .post-detail-reactions button:not(.active),
 html[data-theme="dark"] .detail-carpool-card > header > a {
   color: #b8c3d1;
 }
-
-/* Carpool detail surfaces use the same dark theme as the rest of the page. */
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-card,
-html[data-theme="dark"] .carpool-detail-page .carpool-comments-card {
-  border-color: var(--snow-border);
-  background: var(--snow-canvas);
-  color: var(--snow-ink);
-}
-
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-head { border-color: var(--snow-border); }
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-head h1,
-html[data-theme="dark"] .carpool-detail-page .carpool-route-point strong,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-totals b,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-breakdown b,
-html[data-theme="dark"] .carpool-detail-page .carpool-contact-result strong { color: var(--snow-ink); }
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-head p,
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-head p strong,
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-content,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-panel h2,
-html[data-theme="dark"] .carpool-detail-page .carpool-route-point small,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-totals span,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-breakdown small,
-html[data-theme="dark"] .carpool-detail-page .carpool-fuel-time,
-html[data-theme="dark"] .carpool-detail-page .carpool-contact-result small { color: #b8c3d1; }
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-actions a,
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-actions button { border-color: var(--snow-border-strong); background: var(--snow-surface-low); color: #d5e1ee; }
-html[data-theme="dark"] .carpool-detail-page .carpool-detail-route { border-color: var(--snow-border); background: var(--snow-surface-low); }
-html[data-theme="dark"] .carpool-detail-page .carpool-route-point i { background: var(--snow-canvas); box-shadow: 0 0 0 4px #1e3a50; }
-html[data-theme="dark"] .carpool-detail-page .carpool-route-point.end i { border-color: #93a4b7; box-shadow: 0 0 0 4px #293747; }
-html[data-theme="dark"] .carpool-detail-page .carpool-route-line::before,
-html[data-theme="dark"] .carpool-detail-page .carpool-route-line::after { background: #526174; }
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-panel { border-color: #28516a; background: #142b3b; }
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-heading > div:first-child > span,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-heading > div:first-child > strong,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-heading > div:first-child > strong small { color: #7dd3fc; }
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-totals,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-totals > div + div,
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-breakdown,
-html[data-theme="dark"] .carpool-detail-page .carpool-fuel-time { border-color: #28516a; }
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-breakdown { background: #28516a; }
-html[data-theme="dark"] .carpool-detail-page .carpool-cost-breakdown > div { background: #1a3548; }
-html[data-theme="dark"] .carpool-detail-page .carpool-content-panel { border-color: var(--snow-border); background: var(--snow-surface-low); }
-html[data-theme="dark"] .carpool-detail-page .carpool-content-panel h2 { color: var(--snow-ink); }
-html[data-theme="dark"] .carpool-detail-page .carpool-contact-result { border-color: var(--snow-border); background: var(--snow-surface-low); }
 
 @media (max-width: 900px) {
   .home-live-chat { grid-column: 1 / -1; }

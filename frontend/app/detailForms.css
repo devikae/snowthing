@@ -151,9 +151,9 @@ html .content-compose-page input[type="file"]::file-selector-button { margin-rig
 
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) { width: min(100% - 48px,1184px); margin: 32px auto 64px; padding: 0; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-layout { grid-template-columns: minmax(0,1fr) 256px; gap: 32px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card,.post-comments-card,.carpool-detail-card,.market-description) { border: 0; border-radius: 0; background: transparent; padding: 0; box-shadow: none; }
+html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card,.post-comments-card,.market-description) { border: 0; border-radius: 0; background: transparent; padding: 0; box-shadow: none; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-card { margin-bottom: 32px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card > h1,.carpool-detail-head > h1,.market-detail-summary > h1) { margin: 16px 0; color: var(--snow-ink); font: 700 24px/32px var(--font-hanken); letter-spacing: -.03em; overflow-wrap: anywhere; }
+html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card > h1,.market-detail-summary > h1) { margin: 16px 0; color: var(--snow-ink); font: 700 24px/32px var(--font-hanken); letter-spacing: -.03em; overflow-wrap: anywhere; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author { margin: 0; padding: 0 0 20px; border-color: var(--snow-border); background: transparent; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-author-avatar { width: 32px; height: 32px; flex: 0 0 32px; }
 
@@ -195,7 +195,7 @@ html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-deta
 }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-reactions button.active { border-color: var(--snow-ink); background: var(--snow-ink); color: var(--snow-canvas); }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-comments-card { border-top: 1px solid var(--snow-border); padding-top: 24px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-comments-card > header h2,.market-description > h2,.carpool-content-panel > h2) { color: var(--snow-ink); font: 600 16px/24px var(--font-hanken); }
+html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-comments-card > header h2,.market-description > h2) { color: var(--snow-ink); font: 600 16px/24px var(--font-hanken); }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-comment-compose,.post-reply-compose) { border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); box-shadow: none; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-comment-textarea { background: transparent; color: var(--snow-ink); font: 400 14px/24px var(--font-hanken); }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-comment-compose-footer { border-color: var(--snow-border); background: var(--snow-surface-low); }
@@ -215,25 +215,6 @@ html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-deta
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-detail-price { color: var(--snow-ink); font-size: 24px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-contact { border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-surface-low); color: var(--snow-ink); }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-description { padding: 24px 0; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.carpool-detail-route,.carpool-cost-panel,.carpool-content-panel) { border-color: var(--snow-border); border-radius: 8px; background: var(--snow-surface-low); box-shadow: none; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-content-panel { background: transparent; padding: 24px 0; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-content-panel { border: 0; border-radius: 0; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-detail-badges > span { border: 1px solid var(--snow-border); border-radius: 4px; background: var(--snow-surface-low); color: var(--snow-ink-soft); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-route-point i { border-color: var(--snow-border-strong); background: var(--snow-ink-soft); box-shadow: none; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.carpool-route-point small,.carpool-route-point span,.carpool-route-line,.carpool-cost-heading > div > span,.carpool-cost-totals span,.carpool-fuel-time) { color: var(--snow-muted); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.carpool-route-point strong,.carpool-cost-totals b,.carpool-cost-breakdown b) { color: var(--snow-ink); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-heading > div > strong { color: var(--snow-ink); font: 700 30px/36px var(--font-hanken); letter-spacing: -.03em; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-heading > div > strong small { margin-left: 4px; color: var(--snow-muted); font-size: 14px; font-weight: 400; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-totals > div { border-color: var(--snow-border); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-breakdown { border-block: 1px solid var(--snow-border); background: var(--snow-canvas); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-breakdown > div { border-color: var(--snow-border); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-breakdown > div { background: var(--snow-canvas); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-breakdown .material-symbols-outlined { color: var(--snow-muted); font-size: 18px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-breakdown small { color: var(--snow-muted); font-size: 12px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-fuel-time { border: 0; background: transparent; font-size: 12px; line-height: 20px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-detail-card { background: transparent; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-cost-heading > div:first-child > :is(span,strong) { color: var(--snow-ink); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .carpool-content-panel p { color: var(--snow-ink-soft); font-size: 16px; line-height: 1.8; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(a,button,textarea):focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
 html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents { color: var(--snow-ink-soft); font: 400 16px/1.8 var(--font-hanken); }
 html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(p,li) { color: inherit; font-size: 16px; line-height: 1.8; }
@@ -251,8 +232,8 @@ html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :i
   html .content-compose-page .market-price-row > label:first-child { flex-basis: 100%; }
   html .content-compose-page .kakao-map { height: 220px; }
   html .content-compose-page .compose-attach-row { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
-  html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card > h1,.carpool-detail-head > h1,.market-detail-summary > h1) { font-size: 20px; line-height: 28px; }
   html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-detail-card { padding: 0; }
+  html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card > h1,.market-detail-summary > h1) { font-size: 20px; line-height: 28px; }
 }
 @media(prefers-reduced-motion:reduce) {
   html .content-compose-page :is(input,select,textarea,button,a) { transition: none; }
