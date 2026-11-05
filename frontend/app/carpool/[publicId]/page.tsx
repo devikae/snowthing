@@ -3,16 +3,21 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AuthorMenu } from "../../components/AuthorMenu";
+import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import PostComments from "../../components/PostComments";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { carpoolCostLabel, formatCarpoolDateTime } from "../format";
 
 interface CarpoolDetail {
   publicId: string;
   title: string;
   content: string;
+  writerPublicId: string | null;
   writerName: string;
+  writerProfileImageUrl: string | null;
   departureRegion: string;
   meetingPlace: string;
   destinationResortName: string;
@@ -21,33 +26,36 @@ interface CarpoolDetail {
   returnAt: string | null;
   passengerCapacity: number;
   equipmentLoadAvailable: boolean;
-  fuelPrice: number;
-  fuelPriceSource: "OPINET" | "CACHE" | "USER_INPUT";
-  fuelPriceObservedAt: string;
-  routeDistanceKm: number;
-  routeTollFee: number;
-  routeSource: "KAKAO" | "MANUAL";
-  estimatedFuelCost: number;
-  estimatedTotalCost: number;
+  costMode: "AUTO" | "MANUAL";
+  fuelPrice: number | null;
+  fuelPriceSource: "OPINET" | "CACHE" | "USER_INPUT" | null;
+  fuelPriceObservedAt: string | null;
+  routeDistanceKm: number | null;
+  routeTollFee: number | null;
+  routeSource: "KAKAO" | "MANUAL" | null;
+  estimatedFuelCost: number | null;
+  estimatedTotalCost: number | null;
   estimatedCostPerPerson: number;
   contactInfo: string | null;
   contactPublicToGuest: boolean;
   canManage: boolean;
+  createdAt: string;
 }
 
-function formatCarpoolDateTime(isoString: string): string {
-  if (!isoString) return "";
-  const d = new Date(isoString);
-  if (isNaN(d.getTime())) return isoString;
-  const days = ["일", "월", "화", "수", "목", "금", "토"];
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const dayName = days[d.getDay()];
-  const h = d.getHours();
-  const min = d.getMinutes().toString().padStart(2, "0");
-  const period = h < 12 ? "오전" : "오후";
-  const displayHour = h % 12 === 0 ? 12 : h % 12;
-  return `${m}.${day} (${dayName}) ${period} ${displayHour}:${min}`;
+const formatNumber = (value: number | null) => (value ?? 0).toLocaleString("ko-KR");
+
+function fuelPriceNote(item: CarpoolDetail): string {
+  const source =
+    item.fuelPriceSource === "CACHE"
+      ? "오피넷 유효 캐시"
+      : item.fuelPriceSource === "USER_INPUT"
+        ? "유가 사용자 직접 입력"
+        : "오피넷 유가";
+  const observedAt = item.fuelPriceObservedAt
+    ? ` ${formatCarpoolDateTime(item.fuelPriceObservedAt)} 기준`
+    : "";
+  const route = item.routeSource === "MANUAL" ? "경로와 통행료 사용자 직접 입력, " : "";
+  return `${route}${source}${observedAt}`;
 }
 
 export default function CarpoolDetailPage() {
@@ -87,157 +95,96 @@ export default function CarpoolDetailPage() {
       <TopNav active="carpool" />
       <main className="community-container carpool-detail-page content-detail-page">
         {error ? (
-          <div className="carpool-empty">모집글을 불러오지 못했습니다.</div>
+          <div className="carpool-empty">
+            <p>모집글을 불러오지 못했습니다.</p>
+            <button type="button" onClick={() => window.location.reload()}>다시 시도</button>
+          </div>
         ) : !item ? (
           <div className="carpool-empty">모집글을 불러오는 중입니다.</div>
         ) : (
           <>
-            <article className="carpool-detail-card">
-              <Link href="/carpool" className="carpool-back">
-                ← 카풀·동행 목록
-              </Link>
-              <div className="carpool-detail-head">
-                <div className="carpool-detail-badges">
-                  <span className={`carpool-trip-badge ${item.tripType === "ROUND_TRIP" ? "round-trip" : "one-way"}`}>
-                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }} aria-hidden="true">
-                      {item.tripType === "ROUND_TRIP" ? "sync_alt" : "trending_flat"}
-                    </span>
-                    {item.tripType === "ROUND_TRIP" ? "왕복 카풀" : "편도 카풀"}
-                  </span>
-                  <span className={`carpool-equip-badge ${item.equipmentLoadAvailable ? "available" : "unavailable"}`}>
-                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }} aria-hidden="true">
-                      {item.equipmentLoadAvailable ? "downhill_skiing" : "block"}
-                    </span>
-                    {item.equipmentLoadAvailable ? "스키·보드 장비 적재 가능" : "장비 적재 불가 (몸만 탑승)"}
+            <div className="post-detail-toolbar">
+              <Link href="/carpool"><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
+            </div>
+            <div className="carpool-view">
+              <header className="carpool-view-head">
+                <div className="carpool-view-badges">
+                  <span className="carpool-view-badge solid">{item.tripType === "ROUND_TRIP" ? "왕복" : "편도"}</span>
+                  <span className={`carpool-view-badge ${item.equipmentLoadAvailable ? "outline" : "muted"}`}>
+                    {item.equipmentLoadAvailable ? "장비 적재 가능" : "장비 적재 불가"}
                   </span>
                 </div>
                 <h1>{item.title}</h1>
-                <p className="carpool-detail-meta">
-                  <strong>{item.writerName}</strong>
-                  <span className="carpool-meta-dot">·</span>
-                  <time>{formatCarpoolDateTime(item.departureAt)} 출발</time>
-                </p>
-                {item.canManage && (
-                  <div className="carpool-detail-actions">
-                    <Link href={`/carpool/${publicId}/edit`}>수정</Link>
-                    <button type="button" disabled={deleting} onClick={() => void deleteCarpool()}>
-                      {deleting ? "삭제 중" : "삭제"}
-                    </button>
-                  </div>
-                )}
-              </div>
-              <section className="carpool-detail-route" aria-label="이동 경로 및 일정">
-                <div className="carpool-route-point start">
-                  <i />
+                <div className="post-detail-author">
+                  <CommentProfileAvatar
+                    className="post-detail-author-avatar"
+                    nickname={item.writerName}
+                    profileImageUrl={item.writerProfileImageUrl}
+                    size={32}
+                  />
                   <div>
-                    <small>출발 장소</small>
-                    <strong>{item.departureRegion}</strong>
-                    <span>{item.meetingPlace}</span>
+                    <AuthorMenu publicId={item.writerPublicId} nickname={item.writerName} />
+                    <small>{formatCarpoolDateTime(item.createdAt)}</small>
                   </div>
-                </div>
-                <div className="carpool-route-center">
-                  <div className="carpool-schedule-badge">
-                    <div className="schedule-main">
-                      <span className="material-symbols-outlined" aria-hidden="true">schedule</span>
-                      <strong>{formatCarpoolDateTime(item.departureAt)} 출발</strong>
+                  {item.canManage && (
+                    <div className="post-detail-owner-actions">
+                      <Link href={`/carpool/${publicId}/edit`}>수정</Link>
+                      <button type="button" disabled={deleting} onClick={() => void deleteCarpool()}>
+                        {deleting ? "삭제 중" : "삭제"}
+                      </button>
                     </div>
-                    {item.returnAt && (
-                      <div className="schedule-return">
-                        <span className="material-symbols-outlined" aria-hidden="true">event_repeat</span>
-                        <small>복귀: {formatCarpoolDateTime(item.returnAt)}</small>
-                      </div>
+                  )}
+                </div>
+              </header>
+
+              <aside className="carpool-view-side">
+                <section className="carpool-view-card" aria-label="비용">
+                  <small>{carpoolCostLabel(item.costMode)}</small>
+                  <p className="carpool-view-price">
+                    {item.estimatedCostPerPerson.toLocaleString("ko-KR")}<span>원</span>
+                  </p>
+                  <dl className="carpool-view-rows">
+                    <div><dt>모집 인원</dt><dd>{item.passengerCapacity}명</dd></div>
+                    {item.costMode === "AUTO" && (
+                      <>
+                        <div><dt>{item.routeSource === "MANUAL" ? "직접 입력 거리" : "이동 거리"}</dt><dd>{formatNumber(item.routeDistanceKm)}km</dd></div>
+                        <div><dt>통행료</dt><dd>{formatNumber(item.routeTollFee)}원</dd></div>
+                        <div><dt>{item.fuelPriceSource === "USER_INPUT" ? "사용자 입력 유가" : "기준 유가"}</dt><dd>{formatNumber(item.fuelPrice)}원/L</dd></div>
+                        <div><dt>연료비</dt><dd>{formatNumber(item.estimatedFuelCost)}원</dd></div>
+                        <div><dt>예상 총액</dt><dd>{formatNumber(item.estimatedTotalCost)}원</dd></div>
+                      </>
                     )}
-                  </div>
-                  <div className="carpool-route-arrow-line">
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </div>
-                </div>
-                <div className="carpool-route-point end">
-                  <i />
-                  <div>
-                    <small>도착 리조트</small>
-                    <strong>{item.destinationResortName}</strong>
-                    <span className="resort-dest-label">목적지 스키장</span>
-                  </div>
-                </div>
-              </section>
-              <section className="carpool-cost-panel">
-                <div className="carpool-cost-heading">
-                  <div>
-                    <span>예상 1인 부담액</span>
-                    <strong>
-                      {item.estimatedCostPerPerson.toLocaleString("ko-KR")}
-                      <small>원</small>
-                    </strong>
-                  </div>
-                  <div className="carpool-cost-totals">
-                    <div>
-                      <span>모집 인원</span>
-                      <b>{item.passengerCapacity}명</b>
-                    </div>
-                    <div>
-                      <span>예상 총액</span>
-                      <b>{item.estimatedTotalCost.toLocaleString("ko-KR")}원</b>
-                    </div>
-                  </div>
-                </div>
-                <div className="carpool-cost-breakdown">
-                  <div>
-                    <span className="material-symbols-outlined">route</span>
-                    <p>
-                      <small>{item.routeSource === "MANUAL" ? "직접 입력 거리" : "이동 거리"}</small>
-                      <b>{item.routeDistanceKm.toLocaleString("ko-KR")}km</b>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="material-symbols-outlined">toll</span>
-                    <p>
-                      <small>통행료</small>
-                      <b>{item.routeTollFee.toLocaleString("ko-KR")}원</b>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="material-symbols-outlined">local_gas_station</span>
-                    <p>
-                      <small>{item.fuelPriceSource === "USER_INPUT" ? "사용자 입력 유가" : "기준 유가"}</small>
-                      <b>{item.fuelPrice.toLocaleString("ko-KR")}원/L</b>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="material-symbols-outlined">payments</span>
-                    <p>
-                      <small>예상 연료비</small>
-                      <b>{item.estimatedFuelCost.toLocaleString("ko-KR")}원</b>
-                    </p>
-                  </div>
-                </div>
-                <p className="carpool-fuel-time">
-                  {item.routeSource === "MANUAL" && "경로·통행료 사용자 직접 입력 · "}
-                  {item.fuelPriceSource === "CACHE"
-                    ? "오피넷 유효 캐시"
-                    : item.fuelPriceSource === "USER_INPUT"
-                      ? "유가 사용자 직접 입력"
-                      : "오피넷 유가"}{" "}
-                  {new Date(item.fuelPriceObservedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })} 기준
-                </p>
-              </section>
-              <section className="carpool-content-panel">
-                <h2>
-                  <span className="material-symbols-outlined">description</span>모집 내용
-                </h2>
-                <p>{item.content}</p>
-              </section>
-              {item.contactInfo && (
-                <div className="carpool-contact-result">
-                  <span className="material-symbols-outlined">chat</span>
-                  <div>
+                  </dl>
+                  {item.costMode === "AUTO" && <p className="carpool-view-note">{fuelPriceNote(item)}</p>}
+                </section>
+                {item.contactInfo && (
+                  <section className="carpool-view-card">
                     <small>연락 방법</small>
-                    <strong>{item.contactInfo}</strong>
+                    <strong className="carpool-view-contact">{item.contactInfo}</strong>
+                  </section>
+                )}
+              </aside>
+
+              <div className="carpool-view-body">
+                <section className="carpool-view-route" aria-label="이동 경로와 일정">
+                  <div className="carpool-view-stop start">
+                    <small>출발</small>
+                    <strong>{item.departureRegion}</strong>
+                    <span>{item.meetingPlace}, {formatCarpoolDateTime(item.departureAt)}</span>
                   </div>
-                </div>
-              )}
-            </article>
-            <PostComments postPublicId={publicId} />
+                  <div className="carpool-view-stop end">
+                    <small>도착</small>
+                    <strong>{item.destinationResortName}</strong>
+                    {item.returnAt && <span>복귀 {formatCarpoolDateTime(item.returnAt)}</span>}
+                  </div>
+                </section>
+                <section className="carpool-view-content">
+                  <h2>모집 내용</h2>
+                  <p>{item.content}</p>
+                </section>
+                <PostComments postPublicId={publicId} />
+              </div>
+            </div>
           </>
         )}
       </main>

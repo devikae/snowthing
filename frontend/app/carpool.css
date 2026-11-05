@@ -122,35 +122,6 @@
   white-space: nowrap;
 }
 
-.carpool-preview-result {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  border: 1px solid #bae6fd;
-  border-radius: 9px;
-  background: #f0f9ff;
-  padding: 13px;
-}
-
-.carpool-preview-result div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.carpool-preview-result span,
-.carpool-preview-result small {
-  color: #64748b;
-  font-size: 10px;
-}
-
-.carpool-preview-result b,
-.carpool-preview-result strong {
-  color: #0f2942;
-  font-size: 15px;
-}
-
 .carpool-manual-fallback {
   display: flex;
   flex-direction: column;
@@ -183,15 +154,13 @@ html[data-theme="dark"] .carpool-cost-button {
 }
 
 html[data-theme="dark"] .carpool-place-results button.selected,
-html[data-theme="dark"] .carpool-preview-result,
 html[data-theme="dark"] .carpool-manual-fallback {
   border-color: #075985;
   background: #082f49;
 }
 
 @media (max-width: 640px) {
-  .carpool-place-results,
-  .carpool-preview-result {
+  .carpool-place-results {
     grid-template-columns: 1fr;
   }
 
@@ -226,9 +195,7 @@ html[data-theme="dark"] .carpool-manual-fallback {
 }
 
 .carpool-selected-place strong,
-.carpool-place-results strong,
-.carpool-preview-result b,
-.carpool-preview-result strong {
+.carpool-place-results strong {
   color: var(--snow-ink);
 }
 
@@ -237,9 +204,7 @@ html[data-theme="dark"] .carpool-manual-fallback {
   background: var(--snow-canvas);
 }
 
-.carpool-place-results span,
-.carpool-preview-result span,
-.carpool-preview-result small {
+.carpool-place-results span {
   color: var(--snow-muted);
 }
 
@@ -250,7 +215,316 @@ html[data-theme="dark"] .carpool-manual-fallback {
   color: var(--snow-ink);
 }
 
-.carpool-preview-result {
-  border-color: var(--snow-border-strong);
+/* 글쓰기 폼: 비용 방식 토글과 선택 버튼 */
+.carpool-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--snow-surface-mid);
+  padding: 4px;
+}
+
+.carpool-mode-toggle button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--snow-muted);
+  font: 500 14px/20px var(--font-hanken);
+  cursor: pointer;
+}
+
+.carpool-mode-toggle button[aria-pressed="true"] {
+  background: var(--snow-ink);
+  color: var(--snow-canvas);
+  font-weight: 600;
+}
+
+.carpool-choice-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.carpool-choice-field > span {
+  color: var(--snow-ink-soft);
+  font: 500 14px/20px var(--font-hanken);
+}
+
+.carpool-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.carpool-choice button {
+  min-height: 44px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 8px;
   background: var(--snow-canvas);
+  color: var(--snow-ink-soft);
+  font: 500 14px/20px var(--font-hanken);
+  cursor: pointer;
+}
+
+.carpool-choice button[aria-pressed="true"] {
+  border-color: var(--snow-ink);
+  background: var(--snow-ink);
+  color: var(--snow-canvas);
+  font-weight: 600;
+}
+
+.carpool-preview-rows,
+.carpool-view-rows {
+  display: grid;
+  margin: 0;
+}
+
+.carpool-preview-rows {
+  gap: 8px;
+  border: 1px solid var(--snow-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.carpool-preview-rows > div,
+.carpool-view-rows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.carpool-preview-rows dt,
+.carpool-view-rows dt {
+  color: var(--snow-muted);
+  font-size: 13px;
+}
+
+.carpool-preview-rows dd,
+.carpool-view-rows dd {
+  margin: 0;
+  color: var(--snow-ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.carpool-preview-rows .total {
+  border-top: 1px solid var(--snow-border);
+  padding-top: 10px;
+}
+
+.carpool-preview-rows .total dt {
+  color: var(--snow-ink);
+  font-weight: 500;
+}
+
+.carpool-preview-rows .total dd {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* 카풀 상세: 게시글 상세와 같은 2단. 모바일은 제목 아래에 금액 카드가 온다. */
+.carpool-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 256px;
+  grid-template-areas:
+    "head side"
+    "body side";
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  column-gap: 32px;
+}
+
+.carpool-view-head { grid-area: head; }
+.carpool-view-side { grid-area: side; display: grid; gap: 12px; }
+.carpool-view-body { grid-area: body; min-width: 0; }
+
+.carpool-view-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.carpool-view-badge {
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.carpool-view-badge.solid {
+  border-color: var(--snow-ink);
+  background: var(--snow-ink);
+  color: var(--snow-canvas);
+}
+
+.carpool-view-badge.outline {
+  border-color: var(--snow-ink);
+  color: var(--snow-ink);
+}
+
+.carpool-view-badge.muted {
+  border-color: var(--snow-border-strong);
+  color: var(--snow-muted);
+}
+
+.carpool-view-head h1 {
+  margin: 16px 0;
+  color: var(--snow-ink);
+  font: 700 24px/32px var(--font-hanken);
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.carpool-view-head .post-detail-author {
+  border-bottom: 1px solid var(--snow-border);
+}
+
+.carpool-view-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--snow-border);
+  border-radius: 8px;
+  background: var(--snow-canvas);
+  padding: 16px;
+}
+
+.carpool-view-card > small {
+  color: var(--snow-muted);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.carpool-view-price {
+  margin: 0 0 8px;
+  color: var(--snow-ink);
+  font: 700 28px/36px var(--font-hanken);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.carpool-view-price span {
+  margin-left: 3px;
+  color: var(--snow-muted);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.carpool-view-rows {
+  gap: 8px;
+  border-top: 1px solid var(--snow-border);
+  padding-top: 12px;
+}
+
+.carpool-view-note {
+  margin: 8px 0 0;
+  color: var(--snow-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.carpool-view-contact {
+  color: var(--snow-ink);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.carpool-view-route {
+  display: grid;
+  border-bottom: 1px solid var(--snow-border);
+  padding: 24px 0;
+}
+
+.carpool-view-stop {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding-left: 24px;
+}
+
+.carpool-view-stop.start { padding-bottom: 20px; }
+
+.carpool-view-stop::before {
+  position: absolute;
+  top: 6px;
+  left: 2px;
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border: 2px solid var(--snow-ink);
+  border-radius: 50%;
+  background: var(--snow-canvas);
+  content: "";
+}
+
+.carpool-view-stop.start::before { background: var(--snow-ink); }
+
+.carpool-view-stop.start::after {
+  position: absolute;
+  top: 19px;
+  bottom: -2px;
+  left: 6px;
+  width: 1px;
+  background: var(--snow-border-strong);
+  content: "";
+}
+
+.carpool-view-stop small {
+  color: var(--snow-muted);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.carpool-view-stop strong {
+  color: var(--snow-ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.carpool-view-stop span {
+  color: var(--snow-ink-soft);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.carpool-view-content { padding: 24px 0; }
+
+.carpool-view-content h2 {
+  margin: 0 0 8px;
+  color: var(--snow-ink);
+  font: 600 16px/24px var(--font-hanken);
+}
+
+.carpool-view-content p {
+  margin: 0;
+  color: var(--snow-ink-soft);
+  font-size: 16px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .carpool-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "side"
+      "body";
+    grid-template-rows: none;
+  }
+
+  .carpool-view-side { margin-top: 16px; }
 }

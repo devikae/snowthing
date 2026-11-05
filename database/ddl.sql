@@ -174,18 +174,18 @@ CREATE TABLE `carpool_detail` (
     `departure_at` DATETIME NOT NULL COMMENT '출발 예정 시각',
     `return_at` DATETIME NULL COMMENT '왕복 복귀 예정 시각',
     `passenger_capacity` INT NOT NULL COMMENT '운전자 제외 모집 인원',
-    `fuel_type` VARCHAR(30) NOT NULL COMMENT '연료 종류',
-    `fuel_efficiency` DECIMAL(6,2) NOT NULL COMMENT '차량 연비 km/L',
+    `fuel_type` VARCHAR(30) NULL COMMENT '연료 종류. 1인 금액 직접 입력이면 NULL',
+    `fuel_efficiency` DECIMAL(6,2) NULL COMMENT '차량 연비 km/L',
     `cost_mode` VARCHAR(20) NOT NULL DEFAULT 'AUTO' COMMENT '자동 계산/1인 금액 직접 입력',
-    `fuel_price` DECIMAL(10,2) NOT NULL COMMENT '계산에 사용한 유가',
-    `fuel_price_source` VARCHAR(20) NOT NULL DEFAULT 'OPINET' COMMENT '유가 출처',
-    `fuel_price_observed_at` DATETIME NOT NULL COMMENT '유가 조회 시각',
-    `route_distance_km` DECIMAL(8,2) NOT NULL COMMENT '최종 적용 거리',
-    `route_toll_fee` INT NOT NULL COMMENT '최종 적용 통행료',
-    `estimated_fuel_cost` INT NOT NULL COMMENT '예상 연료비',
-    `estimated_total_cost` INT NOT NULL COMMENT '예상 총비용',
-    `estimated_cost_per_person` INT NOT NULL COMMENT '운전자 포함 1인 예상 비용',
-    `route_source` VARCHAR(20) NOT NULL COMMENT '경로 계산 출처',
+    `fuel_price` DECIMAL(10,2) NULL COMMENT '계산에 사용한 유가',
+    `fuel_price_source` VARCHAR(20) NULL COMMENT '유가 출처',
+    `fuel_price_observed_at` DATETIME NULL COMMENT '유가 조회 시각',
+    `route_distance_km` DECIMAL(8,2) NULL COMMENT '최종 적용 거리',
+    `route_toll_fee` INT NULL COMMENT '최종 적용 통행료',
+    `estimated_fuel_cost` INT NULL COMMENT '예상 연료비',
+    `estimated_total_cost` INT NULL COMMENT '예상 총비용',
+    `estimated_cost_per_person` INT NOT NULL COMMENT '1인 금액. 자동 계산은 운전자 포함 1인 예상 비용',
+    `route_source` VARCHAR(20) NULL COMMENT '경로 계산 출처',
     `route_calculated_at` DATETIME NULL COMMENT '경로 계산 시각',
     `contact_info` VARCHAR(500) NULL COMMENT '외부 연락 수단',
     `contact_public_to_guest` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '비회원 공개 동의',
@@ -208,6 +208,21 @@ CREATE TABLE `carpool_detail` (
     CONSTRAINT `chk_carpool_estimated_fuel_cost` CHECK (`estimated_fuel_cost` >= 0),
     CONSTRAINT `chk_carpool_estimated_total_cost` CHECK (`estimated_total_cost` >= 0),
     CONSTRAINT `chk_carpool_estimated_cost_per_person` CHECK (`estimated_cost_per_person` >= 0),
+    CONSTRAINT `chk_carpool_auto_cost_snapshot` CHECK (
+        `cost_mode` <> 'AUTO'
+        OR (
+            `fuel_type` IS NOT NULL
+            AND `fuel_efficiency` IS NOT NULL
+            AND `fuel_price` IS NOT NULL
+            AND `fuel_price_source` IS NOT NULL
+            AND `fuel_price_observed_at` IS NOT NULL
+            AND `route_distance_km` IS NOT NULL
+            AND `route_toll_fee` IS NOT NULL
+            AND `estimated_fuel_cost` IS NOT NULL
+            AND `estimated_total_cost` IS NOT NULL
+            AND `route_source` IS NOT NULL
+        )
+    ),
     CONSTRAINT `chk_carpool_round_trip_return` CHECK (
         (`trip_type` = 'ONE_WAY' AND `return_at` IS NULL)
         OR (`trip_type` = 'ROUND_TRIP' AND `return_at` > `departure_at`)

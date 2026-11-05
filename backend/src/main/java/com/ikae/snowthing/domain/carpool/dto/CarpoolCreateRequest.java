@@ -23,9 +23,8 @@ public record CarpoolCreateRequest(
         @NotNull @Future LocalDateTime departureAt,
         LocalDateTime returnAt,
         @Min(1) @Max(CarpoolLimits.MAX_PASSENGER_CAPACITY) int passengerCapacity,
-        @NotNull CarpoolFuelType fuelType,
-        @NotNull
-                @DecimalMin("0.01")
+        CarpoolFuelType fuelType,
+        @DecimalMin("0.01")
                 @DecimalMax(CarpoolLimits.MAX_FUEL_EFFICIENCY)
                 @Digits(integer = 3, fraction = 2)
                 BigDecimal fuelEfficiency,
@@ -37,7 +36,7 @@ public record CarpoolCreateRequest(
         boolean equipmentLoadAvailable,
         @Size(max = 500) String contactInfo,
         boolean contactPublicToGuest,
-        @NotNull CarpoolRouteSource routeSource,
+        CarpoolRouteSource routeSource,
         @DecimalMin(CarpoolLimits.MIN_MANUAL_DISTANCE_KM)
                 @DecimalMax(CarpoolLimits.MAX_MANUAL_DISTANCE_KM)
                 @Digits(integer = 4, fraction = 2)

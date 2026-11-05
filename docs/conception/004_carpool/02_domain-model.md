@@ -37,7 +37,7 @@
 | `routeTollFee` | 최종 적용 통행료 |
 | `estimatedFuelCost` | 예상 연료비 |
 | `estimatedTotalCost` | 연료비+통행료 |
-| `estimatedCostPerPerson` | 운전자 포함 예상 1인 부담금 |
+| `estimatedCostPerPerson` | 1인 금액. `AUTO`는 운전자 포함 예상 1인 부담금, `MANUAL`은 작성자가 입력한 금액 |
 | `routeSource` | 거리·통행료의 출처. 현재는 `KAKAO` |
 | `routeCalculatedAt` | 경로 계산 시각 |
 | `contactInfo` | 작성자가 입력한 외부 연락 수단 |
@@ -51,7 +51,8 @@
 - `passengerCapacity`, `fuelEfficiency`, `routeDistanceKm`는 양수입니다.
 - 모집 인원은 최대 20명, 연비는 최대 100km/L, 직접 지정 1인 금액은 최대 1,000,000원입니다.
 - `routeTollFee`는 0 이상입니다.
-- 저장된 계산 결과는 저장된 스냅샷 값으로 재현할 수 있어야 합니다.
+- `AUTO` 글의 저장된 계산 결과는 저장된 스냅샷 값으로 재현할 수 있어야 합니다.
+- `MANUAL` 글은 계산하지 않으므로 연료, 유가, 거리, 통행료, 연료비, 총액, 경로 출처, 출발 좌표가 NULL이고 `estimatedCostPerPerson`에 입력한 1인 금액만 저장합니다.
 - 연락처는 `contactPublicToGuest = true`일 때만 비회원 응답에 포함합니다.
 - 집결지 좌표는 경로 계산과 작성자 수정 화면에만 사용하며 일반 상세 응답에는 포함하지 않습니다.
 - 수동 경로에서는 출발 좌표가 NULL일 수 있지만 출발 지역·집결지·총거리·통행료는 필수입니다.

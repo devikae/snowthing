@@ -41,22 +41,22 @@ type CarpoolEditDetail = {
   departureAt: string;
   returnAt: string | null;
   passengerCapacity: number;
-  fuelType: FuelType;
-  fuelEfficiency: number;
+  fuelType: FuelType | null;
+  fuelEfficiency: number | null;
   costMode: CostMode;
-  fuelPrice: number;
-  fuelPriceSource: FuelPriceSource;
-  fuelPriceObservedAt: string;
-  routeDistanceKm: number;
-  routeTollFee: number;
-  estimatedFuelCost: number;
-  estimatedTotalCost: number;
+  fuelPrice: number | null;
+  fuelPriceSource: FuelPriceSource | null;
+  fuelPriceObservedAt: string | null;
+  routeDistanceKm: number | null;
+  routeTollFee: number | null;
+  estimatedFuelCost: number | null;
+  estimatedTotalCost: number | null;
   estimatedCostPerPerson: number;
   equipmentLoadAvailable: boolean;
   contactInfo: string | null;
   contactPublicToGuest: boolean;
   canManage: boolean;
-  routeSource: RouteSource;
+  routeSource: RouteSource | null;
 };
 
 type ApiErrorResponse = { code?: string; message?: string };
@@ -92,7 +92,6 @@ const initial = {
   manualFuelPrice: "",
   contactInfo: "",
   contactPublicToGuest: false,
-  equipmentLoadAvailable: false,
 };
 
 const HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) =>
@@ -118,6 +117,8 @@ const MAX_MANUAL_DISTANCE_KM = 2_000;
 const MIN_MANUAL_FUEL_PRICE = 1_000;
 const MAX_MANUAL_FUEL_PRICE = 3_000;
 const MAX_MANUAL_TOLL_FEE = 20_000;
+
+const KST_DATE_FORMAT = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" });
 
 const toIsoDateTime = (
   date: string,
@@ -151,6 +152,9 @@ export default function NewCarpoolPage() {
   const [costMode, setCostMode] = useState<CostMode>("AUTO");
   const [routeSource, setRouteSource] = useState<RouteSource>("KAKAO");
   const [manualFuelRequired, setManualFuelRequired] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  // 새 글은 값을 미리 정하지 않는다. 체크를 안 했다고 "적재 불가"로 올라가는 일을 막는다.
+  const [equipmentLoadAvailable, setEquipmentLoadAvailable] = useState<boolean | null>(null);
   const [resorts, setResorts] = useState<Resort[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [calculation, setCalculation] = useState<Calculation | null>(null);
@@ -158,7 +162,7 @@ export default function NewCarpoolPage() {
   const [working, setWorking] = useState(false);
   const isSubmittingRef = useRef(false);
   const idempotencyKey = useIdempotencyKey();
-  const todayIsoDate = new Date().toISOString().split("T")[0];
+  const todayIsoDate = KST_DATE_FORMAT.format(new Date());
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [editPublicId, setEditPublicId] = useState<string | null>(null);
@@ -204,6 +208,7 @@ export default function NewCarpoolPage() {
         }
         const departure = splitLocalDateTime(detail.departureAt);
         const returning = splitLocalDateTime(detail.returnAt);
+        const auto = detail.costMode === "AUTO";
         const place: MapPlace | null =
           detail.departureLongitude !== null && detail.departureLatitude !== null
             ? {
@@ -229,11 +234,8 @@ export default function NewCarpoolPage() {
           returnHour: returning.hour,
           returnMinute: returning.minute,
           passengerCapacity: String(detail.passengerCapacity),
-          fuelEfficiency: String(detail.fuelEfficiency),
-          manualCostPerPerson:
-            detail.costMode === "MANUAL"
-              ? String(detail.estimatedCostPerPerson)
-              : "",
+          fuelEfficiency: String(detail.fuelEfficiency ?? initial.fuelEfficiency),
+          manualCostPerPerson: auto ? "" : String(detail.estimatedCostPerPerson),
           manualDistanceKm:
             detail.routeSource === "MANUAL"
               ? String(detail.routeDistanceKm)
@@ -246,27 +248,31 @@ export default function NewCarpoolPage() {
               : "",
           contactInfo: detail.contactInfo ?? "",
           contactPublicToGuest: detail.contactPublicToGuest,
-          equipmentLoadAvailable: detail.equipmentLoadAvailable,
         });
+        setEquipmentLoadAvailable(detail.equipmentLoadAvailable);
         setTripType(detail.tripType);
-        setFuelType(detail.fuelType);
+        setFuelType(detail.fuelType ?? "GASOLINE");
         setCostMode(detail.costMode);
-        setRouteSource(detail.routeSource);
+        setRouteSource(detail.routeSource ?? "KAKAO");
         setManualFuelRequired(detail.fuelPriceSource === "USER_INPUT");
         setSelectedPlace(place);
         setInitialMapPlace(place);
-        setCalculation({
-          distanceKm: detail.routeDistanceKm,
-          tollFee: detail.routeTollFee,
-          durationSeconds: 0,
-          fuelPrice: detail.fuelPrice,
-          fuelPriceTradeDate: detail.fuelPriceObservedAt.slice(0, 10),
-          fuelPriceSource: detail.fuelPriceSource,
-          estimatedFuelCost: detail.estimatedFuelCost,
-          estimatedTotalCost: detail.estimatedTotalCost,
-          estimatedCostPerPerson: detail.estimatedCostPerPerson,
-          totalPassengerCount: detail.passengerCapacity + 1,
-        });
+        setCalculation(
+          auto
+            ? {
+                distanceKm: detail.routeDistanceKm ?? 0,
+                tollFee: detail.routeTollFee ?? 0,
+                durationSeconds: 0,
+                fuelPrice: detail.fuelPrice ?? 0,
+                fuelPriceTradeDate: detail.fuelPriceObservedAt?.slice(0, 10) ?? null,
+                fuelPriceSource: detail.fuelPriceSource ?? "OPINET",
+                estimatedFuelCost: detail.estimatedFuelCost ?? 0,
+                estimatedTotalCost: detail.estimatedTotalCost ?? 0,
+                estimatedCostPerPerson: detail.estimatedCostPerPerson,
+                totalPassengerCount: detail.passengerCapacity + 1,
+              }
+            : null,
+        );
       })
       .catch((loadError) =>
         setError(
@@ -291,13 +297,32 @@ export default function NewCarpoolPage() {
         "destinationResortId",
         "passengerCapacity",
         "fuelEfficiency",
-        "manualCostPerPerson",
         "manualDistanceKm",
         "manualTollFee",
         "manualFuelPrice",
       ].includes(key)
     )
       setCalculation(null);
+  };
+
+  const changeCostMode = (nextMode: CostMode) => {
+    if (nextMode === costMode) return;
+    previewAbortController.current?.abort();
+    // 직접 입력에서는 지도가 사라지므로, 돌아올 때 고른 장소를 다시 보여 준다.
+    if (nextMode === "AUTO") {
+      setInitialMapPlace(selectedPlace);
+      // 경로는 지도 좌표로 계산하므로 직접 입력에서 고친 글자가 좌표와 어긋나지 않게 되돌린다.
+      if (selectedPlace) {
+        setForm((current) => ({
+          ...current,
+          departureRegion: selectedPlace.addressName,
+          meetingPlace: selectedPlace.name,
+        }));
+      }
+    }
+    setCostMode(nextMode);
+    setWorking(false);
+    setError("");
   };
 
   const handleMapError = useCallback((message: string) => {
@@ -337,6 +362,7 @@ export default function NewCarpoolPage() {
     previewAbortController.current = abortController;
     const requestId = ++previewRequestId.current;
     setWorking(true);
+    setPreviewFailed(false);
     setError("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.carpool.autoPreview, {
@@ -393,6 +419,7 @@ export default function NewCarpoolPage() {
       }
     } catch (previewError) {
       if (!(previewError instanceof DOMException && previewError.name === "AbortError")) {
+        setPreviewFailed(true);
         setError(
           previewError instanceof Error
             ? previewError.message
@@ -421,14 +448,14 @@ export default function NewCarpoolPage() {
   ]);
 
   useEffect(() => {
-    if (routeSource === "KAKAO" && selectedPlace && form.destinationResortId) {
+    if (costMode === "AUTO" && routeSource === "KAKAO" && selectedPlace && form.destinationResortId) {
       const timer = window.setTimeout(
         () => void preview(),
         PREVIEW_DEBOUNCE_MILLISECONDS,
       );
       return () => window.clearTimeout(timer);
     }
-  }, [form.destinationResortId, preview, routeSource, selectedPlace]);
+  }, [costMode, form.destinationResortId, preview, routeSource, selectedPlace]);
 
   useEffect(
     () => () => previewAbortController.current?.abort(),
@@ -438,13 +465,18 @@ export default function NewCarpoolPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (isSubmittingRef.current || working) return;
+    const auto = costMode === "AUTO";
 
     if (!form.title.trim()) {
       setError("모집글 제목을 입력해 주세요.");
       return;
     }
-    if (routeSource === "KAKAO" && !selectedPlace) {
+    if (auto && routeSource === "KAKAO" && !selectedPlace) {
       setError("출발 장소를 지도에서 검색하거나 [현재 위치] 버튼으로 지정해 주세요.");
+      return;
+    }
+    if (!auto && (!form.departureRegion.trim() || !form.meetingPlace.trim())) {
+      setError("출발 지역과 집결 장소를 입력해 주세요.");
       return;
     }
     if (!form.destinationResortId) {
@@ -463,8 +495,12 @@ export default function NewCarpoolPage() {
       setError("왕복인 경우 복귀 날짜와 시간을 입력해 주세요.");
       return;
     }
-    if (!calculation) {
-      setError("출발 장소 및 리조트 확인 후 '예상 비용 재계산'을 완료해 주세요.");
+    if (equipmentLoadAvailable === null) {
+      setError("스키, 보드 장비 적재 가능 여부를 선택해 주세요.");
+      return;
+    }
+    if (auto && !calculation) {
+      setError("예상 비용 계산이 끝난 뒤 등록해 주세요. 출발 장소와 도착 리조트를 확인해 주세요.");
       return;
     }
 
@@ -476,24 +512,23 @@ export default function NewCarpoolPage() {
           ...form,
           destinationResortId: Number(form.destinationResortId),
           passengerCapacity: Number(form.passengerCapacity),
-          fuelEfficiency: Number(form.fuelEfficiency),
+          equipmentLoadAvailable,
           costMode,
-          routeSource,
+          manualCostPerPerson: auto ? null : Number(form.manualCostPerPerson),
+          fuelEfficiency: auto ? Number(form.fuelEfficiency) : null,
+          fuelType: auto ? fuelType : null,
+          routeSource: auto ? routeSource : null,
           manualDistanceKm:
-            routeSource === "MANUAL" ? Number(form.manualDistanceKm) : null,
+            auto && routeSource === "MANUAL" ? Number(form.manualDistanceKm) : null,
           manualTollFee:
-            routeSource === "MANUAL" ? Number(form.manualTollFee) : null,
-          manualFuelPrice: manualFuelRequired
-            ? Number(form.manualFuelPrice)
-            : null,
-          manualCostPerPerson:
-            costMode === "MANUAL" ? Number(form.manualCostPerPerson) : null,
+            auto && routeSource === "MANUAL" ? Number(form.manualTollFee) : null,
+          manualFuelPrice:
+            auto && manualFuelRequired ? Number(form.manualFuelPrice) : null,
           tripType,
-          fuelType,
           departureLatitude:
-            routeSource === "KAKAO" ? selectedPlace?.latitude : null,
+            auto && routeSource === "KAKAO" ? selectedPlace?.latitude : null,
           departureLongitude:
-            routeSource === "KAKAO" ? selectedPlace?.longitude : null,
+            auto && routeSource === "KAKAO" ? selectedPlace?.longitude : null,
           departureAt: toIsoDateTime(
             form.departureDate,
             form.departurePeriod,
@@ -578,17 +613,54 @@ export default function NewCarpoolPage() {
             </label>
           </section>
           <section>
+            <h2>비용 방식</h2>
+            <div className="carpool-mode-toggle" role="group" aria-label="비용 방식">
+              <button type="button" aria-pressed={costMode === "AUTO"} onClick={() => changeCostMode("AUTO")}>자동 계산</button>
+              <button type="button" aria-pressed={costMode === "MANUAL"} onClick={() => changeCostMode("MANUAL")}>직접 입력</button>
+            </div>
+            <small>
+              {costMode === "AUTO"
+                ? "출발지와 차량 정보로 거리, 통행료, 유가를 계산합니다."
+                : "받을 금액을 직접 정합니다. 경로와 유가는 계산하지 않습니다."}
+            </small>
+          </section>
+          <section>
             <h2>출발 장소</h2>
-            <KakaoMapPicker
-              onSelect={handlePlaceSelect}
-              onError={handleMapError}
-              initialPlace={initialMapPlace}
-            />
-            {routeSource === "MANUAL" && (
+            {costMode === "MANUAL" ? (
+              <div className="carpool-form-grid">
+                <label>
+                  출발 지역
+                  <input
+                    required
+                    maxLength={100}
+                    value={form.departureRegion}
+                    onChange={(event) => update("departureRegion", event.target.value)}
+                    placeholder="예: 서울 강동구"
+                  />
+                </label>
+                <label>
+                  집결 장소
+                  <input
+                    required
+                    maxLength={200}
+                    value={form.meetingPlace}
+                    onChange={(event) => update("meetingPlace", event.target.value)}
+                    placeholder="예: 천호역 1번 출구"
+                  />
+                </label>
+              </div>
+            ) : (
+              <KakaoMapPicker
+                onSelect={handlePlaceSelect}
+                onError={handleMapError}
+                initialPlace={initialMapPlace}
+              />
+            )}
+            {costMode === "AUTO" && routeSource === "MANUAL" && (
               <div className="carpool-manual-fallback" role="status">
-                <strong>카카오 지도·길찾기 장애 대응 직접 입력</strong>
+                <strong>카카오 지도와 길찾기 장애 대응 직접 입력</strong>
                 <p>
-                  출발 장소와 선택한 이동 방식 기준의 총 이동 거리·통행료를
+                  출발 장소와 선택한 이동 방식 기준의 총 이동 거리, 통행료를
                   입력해 주세요.
                 </p>
                 <div className="carpool-form-grid">
@@ -669,19 +741,24 @@ export default function NewCarpoolPage() {
                   ))}
                 </select>
               </label>
-              <label>
-                이동 방식
-                <select
-                  value={tripType}
-                  onChange={(event) => {
-                    setTripType(event.target.value as TripType);
-                    setCalculation(null);
-                  }}
-                >
-                  <option value="ONE_WAY">편도</option>
-                  <option value="ROUND_TRIP">왕복</option>
-                </select>
-              </label>
+              <div className="carpool-choice-field">
+                <span>이동 방식</span>
+                <div className="carpool-choice" role="group" aria-label="이동 방식">
+                  {(["ONE_WAY", "ROUND_TRIP"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={tripType === value}
+                      onClick={() => {
+                        setTripType(value);
+                        setCalculation(null);
+                      }}
+                    >
+                      {value === "ONE_WAY" ? "편도" : "왕복"}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <label>
                 출발 날짜
                 <div className="carpool-date-input-container">
@@ -843,18 +920,35 @@ export default function NewCarpoolPage() {
                   }
                 />
               </label>
-              <label className="carpool-check carpool-equipment-check">
-                <input
-                  type="checkbox"
-                  checked={form.equipmentLoadAvailable}
-                  onChange={(event) => update("equipmentLoadAvailable", event.target.checked)}
-                />
-                스키·보드 장비 적재 가능
-              </label>
+              <div className="carpool-choice-field">
+                <span>스키, 보드 장비 적재</span>
+                <div className="carpool-choice" role="group" aria-label="스키, 보드 장비 적재">
+                  <button type="button" aria-pressed={equipmentLoadAvailable === true} onClick={() => setEquipmentLoadAvailable(true)}>가능</button>
+                  <button type="button" aria-pressed={equipmentLoadAvailable === false} onClick={() => setEquipmentLoadAvailable(false)}>불가</button>
+                </div>
+              </div>
             </div>
           </section>
+          {costMode === "MANUAL" ? (
           <section>
-            <h2>차량·비용</h2>
+            <h2>비용</h2>
+            <label className="carpool-contact-field">
+              1인 금액(원)
+              <input
+                required
+                min="1"
+                max={MAX_MANUAL_COST_PER_PERSON}
+                step="1"
+                type="number"
+                value={form.manualCostPerPerson}
+                onChange={(event) => update("manualCostPerPerson", event.target.value)}
+                placeholder="예: 10000"
+              />
+            </label>
+          </section>
+          ) : (
+          <section>
+            <h2>차량과 비용</h2>
             <div className="carpool-form-grid">
               <label>
                 유종
@@ -885,36 +979,6 @@ export default function NewCarpoolPage() {
                   }
                 />
               </label>
-              <label>
-                비용 방식
-                <select
-                  value={costMode}
-                  onChange={(event) => {
-                    setCostMode(event.target.value as CostMode);
-                    setCalculation(null);
-                  }}
-                >
-                  <option value="AUTO">경로·유가 자동 계산</option>
-                  <option value="MANUAL">1인 금액 직접 입력</option>
-                </select>
-              </label>
-              {costMode === "MANUAL" && (
-                <label>
-                  1인 부담액
-                  <input
-                    required
-                    min="1"
-                    max={MAX_MANUAL_COST_PER_PERSON}
-                    step="100"
-                    type="number"
-                    value={form.manualCostPerPerson}
-                    onChange={(event) =>
-                      update("manualCostPerPerson", event.target.value)
-                    }
-                    placeholder="예: 15000"
-                  />
-                </label>
-              )}
               {manualFuelRequired && (
                 <label>
                   유가 직접 입력(원/L)
@@ -933,68 +997,58 @@ export default function NewCarpoolPage() {
                 </label>
               )}
             </div>
-            <button
-              className="carpool-cost-button"
-              type="button"
-              onClick={() => void preview()}
-              disabled={working}
-            >
-              {working
-                ? "계산 중..."
-                : routeSource === "MANUAL" || manualFuelRequired
-                  ? "입력값으로 예상 비용 계산"
-                  : "경로·유가 자동 계산"}
-            </button>
-            {calculation && (
-              <div className="carpool-preview-result">
+            {(routeSource === "MANUAL" || manualFuelRequired || previewFailed) && (
+              <button
+                className="carpool-cost-button"
+                type="button"
+                onClick={() => void preview()}
+                disabled={working}
+              >
+                {working
+                  ? "계산 중..."
+                  : routeSource === "MANUAL" || manualFuelRequired
+                    ? "입력값으로 예상 비용 계산"
+                    : "다시 계산"}
+              </button>
+            )}
+            {calculation ? (
+              <dl className="carpool-preview-rows">
                 <div>
-                  <span>총 거리</span>
-                  <b>{calculation.distanceKm.toLocaleString("ko-KR")}km</b>
+                  <dt>이동 거리</dt>
+                  <dd>{calculation.distanceKm.toLocaleString("ko-KR")}km</dd>
                 </div>
                 <div>
-                  <span>통행료</span>
-                  <b>{calculation.tollFee.toLocaleString("ko-KR")}원</b>
+                  <dt>통행료</dt>
+                  <dd>{calculation.tollFee.toLocaleString("ko-KR")}원</dd>
                 </div>
                 <div>
-                  <span>
+                  <dt>
                     {calculation.fuelPriceSource === "USER_INPUT"
                       ? "사용자 입력 유가"
-                      : "전국 평균 유가"}
-                  </span>
-                  <b>{calculation.fuelPrice.toLocaleString("ko-KR")}원/L</b>
-                  <small>
-                    {calculation.fuelPriceSource === "CACHE"
-                      ? "유효 캐시 사용"
-                      : calculation.fuelPriceTradeDate
-                        ? `${calculation.fuelPriceTradeDate} 기준`
-                        : "직접 입력값"}
-                  </small>
+                      : calculation.fuelPriceSource === "CACHE"
+                        ? "전국 평균 유가(유효 캐시)"
+                        : `전국 평균 유가${calculation.fuelPriceTradeDate ? `(${calculation.fuelPriceTradeDate} 기준)` : ""}`}
+                  </dt>
+                  <dd>{calculation.fuelPrice.toLocaleString("ko-KR")}원/L</dd>
                 </div>
                 <div>
-                  <span>예상 연료비</span>
-                  <b>
-                    {calculation.estimatedFuelCost.toLocaleString("ko-KR")}원
-                  </b>
+                  <dt>연료비</dt>
+                  <dd>{calculation.estimatedFuelCost.toLocaleString("ko-KR")}원</dd>
                 </div>
                 <div>
-                  <span>예상 총액</span>
-                  <b>
-                    {calculation.estimatedTotalCost.toLocaleString("ko-KR")}원
-                  </b>
+                  <dt>예상 총액</dt>
+                  <dd>{calculation.estimatedTotalCost.toLocaleString("ko-KR")}원</dd>
                 </div>
-                <div>
-                  <span>{calculation.totalPassengerCount}명 기준 1인</span>
-                  <strong>
-                    {(costMode === "MANUAL"
-                      ? Number(form.manualCostPerPerson)
-                      : calculation.estimatedCostPerPerson
-                    ).toLocaleString("ko-KR")}
-                    원
-                  </strong>
+                <div className="total">
+                  <dt>예상 1인 비용(운전자 포함 {calculation.totalPassengerCount}명 기준)</dt>
+                  <dd>{calculation.estimatedCostPerPerson.toLocaleString("ko-KR")}원</dd>
                 </div>
-              </div>
+              </dl>
+            ) : (
+              working && <small>예상 비용을 계산하는 중입니다.</small>
             )}
           </section>
+          )}
           <section>
             <h2>모집 내용</h2>
             <textarea
@@ -1006,12 +1060,14 @@ export default function NewCarpoolPage() {
             />
           </section>
           <section>
-            <h2>연락처 공개</h2>
+            <h2>연락처</h2>
             <label className="carpool-contact-field">
               연락처(선택)
               <input
+                maxLength={500}
                 value={form.contactInfo}
                 onChange={(event) => update("contactInfo", event.target.value)}
+                placeholder="예: 오픈채팅 링크"
               />
             </label>
             <label className="carpool-check">
@@ -1022,8 +1078,12 @@ export default function NewCarpoolPage() {
                   update("contactPublicToGuest", event.target.checked)
                 }
               />{" "}
-              비회원에게 연락처 공개
+              연락처 공개
             </label>
+            <small>
+              공개하면 로그인하지 않은 방문자도 볼 수 있습니다. 공개하지 않으면 작성자와
+              관리자만 볼 수 있습니다. 전화번호처럼 민감한 정보는 주의해 주세요.
+            </small>
           </section>
           {error && (
             <p className="carpool-form-error" role="alert">
