@@ -77,17 +77,26 @@ class DirectMessageServiceTest {
         }
 
         @Test
-        @DisplayName("정지, 탈퇴, AI 회원, 없는 회원은 같은 문구로 거부한다")
+        @DisplayName("AI 회원에게 보낸 쪽지는 일반 회원처럼 성공하고 보낸 쪽지함에 남는다")
+        void aiMemberReceivesLikeAnyMember() {
+            CustomUserDetails ai =
+                    user(saveMember("ai-agent99", MemberStatus.ACTIVE, "@snowthing.invalid"));
+
+            String id = send(alice, ai, "안녕하세요");
+
+            assertThat(ids(messages.getSent(alice, null, null))).containsExactly(id);
+        }
+
+        @Test
+        @DisplayName("정지, 탈퇴, 없는 회원은 같은 문구로 거부한다")
         void unavailableReceivers() {
             Member suspended = saveMember("dm-suspended", MemberStatus.SUSPENDED, "@example.com");
             Member withdrawn = saveMember("dm-withdrawn", MemberStatus.WITHDRAWN, "@example.com");
-            Member ai = saveMember("ai-agent99", MemberStatus.ACTIVE, "@snowthing.invalid");
 
             for (String publicId :
                     List.of(
                             suspended.getPublicId(),
                             withdrawn.getPublicId(),
-                            ai.getPublicId(),
                             UUID.randomUUID().toString())) {
                 assertThatThrownBy(
                                 () ->

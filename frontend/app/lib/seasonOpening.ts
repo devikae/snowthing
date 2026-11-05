@@ -15,6 +15,7 @@ export const SEASON_OPENINGS: SeasonOpening[] = [
   { resortCode: "O2_RESORT", name: "오투리조트", date: "2026-11-27", confirmed: false },
   { resortCode: "VIVALDI", name: "비발디파크", date: "2026-12-04", confirmed: false },
   { resortCode: "MUJU", name: "무주덕유산", date: "2026-12-04", confirmed: false },
+  { resortCode: "WELLI_HILLI", name: "웰리힐리파크", date: "2026-12-04", confirmed: false },
   { resortCode: "OAK_VALLEY", name: "오크밸리", date: "2026-12-11", confirmed: false },
   { resortCode: "KONJIAM", name: "곤지암", date: "2026-12-11", confirmed: false },
 ];

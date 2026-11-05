@@ -25,7 +25,8 @@ public class ProfileActionRateLimiter {
         NICKNAME(30, Duration.ofMinutes(1)),
         PHOTO(5, Duration.ofDays(1)),
         POST_IMAGE(30, Duration.ofHours(1)),
-        IMAGE_LEASE(60, Duration.ofHours(1));
+        IMAGE_LEASE(60, Duration.ofHours(1)),
+        MEMBER_SEARCH(60, Duration.ofMinutes(1));
 
         final int limit;
         final Duration window;
@@ -73,7 +74,7 @@ public class ProfileActionRateLimiter {
             LocalDateTime registeredAt,
             String clientIp,
             boolean imageRequest) {
-        if (action != Action.NICKNAME) {
+        if (action != Action.NICKNAME && action != Action.MEMBER_SEARCH) {
             String memberHash = memberKey(member);
             var budgets =
                     new java.util.ArrayList<>(

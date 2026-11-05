@@ -38,6 +38,12 @@ public class PostImageLifecycleService {
     private String bucket;
 
     private static final String PREFIX = "public/posts/originals/";
+    private static final java.util.regex.Pattern CONTENT_IMAGE_KEY =
+            java.util.regex.Pattern.compile(
+                    "public/posts/(originals/)?(m-)?[0-9a-f-]{36}\\.(jpg|jpeg|png|webp)");
+    private static final java.util.regex.Pattern INLINE_IMAGE =
+            java.util.regex.Pattern.compile(
+                    "data:image/[a-z0-9.+-]+;base64,", java.util.regex.Pattern.CASE_INSENSITIVE);
 
     public PostImageLifecycleService(
             PostImageUploadRepository postImageUploadRepository,
@@ -140,11 +146,28 @@ public class PostImageLifecycleService {
                 collectKeys(previousReferences, previousContent));
     }
 
+    /** 본문에 처음 나오는 사진 키. 사진 칸 사진이 없는 매물의 대표 사진으로 쓴다. 없으면 null. */
+    public String firstContentKey(String content) {
+        var matcher = CONTENT_IMAGE_KEY.matcher(content == null ? "" : content);
+        return matcher.find() ? matcher.group() : null;
+    }
+
+    /**
+     * base64 사진은 본문과 함께 DB에 쌓이므로 새로 넣지 못하게 막는다. 이미 base64 사진이 들어 있는 기존 글은 그대로 수정할 수 있도록 개수가 늘어날 때만
+     * 거절한다.
+     */
+    public void rejectNewInlineImages(String content, String previousContent) {
+        if (countInlineImages(content) > countInlineImages(previousContent)) {
+            throw new CustomException(ErrorCode.INLINE_IMAGE_NOT_ALLOWED);
+        }
+    }
+
+    private static long countInlineImages(String content) {
+        return content == null ? 0 : INLINE_IMAGE.matcher(content).results().count();
+    }
+
     public Set<String> collectKeys(List<String> references, String content) {
-        var matcher =
-                java.util.regex.Pattern.compile(
-                                "public/posts/(originals/)?(m-)?[0-9a-f-]{36}\\.(jpg|jpeg|png|webp)")
-                        .matcher(content == null ? "" : content);
+        var matcher = CONTENT_IMAGE_KEY.matcher(content == null ? "" : content);
         var keys =
                 new java.util.LinkedHashSet<String>(
                         references == null ? List.of() : List.copyOf(references));

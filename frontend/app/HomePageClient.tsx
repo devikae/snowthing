@@ -23,6 +23,7 @@ interface HomePost {
   title: string;
   writerNickname: string;
   writerProfileImageUrl?: string | null;
+  writerPublicId?: string | null;
   thumbnailImageUrl: string | null;
   hasImage: boolean;
   viewCount: number;
@@ -342,15 +343,13 @@ export default function HomePageClient() {
                     </button>
                   ))}
                 </div>
-                <div className="board-tabs-actions">
-                  <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
-                    더보기 ↗
-                  </Link>
-                  <Link href={writeHref} className="board-tabs-write">
-                    <span className="material-symbols-outlined" aria-hidden="true">edit</span>
-                    글쓰기
-                  </Link>
-                </div>
+                <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
+                  더보기 ↗
+                </Link>
+                <Link href={writeHref} className="board-tabs-write">
+                  <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+                  글쓰기
+                </Link>
               </nav>
 
               <div className="compact-post-list">
@@ -386,7 +385,7 @@ export default function HomePageClient() {
                           {post.hasImage && <PostImageIcon />}
                         </div>
                         <div className="m-row-right">
-                          <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
+                          <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} publicId={post.writerPublicId} />
                           <span className="m-stats">
                             {post.commentCount > 0 ? (
                               <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>

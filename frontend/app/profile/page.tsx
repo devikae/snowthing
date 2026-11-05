@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { BlockedMembersSection } from "../components/BlockedMembersSection";
+import { CommentProfileAvatar } from "../components/CommentProfileAvatar";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import "./profile.css";
@@ -121,6 +122,12 @@ export default function ProfilePage() {
     try {
       const data = new FormData(); if (photo) data.append("file", photo);
       const response = await csrfFetch(reset ? API_ENDPOINTS.members.resetProfileImage : API_ENDPOINTS.images.profileUpload, { method: reset ? "DELETE" : "POST", ...(!reset ? { body: data } : {}) });
+      if (response.status === 429) {
+        window.alert("사진 변경 횟수를 넘었습니다. 잠시 후 다시 시도해 주세요.");
+        setPhoto(null); setPreview(null);
+        if (fileRef.current) fileRef.current.value = "";
+        return;
+      }
       if (!response.ok) throw new Error(await message(response, "프로필 사진 변경에 실패했습니다."));
       const url = reset ? null : (await response.json()).imageUrl;
       setProfile({ ...profile, profileImageUrl: url }); setPhoto(null); setPreview(null);
@@ -160,12 +167,12 @@ export default function ProfilePage() {
     {error && <p className="profile-feedback error" role="alert">{error}</p>}{notice && <p className="profile-feedback" role="status">{notice}</p>}
     {loading ? <div className="profile-loading" aria-busy="true">내 정보를 불러오는 중입니다.</div> : !profile || !form ? <button type="button" className="profile-button-primary" onClick={() => { setLoading(true); setError(""); void load(); }}>다시 불러오기</button> : <>
       <section className="profile-section"><div><h2>프로필 사진</h2><p>사진은 별도로 저장됩니다.</p></div><div className="profile-photo-editor">
-        <Image src={preview || profile.profileImageUrl || "/images/default-profile-avatar.png"} alt="내 프로필 사진" width={96} height={96} unoptimized />
+        {preview ? <Image src={preview} alt="내 프로필 사진" width={96} height={96} unoptimized /> : <CommentProfileAvatar className="profile-photo-avatar" nickname={profile.nickname} profileImageUrl={profile.profileImageUrl} size={96} />}
         <div><label className="profile-file-label">사진 선택<input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" disabled={!!busy} onChange={event => {
           const file = event.target.files?.[0]; if (!file) return;
           if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError("JPG, PNG, WebP 형식의 5MB 이하 사진을 선택해 주세요."); event.target.value = ""; return; }
           setPhoto(file); setPreview(URL.createObjectURL(file)); setError("");
-        }} /></label><p>JPG, PNG, WebP · 최대 5MB · 사진 변경 요청은 24시간당 최대 5회</p><div className="profile-actions">{photo && <><button className="profile-button-primary" disabled={!!busy} onClick={() => void savePhoto()}>{busy === "photo" ? "저장 중" : "사진 저장"}</button><button className="profile-button-cancel" disabled={!!busy} onClick={() => { setPhoto(null); setPreview(null); if (fileRef.current) fileRef.current.value = ""; }}>선택 취소</button></>}{profile.profileImageUrl && <button disabled={!!busy} onClick={() => void savePhoto(true)}>기본 이미지로 변경</button>}</div></div>
+        }} /></label><p>JPG, PNG, WebP, 최대 5MB</p><div className="profile-actions">{photo && <><button className="profile-button-primary" disabled={!!busy} onClick={() => void savePhoto()}>{busy === "photo" ? "저장 중" : "사진 저장"}</button><button className="profile-button-cancel" disabled={!!busy} onClick={() => { setPhoto(null); setPreview(null); if (fileRef.current) fileRef.current.value = ""; }}>선택 취소</button></>}{profile.profileImageUrl && <button disabled={!!busy} onClick={() => void savePhoto(true)}>기본 이미지로 변경</button>}</div></div>
       </div></section>
       <section className="profile-section"><div><h2>비밀번호</h2><p>{passwordEditorOpen ? "변경하면 모든 기기에서 로그아웃됩니다." : "계정 비밀번호를 변경할 수 있습니다."}</p></div>{profile.passwordChangeAvailable ? passwordEditorOpen ? <form id="profile-password-form" onSubmit={changePassword}><fieldset className="profile-fields" disabled={!!busy}>
         <label>현재 비밀번호<input autoFocus type={showPassword ? "text" : "password"} autoComplete="current-password" value={currentPassword} maxLength={200} required onChange={event => setCurrentPassword(event.target.value)} /></label>

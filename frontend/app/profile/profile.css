@@ -14,7 +14,7 @@
 .profile-settings input:focus-visible, .profile-settings textarea:focus-visible, .profile-settings button:focus-visible, .profile-settings a:focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
 .profile-nickname { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
 .profile-photo-editor { display: flex; align-items: center; gap: 24px; }
-.profile-photo-editor > img { width: 96px; height: 96px; flex: none; border: 1px solid var(--snow-border); border-radius: 50%; object-fit: cover; }
+.profile-photo-editor > :is(img,svg) { width: 96px; height: 96px; flex: none; border-radius: 50%; color: var(--snow-muted); object-fit: cover; }
 .profile-photo-editor p { font-size: 12px; }
 .profile-file-label { position: relative; }
 .profile-file-label input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -72,6 +72,6 @@
   .profile-settings { padding-block: 24px 48px; }
   .profile-section { grid-template-columns: minmax(0,1fr); gap: 24px; padding-block: 24px; }
   .profile-photo-editor { align-items: flex-start; gap: 16px; }
-  .profile-photo-editor > img { width: 64px; height: 64px; }
+  .profile-photo-editor > :is(img,svg) { width: 64px; height: 64px; }
   .profile-nickname { grid-template-columns: minmax(0,1fr); }
 }

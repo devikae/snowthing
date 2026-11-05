@@ -120,6 +120,7 @@ public class PostService {
                         .anonymousPassword(encodedPassword)
                         .hasImage(false)
                         .build();
+        imageLifecycle.rejectNewInlineImages(request.content(), null);
         imageLifecycle.protectAll(
                 request.imageUrls(),
                 request.content(),
@@ -289,6 +290,7 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
+        imageLifecycle.rejectNewInlineImages(request.content(), post.getContent());
         imageLifecycle.protectExisting(
                 request.imageUrls(),
                 request.content(),

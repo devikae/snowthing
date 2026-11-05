@@ -122,6 +122,7 @@ public class MarketListingService {
                 postCategoryRepository
                         .findByCode(MARKET_POST_CATEGORY_CODE)
                         .orElseThrow(() -> new CustomException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+        imageLifecycle.rejectNewInlineImages(request.content(), null);
         imageLifecycle.protectAll(
                 request.imageUrls(), request.content(), userDetails.getUsername());
         List<PostImage> images = toPostImages(request.imageUrls());
@@ -140,8 +141,7 @@ public class MarketListingService {
         post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         postRepository.save(post);
         searchOutbox.postChanged(post);
-        marketThumbnails.queue(
-                post.getPublicId(), images.isEmpty() ? null : images.get(0).getImageUrl());
+        marketThumbnails.queue(post.getPublicId(), representativeImage(images, request.content()));
 
         MarketListing listing =
                 MarketListing.builder()
@@ -190,6 +190,7 @@ public class MarketListingService {
         MarketListing listing = findForUpdate(publicId);
         validateWriter(listing.getPost(), userDetails);
         validateVersion(listing, request.version());
+        imageLifecycle.rejectNewInlineImages(request.content(), listing.getPost().getContent());
         imageLifecycle.protectAll(
                 request.imageUrls(), request.content(), userDetails.getUsername());
         MarketCategory category = requireActiveCategory(request.categoryCode());
@@ -211,8 +212,7 @@ public class MarketListingService {
         marketListingRepository.flush();
         searchOutbox.postChanged(listing.getPost());
         marketThumbnails.queue(
-                listing.getPost().getPublicId(),
-                images.isEmpty() ? null : images.get(0).getImageUrl());
+                listing.getPost().getPublicId(), representativeImage(images, request.content()));
         return new MarketListingUpdateResponse(
                 publicId, listing.getVersion(), listing.getUpdatedAt());
     }
@@ -336,12 +336,32 @@ public class MarketListingService {
             thumbnails.putIfAbsent(
                     image.getPost().getId(),
                     ready.getOrDefault(
-                            image.getPost().getPublicId(),
-                            image.getImageUrl().startsWith("public/posts/originals/m-")
-                                    ? imageUrlResolver.toPublicUrl(image.getImageUrl())
-                                    : imageUrlResolver.toThumbnailPublicUrl(image.getImageUrl())));
+                            image.getPost().getPublicId(), toListImageUrl(image.getImageUrl())));
+        }
+        // 사진 칸 사진이 없으면 본문의 첫 사진이 대표 사진이다.
+        for (MarketListing listing : listings) {
+            Post post = listing.getPost();
+            if (thumbnails.containsKey(post.getId())) continue;
+            String key = imageLifecycle.firstContentKey(post.getContent());
+            if (key != null) {
+                thumbnails.put(
+                        post.getId(), ready.getOrDefault(post.getPublicId(), toListImageUrl(key)));
+            }
         }
         return thumbnails;
+    }
+
+    private String toListImageUrl(String imageKey) {
+        return imageKey.startsWith("public/posts/originals/m-")
+                ? imageUrlResolver.toPublicUrl(imageKey)
+                : imageUrlResolver.toThumbnailPublicUrl(imageKey);
+    }
+
+    /** 대표 사진을 따로 고르는 화면이 없어서 사진 칸의 첫 사진, 없으면 본문의 첫 사진을 쓴다. */
+    private String representativeImage(List<PostImage> images, String content) {
+        return images.isEmpty()
+                ? imageLifecycle.firstContentKey(content)
+                : images.get(0).getImageUrl();
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {
