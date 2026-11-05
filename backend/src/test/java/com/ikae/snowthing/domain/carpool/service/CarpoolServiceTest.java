@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.carpool.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -75,6 +76,110 @@ class CarpoolServiceTest {
                 .isEqualTo(ErrorCode.ACCESS_DENIED);
 
         verifyNoInteractions(calculationService, writerService);
+    }
+
+    @Test
+    void manualCostSkipsExternalCalculationWithoutCarDetails() {
+        CarpoolAutoCalculationService calculationService =
+                mock(CarpoolAutoCalculationService.class);
+        CarpoolWriterService writerService = mock(CarpoolWriterService.class);
+        CarpoolService service =
+                new CarpoolService(
+                        mock(PostRepository.class),
+                        mock(CarpoolDetailRepository.class),
+                        calculationService,
+                        writerService);
+        Member member = createMember(OWNER_PUBLIC_ID);
+        CarpoolCreateRequest request = createManualRequest(BigDecimal.valueOf(10_000));
+
+        service.create(request, new CustomUserDetails(member), "127.0.0.1");
+
+        verifyNoInteractions(calculationService);
+        verify(writerService).save(request, OWNER_PUBLIC_ID, "127.0.0.1", null);
+    }
+
+    @Test
+    void manualCostRequiresAmount() {
+        CarpoolService service = createServiceWithMocks();
+
+        assertThatThrownBy(
+                        () ->
+                                service.create(
+                                        createManualRequest(null),
+                                        new CustomUserDetails(createMember(OWNER_PUBLIC_ID)),
+                                        "127.0.0.1"))
+                .isInstanceOf(CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_CARPOOL_VALUE);
+    }
+
+    @Test
+    void autoCostRequiresCarDetails() {
+        CarpoolService service = createServiceWithMocks();
+        CarpoolCreateRequest request =
+                new CarpoolCreateRequest(
+                        "title",
+                        "content",
+                        "서울",
+                        "서울역",
+                        BigDecimal.valueOf(37.55),
+                        BigDecimal.valueOf(126.97),
+                        1L,
+                        CarpoolTripType.ONE_WAY,
+                        LocalDateTime.now().plusDays(1),
+                        null,
+                        2,
+                        null,
+                        null,
+                        CarpoolCostMode.AUTO,
+                        null,
+                        true,
+                        null,
+                        false);
+
+        assertThatThrownBy(
+                        () ->
+                                service.create(
+                                        request,
+                                        new CustomUserDetails(createMember(OWNER_PUBLIC_ID)),
+                                        "127.0.0.1"))
+                .isInstanceOf(CustomAuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_CARPOOL_VALUE);
+    }
+
+    private CarpoolService createServiceWithMocks() {
+        return new CarpoolService(
+                mock(PostRepository.class),
+                mock(CarpoolDetailRepository.class),
+                mock(CarpoolAutoCalculationService.class),
+                mock(CarpoolWriterService.class));
+    }
+
+    private CarpoolCreateRequest createManualRequest(BigDecimal manualCostPerPerson) {
+        return new CarpoolCreateRequest(
+                "title",
+                "content",
+                "서울 강동구",
+                "천호역 1번 출구",
+                null,
+                null,
+                1L,
+                CarpoolTripType.ONE_WAY,
+                LocalDateTime.now().plusDays(1),
+                null,
+                3,
+                null,
+                null,
+                CarpoolCostMode.MANUAL,
+                manualCostPerPerson,
+                true,
+                null,
+                false,
+                null,
+                null,
+                null,
+                null);
     }
 
     private CarpoolCreateRequest createRequest() {

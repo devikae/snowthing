@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
+import { carpoolCostLabel, formatCarpoolDateTime } from "./format";
 
 interface CarpoolItem {
   publicId: string;
@@ -16,6 +17,7 @@ interface CarpoolItem {
   tripType: "ONE_WAY" | "ROUND_TRIP";
   departureAt: string;
   passengerCapacity: number;
+  costMode: "AUTO" | "MANUAL";
   estimatedCostPerPerson: number;
   equipmentLoadAvailable: boolean;
 }
@@ -36,8 +38,11 @@ function CarpoolList() {
     ? Math.min(Math.floor(requestedPage), MAX_PAGE)
     : 1;
   const [data, setData] = useState<CarpoolPageResponse>({ content: [], totalElements: 0, totalPages: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  // 페이지마다 결과를 따로 기록해, 한 번 실패해도 다른 페이지로 옮기면 오류 화면이 남지 않게 한다.
+  const [loadedPage, setLoadedPage] = useState<number | null>(null);
+  const [failedPage, setFailedPage] = useState<number | null>(null);
+  const error = failedPage === page;
+  const loading = loadedPage !== page && !error;
   const cappedTotalPages = Math.min(data.totalPages, MAX_PAGE);
   const visiblePages = useMemo(() => {
     const pageIndex = page - 1;
@@ -49,18 +54,28 @@ function CarpoolList() {
   }, [cappedTotalPages, page]);
 
   useEffect(() => {
+    let stale = false;
     void fetch(`${API_ENDPOINTS.carpool.list}?page=${page - 1}&size=${PAGE_SIZE}`, { credentials: "include" })
       .then((response) => {
         if (!response.ok) throw new Error();
         return response.json();
       })
-      .then((response: CarpoolPageResponse) => setData({
-        content: Array.isArray(response.content) ? response.content : [],
-        totalElements: response.totalElements || 0,
-        totalPages: response.totalPages || 0,
-      }))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((response: CarpoolPageResponse) => {
+        if (stale) return;
+        setData({
+          content: Array.isArray(response.content) ? response.content : [],
+          totalElements: response.totalElements || 0,
+          totalPages: response.totalPages || 0,
+        });
+        setLoadedPage(page);
+        setFailedPage(null);
+      })
+      .catch(() => {
+        if (!stale) setFailedPage(page);
+      });
+    return () => {
+      stale = true;
+    };
   }, [page]);
 
   return <>
@@ -74,9 +89,9 @@ function CarpoolList() {
                 <div className="carpool-card-tags"><em>{item.tripType === "ROUND_TRIP" ? "왕복" : "편도"}</em><em>{item.equipmentLoadAvailable ? "장비 적재 가능" : "장비 적재 불가"}</em></div>
                 <h2>{item.title}</h2>
                 <p className="carpool-route"><strong>{item.departureRegion}</strong><span className="material-symbols-outlined">east</span><strong>{item.destinationResortName}</strong></p>
-                <p className="carpool-meta"><span className="material-symbols-outlined">schedule</span>{new Date(item.departureAt).toLocaleString("ko-KR")}<span className="material-symbols-outlined">person</span>모집 {item.passengerCapacity}명</p>
+                <p className="carpool-meta"><span className="material-symbols-outlined">schedule</span>{formatCarpoolDateTime(item.departureAt)}<span className="material-symbols-outlined">person</span>모집 {item.passengerCapacity}명</p>
               </div>
-              <div className="carpool-card-cost"><small>예상 1인 비용</small><b>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</b><span>작성자 {item.writerName}</span></div>
+              <div className="carpool-card-cost"><small>{carpoolCostLabel(item.costMode)}</small><b>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</b><span>작성자 {item.writerName}</span></div>
             </Link>)}
     </section>
     {cappedTotalPages > 1 && <nav className="carpool-pagination" aria-label="카풀 목록 페이지">

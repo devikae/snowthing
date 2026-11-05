@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.carpool.dto;
 
 import java.time.LocalDateTime;
 
+import com.ikae.snowthing.domain.carpool.entity.CarpoolCostMode;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolDetail;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolTripType;
 import com.ikae.snowthing.domain.post.entity.Post;
@@ -15,6 +16,7 @@ public record CarpoolSummaryResponse(
         CarpoolTripType tripType,
         LocalDateTime departureAt,
         int passengerCapacity,
+        CarpoolCostMode costMode,
         int estimatedCostPerPerson,
         boolean equipmentLoadAvailable,
         LocalDateTime createdAt) {
@@ -31,6 +33,7 @@ public record CarpoolSummaryResponse(
                 detail.getTripType(),
                 detail.getDepartureAt(),
                 detail.getPassengerCapacity(),
+                detail.getCostMode(),
                 detail.getEstimatedCostPerPerson(),
                 detail.isEquipmentLoadAvailable(),
                 post.getCreatedAt());
