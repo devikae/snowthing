@@ -13,14 +13,14 @@
   - 판정을 한 번의 `compute`로 합쳤다: 캐시를 나누면 중복 검사를 통과한 문장이 간격 제한에 걸려도 기록에 남아, 다시 보낼 때 중복으로 거절된다.
   - 저장소는 서버 메모리(Caffeine)를 유지했다. 서버 1대이고 Redis는 나중에 도입한다. 다른 선택지인 DB 카운터는 메시지마다 DB 쓰기가 생겨 실시간 경로에 맞지 않는다.
 - 발견된 이슈
-  - 전체 테스트에서 `ProfileImageSecurityIntegrationTest` 1건이 503으로 실패했고 단독 재실행은 통과했다. 채팅 코드를 거치지 않는 경로이며 원인은 확정하지 못했다.
+  - 전체 테스트에서 `ProfileImageSecurityIntegrationTest` 1건이 503으로 실패했다. 이번 변경과 무관하다. 프로필 업로드 제한기가 쓰는 `request_budget_window` 표가 새로 만든 전용 스키마에 없었고, 이 테스트는 표를 직접 만들지 않는다. 표를 지우고 단독 실행하면 같은 줄에서 실패하고, 표를 만들면 통과한다. CI는 마이그레이션을 먼저 적용해 표가 있어서 통과한다.
   - `ㅋㅋㅋ` 같은 짧은 반응도 30초 안에 같은 내용이면 거절된다. 특수문자만 있는 메시지는 정규화하면 빈 문자열이라 서로 같은 내용으로 본다(기존 동작, 창만 길어짐).
   - 서버 재시작 시 제한 상태가 초기화된다(기존과 같음).
 - 검증
   - `ChatServiceTest`, `BotMentionServiceTest` 통과.
-  - 백엔드 `./gradlew test`: 761건 중 실패 1, skip 1(위 이슈). 전용 스키마 `snowthing_test_ika24`.
+  - 백엔드 `./gradlew test`: 761건 중 실패 1, skip 1(위 이슈). 전용 스키마 `snowthing_test_ika24`. PR CI Build and Test, Spotless Check 통과.
   - 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
-  - `spotlessCheck`는 worktree에서 실행할 수 없어 CI 결과로 확인한다. 브라우저 확인과 부하 테스트(benchmark 태그)는 실행하지 않았다.
+  - `spotlessCheck`는 worktree에서 실행할 수 없어 CI 결과로 확인했다. 브라우저 확인과 부하 테스트(benchmark 태그)는 실행하지 않았다.
 - 남은 항목: PR 리뷰, 머지와 배포(사용자 확인 후).
 - 사용자 결정 필요: 제한 수치가 적당한지 확인.
 
