@@ -54,6 +54,7 @@
 .ct-card { justify-items: center; }
 .ct-card h2 { justify-self: start; }
 .ct-card-preview { display: block; width: min(270px, 100%); height: auto; aspect-ratio: 9 / 16; border-radius: 12px; border: 1px solid var(--snow-border); }
+.ct-card-link { display: grid; gap: 8px; width: 100%; border-top: 1px solid var(--snow-border); padding-top: 12px; }
 .ct-card-loading { background: var(--snow-surface-mid); }
 
 .ct-map-wrap { display: grid; gap: 8px; min-width: 0; }

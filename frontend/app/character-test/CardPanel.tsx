@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { CharacterResult } from "./api";
 import { renderCard } from "./cardImage";
 import type { Sport } from "./data";
 import { shareOrSaveImage } from "./shareFile";
 
 // 공유 창은 클릭 직후에만 열리는 브라우저가 있어 카드를 미리 그려 둔다.
-export function CardPanel({ result, sport }: { result: CharacterResult; sport: Sport }) {
+export function CardPanel({ result, sport, children }: { result: CharacterResult; sport: Sport; children?: ReactNode }) {
   const [card, setCard] = useState<{ blob: Blob; url: string } | null>(null);
   const [notice, setNotice] = useState("");
 
@@ -44,6 +44,12 @@ export function CardPanel({ result, sport }: { result: CharacterResult; sport: S
         : <div className="ct-card-preview ct-card-loading" aria-hidden="true" />}
       <button type="button" className="ct-primary" onClick={() => void share()} disabled={!card}>카드 공유 또는 저장</button>
       <p className="ct-fineprint" role="status">{notice || "지원되는 폰은 공유 창이 열리고, 아니면 이미지로 저장돼요."}</p>
+      {children && (
+        <div className="ct-card-link">
+          <p className="ct-fineprint">카드는 사진만 전달돼요. 링크를 같이 보내면 받은 사람이 바로 들어올 수 있어요.</p>
+          {children}
+        </div>
+      )}
     </section>
   );
 }

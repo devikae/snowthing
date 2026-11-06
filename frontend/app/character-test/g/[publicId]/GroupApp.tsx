@@ -14,6 +14,7 @@ import { QuizFlow } from "../../QuizFlow";
 import { RelationshipMap } from "../../RelationshipMap";
 import { ResultPanel } from "../../ResultPanel";
 import { shareLink, shareOrSaveImage } from "../../shareFile";
+import { ShareGroupLink } from "../../ShareGroupLink";
 
 type View =
   | { kind: "loading" }
@@ -111,7 +112,9 @@ export function GroupApp({ publicId }: { publicId: string }) {
           <p className="ct-lead">이름만 넣으면 이 모임 사람들과 어떤 사이인지 지도로 보여 줘요.</p>
           <NicknameForm submitLabel="모임에 들어가기" onSubmit={join} />
         </section>
-        <CardPanel result={result} sport={sport} />
+        <CardPanel result={result} sport={sport}>
+          <ShareGroupLink groupPublicId={publicId} groupName={preview.name} />
+        </CardPanel>
       </>
     );
   }
@@ -224,7 +227,9 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
         })}
       </section>
 
-      <CardPanel result={me.result} sport={me.sport} />
+      <CardPanel result={me.result} sport={me.sport}>
+        <ShareGroupLink groupPublicId={groupPublicId} groupName={groupName} />
+      </CardPanel>
 
       <section className="ct-panel ct-account" aria-labelledby="ct-account-title">
         <h2 id="ct-account-title">내 정보 관리</h2>
