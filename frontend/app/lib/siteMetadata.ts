@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 
 export const SITE_URL = "https://snowthing.org";
 export const SITE_NAME = "눈팅";
-export const SITE_TITLE = "눈팅 SnowThing | 스노보드 커뮤니티";
-export const SITE_DESCRIPTION = "눈팅(SnowThing)은 스노보드 커뮤니티입니다. 슬로프캠, 오늘의 설질, 카풀·동행과 장비 정보를 함께 나눠요.";
+export const SITE_TITLE = "눈팅 SnowThing | 윈터스포츠 커뮤니티";
+export const SITE_DESCRIPTION = "눈팅(SnowThing)은 윈터스포츠 커뮤니티입니다. 슬로프캠, 오늘의 설질, 카풀·동행과 장비 정보를 함께 나눠요.";
 
 export function publicPageMetadata(title: string, description: string, path: string): Metadata {
   const pageTitle = `${title} | 눈팅 SnowThing`;

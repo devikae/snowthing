@@ -208,6 +208,7 @@ function PostListContent() {
     <div className="community-page">
       <TopNav active={currentView === "best" ? "best" : config.navKey} />
       <main className="community-container board-page">
+        <h1 className="sr-only">{config.name}</h1>
         <div className="board-layout">
           <section className="board-primary">
             {isInquiry ? (
