@@ -9,10 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.ikae.snowthing.domain.charactertest.dto.CharacterJoinRequest;
 import com.ikae.snowthing.domain.charactertest.dto.CharacterJoinResponse;
 import com.ikae.snowthing.domain.charactertest.entity.CharacterSport;
+import com.ikae.snowthing.domain.charactertest.repository.CharacterGroupRepository;
 
 @SpringBootTest
 class CharacterGroupCleanupSchedulerTest {
@@ -22,6 +24,8 @@ class CharacterGroupCleanupSchedulerTest {
     @Autowired CharacterGroupCleanupScheduler scheduler;
     @Autowired CharacterGroupService service;
     @Autowired JdbcTemplate jdbc;
+    @Autowired CharacterGroupRepository groupRepository;
+    @Autowired TransactionTemplate transaction;
 
     @AfterEach
     void cleanUp() {
@@ -30,7 +34,7 @@ class CharacterGroupCleanupSchedulerTest {
     }
 
     @Test
-    void 구십일_동안_새_참여가_없는_모임만_참여자와_함께_지운다() {
+    void 칠일_동안_새_참여가_없는_모임만_참여자와_함께_지운다() {
         LocalDateTime now = LocalDateTime.of(2026, 11, 6, 4, 20);
         CharacterJoinResponse expired = create("오래된모임");
         CharacterJoinResponse boundary = create("경계모임");
@@ -69,9 +73,13 @@ class CharacterGroupCleanupSchedulerTest {
         return service.create(new CharacterJoinRequest(nickname, CharacterSport.SKI, ANSWERS));
     }
 
+    // 조회와 같은 JPA 경로로 넣는다. SQL로 직접 넣으면 JVM 시간대에 따라 삭제 기준과 어긋난다.
     private void setUpdatedAt(String publicId, LocalDateTime value) {
-        jdbc.update(
-                "UPDATE character_group SET updated_at = ? WHERE public_id = ?", value, publicId);
+        transaction.executeWithoutResult(
+                status ->
+                        groupRepository.touchJoinedAt(
+                                groupRepository.findByPublicId(publicId).orElseThrow().getId(),
+                                value));
     }
 
     private Long countGroup(String publicId) {

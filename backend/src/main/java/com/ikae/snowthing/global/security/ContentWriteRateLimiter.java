@@ -24,17 +24,23 @@ public class ContentWriteRateLimiter {
         CARPOOL(Duration.ofSeconds(10), 10),
         MARKET_LISTING(Duration.ofSeconds(10), 10),
         DIRECT_MESSAGE(Duration.ofSeconds(5), 30),
-        // 비회원 기능이라 IP로 묶인다. 친구들이 같은 와이파이로 몰려 들어와도 막히지 않게 넉넉히 둔다.
-        CHARACTER_GROUP_CREATE(Duration.ofSeconds(1), 60),
-        CHARACTER_GROUP_JOIN(Duration.ofSeconds(1), 300);
+        // 비회원 기능이라 IP로 묶인다. 친구들이 같은 와이파이로 몰려 들어와도 막히지 않게 1초에 여러 건을 허용한다.
+        CHARACTER_GROUP_CREATE(Duration.ofSeconds(1), 3, 60),
+        CHARACTER_GROUP_JOIN(Duration.ofSeconds(1), 10, 300);
 
-        // 짧은 간격마다 1건, 1시간마다 hourlyLimit건까지 허용한다. 서비스 검증에서 실패한 요청도 횟수를 쓰므로
+        // 짧은 간격마다 burstLimit건(기본 1건), 1시간마다 hourlyLimit건까지 허용한다. 서비스 검증에서 실패한 요청도 횟수를 쓰므로
         // 간격은 연타만 막을 만큼 짧게 둔다(오류를 고쳐 바로 다시 보내는 사용자를 막지 않도록).
         final Duration interval;
+        final int burstLimit;
         final int hourlyLimit;
 
         Action(Duration interval, int hourlyLimit) {
+            this(interval, 1, hourlyLimit);
+        }
+
+        Action(Duration interval, int burstLimit, int hourlyLimit) {
             this.interval = interval;
+            this.burstLimit = burstLimit;
             this.hourlyLimit = hourlyLimit;
         }
     }
@@ -66,7 +72,7 @@ public class ContentWriteRateLimiter {
                 sharedLimiter.acquire(
                         List.of(
                                 new SharedRequestLimiter.Limit(
-                                        prefix + ":burst", 1, action.interval),
+                                        prefix + ":burst", action.burstLimit, action.interval),
                                 new SharedRequestLimiter.Limit(
                                         prefix + ":hour",
                                         action.hourlyLimit,

@@ -29,7 +29,7 @@ class CharacterRateLimitTest {
 
         verify(shared).acquire(captor.capture());
         List<SharedRequestLimiter.Limit> limits = captor.getValue();
-        assertThat(limits).extracting(SharedRequestLimiter.Limit::count).containsExactly(1, 300);
+        assertThat(limits).extracting(SharedRequestLimiter.Limit::count).containsExactly(10, 300);
         assertThat(limits.get(0).duration().toSeconds()).isEqualTo(1);
         assertThat(limits)
                 .allSatisfy(limit -> assertThat(limit.key()).hasSizeLessThanOrEqualTo(100));

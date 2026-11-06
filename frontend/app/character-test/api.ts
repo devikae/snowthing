@@ -5,7 +5,7 @@ import type { CharacterLabel, CharacterStats, LevelCode, Sport } from "./data";
 
 const GROUPS = `${API_BASE_URL}/api/v1/character-groups`;
 const TOKEN_HEADER = "X-Character-Token";
-// 친구들이 같은 와이파이로 동시에 들어오면 1초 간격 제한에 걸릴 수 있어 한 번은 조용히 다시 보낸다.
+// 한 와이파이에서 1초에 10명이 넘게 들어오면 제한에 걸릴 수 있어 한 번은 조용히 다시 보낸다.
 const RATE_LIMIT_RETRY_MS = 1200;
 
 export interface CharacterResult {

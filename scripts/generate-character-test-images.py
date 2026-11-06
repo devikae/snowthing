@@ -9,6 +9,7 @@
 """
 
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -540,8 +541,34 @@ ACCENT = (226, 96, 63, 255)
 PINE = (127, 181, 172, 255)
 
 
+# 링크 미리보기 글자에 쓸 한글 글꼴. CHARACTER_TEST_FONT와 CHARACTER_TEST_FONT_BOLD로 직접 지정할 수 있다.
+FONT_CANDIDATES = {
+    True: (
+        os.environ.get("CHARACTER_TEST_FONT_BOLD", ""),
+        "C:/Windows/Fonts/malgunbd.ttf",
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    ),
+    False: (
+        os.environ.get("CHARACTER_TEST_FONT", ""),
+        "C:/Windows/Fonts/malgun.ttf",
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    ),
+}
+
+
+def font_path(bold):
+    for path in FONT_CANDIDATES[bold]:
+        if path and Path(path).exists():
+            return path
+    raise SystemExit("한글 글꼴을 찾지 못했습니다. CHARACTER_TEST_FONT와 CHARACTER_TEST_FONT_BOLD에 경로를 지정해 주세요.")
+
+
 def og_font(size, bold=True):
-    return ImageFont.truetype("C:/Windows/Fonts/malgunbd.ttf" if bold else "C:/Windows/Fonts/malgun.ttf", size)
+    return ImageFont.truetype(font_path(bold), size)
 
 
 def character_art(name):
@@ -594,6 +621,9 @@ def draw_share_images():
 
 
 def main():
+    # 그림 일부만 새로 쓰고 멈추지 않도록 글꼴부터 확인한다.
+    font_path(True)
+    font_path(False)
     for name, draw in {**JOBS, **GEARS}.items():
         draw().save(name)
     # 확인용 모음 그림은 저장소 밖 경로를 인자로 줄 때만 만든다.
