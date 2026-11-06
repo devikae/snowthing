@@ -417,6 +417,148 @@ class PostServiceTest {
         }
 
         @Test
+        @DisplayName("로그인 회원의 익명 글은 작성자 ID를 숨기고 본인에게만 작성자로 알리며 비밀번호를 요구하지 않는다.")
+        void getPostDetail_memberAnonymous_authorFlags() {
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("회원 익명 글")
+                            .content("상세 내용")
+                            .isAnonymous(true)
+                            .build();
+
+            PostResponse created = postService.createPost(request, userDetails1, "127.0.0.1");
+
+            PostDetailResponse mine =
+                    postService.getPostDetail(created.publicId(), userDetails1, false);
+            PostDetailResponse other =
+                    postService.getPostDetail(created.publicId(), userDetails2, false);
+            PostDetailResponse guest = postService.getPostDetail(created.publicId(), null, false);
+
+            assertThat(mine.isAuthor()).isTrue();
+            assertThat(mine.requiresPassword()).isFalse();
+            assertThat(mine.writer().publicId()).isNull();
+            assertThat(other.isAuthor()).isFalse();
+            assertThat(other.requiresPassword()).isFalse();
+            assertThat(guest.isAuthor()).isFalse();
+            assertThat(guest.requiresPassword()).isFalse();
+        }
+
+        private Post saveCarpoolPost(String title) {
+            PostCategory carpool =
+                    categoryRepository
+                            .findByCode("CARPOOL")
+                            .orElseGet(
+                                    () ->
+                                            categoryRepository.save(
+                                                    PostCategory.builder()
+                                                            .name("카풀")
+                                                            .code("CARPOOL")
+                                                            .build()));
+            return postRepository.save(
+                    Post.builder()
+                            .member(member1)
+                            .category(carpool)
+                            .title(title)
+                            .content("상세 내용")
+                            .writerIp("127.0.0.1")
+                            .isAnonymous(false)
+                            .hasImage(false)
+                            .build());
+        }
+
+        @Test
+        @DisplayName("카풀 글은 전체 목록에 나오지 않고 키워드 검색에는 나온다.")
+        void carpoolPost_hiddenFromBoardList_shownInSearch() {
+            saveCarpoolPost("시청역 카풀 모집");
+            postService.createPost(
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("자유 글")
+                            .content("상세 내용")
+                            .isAnonymous(false)
+                            .build(),
+                    userDetails1,
+                    "127.0.0.1");
+
+            var board =
+                    postService.searchPostsByOffset(
+                            new PostSearchRequest(null, null, null, null, null, 1, null, 10));
+            var search =
+                    postService.searchPostsByOffset(
+                            new PostSearchRequest(
+                                    null, null, SearchType.TITLE, "시청역", null, 1, null, 10));
+
+            assertThat(board.content())
+                    .extracting(PostListResponse::categoryCode)
+                    .containsExactly("FREE");
+            assertThat(search.content())
+                    .extracting(PostListResponse::categoryCode)
+                    .containsExactly("CARPOOL");
+            assertThat(postService.getPostList(null, 0, 10).getTotalElements()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("카풀 글은 일반 글 API로 수정, 삭제할 수 없고 일반 글을 카풀로 쓸 수도 없다.")
+        void carpoolPost_rejectedByGeneralWriteApi() {
+            Post carpool = saveCarpoolPost("카풀 모집");
+            PostUpdateRequest update =
+                    PostUpdateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("자유 글로 변경")
+                            .content("본문")
+                            .build();
+
+            assertThatThrownBy(
+                            () ->
+                                    postService.updatePost(
+                                            carpool.getPublicId(), update, userDetails1))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
+            assertThatThrownBy(
+                            () -> postService.deletePost(carpool.getPublicId(), null, userDetails1))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_NOT_FOUND);
+            assertThatThrownBy(
+                            () ->
+                                    postService.createPost(
+                                            PostCreateRequest.builder()
+                                                    .categoryCode("CARPOOL")
+                                                    .title("상세 없는 카풀")
+                                                    .content("본문")
+                                                    .isAnonymous(false)
+                                                    .build(),
+                                            userDetails1,
+                                            "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.POST_CATEGORY_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("비회원 익명 글은 누가 보든 작성자가 아니고 비밀번호를 요구한다.")
+        void getPostDetail_guestAnonymous_requiresPassword() {
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("비회원 익명 글")
+                            .content("상세 내용")
+                            .isAnonymous(true)
+                            .anonymousPassword("Anon1234!")
+                            .build();
+
+            PostResponse created = postService.createPost(request, null, "127.0.0.1");
+
+            PostDetailResponse loggedIn =
+                    postService.getPostDetail(created.publicId(), userDetails1, false);
+
+            assertThat(loggedIn.isAuthor()).isFalse();
+            assertThat(loggedIn.requiresPassword()).isTrue();
+        }
+
+        @Test
         @DisplayName("존재하지 않는 publicId 조회 시 404 예외가 터진다.")
         void getPostDetail_notFound() {
             assertThatThrownBy(

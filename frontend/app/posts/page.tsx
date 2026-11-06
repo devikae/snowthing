@@ -301,7 +301,7 @@ function PostListContent() {
                   return (
                     <Link
                       key={post.publicId}
-                      href={`/posts/${post.publicId}`}
+                      href={post.categoryCode === "CARPOOL" ? `/carpool/${post.publicId}` : `/posts/${post.publicId}`}
                       onClick={(event) => handlePostClick(event, post)}
                       className={`board-post-row m-row ${unavailable ? "unavailable" : ""}`}
                     >

@@ -4017,3 +4017,38 @@ html[data-theme="dark"] .snow-empty-copy strong {
     display: none;
   }
 }
+
+.delete-modal-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, .5); }
+.delete-modal { width: 100%; max-width: 420px; border: 1px solid var(--snow-border); border-radius: 16px; background: var(--snow-canvas); padding: 24px; box-shadow: 0 18px 40px rgba(15, 23, 42, .18); }
+.delete-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.delete-modal-head h3 { margin: 0; color: var(--snow-ink); font-size: 18px; font-weight: 700; }
+.delete-modal-head button { display: grid; place-items: center; border: 0; background: none; color: var(--snow-muted); cursor: pointer; }
+.delete-modal-head button:hover { color: var(--snow-ink); }
+.delete-modal-description { margin: 10px 0 0; color: var(--snow-ink-soft); font-size: 14px; line-height: 1.5; }
+.delete-modal-form { display: grid; gap: 14px; margin-top: 18px; }
+.delete-modal-form label { display: grid; gap: 6px; }
+.delete-modal-form label span { color: var(--snow-ink); font-size: 13px; font-weight: 600; }
+.delete-modal-form input { min-height: 44px; width: 100%; border: 1px solid var(--snow-border-strong); border-radius: 10px; background: var(--snow-canvas); padding: 0 12px; color: var(--snow-ink); font-size: 14px; outline: none; }
+.delete-modal-form input:focus { border-color: var(--snow-ink); }
+.delete-modal-error { margin: 0; color: var(--snow-error); font-size: 13px; }
+.delete-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.delete-modal-actions button { min-height: 40px; border: 1px solid var(--snow-border-strong); border-radius: 999px; background: var(--snow-canvas); padding: 0 18px; color: var(--snow-ink); font-size: 14px; font-weight: 600; cursor: pointer; }
+.delete-modal-actions button:hover { background: var(--snow-surface-mid); }
+.delete-modal-actions button:disabled { cursor: default; opacity: .5; }
+.delete-modal-actions .delete-modal-confirm { border-color: var(--snow-error); background: var(--snow-error); color: #fff; }
+.delete-modal-actions .delete-modal-confirm:hover { border-color: var(--snow-error); background: var(--snow-error); filter: brightness(.92); }
+
+.comment-delete-toggle { display: inline-grid; width: 20px; height: 20px; margin-left: 6px; place-items: center; border: 0; border-radius: 999px; background: none; color: var(--snow-faint); cursor: pointer; }
+.comment-delete-toggle .material-symbols-outlined { font-size: 15px; }
+.comment-delete-toggle:hover, .comment-delete-toggle.active { background: var(--snow-surface-mid); color: var(--snow-ink); }
+.comment-delete-popover { position: absolute; top: 100%; right: 0; z-index: 50; display: flex; align-items: center; gap: 6px; margin-top: 6px; border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 6px; box-shadow: 0 12px 28px rgba(15, 23, 42, .14); }
+.comment-delete-popover input { width: 128px; height: 32px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); padding: 0 10px; color: var(--snow-ink); font-size: 13px; outline: none; }
+.comment-delete-popover input:focus { border-color: var(--snow-ink); }
+.comment-delete-question { padding: 0 6px; color: var(--snow-ink); font-size: 13px; white-space: nowrap; }
+.comment-delete-confirm { height: 32px; border: 0; border-radius: 999px; background: var(--snow-error); padding: 0 12px; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.comment-delete-confirm:hover { filter: brightness(.92); }
+.comment-delete-confirm:disabled { cursor: default; opacity: .5; }
+.comment-delete-close { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 999px; background: none; color: var(--snow-muted); cursor: pointer; }
+.comment-delete-close .material-symbols-outlined { font-size: 16px; }
+.comment-delete-close:hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
+.comment-delete-error { position: absolute; top: 100%; right: 0; z-index: 50; margin-top: 4px; border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-canvas); padding: 4px 8px; color: var(--snow-error); font-size: 12px; white-space: nowrap; box-shadow: 0 8px 20px rgba(15, 23, 42, .12); }

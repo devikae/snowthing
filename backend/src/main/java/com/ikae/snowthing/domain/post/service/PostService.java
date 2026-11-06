@@ -60,7 +60,7 @@ public class PostService {
                         .findByCode(request.categoryCode())
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
-        rejectMarketCategory(category);
+        rejectOwnScreenCategory(category);
         requireNoticeAdmin(category, userDetails);
         if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode())
                 && request.isAnonymous()) {
@@ -168,7 +168,8 @@ public class PostService {
             postRepository.increaseViewCount(post.getId());
             viewCount++;
         }
-        return PostDetailResponse.from(post, viewCount, imageUrls);
+        return PostDetailResponse.from(
+                post, viewCount, imageUrls, userDetails == null ? null : userDetails.getPublicId());
     }
 
     public Page<PostListResponse> getPostList(String categoryCode, int page, int size) {
@@ -194,7 +195,7 @@ public class PostService {
         } else {
             posts =
                     postRepository.findAllWithMemberAndCategory(
-                            PostCategoryCodes.HIDDEN_FROM_PUBLIC, pageable);
+                            PostCategoryCodes.HIDDEN_FROM_BOARD_LIST, pageable);
         }
 
         return posts.map(this::toPostListResponse);
@@ -277,8 +278,8 @@ public class PostService {
                         .findByCode(request.categoryCode())
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
-        rejectMarketPost(post);
-        rejectMarketCategory(category);
+        rejectOwnScreenPost(post);
+        rejectOwnScreenCategory(category);
         rejectInquiryBoundaryChange(post.getCategory(), category);
         requireNoticeAdmin(post.getCategory(), userDetails);
         requireNoticeAdmin(category, userDetails);
@@ -317,7 +318,7 @@ public class PostService {
         if (post.isDeleted()) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
-        rejectMarketPost(post);
+        rejectOwnScreenPost(post);
         InquiryAccess.requireReadable(post, userDetails);
 
         boolean isAdmin = isAdmin(userDetails);
@@ -393,8 +394,14 @@ public class PostService {
         }
     }
 
-    private void rejectMarketCategory(PostCategory category) {
-        if (PostCategoryCodes.MARKET.equalsIgnoreCase(category.getCode())) {
+    private void rejectOwnScreenPost(Post post) {
+        if (PostCategoryCodes.hasOwnScreen(post.getCategory().getCode())) {
+            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    private void rejectOwnScreenCategory(PostCategory category) {
+        if (PostCategoryCodes.hasOwnScreen(category.getCode())) {
             throw new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND);
         }
     }

@@ -15,7 +15,7 @@ import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm font-mono text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
 });
 
 interface MemberProfile {
@@ -208,7 +208,7 @@ function PostCreateForm() {
 
   if (checkingAuth) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-20 text-center text-xs font-mono text-[var(--snow-muted)]">
+      <div className="max-w-4xl mx-auto px-6 py-20 text-center text-xs text-[var(--snow-muted)]">
         작성 권한 및 세션을 확인하는 중입니다...
       </div>
     );
@@ -365,7 +365,7 @@ export default function PostCreatePage() {
   return (
     <div className="community-page">
       <TopNav active="posts" />
-      <Suspense fallback={<div className="p-20 text-center text-xs font-mono text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다...</div>}>
+      <Suspense fallback={<div className="p-20 text-center text-xs text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다...</div>}>
         <PostCreateForm />
       </Suspense>
       <Footer />

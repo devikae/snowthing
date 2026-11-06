@@ -15,7 +15,7 @@ import { API_ENDPOINTS } from "../../lib/api";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
   ssr: false,
-  loading: () => <div className="p-6 font-mono text-sm text-gray-400">📖 본문을 불러오는 중입니다...</div>,
+  loading: () => <div className="p-6 text-sm text-[var(--snow-muted)]">본문을 불러오는 중입니다...</div>,
 });
 
 interface WriterInfo {
@@ -32,6 +32,8 @@ interface PostDetail {
   content: string;
   status: string;
   isAnonymous: boolean;
+  isAuthor: boolean;
+  requiresPassword: boolean;
   viewCount: number;
   commentCount: number;
   likeCount: number;
@@ -137,7 +139,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
         description: "관리자 권한으로 이 게시글을 즉시 삭제 처리합니다.",
         requirePassword: false,
       });
-    } else if (post?.isAnonymous && (!currentUserPublicId || post.writer?.publicId !== currentUserPublicId)) {
+    } else if (post?.requiresPassword) {
       setDeleteModalConfig({
         title: "익명 게시글 삭제",
         description: "익명 게시글 삭제를 위해 작성 시 설정한 비밀번호를 입력해주세요.",
@@ -285,6 +287,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void (async () => {
+        let movingToCarpool = false;
         try {
           // 현재 로그인 유저 프로필 조회
           try {
@@ -302,6 +305,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
           const res = await fetch(API_ENDPOINTS.posts.detail(publicId), { credentials: "include" });
           if (res.ok) {
             const data: PostDetail = await res.json();
+            if (data.categoryCode === "CARPOOL") {
+              movingToCarpool = true;
+              router.replace(`/carpool/${publicId}`);
+              return;
+            }
             setPost(data);
           } else {
             setErrorMsg("게시글을 찾을 수 없거나 삭제되었습니다.");
@@ -310,13 +318,13 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
         } catch {
           setErrorMsg("게시글 로드에 실패했습니다.");
         } finally {
-          setLoading(false);
+          if (!movingToCarpool) setLoading(false);
         }
       })();
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [fetchComments, publicId]);
+  }, [fetchComments, publicId, router]);
 
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
     try {
@@ -613,7 +621,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
               )}
               <div><AuthorMenu publicId={isAnonymousPost ? null : post.writer.publicId} nickname={post.writer.nickname} /><small>{formatPostDateTime(post.createdAt)}</small></div>
               {(() => {
-                const canEdit = Boolean(post.isAnonymous || post.categoryCode === "ANONYMOUS" || (currentUserPublicId && post.writer?.publicId === currentUserPublicId));
+                const canEdit = post.isAuthor || post.requiresPassword;
                 const canDelete = Boolean(isAdmin || canEdit);
                 if (!canEdit && !canDelete) return null;
 
@@ -1123,7 +1131,7 @@ function CommentEditForm({
 
   return (
     <div className="mt-3 rounded border border-[var(--snow-border)] bg-[var(--snow-background)] p-4">
-      <label htmlFor={contentId} className="font-mono text-xs font-bold text-[var(--snow-muted)]">
+      <label htmlFor={contentId} className="text-[13px] font-semibold text-[var(--snow-ink)]">
         댓글 내용
       </label>
       <textarea
@@ -1135,11 +1143,11 @@ function CommentEditForm({
         onChange={(event) => setContent(event.target.value)}
         className="snow-textarea mt-2 min-h-[100px]"
       />
-      <div className="mt-1 text-right font-mono text-xs text-[var(--snow-muted)]">{content.length}/1000</div>
+      <div className="mt-1 text-right text-xs text-[var(--snow-muted)]">{content.length}/1000</div>
       {requiresPassword && (
         <div className="mt-3">
-          <label htmlFor={passwordId} className="font-mono text-xs font-bold text-[var(--snow-muted)]">
-            익명 비밀번호
+          <label htmlFor={passwordId} className="text-[13px] font-semibold text-[var(--snow-ink)]">
+            비밀번호
           </label>
           <input
             id={passwordId}
@@ -1147,8 +1155,8 @@ function CommentEditForm({
             value={password}
             disabled={submitting}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="●●●●"
-            className="snow-input mt-2 w-full sm:w-52"
+            placeholder="작성할 때 입력한 비밀번호"
+            className="snow-input mt-2 w-full sm:w-64"
           />
         </div>
       )}
@@ -1212,12 +1220,10 @@ function CommentDeleteInline({
       <button
         type="button"
         onClick={isActive ? onClose : onOpen}
-        className={`ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-[2px] text-[10px] font-bold transition cursor-pointer ${
-          isActive ? "bg-black text-white" : "bg-gray-300/80 text-white hover:bg-gray-400"
-        }`}
+        className={`comment-delete-toggle${isActive ? " active" : ""}`}
         title={isActive ? "취소" : "댓글 삭제"}
       >
-        ✕
+        <span className="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
 
       {isActive && (
@@ -1226,7 +1232,7 @@ function CommentDeleteInline({
           <div className="fixed inset-0 z-40" onClick={onClose} />
 
           {/* 시간 및 아이콘 바로 아래에 완벽하게 플로팅되는 팝오버 (레이아웃 밀림 0) */}
-          <div className="absolute right-0 top-full mt-1.5 z-50 flex items-center bg-[#1c2e5c] border border-black shadow-xl rounded-xs">
+          <div className="comment-delete-popover">
             {comment.requiresDeletePassword ? (
               <input
                 type="password"
@@ -1242,10 +1248,9 @@ function CommentDeleteInline({
                   }
                 }}
                 autoFocus
-                className="h-6 w-28 bg-white px-1.5 text-xs text-black outline-none border-r border-black placeholder:text-gray-400"
               />
             ) : (
-              <span className="h-6 flex items-center px-2 text-[11px] font-medium text-white select-none whitespace-nowrap border-r border-[#2a4078]">
+              <span className="comment-delete-question">
                 삭제할까요?
               </span>
             )}
@@ -1253,20 +1258,20 @@ function CommentDeleteInline({
               type="button"
               onClick={onConfirm}
               disabled={submitting}
-              className="h-6 px-2.5 text-xs font-bold text-white hover:bg-[#283f7a] transition-colors border-r border-[#2a4078] disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              className="comment-delete-confirm"
             >
               {submitting ? "..." : "확인"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="h-6 px-1.5 text-xs font-bold text-white hover:bg-[#283f7a] transition-colors cursor-pointer"
+              className="comment-delete-close"
               title="취소"
             >
-              ✕
+              <span className="material-symbols-outlined" aria-hidden="true">close</span>
             </button>
             {error && (
-              <div className="absolute right-0 top-full mt-1 z-50 rounded border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 shadow-md whitespace-nowrap">
+              <div className="comment-delete-error" role="alert">
                 {error}
               </div>
             )}
