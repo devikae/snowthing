@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 import { RotatingWordmark } from "./RotatingWordmark";
@@ -100,7 +100,6 @@ const boardItems: NavItem[] = [
 ];
 
 export function TopNav({ active = "home" }: { active?: ActiveNav }) {
-  const router = useRouter();
   const pathname = usePathname();
   const boardMenuRef = useRef<HTMLDetailsElement>(null);
   const profileMenuRef = useRef<HTMLDetailsElement>(null);
@@ -161,7 +160,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const keyword = search.trim();
-    if (keyword) router.push(`/posts?keyword=${encodeURIComponent(keyword)}`);
+    if (keyword) window.location.assign(`/search?q=${encodeURIComponent(keyword)}`);
   };
 
   const handleLogout = async () => {
@@ -223,7 +222,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <button type="button" onClick={() => setSearchOpen((open) => !open)} aria-label={searchOpen ? "검색 닫기" : "검색 열기"} aria-expanded={searchOpen}>
                 <span className="material-symbols-outlined">search</span>
               </button>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
             </form>
             {!loading && user && <MessageNavLink />}
             {!loading && user && <NotificationBell />}
@@ -277,7 +276,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
           <div className="community-container">
             <form className="mobile-header-search" onSubmit={handleSearch}>
               <span className="material-symbols-outlined">search</span>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" />
               <button type="submit">검색</button>
             </form>
             <nav aria-label="모바일 메뉴">
