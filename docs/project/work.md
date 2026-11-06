@@ -2901,3 +2901,10 @@
 - 증거: `docs/conception/012_profile_settings/06_production_image_inspection.json`, `07_production_monitoring_verification.json`. 변경 전 경보 백업은 로컬 임시 디렉터리 `snowthing-image-monitoring-9v4qbnmd`, Agent 백업은 서버 `/var/lib/snowthing-monitoring-backups/image-budget-20261103T053830Z`에 있다. 재현 스크립트는 기본 plan·명시적 --apply·읽기 전용 --verify를 제공한다.
 - 검증: 예산 소진의 상호 격리·미차감, 신규 계정 제한, IPv4 별칭과 잘못된 호스트 입력, 계정 간 IP 및 IPv6 /64 공유, 1만 건 병렬 거절의 합산·분당 로그량 제한을 검증했다. 최종 `spotlessApply spotlessCheck test build` 성공: 471개 중 실패 0개·기존 제외 1개. Python 설정·실측 스크립트 컴파일과 실제 운영 --verify도 통과했다. 최종 원격 CI는 PR #47 Checks를 참조한다.
 - 배포 경계: 이번 작업은 경보·Agent 수집 설정을 적용했으며 운영 앱 교체·운영 DB 마이그레이션은 하지 않았다. 새 앱의 EMF 발행과 신규 테이블의 운영 실행 계획은 PR 배포 후에 확인할 수 있다. CodeRabbit의 자동 재리뷰 완료 판정과 코드 반영 사실은 구분한다.
+
+## IKA-28 게시글 검색 수정 (2026-11-06)
+
+- 상태: PR 생성, 머지 대기.
+- 원인: 검색 종류가 없으면 검색어를 버렸고, `@Lob` 본문의 `lower()`가 500을 냈으며, 타입 변환 오류 처리기가 없었다.
+- 결정: 기본 검색 종류를 백엔드에서 `TITLE_CONTENT`로 처리한다. 작성자 검색에서 익명 글을 제외한다.
+- 검증: `spotlessCheck test` 847개 통과. 운영 확인은 머지 후 남음.
