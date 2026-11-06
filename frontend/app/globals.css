@@ -1360,7 +1360,7 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 .toast-editor-image-status { margin: 8px 0 0; color: var(--snow-muted); font-size: 12.5px; }
 .toast-editor-image-status.error { color: var(--snow-error); }
 
-.market-description, .market-comments { padding: 26px 30px; }
+.market-description, .market-comments { min-width: 0; overflow-wrap: anywhere; padding: 26px 30px; }
 .market-description h2, .market-comments h2 { margin: 0 0 22px; font-size: 18px; }
 .market-comments h2 span { color: var(--snow-muted); }
 .market-comment-compose { display: grid; grid-template-columns: 1fr 76px; gap: 8px; }

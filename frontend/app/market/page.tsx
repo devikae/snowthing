@@ -7,6 +7,7 @@ import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
+import { formatKoreanDate } from "../lib/koreanDate";
 
 type ViewMode = "list" | "album";
 
@@ -167,7 +168,7 @@ function MarketPageContent() {
             : items.length === 0 ? <div className="market-state"><span className="material-symbols-outlined">inventory_2</span><p>조건에 맞는 판매글이 없습니다.</p></div>
             : items.map((item) => <Link href={`/market/${item.publicId}`} key={item.publicId} className="market-result-card">
               <div className="market-result-image"><MarketImage item={item} /><em data-status={item.tradeStatus}>{tradeLabels[item.tradeStatus] ?? item.tradeStatus}</em></div>
-              <div className="market-result-copy"><div><span>{item.category.name}</span><span>{conditionLabels[item.productCondition]}</span></div><strong>{item.title}</strong><p>{item.seller.nickname}<span>·</span>{new Date(item.createdAt).toLocaleDateString("ko-KR")}<span>·</span>댓글 {item.commentCount}</p></div>
+              <div className="market-result-copy"><div><span>{item.category.name}</span><span>{conditionLabels[item.productCondition]}</span></div><strong>{item.title}</strong><p>{item.seller.nickname}<span>·</span>{formatKoreanDate(item.createdAt)}<span>·</span>댓글 {item.commentCount}</p></div>
               <b>{item.free ? "무료 나눔" : `${item.price.toLocaleString()}원`}</b>
             </Link>)}
         </section>

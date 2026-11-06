@@ -12,6 +12,7 @@ import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
@@ -122,6 +123,10 @@ function PostCreateForm() {
       return;
     }
 
+    if (Array.from(files).some(isOversizedImage)) {
+      setErrorMsg(OVERSIZED_IMAGE_MESSAGE);
+      return;
+    }
     setUploadingImage(true);
     setErrorMsg("");
     try {
@@ -165,8 +170,8 @@ function PostCreateForm() {
       setErrorMsg("자유/질문/맛집 게시판은 로그인이 필요합니다.");
       return;
     }
-    if (isAnonCategory && !userProfile && !anonymousPassword.trim()) {
-      setErrorMsg("비로그인 사용자는 익명글 수정/삭제용 비밀번호를 반드시 입력해야 합니다.");
+    if (isAnonCategory && !userProfile && (anonymousPassword.trim().length < 4 || anonymousPassword.length > 20)) {
+      setErrorMsg("익명글 수정/삭제용 비밀번호를 4자 이상 20자 이하로 입력해 주세요.");
       return;
     }
 
@@ -241,7 +246,8 @@ function PostCreateForm() {
               <span className="material-symbols-outlined">lock</span>
               <input
                 type="password"
-                placeholder="수정·삭제 비밀번호"
+                placeholder="수정, 삭제 비밀번호 (4~20자)"
+                maxLength={20}
                 value={anonymousPassword}
                 onChange={(e) => setAnonymousPassword(e.target.value)}
               />

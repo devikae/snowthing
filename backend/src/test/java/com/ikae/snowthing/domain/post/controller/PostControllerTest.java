@@ -167,6 +167,62 @@ class PostControllerTest {
     }
 
     @Test
+    @DisplayName("비회원 글 비밀번호가 4자보다 짧으면 400")
+    void createPost_shortAnonymousPassword_badRequest() throws Exception {
+        PostCreateRequest request =
+                PostCreateRequest.builder()
+                        .categoryCode("ANONYMOUS")
+                        .title("제목")
+                        .content("본문 내용")
+                        .isAnonymous(true)
+                        .anonymousPassword("123")
+                        .build();
+
+        mockMvc.perform(
+                        post("/api/v1/posts")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("본문이 100,000자를 넘으면 400")
+    void createPost_tooLongContent_badRequest() throws Exception {
+        PostCreateRequest request =
+                PostCreateRequest.builder()
+                        .categoryCode("ANONYMOUS")
+                        .title("제목")
+                        .content("가".repeat(100_001))
+                        .isAnonymous(true)
+                        .anonymousPassword("abcd1234")
+                        .build();
+
+        mockMvc.perform(
+                        post("/api/v1/posts")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("공개 경로 아래의 없는 주소는 500이 아니라 404")
+    void unknownPath_notFound() throws Exception {
+        mockMvc.perform(get("/api/v1/posts/x/y/z"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COMMON_005"));
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 메서드는 500이 아니라 405")
+    void unsupportedMethod_methodNotAllowed() throws Exception {
+        mockMvc.perform(get("/api/v1/posts/abc/reaction"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("COMMON_006"));
+    }
+
+    @Test
     @DisplayName("GET /api/v1/posts - 없는 검색 종류는 400 Bad Request")
     void getPostList_invalidSearchType_badRequest() throws Exception {
         mockMvc.perform(get("/api/v1/posts").param("searchType", "ALL").param("keyword", "보드"))
