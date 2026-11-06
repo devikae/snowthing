@@ -162,7 +162,7 @@ class MarketThumbnailIntegrationTest {
         jdbc.execute(
                 java.nio.file.Files.readString(
                         java.nio.file.Path.of(
-                                "../database/production/040_migration_market_inline_thumbnail_backfill.sql")));
+                                "../database/manual/ika36_market_inline_thumbnail_backfill.sql")));
     }
 
     @Test

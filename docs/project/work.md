@@ -9,7 +9,7 @@
 - 완료
   - `MarketThumbnailService`: 본문 첫 base64 사진을 썸네일 작업 출처(`inline:해시`)로 받아 본문에서 바로 변환한다.
   - `MarketListingService`: 대표 사진 순서를 사진 칸, 본문 S3, 본문 base64로 넓히고, 상세 응답에 `coverImageUrl`을 추가했다.
-  - `database/production/040_migration_market_inline_thumbnail_backfill.sql`: 기존 base64 매물의 작업을 넣는다. 실행하지 않았다.
+  - `database/manual/ika36_market_inline_thumbnail_backfill.sql`: 기존 base64 매물의 작업을 넣는다. 실행하지 않았다.
   - 상세 사진 자리가 사진 칸이 비면 `coverImageUrl`을 보여 준다. 사진 칸 업로드는 5MB를 넘으면 요청 전에 안내하고, 등록 화면은 JSON이 아닌 오류 응답(nginx 413)에서도 깨진 문구를 띄우지 않는다.
 - 결정
   - 본문을 S3 URL로 바꾸지 않고 썸네일만 만든다: 기존 base64 글을 바꾸지 않기로 한 사용자 결정을 지킨다. 다른 선택지는 본문 일괄 변환 스크립트로, DB 용량은 줄지만 운영 글 내용을 고친다. 대가로 base64 글은 목록 조회 때 큰 본문을 계속 읽는다.
