@@ -4,5 +4,6 @@ package com.ikae.snowthing.domain.notification.entity;
 public enum NotificationType {
     INQUIRY_ANSWER,
     COMMENT_REPLY,
-    POST_COMMENT
+    POST_COMMENT,
+    MODERATION_RESULT
 }

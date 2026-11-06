@@ -72,6 +72,9 @@ public class CarpoolService {
                 postRepository
                         .findWithMemberAndCategoryByPublicId(publicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        if (!post.isDeleted() && post.getStatus() == PostStatus.TEMPORARY_HOLD) {
+            throw new CustomAuthException(ErrorCode.CONTENT_TEMPORARILY_HELD);
+        }
         if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }

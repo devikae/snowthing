@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
+import { ReportButton } from "../../components/ReportButton";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
   ssr: false,
@@ -312,7 +313,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             }
             setPost(data);
           } else {
-            setErrorMsg("게시글을 찾을 수 없거나 삭제되었습니다.");
+            const body = res.status === 403 ? await res.json().catch(() => null) : null;
+            setErrorMsg(body?.code === "POST_009" ? body.message : "게시글을 찾을 수 없거나 삭제되었습니다.");
           }
           await fetchComments();
         } catch {
@@ -668,6 +670,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                   비추천 {post.dislikeCount}
                 </button>
                 <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined">share</span>공유</button>
+                <ReportButton targetType="POST" targetId={publicId} />
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
             </div>

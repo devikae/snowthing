@@ -409,6 +409,9 @@ public class MarketListingService {
 
     private void validateVisible(MarketListing listing) {
         Post post = listing.getPost();
+        if (!post.isDeleted() && post.getStatus() == PostStatus.TEMPORARY_HOLD) {
+            throw new CustomException(ErrorCode.CONTENT_TEMPORARILY_HELD);
+        }
         if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND);
         }

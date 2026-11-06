@@ -12,6 +12,7 @@ import { MarketMessageButton } from "../../components/MarketMessageButton";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
+import { ReportButton } from "../../components/ReportButton";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -125,7 +126,10 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         redirectToLogin();
         return;
       }
-      if (!response.ok) throw new Error("판매글을 찾을 수 없거나 숨김 처리되었습니다.");
+      if (!response.ok) {
+        const body = response.status === 403 ? await response.json().catch(() => null) : null;
+        throw new Error(body?.code === "POST_009" ? body.message : "판매글을 찾을 수 없거나 숨김 처리되었습니다.");
+      }
       setListing(await response.json());
       await loadComments();
     } catch (loadError) {
@@ -252,6 +256,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
             <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(listing.contact)}>복사</button></div>
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />
             {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중..." : "삭제"}</button>}</div>}
+            <ReportButton targetType="POST" targetId={publicId} />
           </section>
         </article>
 
