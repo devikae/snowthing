@@ -47,7 +47,7 @@ export function CharacterTestApp() {
         <CardPanel result={stage.result} sport={stage.sport} />
         <section className="ct-panel" aria-labelledby="ct-map-title">
           <h2 id="ct-map-title">내 관계 지도</h2>
-          <p className="ct-lead">나를 중심으로, 가까울수록 잘 맞는 사람이에요. 아직 다 빈자리예요.</p>
+          <p className="ct-lead">아직 다 빈자리예요. 링크를 보내면 사람들이 들어와요.</p>
           <RelationshipMap levels={EMPTY_LEVELS} me={{ character: stage.result.character }} hideNames={false} />
           <InviteSection answers={stage.answers} sport={stage.sport} />
         </section>

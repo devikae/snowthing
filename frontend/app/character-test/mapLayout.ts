@@ -156,10 +156,11 @@ export function layoutMap(levels: MapInputLevel[], hideNames: boolean): MapLayou
   }));
 
   const empties = people.length > 0 ? [] : [
-    { x: center, y: center - 92, id: "empty-up" },
-    { x: center - 92, y: center, id: "empty-left" },
-    { x: center + 92, y: center, id: "empty-right" },
-    { x: center, y: center + 92, id: "empty-down" },
+    // 위쪽 가운데는 단계 이름 자리라 대각선에 놓는다.
+    { x: center - 76, y: center - 62, id: "empty-up-left" },
+    { x: center + 76, y: center - 62, id: "empty-up-right" },
+    { x: center - 76, y: center + 62, id: "empty-down-left" },
+    { x: center + 76, y: center + 62, id: "empty-down-right" },
   ];
   // 원 바깥 네 모서리에 나무를 심는다. 새로고침해도 같은 자리에 있도록 고정된 수식으로 어긋나게 놓는다.
   const trees: MapLayout["trees"] = [];
