@@ -235,7 +235,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     </article>
   );
 
-  return <section className="post-comments-card carpool-comments-card">
+  return <section id="comments" className="post-comments-card carpool-comments-card">
     <header><h2>댓글 <span>{totalCount}</span></h2></header>
     {currentUserPublicId ? <div className="post-comment-compose">
       <textarea className="post-comment-textarea" maxLength={1000} value={content} onChange={(event) => setContent(event.target.value)} placeholder="댓글을 입력하세요." />

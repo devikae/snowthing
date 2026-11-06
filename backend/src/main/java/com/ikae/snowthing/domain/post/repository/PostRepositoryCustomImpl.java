@@ -51,7 +51,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
-                                visibleCategory(request.categoryCode()),
+                                visibleCategory(request),
                                 writerEq(request.writerPublicId()),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
@@ -76,7 +76,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .join(post.category, postCategory)
                         .where(
                                 categoryEq(request.categoryCode()),
-                                visibleCategory(request.categoryCode()),
+                                visibleCategory(request),
                                 writerEq(request.writerPublicId()),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
@@ -127,7 +127,7 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .fetchJoin()
                         .where(
                                 categoryEq(request.categoryCode()),
-                                visibleCategory(request.categoryCode()),
+                                visibleCategory(request),
                                 writerEq(request.writerPublicId()),
                                 bestEligibility(request.viewType()),
                                 searchCondition(request.searchType(), request.keyword()),
@@ -164,10 +164,16 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         return postCategory.code.equalsIgnoreCase(categoryCode);
     }
 
-    /** 1:1 문의를 직접 지정한 조회만 문의를 포함한다. 작성자 조건은 서비스가 붙인다. 그 외 조회는 비공개 카테고리를 제외한다. */
-    private BooleanExpression visibleCategory(String categoryCode) {
-        if (PostCategoryCodes.isInquiry(categoryCode)) return null;
-        return postCategory.code.notIn(PostCategoryCodes.HIDDEN_FROM_PUBLIC);
+    /**
+     * 1:1 문의를 직접 지정한 조회만 문의를 포함한다. 작성자 조건은 서비스가 붙인다. 그 외 조회는 비공개 카테고리를 제외하고, 게시판을 고르지 않은 전체 목록은 카풀도
+     * 제외한다. 키워드 검색에는 카풀이 나온다.
+     */
+    private BooleanExpression visibleCategory(PostSearchRequest request) {
+        if (PostCategoryCodes.isInquiry(request.categoryCode())) return null;
+        if (StringUtils.hasText(request.categoryCode()) || StringUtils.hasText(request.keyword())) {
+            return postCategory.code.notIn(PostCategoryCodes.HIDDEN_FROM_PUBLIC);
+        }
+        return postCategory.code.notIn(PostCategoryCodes.HIDDEN_FROM_BOARD_LIST);
     }
 
     private BooleanExpression writerEq(String writerPublicId) {

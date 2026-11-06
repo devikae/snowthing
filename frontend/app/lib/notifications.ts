@@ -56,9 +56,9 @@ export function notificationMessage(item: NotificationItem) {
   }
 }
 
-/** 중고장터 글은 /posts 상세가 없어서 /market 상세로 보낸다. */
+/** 중고장터와 카풀 글은 전용 상세 화면으로 보낸다. */
 export function notificationHref(item: NotificationItem) {
-  const base = item.postCategoryCode === "MARKET" ? "/market" : "/posts";
+  const base = item.postCategoryCode === "MARKET" ? "/market" : item.postCategoryCode === "CARPOOL" ? "/carpool" : "/posts";
   return `${base}/${encodeURIComponent(item.postPublicId)}#comments`;
 }
 

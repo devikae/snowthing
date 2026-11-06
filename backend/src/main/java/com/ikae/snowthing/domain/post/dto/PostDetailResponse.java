@@ -18,6 +18,8 @@ public record PostDetailResponse(
         String content,
         PostStatus status,
         boolean isAnonymous,
+        boolean isAuthor,
+        boolean requiresPassword,
         int viewCount,
         int commentCount,
         int likeCount,
@@ -42,7 +44,12 @@ public record PostDetailResponse(
         }
     }
 
-    public static PostDetailResponse from(Post post, int viewCount, List<String> imageUrls) {
+    public static PostDetailResponse from(
+            Post post, int viewCount, List<String> imageUrls, String viewerPublicId) {
+        boolean isAuthor =
+                viewerPublicId != null
+                        && post.getMember() != null
+                        && viewerPublicId.equals(post.getMember().getPublicId());
         WriterInfo writerInfo =
                 post.isAnonymous()
                         ? WriterInfo.anonymous(
@@ -62,6 +69,8 @@ public record PostDetailResponse(
                 post.getContent(),
                 post.getStatus(),
                 post.isAnonymous(),
+                isAuthor,
+                post.isAnonymous() && !isAuthor && post.getAnonymousPassword() != null,
                 viewCount,
                 post.getCommentCount(),
                 post.getLikeCount(),
@@ -81,6 +90,8 @@ public record PostDetailResponse(
                 content,
                 status,
                 isAnonymous,
+                isAuthor,
+                requiresPassword,
                 viewCount,
                 commentCount,
                 likeCount,
@@ -93,7 +104,7 @@ public record PostDetailResponse(
 
     public static PostDetailResponse from(Post post, int viewCount) {
         List<String> imageUrls = post.getImages().stream().map(PostImage::getImageUrl).toList();
-        return from(post, viewCount, imageUrls);
+        return from(post, viewCount, imageUrls, null);
     }
 
     public static PostDetailResponse from(Post post) {

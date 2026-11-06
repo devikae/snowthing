@@ -13,7 +13,7 @@ import { API_ENDPOINTS } from "../../../lib/api";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm font-mono text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
 });
 
 interface PostDetail {
@@ -22,6 +22,7 @@ interface PostDetail {
   title: string;
   content: string;
   isAnonymous: boolean;
+  isAuthor: boolean;
   images: string[];
   writer?: {
     publicId: string;
@@ -77,8 +78,12 @@ function PostEditForm({ publicId }: { publicId: string }) {
           });
           if (res.ok) {
             const data: PostDetail = await res.json();
+            if (data.categoryCode === "CARPOOL") {
+              router.replace(`/carpool/${publicId}/edit`);
+              return;
+            }
 
-            const isWriter = Boolean(currentUserPublicId && data.writer?.publicId === currentUserPublicId);
+            const isWriter = data.isAuthor;
             setIsAuthor(isWriter);
             setCanUploadImages(Boolean(currentUserPublicId));
 
