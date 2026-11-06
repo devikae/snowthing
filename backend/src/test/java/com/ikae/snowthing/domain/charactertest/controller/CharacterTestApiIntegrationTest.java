@@ -116,7 +116,9 @@ class CharacterTestApiIntegrationTest {
         Map<?, ?> friend =
                 read(
                         mvc.perform(
-                                        post("/api/v1/character-groups/" + groupId + "/participants")
+                                        post("/api/v1/character-groups/"
+                                                        + groupId
+                                                        + "/participants")
                                                 .with(csrf())
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content(joinBody("친구", friendAnswers)))
@@ -166,7 +168,9 @@ class CharacterTestApiIntegrationTest {
         mvc.perform(get("/api/v1/character-groups/" + groupId + "/map"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("CHARACTER_001"));
-        mvc.perform(get("/api/v1/character-groups/" + groupId + "/map").header(TOKEN_HEADER, "다른사람토큰"))
+        mvc.perform(
+                        get("/api/v1/character-groups/" + groupId + "/map")
+                                .header(TOKEN_HEADER, "다른사람토큰"))
                 .andExpect(status().isNotFound());
         mvc.perform(delete("/api/v1/character-participants/me").with(csrf()))
                 .andExpect(status().isNotFound());
@@ -180,7 +184,9 @@ class CharacterTestApiIntegrationTest {
         Map<?, ?> first =
                 read(
                         mvc.perform(
-                                        post("/api/v1/character-groups/" + groupId + "/participants")
+                                        post("/api/v1/character-groups/"
+                                                        + groupId
+                                                        + "/participants")
                                                 .with(csrf())
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content(joinBody("첫친구")))

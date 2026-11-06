@@ -242,7 +242,8 @@ public class SecurityConfig {
                                                 "/api/v1/character-groups/*/map")
                                         .permitAll()
                                         .requestMatchers(
-                                                HttpMethod.DELETE, "/api/v1/character-participants/me")
+                                                HttpMethod.DELETE,
+                                                "/api/v1/character-participants/me")
                                         .permitAll()
                                         .requestMatchers(
                                                 "/api/members",
