@@ -11,7 +11,7 @@ import { shareLink } from "./shareFile";
 
 export const INVITE_LABEL = "같이 타는 사람 부르기";
 
-// 처음 누를 때 닉네임만 받는다. 모임이 자동으로 만들어지고 공유 창을 띄운 뒤 지도로 옮겨 간다.
+// 처음 누를 때 이름만 받는다. 모임이 자동으로 만들어지고 공유 창을 띄운 뒤 지도로 옮겨 간다.
 export function InviteSection({ answers, sport, initialNickname, label = INVITE_LABEL, primary = true }: { answers: string; sport: Sport; initialNickname?: string; label?: string; primary?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);

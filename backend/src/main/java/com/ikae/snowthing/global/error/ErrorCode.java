@@ -219,8 +219,8 @@ public enum ErrorCode {
     CHARACTER_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "CHARACTER_001", "존재하지 않는 모임이거나 볼 수 없습니다."),
     CHARACTER_GROUP_FULL(HttpStatus.CONFLICT, "CHARACTER_002", "모임 인원이 가득 찼습니다."),
     CHARACTER_NICKNAME_DUPLICATED(
-            HttpStatus.CONFLICT, "CHARACTER_003", "이 모임에서 이미 쓰는 닉네임입니다. 다른 닉네임을 입력해 주세요."),
-    CHARACTER_NICKNAME_FORBIDDEN(HttpStatus.BAD_REQUEST, "CHARACTER_004", "쓸 수 없는 닉네임입니다."),
+            HttpStatus.CONFLICT, "CHARACTER_003", "이 모임에서 이미 쓰는 이름입니다. 다른 이름을 입력해 주세요."),
+    CHARACTER_NICKNAME_FORBIDDEN(HttpStatus.BAD_REQUEST, "CHARACTER_004", "쓸 수 없는 이름입니다."),
 
     // 작성 API Idempotency-Key (032)
     IDEMPOTENCY_KEY_INVALID(
