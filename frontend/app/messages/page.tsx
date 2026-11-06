@@ -122,6 +122,7 @@ export default function MessagesPage() {
             <h1>쪽지함</h1>
             <p>회원끼리 주고받은 1:1 쪽지입니다. 게시글이나 댓글 작성자의 닉네임을 눌러 쪽지를 보낼 수 있습니다.</p>
           </div>
+          <Link href="/messages/new" className={styles.button}>쪽지 보내기</Link>
         </header>
         <Suspense fallback={<div className={styles.state} aria-busy="true">쪽지함을 불러오는 중입니다.</div>}>
           <MessageList />

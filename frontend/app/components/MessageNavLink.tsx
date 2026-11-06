@@ -58,7 +58,7 @@ export function MessageNavLink() {
   const label = count > 0 ? `쪽지함, 안 읽은 쪽지 ${count}통` : "쪽지함";
   return (
     <Link href="/messages" className={`header-login ${styles.navLink}`} aria-label={label} title="쪽지함">
-      <span className="material-symbols-outlined" aria-hidden="true">mail</span>
+      <span className="material-symbols-outlined" aria-hidden="true">sticky_note_2</span>
       {count > 0 && <span className={styles.badge} aria-hidden="true">{count > 99 ? "99+" : count}</span>}
     </Link>
   );

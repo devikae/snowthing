@@ -386,6 +386,9 @@
 }
 
 .marketMessage {
+  border-color: var(--snow-ink);
+  background: var(--snow-ink);
+  color: var(--snow-canvas);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -439,4 +442,47 @@
   .listingTag {
     max-width: 140px;
   }
+}
+
+/* 쪽지 받는 회원 검색 */
+.recipientInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 6px;
+  background: var(--snow-canvas);
+  color: var(--snow-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.recipientList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipientList a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--snow-ink);
+  font-size: 14px;
+}
+
+.recipientList a:hover,
+.recipientList a:focus-visible {
+  background: var(--snow-surface-low);
+}
+
+.recipientAvatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--snow-muted);
+  object-fit: cover;
 }

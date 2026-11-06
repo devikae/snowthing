@@ -154,6 +154,8 @@ public enum ErrorCode {
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_002", "파일 크기는 최대 5MB까지 업로드 가능합니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_003", "존재하지 않는 파일입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_004", "파일 업로드에 실패했습니다."),
+    INLINE_IMAGE_NOT_ALLOWED(
+            HttpStatus.BAD_REQUEST, "FILE_008", "본문에 사진을 직접 넣을 수 없습니다. 사진은 로그인 후 올려 주세요."),
     IMAGE_DIMENSIONS_EXCEEDED(
             HttpStatus.BAD_REQUEST, "FILE_005", "이미지는 한 변 10,000px, 총 2,500만 화소 이하로 줄여 주세요."),
     RESORT_NOT_FOUND(HttpStatus.NOT_FOUND, "RESORT_001", "존재하지 않거나 비활성화된 리조트입니다."),
