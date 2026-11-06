@@ -120,6 +120,59 @@ class PostRepositoryCustomTest {
     }
 
     @Test
+    @DisplayName("검색 종류 없이 검색어만 보내면 제목과 본문에서 찾는다")
+    void findPostsBySearch_keywordOnly() {
+        assertThat(searchTotal(null, "챔피언")).isEqualTo(25L);
+        assertThat(searchTotal(null, "설질")).isEqualTo(25L);
+        assertThat(searchTotal(null, "없는검색어")).isZero();
+    }
+
+    @Test
+    @DisplayName("본문 검색은 LONGTEXT 본문에서 대소문자 없이 찾고 와일드카드를 글자로 다룬다")
+    void findPostsBySearch_content() {
+        postRepository.saveAndFlush(
+                Post.builder()
+                        .member(testMember)
+                        .category(freeCategory)
+                        .title("영문 본문")
+                        .content("Burton 100% 후기")
+                        .writerIp("127.0.0.1")
+                        .isAnonymous(false)
+                        .build());
+
+        assertThat(searchTotal(SearchType.CONTENT, "burton")).isEqualTo(1L);
+        assertThat(searchTotal(SearchType.TITLE_CONTENT, "BURTON")).isEqualTo(1L);
+        assertThat(searchTotal(SearchType.CONTENT, "100%")).isEqualTo(1L);
+        assertThat(searchTotal(SearchType.CONTENT, "%")).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("작성자 검색은 같은 닉네임의 익명 글을 찾지 않는다")
+    void findPostsBySearch_writerExcludesAnonymous() {
+        postRepository.saveAndFlush(
+                Post.builder()
+                        .member(testMember)
+                        .category(freeCategory)
+                        .title("익명으로 쓴 글")
+                        .content("익명 본문")
+                        .writerIp("127.0.0.1")
+                        .isAnonymous(true)
+                        .anonymousPassword("Password1!")
+                        .build());
+
+        assertThat(searchTotal(SearchType.WRITER, "카빙마스터")).isEqualTo(25L);
+    }
+
+    private long searchTotal(SearchType type, String keyword) {
+        return postRepository
+                .findPostsByOffset(
+                        new PostSearchRequest(
+                                "FREE", null, type, keyword, PostViewType.DEFAULT, 1, null, 10))
+                .pageInfo()
+                .totalElements();
+    }
+
+    @Test
     @DisplayName("동적 키워드 검색 (TITLE) - '설질' 포함 25건 조회")
     void findPostsBySearch_titleKeyword() {
         // given
