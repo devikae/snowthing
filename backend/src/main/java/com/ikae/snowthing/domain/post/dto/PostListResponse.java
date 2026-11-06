@@ -2,6 +2,8 @@ package com.ikae.snowthing.domain.post.dto;
 
 import java.time.LocalDateTime;
 
+import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.global.util.WriterDisplayFormatter;
@@ -13,6 +15,7 @@ public record PostListResponse(
         String title,
         String writerNickname,
         String writerProfileImageUrl,
+        String writerPublicId,
         String thumbnailImageUrl,
         boolean hasImage,
         int viewCount,
@@ -40,6 +43,7 @@ public record PostListResponse(
                 !post.isAnonymous() && post.getMember() != null
                         ? post.getMember().getProfileImageUrl()
                         : null,
+                resolveWriterPublicId(post),
                 thumbnailUrl,
                 post.isHasImage(),
                 post.getViewCount(),
@@ -52,6 +56,14 @@ public record PostListResponse(
                 null);
     }
 
+    /** 쪽지를 받을 수 있는 작성자만 채운다. 익명 글에 넣으면 작성자가 드러난다. */
+    private static String resolveWriterPublicId(Post post) {
+        Member writer = post.getMember();
+        return !post.isAnonymous() && writer != null && writer.getStatus() == MemberStatus.ACTIVE
+                ? writer.getPublicId()
+                : null;
+    }
+
     public PostListResponse withThumbnailImageUrl(String resolvedThumbnailImageUrl) {
         return new PostListResponse(
                 publicId,
@@ -60,6 +72,7 @@ public record PostListResponse(
                 title,
                 writerNickname,
                 writerProfileImageUrl,
+                writerPublicId,
                 resolvedThumbnailImageUrl,
                 hasImage,
                 viewCount,
@@ -81,6 +94,7 @@ public record PostListResponse(
                 title,
                 writerNickname,
                 writerProfileImageUrl,
+                writerPublicId,
                 thumbnailImageUrl,
                 hasImage,
                 viewCount,

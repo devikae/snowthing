@@ -159,7 +159,7 @@ class AttachmentLimitIntegrationTest {
     void inlineImagesInContentDoNotConsumeAttachmentLimit() throws Exception {
         String inline =
                 IntStream.range(0, 11)
-                        .mapToObj(i -> "![inline](data:image/png;base64,AA==)")
+                        .mapToObj(i -> "![inline](https://example.com/" + i + ".png)")
                         .collect(java.util.stream.Collectors.joining("\n"));
         Map<String, Object> body =
                 Map.of(

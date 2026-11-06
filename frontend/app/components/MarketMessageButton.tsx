@@ -27,7 +27,7 @@ export function MarketMessageButton({ seller, listing }: MarketMessageButtonProp
   if (!viewer || viewer === seller.publicId) return null;
   return (
     <Link className={`${styles.buttonPrimary} ${styles.marketMessage}`} href={composeMessageHref(seller, listing)}>
-      <span className="material-symbols-outlined" aria-hidden="true">mail</span>
+      <span className="material-symbols-outlined" aria-hidden="true">sticky_note_2</span>
       쪽지 보내기
     </Link>
   );

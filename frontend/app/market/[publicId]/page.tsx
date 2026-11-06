@@ -234,7 +234,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
     <div className="community-page">
       <TopNav active="market" />
       <main className="community-container market-detail-page content-detail-page">
-        <nav className="market-breadcrumb"><Link href="/market">중고장터</Link><span>/</span><span>{listing.category.name}</span></nav>
+        <div className="post-detail-toolbar"><Link href="/market"><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link></div>
         {error && <div className="compose-error" role="alert">{error}</div>}
         <article className="market-detail-card">
           <section className="market-gallery">
@@ -247,8 +247,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
             <div className="market-detail-tags"><em data-status={listing.tradeStatus}>{tradeLabels[listing.tradeStatus]}</em><span>{listing.category.name}</span></div>
             <h1>{listing.title}</h1>
             <strong className="market-detail-price">{listing.free ? "무료 나눔" : `${listing.price.toLocaleString()}원`}{listing.negotiable && <small>가격 협의 가능</small>}</strong>
-            <dl><div><dt>상품 상태</dt><dd>{conditionLabels[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회·댓글</dt><dd>{listing.viewCount} · {listing.commentCount}</dd></div></dl>
-            <div className="market-seller"><Image src={listing.seller.profileImageUrl || "/images/default-profile-avatar.png"} alt="" width={44} height={44} unoptimized={Boolean(listing.seller.profileImageUrl)} /><div><small>판매자</small><strong>{listing.seller.nickname}</strong></div></div>
+            <dl><div><dt>상품 상태</dt><dd>{conditionLabels[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회 / 댓글</dt><dd>{listing.viewCount} / {listing.commentCount}</dd></div></dl>
+            <div className="market-seller"><CommentProfileAvatar className="market-seller-avatar" nickname={listing.seller.nickname} profileImageUrl={listing.seller.profileImageUrl} size={36} /><div><small>판매자</small><AuthorMenu publicId={listing.seller.publicId} nickname={listing.seller.nickname} /></div></div>
             <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(listing.contact)}>복사</button></div>
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />
             {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중..." : "삭제"}</button>}</div>}

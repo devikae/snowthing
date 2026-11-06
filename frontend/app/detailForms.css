@@ -232,8 +232,8 @@ html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :i
   html .content-compose-page .market-price-row > label:first-child { flex-basis: 100%; }
   html .content-compose-page .kakao-map { height: 220px; }
   html .content-compose-page .compose-attach-row { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+  html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-detail-card { padding: 0; }
   html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-detail-card > h1,.market-detail-summary > h1) { font-size: 20px; line-height: 28px; }
-  html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-detail-card { padding: 16px; }
 }
 @media(prefers-reduced-motion:reduce) {
   html .content-compose-page :is(input,select,textarea,button,a) { transition: none; }

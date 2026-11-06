@@ -5,6 +5,7 @@ import { Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { MessageComposeForm } from "../../components/MessageComposeForm";
+import { MessageRecipientSearch } from "../../components/MessageRecipientSearch";
 import { notifyMessagesUpdated } from "../../lib/messageApi";
 import styles from "../../components/messages.module.css";
 
@@ -26,7 +27,7 @@ function ComposeMessage() {
   }, [router, searchParams]);
 
   if (!receiverPublicId) {
-    return <div className={styles.state}>받는 회원 정보가 없습니다. 게시글이나 댓글 작성자의 닉네임을 눌러 쪽지를 보내 주세요.</div>;
+    return <MessageRecipientSearch onUnauthorized={redirectToLogin} />;
   }
 
   return (

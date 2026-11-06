@@ -15,6 +15,7 @@ interface PostItem {
   title: string;
   writerNickname: string;
   writerProfileImageUrl?: string | null;
+  writerPublicId?: string | null;
   thumbnailImageUrl: string | null;
   hasImage: boolean;
   viewCount: number;
@@ -30,16 +31,6 @@ interface PostItem {
 interface BoardConfig {
   name: string;
   navKey: ActiveNav;
-}
-
-interface CarpoolSidebarItem {
-  publicId: string;
-  title: string;
-  departureRegion: string;
-  destinationResortName: string;
-  departureAt: string;
-  passengerCapacity: number;
-  estimatedCostPerPerson: number;
 }
 
 const categories = [
@@ -121,7 +112,6 @@ function PostListContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [carpools, setCarpools] = useState<CarpoolSidebarItem[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -180,24 +170,6 @@ function PostListContent() {
       controller.abort();
     };
   }, [fetchPosts]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((data: { content?: CarpoolSidebarItem[] }) =>
-        setCarpools(Array.isArray(data.content) ? data.content : []),
-      )
-      .catch((carpoolError) => {
-        if (!(carpoolError instanceof DOMException && carpoolError.name === "AbortError")) {
-          setCarpools([]);
-        }
-      });
-    return () => controller.abort();
-  }, []);
 
   const visiblePages = useMemo(() => {
     const start = Math.max(0, Math.min(page - 2, totalPages - 5));
@@ -349,7 +321,7 @@ function PostListContent() {
                         {post.hasImage && <PostImageIcon />}
                       </div>
                       <div className="m-row-right">
-                        <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
+                        <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} publicId={post.writerPublicId} />
                         <span className="m-stats">
                           {post.commentCount > 0 && (
                             <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
@@ -423,46 +395,6 @@ function PostListContent() {
             </div>
           </section>
 
-          <aside className="board-sidebar">
-            <section className="board-widget board-carpool" id="carpool">
-              <header>
-                <div>
-                  <small className="section-eyebrow">RIDE SHARE</small>
-                  <h2>카풀 &amp; 동행</h2>
-                </div>
-                <Link href="/carpool/new">+ 등록</Link>
-              </header>
-              <div>
-                {carpools.length === 0 ? (
-                  <p className="board-carpool-empty">현재 모집 중인 카풀이 없습니다.</p>
-                ) : (
-                  carpools.map((item) => (
-                    <Link href={`/carpool/${item.publicId}`} key={item.publicId}>
-                      <article>
-                        <div>
-                          <strong>
-                            {item.departureRegion} <span>→</span> <em>{item.destinationResortName}</em>
-                          </strong>
-                          <b>{item.passengerCapacity}명</b>
-                        </div>
-                        <p>
-                          <span>
-                            {new Date(item.departureAt).toLocaleString("ko-KR", {
-                              month: "numeric",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                          <strong>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</strong>
-                        </p>
-                      </article>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </section>
-          </aside>
         </div>
       </main>
       <Footer />

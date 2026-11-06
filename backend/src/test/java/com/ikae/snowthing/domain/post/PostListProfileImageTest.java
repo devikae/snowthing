@@ -30,6 +30,7 @@ class PostListProfileImageTest {
         assertThat(PostListResponse.from(named).writerProfileImageUrl())
                 .isEqualTo("https://images.example/first.jpg");
         assertThat(PostListResponse.from(anonymous).writerProfileImageUrl()).isNull();
+        assertThat(PostListResponse.from(anonymous).writerPublicId()).isNull();
         member.updateProfile(member.getNickname(), null, null, "https://images.example/second.jpg");
         assertThat(
                         PostListResponse.from(named)
