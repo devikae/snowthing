@@ -69,6 +69,11 @@ export default function ProfilePage() {
     finally { setLoading(false); }
   }, [router]);
   useEffect(() => {
+    if (!form || (!error && !notice)) return;
+    const timer = window.setTimeout(() => { setError(""); setNotice(""); }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [form, error, notice]);
+  useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);

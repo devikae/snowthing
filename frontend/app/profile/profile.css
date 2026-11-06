@@ -64,7 +64,7 @@
 .profile-preferences label:has(input:checked) { background: var(--snow-surface-mid); border-color: var(--snow-ink-soft); color: var(--snow-ink); }
 .profile-settings input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--snow-ink); }
 .profile-fields > .profile-password-toggle { display: flex; align-items: center; gap: 8px; }
-.profile-feedback { border: 1px solid var(--snow-border-strong); background: var(--snow-surface-mid); padding: 16px; margin-bottom: 24px !important; color: var(--snow-ink) !important; }
+.profile-feedback { position: sticky; top: 80px; z-index: 10; border: 1px solid var(--snow-border-strong); background: var(--snow-surface-mid); padding: 16px; margin-bottom: 24px !important; color: var(--snow-ink) !important; }
 .profile-feedback.error { border-color: var(--snow-error); }
 .profile-loading { min-height: 240px; display: grid; place-items: center; color: var(--snow-muted); }
 .profile-social-note { line-height: 1.75; }
