@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 
 const NICKNAME_PATTERN = /^[a-zA-Z0-9가-힣]{2,10}$/;
 
 export function NicknameForm({ submitLabel, initialNickname = "", onSubmit, onCancel }: { submitLabel: string; initialNickname?: string; onSubmit: (nickname: string) => Promise<void>; onCancel?: () => void }) {
+  // 한 화면에 입력 칸이 둘 열릴 수 있어 id가 겹치지 않게 한다.
+  const inputId = useId();
+  const errorId = `${inputId}-error`;
+  const noticeId = `${inputId}-notice`;
   const [nickname, setNickname] = useState(initialNickname);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -29,10 +33,10 @@ export function NicknameForm({ submitLabel, initialNickname = "", onSubmit, onCa
 
   return (
     <form className="ct-nickname" onSubmit={(event) => void submit(event)} noValidate>
-      <label htmlFor="ct-nickname-input">이름</label>
-      <input id="ct-nickname-input" value={nickname} onChange={(event) => setNickname(event.target.value)} maxLength={10} autoComplete="off" autoFocus aria-invalid={Boolean(error)} aria-describedby={error ? "ct-nickname-error" : "ct-nickname-notice"} />
-      {error && <p className="ct-error" id="ct-nickname-error" role="alert">{error}</p>}
-      <p className="ct-fineprint" id="ct-nickname-notice">이름, 스키나 보드, 답변이 지도를 보여 주려고 서버에 저장돼요. 같은 모임 사람들은 이름과 캐릭터, 나와의 궁합 점수를 볼 수 있어요. 나가기를 누르면 바로 지워지고, 7일 동안 새로 들어온 사람이 없으면 모임이 통째로 지워져요.</p>
+      <label htmlFor={inputId}>이름</label>
+      <input id={inputId} value={nickname} onChange={(event) => setNickname(event.target.value)} maxLength={10} autoComplete="off" autoFocus aria-invalid={Boolean(error)} aria-describedby={error ? errorId : noticeId} />
+      {error && <p className="ct-error" id={errorId} role="alert">{error}</p>}
+      <p className="ct-fineprint" id={noticeId}>이름, 스키나 보드, 답변이 지도를 보여 주려고 서버에 저장돼요. 같은 모임 사람들은 이름과 캐릭터, 나와의 궁합 점수를 볼 수 있어요. 나가기를 누르면 바로 지워지고, 7일 동안 새로 들어온 사람이 없으면 모임이 통째로 지워져요.</p>
       <div className="ct-actions">
         <button type="submit" className="ct-primary" disabled={pending}>{pending ? "처리 중" : submitLabel}</button>
         {onCancel && <button type="button" onClick={onCancel} disabled={pending}>취소</button>}

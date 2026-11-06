@@ -8,6 +8,7 @@ import { InviteSection } from "./InviteSection";
 import { MyGroups } from "./MyGroups";
 import { getSavedAnswers, saveAnswers } from "./localStore";
 import { QuizFlow } from "./QuizFlow";
+import { SEND_LINK_LABEL } from "./ShareGroupLink";
 import { RelationshipMap } from "./RelationshipMap";
 import { ResultPanel } from "./ResultPanel";
 
@@ -44,7 +45,9 @@ export function CharacterTestApp() {
     return (
       <>
         <ResultPanel result={stage.result} sport={stage.sport} answers={stage.answers} />
-        <CardPanel result={stage.result} sport={stage.sport} />
+        <CardPanel result={stage.result} sport={stage.sport}>
+          <InviteSection answers={stage.answers} sport={stage.sport} label={SEND_LINK_LABEL} primary={false} />
+        </CardPanel>
         <section className="ct-panel" aria-labelledby="ct-map-title">
           <h2 id="ct-map-title">내 관계 지도</h2>
           <p className="ct-lead">아직 다 빈자리예요. 링크를 보내면 사람들이 들어와요.</p>
