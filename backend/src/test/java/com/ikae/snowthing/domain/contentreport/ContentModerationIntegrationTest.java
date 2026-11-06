@@ -277,6 +277,71 @@ class ContentModerationIntegrationTest {
     }
 
     @Test
+    @DisplayName("임시조치 뒤 삭제해도 신고자에게 결과를 알린다")
+    void deleteAfterHold_NotifiesReporterAgain() {
+        reportPost(reporterUser);
+        Long reportId = pendingReport().reportId();
+        apply(reportId, ModerationActionType.TEMPORARY_HOLD);
+        apply(reportId, ModerationActionType.DELETE);
+
+        assertThat(notificationRepository.findAll())
+                .filteredOn(item -> item.getReceiver().getId().equals(reporter.getId()))
+                .extracting(Notification::getPreview)
+                .contains("신고한 내용을 확인해 삭제했습니다.");
+    }
+
+    @Test
+    @DisplayName("관리자가 숨긴 글은 임시조치할 수 없어 복구로 공개되지 않는다")
+    void hold_HiddenPost_Rejected() {
+        reportPost(reporterUser);
+        Long reportId = pendingReport().reportId();
+        postRepository.findByPublicId(postPublicId).orElseThrow().changeStatus(PostStatus.HIDDEN);
+        entityManager.flush();
+
+        assertThat(pendingReport().targetState()).isEqualTo(TargetState.HIDDEN);
+        assertThatThrownBy(() -> apply(reportId, ModerationActionType.TEMPORARY_HOLD))
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONTENT_REPORT_ACTION_INVALID);
+    }
+
+    @Test
+    @DisplayName("기각된 뒤에는 다시 신고할 수 있다")
+    void report_AfterDismissal_Reopens() {
+        reportPost(reporterUser);
+        apply(pendingReport().reportId(), ModerationActionType.DISMISS);
+
+        reportPost(reporterUser);
+
+        assertThat(moderationService.list(ReportStatus.PENDING, 0).reports()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("삭제된 글의 댓글을 신고하면 500이 아니라 대상 없음으로 답한다")
+    void report_CommentOfDeletedPost_NotFound() {
+        CommentResponse comment =
+                commentService.createComment(
+                        postPublicId,
+                        new CommentCreateRequest(null, "댓글", false, null),
+                        authorUser,
+                        "127.0.0.1");
+        postService.deletePost(postPublicId, null, authorUser);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThatThrownBy(
+                        () ->
+                                reportService.create(
+                                        new ContentReportCreateRequest(
+                                                ReportTargetType.COMMENT,
+                                                String.valueOf(comment.commentId()),
+                                                ReportReason.OTHER,
+                                                null),
+                                        reporterUser))
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("기각하면 글은 그대로이고 신고는 처리 완료가 된다")
     void dismiss_KeepsPostVisible() {
         reportPost(reporterUser);

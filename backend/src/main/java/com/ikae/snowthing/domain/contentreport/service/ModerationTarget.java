@@ -20,6 +20,14 @@ record ModerationTarget(Post post, Comment comment) {
                 : !post.isDeleted() && post.getStatus() == PostStatus.TEMPORARY_HOLD;
     }
 
+    /** 일반 사용자에게 보이는 상태. 관리자가 숨긴 글을 임시조치하면 복구 때 공개되므로 구분한다. */
+    boolean isPublic() {
+        if (comment != null) {
+            return !comment.isDeleted() && post.getStatus() == PostStatus.NORMAL;
+        }
+        return !post.isDeleted() && post.getStatus() == PostStatus.NORMAL;
+    }
+
     Member author() {
         return comment != null ? comment.getMember() : post.getMember();
     }

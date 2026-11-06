@@ -1099,6 +1099,7 @@ function ReplyRow({
           {!item.isDeleted && !isEditing && <div className="comment-youtube-actions">
             <button type="button" onClick={onReply}>답글</button>
             {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+            <ReportButton targetType="COMMENT" targetId={item.commentId} />
           </div>}
         </div>
       </div>

@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.contentreport.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +16,12 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, Lo
 
     @EntityGraph(attributePaths = "reporter")
     Page<ContentReport> findByStatus(ReportStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = "reporter")
+    List<ContentReport> findByTargetTypeAndTargetId(ReportTargetType targetType, Long targetId);
+
+    Optional<ContentReport> findByTargetTypeAndTargetIdAndReporter_Id(
+            ReportTargetType targetType, Long targetId, Long reporterId);
 
     @EntityGraph(attributePaths = "reporter")
     List<ContentReport> findByTargetTypeAndTargetIdAndStatus(

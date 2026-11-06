@@ -11,6 +11,7 @@ public record AdminContentReportResponse(
         ReportTargetType targetType,
         TargetState targetState,
         String targetPreview,
+        String targetContent,
         String postPublicId,
         String postCategoryCode,
         ReportReason reason,
@@ -23,6 +24,7 @@ public record AdminContentReportResponse(
     public enum TargetState {
         NORMAL,
         HELD,
+        HIDDEN,
         DELETED
     }
 }

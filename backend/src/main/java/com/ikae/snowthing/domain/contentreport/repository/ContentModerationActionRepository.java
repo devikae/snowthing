@@ -2,7 +2,6 @@ package com.ikae.snowthing.domain.contentreport.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,6 +28,6 @@ public interface ContentModerationActionRepository
                     + ".ModerationActionType.TEMPORARY_HOLD "
                     + "AND a.releasedAt IS NULL "
                     + "AND a.targetType = :targetType AND a.targetId = :targetId")
-    Optional<ContentModerationAction> findActiveHold(
+    List<ContentModerationAction> findActiveHolds(
             @Param("targetType") ReportTargetType targetType, @Param("targetId") Long targetId);
 }

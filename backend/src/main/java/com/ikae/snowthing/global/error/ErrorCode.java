@@ -83,7 +83,7 @@ public enum ErrorCode {
     CONTENT_TEMPORARILY_HELD(
             HttpStatus.FORBIDDEN,
             "POST_009",
-            "권리 침해 신고로 임시조치된 게시물입니다. 이의가 있으면 82snowthing@gmail.com으로 문의해 주세요."),
+            "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 82snowthing@gmail.com으로 문의해 주세요."),
     CONTENT_REPORT_TARGET_NOT_FOUND(
             HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
     CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),

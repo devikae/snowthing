@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.contentreport.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.contentreport.dto.ContentReportCreateRequest;
 import com.ikae.snowthing.domain.contentreport.entity.ContentReport;
+import com.ikae.snowthing.domain.contentreport.entity.ReportStatus;
 import com.ikae.snowthing.domain.contentreport.repository.ContentReportRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -49,6 +51,17 @@ public class ContentReportService {
                 request.detail() == null || request.detail().isBlank()
                         ? null
                         : request.detail().trim();
+        LocalDateTime now = LocalDateTime.now(clock);
+        Optional<ContentReport> existing =
+                reportRepository.findByTargetTypeAndTargetIdAndReporter_Id(
+                        request.targetType(), targetId, reporter.getId());
+        if (existing.isPresent()) {
+            if (existing.get().getStatus() == ReportStatus.PENDING) {
+                throw new CustomException(ErrorCode.CONTENT_REPORT_DUPLICATE);
+            }
+            existing.get().reopen(request.reason(), detail, now);
+            return;
+        }
         try {
             reportRepository.saveAndFlush(
                     new ContentReport(
@@ -57,7 +70,7 @@ public class ContentReportService {
                             reporter,
                             request.reason(),
                             detail,
-                            LocalDateTime.now(clock)));
+                            now));
         } catch (DataIntegrityViolationException exception) {
             throw new CustomException(ErrorCode.CONTENT_REPORT_DUPLICATE, exception);
         }
@@ -90,7 +103,15 @@ public class ContentReportService {
                                 () ->
                                         new CustomException(
                                                 ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND));
-        requireVisible(comment.getPost(), user);
+        // 삭제된 글은 @SQLRestriction으로 조회되지 않아 프록시를 바로 읽으면 예외가 난다.
+        Post post =
+                postRepository
+                        .findById(comment.getPost().getId())
+                        .orElseThrow(
+                                () ->
+                                        new CustomException(
+                                                ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND));
+        requireVisible(post, user);
         return comment;
     }
 

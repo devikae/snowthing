@@ -47,6 +47,9 @@ public class ContentModerationService {
 
     private static final int PAGE_SIZE = 30;
     private static final int MAX_HOLD_DAYS = 30;
+    // 복구 작업이 매시간 돌아서 늦어져도 법정 상한 30일을 넘지 않게 여유를 둔다.
+    private static final int HOLD_MARGIN_HOURS = 2;
+    private static final int CONTENT_LENGTH = 2000;
     private static final int PREVIEW_LENGTH = 200;
     private static final int EXPIRY_BATCH_SIZE = 100;
     private static final String ACTOR_NAME = "SnowThing 운영팀";
@@ -100,9 +103,9 @@ public class ContentModerationService {
 
         switch (action) {
             case TEMPORARY_HOLD -> {
-                requireState(!target.isDeleted() && !target.isHeld());
+                requireState(target.isPublic());
                 int days = request.holdDays() == null ? MAX_HOLD_DAYS : request.holdDays();
-                expiresAt = now.plusDays(days);
+                expiresAt = now.plusDays(days).minusHours(HOLD_MARGIN_HOURS);
                 hold(target, now);
             }
             case RESTORE -> {
@@ -133,7 +136,14 @@ public class ContentModerationService {
                         report.getTargetType(), report.getTargetId(), ReportStatus.PENDING);
         pending.forEach(item -> item.resolve(now));
         if (target != null) {
-            notifyParties(target, action, pending);
+            // 임시조치 때 이미 처리된 신고의 신고자도 이후 복구와 삭제 결과를 받아야 한다.
+            notifyParties(
+                    target,
+                    action,
+                    action == ModerationActionType.DISMISS
+                            ? pending
+                            : reportRepository.findByTargetTypeAndTargetId(
+                                    report.getTargetType(), report.getTargetId()));
         }
     }
 
@@ -160,7 +170,11 @@ public class ContentModerationService {
                             null,
                             null,
                             now));
-            notifyParties(target, ModerationActionType.RESTORE, List.of());
+            notifyParties(
+                    target,
+                    ModerationActionType.RESTORE,
+                    reportRepository.findByTargetTypeAndTargetId(
+                            hold.getTargetType(), hold.getTargetId()));
             restored++;
         }
         return restored;
@@ -171,6 +185,7 @@ public class ContentModerationService {
             target.comment().holdForModeration(now);
             commentRepository.saveAndFlush(target.comment());
             searchOutbox.commentChanged(target.comment(), true);
+            notificationRepository.clearPreviewByCommentId(target.comment().getId());
             return;
         }
         target.post().changeStatus(PostStatus.TEMPORARY_HOLD);
@@ -193,6 +208,7 @@ public class ContentModerationService {
             target.comment().softDelete();
             commentRepository.saveAndFlush(target.comment());
             searchOutbox.commentChanged(target.comment(), true);
+            notificationRepository.clearPreviewByCommentId(target.comment().getId());
             return;
         }
         target.post().softDelete();
@@ -200,7 +216,7 @@ public class ContentModerationService {
     }
 
     private void releaseHold(ReportTargetType type, Long targetId, LocalDateTime now) {
-        actionRepository.findActiveHold(type, targetId).ifPresent(hold -> hold.release(now));
+        actionRepository.findActiveHolds(type, targetId).forEach(hold -> hold.release(now));
     }
 
     private void requireState(boolean allowed) {
@@ -298,6 +314,7 @@ public class ContentModerationService {
                 report.getTargetType(),
                 targetState(target),
                 target == null ? null : preview(target),
+                target == null ? null : fullContent(target),
                 post == null ? null : post.getPublicId(),
                 post == null ? null : post.getCategory().getCode(),
                 report.getReason(),
@@ -312,7 +329,19 @@ public class ContentModerationService {
         if (target == null || target.isDeleted()) {
             return TargetState.DELETED;
         }
-        return target.isHeld() ? TargetState.HELD : TargetState.NORMAL;
+        if (target.isHeld()) {
+            return TargetState.HELD;
+        }
+        return target.isPublic() ? TargetState.NORMAL : TargetState.HIDDEN;
+    }
+
+    /** 임시조치된 판매글과 카풀은 상세 화면으로 볼 수 없어 관리자 목록에 본문을 담는다. */
+    private String fullContent(ModerationTarget target) {
+        String text =
+                target.comment() != null
+                        ? target.comment().getContent()
+                        : target.post().getContent();
+        return text.length() <= CONTENT_LENGTH ? text : text.substring(0, CONTENT_LENGTH);
     }
 
     private String preview(ModerationTarget target) {

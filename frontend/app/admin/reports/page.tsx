@@ -9,15 +9,15 @@ import { formatDateTime, readErrorMessage } from "../adminTypes";
 
 type Action = "TEMPORARY_HOLD" | "RESTORE" | "DELETE" | "DISMISS";
 interface ReportItem {
-  reportId: number; targetType: "POST" | "COMMENT"; targetState: "NORMAL" | "HELD" | "DELETED";
-  targetPreview: string | null; postPublicId: string | null; postCategoryCode: string | null;
+  reportId: number; targetType: "POST" | "COMMENT"; targetState: "NORMAL" | "HELD" | "HIDDEN" | "DELETED";
+  targetPreview: string | null; targetContent: string | null; postPublicId: string | null; postCategoryCode: string | null;
   reason: string; detail: string | null; reporterNickname: string; status: "PENDING" | "RESOLVED"; createdAt: string; resolvedAt: string | null;
 }
 interface ReportPage { reports: ReportItem[]; page: number; totalPages: number; totalElements: number; }
 
 const REASON_LABEL: Record<string, string> = { RIGHTS_INFRINGEMENT: "권리 침해", ILLEGAL_CONTENT: "불법 정보", FRAUD: "사기", SPAM: "도배, 광고", OTHER: "기타" };
-const STATE_LABEL: Record<ReportItem["targetState"], string> = { NORMAL: "게시 중", HELD: "임시조치 중", DELETED: "삭제됨" };
-const STATE_STATUS: Record<ReportItem["targetState"], string> = { NORMAL: "DRAFT", HELD: "REVIEW_REQUIRED", DELETED: "REJECTED" };
+const STATE_LABEL: Record<ReportItem["targetState"], string> = { NORMAL: "게시 중", HELD: "임시조치 중", HIDDEN: "숨김", DELETED: "삭제됨" };
+const STATE_STATUS: Record<ReportItem["targetState"], string> = { NORMAL: "DRAFT", HELD: "REVIEW_REQUIRED", HIDDEN: "REVIEW_REQUIRED", DELETED: "REJECTED" };
 
 function targetHref(item: ReportItem) {
   if (!item.postPublicId) return null;
@@ -76,7 +76,8 @@ export default function AdminReportsPage() {
                 <span style={{ minWidth: 0 }}>
                   <p>{item.targetType === "COMMENT" ? "[댓글] " : "[글] "}{href ? <Link href={href} target="_blank">{item.targetPreview}</Link> : item.targetPreview ?? "대상 없음"}</p>
                   <small>{REASON_LABEL[item.reason] ?? item.reason}, 신고자 {item.reporterNickname}, {formatDateTime(item.createdAt)}{item.resolvedAt ? `, 처리 ${formatDateTime(item.resolvedAt)}` : ""}</small>
-                  {item.detail && <small style={{ display: "block" }}>{item.detail}</small>}
+                  {item.detail && <small style={{ display: "block" }}>신고 내용: {item.detail}</small>}
+                  {item.targetContent && <details><summary className="admin-meta">본문 보기</summary><small style={{ display: "block", whiteSpace: "pre-wrap" }}>{item.targetContent}</small></details>}
                 </span>
                 <span className="admin-actions">
                   {item.targetState === "NORMAL" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "TEMPORARY_HOLD")}>임시조치</button>}

@@ -70,6 +70,15 @@ public class ContentReport {
         this.createdAt = createdAt;
     }
 
+    /** 처리가 끝난 뒤 내용이 바뀌어 다시 신고하는 경우 같은 행을 다시 연다. */
+    public void reopen(ReportReason reason, String detail, LocalDateTime now) {
+        this.reason = reason;
+        this.detail = detail;
+        this.status = ReportStatus.PENDING;
+        this.createdAt = now;
+        this.resolvedAt = null;
+    }
+
     public void resolve(LocalDateTime now) {
         this.status = ReportStatus.RESOLVED;
         this.resolvedAt = now;
