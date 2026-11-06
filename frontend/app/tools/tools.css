@@ -21,7 +21,7 @@
 .rider-tools button { min-height: 44px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .rider-tools button:hover { background: var(--snow-surface-mid); }
 .rider-tools .tool-primary { width: 100%; margin-top: 16px; border-color: var(--snow-ink); background: var(--snow-ink); color: var(--snow-canvas); }
-.tool-primary:hover { opacity: .85; }
+.rider-tools .tool-primary:hover { background: var(--snow-ink); opacity: .85; }
 .tool-help { margin-top: 16px; }
 .tool-error { border-left: 3px solid var(--snow-error); padding-left: 12px; }
 .tool-key-result { padding-block: 8px 24px; border-bottom: 1px solid var(--snow-border); }

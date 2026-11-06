@@ -330,6 +330,7 @@ export default function HomePageClient() {
         <div className="home-tier-1">
           <section className="home-feed tier-1-left">
             <div className="post-board">
+              <h1 className="sr-only">눈팅 SnowThing</h1>
               <nav className="board-tabs" aria-label="홈 게시판 선택">
                 <div className="filter-pills">
                   {HOME_FEED_TABS.map((tab) => (

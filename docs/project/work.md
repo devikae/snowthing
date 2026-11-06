@@ -2901,3 +2901,11 @@
 - 증거: `docs/conception/012_profile_settings/06_production_image_inspection.json`, `07_production_monitoring_verification.json`. 변경 전 경보 백업은 로컬 임시 디렉터리 `snowthing-image-monitoring-9v4qbnmd`, Agent 백업은 서버 `/var/lib/snowthing-monitoring-backups/image-budget-20261103T053830Z`에 있다. 재현 스크립트는 기본 plan·명시적 --apply·읽기 전용 --verify를 제공한다.
 - 검증: 예산 소진의 상호 격리·미차감, 신규 계정 제한, IPv4 별칭과 잘못된 호스트 입력, 계정 간 IP 및 IPv6 /64 공유, 1만 건 병렬 거절의 합산·분당 로그량 제한을 검증했다. 최종 `spotlessApply spotlessCheck test build` 성공: 471개 중 실패 0개·기존 제외 1개. Python 설정·실측 스크립트 컴파일과 실제 운영 --verify도 통과했다. 최종 원격 CI는 PR #47 Checks를 참조한다.
 - 배포 경계: 이번 작업은 경보·Agent 수집 설정을 적용했으며 운영 앱 교체·운영 DB 마이그레이션은 하지 않았다. 새 앱의 EMF 발행과 신규 테이블의 운영 실행 계획은 PR 배포 후에 확인할 수 있다. CodeRabbit의 자동 재리뷰 완료 판정과 코드 반영 사실은 구분한다.
+
+## IKA-29 사이트 디자인 QA 수정 (2026-11-06)
+
+- 상태: PR 생성, 머지 대기.
+- 완료: 계산기 버튼, 비회원 댓글, 404, 모바일 헤더와 탭, 쪽지 버튼, 다크 색, 글자 대비, 줄바꿈, 오류 문구, 날짜, 브랜드, 제목, h1, 장터 안내.
+- 결정: 브랜드는 `윈터스포츠 커뮤니티`로 통일. 글 상세 제목은 조회수 중복을 피해 브라우저에서 바꾼다.
+- 사용자 결정 대기: 처리방침 초안 문구, 운영 테스트 글 삭제.
+- 검증: lint, build 통과. 로컬 브라우저 확인 30개 통과. 운영 확인은 머지 후 남음.

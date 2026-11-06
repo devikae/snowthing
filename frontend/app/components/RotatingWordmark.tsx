@@ -16,7 +16,7 @@ function Word({ text, korean = false }: { text: string; korean?: boolean }) {
 
 export function RotatingWordmark() {
   return (
-    <span className={styles.wordmark} aria-hidden="true">
+    <span className={`alpine-logo-wordmark ${styles.wordmark}`} aria-hidden="true">
       <Word text="SnowThing" />
       <Word text="눈팅" korean />
     </span>

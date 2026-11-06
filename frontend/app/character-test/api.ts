@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../lib/api";
-import { csrfFetch } from "../lib/csrfFetch";
+import { csrfFetch as rawCsrfFetch } from "../lib/csrfFetch";
 import { readErrorMessage } from "../lib/messageApi";
 import type { CharacterLabel, CharacterStats, LevelCode, Sport } from "./data";
 
@@ -58,6 +58,12 @@ export interface JoinInput {
   sport: Sport;
   answers: string;
 }
+
+// 연결 실패의 브라우저 문구(Failed to fetch)를 화면에 그대로 보여 주지 않는다.
+const csrfFetch: typeof rawCsrfFetch = (...args) =>
+  rawCsrfFetch(...args).catch(() => {
+    throw new Error("연결이 불안정해요. 잠시 후 다시 시도해 주세요.");
+  });
 
 const jsonHeaders = { "Content-Type": "application/json" };
 const GROUP_NOT_FOUND_CODE = "CHARACTER_001";

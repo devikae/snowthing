@@ -94,6 +94,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   const router = useRouter();
   const { publicId } = use(params);
   const [post, setPost] = useState<PostDetail | null>(null);
+  useEffect(() => {
+    if (post) document.title = `${post.title} | 눈팅 SnowThing`;
+  }, [post]);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [totalCommentCount, setTotalCommentCount] = useState(0);
   const [commentNextCursor, setCommentNextCursor] = useState<string | null>(null);
@@ -367,6 +370,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
   };
 
   const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
+  const canWriteComment = isAnonymousPost || Boolean(currentUserPublicId);
 
   const handleCreateComment = async (parentId: string | null) => {
     if (isSubmittingCommentRef.current || submittingComment) return;
@@ -680,12 +684,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             <div className="post-comment-compose">
               <textarea
                 rows={3}
-                placeholder={isAnonymousPost || currentUserPublicId ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
+                placeholder={canWriteComment ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
+                disabled={!canWriteComment}
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
                 className="post-comment-textarea"
               />
-              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">댓글 작성을 위해 로그인이 필요합니다.</span>}
               <div className="post-comment-compose-footer">
                 {isAnonymousPost && !currentUserPublicId && (
                   <label className="post-comment-password">
@@ -698,9 +702,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                     />
                   </label>
                 )}
-                <button className="post-comment-submit-button" disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
-                  댓글 등록 <span className="material-symbols-outlined">send</span>
-                </button>
+                {canWriteComment ? (
+                  <button className="post-comment-submit-button" disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
+                    댓글 등록 <span className="material-symbols-outlined">send</span>
+                  </button>
+                ) : (
+                  <Link className="post-comment-submit-button" href={`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`}>
+                    로그인하고 댓글 쓰기
+                  </Link>
+                )}
               </div>
             </div>
 
