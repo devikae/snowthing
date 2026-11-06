@@ -86,9 +86,9 @@ export function GroupApp({ publicId }: { publicId: string }) {
       <section className="ct-panel ct-intro">
         <p className="ct-eyebrow">초대받았어요</p>
         <h2>{preview.name}</h2>
-        <p className="ct-lead">지금 {preview.participantCount}명이 있어요. 스키장 상황 15개를 고르고 닉네임을 넣으면 나를 가운데 둔 관계 지도가 나와요.</p>
+        <p className="ct-lead">지금 {preview.participantCount}명이 있어요. 스키장 상황 15개를 고르고 이름을 넣으면 나를 가운데 둔 관계 지도가 나와요.</p>
         {notice && <p className="ct-error" role="status">{notice}</p>}
-        <p className="ct-fineprint">가입 없이 할 수 있어요. 재미로 보는 테스트이고, 닉네임을 넣기 전까지 답변을 저장하지 않아요.</p>
+        <p className="ct-fineprint">가입 없이 할 수 있어요. 재미로 보는 테스트이고, 이름을 넣기 전까지 답변을 저장하지 않아요.</p>
         <button type="button" className="ct-primary" onClick={() => setView({ kind: "quiz", preview })}>테스트 시작</button>
         {hasSaved && saved && <button type="button" className="ct-text-button" onClick={() => void finishQuiz(preview, saved.answers, saved.sport)}>지난 답변으로 바로 들어가기</button>}
       </section>
@@ -108,14 +108,14 @@ export function GroupApp({ publicId }: { publicId: string }) {
         <ResultPanel result={result} sport={sport} answers={answers} />
         <section className="ct-panel" aria-labelledby="ct-join-title">
           <h2 id="ct-join-title">{preview.name}에 들어가기</h2>
-          <p className="ct-lead">닉네임만 넣으면 이 모임 사람들과 어떤 사이인지 지도로 보여 줘요.</p>
+          <p className="ct-lead">이름만 넣으면 이 모임 사람들과 어떤 사이인지 지도로 보여 줘요.</p>
           <NicknameForm submitLabel="모임에 들어가기" onSubmit={join} />
         </section>
         <CardPanel result={result} sport={sport} />
       </>
     );
   }
-  return <MapView map={view.map} token={view.token} onReload={load} onLeft={() => showPreview("모임에서 나왔어요. 내 닉네임과 답변을 지웠어요.")} />;
+  return <MapView map={view.map} token={view.token} onReload={load} onLeft={() => showPreview("모임에서 나왔어요. 내 이름과 답변을 지웠어요.")} />;
 }
 
 function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: string; onReload: () => Promise<void>; onLeft: () => Promise<void> }) {
@@ -188,7 +188,7 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
           <p className="ct-count">{map.participantCount} / {map.maxParticipants}명</p>
         </div>
         <RelationshipMap levels={map.levels} me={{ character }} hideNames={hideNames} />
-        <label className="ct-check"><input type="checkbox" checked={hideNames} onChange={(event) => setHideNames(event.target.checked)} /> 닉네임 가리기</label>
+        <label className="ct-check"><input type="checkbox" checked={hideNames} onChange={(event) => setHideNames(event.target.checked)} /> 이름 가리기</label>
         <div className="ct-actions">
           <button type="button" onClick={() => void saveMap()} disabled={busy}>지도 이미지 저장</button>
           <button type="button" onClick={() => void onReload()} disabled={busy}>지도 새로고침</button>
@@ -214,7 +214,7 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
                 <ul>
                   {people.map((person) => (
                     <li key={person.participantPublicId}>
-                      <span><strong>{hideNames ? "닉네임 숨김" : person.nickname}</strong> {characterName(person.character)} ({JOBS[person.character.job].name}, {SPORT_LABEL[person.sport]}) {person.score}점</span>
+                      <span><strong>{hideNames ? "이름 숨김" : person.nickname}</strong> {characterName(person.character)} ({JOBS[person.character.job].name}, {SPORT_LABEL[person.sport]}) {person.score}점</span>
                     </li>
                   ))}
                 </ul>
@@ -235,7 +235,7 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
             ? <span className="ct-inline-actions"><button type="button" onClick={() => void leave()} disabled={busy}>나가기 확인</button><button type="button" onClick={() => setConfirmLeave(false)}>취소</button></span>
             : <button type="button" onClick={() => setConfirmLeave(true)}>모임 나가기</button>}
         </div>
-        <p className="ct-fineprint">나가면 내 닉네임과 답변이 바로 지워져요.</p>
+        <p className="ct-fineprint">나가면 내 이름과 답변이 바로 지워져요.</p>
       </section>
     </>
   );

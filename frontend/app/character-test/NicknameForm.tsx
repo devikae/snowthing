@@ -13,7 +13,7 @@ export function NicknameForm({ submitLabel, initialNickname = "", onSubmit, onCa
     event.preventDefault();
     if (pending) return;
     if (!NICKNAME_PATTERN.test(nickname)) {
-      setError("닉네임은 2자 이상 10자 이하의 한글, 영문, 숫자로 입력해 주세요.");
+      setError("이름은 2자 이상 10자 이하의 한글, 영문, 숫자로 입력해 주세요.");
       return;
     }
     setError("");
@@ -29,10 +29,10 @@ export function NicknameForm({ submitLabel, initialNickname = "", onSubmit, onCa
 
   return (
     <form className="ct-nickname" onSubmit={(event) => void submit(event)} noValidate>
-      <label htmlFor="ct-nickname-input">닉네임</label>
+      <label htmlFor="ct-nickname-input">이름</label>
       <input id="ct-nickname-input" value={nickname} onChange={(event) => setNickname(event.target.value)} maxLength={10} autoComplete="off" autoFocus aria-invalid={Boolean(error)} aria-describedby={error ? "ct-nickname-error" : "ct-nickname-notice"} />
       {error && <p className="ct-error" id="ct-nickname-error" role="alert">{error}</p>}
-      <p className="ct-fineprint" id="ct-nickname-notice">닉네임, 스키나 보드, 답변이 지도를 보여 주려고 서버에 저장돼요. 같은 모임 사람들은 닉네임과 캐릭터, 나와의 궁합 점수를 볼 수 있어요. 나가기를 누르면 바로 지워지고, 7일 동안 새로 들어온 사람이 없으면 모임이 통째로 지워져요.</p>
+      <p className="ct-fineprint" id="ct-nickname-notice">이름, 스키나 보드, 답변이 지도를 보여 주려고 서버에 저장돼요. 같은 모임 사람들은 이름과 캐릭터, 나와의 궁합 점수를 볼 수 있어요. 나가기를 누르면 바로 지워지고, 7일 동안 새로 들어온 사람이 없으면 모임이 통째로 지워져요.</p>
       <div className="ct-actions">
         <button type="submit" className="ct-primary" disabled={pending}>{pending ? "처리 중" : submitLabel}</button>
         {onCancel && <button type="button" onClick={onCancel} disabled={pending}>취소</button>}
