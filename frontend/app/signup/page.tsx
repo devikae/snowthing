@@ -1,13 +1,12 @@
 "use client";
 
-import { registrationPolicy, registrationPolicyUrl } from "../lib/registrationPolicy";
-
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
+import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "./RegistrationConsentForm";
 
 interface ResortMaster { id: number; name: string; regionName: string; }
 interface RidingStyleMaster { id: number; styleName: string; description: string; }
@@ -28,10 +27,8 @@ async function readError(response: Response, fallback: string) {
 
 export default function SignUpPage() {
   const router = useRouter();
-  const [isAtLeastFourteen, setIsAtLeastFourteen] = useState(false);
+  const [consent, setConsent] = useState(EMPTY_CONSENT);
   const [showSignUpForm, setShowSignUpForm] = useState(false);
-  const [privacyAgreed, setPrivacyAgreed] = useState(false);
-  const [marketingAgreed, setMarketingAgreed] = useState(false);
   const emailSectionRef = useRef<HTMLDivElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
@@ -142,7 +139,7 @@ export default function SignUpPage() {
     if (!NICKNAME_REGEX.test(nickname)) return setErrorMsg("닉네임은 2자 이상 10자 이하의 한글, 영문, 숫자로 입력해 주세요.");
     setLoading(true);
     try {
-      const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ageConfirmed: isAtLeastFourteen, privacyAgreed, privacyVersion: registrationPolicy.version, marketingEmailAgreed: marketingAgreed }) });
+      const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ...consentPayload(consent) }) });
       if (!response.ok) throw new Error(await readError(response, "회원가입에 실패했습니다."));
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
       router.push(loginResponse.ok ? "/" : "/login");
@@ -162,38 +159,8 @@ export default function SignUpPage() {
             <h1 className="mb-6 text-center text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1>
             <div className="snow-card grid gap-5 p-6 md:p-8">
               <h2 className="text-lg font-bold text-[var(--snow-ink)]">가입 전 확인해 주세요</h2>
-              <label className="flex cursor-pointer items-center gap-3 border-b border-[var(--snow-border)] pb-4 text-base font-bold text-[var(--snow-ink)]">
-                <input type="checkbox" checked={isAtLeastFourteen && privacyAgreed && marketingAgreed} onChange={(event) => { const checked = event.target.checked; setIsAtLeastFourteen(checked); setPrivacyAgreed(checked); setMarketingAgreed(checked); }} className="h-4 w-4 accent-sky-700" />
-                <span>전체 동의</span>
-              </label>
-              <p className="-mt-3 text-xs text-[var(--snow-muted)]">필수 및 선택 항목에 모두 동의합니다. 선택 항목은 동의하지 않아도 가입할 수 있습니다.</p>
-              <div className="grid gap-2">
-                <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
-                  <input type="checkbox" checked={isAtLeastFourteen} onChange={(event) => setIsAtLeastFourteen(event.target.checked)} className="h-4 w-4 accent-sky-700" />
-                  <span>[필수] 만 14세 이상입니다.</span>
-                </label>
-                <p className="pl-7 text-xs leading-5 text-[var(--snow-muted)]">SnowThing은 만 14세 이상만 회원으로 가입할 수 있습니다. 본인의 나이를 확인해 주세요.</p>
-              </div>
-              <div className="rounded-lg border border-[var(--snow-border)] bg-[var(--snow-surface-low)] p-4 text-sm leading-6 text-[var(--snow-ink-soft)]">
-                <p><strong>수집 항목:</strong> {registrationPolicy.collection.items}</p>
-                <p><strong>수집 목적:</strong> {registrationPolicy.collection.purpose}</p>
-                <p><strong>보유 및 이용 기간:</strong> {registrationPolicy.collection.retention}</p>
-                <p>{registrationPolicy.collection.refusal}</p>
-                <p>개인정보 처리 및 문의 방법은 개인정보처리방침에서 확인할 수 있습니다.</p>
-                <Link href={registrationPolicyUrl} target="_blank" className="font-bold text-sky-600 underline">개인정보처리방침 보기</Link>
-                <p className="text-xs text-[var(--snow-muted)]">문서 버전: {registrationPolicy.version}</p>
-              </div>
-              <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
-                <input type="checkbox" checked={privacyAgreed} onChange={(event) => setPrivacyAgreed(event.target.checked)} className="h-4 w-4 accent-sky-700" />
-                <span>[필수] 개인정보 수집·이용에 동의합니다.</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
-                <input type="checkbox" checked={marketingAgreed} onChange={(event) => setMarketingAgreed(event.target.checked)} className="h-4 w-4 accent-sky-700" />
-                <span>[선택] 이벤트·혜택 등 광고성 이메일 수신에 동의합니다.</span>
-              </label>
-              <p className="text-xs text-[var(--snow-muted)]">선택 항목에 동의하지 않아도 회원가입을 할 수 있습니다.</p>
-              <p className="text-xs leading-5 text-[var(--snow-muted)]">광고성 이메일 수신에 관한 문의 및 동의 철회 요청: 82snowthing@gmail.com</p>
-              <button type="button" className="snow-btn-primary w-full" disabled={!isAtLeastFourteen || !privacyAgreed} onClick={() => setShowSignUpForm(true)}>다음</button>
+              <RegistrationConsentForm value={consent} onChange={setConsent} />
+              <button type="button" className="snow-btn-primary w-full" disabled={!hasRequiredConsent(consent)} onClick={() => setShowSignUpForm(true)}>다음</button>
             </div>
           </section>
         </main>

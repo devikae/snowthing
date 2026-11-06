@@ -10,6 +10,8 @@ export const API_ENDPOINTS = {
     logout: `${API_V1_URL}/auth/logout`,
     oauth2Authorize: (provider: SocialLoginProvider, returnUrl?: string | null) =>
       `${API_V1_URL}/auth/oauth2/authorize/${provider}${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`,
+    oauth2SignUpPending: `${API_V1_URL}/auth/oauth2/signup/pending`,
+    oauth2SignUp: `${API_V1_URL}/auth/oauth2/signup`,
     requestSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up`,
     confirmSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up/confirm`,
     requestPasswordReset: `${API_V1_URL}/auth/password-reset/requests`,
@@ -18,6 +20,7 @@ export const API_ENDPOINTS = {
   },
   members: {
     settings: `${API_V1_URL}/members/me/settings`,
+    marketingConsent: `${API_V1_URL}/members/me/marketing-consent`,
     nicknameAvailability: `${API_V1_URL}/members/me/nickname-availability`,
     changePassword: `${API_V1_URL}/members/me/password`,
     resetProfileImage: `${API_V1_URL}/members/me/profile-image`,

@@ -26,6 +26,7 @@ public enum ErrorCode {
             HttpStatus.TOO_MANY_REQUESTS, "AUTH_011", "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     OAUTH_ACCOUNT_LINK_REQUIRED(
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
+    OAUTH_SIGNUP_EXPIRED(HttpStatus.GONE, "AUTH_013", "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     PROFILE_LIMIT_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),

@@ -62,8 +62,10 @@ class VerifiedMemberRegistrationServiceTest {
                         memberRepository,
                         memberService,
                         CLOCK,
-                        consentRepository,
-                        new com.ikae.snowthing.domain.member.service.RegistrationPrivacyPolicy());
+                        new com.ikae.snowthing.domain.member.service.RegistrationConsentService(
+                                consentRepository,
+                                new com.ikae.snowthing.domain.member.service
+                                        .RegistrationPrivacyPolicy()));
     }
 
     @Test
@@ -77,11 +79,31 @@ class VerifiedMemberRegistrationServiceTest {
     }
 
     @Test
+    void rejectsMissingTermsAgreement() {
+        var request =
+                MemberSignUpRequest.builder()
+                        .ageConfirmed(true)
+                        .privacyAgreed(true)
+                        .termsAgreed(false)
+                        .marketingEmailAgreed(false)
+                        .build();
+        assertThatThrownBy(() -> service.register(request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
     void rejectsStalePolicyBeforeConsumingAnyVerificationToken() {
         var request =
                 MemberSignUpRequest.builder()
                         .ageConfirmed(true)
                         .privacyAgreed(true)
+                        .termsAgreed(true)
+                        .termsVersion(
+                                new com.ikae.snowthing.domain.member.service
+                                                .RegistrationPrivacyPolicy()
+                                        .termsVersion())
                         .marketingEmailAgreed(false)
                         .privacyVersion("obsolete-version")
                         .build();
@@ -122,6 +144,10 @@ class VerifiedMemberRegistrationServiceTest {
                 ArgumentCaptor.forClass(MemberRegistrationConsent.class);
         verify(consentRepository).save(consent.capture());
         assertThat(consent.getValue().isAgeConfirmed()).isTrue();
+        assertThat(consent.getValue().getTermsVersion())
+                .isEqualTo(
+                        new com.ikae.snowthing.domain.member.service.RegistrationPrivacyPolicy()
+                                .termsVersion());
         assertThat(consent.getValue().isMarketingEmailAgreed()).isFalse();
         assertThat(consent.getValue().getConfirmedAt()).isEqualTo(LocalDateTime.now(CLOCK));
 
@@ -169,7 +195,13 @@ class VerifiedMemberRegistrationServiceTest {
                 .ridingStyleIds(List.of())
                 .ageConfirmed(true)
                 .privacyAgreed(true)
-                .privacyVersion("draft-2026-11-01-v1")
+                .termsAgreed(true)
+                .termsVersion(
+                        new com.ikae.snowthing.domain.member.service.RegistrationPrivacyPolicy()
+                                .termsVersion())
+                .privacyVersion(
+                        new com.ikae.snowthing.domain.member.service.RegistrationPrivacyPolicy()
+                                .version())
                 .marketingEmailAgreed(false)
                 .build();
     }

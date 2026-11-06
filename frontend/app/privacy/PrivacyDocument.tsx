@@ -1,7 +1,7 @@
 import { Footer, TopNav } from "../components/SiteChrome";
-import type { registrationPolicy } from "../lib/registrationPolicy";
+import type { termsDocument } from "../lib/registrationPolicy";
 
-export default function PrivacyDocument({policy}:{policy:typeof registrationPolicy}) {
+export default function PrivacyDocument({policy}:{policy:typeof termsDocument}) {
   return <div className="min-h-screen bg-[var(--snow-background)] text-[var(--snow-ink)]">
     <TopNav />
     <main className="snow-container mx-auto max-w-3xl px-5 py-10">

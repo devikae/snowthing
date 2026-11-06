@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
+import com.ikae.snowthing.domain.member.dto.RegistrationConsentRequest;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberSocialAccount;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
@@ -25,6 +26,7 @@ import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
+import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -42,38 +44,42 @@ public class SocialAuthService {
     private final SocialNicknameGenerator socialNicknameGenerator;
     private final Clock clock;
     private final ApplicationEventPublisher eventPublisher;
+    private final RegistrationConsentService consentService;
 
-    @Transactional
-    public Member authenticateOrRegister(OAuthUserProfile profile) {
+    /**
+     * 콜백에서 호출한다. 연결된 회원이 있으면 돌려주고, 처음 온 사용자면 비어 있는 값을 돌려준다. 이때 회원을 만들지 않는다. 가입할 수 없는 사용자는 동의 화면까지
+     * 보내지 않도록 여기서 거부한다.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Member> findMemberForLogin(OAuthUserProfile profile) {
         validateIdentity(profile);
+        Optional<Member> linkedMember = findLinkedMember(profile);
+        if (linkedMember.isEmpty()) {
+            resolveNewMemberEmail(profile);
+        }
+        return linkedMember;
+    }
 
+    /** 동의를 마친 뒤 회원, 소셜 계정, 동의 기록을 한 트랜잭션으로 저장한다. */
+    @Transactional
+    public Member completeSignUp(OAuthUserProfile profile, RegistrationConsentRequest consent) {
+        validateIdentity(profile);
+        consentService.validate(consent);
+
+        Optional<Member> linkedMember = findLinkedMember(profile);
+        if (linkedMember.isPresent()) {
+            return linkedMember.get();
+        }
+
+        String memberEmail = resolveNewMemberEmail(profile);
         String providerUserId = profile.providerUserId().trim();
-        Optional<MemberSocialAccount> existingSocialAccount =
-                memberSocialAccountRepository.findByProviderAndProviderUserId(
-                        profile.provider(), providerUserId);
-        if (existingSocialAccount.isPresent()) {
-            Member linkedMember = existingSocialAccount.get().getMember();
-            validateActiveStatus(linkedMember);
-            return linkedMember;
-        }
-
-        validateEmailPresent(profile);
         String providerEmail = emailNormalizer.normalize(profile.email());
-        String memberEmail =
-                profile.emailAuthoritative()
-                        ? providerEmail
-                        : createInternalEmail(profile.provider(), providerUserId);
         LocalDateTime now = LocalDateTime.now(clock);
-        if (profile.emailAuthoritative()) {
-            Optional<Member> existingMemberByEmail = memberRepository.findByEmail(memberEmail);
-            if (existingMemberByEmail.isPresent()) {
-                throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
-            }
-        }
 
         Member newMember =
                 createSocialMember(
                         memberEmail, profile.nickname(), profile.emailAuthoritative(), now);
+        consentService.record(newMember.getId(), consent, now);
         saveSocialAccount(
                 MemberSocialAccount.builder()
                         .member(newMember)
@@ -85,6 +91,28 @@ public class SocialAuthService {
         eventPublisher.publishEvent(
                 new MemberSignedUpEvent(newMember.getNickname(), profile.provider().name()));
         return newMember;
+    }
+
+    private Optional<Member> findLinkedMember(OAuthUserProfile profile) {
+        Optional<Member> linkedMember =
+                memberSocialAccountRepository
+                        .findByProviderAndProviderUserId(
+                                profile.provider(), profile.providerUserId().trim())
+                        .map(MemberSocialAccount::getMember);
+        linkedMember.ifPresent(this::validateActiveStatus);
+        return linkedMember;
+    }
+
+    private String resolveNewMemberEmail(OAuthUserProfile profile) {
+        validateEmailPresent(profile);
+        if (!profile.emailAuthoritative()) {
+            return createInternalEmail(profile.provider(), profile.providerUserId().trim());
+        }
+        String memberEmail = emailNormalizer.normalize(profile.email());
+        if (memberRepository.findByEmail(memberEmail).isPresent()) {
+            throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
+        }
+        return memberEmail;
     }
 
     private void validateIdentity(OAuthUserProfile profile) {
