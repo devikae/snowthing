@@ -23,7 +23,10 @@ public class ContentWriteRateLimiter {
         RESORT_REPORT(Duration.ofSeconds(10), 10),
         CARPOOL(Duration.ofSeconds(10), 10),
         MARKET_LISTING(Duration.ofSeconds(10), 10),
-        DIRECT_MESSAGE(Duration.ofSeconds(5), 30);
+        DIRECT_MESSAGE(Duration.ofSeconds(5), 30),
+        // 비회원 기능이라 IP로 묶인다. 친구들이 같은 와이파이로 몰려 들어와도 막히지 않게 넉넉히 둔다.
+        CHARACTER_GROUP_CREATE(Duration.ofSeconds(1), 60),
+        CHARACTER_GROUP_JOIN(Duration.ofSeconds(1), 300);
 
         // 짧은 간격마다 1건, 1시간마다 hourlyLimit건까지 허용한다. 서비스 검증에서 실패한 요청도 횟수를 쓰므로
         // 간격은 연타만 막을 만큼 짧게 둔다(오류를 고쳐 바로 다시 보내는 사용자를 막지 않도록).

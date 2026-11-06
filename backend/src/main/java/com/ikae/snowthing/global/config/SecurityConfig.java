@@ -229,6 +229,21 @@ public class SecurityConfig {
                                                 "/api/v1/carpools/auto-preview",
                                                 "/api/carpools/auto-preview")
                                         .permitAll()
+                                        // IKA-27 비회원 캐릭터 테스트. 메서드와 경로를 정확히 적고 CSRF 검사는 그대로 받는다.
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/character-test/result",
+                                                "/api/v1/character-groups",
+                                                "/api/v1/character-groups/*/participants")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/character-groups/*",
+                                                "/api/v1/character-groups/*/map")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.DELETE, "/api/v1/character-participants/me")
+                                        .permitAll()
                                         .requestMatchers(
                                                 "/api/members",
                                                 "/api/v1/members",

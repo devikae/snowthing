@@ -213,6 +213,13 @@ public enum ErrorCode {
             "DRAFT_012",
             "검토 대기 초안이 너무 많습니다. 기존 초안을 처리한 뒤 다시 저장해 주세요."),
 
+    // 스키장 캐릭터 테스트 (036)
+    CHARACTER_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "CHARACTER_001", "존재하지 않는 모임이거나 볼 수 없습니다."),
+    CHARACTER_GROUP_FULL(HttpStatus.CONFLICT, "CHARACTER_002", "모임 인원이 가득 찼습니다."),
+    CHARACTER_NICKNAME_DUPLICATED(
+            HttpStatus.CONFLICT, "CHARACTER_003", "이 모임에서 이미 쓰는 닉네임입니다. 다른 닉네임을 입력해 주세요."),
+    CHARACTER_NICKNAME_FORBIDDEN(HttpStatus.BAD_REQUEST, "CHARACTER_004", "쓸 수 없는 닉네임입니다."),
+
     // 작성 API Idempotency-Key (032)
     IDEMPOTENCY_KEY_INVALID(
             HttpStatus.BAD_REQUEST, "IDEMPOTENCY_001", "Idempotency-Key 헤더는 UUID 형식이어야 합니다."),
