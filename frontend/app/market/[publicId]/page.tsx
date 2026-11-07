@@ -12,6 +12,8 @@ import { MarketMessageButton } from "../../components/MarketMessageButton";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
+import { errorText } from "../../lib/errorText";
+import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -78,7 +80,7 @@ const tradeLabels: Record<string, string> = {
 };
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return formatKoreanDate(value, KOREAN_DATE_TIME);
 }
 
 export default function MarketDetailPage({ params }: { params: Promise<{ publicId: string }> }) {
@@ -125,11 +127,11 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         redirectToLogin();
         return;
       }
-      if (!response.ok) throw new Error("판매글을 찾을 수 없거나 숨김 처리되었습니다.");
+      if (!response.ok) throw new Error(response.status === 404 ? "판매글을 찾을 수 없거나 숨김 처리되었습니다." : "판매글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       setListing(await response.json());
       await loadComments();
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "판매글을 불러오지 못했습니다.");
+      setError(errorText(loadError, "판매글을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -185,7 +187,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
       await loadComments();
       setListing((current) => current ? { ...current, commentCount: current.commentCount + 1 } : current);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "댓글을 등록하지 못했습니다.");
+      setError(errorText(submitError, "댓글을 등록하지 못했습니다."));
     } finally {
       isSubmittingCommentRef.current = false;
       setSubmitting(false);
