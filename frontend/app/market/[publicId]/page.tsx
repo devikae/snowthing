@@ -32,6 +32,7 @@ interface MarketDetail {
   contact: string;
   seller: { publicId: string; nickname: string; profileImageUrl: string | null };
   images: string[];
+  coverImageUrl: string | null;
   viewCount: number;
   commentCount: number;
   version: number;
@@ -237,6 +238,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   if (loading) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
   if (!listing) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state"><p>{error}</p><Link href="/market">목록으로</Link></main></div>;
 
+  const galleryImages = listing.images.length ? listing.images : listing.coverImageUrl ? [listing.coverImageUrl] : [];
+
   return (
     <div className="community-page">
       <TopNav active="market" />
@@ -246,7 +249,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         <article className="market-detail-card">
           <section className="market-gallery">
             <div className="market-gallery-main">
-              {listing.images.length ? <Image src={listing.images[activeImage]} alt={`${listing.title} 상품 사진 ${activeImage + 1}`} width={720} height={540} unoptimized /> : <span className="material-symbols-outlined">inventory_2</span>}
+              {galleryImages.length ? <Image src={galleryImages[activeImage]} alt={`${listing.title} 상품 사진 ${activeImage + 1}`} width={720} height={540} unoptimized /> : <span className="material-symbols-outlined">inventory_2</span>}
             </div>
             {listing.images.length > 1 && <div className="market-gallery-thumbs">{listing.images.map((image, index) => <button type="button" key={image} className={activeImage === index ? "active" : ""} onClick={() => setActiveImage(index)}><Image src={image} alt={`${index + 1}번 사진`} width={96} height={72} unoptimized /></button>)}</div>}
           </section>

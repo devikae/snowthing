@@ -96,12 +96,13 @@ export default function MarketCreatePage() {
     setError("");
     try {
       for (const file of Array.from(files)) {
+        if (file.size > 5 * 1024 * 1024) throw new Error("사진은 한 장에 5MB까지 올릴 수 있습니다.");
         const formData = new FormData();
         formData.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: formData });
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || "이미지 업로드에 실패했습니다.");
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.message || "이미지 업로드에 실패했습니다.");
         }
         const uploaded: UploadedImage = await response.json();
         setImages((current) => [...current, uploaded]);
