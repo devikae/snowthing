@@ -31,6 +31,8 @@ import lombok.NoArgsConstructor;
                 "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW(),"
                         + " content_version = content_version + 1 WHERE post_id = ?")
 @SQLRestriction("is_deleted = false")
+// 전체 컬럼을 쓰면 먼저 읽어 둔 수정 요청이 임시조치 상태를 NORMAL로 되돌릴 수 있다.
+@org.hibernate.annotations.DynamicUpdate
 @Check(constraints = "like_count >= 0 AND dislike_count >= 0")
 public class Post extends BaseTimeEntity {
 

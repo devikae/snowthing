@@ -69,7 +69,7 @@ public class Notification {
     @Column(name = "post_category_code", nullable = false, length = 30)
     private String postCategoryCode;
 
-    @Column(name = "comment_id", nullable = false)
+    @Column(name = "comment_id")
     private Long commentId;
 
     @Column(name = "actor_name", nullable = false, length = 50)

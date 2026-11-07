@@ -12,6 +12,8 @@ import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
+import { errorText } from "../../lib/errorText";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), { ssr: false });
 
@@ -86,22 +88,27 @@ export default function MarketCreatePage() {
       setError("사진은 최대 10장까지 등록할 수 있습니다.");
       return;
     }
+    if (Array.from(files).some(isOversizedImage)) {
+      setError(OVERSIZED_IMAGE_MESSAGE);
+      return;
+    }
     setUploading(true);
     setError("");
     try {
       for (const file of Array.from(files)) {
+        if (file.size > 5 * 1024 * 1024) throw new Error("사진은 한 장에 5MB까지 올릴 수 있습니다.");
         const formData = new FormData();
         formData.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: formData });
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || "이미지 업로드에 실패했습니다.");
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.message || "이미지 업로드에 실패했습니다.");
         }
         const uploaded: UploadedImage = await response.json();
         setImages((current) => [...current, uploaded]);
       }
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "이미지 업로드에 실패했습니다.");
+      setError(errorText(uploadError, "이미지 업로드에 실패했습니다."));
     } finally {
       setUploading(false);
     }
@@ -153,7 +160,7 @@ export default function MarketCreatePage() {
       const data: { publicId: string } = await response.json();
       router.push(`/market/${data.publicId}`);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "판매글을 등록하지 못했습니다.");
+      setError(errorText(submitError, "판매글을 등록하지 못했습니다."));
     } finally {
       isSubmittingRef.current = false;
       setSubmitting(false);

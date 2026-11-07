@@ -71,6 +71,11 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
         }
 
+        // 비회원은 익명게시판에만 쓴다. isAnonymous=true로 다른 게시판에 쓰는 API 경로를 막는다.
+        if (userDetails == null && !ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+            throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
         if (isAnonymousDisallowedCategory(category.getCode())) {
             if (userDetails == null) {
                 throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
@@ -154,7 +159,10 @@ public class PostService {
 
         if (post.getStatus() != PostStatus.NORMAL) {
             if (!isAdmin(userDetails)) {
-                throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+                throw new CustomAuthException(
+                        post.getStatus() == PostStatus.TEMPORARY_HOLD
+                                ? ErrorCode.CONTENT_TEMPORARILY_HELD
+                                : ErrorCode.POST_NOT_FOUND);
             }
         }
 
@@ -288,6 +296,13 @@ public class PostService {
         }
 
         if (isAnonymousDisallowedCategory(category.getCode()) && post.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
+
+        // 비회원 글을 수정으로 다른 게시판에 옮겨 작성 제한을 우회하지 못하게 한다.
+        if (post.getMember() == null
+                && !category.getCode().equalsIgnoreCase(post.getCategory().getCode())
+                && !ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 

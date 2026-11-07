@@ -21,6 +21,7 @@ public record MarketListingDetailResponse(
         String contact,
         MarketListingSummaryResponse.Seller seller,
         List<String> images,
+        String coverImageUrl,
         int viewCount,
         int commentCount,
         long version,

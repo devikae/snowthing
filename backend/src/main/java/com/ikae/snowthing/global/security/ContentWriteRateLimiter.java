@@ -24,6 +24,7 @@ public class ContentWriteRateLimiter {
         CARPOOL(Duration.ofSeconds(10), 10),
         MARKET_LISTING(Duration.ofSeconds(10), 10),
         DIRECT_MESSAGE(Duration.ofSeconds(5), 30),
+        CONTENT_REPORT(Duration.ofSeconds(5), 30),
         // 비회원 기능이라 IP로 묶인다. 친구들이 같은 와이파이로 몰려 들어와도 막히지 않게 1초에 여러 건을 허용한다.
         CHARACTER_GROUP_CREATE(Duration.ofSeconds(1), 3, 60),
         CHARACTER_GROUP_JOIN(Duration.ofSeconds(1), 10, 300);

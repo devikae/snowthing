@@ -211,6 +211,8 @@ GET /api/v1/market-listings?page=1&size=20&categoryCode=SNOWBOARD&productConditi
 
 사진이 없는 판매글의 `thumbnailImageUrl`은 `null`로 반환한다. 기본 이미지 선택은 프런트엔드가 담당한다.
 
+대표 사진은 사진 칸의 첫 사진, 없으면 본문의 첫 S3 사진, 없으면 본문의 첫 base64 사진이다. base64 사진은 썸네일 작업이 끝난 뒤부터 나온다.
+
 ## 6. 판매글 등록
 
 ### `POST /api/v1/market-listings`
@@ -275,6 +277,8 @@ GET /api/v1/market-listings?page=1&size=20&categoryCode=SNOWBOARD&productConditi
 ### `GET /api/v1/market-listings/{publicId}`
 
 정상 판매글만 조회한다. 조회수 중복 방지 규칙은 기존 게시글 상세와 같은 `viewed_posts` 쿠키 정책을 사용한다.
+
+`coverImageUrl`은 사진 칸(`images`)이 비었을 때만 값이 있다. 본문의 첫 S3 사진 원본, 없으면 base64 사진으로 만든 썸네일이다. 수정 화면이 `images`를 그대로 다시 보내므로 본문 사진을 `images`에 섞지 않는다.
 
 #### Response `200 OK`
 

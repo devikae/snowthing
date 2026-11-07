@@ -9,6 +9,7 @@ import PostComments from "../../components/PostComments";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { ReportButton } from "../../components/ReportButton";
 import { carpoolCostLabel, formatCarpoolDateTime } from "../format";
 
 interface CarpoolDetail {
@@ -63,6 +64,7 @@ export default function CarpoolDetailPage() {
   const router = useRouter();
   const [item, setItem] = useState<CarpoolDetail | null>(null);
   const [error, setError] = useState(false);
+  const [heldMessage, setHeldMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -83,12 +85,16 @@ export default function CarpoolDetailPage() {
 
   useEffect(() => {
     void fetch(API_ENDPOINTS.carpool.detail(publicId), { credentials: "include" })
-      .then((response) => {
+      .then(async (response) => {
         if (response.status === 404) {
           setNotFound(true);
           return null;
         }
-        if (!response.ok) throw new Error();
+        if (!response.ok) {
+          const body = response.status === 403 ? await response.json().catch(() => null) : null;
+          if (body?.code === "POST_009") setHeldMessage(body.message);
+          throw new Error();
+        }
         return response.json();
       })
       .then((data) => {
@@ -111,8 +117,8 @@ export default function CarpoolDetailPage() {
           </div>
         ) : error ? (
           <div className="carpool-empty">
-            <p>모집글을 불러오지 못했습니다.</p>
-            <button type="button" onClick={() => window.location.reload()}>다시 시도</button>
+            <p>{heldMessage ?? "모집글을 불러오지 못했습니다."}</p>
+            {heldMessage ? <Link href="/carpool">목록으로 돌아가기</Link> : <button type="button" onClick={() => window.location.reload()}>다시 시도</button>}
           </div>
         ) : !item ? (
           <div className="carpool-empty">모집글을 불러오는 중입니다.</div>
@@ -141,6 +147,7 @@ export default function CarpoolDetailPage() {
                     <AuthorMenu publicId={item.writerPublicId} nickname={item.writerName} />
                     <small>{formatCarpoolDateTime(item.createdAt)}</small>
                   </div>
+                  <ReportButton targetType="POST" targetId={publicId} />
                   {item.canManage && (
                     <div className="post-detail-owner-actions">
                       <Link href={`/carpool/${publicId}/edit`}>수정</Link>
