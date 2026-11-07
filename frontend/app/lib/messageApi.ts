@@ -1,5 +1,6 @@
 import { API_ENDPOINTS, API_V1_URL } from "./api";
 import { csrfFetch } from "./csrfFetch";
+import { formatKoreanDate } from "./koreanDate";
 
 // 쪽지와 차단 API. 다른 작업과 api.ts 충돌을 줄이려고 따로 둔다.
 export const MESSAGE_ENDPOINTS = {
@@ -116,15 +117,6 @@ export function fetchViewerPublicId(): Promise<string | null> {
   return promise;
 }
 
-// 서버 시각은 오프셋 없는 KST 문자열이라 브라우저 시간대와 상관없이 KST로 읽고 KST로 보여 준다.
 export function formatMessageDate(value: string) {
-  const hasOffset = /([zZ]|[+-]\d{2}:?\d{2})$/.test(value);
-  return new Date(hasOffset ? value : `${value}+09:00`).toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatKoreanDate(value, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
