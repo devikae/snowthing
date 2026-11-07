@@ -6,12 +6,14 @@ import java.util.Optional;
 import jakarta.persistence.LockModeType;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 
 public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
 
@@ -40,4 +42,19 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM Member m WHERE m.id = :memberId")
     Optional<Member> findByIdForUpdate(@Param("memberId") Long memberId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM Member m WHERE m.publicId = :publicId")
+    Optional<Member> findByPublicIdForUpdate(@Param("publicId") String publicId);
+
+    /** 세션과 웹소켓에 든 회원 스냅샷 대신 현재 상태를 읽는다. */
+    @Query("SELECT m.status FROM Member m WHERE m.id = :memberId")
+    Optional<MemberStatus> findStatusById(@Param("memberId") Long memberId);
+
+    // 관리자 전용 부분 일치 검색. 앞에 %가 붙어 인덱스를 못 타지만 호출이 드물고 페이지 크기를 제한한다.
+    @Query(
+            "SELECT m FROM Member m WHERE m.nickname LIKE :pattern ESCAPE '!'"
+                    + " OR m.email LIKE :pattern ESCAPE '!'"
+                    + " ORDER BY m.createdAt DESC, m.id DESC")
+    Slice<Member> searchForAdmin(@Param("pattern") String pattern, Pageable pageable);
 }

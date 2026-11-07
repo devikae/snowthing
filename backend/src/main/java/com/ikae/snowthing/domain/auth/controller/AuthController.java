@@ -23,6 +23,7 @@ import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
 import com.ikae.snowthing.domain.auth.dto.MemberLoginResponse;
 import com.ikae.snowthing.domain.auth.service.AuthService;
 import com.ikae.snowthing.domain.auth.service.LoginAttemptLimiter;
+import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -77,6 +78,13 @@ public class AuthController {
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         memberSessionRegistry.register(userDetails.getPublicId(), session);
+        // 인증과 등록 사이의 정지를 잡는다. 이유는 AuthService.ensureStillActive 참고.
+        try {
+            authService.ensureStillActive(userDetails.getPublicId());
+        } catch (CustomException exception) {
+            memberSessionRegistry.invalidateAll(userDetails.getPublicId());
+            throw exception;
+        }
 
         MemberLoginResponse response = authService.getMemberProfileByEmail(loginRequest.getEmail());
         return ResponseEntity.ok(response);

@@ -44,7 +44,7 @@ public class MemberSearchService {
     }
 
     // 그대로 넘기면 "%%" 같은 입력으로 전체 회원이 조회된다.
-    private static String escapeLike(String value) {
+    static String escapeLike(String value) {
         return value.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 }
