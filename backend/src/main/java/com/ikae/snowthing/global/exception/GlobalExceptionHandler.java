@@ -8,9 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -80,24 +79,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatus()).body(ErrorResponse.from(errorCode));
     }
 
-    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
+    // 정지, 탈퇴 계정(AccountStatusException)도 같은 401로 답한다. 비밀번호 검사 전에 나는 예외라 다른 문구를 주면
+    // 비밀번호를 몰라도 가입 여부와 계정 상태를 알 수 있다.
+    @ExceptionHandler({
+        BadCredentialsException.class,
+        UsernameNotFoundException.class,
+        AccountStatusException.class
+    })
     public ResponseEntity<ErrorResponse> handleAuthenticationException(Exception e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ErrorResponse.from(ErrorCode.INVALID_CREDENTIALS));
-    }
-
-    /** CustomUserDetails가 정지 계정을 잠김으로 표시한다. 처리기가 없으면 일반 예외로 떨어져 500과 장애 알림이 된다. */
-    @ExceptionHandler(LockedException.class)
-    public ResponseEntity<ErrorResponse> handleLockedException(LockedException e) {
-        return ResponseEntity.status(ErrorCode.ACCOUNT_SUSPENDED.getStatus())
-                .body(ErrorResponse.from(ErrorCode.ACCOUNT_SUSPENDED));
-    }
-
-    /** CustomUserDetails는 활성이 아닌 계정을 비활성으로 표시한다. 정지는 잠김 검사에서 먼저 걸리므로 여기에는 탈퇴만 온다. */
-    @ExceptionHandler(DisabledException.class)
-    public ResponseEntity<ErrorResponse> handleDisabledException(DisabledException e) {
-        return ResponseEntity.status(ErrorCode.ACCOUNT_WITHDRAWN.getStatus())
-                .body(ErrorResponse.from(ErrorCode.ACCOUNT_WITHDRAWN));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

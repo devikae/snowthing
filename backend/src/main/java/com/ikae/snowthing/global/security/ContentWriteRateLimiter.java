@@ -47,7 +47,7 @@ public class ContentWriteRateLimiter {
     }
 
     private final SharedRequestLimiter sharedLimiter;
-    // 테스트 DB에는 제한 테이블이 없어 꺼 두고, 통합 테스트만 공유 컨텍스트의 빈에서 잠시 켠다.
+    // 테스트마다 같은 작성자로 연달아 쓰므로 꺼 두고, 통합 테스트만 공유 컨텍스트의 빈에서 잠시 켠다.
     private boolean enabled;
 
     public ContentWriteRateLimiter(

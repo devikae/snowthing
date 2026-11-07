@@ -26,6 +26,8 @@ public enum ErrorCode {
             HttpStatus.TOO_MANY_REQUESTS, "AUTH_011", "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     OAUTH_ACCOUNT_LINK_REQUIRED(
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
+    LOGIN_ATTEMPT_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 최대 15분 뒤 다시 시도해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     MEMBER_SELF_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_010", "자신의 계정은 정지할 수 없습니다."),
     MEMBER_ADMIN_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_011", "관리자 계정은 정지할 수 없습니다."),

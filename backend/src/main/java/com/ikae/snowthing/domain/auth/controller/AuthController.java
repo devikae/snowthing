@@ -22,9 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
 import com.ikae.snowthing.domain.auth.dto.MemberLoginResponse;
 import com.ikae.snowthing.domain.auth.service.AuthService;
+import com.ikae.snowthing.domain.auth.service.LoginAttemptLimiter;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
 
@@ -41,17 +43,24 @@ public class AuthController {
     private final SecurityContextRepository securityContextRepository;
     private final AuthService authService;
     private final MemberSessionRegistry memberSessionRegistry;
+    private final LoginAttemptLimiter loginAttemptLimiter;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/login")
     public ResponseEntity<MemberLoginResponse> login(
             @Valid @RequestBody MemberLoginRequest loginRequest,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
+        // 비밀번호를 검사하기 전에 시도 횟수를 먼저 쓴다. 차단 중이면 맞는 비밀번호도 여기서 429로 끝난다.
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        loginAttemptLimiter.acquire(loginRequest.getEmail(), clientIp);
+
         // 1. Spring Security 표준 AuthenticationManager 위임 인증 처리
         Authentication authenticationToken =
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getEmail(), loginRequest.getPassword());
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
+        loginAttemptLimiter.succeeded(loginRequest.getEmail(), clientIp);
 
         // 2. SecurityContext 생성 및 ContextHolder 설정
         SecurityContext securityContext = SecurityContextHolder.createEmptyContext();

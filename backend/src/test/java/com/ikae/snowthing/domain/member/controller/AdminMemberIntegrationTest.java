@@ -174,7 +174,7 @@ class AdminMemberIntegrationTest {
     }
 
     @Test
-    @DisplayName("정지하면 모든 기존 세션이 끊기고, 쪽지도 못 보내고, 새 로그인은 500이 아닌 403이다")
+    @DisplayName("정지하면 모든 기존 세션이 끊기고, 쪽지도 못 보내고, 새 로그인은 계정 상태를 드러내지 않고 거부된다")
     void suspendInvalidatesSessionsAndRejectsLogin() throws Exception {
         MockHttpSession firstDevice = login(target);
         MockHttpSession secondDevice = login(target);
@@ -201,9 +201,10 @@ class AdminMemberIntegrationTest {
                                                 + admin.getPublicId()
                                                 + "\",\"content\":\"정지 중 쪽지\"}"))
                 .andExpect(status().isUnauthorized());
+        // 잠김 검사는 비밀번호 검사보다 먼저라 계정 상태를 드러내지 않는다 (IKA-40).
         loginRequest(target)
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("AUTH_009"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
     }
 
     @Test
