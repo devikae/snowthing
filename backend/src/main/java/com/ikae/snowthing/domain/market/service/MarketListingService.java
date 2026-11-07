@@ -245,6 +245,7 @@ public class MarketListingService {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
         listing.getPost().softDelete();
+        imageLifecycle.releasePostImages(listing.getPost());
         searchOutbox.postChanged(listing.getPost());
     }
 

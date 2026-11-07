@@ -77,6 +77,15 @@ public class MarketThumbnailService {
                 Timestamp.from(clock.instant()));
     }
 
+    /** 글의 썸네일을 지운다. 장터 글이 아니면 줄이 없어 아무 일도 하지 않으므로 글 종류를 따지지 않는다. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void release(String postId) {
+        jdbc.update(
+                "UPDATE market_thumbnail SET source_key=NULL,revision=revision+1,due_at=?,attempts=0 WHERE post_public_id=?",
+                Timestamp.from(clock.instant()),
+                postId);
+    }
+
     public Map<String, String> readyUrls(List<String> postIds) {
         if (postIds == null || postIds.isEmpty()) return Map.of();
         var result = new HashMap<String, String>();
@@ -217,7 +226,9 @@ public class MarketThumbnailService {
                                                     == ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
             int attempts = job.attempts() + 1;
             Duration delay = Duration.ofMinutes(1L << Math.min(attempts - 1, 6));
-            if (permanent || attempts >= MAX_ATTEMPTS) {
+            // 삭제는 횟수가 차도 포기하지 않는다. 포기하면 지운 글의 썸네일이 계속 열린다.
+            boolean deleting = job.source() == null && !job.orphan();
+            if (permanent || (attempts >= MAX_ATTEMPTS && !deleting)) {
                 tx.executeWithoutResult(
                         status ->
                                 jdbc.update(

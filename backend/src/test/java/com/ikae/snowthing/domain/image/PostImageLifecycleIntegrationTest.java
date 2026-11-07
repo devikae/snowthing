@@ -170,7 +170,7 @@ class PostImageLifecycleIntegrationTest {
     }
 
     @Test
-    void inlineOnlyReferenceSurvivesExpiryAndSoftDeleteUntilContentRemovesIt() throws Exception {
+    void inlineOnlyReferenceSurvivesExpiryUntilContentOrPostIsRemoved() throws Exception {
         String key = upload();
         var post =
                 posts.createPost(
@@ -206,17 +206,16 @@ class PostImageLifecycleIntegrationTest {
         lifecycle.cleanOne(key);
         verify(s3).deleteObject(any(DeleteObjectRequest.class));
 
-        String retained = upload();
+        String released = upload();
         var deleted =
                 posts.createPost(
-                        new PostCreateRequest("FREE", "deleted", retained, false, null, List.of()),
+                        new PostCreateRequest("FREE", "deleted", released, false, null, List.of()),
                         user,
                         "127.0.0.1");
         posts.deletePost(deleted.publicId(), null, user);
-        expire(retained);
-        lifecycle.cleanOne(retained);
-        assertThat(state(retained)).isEqualTo("PENDING");
-        verify(s3, times(1)).deleteObject(any(DeleteObjectRequest.class));
+        lifecycle.cleanOne(released);
+        assertThat(state(released)).isEqualTo("DELETED");
+        verify(s3, times(2)).deleteObject(any(DeleteObjectRequest.class));
     }
 
     @Test
