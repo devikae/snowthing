@@ -33,6 +33,9 @@ public class SharedRequestLimiter {
 
     private record Window(int count, long expires) {}
 
+    private static final int CLEANUP_BATCH_SIZE = 500;
+    private static final int MAX_CLEANUP_BATCHES = 200;
+
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
 
@@ -128,7 +131,15 @@ public class SharedRequestLimiter {
             initialDelayString = "${snowthing.request-budget.cleanup-delay-ms:3600000}",
             fixedDelayString = "${snowthing.request-budget.cleanup-delay-ms:3600000}")
     public void removeExpiredWindows() {
-        jdbc.update(
-                "DELETE FROM request_budget_window WHERE expires_at_millis < FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) ORDER BY budget_key LIMIT 500");
+        // IP마다 키가 생겨 한 시간에 500행만 지우면 쌓이는 속도를 따라가지 못한다. 짧은 배치로 나눠 다 지우되 한 번에 오래 잠그지 않게 상한을 둔다.
+        for (int batch = 0; batch < MAX_CLEANUP_BATCHES; batch++) {
+            int deleted =
+                    jdbc.update(
+                            "DELETE FROM request_budget_window WHERE expires_at_millis < FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) ORDER BY budget_key LIMIT "
+                                    + CLEANUP_BATCH_SIZE);
+            if (deleted < CLEANUP_BATCH_SIZE) {
+                return;
+            }
+        }
     }
 }

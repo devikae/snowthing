@@ -223,7 +223,7 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
         PostSearchRequest scoped = scopeInquiry(request, userDetails);
-        return withAnswered(scoped, resolveThumbnailUrls(postRepository.findPostsByOffset(scoped)));
+        return withAnswered(scoped, postRepository.findPostsByOffset(scoped));
     }
 
     public CursorPageResponse<PostListResponse> searchPostsByCursor(PostSearchRequest request) {
@@ -236,7 +236,7 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
         PostSearchRequest scoped = scopeInquiry(request, userDetails);
-        return withAnswered(scoped, resolveThumbnailUrls(postRepository.findPostsByCursor(scoped)));
+        return withAnswered(scoped, postRepository.findPostsByCursor(scoped));
     }
 
     /** 1:1 문의 목록은 로그인이 필요하고, 관리자가 아니면 본인 글로 좁힌다. 요청에 담긴 작성자 값은 믿지 않는다. */
@@ -449,17 +449,7 @@ public class PostService {
     }
 
     private PostListResponse toPostListResponse(Post post) {
-        PostListResponse response = PostListResponse.from(post);
-        return response.withThumbnailImageUrl(null);
-    }
-
-    private CursorPageResponse<PostListResponse> resolveThumbnailUrls(
-            CursorPageResponse<PostListResponse> page) {
-        List<PostListResponse> content =
-                page.content().stream()
-                        .map(response -> response.withThumbnailImageUrl(null))
-                        .toList();
-        return new CursorPageResponse<>(content, page.pageInfo());
+        return PostListResponse.from(post);
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {
