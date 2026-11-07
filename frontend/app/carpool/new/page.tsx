@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { PageHeading } from "../../components/PageHeading";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
 import KakaoMapPicker, { MapPlace } from "../KakaoMapPicker";
@@ -146,6 +147,7 @@ const splitLocalDateTime = (value: string | null) => {
 
 export default function NewCarpoolPage() {
   const router = useRouter();
+  useLeaveWarning();
   const [form, setForm] = useState(initial);
   const [tripType, setTripType] = useState<TripType>("ONE_WAY");
   const [fuelType, setFuelType] = useState<FuelType>("GASOLINE");

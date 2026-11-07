@@ -21,6 +21,8 @@ const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
   loading: () => <div className="p-6 text-sm text-[var(--snow-muted)]">본문을 불러오는 중입니다...</div>,
 });
 
+const POST_LOAD_TIMEOUT_MS = 10_000;
+
 interface WriterInfo {
   publicId: string | null;
   nickname: string;
@@ -295,20 +297,20 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
       void (async () => {
         let movingToCarpool = false;
         try {
-          // 현재 로그인 유저 프로필 조회
-          try {
-            const meRes = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
-            if (meRes.ok) {
+          // 로그인 정보와 글을 함께 요청한다. 백엔드가 멈춰도 로딩 화면에 계속 머물지 않게 시간 제한을 둔다.
+          const mePromise = fetch(API_ENDPOINTS.members.me, { credentials: "include", signal: AbortSignal.timeout(POST_LOAD_TIMEOUT_MS) })
+            .then(async (meRes) => {
+              if (!meRes.ok) return;
               const meData = await meRes.json();
               setCurrentUserPublicId(meData.publicId || null);
               setIsAdmin(meData.role === "ROLE_ADMIN");
-            }
-          } catch {
-            setCurrentUserPublicId(null);
-            setIsAdmin(false);
-          }
+            })
+            .catch(() => {
+              setCurrentUserPublicId(null);
+              setIsAdmin(false);
+            });
 
-          const res = await fetch(API_ENDPOINTS.posts.detail(publicId), { credentials: "include" });
+          const res = await fetch(API_ENDPOINTS.posts.detail(publicId), { credentials: "include", signal: AbortSignal.timeout(POST_LOAD_TIMEOUT_MS) });
           if (res.ok) {
             const data: PostDetail = await res.json();
             if (data.categoryCode === "CARPOOL") {
@@ -321,9 +323,9 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
             const body = res.status === 403 ? await res.json().catch(() => null) : null;
             setErrorMsg(body?.code === "POST_009" ? body.message : res.status === 404 ? "게시글을 찾을 수 없거나 삭제되었습니다." : "게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
           }
-          await fetchComments();
+          await Promise.all([fetchComments(), mePromise]);
         } catch {
-          setErrorMsg("게시글 로드에 실패했습니다.");
+          setErrorMsg("게시글을 불러오지 못했습니다. 연결 상태를 확인하고 잠시 후 다시 시도해 주세요.");
         } finally {
           if (!movingToCarpool) setLoading(false);
         }
@@ -365,8 +367,18 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
   };
 
   const handleShare = async () => {
+    const url = window.location.href;
+    // 휴대폰에서는 카카오톡 등으로 바로 보낼 수 있는 공유 창을 먼저 연다. 데스크톱은 기존처럼 주소를 복사한다.
+    if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
+      try {
+        await navigator.share({ title: post?.title ?? document.title, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setReactionMsg("게시글 주소를 복사했습니다.");
     } catch {
       setReactionMsg("주소를 복사하지 못했습니다.");
@@ -694,6 +706,7 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
                 className="post-comment-textarea"
+                aria-label="댓글 입력"
               />
               <div className="post-comment-compose-footer">
                 {isAnonymousPost && !currentUserPublicId && (
@@ -948,6 +961,7 @@ function CommentRow({
               onChange={(event) => setReplyText(event.target.value)}
               placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
               className="post-comment-textarea"
+              aria-label="답글 입력"
             />
             <div className="post-comment-compose-footer">
               {isAnonymousPost && !currentUserPublicId && (
