@@ -6,6 +6,7 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,6 +58,15 @@ public class SecurityConfig {
     private final ChatConnectionRegistry chatConnectionRegistry;
     private final MemberSessionRegistry memberSessionRegistry;
 
+    // 운영 프로필은 localhost를 빼고 https 출처만 둔다.
+    @Value(
+            "${snowthing.web.allowed-origins:http://localhost:3000,https://snowthing.org,https://www.snowthing.org}")
+    private List<String> allowedOrigins;
+
+    // 운영은 https로만 열리므로 CSRF 쿠키에 Secure를 붙인다.
+    @Value("${snowthing.web.secure-cookies:false}")
+    private boolean secureCookies;
+
     @Bean
     public ObjectMapper objectMapper() {
         return this.objectMapper;
@@ -76,11 +86,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(
-                List.of(
-                        "http://localhost:3000",
-                        "https://snowthing.org",
-                        "https://www.snowthing.org"));
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -88,6 +94,12 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    private CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> cookie.secure(secureCookies));
+        return repository;
     }
 
     @Bean
@@ -131,8 +143,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(
                         csrf ->
-                                csrf.csrfTokenRepository(
-                                                CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                csrf.csrfTokenRepository(csrfTokenRepository())
                                         .ignoringRequestMatchers("/ws-chat/**")
                                         // API 토큰은 쿠키가 아니라 Authorization 헤더로만 온다. 토큰이 틀리면
                                         // ApiTokenAuthenticationFilter가 401로 끝내므로 세션으로 넘어가지 않는다.
