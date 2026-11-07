@@ -6,7 +6,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +27,7 @@ import com.ikae.snowthing.domain.aimember.AiMemberRoster.AiMember;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.CommentView;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.PostView;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.Reaction;
+import com.ikae.snowthing.domain.aimember.persona.Persona.Activity;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 
@@ -92,31 +95,39 @@ public class AiActivityScheduler {
     }
 
     void runDue(LocalDateTime now) {
-        if (!AiActivityPlanner.isActive(now)) {
+        List<AiMember> members = roster.members();
+        List<AiMember> active =
+                members.stream()
+                        .filter(m -> m.persona().activity().activeAt(now.getHour()))
+                        .toList();
+        if (active.isEmpty()) {
             return;
         }
-        List<AiMember> members = roster.members();
         List<Long> memberIds = members.stream().map(AiMember::memberId).sorted().toList();
         if (!now.toLocalDate().equals(plannedDate)) {
-            replan(now, memberIds);
+            replan(now, members, memberIds);
         }
-        runPlanned(now);
-        runReaction(now, memberIds);
-        runChatReaction(now, members);
+        runPlanned(now, active);
+        runReaction(now, memberIds, active);
+        runChatReaction(now, active);
     }
 
-    private void replan(LocalDateTime now, List<Long> memberIds) {
+    private void replan(LocalDateTime now, List<AiMember> members, List<Long> memberIds) {
         LocalDate today = now.toLocalDate();
         Map<Long, Integer> posted =
                 queryRepository.countPostsSince(memberIds, today.atStartOfDay());
         pending.clear();
-        pending.addAll(AiActivityPlanner.plan(today, memberIds, posted, now));
+        Map<Long, Activity> activities = new LinkedHashMap<>();
+        members.stream()
+                .sorted(Comparator.comparingLong(AiMember::memberId))
+                .forEach(m -> activities.put(m.memberId(), m.persona().activity()));
+        pending.addAll(AiActivityPlanner.plan(today, activities, posted, now));
         failedReactions.clear();
         plannedDate = today;
         log.info("AI member plan: date={}, actions={}", today, pending.size());
     }
 
-    private void runPlanned(LocalDateTime now) {
+    private void runPlanned(LocalDateTime now, List<AiMember> active) {
         if (pending.isEmpty() || pending.get(0).at().isAfter(now)) {
             return;
         }
@@ -126,14 +137,14 @@ public class AiActivityScheduler {
                     .ifPresent(member -> actionService.writePost(member, now));
             return;
         }
-        List<AiMember> shuffled = new ArrayList<>(roster.members());
+        List<AiMember> shuffled = new ArrayList<>(active);
         Collections.shuffle(shuffled);
         int participants = Math.min(shuffled.size(), 2 + new SplittableRandom().nextInt(2));
         actionService.chat(
                 shuffled.subList(0, participants), 3 + new SplittableRandom().nextInt(4), now);
     }
 
-    private void runReaction(LocalDateTime now, List<Long> memberIds) {
+    private void runReaction(LocalDateTime now, List<Long> memberIds, List<AiMember> active) {
         List<PostView> posts = queryRepository.findRecentPosts(now.minusDays(1));
         if (posts.isEmpty()) {
             return;
@@ -143,8 +154,16 @@ public class AiActivityScheduler {
                         .collect(Collectors.groupingBy(CommentView::postId));
         Map<Long, Integer> today =
                 queryRepository.countCommentsSince(memberIds, now.toLocalDate().atStartOfDay());
+        Set<Long> activeIds = active.stream().map(AiMember::memberId).collect(Collectors.toSet());
         Reaction reaction =
-                AiReactionPolicy.next(posts, comments, memberIds, today, failedReactions, now)
+                AiReactionPolicy.next(
+                                posts,
+                                comments,
+                                memberIds,
+                                today,
+                                failedReactions,
+                                now,
+                                activeIds::contains)
                         .orElse(null);
         if (reaction == null) {
             return;
@@ -175,6 +194,11 @@ public class AiActivityScheduler {
                 || BOT_SENDER_ID.equals(senderId)
                 || roster.publicIds().contains(senderId)
                 || last.messageId().equals(lastChatReaction)) {
+            return;
+        }
+        // 정치 얘기를 걸면 받아주지 않는다. 그 메시지에는 다시 시도하지 않는다.
+        if (PoliticalContentFilter.containsPolitics(last.content())) {
+            lastChatReaction = last.messageId();
             return;
         }
         LocalDateTime sentAt = LocalDateTime.parse(last.sentAt());
