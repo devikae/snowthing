@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { MESSAGE_ENDPOINTS, MessageBox, MessagePage, MessageSummary, formatMessageDate, readErrorMessage } from "../lib/messageApi";
 import styles from "../components/messages.module.css";
+import { errorText } from "../lib/errorText";
 
 const boxLabels: Record<MessageBox, string> = { RECEIVED: "받은 쪽지", SENT: "보낸 쪽지" };
 
@@ -41,7 +42,7 @@ function MessageList() {
         setItems(page.content);
         setNextCursor(page.pageInfo.hasNext ? page.pageInfo.nextCursor : null);
       } catch (loadError) {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "쪽지함을 불러오지 못했습니다.");
+        if (!cancelled) setError(errorText(loadError, "쪽지함을 불러오지 못했습니다."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -61,7 +62,7 @@ function MessageList() {
       setItems((current) => [...current, ...page.content]);
       setNextCursor(page.pageInfo.hasNext ? page.pageInfo.nextCursor : null);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "쪽지함을 불러오지 못했습니다.");
+      setError(errorText(loadError, "쪽지함을 불러오지 못했습니다."));
     } finally {
       setLoadingMore(false);
     }

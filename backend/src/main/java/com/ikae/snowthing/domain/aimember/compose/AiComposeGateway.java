@@ -36,7 +36,12 @@ public interface AiComposeGateway {
             PostThread thread,
             List<Message> recentChat,
             Integer lineCount,
-            Context context) {}
+            Context context,
+            Brief brief) {}
+
+    /** 이번 글의 소재(없으면 null), 형식, 길이. CHAT에는 쓰지 않는다. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record Brief(String topic, String form, String length) {}
 
     record Line(String speaker, String text) {}
 

@@ -427,6 +427,19 @@ class PostImagePurgeIntegrationTest {
     }
 
     @Test
+    void adminPurgeAlsoRemovesInlineBase64PhotoFromBody() throws Exception {
+        String id = write("body", List.of());
+        jdbc.update(
+                "UPDATE post SET content=? WHERE public_id=?",
+                "before ![a](data:image/png;base64,AAAA) after",
+                id);
+
+        purge(id, admin, "report").andExpect(status().isOk());
+
+        assertThat(posts.getPostDetail(id, writer, false).content()).isEqualTo("before  after");
+    }
+
+    @Test
     void adminPurgeReportsSharedKeyAndDoesNotDeleteIt() throws Exception {
         String key = upload();
         String target = write(inline(key), List.of());

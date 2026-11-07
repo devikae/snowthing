@@ -79,7 +79,10 @@ public class PostImagePurgeService {
     /** 본문에 키를 남기면 파일이 지워진 뒤 작성자가 글을 수정할 때 "지워진 사진을 붙였다"며 거절된다. 공유 키도 이 글에서는 뺀다. */
     private String withoutImages(
             String content, PostImageLifecycleService.ReleasedImages released) {
-        String result = content;
+        // base64 사진은 파일이 아니라 본문에 들어 있어 본문에서 지워야 사라진다.
+        String result =
+                content.replaceAll("!\\[[^\\]]*\\]\\(\\s*data:image/[^)]*\\)", "")
+                        .replaceAll("(?i)<img\\b[^>]*data:image/[^>]*>", "");
         for (var keys : java.util.List.of(released.queuedKeys(), released.sharedKeys())) {
             for (String key : keys) {
                 String quoted = Pattern.quote(key);
