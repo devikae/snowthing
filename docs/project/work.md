@@ -1,3 +1,18 @@
+## 글 본문 XSS 정화 강화와 보안 헤더 (IKA-46, 2026-11-08)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 배경: 오픈 전 프론트 점검. Toast UI 3.2.2 배포 파일 안에 DOMPurify 2.3.3이 들어 있고(`dist/toastui-editor-viewer.js`), 2.5.0 미만은 공개된 mXSS 우회가 있다. 서버는 본문을 정화하지 않는다. 화면 응답에는 보안 헤더가 없었다.
+- 완료
+  - `app/lib/sanitizeHtml.ts`: DOMPurify 3으로 정화한다. 허용 범위는 Toast UI 기본 정화기와 같고 iframe을 더 막는다. `target`이 있는 링크에는 `rel="noopener noreferrer"`를 붙인다.
+  - ToastViewer, ToastEditor에 `customHTMLSanitizer`로 연결했다.
+  - `next.config.ts`: `poweredByHeader: false`, frame-ancestors 'self', X-Frame-Options SAMEORIGIN, nosniff, Referrer-Policy, HSTS(1년, 하위 도메인 제외).
+- 결정
+  - 정화를 프론트에서 바꾸고 서버 정화는 백엔드 작업으로 넘겼다. 서버 정화가 근본 대책이지만 기존 글 형식을 해치지 않는지 확인이 더 필요하다. 백엔드는 다른 세션이 맡았다.
+  - CSP는 frame-ancestors만 넣었다. script-src까지 넣으면 외부 폰트, 캠 업체 스크립트, 인라인 테마 스크립트를 모두 정리해야 해서 오픈 전 위험이 크다.
+  - HSTS에 includeSubDomains와 preload를 넣지 않았다. 하위 도메인이 모두 HTTPS인지 확인하지 않았다.
+- 남은 항목: 에디터의 붙여넣기 정화는 Toast UI 내부 정화기(2.3.3)를 그대로 쓴다. 옵션으로 바꿀 수 없고, 붙여넣는 본인 화면에만 영향이 있다. 서버 저장 시 정화.
+- 검증: lint, build 통과. headless Chrome에서 DOMPurify 3.4.17과 같은 설정으로 공격 예시 7개(onerror, mXSS 3종, javascript 링크, iframe, 깊은 중첩)가 모두 제거되고, 제목, 굵게, 링크, 표, 사진, 코드, 할일 목록은 남는 것을 확인. `next start`로 응답 헤더 확인, `X-Powered-By` 없음.
+
 ## 게시물 신고와 임시조치 (IKA-32, 2026-11-06)
 
 - 상태: main 병합과 검증 완료, 머지 대기. 머지와 운영 적용은 사용자 확인 후 진행한다. 038은 037에 의존하지 않아 #79와 어느 쪽을 먼저 머지해도 된다.
