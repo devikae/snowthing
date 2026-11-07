@@ -17,6 +17,8 @@ import com.ikae.snowthing.domain.email.service.EmailAvailabilityIpRateLimiter;
 import com.ikae.snowthing.domain.email.service.EmailVerificationService;
 import com.ikae.snowthing.domain.email.service.VerifiedMemberRegistrationService;
 import com.ikae.snowthing.domain.image.service.ProfileImageLifecycleService;
+import com.ikae.snowthing.domain.member.dto.MarketingConsentResponse;
+import com.ikae.snowthing.domain.member.dto.MarketingConsentUpdateRequest;
 import com.ikae.snowthing.domain.member.dto.MemberPasswordChangeRequest;
 import com.ikae.snowthing.domain.member.dto.MemberProfileUpdateRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSettingsResponse;
@@ -24,6 +26,7 @@ import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.dto.MemberWithdrawalRequest;
 import com.ikae.snowthing.domain.member.dto.NicknameCheckRequest;
+import com.ikae.snowthing.domain.member.service.MarketingConsentService;
 import com.ikae.snowthing.domain.member.service.MemberService;
 import com.ikae.snowthing.domain.member.service.MemberWithdrawalService;
 import com.ikae.snowthing.domain.member.service.ProfileActionRateLimiter;
@@ -47,6 +50,7 @@ public class MemberController {
     private final MemberSessionRegistry memberSessionRegistry;
     private final ProfileActionRateLimiter profileActionRateLimiter;
     private final ProfileImageLifecycleService profileImages;
+    private final MarketingConsentService marketingConsentService;
     private final MemberWithdrawalService memberWithdrawalService;
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
 
@@ -62,6 +66,20 @@ public class MemberController {
             @Valid @RequestBody MemberProfileUpdateRequest request) {
         memberService.updateMyProfile(user.getUsername(), request);
         return ResponseEntity.ok(memberService.getMySettings(user.getUsername()));
+    }
+
+    @GetMapping("/me/marketing-consent")
+    public ResponseEntity<MarketingConsentResponse> getMarketingConsent(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(marketingConsentService.get(user.getUsername()));
+    }
+
+    @PutMapping("/me/marketing-consent")
+    public ResponseEntity<MarketingConsentResponse> updateMarketingConsent(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @Valid @RequestBody MarketingConsentUpdateRequest request) {
+        return ResponseEntity.ok(
+                marketingConsentService.update(user.getUsername(), request.agreed()));
     }
 
     @PostMapping("/me/nickname-availability")

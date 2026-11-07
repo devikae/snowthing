@@ -35,6 +35,7 @@ public class MemberWithdrawalRepository {
                     "DELETE FROM member_resort WHERE member_id = :memberId",
                     "DELETE FROM member_riding_style WHERE member_id = :memberId",
                     "DELETE FROM member_registration_consent WHERE member_id = :memberId",
+                    "DELETE FROM member_marketing_consent_history WHERE member_id = :memberId",
                     "DELETE FROM member_block WHERE blocker_id = :memberId",
                     "DELETE FROM notification WHERE receiver_id = :memberId",
                     "UPDATE api_token SET revoked_at = :now"

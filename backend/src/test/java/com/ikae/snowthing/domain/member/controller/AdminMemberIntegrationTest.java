@@ -251,7 +251,7 @@ class AdminMemberIntegrationTest {
 
         mockMvc.perform(suspendRequest(social).session(adminSession).with(csrf()))
                 .andExpect(status().isOk());
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+        assertThatThrownBy(() -> socialAuthService.findMemberForLogin(profile))
                 .isInstanceOf(CustomException.class)
                 .extracting(thrown -> ((CustomException) thrown).getErrorCode())
                 .isEqualTo(ErrorCode.ACCOUNT_SUSPENDED);
@@ -261,7 +261,7 @@ class AdminMemberIntegrationTest {
                                 .session(adminSession)
                                 .with(csrf()))
                 .andExpect(status().isOk());
-        assertThat(socialAuthService.authenticateOrRegister(profile).getId())
+        assertThat(socialAuthService.findMemberForLogin(profile).orElseThrow().getId())
                 .isEqualTo(social.getId());
     }
 

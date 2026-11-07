@@ -46,6 +46,7 @@
 | `member_social_account` | `provider_user_id`, `provider_email` | 행 삭제 |
 | `member_resort`, `member_riding_style` | 취향 | 행 삭제 |
 | `member_registration_consent` | 동의 기록 | 행 삭제 |
+| `member_marketing_consent_history` | 광고 수신 변경 이력 | 행 삭제 |
 | `member_block` | 내가 건 차단 | 행 삭제. 나를 차단한 행은 상대가 풀 수 있게 유지 |
 | `email_verification` | `email`, `request_ip` | 행 삭제 |
 | `api_token` | 토큰 | `revoked_at` 기록 |

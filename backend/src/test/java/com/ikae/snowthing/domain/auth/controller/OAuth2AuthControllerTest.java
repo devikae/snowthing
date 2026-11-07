@@ -26,6 +26,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.web.context.SecurityContextRepository;
 
+import com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
@@ -81,6 +82,90 @@ class OAuth2AuthControllerTest {
                         fixedClock);
     }
 
+    private MockHttpSession startPendingSignUp() {
+        given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.NAVER), anyString()))
+                .willReturn(URI.create("https://nid.naver.com/oauth2.0/authorize"));
+        MockHttpServletRequest authorizeRequest = new MockHttpServletRequest();
+        controller.authorize("naver", "/carpool", authorizeRequest);
+        MockHttpSession session = (MockHttpSession) authorizeRequest.getSession(false);
+        String state =
+                ((OAuth2AuthController.OAuth2AuthorizationSessions)
+                                session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE))
+                        .pending()
+                        .get(0)
+                        .state();
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.NAVER, "naver-new", "new@naver.com", false, "새보더");
+        given(oauth2ExternalClient.fetchUserProfile(SocialProvider.NAVER, "code", state))
+                .willReturn(profile);
+        given(socialAuthService.findMemberForLogin(profile)).willReturn(java.util.Optional.empty());
+        MockHttpServletRequest callbackRequest = new MockHttpServletRequest();
+        callbackRequest.setSession(session);
+        ResponseEntity<Void> response =
+                controller.callback(
+                        "naver",
+                        "code",
+                        state,
+                        null,
+                        callbackRequest,
+                        new MockHttpServletResponse());
+        assertThat(response.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/signup/social"));
+        return session;
+    }
+
+    @Test
+    @DisplayName("처음 온 소셜 사용자는 로그인되지 않고 동의 화면으로 이동한다")
+    void callback_NewUser_RedirectsToConsentWithoutLogin() {
+        MockHttpSession session = startPendingSignUp();
+
+        verify(socialAuthService, never()).completeSignUp(any(), any());
+        verify(securityContextRepository, never()).saveContext(any(), any(), any());
+        assertThat(session.getAttribute(OAuth2AuthController.SESSION_PENDING_SIGNUP_ATTRIBUTE))
+                .isNotNull();
+    }
+
+    @Test
+    @DisplayName("동의를 마치면 회원을 만들고 세션을 발급하며 대기 정보를 지운다")
+    void completeSignUp_PendingSession_LogsInAndClearsPending() {
+        MockHttpSession session = startPendingSignUp();
+        Member member =
+                Member.builder()
+                        .email("oauth@users.invalid")
+                        .nickname("새보더")
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        SocialSignUpRequest request = SocialSignUpRequest.builder().build();
+        given(socialAuthService.completeSignUp(any(), eq(request))).willReturn(member);
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        httpRequest.setSession(session);
+
+        var response =
+                controller.completeSignUp(request, httpRequest, new MockHttpServletResponse());
+
+        assertThat(response.getBody().returnUrl()).isEqualTo("/carpool");
+        assertThat(session.getAttribute(OAuth2AuthController.SESSION_PENDING_SIGNUP_ATTRIBUTE))
+                .isNull();
+        verify(securityContextRepository).saveContext(any(SecurityContext.class), any(), any());
+    }
+
+    @Test
+    @DisplayName("콜백을 거치지 않은 가입 요청은 거부한다")
+    void completeSignUp_NoPendingSession_Rejected() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () ->
+                                controller.completeSignUp(
+                                        SocialSignUpRequest.builder().build(),
+                                        new MockHttpServletRequest(),
+                                        new MockHttpServletResponse()))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.OAUTH_SIGNUP_EXPIRED);
+        verify(socialAuthService, never()).completeSignUp(any(), any());
+    }
+
     @Test
     @DisplayName("인증 뒤 세션 등록 전에 정지되면 세션을 끊고 로그인 오류로 보낸다")
     void callback_SuspendedDuringLogin_InvalidatesAndRedirectsToLoginError() {
@@ -105,7 +190,8 @@ class OAuth2AuthControllerTest {
                         .build();
         given(oauth2ExternalClient.fetchUserProfile(SocialProvider.NAVER, "code", state))
                 .willReturn(profile);
-        given(socialAuthService.authenticateOrRegister(profile)).willReturn(member);
+        given(socialAuthService.findMemberForLogin(profile))
+                .willReturn(java.util.Optional.of(member));
         willThrow(new CustomException(ErrorCode.ACCOUNT_SUSPENDED))
                 .given(authService)
                 .ensureStillActive("member-1");
@@ -167,7 +253,8 @@ class OAuth2AuthControllerTest {
                         oauth2ExternalClient.fetchUserProfile(
                                 SocialProvider.NAVER, "auth-code-123", savedState.state()))
                 .willReturn(profile);
-        given(socialAuthService.authenticateOrRegister(profile)).willReturn(member);
+        given(socialAuthService.findMemberForLogin(profile))
+                .willReturn(java.util.Optional.of(member));
 
         String beforeSessionId = session.getId();
         MockHttpServletRequest callbackRequest = new MockHttpServletRequest();
@@ -277,7 +364,8 @@ class OAuth2AuthControllerTest {
                         oauth2ExternalClient.fetchUserProfile(
                                 SocialProvider.GOOGLE, "google-code", googleState))
                 .willReturn(profile);
-        given(socialAuthService.authenticateOrRegister(profile)).willReturn(member);
+        given(socialAuthService.findMemberForLogin(profile))
+                .willReturn(java.util.Optional.of(member));
         MockHttpServletRequest googleCallbackRequest = new MockHttpServletRequest();
         googleCallbackRequest.setSession(session);
 
@@ -326,7 +414,8 @@ class OAuth2AuthControllerTest {
                         oauth2ExternalClient.fetchUserProfile(
                                 eq(SocialProvider.GOOGLE), anyString(), anyString()))
                 .willReturn(profile);
-        given(socialAuthService.authenticateOrRegister(profile)).willReturn(member);
+        given(socialAuthService.findMemberForLogin(profile))
+                .willReturn(java.util.Optional.of(member));
 
         MockHttpServletRequest secondCallbackRequest = new MockHttpServletRequest();
         secondCallbackRequest.setSession(session);

@@ -20,6 +20,9 @@ public class MemberRegistrationConsent {
     @Column(name = "privacy_version", nullable = false, length = 50)
     private String privacyVersion;
 
+    @Column(name = "terms_version", length = 50)
+    private String termsVersion;
+
     @Column(name = "age_confirmed", nullable = false)
     private boolean ageConfirmed;
 
@@ -32,10 +35,12 @@ public class MemberRegistrationConsent {
     public MemberRegistrationConsent(
             Long memberId,
             String privacyVersion,
+            String termsVersion,
             boolean marketingEmailAgreed,
             LocalDateTime confirmedAt) {
         this.memberId = memberId;
         this.privacyVersion = privacyVersion;
+        this.termsVersion = termsVersion;
         this.ageConfirmed = true;
         this.marketingEmailAgreed = marketingEmailAgreed;
         this.confirmedAt = confirmedAt;

@@ -215,6 +215,10 @@ class MemberWithdrawalIntegrationTest {
                         + " confirmed_at) VALUES (?, 'v1', TRUE, TRUE, NOW())",
                 member.getId());
         jdbc.update(
+                "INSERT INTO member_marketing_consent_history (member_id, agreed, changed_at)"
+                        + " VALUES (?, TRUE, NOW())",
+                member.getId());
+        jdbc.update(
                 "INSERT INTO post_image_upload (image_key, owner_email, state, due_at)"
                         + " VALUES (?, ?, 'PENDING', NOW())",
                 "public/posts/" + UUID.randomUUID() + ".jpg",
@@ -244,6 +248,7 @@ class MemberWithdrawalIntegrationTest {
         assertThat(after.getEmailVerifiedAt()).isNull();
 
         assertThat(count("member_registration_consent", member.getId())).isZero();
+        assertThat(count("member_marketing_consent_history", member.getId())).isZero();
         assertThat(
                         jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM post_image_upload WHERE owner_email = ?",
@@ -368,6 +373,18 @@ class MemberWithdrawalIntegrationTest {
                 .isFalse();
     }
 
+    private com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest socialConsent() {
+        var policy = new com.ikae.snowthing.domain.member.service.RegistrationPrivacyPolicy();
+        return com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest.builder()
+                .ageConfirmed(true)
+                .privacyAgreed(true)
+                .termsAgreed(true)
+                .marketingEmailAgreed(false)
+                .privacyVersion(policy.version())
+                .termsVersion(policy.termsVersion())
+                .build();
+    }
+
     @Test
     @DisplayName("소셜 회원은 확인 문구로 탈퇴하고 같은 구글, 네이버 계정의 재가입이 막힌다")
     void socialWithdrawalBlocksSocialRejoin() {
@@ -375,20 +392,18 @@ class MemberWithdrawalIntegrationTest {
         String email = "g-" + sub.substring(0, 8) + "@example.com";
         Member google =
                 track(
-                        socialAuthService.authenticateOrRegister(
+                        socialAuthService.completeSignUp(
                                 new OAuthUserProfile(
-                                        SocialProvider.GOOGLE, sub, email, true, "구글회원")));
+                                        SocialProvider.GOOGLE, sub, email, true, "구글회원"),
+                                socialConsent()));
         String naverId = UUID.randomUUID().toString();
         String naverEmail = "n-" + naverId.substring(0, 8) + "@example.com";
         Member naver =
                 track(
-                        socialAuthService.authenticateOrRegister(
+                        socialAuthService.completeSignUp(
                                 new OAuthUserProfile(
-                                        SocialProvider.NAVER,
-                                        naverId,
-                                        naverEmail,
-                                        false,
-                                        "네이버회원")));
+                                        SocialProvider.NAVER, naverId, naverEmail, false, "네이버회원"),
+                                socialConsent()));
 
         assertThatThrownBy(
                         () ->
@@ -406,7 +421,7 @@ class MemberWithdrawalIntegrationTest {
         assertThat(left).isEmpty();
         assertThatThrownBy(
                         () ->
-                                socialAuthService.authenticateOrRegister(
+                                socialAuthService.findMemberForLogin(
                                         new OAuthUserProfile(
                                                 SocialProvider.GOOGLE, sub, email, true, "구글회원")))
                 .isInstanceOf(CustomException.class)
@@ -414,13 +429,14 @@ class MemberWithdrawalIntegrationTest {
                 .isEqualTo(ErrorCode.WITHDRAWN_EMAIL_RESTRICTED);
         assertThatThrownBy(
                         () ->
-                                socialAuthService.authenticateOrRegister(
+                                socialAuthService.completeSignUp(
                                         new OAuthUserProfile(
                                                 SocialProvider.NAVER,
                                                 naverId,
                                                 naverEmail,
                                                 false,
-                                                "네이버회원")))
+                                                "네이버회원"),
+                                        socialConsent()))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.WITHDRAWN_EMAIL_RESTRICTED);
