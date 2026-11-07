@@ -1,3 +1,11 @@
+## 날짜 KST 통일과 죽은 코드 정리 (IKA-55, 2026-11-08)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. #100 위에 쌓았다.
+- 배경: 시간대 없는 서버 시각을 `new Date()`와 `getHours()`로 읽는 날짜 함수가 4벌(홈 상대 시각, 게시판 상대 시각, 글 상세 댓글, 공용 댓글, 홈 카풀 시각)이었다. 휴대폰 시간대가 KST가 아니면 상대 시각과 표시 시각이 어긋난다.
+- 완료: `lib/koreanDate.ts`에 `formatShortDateTime`(KST MM.DD HH:mm)과 `formatCompactTime`(방금, N분, N시간, 어제, MM.DD)을 두고 중복 함수를 지웠다. 쓰지 않는 `SideCategories`와 `/resort` 전용 CSS(`resort-card`, `resort-panel`, `resort-scroller`)를 지웠다.
+- 결정: 판매글과 관리자 화면은 이미 KST로 처리하거나 문자열을 그대로 잘라 써서 두었다. globals.css 전체 정리는 다크 모드 순서 영향이 있어 IKA-56으로 미뤘다. 선택자 목록 안의 `resort-card` 줄은 그 선택자만 지웠다.
+- 검증: lint, build 통과(CSS 문법 포함). 서울, UTC, LA 시간대에서 같은 입력의 결과가 모두 같다(방금, 45분, 3시간, 어제, 11.05, 12.20 18:00).
+
 ## 중복 요청과 대기 줄이기 (IKA-54, 2026-11-08)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. #99 위에 쌓았다.

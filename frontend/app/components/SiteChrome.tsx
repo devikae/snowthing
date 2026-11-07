@@ -295,10 +295,6 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   );
 }
 
-export function SideCategories({ active = "all" }: { active?: string }) {
-  return <aside hidden data-active-category={active} aria-hidden="true" />;
-}
-
 export function Footer() {
   return (
     <footer className="community-footer">

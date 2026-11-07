@@ -9,7 +9,8 @@ import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { AuthorMenu } from "./AuthorMenu";
 import { ReportButton } from "./ReportButton";
-import { errorText } from "../lib/errorText";
+import { errorText } from "../lib/errorText";
+import { formatShortDateTime } from "../lib/koreanDate";
 
 interface WriterInfo {
   publicId: string | null;
@@ -211,7 +212,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         {reply && <span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
-          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatCommentDate(item.createdAt)}</time></header>
+          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatShortDateTime(item.createdAt)}</time></header>
           {editingId === item.commentId ? (
             <div className="comment-inline-editor">
               <textarea maxLength={1000} value={editingContent} onChange={(event) => setEditingContent(event.target.value)} />
@@ -250,8 +251,3 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   </section>;
 }
 
-function formatCommentDate(value: string) {
-  const date = new Date(value);
-  const pad = (number: number) => String(number).padStart(2, "0");
-  return `${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
