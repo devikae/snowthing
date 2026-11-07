@@ -12,7 +12,7 @@ import com.ikae.snowthing.domain.market.entity.TransactionMethod;
 public record MarketListingCreateRequest(
         @NotBlank String categoryCode,
         @NotBlank @Size(max = 200) String title,
-        @NotBlank String content,
+        @NotBlank @Size(max = 100000, message = "본문은 최대 100,000자까지 입력 가능합니다.") String content,
         @NotNull ProductCondition productCondition,
         @NotNull TransactionMethod transactionMethod,
         Long price,

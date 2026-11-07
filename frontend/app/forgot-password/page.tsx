@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { errorText } from "../lib/errorText";
 
 
 async function errorMessage(response: Response, fallback: string) {
@@ -33,7 +34,7 @@ export default function ForgotPasswordPage() {
       const body = await response.json();
       setRequestId(body.requestId);
       setNotice("입력한 이메일이 가입된 계정과 일치하면 인증번호가 발송됩니다. 메일을 확인해 주세요.");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "요청을 처리하지 못했습니다."); }
+    } catch (caught) { setError(errorText(caught, "요청을 처리하지 못했습니다.")); }
     finally { setLoading(false); }
   };
 
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
       const body = await response.json();
       setResetToken(body.resetToken);
       setNotice("인증되었습니다. 새 비밀번호를 설정해 주세요.");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "인증번호를 확인하지 못했습니다."); }
+    } catch (caught) { setError(errorText(caught, "인증번호를 확인하지 못했습니다.")); }
     finally { setLoading(false); }
   };
 
@@ -60,7 +61,7 @@ export default function ForgotPasswordPage() {
       setNotice("비밀번호가 변경되었습니다. 모든 기존 로그인 세션이 종료되었습니다.");
       setResetToken("completed");
       router.replace("/login");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "비밀번호를 변경하지 못했습니다."); }
+    } catch (caught) { setError(errorText(caught, "비밀번호를 변경하지 못했습니다.")); }
     finally { setLoading(false); }
   };
 

@@ -10,6 +10,8 @@ import { Footer, TopNav } from "../../../components/SiteChrome";
 import { csrfFetch } from "../../../lib/csrfFetch";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../../lib/api";
+import { errorText } from "../../../lib/errorText";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage } from "../../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
@@ -118,6 +120,10 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const uploadImages = async (files: FileList | null) => {
     if (!files?.length || uploadingImages) return;
     if (images.length + files.length > 10) { setErrorMsg("사진은 최대 10장까지 등록할 수 있습니다."); return; }
+    if (Array.from(files).some(isOversizedImage)) {
+      setErrorMsg(OVERSIZED_IMAGE_MESSAGE);
+      return;
+    }
     setUploadingImages(true);
     setErrorMsg("");
     try {
@@ -129,7 +135,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
         const uploaded: { imageUrl: string } = await response.json();
         setImages((current) => [...current, uploaded.imageUrl]);
       }
-    } catch (error) { setErrorMsg(error instanceof Error ? error.message : "사진 업로드에 실패했습니다."); }
+    } catch (error) { setErrorMsg(errorText(error, "사진 업로드에 실패했습니다.")); }
     finally { setUploadingImages(false); }
   };
 
