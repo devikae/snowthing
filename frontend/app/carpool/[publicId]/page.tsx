@@ -65,6 +65,7 @@ export default function CarpoolDetailPage() {
   const [item, setItem] = useState<CarpoolDetail | null>(null);
   const [error, setError] = useState(false);
   const [heldMessage, setHeldMessage] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const deleteCarpool = async () => {
@@ -85,6 +86,10 @@ export default function CarpoolDetailPage() {
   useEffect(() => {
     void fetch(API_ENDPOINTS.carpool.detail(publicId), { credentials: "include" })
       .then(async (response) => {
+        if (response.status === 404) {
+          setNotFound(true);
+          return null;
+        }
         if (!response.ok) {
           const body = response.status === 403 ? await response.json().catch(() => null) : null;
           if (body?.code === "POST_009") setHeldMessage(body.message);
@@ -92,7 +97,12 @@ export default function CarpoolDetailPage() {
         }
         return response.json();
       })
-      .then(setItem)
+      .then((data) => {
+        if (data) {
+          setItem(data);
+          document.title = `${data.title} | 눈팅 SnowThing`;
+        }
+      })
       .catch(() => setError(true));
   }, [publicId]);
 
@@ -100,7 +110,12 @@ export default function CarpoolDetailPage() {
     <div className="community-page">
       <TopNav active="carpool" />
       <main className="community-container carpool-detail-page content-detail-page">
-        {error ? (
+        {notFound ? (
+          <div className="carpool-empty">
+            <p>모집글을 찾을 수 없거나 삭제되었습니다.</p>
+            <Link href="/carpool">목록으로 돌아가기</Link>
+          </div>
+        ) : error ? (
           <div className="carpool-empty">
             <p>{heldMessage ?? "모집글을 불러오지 못했습니다."}</p>
             {!heldMessage && <button type="button" onClick={() => window.location.reload()}>다시 시도</button>}

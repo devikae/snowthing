@@ -699,13 +699,14 @@
 
 @media (max-width: 480px) {
   .resortNavTrack {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 3px;
     padding: 4px;
   }
   .resortTab {
-    min-height: 36px;
-    padding: 3px 1px;
-    font-size: 10px;
+    min-height: 40px;
+    padding: 3px 4px;
+    font-size: 12px;
     letter-spacing: -0.03em;
   }
 }

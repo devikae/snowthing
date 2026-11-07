@@ -212,7 +212,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         {reply && <span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
-          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></header>
+          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatCommentDate(item.createdAt)}</time></header>
           {editingId === item.commentId ? (
             <div className="comment-inline-editor">
               <textarea maxLength={1000} value={editingContent} onChange={(event) => setEditingContent(event.target.value)} />
@@ -249,4 +249,10 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     </div>
     {hasNext && nextCursor && <div className="post-comments-more"><button className="post-comments-more-button" type="button" disabled={working} onClick={() => void loadComments(nextCursor, true)}>댓글 더보기</button></div>}
   </section>;
+}
+
+function formatCommentDate(value: string) {
+  const date = new Date(value);
+  const pad = (number: number) => String(number).padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }

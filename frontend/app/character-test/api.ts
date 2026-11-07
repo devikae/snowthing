@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../lib/api";
-import { csrfFetch } from "../lib/csrfFetch";
+import { csrfFetch as rawCsrfFetch } from "../lib/csrfFetch";
 import { readErrorMessage } from "../lib/messageApi";
 import type { CharacterLabel, CharacterStats, LevelCode, Sport } from "./data";
 
@@ -59,6 +59,15 @@ export interface JoinInput {
   answers: string;
 }
 
+// 연결 실패의 브라우저 문구(Failed to fetch)를 화면에 그대로 보여 주지 않는다.
+function friendlyNetworkError<T>(request: Promise<T>) {
+  return request.catch(() => {
+    throw new Error("연결이 불안정해요. 잠시 후 다시 시도해 주세요.");
+  });
+}
+const csrfFetch: typeof rawCsrfFetch = (...args) => friendlyNetworkError(rawCsrfFetch(...args));
+const plainFetch: typeof fetch = (...args) => friendlyNetworkError(fetch(...args));
+
 const jsonHeaders = { "Content-Type": "application/json" };
 const GROUP_NOT_FOUND_CODE = "CHARACTER_001";
 
@@ -100,7 +109,7 @@ export function joinGroup(groupPublicId: string, input: JoinInput) {
 
 // 서버가 없는 모임이라고 답하면 null로 돌려준다. 호출한 쪽이 없는 모임 화면을 보여 준다.
 export async function fetchPreview(groupPublicId: string): Promise<GroupPreview | null> {
-  const response = await fetch(`${GROUPS}/${encodeURIComponent(groupPublicId)}`, { cache: "no-store" });
+  const response = await plainFetch(`${GROUPS}/${encodeURIComponent(groupPublicId)}`, { cache: "no-store" });
   if (await isGroupNotFound(response)) return null;
   if (!response.ok) throw new Error("모임 정보를 불러오지 못했습니다.");
   return response.json();
@@ -108,7 +117,7 @@ export async function fetchPreview(groupPublicId: string): Promise<GroupPreview 
 
 // 토큰이 없거나 소속이 아니면 서버가 CHARACTER_001로 답한다. 이때 null이고, 다른 실패는 오류로 던져 접속 정보를 지키게 한다.
 export async function fetchMap(groupPublicId: string, token: string): Promise<CharacterMap | null> {
-  const response = await fetch(`${GROUPS}/${encodeURIComponent(groupPublicId)}/map`, {
+  const response = await plainFetch(`${GROUPS}/${encodeURIComponent(groupPublicId)}/map`, {
     cache: "no-store",
     headers: { [TOKEN_HEADER]: token },
   });

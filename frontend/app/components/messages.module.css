@@ -296,7 +296,9 @@
 
 .button,
 .buttonPrimary {
+  flex: none;
   padding: 8px 14px;
+  white-space: nowrap;
   border: 1px solid var(--snow-border-strong);
   border-radius: 6px;
   background: var(--snow-canvas);
