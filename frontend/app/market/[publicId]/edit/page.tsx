@@ -10,9 +10,10 @@ import { PageHeading } from "../../../components/PageHeading";
 import type { ToastEditorHandle } from "../../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { errorText } from "../../../lib/errorText";
-import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage } from "../../../lib/imageFile";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImageForUpload } from "../../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
 
@@ -38,6 +39,7 @@ const methods = [["DIRECT", "직거래"], ["DELIVERY", "택배"], ["BOTH", "모�
 export default function MarketEditPage({ params }: { params: Promise<{ publicId: string }> }) {
   const { publicId } = use(params);
   const router = useRouter();
+  useLeaveWarning();
   const editorRef = useRef<ToastEditorHandle>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -95,14 +97,15 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
       setError("사진은 최대 10장까지 등록할 수 있습니다.");
       return;
     }
-    if (Array.from(files).some(isOversizedImage)) {
+    const prepared = await Promise.all(Array.from(files).map(prepareImageForUpload));
+    if (prepared.some(isOversizedImage)) {
       setError(OVERSIZED_IMAGE_MESSAGE);
       return;
     }
     setUploading(true);
     setError("");
     try {
-      for (const file of Array.from(files)) {
+      for (const file of prepared) {
         if (file.size > 5 * 1024 * 1024) throw new Error("사진은 한 장에 5MB까지 올릴 수 있습니다.");
         const formData = new FormData();
         formData.append("file", file);
@@ -139,29 +142,33 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
     }
     setSubmitting(true);
     setError("");
-    const response = await csrfFetch(API_ENDPOINTS.market.update(publicId), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        version: detail.version,
-        categoryCode,
-        title: title.trim(),
-        content,
-        productCondition,
-        transactionMethod,
-        price: numericPrice,
-        negotiable: free ? false : negotiable,
-        free,
-        contact: contact.trim(),
-        imageUrls: images,
-      }),
-    });
-    if (response.ok) {
-      router.replace(`/market/${publicId}`);
-      return;
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.market.update(publicId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          version: detail.version,
+          categoryCode,
+          title: title.trim(),
+          content,
+          productCondition,
+          transactionMethod,
+          price: numericPrice,
+          negotiable: free ? false : negotiable,
+          free,
+          contact: contact.trim(),
+          imageUrls: images,
+        }),
+      });
+      if (response.ok) {
+        router.replace(`/market/${publicId}`);
+        return;
+      }
+      const data = await response.json().catch(() => null);
+      setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해주세요.");
+    } catch {
+      setError("판매글을 수정하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요.");
     }
-    const data = await response.json().catch(() => null);
-    setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해주세요.");
     setSubmitting(false);
   };
 

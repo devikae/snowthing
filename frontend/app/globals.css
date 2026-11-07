@@ -4094,3 +4094,12 @@ html[data-theme="dark"] .snow-empty-copy strong {
 .carpool-search { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; margin-bottom: 12px; }
 .carpool-search input { height: 40px; min-width: 0; border: 1px solid var(--snow-border-strong); border-radius: 7px; background: var(--snow-canvas); padding: 0 12px; color: var(--snow-ink); font-size: 14px; }
 .carpool-search button { height: 40px; border: 0; border-radius: 7px; background: var(--snow-ink); color: var(--snow-canvas); font-size: 13px; font-weight: 700; cursor: pointer; }
+
+/* iOS 사파리와 인앱 브라우저는 글자가 16px보다 작은 입력칸을 누르면 화면을 확대한다. 좁은 화면에서는 입력 글자를 16px로 맞춘다. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

@@ -9,10 +9,11 @@ import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
-import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage } from "../../lib/imageFile";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImageForUpload } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
@@ -37,6 +38,7 @@ const COMPOSE_CATEGORIES = [
 
 function PostCreateForm() {
   const router = useRouter();
+  useLeaveWarning();
   const searchParams = useSearchParams();
 
   const initialCat = searchParams.get("category") || "FREE";
@@ -123,14 +125,15 @@ function PostCreateForm() {
       return;
     }
 
-    if (Array.from(files).some(isOversizedImage)) {
+    const prepared = await Promise.all(Array.from(files).map(prepareImageForUpload));
+    if (prepared.some(isOversizedImage)) {
       setErrorMsg(OVERSIZED_IMAGE_MESSAGE);
       return;
     }
     setUploadingImage(true);
     setErrorMsg("");
     try {
-      for (const file of Array.from(files)) {
+      for (const file of prepared) {
       const formData = new FormData();
       formData.append("file", file);
       const response = await csrfFetch(API_ENDPOINTS.images.upload, {
