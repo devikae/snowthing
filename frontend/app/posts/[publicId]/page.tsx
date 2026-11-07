@@ -931,6 +931,7 @@ function CommentRow({
               <div className="comment-youtube-actions">
                 <button type="button" onClick={toggleReplyEditor}>{activeReplyParentId === item.commentId ? "답글 취소" : "답글"}</button>
                 {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+                {!item.isDeleted && <ReportButton targetType="COMMENT" targetId={item.commentId} />}
               </div>
             </>
           )}

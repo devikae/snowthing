@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 
@@ -13,7 +14,7 @@ const REASONS: [string, string][] = [
 ];
 
 export function ReportButton({ targetType, targetId, className }: { targetType: "POST" | "COMMENT"; targetId: string; className?: string }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const [reason, setReason] = useState(REASONS[0][0]);
   const [detail, setDetail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,8 +36,9 @@ export function ReportButton({ targetType, targetId, className }: { targetType: 
 
   return (
     <>
-      <button type="button" className={className} onClick={() => dialogRef.current?.showModal()}>신고</button>
-      <dialog ref={dialogRef} aria-label="신고하기" className="m-auto w-[min(92vw,420px)] rounded-xl border border-[var(--snow-border)] bg-[var(--snow-surface,#fff)] p-5 text-left text-sm text-[var(--snow-ink)]">
+      <button type="button" className={className} onClick={() => setOpen(true)}>신고</button>
+      {/* 부모의 버튼 CSS가 창 안의 버튼을 덮어쓰지 않게 body에 그린다. */}
+      {open && createPortal(<dialog ref={(element) => { if (element && !element.open) element.showModal(); }} onClose={() => setOpen(false)} aria-label="신고하기" className="m-auto w-[min(92vw,420px)] rounded-xl border border-[var(--snow-border)] bg-[var(--snow-panel)] p-5 text-left text-sm text-[var(--snow-ink)]">
         <form onSubmit={submit} className="grid gap-3">
           <h2 className="text-base font-bold">신고하기</h2>
           <label className="grid gap-1 font-semibold">사유
@@ -50,11 +52,11 @@ export function ReportButton({ targetType, targetId, className }: { targetType: 
           <p className="text-xs leading-5 text-[var(--snow-muted)]">신고자는 작성자에게 공개되지 않습니다. 거짓 신고는 이용이 제한될 수 있습니다.</p>
           {message && <p role="status" className="font-semibold">{message}</p>}
           <div className="flex justify-end gap-2">
-            <button type="button" className="snow-btn-secondary" onClick={() => dialogRef.current?.close()}>닫기</button>
+            <button type="button" className="snow-btn-secondary" onClick={() => setOpen(false)}>닫기</button>
             {!done && <button type="submit" className="snow-btn-primary" disabled={busy}>{busy ? "접수 중" : "신고"}</button>}
           </div>
         </form>
-      </dialog>
+      </dialog>, document.body)}
     </>
   );
 }

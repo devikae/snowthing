@@ -118,7 +118,7 @@ export default function CarpoolDetailPage() {
         ) : error ? (
           <div className="carpool-empty">
             <p>{heldMessage ?? "모집글을 불러오지 못했습니다."}</p>
-            {!heldMessage && <button type="button" onClick={() => window.location.reload()}>다시 시도</button>}
+            {heldMessage ? <Link href="/carpool">목록으로 돌아가기</Link> : <button type="button" onClick={() => window.location.reload()}>다시 시도</button>}
           </div>
         ) : !item ? (
           <div className="carpool-empty">모집글을 불러오는 중입니다.</div>
