@@ -6,7 +6,7 @@ import { composeMessageHref, fetchViewerPublicId } from "../lib/messageApi";
 import styles from "./messages.module.css";
 
 interface MarketMessageButtonProps {
-  seller: { publicId: string; nickname: string };
+  seller: { publicId: string | null; nickname: string };
   listing: { publicId: string; title: string };
 }
 
@@ -24,9 +24,9 @@ export function MarketMessageButton({ seller, listing }: MarketMessageButtonProp
     };
   }, []);
 
-  if (!viewer || viewer === seller.publicId) return null;
+  if (!viewer || !seller.publicId || viewer === seller.publicId) return null;
   return (
-    <Link className={`${styles.buttonPrimary} ${styles.marketMessage}`} href={composeMessageHref(seller, listing)}>
+    <Link className={`${styles.buttonPrimary} ${styles.marketMessage}`} href={composeMessageHref({ publicId: seller.publicId, nickname: seller.nickname }, listing)}>
       <span className="material-symbols-outlined" aria-hidden="true">sticky_note_2</span>
       쪽지 보내기
     </Link>

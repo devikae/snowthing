@@ -35,6 +35,9 @@ public enum ErrorCode {
             HttpStatus.SERVICE_UNAVAILABLE, "FILE_006", "프로필 이미지 캐시 정리 설정이 필요합니다."),
     REGISTRATION_POLICY_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_008", "가입 동의 문서를 불러올 수 없습니다."),
+    WITHDRAWN_EMAIL_RESTRICTED(
+            HttpStatus.CONFLICT, "MEMBER_010", "탈퇴 후 30일이 지나지 않은 이메일은 다시 가입할 수 없습니다."),
+    WITHDRAWAL_CONFIRMATION_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_011", "확인 문구가 일치하지 않습니다."),
     REGISTRATION_POLICY_CHANGED(
             HttpStatus.CONFLICT, "MEMBER_009", "가입 동의 문서가 변경되었습니다. 새로고침 후 다시 확인해 주세요."),
     CHAT_BOT_BUDGET_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "CHAT_010", "봇의 전체 호출 한도에 도달했습니다."),

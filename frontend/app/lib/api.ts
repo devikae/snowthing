@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
     settings: `${API_V1_URL}/members/me/settings`,
     nicknameAvailability: `${API_V1_URL}/members/me/nickname-availability`,
     changePassword: `${API_V1_URL}/members/me/password`,
+    withdrawal: `${API_V1_URL}/members/me/withdrawal`,
     resetProfileImage: `${API_V1_URL}/members/me/profile-image`,
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,

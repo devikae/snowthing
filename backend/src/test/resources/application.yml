@@ -9,6 +9,10 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${SNOWTHING_TEST_DB_USERNAME}
     password: ${SNOWTHING_TEST_DB_PASSWORD}
+    # 테스트는 Spring 컨텍스트마다 풀을 따로 잡는다. 기본값 10개면 컨텍스트가 늘 때 CI MySQL 연결 한도를 넘는다.
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
 
   sql:
     init:

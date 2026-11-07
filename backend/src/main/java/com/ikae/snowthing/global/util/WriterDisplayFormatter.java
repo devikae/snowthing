@@ -19,6 +19,9 @@ public final class WriterDisplayFormatter {
         if (isAnonymous) {
             return formatAnonymous(writerIp);
         }
+        if (member != null && member.isWithdrawn()) {
+            return Member.WITHDRAWN_NICKNAME;
+        }
         return (member != null && member.getNickname() != null)
                 ? member.getNickname()
                 : UNKNOWN_WRITER;
