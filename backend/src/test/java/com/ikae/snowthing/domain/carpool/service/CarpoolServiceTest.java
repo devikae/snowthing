@@ -41,7 +41,7 @@ class CarpoolServiceTest {
                         mock(CarpoolAutoCalculationService.class),
                         mock(CarpoolWriterService.class));
 
-        assertThatThrownBy(() -> service.findPage(100, 20))
+        assertThatThrownBy(() -> service.findPage(100, 20, null))
                 .isInstanceOf(CustomAuthException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.CARPOOL_PAGE_LIMIT_EXCEEDED);
