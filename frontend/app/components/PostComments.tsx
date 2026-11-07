@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
+import { fetchViewer } from "../lib/viewer";
 import { csrfFetch } from "../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
@@ -99,10 +100,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadComments();
-      void fetch(API_ENDPOINTS.members.me, { credentials: "include" })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((member) => setCurrentUserPublicId(member?.publicId ?? null))
-        .catch(() => setCurrentUserPublicId(null));
+      void fetchViewer().then((viewer) => setCurrentUserPublicId(viewer?.publicId ?? null));
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadComments]);

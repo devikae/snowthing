@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS, SocialLoginProvider } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { clearViewerCache } from "../lib/viewer";
 import styles from "./login.module.css";
 import { errorText } from "../lib/errorText";
 
@@ -49,6 +50,9 @@ export default function LoginPage() {
     const timer = window.setTimeout(() => setWithdrawn(true), 0);
     return () => window.clearTimeout(timer);
   }, []);
+  // 세션이 만료돼 로그인으로 온 경우 헤더가 예전 프로필을 보여 주지 않게 내 정보 캐시를 비운다.
+  // 자식인 헤더의 effect가 이 페이지의 effect보다 먼저 돌기 때문에, 헤더가 그려지기 전인 첫 렌더에서 비운다.
+  useState(() => clearViewerCache());
   const [fromMarket, setFromMarket] = useState(false);
   useEffect(() => {
     const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") ?? "";
@@ -95,6 +99,7 @@ export default function LoginPage() {
       }
 
       const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
+      clearViewerCache();
       router.push(safeReturnUrl(returnUrl));
     } catch (error) {
       setErrorMsg(getErrorMessage(error));
