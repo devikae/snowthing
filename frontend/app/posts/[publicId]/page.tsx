@@ -368,8 +368,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
 
   const handleShare = async () => {
     const url = window.location.href;
-    // 휴대폰에서는 카카오톡 등으로 바로 보낼 수 있는 공유 창을 먼저 연다. 없거나 실패하면 주소를 복사한다.
-    if (typeof navigator.share === "function") {
+    // 휴대폰에서는 카카오톡 등으로 바로 보낼 수 있는 공유 창을 먼저 연다. 데스크톱은 기존처럼 주소를 복사한다.
+    if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
       try {
         await navigator.share({ title: post?.title ?? document.title, url });
         return;

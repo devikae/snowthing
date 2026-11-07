@@ -14,6 +14,13 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
 }
 
+// 원본 사진 한 장을 디코딩하면 100MB를 넘길 수 있다. 여러 장을 동시에 풀면 휴대폰 탭이 메모리 부족으로 다시 로드되므로 한 장씩 처리한다.
+export async function prepareImagesForUpload(files: File[]): Promise<File[]> {
+  const prepared: File[] = [];
+  for (const file of files) prepared.push(await prepareImageForUpload(file));
+  return prepared;
+}
+
 // 5MB를 넘는 사진은 올리기 전에 브라우저에서 JPEG로 줄인다. 줄일 수 없으면 원본을 돌려주고, 호출한 쪽이 크기 안내를 띄운다.
 export async function prepareImageForUpload<T extends Blob>(file: T): Promise<T | File> {
   if (!isOversizedImage(file) || typeof createImageBitmap !== "function") return file;
@@ -36,6 +43,9 @@ export async function prepareImageForUpload<T extends Blob>(file: T): Promise<T 
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       const blob = await canvasToBlob(canvas);
+      // 큰 canvas는 수십 MB를 잡는다. 다음 사진 전에 바로 놓아 준다.
+      canvas.width = 0;
+      canvas.height = 0;
       if (blob && !isOversizedImage(blob)) {
         const baseName = file instanceof File ? file.name.replace(/\.[^.]+$/, "") : "image";
         return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });

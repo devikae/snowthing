@@ -2,6 +2,8 @@ import { API_ENDPOINTS } from "./api";
 
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
 // Spring Security가 CSRF 검사에서 거절하면 accessDeniedHandler가 이 코드로 답한다.
+// 서비스의 권한 검사(남의 글 수정 등)도 같은 코드를 쓴다. 이 경우는 쓰기 전에 트랜잭션 안에서 거절되어
+// 다시 보내도 두 번 처리되지 않고, 같은 403을 한 번 더 받을 뿐이다.
 const ACCESS_DENIED_CODE = "AUTH_002";
 
 let cachedCsrfToken: string | null = null;
@@ -51,7 +53,6 @@ export async function csrfFetch(input: RequestInfo | URL, init: RequestInit = {}
 
   const response = await send();
   // 다른 탭의 로그아웃이나 로그인으로 토큰이 바뀌면 캐시한 토큰이 거절된다. 한 번만 새 토큰으로 다시 보낸다.
-  // CSRF 거절은 컨트롤러에 닿기 전에 일어나므로 다시 보내도 같은 요청이 두 번 처리되지 않는다.
   if (isUnsafeMethod(method) && cachedCsrfToken && (await isCsrfRejection(response))) {
     cachedCsrfToken = null;
     return send();

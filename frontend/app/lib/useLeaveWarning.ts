@@ -24,7 +24,10 @@ export function useLeaveWarning() {
       if (!window.confirm(MESSAGE)) {
         event.preventDefault();
         event.stopPropagation();
+        return;
       }
+      // 이미 나가기로 했으니 전체 이동 링크에서 beforeunload 확인이 한 번 더 뜨지 않게 한다.
+      dirty = false;
     };
     document.addEventListener("input", markDirty, true);
     window.addEventListener("beforeunload", beforeUnload);

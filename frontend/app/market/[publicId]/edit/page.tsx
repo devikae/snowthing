@@ -13,7 +13,7 @@ import { csrfFetch } from "../../../lib/csrfFetch";
 import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { errorText } from "../../../lib/errorText";
-import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImageForUpload } from "../../../lib/imageFile";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
 
@@ -97,13 +97,16 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
       setError("사진은 최대 10장까지 등록할 수 있습니다.");
       return;
     }
-    const prepared = await Promise.all(Array.from(files).map(prepareImageForUpload));
-    if (prepared.some(isOversizedImage)) {
-      setError(OVERSIZED_IMAGE_MESSAGE);
-      return;
-    }
+    // 축소가 끝날 때까지 등록 버튼과 파일 칸을 막는다.
     setUploading(true);
     setError("");
+    const selected = Array.from(files);
+    const prepared = await prepareImagesForUpload(selected).catch(() => selected);
+    if (prepared.some(isOversizedImage)) {
+      setError(OVERSIZED_IMAGE_MESSAGE);
+      setUploading(false);
+      return;
+    }
     try {
       for (const file of prepared) {
         if (file.size > 5 * 1024 * 1024) throw new Error("사진은 한 장에 5MB까지 올릴 수 있습니다.");
