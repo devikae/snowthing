@@ -35,6 +35,10 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
 
     Optional<Post> findByPublicId(String publicId);
 
+    /** 네이티브 조회라 SQLRestriction이 붙지 않는다. 이미 삭제된 글의 사진도 지울 수 있어야 한다. */
+    @Query(value = "SELECT * FROM post WHERE public_id = :publicId FOR UPDATE", nativeQuery = true)
+    Optional<Post> findIncludingDeletedForUpdate(@Param("publicId") String publicId);
+
     @Query(
             "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.publicId = :publicId")
     Optional<Post> findWithMemberAndCategoryByPublicId(@Param("publicId") String publicId);

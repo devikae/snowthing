@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.ikae.snowthing.domain.image.dto.ImageUploadResponse;
 import com.ikae.snowthing.domain.image.entity.PostImageUpload;
 import com.ikae.snowthing.domain.image.repository.PostImageUploadRepository;
+import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostImage;
 import com.ikae.snowthing.domain.post.repository.PostImageRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -30,6 +33,7 @@ public class PostImageLifecycleService {
     private final PostImageRepository postImageRepository;
     private final ImageService images;
     private final ImageUrlResolver urls;
+    private final MarketThumbnailService marketThumbnails;
     private final S3Client s3;
     private final Clock clock;
     private final TransactionTemplate tx;
@@ -50,6 +54,7 @@ public class PostImageLifecycleService {
             PostImageRepository postImageRepository,
             ImageService images,
             ImageUrlResolver urls,
+            MarketThumbnailService marketThumbnails,
             S3Client s3,
             Clock clock,
             PlatformTransactionManager manager) {
@@ -57,6 +62,7 @@ public class PostImageLifecycleService {
         this.postImageRepository = postImageRepository;
         this.images = images;
         this.urls = urls;
+        this.marketThumbnails = marketThumbnails;
         this.s3 = s3;
         this.clock = clock;
         this.tx = new TransactionTemplate(manager);
@@ -181,6 +187,56 @@ public class PostImageLifecycleService {
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * 글이 더는 사진을 쓰지 않게 하고 사진을 다음 정리 작업의 대상으로 올린다. S3는 부르지 않는다. 글 변경과 같이 커밋되므로, 삭제가 롤백되면 정리 대상에도 오르지
+     * 않는다.
+     *
+     * <p>참조를 지우는 이유: 정리 작업은 남아 있는 참조를 모두 사용 중으로 본다. 그 판단을 "지워지지 않은 글"로 바꾸면 이 코드를 배포하는 순간 이전에 삭제된 글의
+     * 사진까지 한 시간 안에 모두 지워진다. 이전 글은 관리자가 수동 절차로 정리한다.
+     *
+     * @return 정리 대상에 올린 키와, 다른 글이 함께 써서 지우지 않는 키
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public ReleasedImages releasePostImages(Post post) {
+        Set<String> keys = new TreeSet<>(post.getContentImageKeys());
+        for (PostImage image : post.getImages()) {
+            keys.add(urls.toStorageValue(image.getImageUrl()));
+        }
+        // collectKeys는 작성 입력을 막으려고 30개가 넘으면 거절한다. 삭제는 막으면 안 되므로 쓰지 않는다.
+        var matcher = CONTENT_IMAGE_KEY.matcher(post.getContent() == null ? "" : post.getContent());
+        while (matcher.find()) {
+            keys.add(matcher.group());
+        }
+        keys.removeIf(key -> !CONTENT_IMAGE_KEY.matcher(key).matches());
+
+        post.replaceImages(List.of());
+        post.replaceContentImageKeys(Set.of());
+        postImageUploadRepository.flush();
+
+        var queued = new java.util.ArrayList<String>();
+        var shared = new java.util.ArrayList<String>();
+        for (String key : keys) {
+            // 정리 작업은 참조 표만 본다. 표에 없는 옛 사진은 다른 글 본문에 있어도 찾지 못하므로 여기서 거른다.
+            if (!postImageUploadRepository.existsById(key)
+                    && postImageRepository.countOtherLivePostBody(key, post.getId()) > 0) {
+                shared.add(key);
+                continue;
+            }
+            postImageUploadRepository.insertIfAbsent(key);
+            postImageUploadRepository.expireIfPending(key, clock.instant());
+            (isReferenced(key) ? shared : queued).add(key);
+        }
+        marketThumbnails.release(post.getPublicId());
+        return new ReleasedImages(List.copyOf(queued), List.copyOf(shared));
+    }
+
+    public record ReleasedImages(List<String> queuedKeys, List<String> sharedKeys) {}
+
+    private boolean isReferenced(String key) {
+        return postImageRepository.existsByImageUrlIn(List.of(key, urls.toPublicUrl(key)))
+                || postImageRepository.countContentReference(key) > 0;
+    }
+
     @Scheduled(fixedDelayString = "${snowthing.post-images.cleanup-delay-ms:60000}")
     public void cleanup() {
         tx.executeWithoutResult(
@@ -211,16 +267,11 @@ public class PostImageLifecycleService {
                                     var upload = uploadOpt.get();
                                     if (upload.getDue().isAfter(clock.instant())) return false;
 
-                                    // Includes soft-deleted posts: recovery must retain their
-                                    // photos.
+                                    // Hidden posts keep their references. Posts deleted from now
+                                    // on have released theirs; older deleted posts stay protected
+                                    // until the manual procedure in database/manual runs.
                                     // Both gallery and inline references use indexed lookups.
-                                    boolean inUse =
-                                            postImageRepository.existsByImageUrlIn(
-                                                            List.of(key, urls.toPublicUrl(key)))
-                                                    || postImageRepository.countContentReference(
-                                                                    key)
-                                                            > 0;
-                                    if (inUse) {
+                                    if (isReferenced(key)) {
                                         upload.renewDue(clock.instant().plus(Duration.ofHours(1)));
                                         return false;
                                     }

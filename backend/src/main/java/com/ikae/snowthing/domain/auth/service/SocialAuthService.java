@@ -25,6 +25,7 @@ import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
+import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -42,6 +43,7 @@ public class SocialAuthService {
     private final SocialNicknameGenerator socialNicknameGenerator;
     private final Clock clock;
     private final ApplicationEventPublisher eventPublisher;
+    private final WithdrawnEmailService withdrawnEmails;
 
     @Transactional
     public Member authenticateOrRegister(OAuthUserProfile profile) {
@@ -63,6 +65,8 @@ public class SocialAuthService {
                 profile.emailAuthoritative()
                         ? providerEmail
                         : createInternalEmail(profile.provider(), providerUserId);
+        withdrawnEmails.requireNotBlocked(memberEmail);
+        withdrawnEmails.requireNotBlocked(providerEmail);
         LocalDateTime now = LocalDateTime.now(clock);
         if (profile.emailAuthoritative()) {
             Optional<Member> existingMemberByEmail = memberRepository.findByEmail(memberEmail);

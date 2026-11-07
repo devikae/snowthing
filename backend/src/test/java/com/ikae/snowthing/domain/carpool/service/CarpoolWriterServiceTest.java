@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.carpool.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -42,6 +43,8 @@ class CarpoolWriterServiceTest {
     private final CarpoolDetailRepository carpoolDetailRepository =
             mock(CarpoolDetailRepository.class);
     private final ResortRepository resortRepository = mock(ResortRepository.class);
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle =
+            mock(com.ikae.snowthing.domain.image.service.PostImageLifecycleService.class);
     private CarpoolWriterService service;
     private Post post;
 
@@ -54,7 +57,8 @@ class CarpoolWriterServiceTest {
                         mock(MemberRepository.class),
                         resortRepository,
                         carpoolDetailRepository,
-                        mock(SearchOutboxWriter.class));
+                        mock(SearchOutboxWriter.class),
+                        imageLifecycle);
         Member owner =
                 Member.builder()
                         .publicId(OWNER_PUBLIC_ID)
@@ -83,6 +87,7 @@ class CarpoolWriterServiceTest {
         assertThat(post.isDeleted()).isTrue();
         assertThat(post.getStatus()).isEqualTo(PostStatus.DELETED);
         assertThat(post.getDeletedAt()).isNotNull();
+        verify(imageLifecycle).releasePostImages(post);
     }
 
     @Test

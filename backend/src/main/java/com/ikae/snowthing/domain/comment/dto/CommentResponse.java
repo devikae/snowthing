@@ -42,7 +42,7 @@ public record CommentResponse(
     public static CommentResponse from(Comment comment) {
         Member member = comment.getMember();
         WriterResponse writer =
-                !comment.isAnonymous() && member != null
+                !comment.isAnonymous() && member != null && !member.isWithdrawn()
                         ? new WriterResponse(
                                 member.getPublicId(),
                                 member.getNickname(),

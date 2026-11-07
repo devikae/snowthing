@@ -106,6 +106,11 @@ public class ProfileImageLifecycleService {
                 });
     }
 
+    /** 호출자 트랜잭션에 참여한다. 탈퇴가 커밋되어 회원이 사진을 참조하지 않게 된 뒤에 cleanup이 지운다. */
+    public void queueForCleanup(String url) {
+        queuePrevious(url);
+    }
+
     private Member member(String email) {
         return members.findByEmailForUpdate(normalizer.normalize(email))
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));

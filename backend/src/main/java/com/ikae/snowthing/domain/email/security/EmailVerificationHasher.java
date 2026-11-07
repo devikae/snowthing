@@ -37,6 +37,10 @@ public class EmailVerificationHasher {
         return digest("TOKEN:" + token);
     }
 
+    public String digestWithdrawnEmail(String normalizedEmail) {
+        return digest("WITHDRAWN_EMAIL:" + normalizedEmail);
+    }
+
     public boolean matches(String expectedHex, String actualHex) {
         return MessageDigest.isEqual(
                 expectedHex.getBytes(StandardCharsets.US_ASCII),
