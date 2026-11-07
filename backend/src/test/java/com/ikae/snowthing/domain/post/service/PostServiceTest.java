@@ -26,6 +26,7 @@ import com.ikae.snowthing.domain.post.repository.PostReactionRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
+import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 @SpringBootTest
@@ -265,7 +266,7 @@ class PostServiceTest {
                             .title("오늘 설질 어떤가요?")
                             .content("휘팍 설질 최고입니다.")
                             .isAnonymous(false)
-                            .imageUrls(List.of("https://cdn.example.com/1.jpg"))
+                            .imageUrls(List.of("public/posts/originals/test-1.jpg"))
                             .build();
 
             PostResponse response = postService.createPost(request, userDetails1, "127.0.0.1");
@@ -278,6 +279,53 @@ class PostServiceTest {
             Post savedPost = postRepository.findByPublicId(response.publicId()).orElseThrow();
             assertThat(savedPost.isHasImage()).isTrue();
             assertThat(savedPost.getImages()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("외부 주소나 경로 이동이 섞인 첨부 사진은 거절한다.")
+        void createPost_rejectsUnmanagedImageReferences() {
+            for (String reference :
+                    List.of(
+                            "https://tracker.example/p.gif",
+                            "http://images.snowthing.org/public/posts/originals/a.jpg",
+                            "public/profiles/a.jpg",
+                            "public/posts/originals/../profiles/a.jpg")) {
+                PostCreateRequest request =
+                        PostCreateRequest.builder()
+                                .categoryCode("FREE")
+                                .title("외부 사진")
+                                .content("본문")
+                                .isAnonymous(false)
+                                .imageUrls(List.of(reference))
+                                .build();
+
+                assertThatThrownBy(() -> postService.createPost(request, userDetails1, "127.0.0.1"))
+                        .isInstanceOf(CustomException.class)
+                        .extracting("errorCode")
+                        .isEqualTo(ErrorCode.INVALID_INPUT);
+            }
+        }
+
+        @Test
+        @DisplayName("CDN 주소로 보낸 사진은 저장 키로 바꿔 받는다.")
+        void createPost_acceptsCdnUrlOfManagedImage() {
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("CDN 사진")
+                            .content("본문")
+                            .isAnonymous(false)
+                            .imageUrls(
+                                    List.of(
+                                            "https://images.snowthing.org/public/posts/originals/cdn-1.jpg"))
+                            .build();
+
+            PostResponse response = postService.createPost(request, userDetails1, "127.0.0.1");
+
+            Post savedPost = postRepository.findByPublicId(response.publicId()).orElseThrow();
+            assertThat(savedPost.getImages())
+                    .extracting(PostImage::getImageUrl)
+                    .containsExactly("public/posts/originals/cdn-1.jpg");
         }
 
         @Test
@@ -702,8 +750,8 @@ class PostServiceTest {
                             .content("이미지 수정 본문")
                             .imageUrls(
                                     List.of(
-                                            "https://cdn.example.com/updated-1.jpg",
-                                            "https://cdn.example.com/updated-2.jpg"))
+                                            "public/posts/originals/updated-1.jpg",
+                                            "public/posts/originals/updated-2.jpg"))
                             .build();
 
             postService.updatePost(createdPost.publicId(), updateReq, userDetails1);
@@ -717,8 +765,8 @@ class PostServiceTest {
             assertThat(images)
                     .extracting(PostImage::getImageUrl)
                     .containsExactly(
-                            "https://cdn.example.com/updated-1.jpg",
-                            "https://cdn.example.com/updated-2.jpg");
+                            "public/posts/originals/updated-1.jpg",
+                            "public/posts/originals/updated-2.jpg");
         }
 
         @Test
@@ -731,7 +779,7 @@ class PostServiceTest {
                                     .title("이미지 있는 글")
                                     .content("본문")
                                     .isAnonymous(false)
-                                    .imageUrls(List.of("https://cdn.example.com/original.jpg"))
+                                    .imageUrls(List.of("public/posts/originals/original.jpg"))
                                     .build(),
                             userDetails1,
                             "127.0.0.1");
