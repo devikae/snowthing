@@ -1,0 +1,1322 @@
+"use client";
+
+import { use, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { Footer, TopNav } from "../../components/SiteChrome";
+import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
+import { AuthorMenu } from "../../components/AuthorMenu";
+import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
+import dynamic from "next/dynamic";
+import { csrfFetch } from "../../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
+import { API_ENDPOINTS } from "../../lib/api";
+import { ReportButton } from "../../components/ReportButton";
+import { errorText } from "../../lib/errorText";
+import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
+
+const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
+  ssr: false,
+  loading: () => <div className="p-6 text-sm text-[var(--snow-muted)]">본문을 불러오는 중입니다...</div>,
+});
+
+interface WriterInfo {
+  publicId: string | null;
+  nickname: string;
+  profileImageUrl: string | null;
+}
+
+interface PostDetail {
+  publicId: string;
+  categoryName: string;
+  categoryCode: string;
+  title: string;
+  content: string;
+  status: string;
+  isAnonymous: boolean;
+  isAuthor: boolean;
+  requiresPassword: boolean;
+  viewCount: number;
+  commentCount: number;
+  likeCount: number;
+  dislikeCount: number;
+  activeReactionTypes: ("LIKE" | "DISLIKE")[];
+  writer: WriterInfo;
+  images: string[];
+  createdAt: string;
+}
+
+interface CommentItem {
+  commentId: string;
+  parentId: string | null;
+  writer: WriterInfo | null;
+  isAnonymous: boolean;
+  writerIp: string;
+  content: string;
+  isDeleted: boolean;
+  replyCount: number;
+  previewReplies: CommentItem[];
+  hasMoreReplies: boolean;
+  canEdit: boolean;
+  requiresPassword: boolean;
+  canDelete: boolean;
+  requiresDeletePassword: boolean;
+  createdAt: string;
+}
+
+interface CommentListResponse {
+  publicId: string;
+  totalCommentCount: number;
+  comments: CommentItem[];
+  nextCursor: string | null;
+  hasNext: boolean;
+}
+
+interface CommentReplyListResponse {
+  rootCommentId: string;
+  totalReplyCount: number;
+  replies: CommentItem[];
+  nextCursor: string | null;
+  hasNext: boolean;
+}
+
+interface ReplyPagingState {
+  nextCursor: string | null;
+  hasNext: boolean;
+  loading: boolean;
+}
+
+interface CommentUpdateResponse {
+  commentId: string;
+  content: string;
+  updatedAt: string;
+}
+
+export default function PostDetailClient({ params }: { params: Promise<{ publicId: string }> }) {
+  const router = useRouter();
+  const { publicId } = use(params);
+  const [post, setPost] = useState<PostDetail | null>(null);
+  useEffect(() => {
+    if (post) document.title = `${post.title} | 눈팅 SnowThing`;
+  }, [post]);
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [totalCommentCount, setTotalCommentCount] = useState(0);
+  const [commentNextCursor, setCommentNextCursor] = useState<string | null>(null);
+  const [hasNextComments, setHasNextComments] = useState(false);
+  const [isLoadingComments, setIsLoadingComments] = useState(true);
+  const [commentLoadError, setCommentLoadError] = useState("");
+  const [loadMoreCommentError, setLoadMoreCommentError] = useState("");
+  const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
+  const [replyPagingByRootId, setReplyPagingByRootId] = useState<Record<string, ReplyPagingState>>({});
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [reactionMsg, setReactionMsg] = useState("");
+  const [newCommentText, setNewCommentText] = useState("");
+  const [commentAnonPassword, setCommentAnonPassword] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const isSubmittingCommentRef = useRef(false);
+  const commentIdempotencyKey = useIdempotencyKey();
+  const [activeReplyParentId, setActiveReplyParentId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replyAnonPassword, setReplyAnonPassword] = useState("");
+  const [activeEditCommentId, setActiveEditCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [editCommentPassword, setEditCommentPassword] = useState("");
+  const [editCommentError, setEditCommentError] = useState("");
+  const [submittingEditComment, setSubmittingEditComment] = useState(false);
+  const [activeDeleteCommentId, setActiveDeleteCommentId] = useState<string | null>(null);
+  const [deleteCommentPassword, setDeleteCommentPassword] = useState("");
+  const [deleteCommentError, setDeleteCommentError] = useState("");
+  const [submittingDeleteComment, setSubmittingDeleteComment] = useState(false);
+  const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteModalConfig, setDeleteModalConfig] = useState({
+    title: "게시글 삭제 확인",
+    description: "정말로 이 게시글을 삭제하시겠습니까?",
+    requirePassword: false,
+  });
+
+  const handleOpenDeleteModal = () => {
+    if (isAdmin) {
+      setDeleteModalConfig({
+        title: "관리자 게시글 삭제",
+        description: "관리자 권한으로 이 게시글을 즉시 삭제 처리합니다.",
+        requirePassword: false,
+      });
+    } else if (post?.requiresPassword) {
+      setDeleteModalConfig({
+        title: "익명 게시글 삭제",
+        description: "익명 게시글 삭제를 위해 작성 시 설정한 비밀번호를 입력해주세요.",
+        requirePassword: true,
+      });
+    } else {
+      setDeleteModalConfig({
+        title: "게시글 삭제 확인",
+        description: "정말로 이 게시글을 삭제하시겠습니까?",
+        requirePassword: false,
+      });
+    }
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async (password: string) => {
+    const res = await csrfFetch(API_ENDPOINTS.posts.delete(publicId), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        anonymousPassword: password || null,
+      }),
+    });
+
+    if (res.ok) {
+      setIsDeleteModalOpen(false);
+      alert("게시글이 성공적으로 삭제되었습니다.");
+      router.push("/posts");
+    } else {
+      const data = await res.json();
+      throw new Error(data.message || "게시글 삭제 처리에 실패했습니다.");
+    }
+  };
+
+  const fetchComments = useCallback(async (cursor: string | null = null, append = false) => {
+    if (append) {
+      setLoadMoreCommentError("");
+    } else {
+      setIsLoadingComments(true);
+      setCommentLoadError("");
+    }
+
+    try {
+      const res = await fetch(API_ENDPOINTS.posts.comments(publicId, cursor), { credentials: "include" });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.message || "댓글을 불러오지 못했습니다.");
+      }
+
+      const data: CommentListResponse = await res.json();
+      setComments((current) => {
+        if (!append) return data.comments || [];
+        const merged = [...current, ...(data.comments || [])];
+        return merged.filter(
+          (comment, index) => merged.findIndex((candidate) => candidate.commentId === comment.commentId) === index,
+        );
+      });
+      setTotalCommentCount(data.totalCommentCount || 0);
+      setCommentNextCursor(data.nextCursor ?? null);
+      setHasNextComments(Boolean(data.hasNext));
+    } catch (error) {
+      console.error("댓글 로드 실패:", error);
+      const message = errorText(error, "서버 통신 중 오류가 발생했습니다.");
+      if (append) {
+        setLoadMoreCommentError(message);
+      } else {
+        setCommentLoadError(message);
+      }
+    } finally {
+      if (!append) setIsLoadingComments(false);
+    }
+  }, [publicId]);
+
+  const handleLoadMoreComments = async () => {
+    if (isLoadingMoreComments || !hasNextComments || commentNextCursor == null) return;
+
+    setIsLoadingMoreComments(true);
+    try {
+      await fetchComments(commentNextCursor, true);
+    } finally {
+      setIsLoadingMoreComments(false);
+    }
+  };
+
+  const handleLoadMoreReplies = async (rootCommentId: string) => {
+    const root = comments.find((comment) => comment.commentId === rootCommentId);
+    if (!root) return;
+
+    const paging = replyPagingByRootId[rootCommentId];
+    if (paging?.loading) return;
+
+    const cursor = paging?.nextCursor ?? root.previewReplies.at(-1)?.commentId ?? null;
+    setReplyPagingByRootId((current) => ({
+      ...current,
+      [rootCommentId]: {
+        nextCursor: cursor,
+        hasNext: paging?.hasNext ?? root.hasMoreReplies,
+        loading: true,
+      },
+    }));
+
+    try {
+      const res = await fetch(API_ENDPOINTS.comments.replies(rootCommentId, cursor), {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("답글을 불러오지 못했습니다.");
+
+      const data: CommentReplyListResponse = await res.json();
+      setComments((current) =>
+        current.map((comment) => {
+          if (comment.commentId !== rootCommentId) return comment;
+          const merged = [...comment.previewReplies, ...(data.replies || [])];
+          return {
+            ...comment,
+            replyCount: data.totalReplyCount,
+            previewReplies: merged.filter(
+              (reply, index) => merged.findIndex((candidate) => candidate.commentId === reply.commentId) === index,
+            ),
+            hasMoreReplies: data.hasNext,
+          };
+        }),
+      );
+      setReplyPagingByRootId((current) => ({
+        ...current,
+        [rootCommentId]: {
+          nextCursor: data.nextCursor ?? null,
+          hasNext: data.hasNext,
+          loading: false,
+        },
+      }));
+    } catch (error) {
+      console.error("답글 로드 실패:", error);
+      setReplyPagingByRootId((current) => ({
+        ...current,
+        [rootCommentId]: {
+          nextCursor: current[rootCommentId]?.nextCursor ?? cursor,
+          hasNext: current[rootCommentId]?.hasNext ?? root.hasMoreReplies,
+          loading: false,
+        },
+      }));
+    }
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        let movingToCarpool = false;
+        try {
+          // 현재 로그인 유저 프로필 조회
+          try {
+            const meRes = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
+            if (meRes.ok) {
+              const meData = await meRes.json();
+              setCurrentUserPublicId(meData.publicId || null);
+              setIsAdmin(meData.role === "ROLE_ADMIN");
+            }
+          } catch {
+            setCurrentUserPublicId(null);
+            setIsAdmin(false);
+          }
+
+          const res = await fetch(API_ENDPOINTS.posts.detail(publicId), { credentials: "include" });
+          if (res.ok) {
+            const data: PostDetail = await res.json();
+            if (data.categoryCode === "CARPOOL") {
+              movingToCarpool = true;
+              router.replace(`/carpool/${publicId}`);
+              return;
+            }
+            setPost(data);
+          } else {
+            const body = res.status === 403 ? await res.json().catch(() => null) : null;
+            setErrorMsg(body?.code === "POST_009" ? body.message : res.status === 404 ? "게시글을 찾을 수 없거나 삭제되었습니다." : "게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          }
+          await fetchComments();
+        } catch {
+          setErrorMsg("게시글 로드에 실패했습니다.");
+        } finally {
+          if (!movingToCarpool) setLoading(false);
+        }
+      })();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchComments, publicId, router]);
+
+  const handleReaction = async (type: "LIKE" | "DISLIKE") => {
+    try {
+      const isActive = post?.activeReactionTypes.includes(type) ?? false;
+      const res = await csrfFetch(API_ENDPOINTS.posts.reaction(publicId, type), {
+        method: isActive ? "DELETE" : "PUT",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setReactionMsg(data.message);
+        setPost((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            likeCount: data.likeCount,
+            dislikeCount: data.dislikeCount,
+            activeReactionTypes: data.active
+              ? Array.from(new Set([...current.activeReactionTypes, type]))
+              : current.activeReactionTypes.filter((activeType) => activeType !== type),
+          };
+        });
+        return;
+      }
+
+      const errorData = await res.json();
+      setReactionMsg(errorData.message || "투표 처리 실패");
+    } catch {
+      setReactionMsg("서버 통신 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setReactionMsg("게시글 주소를 복사했습니다.");
+    } catch {
+      setReactionMsg("주소를 복사하지 못했습니다.");
+    }
+  };
+
+  const isAnonymousPost = Boolean(post?.isAnonymous || post?.categoryCode === "ANONYMOUS");
+  const canWriteComment = isAnonymousPost || Boolean(currentUserPublicId);
+
+  const handleCreateComment = async (parentId: string | null) => {
+    if (isSubmittingCommentRef.current || submittingComment) return;
+    const text = parentId ? replyText : newCommentText;
+    if (!text.trim()) {
+      alert("댓글 내용을 입력해주세요.");
+      return;
+    }
+
+    let isAnonymous = false;
+    let anonymousPassword: string | null = null;
+
+    if (isAnonymousPost) {
+      isAnonymous = true;
+      if (!currentUserPublicId) {
+        const pwd = parentId ? replyAnonPassword : commentAnonPassword;
+        if (!pwd.trim()) {
+          alert("비밀번호를 입력해주세요.");
+          return;
+        }
+        anonymousPassword = pwd.trim();
+      }
+    } else {
+      if (!currentUserPublicId) {
+        if (confirm("댓글을 작성하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
+          router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        }
+        return;
+      }
+      isAnonymous = false;
+      anonymousPassword = null;
+    }
+
+    isSubmittingCommentRef.current = true;
+    setSubmittingComment(true);
+    try {
+      const body = JSON.stringify({
+        parentId,
+        content: text.trim(),
+        isAnonymous,
+        anonymousPassword,
+      });
+      const res = await csrfFetch(API_ENDPOINTS.posts.comments(publicId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: commentIdempotencyKey.keyFor(body) },
+        body,
+      });
+
+      if (res.ok) {
+        commentIdempotencyKey.reset();
+        const createdComment: CommentItem = await res.json();
+        if (parentId) {
+          setReplyText("");
+          setReplyAnonPassword("");
+          setActiveReplyParentId(null);
+          setComments((current) =>
+            current.map((comment) => {
+              if (comment.commentId !== parentId) return comment;
+              const nextReplyCount = comment.replyCount + 1;
+              const nextPreviewReplies = comment.hasMoreReplies
+                ? comment.previewReplies
+                : [...comment.previewReplies, createdComment].slice(0, 5);
+              return {
+                ...comment,
+                replyCount: nextReplyCount,
+                previewReplies: nextPreviewReplies,
+                hasMoreReplies: comment.hasMoreReplies || nextReplyCount > 5,
+              };
+            }),
+          );
+          setTotalCommentCount((current) => current + 1);
+        } else {
+          setNewCommentText("");
+          setCommentAnonPassword("");
+          if (hasNextComments) {
+            await fetchComments();
+          } else {
+            setComments((current) => [...current, createdComment]);
+            setTotalCommentCount((current) => current + 1);
+          }
+        }
+        setPost((current) => (current ? { ...current, commentCount: current.commentCount + 1 } : current));
+        return;
+      }
+
+      const errorData = await res.json();
+      alert(`댓글 작성 실패: ${errorData.message || "요청을 처리하지 못했습니다."}`);
+    } catch {
+      alert("서버 통신 중 오류가 발생했습니다.");
+    } finally {
+      isSubmittingCommentRef.current = false;
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleStartEditComment = (comment: CommentItem) => {
+    setActiveReplyParentId(null);
+    setActiveEditCommentId(comment.commentId);
+    setEditCommentText(comment.content);
+    setEditCommentPassword("");
+    setEditCommentError("");
+  };
+
+  const handleCancelEditComment = () => {
+    if (submittingEditComment) return;
+    setActiveEditCommentId(null);
+    setEditCommentText("");
+    setEditCommentPassword("");
+    setEditCommentError("");
+  };
+
+  const handleUpdateComment = async (comment: CommentItem) => {
+    const content = editCommentText.trim();
+    const requiresPassword = comment.requiresPassword;
+    if (!content) {
+      setEditCommentError("댓글 내용을 입력해주세요.");
+      return;
+    }
+    if (content.length > 1000) {
+      setEditCommentError("댓글은 1,000자 이하로 입력해주세요.");
+      return;
+    }
+    if (requiresPassword && !editCommentPassword.trim()) {
+      setEditCommentError("익명 댓글 비밀번호를 입력해주세요.");
+      return;
+    }
+    if (content === comment.content) {
+      setEditCommentError("변경된 내용이 없습니다.");
+      return;
+    }
+
+    setSubmittingEditComment(true);
+    setEditCommentError("");
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.comments.delete(comment.commentId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          anonymousPassword: editCommentPassword.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "댓글 수정에 실패했습니다.");
+      }
+
+      const updated: CommentUpdateResponse = await res.json();
+      setComments((current) => updateCommentContent(current, updated.commentId, updated.content));
+      setActiveEditCommentId(null);
+      setEditCommentText("");
+      setEditCommentPassword("");
+      setEditCommentError("");
+    } catch (error) {
+      setEditCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
+    } finally {
+      setSubmittingEditComment(false);
+    }
+  };
+
+  const handleStartDeleteComment = (commentId: string) => {
+    setActiveDeleteCommentId(commentId);
+    setDeleteCommentPassword("");
+    setDeleteCommentError("");
+  };
+
+  const handleCancelDeleteComment = () => {
+    setActiveDeleteCommentId(null);
+    setDeleteCommentPassword("");
+    setDeleteCommentError("");
+  };
+
+  const handleConfirmDeleteComment = async (comment: CommentItem) => {
+    if (comment.requiresDeletePassword && !deleteCommentPassword.trim()) {
+      setDeleteCommentError("비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setSubmittingDeleteComment(true);
+    setDeleteCommentError("");
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.comments.delete(comment.commentId), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anonymousPassword: deleteCommentPassword.trim() || null }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "댓글 삭제에 실패했습니다.");
+      }
+
+      handleCancelDeleteComment();
+      setReplyPagingByRootId({});
+      await fetchComments();
+      setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
+    } catch (error) {
+      setDeleteCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
+    } finally {
+      setSubmittingDeleteComment(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--snow-background)]">
+        <TopNav active="posts" />
+        <div className="p-12 text-center text-sm text-[var(--snow-muted)]">로딩 중입니다.</div>
+      </div>
+    );
+  }
+
+  if (errorMsg || !post) {
+    return (
+      <div className="min-h-screen bg-[var(--snow-background)]">
+        <TopNav active="posts" />
+        <main className="snow-container px-5 py-12 text-center">
+          <p className="text-[var(--snow-error)]">{errorMsg || "게시글이 존재하지 않습니다."}</p>
+          <Link href="/posts" className="snow-btn-secondary mt-5">
+            목록으로 돌아가기
+          </Link>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[var(--snow-background)]">
+      <TopNav active="posts" />
+      <main className="post-detail-page community-container content-detail-page">
+        <div className="post-detail-toolbar">
+          <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link>
+        </div>
+        <div className="post-detail-layout">
+          <div className="post-detail-primary">
+          <article className="post-detail-card">
+            <div className="post-detail-meta-top">
+              <span>#{post.categoryCode === "QNA" ? "질문게시판" : post.categoryName}</span>
+              <div><span className="material-symbols-outlined">visibility</span>{post.viewCount}<span className="material-symbols-outlined">chat_bubble</span>{post.commentCount}<span className="material-symbols-outlined">thumb_up</span>{post.likeCount}</div>
+            </div>
+
+            <h1>{post.title}</h1>
+
+            <div className="post-detail-author">
+                {isAnonymousPost ? null : (
+                <CommentProfileAvatar
+                  className="post-detail-author-avatar"
+                  nickname={post.writer.nickname}
+                  profileImageUrl={post.writer.profileImageUrl}
+                  size={32}
+                />
+              )}
+              <div><AuthorMenu publicId={isAnonymousPost ? null : post.writer.publicId} nickname={post.writer.nickname} /><small>{formatPostDateTime(post.createdAt)}</small></div>
+              {(() => {
+                const canEdit = post.isAuthor || post.requiresPassword;
+                const canDelete = Boolean(isAdmin || canEdit);
+                if (!canEdit && !canDelete) return null;
+
+                return (
+                  <div className="post-detail-owner-actions">
+                    {canEdit && (
+                      <Link href={`/posts/${publicId}/edit`}>
+                        수정
+                      </Link>
+                    )}
+                    {canDelete && (
+                      <button onClick={handleOpenDeleteModal}>
+                        삭제
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <section className="post-detail-content-panel" aria-label="게시글 내용">
+              <div className="post-detail-content">
+                <ToastViewer content={post.content} />
+              </div>
+            </section>
+
+            {post.images?.length > 0 && (
+              <div className="post-detail-images">
+                {post.images.map((imageUrl) => (
+                  <Image key={imageUrl} src={imageUrl} alt="첨부 이미지" width={1200} height={900} unoptimized />
+                ))}
+              </div>
+            )}
+
+            {post.categoryCode !== "INQUIRY" && (
+            <div className="post-detail-reactions">
+              <div>
+                  <button onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
+                  <span className="material-symbols-outlined text-[17px]">thumb_up</span>
+                  추천 {post.likeCount}
+                </button>
+                  <button onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
+                  <span className="material-symbols-outlined text-[17px]">thumb_down</span>
+                  비추천 {post.dislikeCount}
+                </button>
+                <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined">share</span>공유</button>
+                <ReportButton targetType="POST" targetId={publicId} />
+              </div>
+              {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
+            </div>
+            )}
+          </article>
+
+          <section id="comments" className="post-comments-card">
+            <header><h2>댓글 <span>{totalCommentCount}</span></h2></header>
+
+            <div className="post-comment-compose">
+              <textarea
+                rows={3}
+                placeholder={canWriteComment ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
+                disabled={!canWriteComment}
+                value={newCommentText}
+                onChange={(event) => setNewCommentText(event.target.value)}
+                className="post-comment-textarea"
+              />
+              <div className="post-comment-compose-footer">
+                {isAnonymousPost && !currentUserPublicId && (
+                  <label className="post-comment-password">
+                    <span>비밀번호</span>
+                    <input
+                      type="password"
+                      placeholder="비밀번호를 입력하세요"
+                      value={commentAnonPassword}
+                      onChange={(event) => setCommentAnonPassword(event.target.value)}
+                    />
+                  </label>
+                )}
+                {canWriteComment ? (
+                  <button className="post-comment-submit-button" disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
+                    댓글 등록 <span className="material-symbols-outlined">send</span>
+                  </button>
+                ) : (
+                  <Link className="post-comment-submit-button" href={`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`}>
+                    로그인하고 댓글 쓰기
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className="post-comment-list">
+              {isLoadingComments ? (
+                <p role="status" className="py-8 text-center text-sm text-[var(--snow-muted)]">
+                  댓글을 불러오는 중입니다.
+                </p>
+              ) : commentLoadError ? (
+                <div role="alert" className="grid justify-items-center gap-3 py-8 text-center">
+                  <p className="text-sm text-red-600">{commentLoadError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void fetchComments()}
+                    className="snow-btn-secondary"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              ) : comments.length === 0 ? (
+                <p className="py-8 text-center text-sm text-[var(--snow-muted)]">첫 댓글을 작성해보세요.</p>
+              ) : (
+                comments.map((comment) => (
+                  <CommentRow
+                    key={comment.commentId}
+                    item={comment}
+                    isAnonymousPost={isAnonymousPost}
+                    currentUserPublicId={currentUserPublicId}
+                    activeReplyParentId={activeReplyParentId}
+                    setActiveReplyParentId={setActiveReplyParentId}
+                    replyText={replyText}
+                    setReplyText={setReplyText}
+                    replyAnonPassword={replyAnonPassword}
+                    setReplyAnonPassword={setReplyAnonPassword}
+                    handleCreateComment={handleCreateComment}
+                    activeEditCommentId={activeEditCommentId}
+                    editCommentText={editCommentText}
+                    setEditCommentText={setEditCommentText}
+                    editCommentPassword={editCommentPassword}
+                    setEditCommentPassword={setEditCommentPassword}
+                    editCommentError={editCommentError}
+                    submittingEditComment={submittingEditComment}
+                    handleStartEditComment={handleStartEditComment}
+                    handleCancelEditComment={handleCancelEditComment}
+                    handleUpdateComment={handleUpdateComment}
+                    activeDeleteCommentId={activeDeleteCommentId}
+                    deleteCommentPassword={deleteCommentPassword}
+                    setDeleteCommentPassword={setDeleteCommentPassword}
+                    deleteCommentError={deleteCommentError}
+                    submittingDeleteComment={submittingDeleteComment}
+                    handleStartDeleteComment={handleStartDeleteComment}
+                    handleCancelDeleteComment={handleCancelDeleteComment}
+                    handleConfirmDeleteComment={handleConfirmDeleteComment}
+                    submittingComment={submittingComment}
+                    handleLoadMoreReplies={handleLoadMoreReplies}
+                    isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
+                  />
+                ))
+              )}
+            </div>
+
+            {!isLoadingComments && !commentLoadError && hasNextComments && (
+              <div className="post-comments-more">
+                {loadMoreCommentError && (
+                  <p role="alert" className="text-center text-sm text-red-600">
+                    {loadMoreCommentError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={isLoadingMoreComments}
+                  onClick={() => void handleLoadMoreComments()}
+                  className="post-comments-more-button"
+                >
+                  {isLoadingMoreComments
+                    ? "댓글을 불러오는 중..."
+                    : loadMoreCommentError
+                      ? "댓글 더보기 다시 시도"
+                      : "댓글 더보기 (20개)"}
+                </button>
+              </div>
+            )}
+          </section>
+          </div>
+        </div>
+      </main>
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={deleteModalConfig.title}
+        description={deleteModalConfig.description}
+        requirePassword={deleteModalConfig.requirePassword}
+      />
+      <Footer />
+    </div>
+  );
+}
+
+function CommentRow({
+  item,
+  isAnonymousPost,
+  currentUserPublicId,
+  activeReplyParentId,
+  setActiveReplyParentId,
+  replyText,
+  setReplyText,
+  replyAnonPassword,
+  setReplyAnonPassword,
+  handleCreateComment,
+  submittingComment,
+  activeEditCommentId,
+  editCommentText,
+  setEditCommentText,
+  editCommentPassword,
+  setEditCommentPassword,
+  editCommentError,
+  submittingEditComment,
+  handleStartEditComment,
+  handleCancelEditComment,
+  handleUpdateComment,
+  activeDeleteCommentId,
+  deleteCommentPassword,
+  setDeleteCommentPassword,
+  deleteCommentError,
+  submittingDeleteComment,
+  handleStartDeleteComment,
+  handleCancelDeleteComment,
+  handleConfirmDeleteComment,
+  handleLoadMoreReplies,
+  isLoadingReplies,
+}: {
+  item: CommentItem;
+  isAnonymousPost: boolean;
+  currentUserPublicId: string | null;
+  activeReplyParentId: string | null;
+  setActiveReplyParentId: (id: string | null) => void;
+  replyText: string;
+  setReplyText: (text: string) => void;
+  replyAnonPassword: string;
+  setReplyAnonPassword: (value: string) => void;
+  handleCreateComment: (parentId: string | null) => Promise<void>;
+  submittingComment: boolean;
+  activeEditCommentId: string | null;
+  editCommentText: string;
+  setEditCommentText: (text: string) => void;
+  editCommentPassword: string;
+  setEditCommentPassword: (password: string) => void;
+  editCommentError: string;
+  submittingEditComment: boolean;
+  handleStartEditComment: (comment: CommentItem) => void;
+  handleCancelEditComment: () => void;
+  handleUpdateComment: (comment: CommentItem) => Promise<void>;
+  activeDeleteCommentId: string | null;
+  deleteCommentPassword: string;
+  setDeleteCommentPassword: (password: string) => void;
+  deleteCommentError: string;
+  submittingDeleteComment: boolean;
+  handleStartDeleteComment: (commentId: string) => void;
+  handleCancelDeleteComment: () => void;
+  handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
+  handleLoadMoreReplies: (rootCommentId: string) => Promise<void>;
+  isLoadingReplies: boolean;
+}) {
+  const canEdit = canEditComment(item);
+  const canDelete = canDeleteComment(item);
+  const isEditing = activeEditCommentId === item.commentId;
+  const toggleReplyEditor = () => {
+    setActiveReplyParentId(activeReplyParentId === item.commentId ? null : item.commentId);
+  };
+
+  return (
+    <div className="post-comment-item">
+      <div className={`comment-youtube-row ${isAnonymousPost ? "anonymous-comment-row" : ""}`}>
+        {!isAnonymousPost && <CommentProfileAvatar nickname={getWriterName(item)} profileImageUrl={item.writer?.profileImageUrl} />}
+        <div className="comment-youtube-body">
+          <header>
+            <AuthorMenu
+              className={item.isDeleted ? "deleted" : ""}
+              publicId={isAnonymousPost || item.isAnonymous || item.isDeleted ? null : item.writer?.publicId}
+              nickname={isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
+            />
+            <time>{formatCommentDate(item.createdAt)}</time>
+            {canDelete && (
+              <CommentDeleteInline
+                comment={item}
+                isActive={activeDeleteCommentId === item.commentId}
+                onOpen={() => handleStartDeleteComment(item.commentId)}
+                onClose={handleCancelDeleteComment}
+                password={deleteCommentPassword}
+                setPassword={setDeleteCommentPassword}
+                error={activeDeleteCommentId === item.commentId ? deleteCommentError : ""}
+                submitting={submittingDeleteComment}
+                onConfirm={() => void handleConfirmDeleteComment(item)}
+              />
+            )}
+          </header>
+          {isEditing ? (
+            <CommentEditForm
+              comment={item}
+              content={editCommentText}
+              setContent={setEditCommentText}
+              password={editCommentPassword}
+              setPassword={setEditCommentPassword}
+              error={editCommentError}
+              submitting={submittingEditComment}
+              requiresPassword={item.requiresPassword}
+              onCancel={handleCancelEditComment}
+              onSubmit={() => void handleUpdateComment(item)}
+            />
+          ) : (
+            <>
+              <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>
+              <div className="comment-youtube-actions">
+                <button type="button" onClick={toggleReplyEditor}>{activeReplyParentId === item.commentId ? "답글 취소" : "답글"}</button>
+                {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+                {!item.isDeleted && <ReportButton targetType="COMMENT" targetId={item.commentId} />}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {activeReplyParentId === item.commentId && (
+          <div className="post-reply-compose">
+            <textarea
+              rows={2}
+              value={replyText}
+              onChange={(event) => setReplyText(event.target.value)}
+              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
+              className="post-comment-textarea"
+            />
+            <div className="post-comment-compose-footer">
+              {isAnonymousPost && !currentUserPublicId && (
+                <label className="post-comment-password">
+                  <span>비밀번호</span>
+                    <input
+                      type="password"
+                      placeholder="비밀번호를 입력하세요"
+                      value={replyAnonPassword}
+                      onChange={(event) => setReplyAnonPassword(event.target.value)}
+                    />
+                </label>
+              )}
+              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
+              <button
+                disabled={submittingComment}
+                onClick={() => void handleCreateComment(item.commentId)}
+                className="post-comment-submit-button"
+              >
+                답글 등록
+              </button>
+            </div>
+          </div>
+      )}
+
+      {item.previewReplies.length > 0 && (
+          <div className="comment-reply-list">
+            {item.previewReplies.map((reply) => (
+              <ReplyRow
+                key={reply.commentId}
+                item={reply}
+                isAnonymousPost={isAnonymousPost}
+                onReply={toggleReplyEditor}
+                isEditing={activeEditCommentId === reply.commentId}
+                editCommentText={editCommentText}
+                setEditCommentText={setEditCommentText}
+                editCommentPassword={editCommentPassword}
+                setEditCommentPassword={setEditCommentPassword}
+                editCommentError={editCommentError}
+                submittingEditComment={submittingEditComment}
+                handleStartEditComment={handleStartEditComment}
+                handleCancelEditComment={handleCancelEditComment}
+                handleUpdateComment={handleUpdateComment}
+                activeDeleteCommentId={activeDeleteCommentId}
+                deleteCommentPassword={deleteCommentPassword}
+                setDeleteCommentPassword={setDeleteCommentPassword}
+                deleteCommentError={deleteCommentError}
+                submittingDeleteComment={submittingDeleteComment}
+                handleStartDeleteComment={handleStartDeleteComment}
+                handleCancelDeleteComment={handleCancelDeleteComment}
+                handleConfirmDeleteComment={handleConfirmDeleteComment}
+              />
+            ))}
+          </div>
+      )}
+
+      {item.hasMoreReplies && (
+          <div className="comment-reply-more">
+            <button
+              type="button"
+              disabled={isLoadingReplies}
+              onClick={() => void handleLoadMoreReplies(item.commentId)}
+              className="text-black disabled:text-[var(--snow-muted)]"
+            >
+              {isLoadingReplies ? "답글을 불러오는 중..." : `답글 더보기 (총 ${item.replyCount}개)`}
+            </button>
+          </div>
+      )}
+    </div>
+  );
+}
+
+function ReplyRow({
+  item,
+  isAnonymousPost,
+  onReply,
+  isEditing,
+  editCommentText,
+  setEditCommentText,
+  editCommentPassword,
+  setEditCommentPassword,
+  editCommentError,
+  submittingEditComment,
+  handleStartEditComment,
+  handleCancelEditComment,
+  handleUpdateComment,
+  activeDeleteCommentId,
+  deleteCommentPassword,
+  setDeleteCommentPassword,
+  deleteCommentError,
+  submittingDeleteComment,
+  handleStartDeleteComment,
+  handleCancelDeleteComment,
+  handleConfirmDeleteComment,
+}: {
+  item: CommentItem;
+  isAnonymousPost: boolean;
+  onReply: () => void;
+  isEditing: boolean;
+  editCommentText: string;
+  setEditCommentText: (text: string) => void;
+  editCommentPassword: string;
+  setEditCommentPassword: (password: string) => void;
+  editCommentError: string;
+  submittingEditComment: boolean;
+  handleStartEditComment: (comment: CommentItem) => void;
+  handleCancelEditComment: () => void;
+  handleUpdateComment: (comment: CommentItem) => Promise<void>;
+  activeDeleteCommentId: string | null;
+  deleteCommentPassword: string;
+  setDeleteCommentPassword: (password: string) => void;
+  deleteCommentError: string;
+  submittingDeleteComment: boolean;
+  handleStartDeleteComment: (commentId: string) => void;
+  handleCancelDeleteComment: () => void;
+  handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
+}) {
+  const canEdit = canEditComment(item);
+  const canDelete = canDeleteComment(item);
+
+  return (
+    <div className="post-comment-reply">
+      <div className={`comment-youtube-row ${isAnonymousPost ? "anonymous-comment-row" : ""}`}>
+        <span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>
+        {!isAnonymousPost && <CommentProfileAvatar nickname={getWriterName(item)} profileImageUrl={item.writer?.profileImageUrl} />}
+        <div className="comment-youtube-body">
+          <header>
+            <AuthorMenu
+              className={item.isDeleted ? "deleted" : ""}
+              publicId={isAnonymousPost || item.isAnonymous || item.isDeleted ? null : item.writer?.publicId}
+              nickname={isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
+            />
+            <time>{formatCommentDate(item.createdAt)}</time>
+          {canDelete && (
+            <CommentDeleteInline
+              comment={item}
+              isActive={activeDeleteCommentId === item.commentId}
+              onOpen={() => handleStartDeleteComment(item.commentId)}
+              onClose={handleCancelDeleteComment}
+              password={deleteCommentPassword}
+              setPassword={setDeleteCommentPassword}
+              error={activeDeleteCommentId === item.commentId ? deleteCommentError : ""}
+              submitting={submittingDeleteComment}
+              onConfirm={() => void handleConfirmDeleteComment(item)}
+            />
+          )}
+          </header>
+          {isEditing ? (
+            <CommentEditForm
+              comment={item}
+              content={editCommentText}
+              setContent={setEditCommentText}
+              password={editCommentPassword}
+              setPassword={setEditCommentPassword}
+              error={editCommentError}
+              submitting={submittingEditComment}
+              requiresPassword={item.requiresPassword}
+              onCancel={handleCancelEditComment}
+              onSubmit={() => void handleUpdateComment(item)}
+            />
+          ) : <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>}
+          {!item.isDeleted && !isEditing && <div className="comment-youtube-actions">
+            <button type="button" onClick={onReply}>답글</button>
+            {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+            <ReportButton targetType="COMMENT" targetId={item.commentId} />
+          </div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommentEditForm({
+  comment,
+  content,
+  setContent,
+  password,
+  setPassword,
+  error,
+  submitting,
+  requiresPassword,
+  onCancel,
+  onSubmit,
+}: {
+  comment: CommentItem;
+  content: string;
+  setContent: (content: string) => void;
+  password: string;
+  setPassword: (password: string) => void;
+  error: string;
+  submitting: boolean;
+  requiresPassword: boolean;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const contentId = `comment-edit-content-${comment.commentId}`;
+  const passwordId = `comment-edit-password-${comment.commentId}`;
+
+  return (
+    <div className="mt-3 rounded border border-[var(--snow-border)] bg-[var(--snow-background)] p-4">
+      <label htmlFor={contentId} className="text-[13px] font-semibold text-[var(--snow-ink)]">
+        댓글 내용
+      </label>
+      <textarea
+        id={contentId}
+        rows={3}
+        maxLength={1000}
+        value={content}
+        disabled={submitting}
+        onChange={(event) => setContent(event.target.value)}
+        className="snow-textarea mt-2 min-h-[100px]"
+      />
+      <div className="mt-1 text-right text-xs text-[var(--snow-muted)]">{content.length}/1000</div>
+      {requiresPassword && (
+        <div className="mt-3">
+          <label htmlFor={passwordId} className="text-[13px] font-semibold text-[var(--snow-ink)]">
+            비밀번호
+          </label>
+          <input
+            id={passwordId}
+            type="password"
+            value={password}
+            disabled={submitting}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="작성할 때 입력한 비밀번호"
+            className="snow-input mt-2 w-full sm:w-64"
+          />
+        </div>
+      )}
+      {error && <p className="mt-3 text-sm font-bold text-[var(--snow-error)]">{error}</p>}
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" disabled={submitting} onClick={onCancel} className="snow-btn-secondary">
+          취소
+        </button>
+        <button type="button" disabled={submitting} onClick={onSubmit} className="snow-btn-primary">
+          {submitting ? "수정 중..." : "수정 완료"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function getWriterName(comment: CommentItem) {
+  if (comment.isAnonymous) return `익명 (${comment.writerIp})`;
+  return comment.writer?.nickname || "탈퇴한 회원";
+}
+
+function canEditComment(comment: CommentItem) {
+  return comment.canEdit;
+}
+
+function updateCommentContent(comments: CommentItem[], commentId: string, content: string) {
+  return comments.map((comment) => {
+    if (comment.commentId === commentId) return { ...comment, content };
+    return {
+      ...comment,
+      previewReplies: comment.previewReplies.map((reply) =>
+        reply.commentId === commentId ? { ...reply, content } : reply,
+      ),
+    };
+  });
+}
+
+function CommentDeleteInline({
+  comment,
+  isActive,
+  onOpen,
+  onClose,
+  password,
+  setPassword,
+  error,
+  submitting,
+  onConfirm,
+}: {
+  comment: CommentItem;
+  isActive: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  password: string;
+  setPassword: (val: string) => void;
+  error: string;
+  submitting: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={isActive ? onClose : onOpen}
+        className={`comment-delete-toggle${isActive ? " active" : ""}`}
+        title={isActive ? "취소" : "댓글 삭제"}
+      >
+        <span className="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+
+      {isActive && (
+        <>
+          {/* 외부 클릭 시 닫히도록 투명 백드롭 오버레이 */}
+          <div className="fixed inset-0 z-40" onClick={onClose} />
+
+          {/* 시간 및 아이콘 바로 아래에 완벽하게 플로팅되는 팝오버 (레이아웃 밀림 0) */}
+          <div className="comment-delete-popover">
+            {comment.requiresDeletePassword ? (
+              <input
+                type="password"
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onConfirm();
+                  } else if (e.key === "Escape") {
+                    onClose();
+                  }
+                }}
+                autoFocus
+              />
+            ) : (
+              <span className="comment-delete-question">
+                삭제할까요?
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={submitting}
+              className="comment-delete-confirm"
+            >
+              {submitting ? "..." : "확인"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="comment-delete-close"
+              title="취소"
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+            {error && (
+              <div className="comment-delete-error" role="alert">
+                {error}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function formatPostDateTime(dateString: string): string {
+  return formatKoreanDate(dateString, KOREAN_DATE_TIME);
+}
+
+function formatCommentDate(dateString: string): string {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    return `${mm}.${dd} ${hh}:${min}`;
+  } catch {
+    return dateString;
+  }
+}
+
+function canDeleteComment(comment: CommentItem): boolean {
+  return comment.canDelete;
+}
