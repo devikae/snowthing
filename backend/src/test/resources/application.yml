@@ -20,7 +20,17 @@ spring:
       ddl-auto: create-drop
     show-sql: false
 
+# 실제 AWS에 닿지 않게 한다. S3를 부르는 스케줄러는 긴 주기로 두고, 버킷도 없는 이름을 쓴다.
+cloud:
+  aws:
+    s3:
+      bucket: snowthing-test-no-such-bucket
+
 snowthing:
+  post-images:
+    cleanup-delay-ms: 3600000
+  market-thumbnails:
+    delay-ms: 3600000
   email:
     verification:
       secret: test-email-verification-secret-at-least-32-bytes

@@ -306,6 +306,27 @@ class MarketThumbnailIntegrationTest {
     }
 
     @Test
+    void deletingThumbnailKeepsRetryingPastAttemptLimit() {
+        doThrow(new IllegalStateException("test failure"))
+                .when(s3)
+                .deleteObject(any(DeleteObjectRequest.class));
+        queue(null);
+        for (int attempt = 0; attempt < 7; attempt++) {
+            jdbc.update(
+                    "UPDATE market_thumbnail SET due_at='2000-01-01',lease_until=NULL WHERE post_public_id=?",
+                    id);
+            assertThatThrownBy(() -> thumbnails.processOne(id))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT due_at IS NOT NULL FROM market_thumbnail WHERE post_public_id=?",
+                                    Boolean.class,
+                                    id))
+                    .isTrue();
+        }
+    }
+
+    @Test
     void onlyRepresentativeIsGeneratedAndReplacementReusesOneObjectKey() {
         queue(first);
         verifyNoInteractions(images);
