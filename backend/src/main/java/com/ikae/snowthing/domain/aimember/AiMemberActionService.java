@@ -32,6 +32,7 @@ import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.service.CommentService;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.service.PostService;
@@ -72,6 +73,9 @@ public class AiMemberActionService {
     private final ScheduledExecutorService aiMemberExecutor;
 
     public void writePost(AiMember member, LocalDateTime now) {
+        if (!isActive(member)) {
+            return;
+        }
         String board =
                 AiMemberQueryRepository.BOARDS.get(
                         ThreadLocalRandom.current().nextInt(AiMemberQueryRepository.BOARDS.size()));
@@ -108,7 +112,7 @@ public class AiMemberActionService {
      */
     public boolean writeComment(Reaction reaction, List<CommentView> comments, LocalDateTime now) {
         AiMember member = roster.byMemberId(reaction.memberId()).orElse(null);
-        if (member == null) {
+        if (member == null || !isActive(member)) {
             return false;
         }
         Labels labels = new Labels(member);
@@ -159,7 +163,11 @@ public class AiMemberActionService {
     }
 
     /** 대화를 한 번에 만들고 20~90초 간격으로 나눠 보낸다. */
-    public void chat(List<AiMember> participants, int lineCount, LocalDateTime now) {
+    public void chat(List<AiMember> candidates, int lineCount, LocalDateTime now) {
+        List<AiMember> participants = candidates.stream().filter(this::isActive).toList();
+        if (participants.isEmpty()) {
+            return;
+        }
         Map<String, AiMember> byKey = new HashMap<>();
         participants.forEach(member -> byKey.put(member.persona().key(), member));
         Map<String, String> publicIdToKey = new HashMap<>();
@@ -205,6 +213,9 @@ public class AiMemberActionService {
 
     private void sendChat(AiMember member, String text) {
         try {
+            if (!isActive(member)) {
+                return;
+            }
             ChatMessageResponse message =
                     chatService.processMessage(
                             new ChatMessageRequest(null, text), userDetails(member), null);
@@ -260,6 +271,12 @@ public class AiMemberActionService {
             case MARCH -> "폐장 무렵";
             default -> "비시즌";
         };
+    }
+
+    /** 명단은 기동 때 만들어지므로 그 뒤의 정지는 여기서 본다. 유료 compose 호출 전에 확인한다. */
+    private boolean isActive(AiMember member) {
+        return memberRepository.findStatusById(member.memberId()).orElse(null)
+                == MemberStatus.ACTIVE;
     }
 
     private CustomUserDetails userDetails(AiMember member) {

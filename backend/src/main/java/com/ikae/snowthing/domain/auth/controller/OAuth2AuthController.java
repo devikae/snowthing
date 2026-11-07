@@ -33,6 +33,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
+import com.ikae.snowthing.domain.auth.service.AuthService;
 import com.ikae.snowthing.domain.auth.service.OAuthAuthorizationIpRateLimiter;
 import com.ikae.snowthing.domain.auth.service.SocialAuthService;
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -59,6 +60,7 @@ public class OAuth2AuthController {
 
     private final OAuth2ExternalClient oauth2ExternalClient;
     private final SocialAuthService socialAuthService;
+    private final AuthService authService;
     private final OAuth2Properties oauth2Properties;
     private final SecurityContextRepository securityContextRepository;
     private final MemberSessionRegistry memberSessionRegistry;
@@ -213,6 +215,13 @@ public class OAuth2AuthController {
         securityContextRepository.saveContext(securityContext, httpRequest, httpResponse);
         session.setMaxInactiveInterval(DEFAULT_SESSION_TIMEOUT_SECONDS);
         memberSessionRegistry.register(userDetails.getPublicId(), session);
+        // 인증과 등록 사이의 정지를 잡는다. 이유는 AuthService.ensureStillActive 참고.
+        try {
+            authService.ensureStillActive(userDetails.getPublicId());
+        } catch (CustomException exception) {
+            memberSessionRegistry.invalidateAll(userDetails.getPublicId());
+            throw exception;
+        }
     }
 
     private ResponseEntity<Void> redirectToLoginError(ErrorCode errorCode) {

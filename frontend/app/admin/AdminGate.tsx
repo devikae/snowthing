@@ -55,6 +55,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
               <Link href="/admin/search" aria-current={pathname?.startsWith("/admin/search") ? "page" : undefined}>
                 검색 인덱스
               </Link>
+              <Link href="/admin/members" aria-current={pathname?.startsWith("/admin/members") ? "page" : undefined}>
+                회원
+              </Link>
             </nav>
             {children}
           </>

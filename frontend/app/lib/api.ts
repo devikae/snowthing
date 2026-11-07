@@ -93,6 +93,10 @@ export const API_ENDPOINTS = {
       `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}/${action}`,
     apiTokens: `${API_V1_URL}/admin/api-tokens`,
     revokeApiToken: (tokenId: string) => `${API_V1_URL}/admin/api-tokens/${encodeURIComponent(tokenId)}/revoke`,
+    members: (query: string, page: number, size = 20) =>
+      `${API_V1_URL}/admin/members?page=${page}&size=${size}${query ? `&query=${encodeURIComponent(query)}` : ""}`,
+    memberStatusAction: (publicId: string, action: "suspend" | "reinstate") =>
+      `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
     searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
     searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
   },
