@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { csrfFetch } from "../lib/csrfFetch";
+import { clearViewerCache } from "../lib/viewer";
 import { API_ENDPOINTS } from "../lib/api";
 import { errorText } from "../lib/errorText";
 import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "./RegistrationConsentForm";
@@ -143,6 +144,7 @@ export default function SignUpPage() {
       const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ...consentPayload(consent) }) });
       if (!response.ok) throw new Error(await readError(response, "회원가입에 실패했습니다."));
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
+      clearViewerCache();
       router.push(loginResponse.ok ? "/" : "/login");
     } catch (error) {
       setErrorMsg(errorText(error, "회원가입을 처리하지 못했습니다."));

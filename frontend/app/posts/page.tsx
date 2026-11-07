@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav, type ActiveNav } from "../components/SiteChrome";
 import { PostImageIcon } from "../components/PostImageIcon";
 import { PostListAuthor } from "../components/PostListAuthor";
-import { API_ENDPOINTS } from "../lib/api";
+import { API_ENDPOINTS } from "../lib/api";
+import { fetchViewer, isAdminViewer } from "../lib/viewer";
 
 interface PostItem {
   publicId: string;
@@ -134,10 +135,9 @@ function PostListContent() {
       .catch(() => {
         if (!controller.signal.aborted) setNotices([]);
       });
-    void fetch(API_ENDPOINTS.members.me, { credentials: "include", signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((member) => setIsAdmin(member?.role === "ROLE_ADMIN"))
-      .catch(() => {});
+    void fetchViewer().then((viewer) => {
+      if (!controller.signal.aborted) setIsAdmin(isAdminViewer(viewer));
+    });
     return () => controller.abort();
   }, []);
 

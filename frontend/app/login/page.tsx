@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS, SocialLoginProvider } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { clearViewerCache } from "../lib/viewer";
 import styles from "./login.module.css";
 import { errorText } from "../lib/errorText";
 
@@ -95,6 +96,7 @@ export default function LoginPage() {
       }
 
       const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
+      clearViewerCache();
       router.push(safeReturnUrl(returnUrl));
     } catch (error) {
       setErrorMsg(getErrorMessage(error));

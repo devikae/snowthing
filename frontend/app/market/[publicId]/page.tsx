@@ -123,6 +123,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    // 댓글은 판매글과 함께 요청하되 기다리지 않는다. 댓글 실패는 판매글 위 안내로만 보여 준다.
+    const commentsPromise = loadComments().catch((commentError) => commentError as unknown);
     try {
       const response = await fetch(API_ENDPOINTS.market.detail(publicId), { credentials: "include" });
       if (response.status === 401) {
@@ -135,7 +137,9 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         throw new Error(response.status === 404 ? "판매글을 찾을 수 없거나 숨김 처리되었습니다." : "판매글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
       setListing(await response.json());
-      await loadComments();
+      void commentsPromise.then((commentError) => {
+        if (commentError) setError(errorText(commentError, "댓글을 불러오지 못했습니다."));
+      });
     } catch (loadError) {
       setError(errorText(loadError, "판매글을 불러오지 못했습니다."));
     } finally {

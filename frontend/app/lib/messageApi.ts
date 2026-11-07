@@ -1,4 +1,5 @@
-import { API_ENDPOINTS, API_V1_URL } from "./api";
+import { API_V1_URL } from "./api";
+import { fetchViewer } from "./viewer";
 import { csrfFetch } from "./csrfFetch";
 import { formatKoreanDate } from "./koreanDate";
 
@@ -103,18 +104,9 @@ export async function unblockMember(memberPublicId: string) {
   if (!response.ok) throw new Error(await readErrorMessage(response, "차단을 해제하지 못했습니다."));
 }
 
-// 한 화면에 작성자 메뉴가 여러 개 있어도 내 정보 요청은 한 번만 보낸다. 로그인 상태가 바뀔 수 있어 잠깐만 재사용한다.
-const VIEWER_CACHE_MS = 10_000;
-let viewerCache: { at: number; promise: Promise<string | null> } | null = null;
-
+// 한 화면에 작성자 메뉴가 여러 개 있어도 내 정보 요청은 헤더와 함께 한 번만 보낸다.
 export function fetchViewerPublicId(): Promise<string | null> {
-  if (viewerCache && Date.now() - viewerCache.at < VIEWER_CACHE_MS) return viewerCache.promise;
-  const promise = fetch(API_ENDPOINTS.members.me, { credentials: "include" })
-    .then((response) => (response.ok ? response.json() : null))
-    .then((member: { publicId?: string } | null) => member?.publicId ?? null)
-    .catch(() => null);
-  viewerCache = { at: Date.now(), promise };
-  return promise;
+  return fetchViewer().then((viewer) => viewer?.publicId ?? null);
 }
 
 export function formatMessageDate(value: string) {
