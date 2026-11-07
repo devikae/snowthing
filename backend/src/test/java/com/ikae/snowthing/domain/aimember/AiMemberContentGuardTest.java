@@ -41,6 +41,7 @@ import com.ikae.snowthing.domain.chat.dto.SenderDto;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.domain.comment.service.CommentService;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.service.PostService;
@@ -102,6 +103,9 @@ class AiMemberContentGuardTest {
                         sharedLimiter,
                         executor);
         lenient().when(sharedLimiter.acquire(anyList())).thenReturn(new Decision(true, 0, null));
+        lenient()
+                .when(memberRepository.findStatusById(any()))
+                .thenReturn(Optional.of(MemberStatus.ACTIVE));
     }
 
     @Test
