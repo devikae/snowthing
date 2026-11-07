@@ -3,7 +3,7 @@
 ## 1. 승인 범위
 
 본 문서는 SnowThing 서비스의 통합 관리자 백오피스(`/admin`) 및 런타임 통제 시스템의 공식 설계 명세서이다.
-비로그인 사용자 라이브톡 참여 제어, 채팅 악성 IP 차단 및 원클릭 정화, 회원 프로필/계정 제재, 사용자 삭제글 열람 및 불량글 강제 블라인드, 일일 순수 방문자(DAU) 통계, 메인 배너 관리를 포함한다.
+비로그인 사용자 라이브톡 참여 제어, 채팅 악성 IP 차단 및 원클릭 정화, 회원 프로필/계정 제재, 사용자 삭제글 열람 및 불량글 강제 블라인드, 메인 배너 관리를 포함한다.
 
 ---
 
@@ -19,23 +19,7 @@
    - `updated_at` DATETIME(6) NOT NULL: 최종 수정 일시
    - `updated_by` VARCHAR(50) NOT NULL: 최종 수정한 관리자 계정 식별자
 
-2. **`daily_visitor_log` (일별 고유 방문자 식별 로그)**:
-   - `visit_date` DATE NOT NULL: 방문 일자 (KST 기준)
-   - `visitor_hash` CHAR(64) NOT NULL: `SHA-256(client_ip + user_agent + daily_salt)` 익명 해시
-   - `is_member` BOOLEAN NOT NULL DEFAULT FALSE: 로그인 회원 여부
-   - `first_visited_at` DATETIME(6) NOT NULL: 당일 첫 방문 시각
-   - PRIMARY KEY (`visit_date`, `visitor_hash`)
-   - 복합 기본키 B-Tree 인덱스로 당일 중복 접근에 대한 `INSERT IGNORE`를 원자적으로 처리
-
-3. **`daily_visitor_stats` (일별 방문자 집계 요약)**:
-   - `stat_date` DATE NOT NULL PRIMARY KEY: 통계 일자
-   - `total_visitors` INT NOT NULL DEFAULT 0: 당일 총 고유 방문자 수 (DAU)
-   - `member_visitors` INT NOT NULL DEFAULT 0: 회원 고유 방문자 수
-   - `guest_visitors` INT NOT NULL DEFAULT 0: 비로그인 고유 방문자 수
-   - `pv_count` INT NOT NULL DEFAULT 0: 총 페이지 뷰
-   - `updated_at` DATETIME(6) NOT NULL: 갱신 시각
-
-4. **`chat_banned_ip` (채팅 차단 IP 목록)**:
+2. **`chat_banned_ip` (채팅 차단 IP 목록)**:
    - `id` BIGINT AUTO_INCREMENT PRIMARY KEY
    - `banned_ip` VARCHAR(45) NOT NULL: 차단 대상 IPv4 / IPv6
    - `reason` VARCHAR(255) NOT NULL: 차단 사유
@@ -44,7 +28,7 @@
    - `created_at` DATETIME(6) NOT NULL: 차단 등록 시각
    - INDEX `idx_chat_banned_ip_lookup` (`banned_ip`, `banned_until`)
 
-5. **`banner` (메인 상단 배너 관리)**:
+3. **`banner` (메인 상단 배너 관리)**:
    - `id` BIGINT AUTO_INCREMENT PRIMARY KEY
    - `title` VARCHAR(100) NOT NULL: 배너 명칭
    - `image_url` VARCHAR(500) NOT NULL: 배너 이미지 CDN URL
@@ -68,7 +52,8 @@
 
 ### 3.1 대시보드 및 통계 API
 - `GET /api/v1/admin/dashboard/stats`:
-  - 반환: 오늘 DAU(전일 대비 증감율), 회원/게스트 비율, 누적 회원수, 오늘 가입자수, 최근 7일/30일 일별 추이 배열 `[ { date, total, member, guest } ]`.
+  - 반환: 누적 회원수, 오늘 가입자수, 비로그인 라이브톡 허용 여부.
+- 방문자 수는 Cloudflare 통계를 쓰기로 했다.
 
 ### 3.2 런타임 설정 API
 - `GET /api/v1/admin/configs`: 전체 시스템 설정 목록 반환.
@@ -129,5 +114,3 @@
    - 문자열 리터럴 예외 금지. `ErrorCode` Enum (`ADMIN_ACCESS_DENIED`, `CHAT_IP_BANNED`, `CONFIG_NOT_FOUND` 등) 및 `CustomException` 일원화.
 3. **계층 분리 (Rule 24)**:
    - Service 계층에서 서블릿 세션 조작 금지, Controller의 Repository 직접 호출 금지.
-4. **개인정보보호**:
-   - 일일 방문자 로그는 IP 원문을 저장하지 않고 일자별 Salt 기반 단방향 SHA-256 해시로 익명화.

@@ -32,7 +32,7 @@ try {
   assert.equal(sql('SELECT COUNT(*) FROM profile_image_cleanup'), '1');
   assert.equal(sql("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='member' AND index_name='idx_member_profile_image_url'"), '1');
   assert.equal(sql("SELECT config_value FROM system_config WHERE config_key='CHAT_ANONYMOUS_ENABLED'"), 'false');
-  assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('daily_visitor_log','daily_visitor_stats','chat_banned_ip','banner')"), '4');
+  assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('chat_banned_ip','banner')"), '2');
   assert.equal(sql("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='post' AND column_name='is_blinded'"), '1');
   assert.throws(() => sql("INSERT INTO member_registration_consent VALUES(9223372036854775807,'fixture',TRUE,FALSE,NOW())"));
   assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('crew_post','crew_comment','crew_application','crew_media','crew_visit','crew_resort')"), '0');

@@ -85,7 +85,7 @@ export const API_ENDPOINTS = {
     delete: (reportId: number) => `${API_V1_URL}/resort-reports/${reportId}`,
   },
   admin: {
-    stats: (days = 7) => `${API_V1_URL}/admin/dashboard/stats?days=${days}`,
+    stats: () => `${API_V1_URL}/admin/dashboard/stats`,
     configs: `${API_V1_URL}/admin/configs`,
     updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${key}`,
     members: (query?: string, status?: string, page = 0, size = 20) =>
@@ -133,23 +133,10 @@ export interface OffsetPage<T> {
 }
 
 
-export interface DailyVisitorStat {
-  date: string;
-  totalVisitors: number;
-  memberVisitors: number;
-  guestVisitors: number;
-  pvCount: number;
-}
-
 export interface AdminDashboardStats {
-  todayTotalVisitors: number;
-  todayMemberVisitors: number;
-  todayGuestVisitors: number;
-  todayPvCount: number;
   totalMembers: number;
   todayNewMembers: number;
   anonymousChatEnabled: boolean;
-  visitorTrends: DailyVisitorStat[];
 }
 
 export interface SystemConfigItem {

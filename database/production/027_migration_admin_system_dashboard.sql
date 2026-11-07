@@ -1,4 +1,4 @@
--- Migration 027: Admin system dashboard, feature flags, visitor stats, chat IP ban, and banners
+-- Migration 027: Admin system dashboard, feature flags, chat IP ban, and banners
 CREATE TABLE IF NOT EXISTS system_config (
     config_key VARCHAR(50) NOT NULL PRIMARY KEY,
     config_value VARCHAR(255) NOT NULL,
@@ -13,24 +13,6 @@ SELECT 'CHAT_ANONYMOUS_ENABLED', 'false', 'BOOLEAN', '실시간 라이브톡 비
 WHERE NOT EXISTS (
     SELECT 1 FROM system_config WHERE config_key = 'CHAT_ANONYMOUS_ENABLED'
 );
-
-CREATE TABLE IF NOT EXISTS daily_visitor_log (
-    visit_date DATE NOT NULL,
-    visitor_hash CHAR(64) NOT NULL,
-    is_member BOOLEAN NOT NULL DEFAULT FALSE,
-    first_visited_at DATETIME(6) NOT NULL,
-    PRIMARY KEY (visit_date, visitor_hash),
-    INDEX idx_visitor_date (visit_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS daily_visitor_stats (
-    stat_date DATE NOT NULL PRIMARY KEY,
-    total_visitors INT NOT NULL DEFAULT 0,
-    member_visitors INT NOT NULL DEFAULT 0,
-    guest_visitors INT NOT NULL DEFAULT 0,
-    pv_count INT NOT NULL DEFAULT 0,
-    updated_at DATETIME(6) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS chat_banned_ip (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
