@@ -17,6 +17,7 @@ import com.ikae.snowthing.domain.image.service.ImageBudgetMonitor;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.SharedRequestLimiter;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 @Component
 public class ProfileActionRateLimiter {
@@ -124,7 +125,7 @@ public class ProfileActionRateLimiter {
                                     "snowthing:limits:new-" + scope + ":" + memberHash,
                                     action == Action.PHOTO ? 1 : 5,
                                     action.window));
-                String normalizedIp = normalizeIp(clientIp);
+                String normalizedIp = ClientIpResolver.normalizeForLimit(clientIp);
                 String ipHash = memberKey(normalizedIp);
                 budgets.add(
                         new SharedRequestLimiter.Limit(
@@ -155,34 +156,6 @@ public class ProfileActionRateLimiter {
         Window window = windows.get(new Key(member, action), ignored -> new Window());
         if (!window.acquire(clock.instant(), action)) {
             throw new CustomException(ErrorCode.PROFILE_ACTION_LIMIT);
-        }
-    }
-
-    private String normalizeIp(String clientIp) {
-        if (clientIp == null || clientIp.isBlank()) return "unknown";
-        try {
-            // Never resolve hostnames supplied by a request. Only numeric IPv4/IPv6 literals are
-            // accepted.
-            if (!clientIp.matches("[0-9a-fA-F:.]+")) return "unknown";
-            byte[] address;
-            if (!clientIp.contains(":")) {
-                if (!clientIp.matches("[0-9]{1,3}(\\.[0-9]{1,3}){3}")) return "unknown";
-                String[] octets = clientIp.split("\\.");
-                address = new byte[4];
-                for (int i = 0; i < octets.length; i++) {
-                    int octet = Integer.parseInt(octets[i]);
-                    if (octet > 255) return "unknown";
-                    address[i] = (byte) octet;
-                }
-            } else {
-                address = java.net.InetAddress.getByName(clientIp).getAddress();
-            }
-            // Group IPv6 privacy addresses by /64 so rotating interface identifiers cannot reset a
-            // bucket.
-            if (address.length == 16) java.util.Arrays.fill(address, 8, 16, (byte) 0);
-            return java.util.HexFormat.of().formatHex(address);
-        } catch (java.net.UnknownHostException invalidIp) {
-            return "unknown";
         }
     }
 
