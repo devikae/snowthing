@@ -81,6 +81,15 @@ class PostServiceTest {
         userDetails1 = new CustomUserDetails(member1);
         userDetails2 = new CustomUserDetails(member2);
 
+        categoryRepository
+                .findByCode("ANONYMOUS")
+                .orElseGet(
+                        () ->
+                                categoryRepository.save(
+                                        PostCategory.builder()
+                                                .name("익명게시판")
+                                                .code("ANONYMOUS")
+                                                .build()));
         freeCategory =
                 categoryRepository
                         .findByCode("FREE")
@@ -276,7 +285,7 @@ class PostServiceTest {
         void createPost_success_anonymous() {
             PostCreateRequest request =
                     PostCreateRequest.builder()
-                            .categoryCode("FREE")
+                            .categoryCode("ANONYMOUS")
                             .title("익명 질문입니다.")
                             .content("입문용 데크 추천해 주세요.")
                             .isAnonymous(true)
@@ -287,6 +296,52 @@ class PostServiceTest {
 
             assertThat(response.publicId()).isNotNull();
             assertThat(response.writerName()).contains("익명");
+        }
+
+        @Test
+        @DisplayName("비회원은 isAnonymous=true를 보내도 익명게시판 외에는 쓸 수 없다.")
+        void createPost_guestAnonymousOnOtherBoard_rejected() {
+            PostCreateRequest request =
+                    PostCreateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("비회원 자유 글")
+                            .content("본문 내용")
+                            .isAnonymous(true)
+                            .anonymousPassword("Anon1234!")
+                            .build();
+
+            assertThatThrownBy(() -> postService.createPost(request, null, "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        @Test
+        @DisplayName("비회원 글을 수정으로 익명게시판 밖에 옮길 수 없다.")
+        void updatePost_guestPostToOtherBoard_rejected() {
+            PostResponse guestPost =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("ANONYMOUS")
+                                    .title("비회원 원본글")
+                                    .content("본문 내용")
+                                    .isAnonymous(true)
+                                    .anonymousPassword("Anon1234!")
+                                    .build(),
+                            null,
+                            "127.0.0.1");
+            PostUpdateRequest moveToFree =
+                    PostUpdateRequest.builder()
+                            .categoryCode("FREE")
+                            .title("옮기기 시도")
+                            .content("본문 내용")
+                            .anonymousPassword("Anon1234!")
+                            .build();
+
+            assertThatThrownBy(() -> postService.updatePost(guestPost.publicId(), moveToFree, null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
         @Test
@@ -542,7 +597,7 @@ class PostServiceTest {
         void getPostDetail_guestAnonymous_requiresPassword() {
             PostCreateRequest request =
                     PostCreateRequest.builder()
-                            .categoryCode("FREE")
+                            .categoryCode("ANONYMOUS")
                             .title("비회원 익명 글")
                             .content("상세 내용")
                             .isAnonymous(true)
@@ -724,7 +779,7 @@ class PostServiceTest {
         void updatePost_anonymousToRecruitBoard_rejected() {
             PostCreateRequest anonReq =
                     PostCreateRequest.builder()
-                            .categoryCode("FREE")
+                            .categoryCode("ANONYMOUS")
                             .title("익명 원본글")
                             .content("익명 내용")
                             .isAnonymous(true)

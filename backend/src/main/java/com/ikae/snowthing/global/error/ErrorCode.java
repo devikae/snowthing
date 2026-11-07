@@ -41,6 +41,7 @@ public enum ErrorCode {
     CHAT_BOT_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_012", "봇의 대기 요청이 많습니다."),
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "MEMBER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_003", "이미 사용 중인 닉네임입니다."),
+    RESERVED_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_020", "사용할 수 없는 닉네임입니다."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_004", "현재 비밀번호가 일치하지 않습니다."),
     PASSWORD_CHANGE_UNAVAILABLE(
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
