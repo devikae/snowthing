@@ -1,7 +1,7 @@
 import { API_V1_URL } from "./api";
 import { csrfFetch } from "./csrfFetch";
 
-export type NotificationType = "POST_COMMENT" | "COMMENT_REPLY" | "INQUIRY_ANSWER";
+export type NotificationType = "POST_COMMENT" | "COMMENT_REPLY" | "INQUIRY_ANSWER" | "MODERATION_RESULT";
 
 export interface NotificationItem {
   notificationId: string;
@@ -51,6 +51,8 @@ export function notificationMessage(item: NotificationItem) {
       return `${item.actorName}님이 내 댓글에 답글을 남겼어요`;
     case "INQUIRY_ANSWER":
       return "문의에 답변이 달렸어요";
+    case "MODERATION_RESULT":
+      return "운영팀 조치 안내";
     default:
       return "새 알림이 있어요";
   }

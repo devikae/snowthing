@@ -7,6 +7,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { AuthorMenu } from "./AuthorMenu";
+import { ReportButton } from "./ReportButton";
 import { errorText } from "../lib/errorText";
 
 interface WriterInfo {
@@ -224,6 +225,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
             {!reply && <button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button>}
             {item.canEdit && <button type="button" onClick={() => { setEditingId(item.commentId); setEditingContent(item.content); }}>수정</button>}
             {item.canDelete && <button type="button" onClick={() => void deleteComment(item.commentId)}>삭제</button>}
+            <ReportButton targetType="COMMENT" targetId={String(item.commentId)} />
           </div>}
         </div>
       </div>

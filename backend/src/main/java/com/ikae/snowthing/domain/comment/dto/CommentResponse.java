@@ -30,6 +30,8 @@ public record CommentResponse(
         LocalDateTime createdAt) {
 
     private static final String ANONYMOUS_NAME = "ㅇㅇ";
+    public static final String DELETED_TEXT = "삭제된 댓글입니다.";
+    public static final String HELD_TEXT = "임시조치된 댓글입니다.";
 
     public CommentResponse {
         previewReplies = previewReplies == null ? List.of() : List.copyOf(previewReplies);
@@ -53,7 +55,9 @@ public record CommentResponse(
                 writer,
                 comment.isAnonymous(),
                 comment.isAnonymous() ? WriterDisplayFormatter.maskIp(comment.getWriterIp()) : null,
-                comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent(),
+                comment.isModerationHeld()
+                        ? HELD_TEXT
+                        : comment.isDeleted() ? DELETED_TEXT : comment.getContent(),
                 comment.isDeleted(),
                 0,
                 List.of(),

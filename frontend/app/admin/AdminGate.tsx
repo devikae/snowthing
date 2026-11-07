@@ -46,6 +46,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         {state === "admin" ? (
           <>
             <nav className="admin-tabs" aria-label="관리자 메뉴">
+              <Link href="/admin/reports" aria-current={pathname?.startsWith("/admin/reports") ? "page" : undefined}>
+                신고 처리
+              </Link>
               <Link href="/admin/answer-drafts" aria-current={pathname?.startsWith("/admin/answer-drafts") ? "page" : undefined}>
                 답변 초안
               </Link>

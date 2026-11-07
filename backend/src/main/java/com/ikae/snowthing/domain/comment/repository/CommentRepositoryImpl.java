@@ -23,7 +23,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
 
     private static final String SELECT_RESPONSE_COLUMNS =
             """
-            c.comment_id, c.post_id, c.parent_id, c.content, c.is_deleted,
+            c.comment_id, c.post_id, c.parent_id, c.content, c.is_deleted, c.moderation_held,
             c.is_anonymous, c.writer_ip, c.created_at,
             m.public_id AS member_public_id, m.nickname, m.profile_image_url
             """;
@@ -116,13 +116,13 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
         }
         String sql =
                 """
-                SELECT r.comment_id, r.post_id, r.parent_id, r.content, r.is_deleted,
+                SELECT r.comment_id, r.post_id, r.parent_id, r.content, r.is_deleted, r.moderation_held,
                        r.is_anonymous, r.writer_ip, r.created_at,
                        m.public_id AS member_public_id, m.nickname, m.profile_image_url,
                        0 AS reply_count, false AS has_more_replies
                 FROM comment root
                 CROSS JOIN LATERAL (
-                    SELECT c.comment_id, c.post_id, c.parent_id, c.content, c.is_deleted,
+                    SELECT c.comment_id, c.post_id, c.parent_id, c.content, c.is_deleted, c.moderation_held,
                            c.is_anonymous, c.writer_ip, c.created_at, c.member_id
                     FROM comment c
                     WHERE c.parent_id = root.comment_id
@@ -215,7 +215,9 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 writer,
                 anonymous,
                 anonymous ? WriterDisplayFormatter.maskIp(rs.getString("writer_ip")) : null,
-                deleted ? "삭제된 댓글입니다." : rs.getString("content"),
+                rs.getBoolean("moderation_held")
+                        ? CommentResponse.HELD_TEXT
+                        : deleted ? CommentResponse.DELETED_TEXT : rs.getString("content"),
                 deleted,
                 rs.getLong("reply_count"),
                 List.of(),

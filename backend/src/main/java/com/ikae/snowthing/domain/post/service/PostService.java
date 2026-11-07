@@ -159,7 +159,10 @@ public class PostService {
 
         if (post.getStatus() != PostStatus.NORMAL) {
             if (!isAdmin(userDetails)) {
-                throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+                throw new CustomAuthException(
+                        post.getStatus() == PostStatus.TEMPORARY_HOLD
+                                ? ErrorCode.CONTENT_TEMPORARILY_HELD
+                                : ErrorCode.POST_NOT_FOUND);
             }
         }
 
