@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { API_ENDPOINTS } from "../lib/api";
+import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer } from "../lib/viewer";
 import { csrfFetch } from "../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
