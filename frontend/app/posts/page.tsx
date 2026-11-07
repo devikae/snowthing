@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav, type ActiveNav } from "../components/SiteChrome";
 import { PostImageIcon } from "../components/PostImageIcon";
 import { PostListAuthor } from "../components/PostListAuthor";
-import { API_ENDPOINTS } from "../lib/api";
+import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer, isAdminViewer } from "../lib/viewer";
 import { formatCompactTime } from "../lib/koreanDate";
 

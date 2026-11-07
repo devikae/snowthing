@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { API_ENDPOINTS } from "../lib/api";
+import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer } from "../lib/viewer";
 import { csrfFetch } from "../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { AuthorMenu } from "./AuthorMenu";
 import { ReportButton } from "./ReportButton";
-import { errorText } from "../lib/errorText";
+import { errorText } from "../lib/errorText";
 import { formatShortDateTime } from "../lib/koreanDate";
 
 interface WriterInfo {

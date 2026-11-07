@@ -15,7 +15,7 @@ import { fetchViewer } from "./lib/viewer";
 import { RESORT_MAP } from "./lib/resortTags";
 import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName, isResortReportSeason } from "./lib/resortReports";
 import { csrfFetch } from "./lib/csrfFetch";
-import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
 import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 
 interface HomePost {
@@ -501,7 +501,7 @@ export default function HomePageClient() {
                         <span className="arr">→</span>
                         <em>{item.destinationResortName}</em>
                       </div>
-                      <span className="cp-date">{formatShortDateTime(item.departureAt)}</span>
+                      <span className="cp-date">{item.departureAt ? formatShortDateTime(item.departureAt) : ""}</span>
                     </div>
                     <div className="cp-right">
                       <span className="cp-seat">{item.passengerCapacity}명</span>
