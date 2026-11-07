@@ -35,6 +35,7 @@ import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
+import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.domain.member.validation.NicknamePolicy;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -59,7 +60,8 @@ class SocialAuthServiceTest {
                         new EmailNormalizer(),
                         new SocialNicknameGenerator(),
                         fixedClock,
-                        eventPublisher);
+                        eventPublisher,
+                        org.mockito.Mockito.mock(WithdrawnEmailService.class));
     }
 
     @Test

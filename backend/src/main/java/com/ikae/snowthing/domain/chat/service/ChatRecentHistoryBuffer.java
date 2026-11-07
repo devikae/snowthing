@@ -32,6 +32,13 @@ public class ChatRecentHistoryBuffer {
         return List.copyOf(buffer); // Rule 22 방어적 복사 불변 보장
     }
 
+    /** 탈퇴한 회원의 닉네임이 새로고침 시 내려가는 최근 대화에 남지 않게 지운다. */
+    public synchronized void removeSender(String publicId) {
+        buffer.removeIf(
+                message ->
+                        message.sender() != null && publicId.equals(message.sender().publicId()));
+    }
+
     public synchronized void clear() {
         buffer.clear();
     }

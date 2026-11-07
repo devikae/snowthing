@@ -281,12 +281,19 @@ public class MarketListingService {
                 listing.isNegotiable(),
                 listing.isFree(),
                 thumbnailImageUrl,
-                new MarketListingSummaryResponse.Seller(
-                        seller.getPublicId(), seller.getNickname(), seller.getProfileImageUrl()),
+                sellerOf(seller),
                 post.getViewCount(),
                 post.getCommentCount(),
                 listing.getCreatedAt(),
                 listing.getUpdatedAt());
+    }
+
+    private static MarketListingSummaryResponse.Seller sellerOf(Member seller) {
+        if (seller.isWithdrawn()) {
+            return new MarketListingSummaryResponse.Seller(null, Member.WITHDRAWN_NICKNAME, null);
+        }
+        return new MarketListingSummaryResponse.Seller(
+                seller.getPublicId(), seller.getNickname(), seller.getProfileImageUrl());
     }
 
     private MarketListingDetailResponse toDetail(
@@ -310,9 +317,8 @@ public class MarketListingService {
                 listing.getPrice(),
                 listing.isNegotiable(),
                 listing.isFree(),
-                includeContact ? listing.getContact() : null,
-                new MarketListingSummaryResponse.Seller(
-                        seller.getPublicId(), seller.getNickname(), seller.getProfileImageUrl()),
+                includeContact && !seller.isWithdrawn() ? listing.getContact() : null,
+                sellerOf(seller),
                 images,
                 viewCount,
                 post.getCommentCount(),

@@ -99,7 +99,7 @@ export default function SignUpPage() {
       const availabilityResponse = await csrfFetch(API_ENDPOINTS.members.emailAvailability, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
       if (!availabilityResponse.ok) throw new Error(await readError(availabilityResponse, "이메일 중복 확인에 실패했습니다."));
       const availability = await availabilityResponse.json();
-      if (!availability.available) throw new Error("이미 가입된 이메일입니다.");
+      if (!availability.available) throw new Error("이미 가입된 이메일이거나 탈퇴 후 30일이 지나지 않은 이메일입니다.");
       const response = await csrfFetch(API_ENDPOINTS.auth.requestSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
       if (!response.ok) throw new Error(await readError(response, "인증번호를 보내지 못했습니다."));
       const body: VerificationSendResponse = await response.json();

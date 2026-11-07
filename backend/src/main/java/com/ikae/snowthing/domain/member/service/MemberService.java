@@ -38,6 +38,7 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final EmailNormalizer emailNormalizer;
     private final ApplicationEventPublisher eventPublisher;
+    private final WithdrawnEmailService withdrawnEmails;
 
     private Member requireMember(String email) {
         return memberRepository
@@ -111,6 +112,7 @@ public class MemberService {
         if (memberRepository.existsByEmail(normalizedEmail)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
+        withdrawnEmails.requireNotBlocked(normalizedEmail);
         if (memberRepository.existsByNickname(request.getNickname())) {
             throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
         }

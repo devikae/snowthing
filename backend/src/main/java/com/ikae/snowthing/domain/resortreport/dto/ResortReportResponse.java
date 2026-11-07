@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.resortreport.dto;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.resortreport.entity.ResortReport;
 
 import lombok.Builder;
@@ -27,7 +28,10 @@ public class ResortReportResponse {
                 .resortId(report.getResort().getId())
                 .resortName(report.getResort().getName())
                 .resortCode(report.getResort().getCode())
-                .authorNickname(report.getAuthor().getNickname())
+                .authorNickname(
+                        report.getAuthor().isWithdrawn()
+                                ? Member.WITHDRAWN_NICKNAME
+                                : report.getAuthor().getNickname())
                 .content(report.getContent())
                 .createdAt(report.getCreatedAt().atZone(ZoneId.of("Asia/Seoul")).toOffsetDateTime())
                 .canDelete(canDelete)

@@ -24,6 +24,7 @@ import com.ikae.snowthing.domain.email.repository.EmailVerificationRepository;
 import com.ikae.snowthing.domain.email.security.EmailVerificationHasher;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
+import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -42,6 +43,7 @@ public class EmailVerificationService {
     private static final int PASSWORD_RESET_JITTER_BOUND_MILLIS = 100;
 
     private final MemberRepository memberRepository;
+    private final WithdrawnEmailService withdrawnEmails;
     private final EmailVerificationRepository verificationRepository;
     private final EmailVerificationWriter writer;
     private final EmailVerificationHasher hasher;
@@ -52,7 +54,9 @@ public class EmailVerificationService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public boolean isEmailAvailable(String email) {
-        return !memberRepository.existsByEmail(normalizer.normalize(email));
+        String normalizedEmail = normalizer.normalize(email);
+        return !memberRepository.existsByEmail(normalizedEmail)
+                && !withdrawnEmails.isBlocked(normalizedEmail);
     }
 
     public EmailVerificationSendResponse requestSignUp(String email, String clientIp) {
@@ -60,6 +64,7 @@ public class EmailVerificationService {
         if (memberRepository.existsByEmail(normalizedEmail)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
+        withdrawnEmails.requireNotBlocked(normalizedEmail);
         return send(normalizedEmail, EmailVerificationPurpose.SIGN_UP, clientIp);
     }
 

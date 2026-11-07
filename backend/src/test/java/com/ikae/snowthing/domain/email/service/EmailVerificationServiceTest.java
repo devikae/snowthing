@@ -23,6 +23,7 @@ import com.ikae.snowthing.domain.email.repository.EmailVerificationRepository;
 import com.ikae.snowthing.domain.email.security.EmailVerificationHasher;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
+import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -46,6 +47,7 @@ class EmailVerificationServiceTest {
         service =
                 new EmailVerificationService(
                         mock(MemberRepository.class),
+                        mock(WithdrawnEmailService.class),
                         repository,
                         mock(EmailVerificationWriter.class),
                         hasher,

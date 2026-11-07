@@ -20,6 +20,7 @@ public class Member extends BaseTimeEntity {
 
     public static final String EMAIL_UNIQUE_CONSTRAINT = "email";
     public static final String NICKNAME_UNIQUE_CONSTRAINT = "nickname";
+    public static final String WITHDRAWN_NICKNAME = "탈퇴한 회원";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -138,6 +139,24 @@ public class Member extends BaseTimeEntity {
         this.bio = bio;
         this.departureRegion = departureRegion;
         this.profileImageUrl = profileImageUrl;
+    }
+
+    public boolean isWithdrawn() {
+        return this.status == MemberStatus.WITHDRAWN;
+    }
+
+    /** 개인정보를 지우고 탈퇴 상태로 바꾼다. 글과 댓글의 FK가 남도록 행은 지우지 않는다. */
+    public void withdraw(String anonymizedEmail, String anonymizedNickname) {
+        this.email = anonymizedEmail;
+        this.nickname = anonymizedNickname;
+        this.password = null;
+        this.profileImageUrl = null;
+        this.bio = null;
+        this.departureRegion = null;
+        this.emailVerifiedAt = null;
+        this.crewId = null;
+        this.crewRole = null;
+        this.status = MemberStatus.WITHDRAWN;
     }
 
     public void verifyEmail(LocalDateTime verifiedAt) {

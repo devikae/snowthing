@@ -1185,7 +1185,7 @@ function CommentEditForm({
 
 function getWriterName(comment: CommentItem) {
   if (comment.isAnonymous) return `익명 (${comment.writerIp})`;
-  return comment.writer?.nickname || "알 수 없음";
+  return comment.writer?.nickname || "탈퇴한 회원";
 }
 
 function canEditComment(comment: CommentItem) {

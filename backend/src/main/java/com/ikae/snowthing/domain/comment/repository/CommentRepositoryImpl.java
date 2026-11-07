@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
 import com.ikae.snowthing.domain.comment.dto.CommentResponse.WriterResponse;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.global.util.WriterDisplayFormatter;
 
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
             """
             c.comment_id, c.post_id, c.parent_id, c.content, c.is_deleted,
             c.is_anonymous, c.writer_ip, c.created_at,
-            m.public_id AS member_public_id, m.nickname, m.profile_image_url
+            m.public_id AS member_public_id, m.nickname, m.profile_image_url, m.status AS member_status
             """;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -118,7 +119,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 """
                 SELECT r.comment_id, r.post_id, r.parent_id, r.content, r.is_deleted,
                        r.is_anonymous, r.writer_ip, r.created_at,
-                       m.public_id AS member_public_id, m.nickname, m.profile_image_url,
+                       m.public_id AS member_public_id, m.nickname, m.profile_image_url, m.status AS member_status,
                        0 AS reply_count, false AS has_more_replies
                 FROM comment root
                 CROSS JOIN LATERAL (
@@ -202,7 +203,11 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
         boolean deleted = rs.getBoolean("is_deleted");
         String memberPublicId = rs.getString("member_public_id");
         WriterResponse writer =
-                !anonymous && memberPublicId != null
+                !anonymous
+                                && memberPublicId != null
+                                && !MemberStatus.WITHDRAWN
+                                        .name()
+                                        .equals(rs.getString("member_status"))
                         ? new WriterResponse(
                                 memberPublicId,
                                 rs.getString("nickname"),

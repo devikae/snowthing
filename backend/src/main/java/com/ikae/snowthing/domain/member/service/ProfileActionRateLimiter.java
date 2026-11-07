@@ -22,6 +22,7 @@ import com.ikae.snowthing.global.security.SharedRequestLimiter;
 public class ProfileActionRateLimiter {
     public enum Action {
         PASSWORD(10, Duration.ofMinutes(15)),
+        WITHDRAWAL(10, Duration.ofMinutes(15)),
         NICKNAME(30, Duration.ofMinutes(1)),
         PHOTO(5, Duration.ofDays(1)),
         POST_IMAGE(30, Duration.ofHours(1)),

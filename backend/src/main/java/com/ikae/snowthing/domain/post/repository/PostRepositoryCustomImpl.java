@@ -12,6 +12,7 @@ import java.util.Set;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.post.dto.PostListResponse;
 import com.ikae.snowthing.domain.post.dto.PostSearchRequest;
@@ -199,7 +200,8 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                     post.member
                             .nickname
                             .containsIgnoreCase(keyword)
-                            .and(post.isAnonymous.isFalse());
+                            .and(post.isAnonymous.isFalse())
+                            .and(post.member.status.ne(MemberStatus.WITHDRAWN));
             case CONTENT -> contentAsString().containsIgnoreCase(keyword);
             case TITLE_CONTENT ->
                     post.title

@@ -27,6 +27,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 class MemberServiceTest {
 
     @Mock private MemberRepository memberRepository;
+    @Mock private WithdrawnEmailService withdrawnEmailService;
 
     @Mock private PasswordEncoder passwordEncoder;
 
