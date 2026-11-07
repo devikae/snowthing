@@ -84,6 +84,22 @@ public class AiMemberQueryRepository {
                 String.class);
     }
 
+    /** AI 멤버가 최근에 쓴 글과 댓글 본문. 유사도 검사에 쓴다. */
+    public List<String> findRecentContents(Collection<Long> memberIds, LocalDateTime since) {
+        if (memberIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.queryForList(
+                "(SELECT content FROM post WHERE member_id IN (:ids) AND created_at >= :since"
+                        + " ORDER BY created_at DESC, post_id DESC LIMIT 100)"
+                        + " UNION ALL"
+                        + " (SELECT content FROM comment WHERE member_id IN (:ids)"
+                        + " AND created_at >= :since"
+                        + " ORDER BY created_at DESC, comment_id DESC LIMIT 200)",
+                new MapSqlParameterSource("ids", memberIds).addValue("since", since),
+                String.class);
+    }
+
     /** 최근 설질 제보 "리조트: 내용" */
     public List<String> findRecentSnowReports(LocalDateTime since) {
         return jdbc.queryForList(

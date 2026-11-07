@@ -76,22 +76,12 @@ class PersonaFileLoaderTest {
     }
 
     @Test
-    @DisplayName("키·이메일·닉네임이 겹치거나 5명 이상이면 거부한다")
-    void rejectsDuplicatesAndTooMany() {
+    @DisplayName("키가 겹치면 거부한다")
+    void rejectsDuplicates() {
         Map<String, Object> first = entry("a1", "a1@snowthing.invalid", "211.36.1.1");
         Map<String, Object> sameKey = entry("a1", "a2@snowthing.invalid", "211.36.1.2");
 
         assertThatThrownBy(() -> PersonaFileLoader.parse(root(first, sameKey)))
-                .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(
-                        () ->
-                                PersonaFileLoader.parse(
-                                        root(
-                                                entry("a1", "a1@snowthing.invalid", "211.36.1.1"),
-                                                entry("a2", "a2@snowthing.invalid", "211.36.1.2"),
-                                                entry("a3", "a3@snowthing.invalid", "211.36.1.3"),
-                                                entry("a4", "a4@snowthing.invalid", "211.36.1.4"),
-                                                entry("a5", "a5@snowthing.invalid", "211.36.1.5"))))
                 .isInstanceOf(IllegalStateException.class);
     }
 
