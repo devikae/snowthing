@@ -36,6 +36,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [fromMarket, setFromMarket] = useState(false);
+  useEffect(() => {
+    const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") ?? "";
+    if (!returnUrl.startsWith("/market")) return;
+    const timer = window.setTimeout(() => setFromMarket(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(() => {
     const oauthError = new URLSearchParams(window.location.search).get("error");
     if (!oauthError) return;
@@ -89,7 +96,7 @@ export default function LoginPage() {
         <section className={styles.panel} aria-labelledby="login-heading">
           <header className={styles.heading}>
             <h1 id="login-heading">로그인</h1>
-            <p>SnowThing 계정으로 로그인하세요.</p>
+            <p>{fromMarket ? "중고장터는 로그인한 회원만 이용할 수 있어요." : "SnowThing 계정으로 로그인하세요."}</p>
           </header>
           {errorMsg && <div className={styles.error} role="alert">{errorMsg}</div>}
           <form onSubmit={handleSubmit} className={styles.form} aria-busy={loading}>

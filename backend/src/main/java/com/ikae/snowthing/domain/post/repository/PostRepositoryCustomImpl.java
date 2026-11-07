@@ -25,6 +25,8 @@ import com.ikae.snowthing.global.util.CursorUtils;
 import com.ikae.snowthing.global.util.CursorUtils.CursorValue;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
@@ -187,16 +189,28 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
     }
 
     private BooleanExpression searchCondition(SearchType type, String keyword) {
-        if (!StringUtils.hasText(keyword) || type == null) return null;
-        return switch (type) {
+        if (!StringUtils.hasText(keyword)) return null;
+        // 화면은 검색어만 보내므로 검색 종류가 없으면 제목과 본문에서 찾는다.
+        SearchType effectiveType = type != null ? type : SearchType.TITLE_CONTENT;
+        return switch (effectiveType) {
             case TITLE -> post.title.containsIgnoreCase(keyword);
-            case WRITER -> post.member.nickname.containsIgnoreCase(keyword);
-            case CONTENT -> post.content.containsIgnoreCase(keyword);
+                // 익명 글은 닉네임으로 찾히면 작성자가 드러나므로 제외한다.
+            case WRITER ->
+                    post.member
+                            .nickname
+                            .containsIgnoreCase(keyword)
+                            .and(post.isAnonymous.isFalse());
+            case CONTENT -> contentAsString().containsIgnoreCase(keyword);
             case TITLE_CONTENT ->
                     post.title
                             .containsIgnoreCase(keyword)
-                            .or(post.content.containsIgnoreCase(keyword));
+                            .or(contentAsString().containsIgnoreCase(keyword));
         };
+    }
+
+    // content는 @Lob이라 Hibernate가 lower()를 거부한다. 문자열로 변환해 비교한다.
+    private StringExpression contentAsString() {
+        return Expressions.stringTemplate("cast({0} as string)", post.content);
     }
 
     private BooleanExpression cursorCondition(CursorValue cursor) {

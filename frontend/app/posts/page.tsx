@@ -94,6 +94,14 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
   }
 }
 
+const DEFAULT_SEARCH_TYPE = "TITLE_CONTENT";
+const SEARCH_TYPES = [
+  { value: "TITLE_CONTENT", label: "제목+내용" },
+  { value: "TITLE", label: "제목" },
+  { value: "CONTENT", label: "내용" },
+  { value: "WRITER", label: "작성자" },
+];
+
 function PostListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -102,6 +110,10 @@ function PostListContent() {
   const currentView = searchParams.get("view")?.toLowerCase() === "best" ? "best" : "";
   const page = Math.max(0, Number(searchParams.get("page") ?? "1") - 1 || 0);
   const keywordFromUrl = searchParams.get("keyword") ?? "";
+  const requestedSearchType = searchParams.get("searchType") ?? "";
+  const searchTypeFromUrl = SEARCH_TYPES.some((type) => type.value === requestedSearchType)
+    ? requestedSearchType
+    : DEFAULT_SEARCH_TYPE;
   const config = boardConfigs[currentCategory];
   const isInquiry = currentCategory === "INQUIRY";
 
@@ -109,6 +121,7 @@ function PostListContent() {
   const [notices, setNotices] = useState<PostItem[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState(keywordFromUrl);
+  const [searchType, setSearchType] = useState(searchTypeFromUrl);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -136,7 +149,10 @@ function PostListContent() {
         const params = new URLSearchParams({ page: String(page + 1), size: "20" });
         if (currentCategory) params.set("categoryCode", currentCategory);
         if (currentView === "best") params.set("viewType", "BEST");
-        if (keywordFromUrl.trim()) params.set("keyword", keywordFromUrl.trim());
+        if (keywordFromUrl.trim()) {
+          params.set("keyword", keywordFromUrl.trim());
+          params.set("searchType", searchTypeFromUrl);
+        }
         const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, {
           credentials: "include",
           signal,
@@ -159,7 +175,7 @@ function PostListContent() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [currentCategory, currentView, keywordFromUrl, page, router],
+    [currentCategory, currentView, keywordFromUrl, page, router, searchTypeFromUrl],
   );
 
   useEffect(() => {
@@ -176,7 +192,7 @@ function PostListContent() {
     return Array.from({ length: Math.min(5, totalPages) }, (_, index) => start + index);
   }, [page, totalPages]);
 
-  const moveTo = (next: { category?: string; page?: number; keyword?: string; view?: string }) => {
+  const moveTo = (next: { category?: string; page?: number; keyword?: string; searchType?: string; view?: string }) => {
     const params = new URLSearchParams();
     const category = next.category ?? currentCategory;
     const nextPage = next.page ?? page;
@@ -185,13 +201,20 @@ function PostListContent() {
     if (category) params.set("category", category);
     if (view) params.set("view", view);
     if (nextPage > 0) params.set("page", String(nextPage + 1));
-    if (keyword.trim()) params.set("keyword", keyword.trim());
-    router.push(`/posts${params.size ? `?${params}` : ""}`);
+    if (keyword.trim()) {
+      params.set("keyword", keyword.trim());
+      const nextType = next.searchType ?? searchTypeFromUrl;
+      if (nextType !== DEFAULT_SEARCH_TYPE) params.set("searchType", nextType);
+    }
+    const url = `/posts${params.size ? `?${params}` : ""}`;
+    // 검색어가 걸린 이동은 Next 라우터가 프리패치된 주소로 되돌려 검색어를 잃는 경우가 있어 새로 불러온다.
+    if (keyword.trim() || keywordFromUrl) window.location.assign(url);
+    else router.push(url);
   };
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
-    moveTo({ page: 0, keyword: searchKeyword });
+    moveTo({ page: 0, keyword: searchKeyword, searchType });
   };
 
   const handlePostClick = (event: React.MouseEvent, post: PostItem) => {
@@ -208,6 +231,7 @@ function PostListContent() {
     <div className="community-page">
       <TopNav active={currentView === "best" ? "best" : config.navKey} />
       <main className="community-container board-page">
+        <h1 className="sr-only">{config.name}</h1>
         <div className="board-layout">
           <section className="board-primary">
             {isInquiry ? (
@@ -279,11 +303,13 @@ function PostListContent() {
                 <div className="board-state">
                   <span className="material-symbols-outlined">edit_note</span>
                   <strong>
-                    {isInquiry
-                      ? isAdmin ? "들어온 문의가 없습니다." : "남긴 문의가 없습니다."
-                      : "등록된 게시글이 없습니다."}
+                    {keywordFromUrl
+                      ? "검색 결과가 없습니다."
+                      : isInquiry
+                        ? isAdmin ? "들어온 문의가 없습니다." : "남긴 문의가 없습니다."
+                        : "등록된 게시글이 없습니다."}
                   </strong>
-                  {(currentCategory !== "NOTICE" || isAdmin) && (
+                  {!keywordFromUrl && (currentCategory !== "NOTICE" || isAdmin) && (
                     <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}>
                       {isInquiry ? "문의하기" : "첫 글 작성하기"}
                     </Link>
@@ -372,8 +398,8 @@ function PostListContent() {
               </nav>
               <div className="board-navigation-actions">
                 <form className="board-search" onSubmit={handleSearch}>
-                  <select aria-label="검색 범위">
-                    <option>제목+내용</option>
+                  <select aria-label="검색 범위" value={searchType} onChange={(event) => setSearchType(event.target.value)}>
+                    {SEARCH_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
                   </select>
                   <input
                     value={searchKeyword}

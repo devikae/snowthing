@@ -23,3 +23,11 @@ test('a document with unresolved operator facts stays a draft',()=>{
   if(text.includes('[확정 필요'))assert.equal(JSON.parse(text).draft,true,file);
  }
 });
+test('current documents say under-14s cannot join and offer no guardian path',()=>{
+ const manifest=read('current');
+ for(const name of [manifest.version,manifest.termsVersion]){
+  const text=fs.readFileSync(path.join(directory,name+'.json'),'utf8');
+  assert(text.includes('만 14세 미만은 가입할 수 없습니다'),name);
+  assert(!text.includes('법정대리인'),name);
+ }
+});

@@ -37,6 +37,8 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  word-break: keep-all;
+  overflow-wrap: break-word;
   background: var(--snow-background);
   color: var(--snow-ink);
   font-family: var(--font-hanken);
@@ -354,7 +356,7 @@ button:disabled {
 .carpool-widget > div:nth-child(2) { padding: 0 12px; }.carpool-widget article { border-bottom: 1px solid #f1f5f9; padding: 11px 0; }.carpool-widget article:last-child { border: 0; }.carpool-widget article header,.carpool-widget article p,.carpool-widget article footer { display: flex; justify-content: space-between; gap: 8px; }.carpool-widget article header strong { color: #334155; font-size: 12px; }.carpool-widget article header i { color: #94a3b8; font-style: normal; }.carpool-widget article header em { color: #0369a1; font-style: normal; }.carpool-widget article header > span { border: 1px solid #fecdd3; border-radius: 3px; background: #fff1f2; padding: 2px 5px; color: #e11d48; font-size: 10px; font-weight: 800; }.carpool-widget article p { margin: 7px 0; color: #64748b; font-size: 11px; }.carpool-widget article p strong { color: #475569; }.carpool-widget article footer { color: #94a3b8; font-size: 10px; }.carpool-widget article footer a { flex: none; color: #0284c7; font-weight: 750; }
 .market-widget { padding-bottom: 11px; }.market-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 10px 12px 0; }.market-grid > a { min-width: 0; border: 1px solid #e2e8f0; border-radius: 5px; background: #fbfcfd; padding: 7px; }.market-grid > a:hover { border-color: #38bdf8; }.market-grid a > div { position: relative; overflow: hidden; border-radius: 4px; }.market-grid img { width: 100%; aspect-ratio: 1.35; object-fit: cover; transition: transform .2s ease; }.market-grid a:hover img { transform: scale(1.03); }.market-grid div span { position: absolute; top: 5px; left: 5px; border-radius: 3px; background: #0f172a; padding: 2px 5px; color: white; font-size: 9px; font-weight: 800; }.market-grid > a > strong,.market-grid > a > b,.market-grid > a > small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.market-grid > a > strong { margin-top: 6px; color: #334155; font-size: 11px; }.market-grid > a > b { margin-top: 2px; color: #0f172a; font-size: 12px; }.market-grid > a > small { margin-top: 2px; color: #94a3b8; font-size: 10px; }
 .market-preview-grid > a { padding: 0; }
-.market-preview-grid a > div { display: grid; aspect-ratio: 1.35; place-items: center; background: #eef2f6; }
+.market-preview-grid a > div { display: grid; aspect-ratio: 1.35; place-items: center; background: var(--snow-surface-mid); }
 .market-preview-grid div .market-image-placeholder { position: static; background: transparent; padding: 0; color: #94a3b8; font-size: 30px; font-weight: 400; }
 .market-preview-empty { display: grid; min-height: 110px; place-items: center; align-content: center; gap: 5px; color: #94a3b8; font-size: 11px; }
 .market-preview-empty .material-symbols-outlined { font-size: 28px; }
@@ -1156,7 +1158,7 @@ html[data-theme="dark"] .home-live-chat .live-chat-card > div:first-child > div:
 }
 
 html[data-theme="dark"] .resort-marker-konjiam {
-  background: #d1d5db;
+  background: #4b5563;
 }
 
 /* Used market */
@@ -1614,7 +1616,7 @@ html[data-theme="dark"] .detail-carpool-card > header > a {
   --snow-ink: #09090b;
   --snow-ink-soft: #3f3f46;
   --snow-muted: #71717a;
-  --snow-faint: #a1a1aa;
+  --snow-faint: #71717a;
   --snow-border: #e4e4e7;
   --snow-border-strong: #d4d4d8;
   --snow-line-soft: #f4f4f5;
@@ -1634,7 +1636,7 @@ html[data-theme="dark"] {
   --snow-ink: #fafafa;
   --snow-ink-soft: #d4d4d8;
   --snow-muted: #a1a1aa;
-  --snow-faint: #52525b;
+  --snow-faint: #8f8f99;
   --snow-border: #313131;
   --snow-border-strong: #454545;
   --snow-line-soft: #272727;
@@ -4052,3 +4054,43 @@ html[data-theme="dark"] .snow-empty-copy strong {
 .comment-delete-close .material-symbols-outlined { font-size: 16px; }
 .comment-delete-close:hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
 .comment-delete-error { position: absolute; top: 100%; right: 0; z-index: 50; margin-top: 4px; border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-canvas); padding: 4px 8px; color: var(--snow-error); font-size: 12px; white-space: nowrap; box-shadow: 0 8px 20px rgba(15, 23, 42, .12); }
+
+/* 좁은 폰에서 로그인 아이콘이 로고를 덮지 않게 글자 로고를 숨긴다. */
+@media (max-width: 410px) {
+  .community-header-inner:has(.header-profile) .alpine-logo-wordmark { display: none; }
+}
+
+@media (max-width: 700px) {
+  /* 메인 게시판 탭은 한 줄을 다 쓰고, 더보기와 글쓰기는 다음 줄에 둔다. */
+  .home-tier-1 .board-tabs { flex-wrap: wrap; }
+  .home-tier-1 .board-tabs > .filter-pills { flex: 1 0 100%; }
+  /* 스크롤할 탭이 남아 있으면 끝에 그림자를 보여 준다. */
+  .filter-pills,
+  .home-tier-1 .board-tabs > .filter-pills {
+    background:
+      linear-gradient(to right, var(--snow-surface-low) 40%, transparent) left center / 24px 100% no-repeat local,
+      linear-gradient(to left, var(--snow-surface-low) 40%, transparent) right center / 24px 100% no-repeat local,
+      linear-gradient(to right, color-mix(in srgb, var(--snow-ink) 18%, transparent), transparent) left center / 12px 100% no-repeat scroll,
+      linear-gradient(to left, color-mix(in srgb, var(--snow-ink) 18%, transparent), transparent) right center / 12px 100% no-repeat scroll,
+      var(--snow-surface-low);
+  }
+  .filter-pills button,
+  .home-tier-1 .board-tabs button,
+  html[data-theme="dark"] .home-tier-1 .board-tabs button { height: 36px; }
+  /* 댓글의 답글 버튼과 로그인 안내 링크 터치 영역 */
+  .comment-youtube-actions button { min-height: 32px; padding-inline: 4px; }
+  .comment-login-guide a { display: inline-flex; min-height: 32px; align-items: center; }
+}
+
+.not-found-page { display: grid; min-height: 50vh; align-content: center; justify-items: center; gap: 12px; text-align: center; }
+.not-found-page h1 { margin: 0; font-size: 24px; font-weight: 700; }
+.not-found-page p { margin: 0 0 8px; color: var(--snow-muted); }
+
+/* 시간과 저작권 표시가 흰 바탕에서 흐리게 보이지 않게 한다. */
+.community-copyright,
+.post-detail-author small,
+.comment-youtube-body > header time { color: var(--snow-muted); }
+
+.carpool-search { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; margin-bottom: 12px; }
+.carpool-search input { height: 40px; min-width: 0; border: 1px solid var(--snow-border-strong); border-radius: 7px; background: var(--snow-canvas); padding: 0 12px; color: var(--snow-ink); font-size: 14px; }
+.carpool-search button { height: 40px; border: 0; border-radius: 7px; background: var(--snow-ink); color: var(--snow-canvas); font-size: 13px; font-weight: 700; cursor: pointer; }

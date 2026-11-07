@@ -167,6 +167,14 @@ class PostControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/posts - 없는 검색 종류는 400 Bad Request")
+    void getPostList_invalidSearchType_badRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/posts").param("searchType", "ALL").param("keyword", "보드"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").exists());
+    }
+
+    @Test
     @DisplayName("DELETE /api/v1/posts/{publicId} - 로그인 작성자 본인 정상 삭제 200 OK")
     void deletePost_writer_success() throws Exception {
         PostResponse post =
