@@ -128,7 +128,11 @@ function MarketPageContent() {
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
-    move({ keyword: searchKeyword.trim(), page: 1 });
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("page");
+    if (searchKeyword.trim()) params.set("keyword", searchKeyword.trim());
+    else params.delete("keyword");
+    window.location.assign(`/market${params.size ? `?${params}` : ""}`);
   };
 
   const changeView = (next: ViewMode) => {

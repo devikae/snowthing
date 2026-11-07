@@ -4090,3 +4090,7 @@ html[data-theme="dark"] .snow-empty-copy strong {
 .community-copyright,
 .post-detail-author small,
 .comment-youtube-body > header time { color: var(--snow-muted); }
+
+.carpool-search { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; margin-bottom: 12px; }
+.carpool-search input { height: 40px; min-width: 0; border: 1px solid var(--snow-border-strong); border-radius: 7px; background: var(--snow-canvas); padding: 0 12px; color: var(--snow-ink); font-size: 14px; }
+.carpool-search button { height: 40px; border: 0; border-radius: 7px; background: var(--snow-ink); color: var(--snow-canvas); font-size: 13px; font-weight: 700; cursor: pointer; }
