@@ -27,6 +27,11 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요.",
 };
 
+const LOGIN_FAILURE_MESSAGES: Record<number, string> = {
+  401: "이메일 또는 비밀번호가 올바르지 않습니다.",
+  429: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+};
+
 function getErrorMessage(error: unknown) {
   return errorText(error, "요청을 처리하지 못했습니다.");
 }
@@ -83,8 +88,9 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
+        // 프록시가 HTML로 답해도 JSON 파싱 오류가 화면에 나오지 않게 상태 코드별 기본 문구를 둔다.
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || errorData?.error || LOGIN_FAILURE_MESSAGES[response.status] || "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");

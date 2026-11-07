@@ -5,5 +5,6 @@ public enum PostStatus {
     DELETED,
     BLOCKED,
     HIDDEN,
-    DRAFT
+    DRAFT,
+    TEMPORARY_HOLD
 }

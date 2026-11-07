@@ -86,7 +86,12 @@ export const API_ENDPOINTS = {
     create: `${API_V1_URL}/resort-reports`,
     delete: (reportId: number) => `${API_V1_URL}/resort-reports/${reportId}`,
   },
+  reports: {
+    create: `${API_V1_URL}/reports`,
+  },
   admin: {
+    reports: (status: string, page: number) => `${API_V1_URL}/admin/reports?status=${status}&page=${page}`,
+    reportAction: (reportId: number) => `${API_V1_URL}/admin/reports/${reportId}/actions`,
     answerDrafts: (status: string, page: number, size = 20) =>
       `${API_V1_URL}/admin/answer-drafts?page=${page}&size=${size}${status ? `&status=${encodeURIComponent(status)}` : ""}`,
     answerDraft: (draftId: string) => `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}`,

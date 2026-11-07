@@ -42,6 +42,7 @@ public class CarpoolWriterService {
     private final ResortRepository resortRepository;
     private final CarpoolDetailRepository carpoolDetailRepository;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
 
     @Transactional
     public CarpoolResponse save(
@@ -181,6 +182,7 @@ public class CarpoolWriterService {
             throw new CustomException(ErrorCode.CARPOOL_DETAIL_REQUIRED);
         }
         post.softDelete();
+        imageLifecycle.releasePostImages(post);
         searchOutbox.postChanged(post);
     }
 

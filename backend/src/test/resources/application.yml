@@ -10,12 +10,27 @@ spring:
     username: ${SNOWTHING_TEST_DB_USERNAME}
     password: ${SNOWTHING_TEST_DB_PASSWORD}
 
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:test-schema.sql
+
   jpa:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
 
+# 실제 AWS에 닿지 않게 한다. S3를 부르는 스케줄러는 긴 주기로 두고, 버킷도 없는 이름을 쓴다.
+cloud:
+  aws:
+    s3:
+      bucket: snowthing-test-no-such-bucket
+
 snowthing:
+  post-images:
+    cleanup-delay-ms: 3600000
+  market-thumbnails:
+    delay-ms: 3600000
   email:
     verification:
       secret: test-email-verification-secret-at-least-32-bytes
@@ -28,6 +43,8 @@ snowthing:
     reconcile:
       enabled: false
 
-  # 작성 API 연타 제한(request_budget_window)은 테스트 DB에 테이블이 없어 기본으로 끈다.
+  # 작성 연타 제한과 로그인 시도 제한은 테스트끼리 같은 작성자, 같은 IP를 공유해 기본으로 끈다.
   write-limit:
+    enabled: false
+  login-limit:
     enabled: false

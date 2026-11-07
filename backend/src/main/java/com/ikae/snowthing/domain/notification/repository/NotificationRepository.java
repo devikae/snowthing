@@ -26,6 +26,11 @@ public interface NotificationRepository
                     + " WHERE n.receiver.id = :receiverId AND n.read = false")
     int markAllRead(@Param("receiverId") Long receiverId);
 
+    /** 임시조치나 삭제된 댓글의 내용이 지난 알림에 남지 않게 지운다. 드문 관리자 조치라 인덱스를 두지 않았다. */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Notification n SET n.preview = '' WHERE n.commentId = :commentId")
+    int clearPreviewByCommentId(@Param("commentId") Long commentId);
+
     /**
      * 보관 기간이 지난 알림을 PK 순서로 최대 {@code limit}건 지운다. 오래된 행이 PK 앞쪽에 몰려 있어 앞에서부터 읽다가 멈추므로 created_at 인덱스
      * 없이도 짧게 끝나고, 한 번에 잡는 락도 limit 건 근처로 제한된다.
