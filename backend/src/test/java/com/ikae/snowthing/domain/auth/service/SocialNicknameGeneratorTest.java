@@ -12,6 +12,13 @@ class SocialNicknameGeneratorTest {
     private final SocialNicknameGenerator generator = new SocialNicknameGenerator();
 
     @Test
+    @DisplayName("소셜 이름에 운영자나 관리자가 있으면 그 이름을 쓰지 않는다")
+    void reservedNickname_IsNotUsed() {
+        assertThat(generator.initialCandidate("눈팅운영자")).startsWith("보더");
+        assertThat(generator.generateWithSuffix("관리자")).startsWith("보더");
+    }
+
+    @Test
     @DisplayName("유효한 2~10자 한글/영문/숫자 닉네임은 그대로 첫 후보로 사용한다")
     void initialCandidate_ValidNickname_ReturnsSanitized() {
         String candidate = generator.initialCandidate("설원보더123");

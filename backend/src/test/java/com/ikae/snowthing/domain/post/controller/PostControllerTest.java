@@ -59,6 +59,15 @@ class PostControllerTest {
     @BeforeEach
     void setUp() {
         categoryRepository
+                .findByCode("ANONYMOUS")
+                .orElseGet(
+                        () ->
+                                categoryRepository.save(
+                                        PostCategory.builder()
+                                                .name("익명게시판")
+                                                .code("ANONYMOUS")
+                                                .build()));
+        categoryRepository
                 .findByCode("FREE")
                 .orElseGet(
                         () ->
@@ -335,7 +344,7 @@ class PostControllerTest {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()
-                                .categoryCode("FREE")
+                                .categoryCode("ANONYMOUS")
                                 .title("익명 글")
                                 .content("본문 내용")
                                 .isAnonymous(true)
@@ -364,7 +373,7 @@ class PostControllerTest {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()
-                                .categoryCode("FREE")
+                                .categoryCode("ANONYMOUS")
                                 .title("익명 글")
                                 .content("본문 내용")
                                 .isAnonymous(true)
@@ -392,7 +401,7 @@ class PostControllerTest {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()
-                                .categoryCode("FREE")
+                                .categoryCode("ANONYMOUS")
                                 .title("익명글")
                                 .content("비회원이 쓴 글")
                                 .isAnonymous(true)
@@ -436,7 +445,7 @@ class PostControllerTest {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()
-                                .categoryCode("FREE")
+                                .categoryCode("ANONYMOUS")
                                 .title("익명글")
                                 .content("비회원이 쓴 글")
                                 .isAnonymous(true)
