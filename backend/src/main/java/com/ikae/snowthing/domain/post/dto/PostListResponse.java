@@ -31,8 +31,8 @@ public record PostListResponse(
                 WriterDisplayFormatter.format(
                         post.isAnonymous(), post.getMember(), post.getWriterIp());
 
-        String thumbnailUrl =
-                post.getImages().isEmpty() ? null : post.getImages().get(0).getImageUrl();
+        // 목록 썸네일은 화면에서 쓰지 않는다. 사진 컬렉션(LAZY)을 건드리면 글마다 쿼리가 하나씩 더 나가므로 읽지 않는다.
+        String thumbnailUrl = null;
 
         return new PostListResponse(
                 post.getPublicId(),

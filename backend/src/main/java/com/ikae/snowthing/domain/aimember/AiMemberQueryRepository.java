@@ -22,6 +22,8 @@ public class AiMemberQueryRepository {
 
     static final List<String> BOARDS = List.of("FREE", "ANONYMOUS", "QNA");
 
+    static final int MAX_RECENT_POSTS = 200;
+
     private final NamedParameterJdbcTemplate jdbc;
 
     public Map<Long, Integer> countPostsSince(Collection<Long> memberIds, LocalDateTime since) {
@@ -32,15 +34,22 @@ public class AiMemberQueryRepository {
         return countSince("comment", memberIds, since);
     }
 
-    /** 세 게시판의 정상 글. 오래된 글부터. */
+    /**
+     * 세 게시판의 정상 글. 오래된 글부터.
+     *
+     * <p>1분마다 불리므로 글이 몰려도 최근 {@value #MAX_RECENT_POSTS}개만 읽는다. 본문은 정치 글 거르기에 전부 쓰이므로 자르지 않는다.
+     */
     public List<PostView> findRecentPosts(LocalDateTime since) {
         return jdbc.query(
-                "SELECT p.post_id, p.public_id, p.member_id, c.code, p.title, p.content,"
-                        + " p.created_at FROM post p JOIN post_category c ON c.category_id ="
-                        + " p.category_id WHERE c.code IN (:boards) AND p.status = 'NORMAL'"
-                        + " AND p.is_deleted = false AND p.created_at >= :since"
-                        + " ORDER BY p.created_at, p.post_id",
-                new MapSqlParameterSource("boards", BOARDS).addValue("since", since),
+                "SELECT * FROM (SELECT p.post_id, p.public_id, p.member_id, c.code, p.title,"
+                        + " p.content, p.created_at FROM post p JOIN post_category c ON"
+                        + " c.category_id = p.category_id WHERE c.code IN (:boards) AND p.status ="
+                        + " 'NORMAL' AND p.is_deleted = false AND p.created_at >= :since"
+                        + " ORDER BY p.created_at DESC, p.post_id DESC LIMIT :limit) recent"
+                        + " ORDER BY created_at, post_id",
+                new MapSqlParameterSource("boards", BOARDS)
+                        .addValue("since", since)
+                        .addValue("limit", MAX_RECENT_POSTS),
                 (rs, row) ->
                         new PostView(
                                 rs.getLong("post_id"),
