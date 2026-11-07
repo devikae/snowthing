@@ -8,6 +8,7 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS, SocialLoginProvider } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import styles from "./login.module.css";
+import { errorText } from "../lib/errorText";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
 
@@ -26,7 +27,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
 };
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+  return errorText(error, "요청을 처리하지 못했습니다.");
 }
 
 export default function LoginPage() {

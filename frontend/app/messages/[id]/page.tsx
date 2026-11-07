@@ -8,6 +8,7 @@ import { MessageComposeForm } from "../../components/MessageComposeForm";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { MESSAGE_ENDPOINTS, MessageDetail, formatMessageDate, notifyMessagesUpdated, readErrorMessage } from "../../lib/messageApi";
 import styles from "../../components/messages.module.css";
+import { errorText } from "../../lib/errorText";
 
 export default function MessageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -39,7 +40,7 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
         // 받은 쪽지를 처음 열면 서버가 읽음으로 바꾸므로 헤더 배지를 다시 읽는다.
         if (data.box === "RECEIVED") notifyMessagesUpdated();
       } catch (loadError) {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "쪽지를 불러오지 못했습니다.");
+        if (!cancelled) setError(errorText(loadError, "쪽지를 불러오지 못했습니다."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -65,7 +66,7 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
       notifyMessagesUpdated();
       router.replace(message.box === "SENT" ? "/messages?box=sent" : "/messages");
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "쪽지를 삭제하지 못했습니다.");
+      setError(errorText(deleteError, "쪽지를 삭제하지 못했습니다."));
       setDeleting(false);
     }
   };

@@ -12,6 +12,9 @@ import dynamic from "next/dynamic";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
+import { ReportButton } from "../../components/ReportButton";
+import { errorText } from "../../lib/errorText";
+import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
   ssr: false,
@@ -206,7 +209,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       setHasNextComments(Boolean(data.hasNext));
     } catch (error) {
       console.error("댓글 로드 실패:", error);
-      const message = error instanceof Error ? error.message : "서버 통신 중 오류가 발생했습니다.";
+      const message = errorText(error, "서버 통신 중 오류가 발생했습니다.");
       if (append) {
         setLoadMoreCommentError(message);
       } else {
@@ -315,7 +318,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
             }
             setPost(data);
           } else {
-            setErrorMsg("게시글을 찾을 수 없거나 삭제되었습니다.");
+            const body = res.status === 403 ? await res.json().catch(() => null) : null;
+            setErrorMsg(body?.code === "POST_009" ? body.message : res.status === 404 ? "게시글을 찾을 수 없거나 삭제되었습니다." : "게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
           }
           await fetchComments();
         } catch {
@@ -525,7 +529,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       setEditCommentPassword("");
       setEditCommentError("");
     } catch (error) {
-      setEditCommentError(error instanceof Error ? error.message : "서버 통신 중 오류가 발생했습니다.");
+      setEditCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
     } finally {
       setSubmittingEditComment(false);
     }
@@ -568,7 +572,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
       await fetchComments();
       setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
     } catch (error) {
-      setDeleteCommentError(error instanceof Error ? error.message : "서버 통신 중 오류가 발생했습니다.");
+      setDeleteCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
     } finally {
       setSubmittingDeleteComment(false);
     }
@@ -672,6 +676,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ publicId:
                   비추천 {post.dislikeCount}
                 </button>
                 <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined">share</span>공유</button>
+                <ReportButton targetType="POST" targetId={publicId} />
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
             </div>
@@ -928,6 +933,7 @@ function CommentRow({
               <div className="comment-youtube-actions">
                 <button type="button" onClick={toggleReplyEditor}>{activeReplyParentId === item.commentId ? "답글 취소" : "답글"}</button>
                 {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+                {!item.isDeleted && <ReportButton targetType="COMMENT" targetId={item.commentId} />}
               </div>
             </>
           )}
@@ -1106,6 +1112,7 @@ function ReplyRow({
           {!item.isDeleted && !isEditing && <div className="comment-youtube-actions">
             <button type="button" onClick={onReply}>답글</button>
             {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
+            <ReportButton targetType="COMMENT" targetId={item.commentId} />
           </div>}
         </div>
       </div>
@@ -1293,16 +1300,7 @@ function CommentDeleteInline({
 }
 
 function formatPostDateTime(dateString: string): string {
-  try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    return new Intl.DateTimeFormat("ko-KR", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(d);
-  } catch {
-    return dateString;
-  }
+  return formatKoreanDate(dateString, KOREAN_DATE_TIME);
 }
 
 function formatCommentDate(dateString: string): string {

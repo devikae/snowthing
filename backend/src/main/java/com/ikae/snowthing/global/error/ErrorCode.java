@@ -43,6 +43,7 @@ public enum ErrorCode {
     CHAT_BOT_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_012", "봇의 대기 요청이 많습니다."),
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "MEMBER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_003", "이미 사용 중인 닉네임입니다."),
+    RESERVED_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_020", "사용할 수 없는 닉네임입니다."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_004", "현재 비밀번호가 일치하지 않습니다."),
     PASSWORD_CHANGE_UNAVAILABLE(
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
@@ -83,9 +84,21 @@ public enum ErrorCode {
     COMMENT_REPLY_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "COMMENT_004", "루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),
+    CONTENT_TEMPORARILY_HELD(
+            HttpStatus.FORBIDDEN,
+            "POST_009",
+            "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 82snowthing@gmail.com으로 문의해 주세요."),
+    CONTENT_REPORT_TARGET_NOT_FOUND(
+            HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
+    CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),
+    CONTENT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_REPORT_003", "존재하지 않는 신고입니다."),
+    CONTENT_REPORT_ACTION_INVALID(
+            HttpStatus.CONFLICT, "CONTENT_REPORT_004", "현재 상태에서는 할 수 없는 조치입니다."),
     NOTIFICATION_LOGIN_REQUIRED(
             HttpStatus.UNAUTHORIZED, "NOTIFICATION_002", "로그인 후 알림을 확인할 수 있습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
+    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_005", "요청한 주소를 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "COMMON_002", "페이지 크기는 1 이상 100 이하이어야 합니다."),
     CONTENT_WRITE_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "COMMON_003", "작성 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),

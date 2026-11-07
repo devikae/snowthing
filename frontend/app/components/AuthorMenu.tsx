@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { blockMember, composeMessageHref, fetchViewerPublicId } from "../lib/messageApi";
 import styles from "./messages.module.css";
+import { errorText } from "../lib/errorText";
 
 interface AuthorMenuProps {
   publicId: string | null | undefined;
@@ -56,7 +57,7 @@ export function AuthorMenu({ publicId, nickname, className }: AuthorMenuProps) {
       await blockMember(publicId);
       setBlocked(true);
     } catch (blockError) {
-      setError(blockError instanceof Error ? blockError.message : "차단하지 못했습니다.");
+      setError(errorText(blockError, "차단하지 못했습니다."));
     } finally {
       setBusy(false);
     }

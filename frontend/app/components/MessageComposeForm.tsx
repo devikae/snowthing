@@ -4,6 +4,7 @@ import { FormEvent, useRef, useState } from "react";
 import { csrfFetch } from "../lib/csrfFetch";
 import { MESSAGE_ENDPOINTS, MESSAGE_MAX_LENGTH, readErrorMessage } from "../lib/messageApi";
 import styles from "./messages.module.css";
+import { errorText } from "../lib/errorText";
 
 interface MessageComposeFormProps {
   receiver: { publicId: string; nickname: string };
@@ -46,7 +47,7 @@ export function MessageComposeForm({ receiver, listing, quote, onSent, onUnautho
       setContent("");
       onSent();
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : "쪽지를 보내지 못했습니다.");
+      setError(errorText(sendError, "쪽지를 보내지 못했습니다."));
     } finally {
       sendingRef.current = false;
       setSending(false);

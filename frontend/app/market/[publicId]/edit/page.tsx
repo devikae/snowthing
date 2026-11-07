@@ -11,6 +11,8 @@ import type { ToastEditorHandle } from "../../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { csrfFetch } from "../../../lib/csrfFetch";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
+import { errorText } from "../../../lib/errorText";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage } from "../../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
 
@@ -93,10 +95,15 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
       setError("사진은 최대 10장까지 등록할 수 있습니다.");
       return;
     }
+    if (Array.from(files).some(isOversizedImage)) {
+      setError(OVERSIZED_IMAGE_MESSAGE);
+      return;
+    }
     setUploading(true);
     setError("");
     try {
       for (const file of Array.from(files)) {
+        if (file.size > 5 * 1024 * 1024) throw new Error("사진은 한 장에 5MB까지 올릴 수 있습니다.");
         const formData = new FormData();
         formData.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, {
@@ -111,7 +118,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
         setImages((current) => [...current, uploaded.imageUrl]);
       }
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "이미지 업로드에 실패했습니다.");
+      setError(errorText(uploadError, "이미지 업로드에 실패했습니다."));
     } finally {
       setUploading(false);
     }
