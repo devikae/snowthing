@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BlockedMember, MESSAGE_ENDPOINTS, formatMessageDate, readErrorMessage, unblockMember } from "../lib/messageApi";
 import styles from "./messages.module.css";
+import { errorText } from "../lib/errorText";
 
 /** 설정 화면의 차단 목록. 차단한 회원과는 서로 쪽지를 보낼 수 없다. */
 export function BlockedMembersSection() {
@@ -17,7 +18,7 @@ export function BlockedMembersSection() {
       setBlocks(await response.json());
       setError("");
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "차단 목록을 불러오지 못했습니다.");
+      setError(errorText(loadError, "차단 목록을 불러오지 못했습니다."));
     }
   }, []);
 
@@ -35,7 +36,7 @@ export function BlockedMembersSection() {
       await unblockMember(member.publicId);
       setBlocks((current) => current?.filter((item) => item.publicId !== member.publicId) ?? null);
     } catch (unblockError) {
-      setError(unblockError instanceof Error ? unblockError.message : "차단을 해제하지 못했습니다.");
+      setError(errorText(unblockError, "차단을 해제하지 못했습니다."));
     } finally {
       setBusyId(null);
     }
