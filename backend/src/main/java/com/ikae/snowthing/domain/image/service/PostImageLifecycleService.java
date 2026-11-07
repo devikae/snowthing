@@ -285,7 +285,8 @@ public class PostImageLifecycleService {
                 "public/posts/thumbnails/"
                         + filename.substring(0, filename.lastIndexOf('.'))
                         + ".jpg";
-        for (String object : key.startsWith(PREFIX + "m-") ? List.of(key) : List.of(key, thumb)) {
+        List<String> objects = key.startsWith(PREFIX + "m-") ? List.of(key) : List.of(key, thumb);
+        for (String object : objects) {
             try {
                 s3.putObjectTagging(
                         software.amazon.awssdk.services.s3.model.PutObjectTaggingRequest.builder()
@@ -302,7 +303,8 @@ public class PostImageLifecycleService {
                                                 .build())
                                 .build());
             } catch (software.amazon.awssdk.services.s3.model.S3Exception failure) {
-                if (failure.statusCode() != 404) throw failure;
+                // 역할에 ListBucket이 없어 없는 파일도 403이 온다. 진짜 권한 문제면 아래 삭제가 실패한다.
+                if (failure.statusCode() != 404 && failure.statusCode() != 403) throw failure;
             }
             s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(object).build());
         }
@@ -317,5 +319,6 @@ public class PostImageLifecycleService {
                                             upload.renewDue(
                                                     clock.instant().plus(Duration.ofDays(7)));
                                         }));
+        images.invalidateDeletedPostImages(objects);
     }
 }

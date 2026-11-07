@@ -219,6 +219,24 @@ class PostImageLifecycleIntegrationTest {
     }
 
     @Test
+    void missingObjectForbiddenOnTaggingStillFinishesCleanup() throws Exception {
+        String key = upload();
+        expire(key);
+        org.mockito.Mockito.when(
+                        s3.putObjectTagging(
+                                any(
+                                        software.amazon.awssdk.services.s3.model
+                                                .PutObjectTaggingRequest.class)))
+                .thenThrow(
+                        software.amazon.awssdk.services.s3.model.S3Exception.builder()
+                                .statusCode(403)
+                                .build());
+        lifecycle.cleanOne(key);
+        verify(s3, times(1)).deleteObject(any(DeleteObjectRequest.class));
+        assertThat(state(key)).isEqualTo("DELETED");
+    }
+
+    @Test
     void abandonedUploadDeletesOriginalAndRejectsStaleAttachment() throws Exception {
         String key = upload();
         expire(key);
