@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
+import { errorText } from "../lib/errorText";
 import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "./RegistrationConsentForm";
 
 interface ResortMaster { id: number; name: string; regionName: string; }
@@ -105,7 +106,7 @@ export default function SignUpPage() {
       setVerificationExpiresSeconds(body.expiresInSeconds);
       setNotice("인증번호를 보냈습니다. 5분 안에 입력해 주세요.");
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "인증 요청을 처리하지 못했습니다.");
+      setErrorMsg(errorText(error, "인증 요청을 처리하지 못했습니다."));
     } finally { setLoading(false); }
   };
 
@@ -122,7 +123,7 @@ export default function SignUpPage() {
       setEmailVerificationError("");
       setNotice("이메일 인증이 완료되었습니다.");
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "인증번호 확인에 실패했습니다.");
+      setErrorMsg(errorText(error, "인증번호 확인에 실패했습니다."));
     } finally { setLoading(false); }
   };
 
@@ -144,7 +145,7 @@ export default function SignUpPage() {
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
       router.push(loginResponse.ok ? "/" : "/login");
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "회원가입을 처리하지 못했습니다.");
+      setErrorMsg(errorText(error, "회원가입을 처리하지 못했습니다."));
     } finally { setLoading(false); }
   };
 

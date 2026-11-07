@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { composeMessageHref, MESSAGE_ENDPOINTS, readErrorMessage } from "../lib/messageApi";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import styles from "./messages.module.css";
+import { errorText } from "../lib/errorText";
 
 const MIN_LENGTH = 2;
 const DEBOUNCE_MS = 300;
@@ -51,7 +52,7 @@ export function MessageRecipientSearch({ onUnauthorized }: { onUnauthorized: () 
         setSearch({
           keyword,
           results: [],
-          error: searchError instanceof Error ? searchError.message : "회원을 찾지 못했습니다.",
+          error: errorText(searchError, "회원을 찾지 못했습니다."),
         });
       }
     }, DEBOUNCE_MS);

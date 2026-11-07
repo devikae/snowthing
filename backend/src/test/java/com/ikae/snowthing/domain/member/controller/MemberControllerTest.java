@@ -119,6 +119,26 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("회원가입 자기소개가 255자를 넘으면 400 Bad Request를 반환한다")
+    void signUp_TooLongBio_Returns400() throws Exception {
+        // given
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("valid@snowthing.com")
+                        .password("Password123!")
+                        .nickname("정상닉네임")
+                        .bio("가".repeat(256))
+                        .build();
+
+        // when & then
+        mockMvc.perform(
+                        post("/api/v1/members")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("회원가입 비밀번호가 8자 미만이면 400 Bad Request를 반환한다")
     void signUp_ShortPassword_Returns400() throws Exception {
         // given

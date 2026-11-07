@@ -44,8 +44,10 @@ public class MemberSignUpRequest implements RegistrationConsentRequest {
     @Pattern(regexp = NicknamePolicy.REGEXP, message = NicknamePolicy.MESSAGE)
     private String nickname;
 
+    @Size(max = 255, message = "자기소개는 255자까지 입력할 수 있습니다.")
     private String bio;
 
+    @Size(max = 100, message = "출발 지역은 100자까지 입력할 수 있습니다.")
     private String departureRegion;
 
     private List<Long> resortIds = new ArrayList<>();

@@ -10,6 +10,7 @@ import { CommentProfileAvatar } from "../components/CommentProfileAvatar";
 import { MarketingConsentSection } from "../components/MarketingConsentSection";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { errorText } from "../lib/errorText";
 import "./profile.css";
 
 interface Preference { id: number; name: string; }
@@ -66,7 +67,7 @@ export default function ProfilePage() {
       setProfile(p); setForm(toForm(p));
       setResorts([...resortData, ...p.resorts.filter(x => !resortData.some(y => y.id === x.id))]);
       setStyles([...styleData.map(x => ({ id: x.id, name: x.styleName })), ...p.ridingStyles.filter(x => !styleData.some(y => y.id === x.id))]);
-    } catch (e) { setError(e instanceof Error ? e.message : "내 정보를 불러오지 못했습니다."); }
+    } catch (e) { setError(errorText(e, "내 정보를 불러오지 못했습니다.")); }
     finally { setLoading(false); }
   }, [router]);
   useEffect(() => {
@@ -106,7 +107,7 @@ export default function ProfilePage() {
       if (version !== nicknameVersion.current) return;
       setCheckedNickname(result.available && result.nickname === nickname ? nickname : null);
       setNicknameMessage(result.available ? "사용할 수 있는 닉네임입니다." : "이미 사용 중인 닉네임입니다.");
-    } catch (e) { if (version === nicknameVersion.current) setNicknameMessage(e instanceof Error ? e.message : "중복 확인에 실패했습니다."); }
+    } catch (e) { if (version === nicknameVersion.current) setNicknameMessage(errorText(e, "중복 확인에 실패했습니다.")); }
     finally { setCheckingNickname(false); }
   };
   const save = async (event: React.FormEvent) => {
@@ -119,7 +120,7 @@ export default function ProfilePage() {
       const p: Settings = await response.json(); setProfile(p); setForm(toForm(p));
       setCheckedNickname(null); setNicknameMessage(""); setNotice("내 정보를 저장했습니다.");
       window.dispatchEvent(new Event("snowthing-profile-updated"));
-    } catch (e) { setError(e instanceof Error ? e.message : "저장에 실패했습니다."); }
+    } catch (e) { setError(errorText(e, "저장에 실패했습니다.")); }
     finally { setBusy(null); }
   };
   const savePhoto = async (reset = false) => {
@@ -140,7 +141,7 @@ export default function ProfilePage() {
       if (fileRef.current) fileRef.current.value = "";
       setNotice(reset ? "기본 이미지로 변경했습니다." : "프로필 사진을 변경했습니다.");
       window.dispatchEvent(new Event("snowthing-profile-updated"));
-    } catch (e) { setError(e instanceof Error ? e.message : "사진 변경에 실패했습니다."); }
+    } catch (e) { setError(errorText(e, "사진 변경에 실패했습니다.")); }
     finally { setBusy(null); }
   };
   const changePassword = async (event: React.FormEvent) => {
@@ -155,7 +156,7 @@ export default function ProfilePage() {
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
       allowNavigation.current = true;
       window.location.href = "/login?passwordChanged=1";
-    } catch (e) { setError(e instanceof Error ? e.message : "비밀번호 변경에 실패했습니다."); setBusy(null); }
+    } catch (e) { setError(errorText(e, "비밀번호 변경에 실패했습니다.")); setBusy(null); }
   };
   const toggle = (key: "resortIds" | "ridingStyleIds", id: number) => {
     if (!form) return;
