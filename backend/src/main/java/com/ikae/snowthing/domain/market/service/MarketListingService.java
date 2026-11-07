@@ -320,6 +320,7 @@ public class MarketListingService {
                 includeContact && !seller.isWithdrawn() ? listing.getContact() : null,
                 sellerOf(seller),
                 images,
+                coverImageUrl(post, images),
                 viewCount,
                 post.getCommentCount(),
                 listing.getVersion(),
@@ -352,6 +353,9 @@ public class MarketListingService {
             if (key != null) {
                 thumbnails.put(
                         post.getId(), ready.getOrDefault(post.getPublicId(), toListImageUrl(key)));
+            } else if (ready.containsKey(post.getPublicId())) {
+                // 본문에 base64 사진만 있으면 만들어 둔 썸네일이 유일한 대표 사진이다.
+                thumbnails.put(post.getId(), ready.get(post.getPublicId()));
             }
         }
         return thumbnails;
@@ -363,11 +367,20 @@ public class MarketListingService {
                 : imageUrlResolver.toThumbnailPublicUrl(imageKey);
     }
 
-    /** 대표 사진을 따로 고르는 화면이 없어서 사진 칸의 첫 사진, 없으면 본문의 첫 사진을 쓴다. */
+    /** 대표 사진을 따로 고르는 화면이 없어서 사진 칸의 첫 사진, 없으면 본문의 첫 S3 사진, 없으면 본문의 첫 base64 사진을 쓴다. */
     private String representativeImage(List<PostImage> images, String content) {
-        return images.isEmpty()
-                ? imageLifecycle.firstContentKey(content)
-                : images.get(0).getImageUrl();
+        if (!images.isEmpty()) return images.get(0).getImageUrl();
+        String key = imageLifecycle.firstContentKey(content);
+        return key != null ? key : marketThumbnails.inlineSource(content);
+    }
+
+    /** 사진 칸이 비었을 때 상세 사진 자리에 보여 줄 본문 사진. 수정 화면이 쓰는 images와 섞이지 않도록 따로 내린다. */
+    private String coverImageUrl(Post post, List<String> images) {
+        if (!images.isEmpty()) return null;
+        String key = imageLifecycle.firstContentKey(post.getContent());
+        return key != null
+                ? imageUrlResolver.toPublicUrl(key)
+                : marketThumbnails.readyUrls(List.of(post.getPublicId())).get(post.getPublicId());
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {

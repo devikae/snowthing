@@ -180,11 +180,12 @@ class NotificationIntegrationTest {
     @Test
     @DisplayName("비회원 익명 글에는 받는 사람이 없어 알림이 생기지 않는다")
     void guestPostHasNoReceiver() {
+        ensureCategory("ANONYMOUS", "익명게시판");
         String post =
                 postService
                         .createPost(
                                 new PostCreateRequest(
-                                        "FREE", "비회원 글", "본문", true, "guest1234", List.of()),
+                                        "ANONYMOUS", "비회원 글", "본문", true, "guest1234", List.of()),
                                 null,
                                 IP)
                         .publicId();

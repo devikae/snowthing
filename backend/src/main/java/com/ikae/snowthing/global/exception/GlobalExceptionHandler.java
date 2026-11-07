@@ -10,11 +10,16 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.ikae.snowthing.domain.answerdraft.entity.AnswerDraft;
 import com.ikae.snowthing.domain.market.entity.MarketListing;
@@ -120,6 +125,30 @@ public class GlobalExceptionHandler {
         log.warn("Multipart upload size exceeded: {}", e.getMessage());
         return ResponseEntity.status(ErrorCode.FILE_SIZE_EXCEEDED.getStatus())
                 .body(ErrorResponse.from(ErrorCode.FILE_SIZE_EXCEEDED));
+    }
+
+    /** 없는 주소를 500으로 돌려주면 스캐너 요청마다 서버 오류 알림이 간다. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException e) {
+        return ResponseEntity.status(ErrorCode.RESOURCE_NOT_FOUND.getStatus())
+                .body(ErrorResponse.from(ErrorCode.RESOURCE_NOT_FOUND));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(ErrorCode.METHOD_NOT_ALLOWED.getStatus())
+                .body(ErrorResponse.from(ErrorCode.METHOD_NOT_ALLOWED));
+    }
+
+    @ExceptionHandler({
+        HttpMediaTypeNotSupportedException.class,
+        MissingServletRequestParameterException.class,
+        MissingServletRequestPartException.class
+    })
+    public ResponseEntity<ErrorResponse> handleMalformedRequest(Exception e) {
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
     }
 
     @ExceptionHandler(Exception.class)

@@ -89,6 +89,24 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("운영자나 관리자가 들어간 닉네임은 가입할 수 없다")
+    void signUp_ReservedNickname_Exception() {
+        for (String nickname : java.util.List.of("운영자", "눈팅관리자1")) {
+            MemberSignUpRequest request =
+                    MemberSignUpRequest.builder()
+                            .email("new@snowthing.com")
+                            .password("Password123!")
+                            .nickname(nickname)
+                            .build();
+
+            assertThatThrownBy(() -> memberService.signUp(request))
+                    .isInstanceOf(com.ikae.snowthing.global.exception.CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.RESERVED_NICKNAME);
+        }
+    }
+
+    @Test
     @DisplayName("이미 존재하는 닉네임으로 가입 시 예외가 발생해야 한다")
     void signUp_DuplicateNickname_Exception() {
         // given

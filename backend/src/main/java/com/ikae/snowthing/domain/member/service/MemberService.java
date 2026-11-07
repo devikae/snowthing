@@ -19,6 +19,7 @@ import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.entity.*;
 import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.*;
+import com.ikae.snowthing.domain.member.validation.NicknamePolicy;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -83,7 +84,8 @@ public class MemberService {
     public boolean isNicknameAvailable(String email, String nickname) {
         Member member = requireMember(email);
         return member.getNickname().equals(nickname)
-                || !memberRepository.existsByNickname(nickname);
+                || (!NicknamePolicy.isReserved(nickname)
+                        && !memberRepository.existsByNickname(nickname));
     }
 
     @Transactional
@@ -113,6 +115,9 @@ public class MemberService {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         withdrawnEmails.requireNotBlocked(normalizedEmail);
+        if (NicknamePolicy.isReserved(request.getNickname())) {
+            throw new CustomAuthException(ErrorCode.RESERVED_NICKNAME);
+        }
         if (memberRepository.existsByNickname(request.getNickname())) {
             throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
         }
@@ -163,6 +168,12 @@ public class MemberService {
     @Transactional
     public MemberSignUpResponse updateMyProfile(String email, MemberProfileUpdateRequest request) {
         Member member = requireMemberForUpdate(email);
+
+        // 이미 쓰던 닉네임은 그대로 저장할 수 있고, 새로 바꿀 때만 막는다.
+        if (!member.getNickname().equals(request.getNickname())
+                && NicknamePolicy.isReserved(request.getNickname())) {
+            throw new CustomAuthException(ErrorCode.RESERVED_NICKNAME);
+        }
 
         // 닉네임 변경 시 기존 닉네임과 다르고 타 유저와 중복되는지 사전 검사
         if (!member.getNickname().equals(request.getNickname())

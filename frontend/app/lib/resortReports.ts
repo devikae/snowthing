@@ -1,10 +1,7 @@
+import { formatKoreanDate } from "./koreanDate";
+
 export function formatKoreanCalendarDate(date: Date): string {
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  }).format(date);
+  return formatKoreanDate(date);
 }
 
 export function isResortReportSeason(date: Date): boolean {

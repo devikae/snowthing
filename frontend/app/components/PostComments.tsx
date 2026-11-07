@@ -7,6 +7,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { AuthorMenu } from "./AuthorMenu";
+import { errorText } from "../lib/errorText";
 
 interface WriterInfo {
   publicId: string | null;
@@ -88,7 +89,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       setNextCursor(data.nextCursor ?? null);
       setHasNext(Boolean(data.hasNext));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "댓글을 불러오지 못했습니다.");
+      setError(errorText(loadError, "댓글을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -136,7 +137,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       }
       setTotalCount((current) => current + 1);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "댓글을 등록하지 못했습니다.");
+      setError(errorText(submitError, "댓글을 등록하지 못했습니다."));
     } finally {
       isCreatingRef.current = false;
       setWorking(false);
@@ -157,7 +158,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         ? { ...item, replyCount: data.totalReplyCount, previewReplies: mergeUnique(item.previewReplies, data.replies || []), hasMoreReplies: data.hasNext }
         : item));
     } catch (replyError) {
-      setError(replyError instanceof Error ? replyError.message : "답글을 불러오지 못했습니다.");
+      setError(errorText(replyError, "답글을 불러오지 못했습니다."));
     } finally {
       setWorking(false);
     }
@@ -181,7 +182,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       setEditingId(null);
       setEditingContent("");
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "댓글을 수정하지 못했습니다.");
+      setError(errorText(updateError, "댓글을 수정하지 못했습니다."));
     } finally {
       setWorking(false);
     }
@@ -199,7 +200,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       if (!response.ok) throw new Error("댓글을 삭제하지 못했습니다.");
       await loadComments();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "댓글을 삭제하지 못했습니다.");
+      setError(errorText(deleteError, "댓글을 삭제하지 못했습니다."));
     } finally {
       setWorking(false);
     }

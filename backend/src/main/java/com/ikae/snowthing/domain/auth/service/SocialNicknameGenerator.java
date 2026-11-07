@@ -44,6 +44,7 @@ public class SocialNicknameGenerator {
         if (rawNickname == null || rawNickname.isBlank()) {
             return "";
         }
-        return rawNickname.replaceAll("[^a-zA-Z0-9가-힣]", "");
+        String sanitized = rawNickname.replaceAll("[^a-zA-Z0-9가-힣]", "");
+        return NicknamePolicy.isReserved(sanitized) ? "" : sanitized;
     }
 }

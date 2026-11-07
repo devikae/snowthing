@@ -245,9 +245,18 @@ class IdempotentCreateIntegrationTest {
     @Test
     @DisplayName("비로그인 작성도 IP 기준으로 같은 키를 1건만 저장한다")
     void anonymousReplay() throws Exception {
+        categories
+                .findByCode("ANONYMOUS")
+                .orElseGet(
+                        () ->
+                                categories.save(
+                                        PostCategory.builder()
+                                                .name("익명게시판")
+                                                .code("ANONYMOUS")
+                                                .build()));
         String key = UUID.randomUUID().toString();
         String body =
-                "{\"categoryCode\":\"FREE\",\"title\":\""
+                "{\"categoryCode\":\"ANONYMOUS\",\"title\":\""
                         + marker
                         + " 익명\",\"content\":\"본문\",\"isAnonymous\":true,"
                         + "\"anonymousPassword\":\"pass1234\"}";
