@@ -24,6 +24,7 @@ public class ContentWriteRateLimiter {
         CARPOOL(Duration.ofSeconds(10), 10),
         MARKET_LISTING(Duration.ofSeconds(10), 10),
         DIRECT_MESSAGE(Duration.ofSeconds(5), 30),
+        CONTENT_REPORT(Duration.ofSeconds(5), 30),
         // 비회원 기능이라 IP로 묶인다. 친구들이 같은 와이파이로 몰려 들어와도 막히지 않게 1초에 여러 건을 허용한다.
         CHARACTER_GROUP_CREATE(Duration.ofSeconds(1), 3, 60),
         CHARACTER_GROUP_JOIN(Duration.ofSeconds(1), 10, 300);
@@ -46,7 +47,7 @@ public class ContentWriteRateLimiter {
     }
 
     private final SharedRequestLimiter sharedLimiter;
-    // 테스트 DB에는 제한 테이블이 없어 꺼 두고, 통합 테스트만 공유 컨텍스트의 빈에서 잠시 켠다.
+    // 테스트마다 같은 작성자로 연달아 쓰므로 꺼 두고, 통합 테스트만 공유 컨텍스트의 빈에서 잠시 켠다.
     private boolean enabled;
 
     public ContentWriteRateLimiter(

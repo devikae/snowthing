@@ -262,6 +262,9 @@ public class MarketListingService {
                 marketListingRepository
                         .findForUpdateByPostPublicId(publicId)
                         .orElseThrow(() -> new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND));
+        if (listing.getPost().getStatus() == PostStatus.TEMPORARY_HOLD) {
+            throw new CustomException(ErrorCode.CONTENT_REPORT_ACTION_INVALID);
+        }
         listing.getPost().changeStatus(status);
         searchOutbox.postChanged(listing.getPost());
     }
@@ -423,6 +426,9 @@ public class MarketListingService {
 
     private void validateVisible(MarketListing listing) {
         Post post = listing.getPost();
+        if (!post.isDeleted() && post.getStatus() == PostStatus.TEMPORARY_HOLD) {
+            throw new CustomException(ErrorCode.CONTENT_TEMPORARILY_HELD);
+        }
         if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND);
         }

@@ -14,7 +14,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
 public class SharedRequestLimiter {
-    public record Limit(String key, int count, Duration duration) {}
+    /** sliding이면 허용될 때마다 만료를 현재 시각 + duration으로 미룬다. 마지막 시도부터 시간을 잰다. */
+    public record Limit(String key, int count, Duration duration, boolean sliding) {
+        public Limit(String key, int count, Duration duration) {
+            this(key, count, duration, false);
+        }
+    }
 
     public record Decision(boolean available, long retryAfterSeconds, String deniedKey) {
         public Decision(boolean available, long retryAfterSeconds) {
@@ -94,7 +99,7 @@ public class SharedRequestLimiter {
                                     jdbc.update(
                                             "UPDATE request_budget_window SET used_count=?,expires_at_millis=? WHERE budget_key=?",
                                             expired ? 1 : window.count() + 1,
-                                            expired
+                                            expired || limit.sliding()
                                                     ? current + limit.duration().toMillis()
                                                     : window.expires(),
                                             limit.key());
@@ -105,6 +110,18 @@ public class SharedRequestLimiter {
         } catch (DataAccessException | TransactionException exception) {
             return new Decision(false, 60); // No unbounded process-local fallback.
         }
+    }
+
+    /** 창을 지운다. 다음 요청은 0부터 센다. */
+    public void reset(String key) {
+        jdbc.update("DELETE FROM request_budget_window WHERE budget_key=?", key);
+    }
+
+    /** 이미 쓴 횟수 하나를 돌려준다. 창의 만료는 그대로 둔다. */
+    public void refund(String key) {
+        jdbc.update(
+                "UPDATE request_budget_window SET used_count=GREATEST(used_count-1,0) WHERE budget_key=?",
+                key);
     }
 
     @Scheduled(
