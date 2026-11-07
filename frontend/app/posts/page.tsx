@@ -8,6 +8,7 @@ import { PostImageIcon } from "../components/PostImageIcon";
 import { PostListAuthor } from "../components/PostListAuthor";
 import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer, isAdminViewer } from "../lib/viewer";
+import { formatCompactTime } from "../lib/koreanDate";
 
 interface PostItem {
   publicId: string;
@@ -57,22 +58,6 @@ const boardConfigs: Record<string, BoardConfig> = {
   INQUIRY: { name: "1:1 문의", navKey: "inquiry" },
 };
 
-function formatCompactTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffSec < 60) return "방금";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}분`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay === 1) return "어제";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${month}.${day}`;
-}
 
 function formatShortCategory(categoryCode: string, categoryName: string): string {
   switch (categoryCode) {
