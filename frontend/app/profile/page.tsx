@@ -35,7 +35,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState<"save" | "photo" | "password" | null>(null);
+  const [busy, setBusy] = useState<"save" | "photo" | "password" | "withdraw" | null>(null);
   const [checkedNickname, setCheckedNickname] = useState<string | null>(null);
   const [checkingNickname, setCheckingNickname] = useState(false);
   const [nicknameMessage, setNicknameMessage] = useState("");
@@ -47,6 +47,8 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordEditorOpen, setPasswordEditorOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawInput, setWithdrawInput] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const allowNavigation = useRef(false);
   const profileDirty = Boolean(profile && form && JSON.stringify(toForm(profile)) !== JSON.stringify(form));
@@ -158,6 +160,18 @@ export default function ProfilePage() {
       window.location.href = "/login?passwordChanged=1";
     } catch (e) { setError(errorText(e, "비밀번호 변경에 실패했습니다.")); setBusy(null); }
   };
+  const withdraw = async (event: React.FormEvent) => {
+    event.preventDefault(); if (!profile || busy) return;
+    if (!window.confirm("정말 탈퇴할까요? 되돌릴 수 없습니다.")) return;
+    setBusy("withdraw"); setError(""); setNotice("");
+    try {
+      const body = profile.passwordChangeAvailable ? { password: withdrawInput } : { confirmation: withdrawInput };
+      const response = await csrfFetch(API_ENDPOINTS.members.withdrawal, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!response.ok) throw new Error(await message(response, "탈퇴를 처리하지 못했습니다."));
+      allowNavigation.current = true;
+      window.location.href = "/login?withdrawn=1";
+    } catch (e) { setError(e instanceof Error ? e.message : "탈퇴를 처리하지 못했습니다."); setBusy(null); }
+  };
   const toggle = (key: "resortIds" | "ridingStyleIds", id: number) => {
     if (!form) return;
     const values = form[key];
@@ -197,6 +211,18 @@ export default function ProfilePage() {
       </div></fieldset></form>
       <MarketingConsentSection />
       <BlockedMembersSection />
+      <section className="profile-section profile-withdrawal"><div><h2>회원 탈퇴</h2><p>탈퇴하면 되돌릴 수 없습니다.</p></div>{withdrawOpen ? <form onSubmit={withdraw}><fieldset className="profile-fields" disabled={!!busy}>
+        <ul className="profile-withdrawal-notice">
+          <li>이메일, 닉네임, 비밀번호, 프로필 사진, 소개, 소셜 연결은 바로 삭제됩니다.</li>
+          <li>쓴 글과 댓글은 남고 작성자는 &quot;탈퇴한 회원&quot;으로 표시됩니다. 지우고 싶은 글은 탈퇴 전에 지워 주세요.</li>
+          <li>판매글과 카풀 글의 연락처는 지워지고, 판매글은 판매 완료로 바뀝니다.</li>
+          <li>같은 이메일로는 30일 동안 다시 가입할 수 없습니다.</li>
+        </ul>
+        {profile.passwordChangeAvailable
+          ? <label>비밀번호 확인<input type="password" autoComplete="current-password" value={withdrawInput} maxLength={200} required onChange={event => setWithdrawInput(event.target.value)} /></label>
+          : <label>확인 문구<input value={withdrawInput} maxLength={20} placeholder="탈퇴" required onChange={event => setWithdrawInput(event.target.value)} /><small>확인을 위해 &quot;탈퇴&quot;를 입력해 주세요.</small></label>}
+        <div className="profile-actions"><button className="profile-button-cancel" type="button" onClick={() => { setWithdrawOpen(false); setWithdrawInput(""); }}>취소</button><button type="submit" className="profile-button-danger" disabled={!withdrawInput || (!profile.passwordChangeAvailable && withdrawInput !== "탈퇴")}>{busy === "withdraw" ? "처리 중" : "탈퇴하기"}</button></div>
+      </fieldset></form> : <div className="profile-password-entry"><button type="button" disabled={!!busy} onClick={() => setWithdrawOpen(true)}>회원 탈퇴</button></div>}</section>
 
     </>}
   </main><Footer /></div>;

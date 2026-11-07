@@ -21,10 +21,16 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   OAUTH_EMAIL_NOT_VERIFIED: "인증되지 않은 소셜 이메일 계정으로는 로그인할 수 없습니다.",
   ACCOUNT_SUSPENDED: "이용이 정지된 계정입니다.",
   ACCOUNT_WITHDRAWN: "탈퇴 처리된 계정입니다.",
+  WITHDRAWN_EMAIL_RESTRICTED: "탈퇴 후 30일이 지나지 않은 이메일은 다시 가입할 수 없습니다.",
   OAUTH_RATE_LIMIT: "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
   OAUTH_ACCOUNT_LINK_REQUIRED:
     "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요.",
   OAUTH_SIGNUP_EXPIRED: "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요.",
+};
+
+const LOGIN_FAILURE_MESSAGES: Record<number, string> = {
+  401: "이메일 또는 비밀번호가 올바르지 않습니다.",
+  429: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 function getErrorMessage(error: unknown) {
@@ -37,6 +43,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [withdrawn, setWithdrawn] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("withdrawn") !== "1") return;
+    const timer = window.setTimeout(() => setWithdrawn(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   const [fromMarket, setFromMarket] = useState(false);
   useEffect(() => {
     const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") ?? "";
@@ -77,8 +89,9 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
+        // 프록시가 HTML로 답해도 JSON 파싱 오류가 화면에 나오지 않게 상태 코드별 기본 문구를 둔다.
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || errorData?.error || LOGIN_FAILURE_MESSAGES[response.status] || "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
@@ -99,6 +112,7 @@ export default function LoginPage() {
             <h1 id="login-heading">로그인</h1>
             <p>{fromMarket ? "중고장터는 로그인한 회원만 이용할 수 있어요." : "SnowThing 계정으로 로그인하세요."}</p>
           </header>
+          {withdrawn && <div className={styles.notice} role="status">탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.</div>}
           {errorMsg && <div className={styles.error} role="alert">{errorMsg}</div>}
           <form onSubmit={handleSubmit} className={styles.form} aria-busy={loading}>
             <label className={styles.field}>이메일<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="user@snowthing.com" autoComplete="email" autoCapitalize="none" required disabled={loading} /></label>

@@ -86,6 +86,37 @@ export interface ApiTokenItem {
   active: boolean;
 }
 
+export type AdminMemberStatus = "ACTIVE" | "SUSPENDED" | "WITHDRAWN";
+
+export const MEMBER_STATUS_LABEL: Record<AdminMemberStatus, string> = {
+  ACTIVE: "정상",
+  SUSPENDED: "정지",
+  WITHDRAWN: "탈퇴",
+};
+
+/** admin.css의 상태 배지 색을 그대로 쓴다. */
+export const MEMBER_STATUS_BADGE: Record<AdminMemberStatus, string> = {
+  ACTIVE: "APPROVED",
+  SUSPENDED: "REJECTED",
+  WITHDRAWN: "DRAFT",
+};
+
+export interface AdminMember {
+  publicId: string;
+  email: string;
+  nickname: string;
+  status: AdminMemberStatus;
+  role: "ROLE_USER" | "ROLE_ADMIN";
+  createdAt: string;
+}
+
+export interface AdminMemberListResponse {
+  items: AdminMember[];
+  page: number;
+  size: number;
+  hasNext: boolean;
+}
+
 export interface ApiErrorBody {
   code?: string;
   message?: string;

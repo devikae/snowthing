@@ -17,6 +17,8 @@ import com.ikae.snowthing.domain.chat.dto.ChatErrorResponse;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
+import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.config.websocket.ChatHandshakeInterceptor;
 import com.ikae.snowthing.global.config.websocket.ChatSessionRevocationRegistry;
 import com.ikae.snowthing.global.error.ErrorCode;
@@ -32,6 +34,7 @@ public class ChatController {
     private final ChatService chatService;
     private final BotMentionService botMentionService;
     private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
+    private final MemberRepository memberRepository;
 
     @MessageMapping("/chat/messages")
     @SendTo("/sub/chat/main")
@@ -55,6 +58,14 @@ public class ChatController {
                 throw new CustomException(ErrorCode.CHAT_UNAUTHORIZED);
             }
             clientIp = (String) sessionAttributes.get(ChatHandshakeInterceptor.ATTR_CLIENT_IP);
+        }
+
+        // 연결의 Principal은 접속 때 회원 스냅샷이다. 끊기 전에 도착한 메시지도 현재 상태로 막는다.
+        if (userDetails != null
+                && userDetails.getMember() != null
+                && memberRepository.findStatusById(userDetails.getMember().getId()).orElse(null)
+                        != MemberStatus.ACTIVE) {
+            throw new CustomException(ErrorCode.CHAT_UNAUTHORIZED);
         }
 
         ChatMessageResponse response = chatService.processMessage(request, userDetails, clientIp);

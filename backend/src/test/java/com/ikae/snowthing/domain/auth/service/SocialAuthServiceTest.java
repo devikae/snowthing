@@ -37,6 +37,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
+import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.domain.member.validation.NicknamePolicy;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -48,6 +49,7 @@ class SocialAuthServiceTest {
     @Mock private MemberSocialAccountRepository memberSocialAccountRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private RegistrationConsentService consentService;
+    @Mock private WithdrawnEmailService withdrawnEmails;
 
     private static final SocialSignUpRequest CONSENT = SocialSignUpRequest.builder().build();
 
@@ -65,7 +67,8 @@ class SocialAuthServiceTest {
                         new SocialNicknameGenerator(),
                         fixedClock,
                         eventPublisher,
-                        consentService);
+                        consentService,
+                        withdrawnEmails);
     }
 
     private Member completeSignUp(OAuthUserProfile profile) {
@@ -87,6 +90,26 @@ class SocialAuthServiceTest {
 
         verify(memberRepository, never()).saveAndFlush(any());
         verify(memberSocialAccountRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("탈퇴 후 30일이 지나지 않은 이메일은 동의 화면으로 보내기 전에 거부한다")
+    void findMemberForLogin_WithdrawnEmail_IsRejected() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE, "google-new", "left@gmail.com", true, "구글보더");
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-new"))
+                .willReturn(Optional.empty());
+        org.mockito.BDDMockito.willThrow(new CustomException(ErrorCode.WITHDRAWN_EMAIL_RESTRICTED))
+                .given(withdrawnEmails)
+                .requireNotBlocked("left@gmail.com");
+
+        assertThatThrownBy(() -> socialAuthService.findMemberForLogin(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.WITHDRAWN_EMAIL_RESTRICTED);
     }
 
     @Test

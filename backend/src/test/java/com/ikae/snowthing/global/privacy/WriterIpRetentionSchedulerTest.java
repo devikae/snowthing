@@ -129,8 +129,8 @@ class WriterIpRetentionSchedulerTest {
         String content = UUID.randomUUID().toString();
         jdbc.update(
                 "INSERT INTO comment (post_id, content, writer_ip, is_anonymous, is_deleted,"
-                        + " version, created_at, updated_at)"
-                        + " VALUES (?, ?, ?, true, false, 0, ?, ?)",
+                        + " moderation_held, version, created_at, updated_at)"
+                        + " VALUES (?, ?, ?, true, false, false, 0, ?, ?)",
                 postId,
                 content,
                 ip,

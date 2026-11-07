@@ -12,6 +12,7 @@ import { MarketMessageButton } from "../../components/MarketMessageButton";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
+import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
 
@@ -28,9 +29,10 @@ interface MarketDetail {
   price: number;
   negotiable: boolean;
   free: boolean;
-  contact: string;
-  seller: { publicId: string; nickname: string; profileImageUrl: string | null };
+  contact: string | null;
+  seller: { publicId: string | null; nickname: string; profileImageUrl: string | null };
   images: string[];
+  coverImageUrl: string | null;
   viewCount: number;
   commentCount: number;
   version: number;
@@ -127,7 +129,11 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         redirectToLogin();
         return;
       }
-      if (!response.ok) throw new Error(response.status === 404 ? "판매글을 찾을 수 없거나 숨김 처리되었습니다." : "판매글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      if (!response.ok) {
+        const body = response.status === 403 ? await response.json().catch(() => null) : null;
+        if (body?.code === "POST_009") throw new Error(body.message);
+        throw new Error(response.status === 404 ? "판매글을 찾을 수 없거나 숨김 처리되었습니다." : "판매글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
       setListing(await response.json());
       await loadComments();
     } catch (loadError) {
@@ -232,6 +238,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   if (loading) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
   if (!listing) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state"><p>{error}</p><Link href="/market">목록으로</Link></main></div>;
 
+  const galleryImages = listing.images.length ? listing.images : listing.coverImageUrl ? [listing.coverImageUrl] : [];
+
   return (
     <div className="community-page">
       <TopNav active="market" />
@@ -241,7 +249,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         <article className="market-detail-card">
           <section className="market-gallery">
             <div className="market-gallery-main">
-              {listing.images.length ? <Image src={listing.images[activeImage]} alt={`${listing.title} 상품 사진 ${activeImage + 1}`} width={720} height={540} unoptimized /> : <span className="material-symbols-outlined">inventory_2</span>}
+              {galleryImages.length ? <Image src={galleryImages[activeImage]} alt={`${listing.title} 상품 사진 ${activeImage + 1}`} width={720} height={540} unoptimized /> : <span className="material-symbols-outlined">inventory_2</span>}
             </div>
             {listing.images.length > 1 && <div className="market-gallery-thumbs">{listing.images.map((image, index) => <button type="button" key={image} className={activeImage === index ? "active" : ""} onClick={() => setActiveImage(index)}><Image src={image} alt={`${index + 1}번 사진`} width={96} height={72} unoptimized /></button>)}</div>}
           </section>
@@ -251,9 +259,10 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
             <strong className="market-detail-price">{listing.free ? "무료 나눔" : `${listing.price.toLocaleString()}원`}{listing.negotiable && <small>가격 협의 가능</small>}</strong>
             <dl><div><dt>상품 상태</dt><dd>{conditionLabels[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회 / 댓글</dt><dd>{listing.viewCount} / {listing.commentCount}</dd></div></dl>
             <div className="market-seller"><CommentProfileAvatar className="market-seller-avatar" nickname={listing.seller.nickname} profileImageUrl={listing.seller.profileImageUrl} size={36} /><div><small>판매자</small><AuthorMenu publicId={listing.seller.publicId} nickname={listing.seller.nickname} /></div></div>
-            <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(listing.contact)}>복사</button></div>
+            {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(listing.contact ?? "")}>복사</button></div>}
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />
             {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중..." : "삭제"}</button>}</div>}
+            <ReportButton targetType="POST" targetId={publicId} />
           </section>
         </article>
 
@@ -265,8 +274,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
           <div className="market-comment-list post-comment-list">
             {comments.length === 0 && <p className="market-comment-empty">아직 댓글이 없습니다.</p>}
             {comments.map((item) => <div className="market-comment post-comment-item" key={item.commentId}>
-              <div className="comment-youtube-row"><MarketCommentAvatar item={item} /><div className="comment-youtube-body"><header><AuthorMenu publicId={item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(item.createdAt)}</time></header><p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>{!item.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button></div>}</div></div>
-              <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><AuthorMenu publicId={child.isDeleted ? null : child.writer?.publicId} nickname={child.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p></div></div></div>)}</div>
+              <div className="comment-youtube-row"><MarketCommentAvatar item={item} /><div className="comment-youtube-body"><header><AuthorMenu publicId={item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(item.createdAt)}</time></header><p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>{!item.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button><ReportButton targetType="COMMENT" targetId={item.commentId} /></div>}</div></div>
+              <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><AuthorMenu publicId={child.isDeleted ? null : child.writer?.publicId} nickname={child.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p>{!child.isDeleted && <div className="comment-youtube-actions"><ReportButton targetType="COMMENT" targetId={child.commentId} /></div>}</div></div></div>)}</div>
               {item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
               {replyParentId === item.commentId && <div className="post-reply-compose"><textarea className="post-comment-textarea" value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div></div>}
             </div>)}

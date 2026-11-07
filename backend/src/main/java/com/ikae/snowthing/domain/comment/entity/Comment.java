@@ -74,6 +74,10 @@ public class Comment extends BaseTimeEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /** 임시조치로 가린 댓글. 삭제 상태를 함께 켜서 목록, 검색, AI 조회에서 빠지게 한다. */
+    @Column(name = "moderation_held", nullable = false)
+    private boolean moderationHeld = false;
+
     @Builder
     public Comment(
             Post post,
@@ -114,7 +118,20 @@ public class Comment extends BaseTimeEntity {
 
     public void softDelete() {
         this.isDeleted = true;
+        this.moderationHeld = false;
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void holdForModeration(LocalDateTime now) {
+        this.isDeleted = true;
+        this.moderationHeld = true;
+        this.deletedAt = now;
+    }
+
+    public void releaseModerationHold() {
+        this.isDeleted = false;
+        this.moderationHeld = false;
+        this.deletedAt = null;
     }
 
     public void updateContent(String newContent) {

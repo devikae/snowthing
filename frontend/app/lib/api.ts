@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
     marketingConsent: `${API_V1_URL}/members/me/marketing-consent`,
     nicknameAvailability: `${API_V1_URL}/members/me/nickname-availability`,
     changePassword: `${API_V1_URL}/members/me/password`,
+    withdrawal: `${API_V1_URL}/members/me/withdrawal`,
     resetProfileImage: `${API_V1_URL}/members/me/profile-image`,
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
@@ -88,7 +89,12 @@ export const API_ENDPOINTS = {
     create: `${API_V1_URL}/resort-reports`,
     delete: (reportId: number) => `${API_V1_URL}/resort-reports/${reportId}`,
   },
+  reports: {
+    create: `${API_V1_URL}/reports`,
+  },
   admin: {
+    reports: (status: string, page: number) => `${API_V1_URL}/admin/reports?status=${status}&page=${page}`,
+    reportAction: (reportId: number) => `${API_V1_URL}/admin/reports/${reportId}/actions`,
     answerDrafts: (status: string, page: number, size = 20) =>
       `${API_V1_URL}/admin/answer-drafts?page=${page}&size=${size}${status ? `&status=${encodeURIComponent(status)}` : ""}`,
     answerDraft: (draftId: string) => `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}`,
@@ -96,6 +102,10 @@ export const API_ENDPOINTS = {
       `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}/${action}`,
     apiTokens: `${API_V1_URL}/admin/api-tokens`,
     revokeApiToken: (tokenId: string) => `${API_V1_URL}/admin/api-tokens/${encodeURIComponent(tokenId)}/revoke`,
+    members: (query: string, page: number, size = 20) =>
+      `${API_V1_URL}/admin/members?page=${page}&size=${size}${query ? `&query=${encodeURIComponent(query)}` : ""}`,
+    memberStatusAction: (publicId: string, action: "suspend" | "reinstate") =>
+      `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
     searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
     searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
   },

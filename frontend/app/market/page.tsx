@@ -28,7 +28,7 @@ interface MarketItem {
   negotiable: boolean;
   free: boolean;
   thumbnailImageUrl: string | null;
-  seller: { publicId: string; nickname: string; profileImageUrl: string | null };
+  seller: { publicId: string | null; nickname: string; profileImageUrl: string | null };
   viewCount: number;
   commentCount: number;
   createdAt: string;

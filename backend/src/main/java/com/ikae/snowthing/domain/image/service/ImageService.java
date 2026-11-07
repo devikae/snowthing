@@ -160,6 +160,14 @@ public class ImageService {
                                                                 java.time.Duration.ofSeconds(20)))
                                         .build())
                         .asByteArray();
+        createMarketThumbnailFromBytes(source, targetKey, gate);
+    }
+
+    /** S3 원본 없이 이미 가진 사진 바이트로 매물 썸네일을 만든다. 본문 base64 사진에 쓴다. */
+    public void createMarketThumbnailFromBytes(
+            byte[] source, String targetKey, ImageProcessingGate gate) {
+        if (!targetKey.matches("public/posts/thumbnails/market-[0-9a-f-]{36}\\.jpg"))
+            throw new com.ikae.snowthing.global.exception.CustomException(ErrorCode.INVALID_INPUT);
         byte[] thumbnail = gate.run(() -> createThumbnail(source));
         s3Client.putObject(
                 PutObjectRequest.builder()

@@ -68,6 +68,9 @@
 .profile-feedback.error { border-color: var(--snow-error); }
 .profile-loading { min-height: 240px; display: grid; place-items: center; color: var(--snow-muted); }
 .profile-social-note { line-height: 1.75; }
+.profile-withdrawal-notice { margin: 0; padding-left: 18px; line-height: 1.75; list-style: disc; }
+.profile-settings .profile-button-danger { background: var(--snow-error); border-color: var(--snow-error); color: #fff; font-weight: 600; }
+.profile-settings .profile-button-danger:disabled { opacity: 0.5; }
 @media (max-width: 640px) {
   .profile-settings { padding-block: 24px 48px; }
   .profile-section { grid-template-columns: minmax(0,1fr); gap: 24px; padding-block: 24px; }

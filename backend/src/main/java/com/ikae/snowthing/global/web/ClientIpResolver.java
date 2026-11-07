@@ -47,6 +47,35 @@ public class ClientIpResolver {
         return remoteAddress;
     }
 
+    /** 요청 제한 키로 쓸 IP 형식. IP가 아닌 값은 모두 unknown 한 곳으로 묶어 값을 바꿔도 새 버킷이 생기지 않게 한다. */
+    public static String normalizeForLimit(String clientIp) {
+        if (clientIp == null || clientIp.isBlank()) return "unknown";
+        try {
+            // Never resolve hostnames supplied by a request. Only numeric IPv4/IPv6 literals are
+            // accepted.
+            if (!clientIp.matches("[0-9a-fA-F:.]+")) return "unknown";
+            byte[] address;
+            if (!clientIp.contains(":")) {
+                if (!clientIp.matches("[0-9]{1,3}(\\.[0-9]{1,3}){3}")) return "unknown";
+                String[] octets = clientIp.split("\\.");
+                address = new byte[4];
+                for (int i = 0; i < octets.length; i++) {
+                    int octet = Integer.parseInt(octets[i]);
+                    if (octet > 255) return "unknown";
+                    address[i] = (byte) octet;
+                }
+            } else {
+                address = java.net.InetAddress.getByName(clientIp).getAddress();
+            }
+            // Group IPv6 privacy addresses by /64 so rotating interface identifiers cannot reset a
+            // bucket.
+            if (address.length == 16) java.util.Arrays.fill(address, 8, 16, (byte) 0);
+            return java.util.HexFormat.of().formatHex(address);
+        } catch (java.net.UnknownHostException invalidIp) {
+            return "unknown";
+        }
+    }
+
     private boolean hasValidIp(String ip) {
         return ip != null && !ip.isBlank() && !UNKNOWN.equalsIgnoreCase(ip);
     }

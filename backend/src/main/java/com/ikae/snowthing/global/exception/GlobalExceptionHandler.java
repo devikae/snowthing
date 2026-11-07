@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -78,7 +79,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatus()).body(ErrorResponse.from(errorCode));
     }
 
-    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
+    // 정지, 탈퇴 계정(AccountStatusException)도 같은 401로 답한다. 비밀번호 검사 전에 나는 예외라 다른 문구를 주면
+    // 비밀번호를 몰라도 가입 여부와 계정 상태를 알 수 있다.
+    @ExceptionHandler({
+        BadCredentialsException.class,
+        UsernameNotFoundException.class,
+        AccountStatusException.class
+    })
     public ResponseEntity<ErrorResponse> handleAuthenticationException(Exception e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ErrorResponse.from(ErrorCode.INVALID_CREDENTIALS));

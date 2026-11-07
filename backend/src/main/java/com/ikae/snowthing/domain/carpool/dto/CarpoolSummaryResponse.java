@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolCostMode;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolDetail;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolTripType;
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
 
 public record CarpoolSummaryResponse(
@@ -23,7 +24,11 @@ public record CarpoolSummaryResponse(
 
     public static CarpoolSummaryResponse from(CarpoolDetail detail) {
         Post post = detail.getPost();
-        String writerName = post.getMember() == null ? "탈퇴한 회원" : post.getMember().getNickname();
+        Member writer = post.getMember();
+        String writerName =
+                writer == null || writer.isWithdrawn()
+                        ? Member.WITHDRAWN_NICKNAME
+                        : writer.getNickname();
         return new CarpoolSummaryResponse(
                 post.getPublicId(),
                 post.getTitle(),

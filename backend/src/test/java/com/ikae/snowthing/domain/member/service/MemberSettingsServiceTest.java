@@ -26,6 +26,7 @@ import com.ikae.snowthing.global.exception.CustomException;
 @ExtendWith(MockitoExtension.class)
 class MemberSettingsServiceTest {
     @Mock MemberRepository members;
+    @Mock WithdrawnEmailService withdrawnEmailService;
     @Mock ResortRepository resorts;
     @Mock RidingStyleRepository styles;
     @Mock MemberResortRepository memberResorts;

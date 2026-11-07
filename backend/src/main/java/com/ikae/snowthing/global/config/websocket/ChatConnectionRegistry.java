@@ -73,6 +73,15 @@ public class ChatConnectionRegistry {
         closeQuietly(session, MEMBER_LOGOUT);
     }
 
+    /** HTTP 세션 ID가 연결 뒤 바뀌면 세션 기준으로는 찾지 못하므로 정지는 회원 기준으로도 끊는다. */
+    public void disconnectMember(Long memberId) {
+        WebSocketSession session;
+        synchronized (this) {
+            session = detach(sessionIdByMemberId.get(memberId));
+        }
+        closeQuietly(session, MEMBER_LOGOUT);
+    }
+
     public int connectionCount() {
         synchronized (this) {
             return sessionsById.size();

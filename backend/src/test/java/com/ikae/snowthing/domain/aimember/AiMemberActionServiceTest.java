@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -33,6 +34,7 @@ import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.service.CommentService;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.service.PostService;
@@ -79,6 +81,26 @@ class AiMemberActionServiceTest {
                         messagingTemplate,
                         sharedLimiter,
                         executor);
+        lenient()
+                .when(memberRepository.findStatusById(1L))
+                .thenReturn(Optional.of(MemberStatus.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("정지된 AI 멤버는 봇 서버를 부르지 않고 글, 댓글, 채팅을 모두 건너뛴다")
+    void suspendedMemberDoesNothing() {
+        given(memberRepository.findStatusById(1L)).willReturn(Optional.of(MemberStatus.SUSPENDED));
+        PostView post = new PostView(10L, "post-10", 100L, "FREE", "제목", "본문", NOW);
+
+        service.writePost(MEMBER, NOW);
+        boolean commented = service.writeComment(new Reaction(1L, post, null), List.of(), NOW);
+        service.chat(List.of(MEMBER), 2, NOW);
+
+        assertThat(commented).isFalse();
+        verify(sharedLimiter, never()).acquire(anyList());
+        verify(gateway, never()).compose(any());
+        verify(postService, never()).createPost(any(), any(), any());
+        verify(commentService, never()).createComment(any(), any(), any(), any());
     }
 
     @Test

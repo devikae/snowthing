@@ -27,6 +27,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
+import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -45,6 +46,7 @@ public class SocialAuthService {
     private final Clock clock;
     private final ApplicationEventPublisher eventPublisher;
     private final RegistrationConsentService consentService;
+    private final WithdrawnEmailService withdrawnEmails;
 
     /**
      * 콜백에서 호출한다. 연결된 회원이 있으면 돌려주고, 처음 온 사용자면 비어 있는 값을 돌려준다. 이때 회원을 만들지 않는다. 가입할 수 없는 사용자는 동의 화면까지
@@ -105,10 +107,15 @@ public class SocialAuthService {
 
     private String resolveNewMemberEmail(OAuthUserProfile profile) {
         validateEmailPresent(profile);
+        String providerEmail = emailNormalizer.normalize(profile.email());
+        withdrawnEmails.requireNotBlocked(providerEmail);
         if (!profile.emailAuthoritative()) {
-            return createInternalEmail(profile.provider(), profile.providerUserId().trim());
+            String internalEmail =
+                    createInternalEmail(profile.provider(), profile.providerUserId().trim());
+            withdrawnEmails.requireNotBlocked(internalEmail);
+            return internalEmail;
         }
-        String memberEmail = emailNormalizer.normalize(profile.email());
+        String memberEmail = providerEmail;
         if (memberRepository.findByEmail(memberEmail).isPresent()) {
             throw new CustomException(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
         }

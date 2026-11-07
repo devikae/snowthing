@@ -26,14 +26,22 @@ public enum ErrorCode {
             HttpStatus.TOO_MANY_REQUESTS, "AUTH_011", "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     OAUTH_ACCOUNT_LINK_REQUIRED(
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
-    OAUTH_SIGNUP_EXPIRED(HttpStatus.GONE, "AUTH_013", "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요."),
+    LOGIN_ATTEMPT_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 최대 15분 뒤 다시 시도해 주세요."),
+    OAUTH_SIGNUP_EXPIRED(HttpStatus.GONE, "AUTH_014", "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
+    MEMBER_SELF_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_010", "자신의 계정은 정지할 수 없습니다."),
+    MEMBER_ADMIN_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_011", "관리자 계정은 정지할 수 없습니다."),
+    MEMBER_WITHDRAWN_STATUS_LOCKED(HttpStatus.CONFLICT, "MEMBER_012", "탈퇴한 회원의 상태는 바꿀 수 없습니다."),
     PROFILE_LIMIT_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     PROFILE_CDN_NOT_CONFIGURED(
             HttpStatus.SERVICE_UNAVAILABLE, "FILE_006", "프로필 이미지 캐시 정리 설정이 필요합니다."),
     REGISTRATION_POLICY_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_008", "가입 동의 문서를 불러올 수 없습니다."),
+    WITHDRAWN_EMAIL_RESTRICTED(
+            HttpStatus.CONFLICT, "MEMBER_010", "탈퇴 후 30일이 지나지 않은 이메일은 다시 가입할 수 없습니다."),
+    WITHDRAWAL_CONFIRMATION_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_011", "확인 문구가 일치하지 않습니다."),
     REGISTRATION_POLICY_CHANGED(
             HttpStatus.CONFLICT, "MEMBER_009", "가입 동의 문서가 변경되었습니다. 새로고침 후 다시 확인해 주세요."),
     CHAT_BOT_BUDGET_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "CHAT_010", "봇의 전체 호출 한도에 도달했습니다."),
@@ -82,6 +90,16 @@ public enum ErrorCode {
     COMMENT_REPLY_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "COMMENT_004", "루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),
+    CONTENT_TEMPORARILY_HELD(
+            HttpStatus.FORBIDDEN,
+            "POST_009",
+            "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 82snowthing@gmail.com으로 문의해 주세요."),
+    CONTENT_REPORT_TARGET_NOT_FOUND(
+            HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
+    CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),
+    CONTENT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_REPORT_003", "존재하지 않는 신고입니다."),
+    CONTENT_REPORT_ACTION_INVALID(
+            HttpStatus.CONFLICT, "CONTENT_REPORT_004", "현재 상태에서는 할 수 없는 조치입니다."),
     NOTIFICATION_LOGIN_REQUIRED(
             HttpStatus.UNAUTHORIZED, "NOTIFICATION_002", "로그인 후 알림을 확인할 수 있습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),

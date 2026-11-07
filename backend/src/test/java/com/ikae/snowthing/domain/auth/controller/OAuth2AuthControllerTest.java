@@ -30,6 +30,7 @@ import com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
+import com.ikae.snowthing.domain.auth.service.AuthService;
 import com.ikae.snowthing.domain.auth.service.OAuthAuthorizationIpRateLimiter;
 import com.ikae.snowthing.domain.auth.service.SocialAuthService;
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -45,6 +46,7 @@ class OAuth2AuthControllerTest {
 
     private OAuth2ExternalClient oauth2ExternalClient;
     private SocialAuthService socialAuthService;
+    private AuthService authService;
     private SecurityContextRepository securityContextRepository;
     private MemberSessionRegistry memberSessionRegistry;
     private OAuthAuthorizationIpRateLimiter authorizationIpRateLimiter;
@@ -55,6 +57,7 @@ class OAuth2AuthControllerTest {
     void setUp() {
         oauth2ExternalClient = mock(OAuth2ExternalClient.class);
         socialAuthService = mock(SocialAuthService.class);
+        authService = mock(AuthService.class);
         securityContextRepository = mock(SecurityContextRepository.class);
         memberSessionRegistry = mock(MemberSessionRegistry.class);
         authorizationIpRateLimiter = mock(OAuthAuthorizationIpRateLimiter.class);
@@ -70,6 +73,7 @@ class OAuth2AuthControllerTest {
                 new OAuth2AuthController(
                         oauth2ExternalClient,
                         socialAuthService,
+                        authService,
                         oauth2Properties,
                         securityContextRepository,
                         memberSessionRegistry,
@@ -160,6 +164,54 @@ class OAuth2AuthControllerTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.OAUTH_SIGNUP_EXPIRED);
         verify(socialAuthService, never()).completeSignUp(any(), any());
+    }
+
+    @Test
+    @DisplayName("인증 뒤 세션 등록 전에 정지되면 세션을 끊고 로그인 오류로 보낸다")
+    void callback_SuspendedDuringLogin_InvalidatesAndRedirectsToLoginError() {
+        given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.NAVER), anyString()))
+                .willReturn(URI.create("https://nid.naver.com/oauth2.0/authorize?state=test"));
+        MockHttpServletRequest authorizeRequest = new MockHttpServletRequest();
+        controller.authorize("naver", "/carpool", authorizeRequest);
+        MockHttpSession session = (MockHttpSession) authorizeRequest.getSession(false);
+        OAuth2AuthController.OAuth2AuthorizationSessions savedStates =
+                (OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE);
+        String state = savedStates.pending().get(0).state();
+        OAuthUserProfile profile =
+                new OAuthUserProfile(SocialProvider.NAVER, "naver-1", "s@naver.com", true, "보더");
+        Member member =
+                Member.builder()
+                        .publicId("member-1")
+                        .email("s@naver.com")
+                        .nickname("보더")
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        given(oauth2ExternalClient.fetchUserProfile(SocialProvider.NAVER, "code", state))
+                .willReturn(profile);
+        given(socialAuthService.findMemberForLogin(profile))
+                .willReturn(java.util.Optional.of(member));
+        willThrow(new CustomException(ErrorCode.ACCOUNT_SUSPENDED))
+                .given(authService)
+                .ensureStillActive("member-1");
+        MockHttpServletRequest callbackRequest = new MockHttpServletRequest();
+        callbackRequest.setSession(session);
+
+        ResponseEntity<Void> response =
+                controller.callback(
+                        "naver",
+                        "code",
+                        state,
+                        null,
+                        callbackRequest,
+                        new MockHttpServletResponse());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(response.getHeaders().getLocation().getPath()).isEqualTo("/login");
+        assertThat(response.getHeaders().getLocation().getQuery())
+                .isEqualTo("error=ACCOUNT_SUSPENDED");
+        verify(memberSessionRegistry).invalidateAll("member-1");
     }
 
     @Test

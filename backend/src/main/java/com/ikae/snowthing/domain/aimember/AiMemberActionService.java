@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SplittableRandom;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
@@ -32,6 +33,7 @@ import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.service.CommentService;
+import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.service.PostService;
@@ -44,7 +46,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * AI 멤버 행동 하나를 실행한다: 호출 상한 → compose → 연락처·중복 검사 → 기존 서비스로 저장. 실패하면 로그만 남기고 건너뛴다(재시도 없음).
+ * AI 멤버 행동 하나를 실행한다: 호출 상한 → compose → 정치·연락처·유사도 검사 → 기존 서비스로 저장. 실패하면 로그만 남기고 건너뛴다(재시도 없음).
+ *
+ * <p>AI 멤버의 모든 쓰기는 이 클래스의 글, 댓글, 채팅 세 곳을 지난다. 새 경로(예: 쪽지 답장)를 만들면 같은 검사를 지나게 한다.
  *
  * <p>사람이 쓰는 경로(PostService, CommentService, ChatService)를 그대로 지나가므로 검증, 검색 색인, 댓글 수가 사람 글과 똑같이
  * 처리된다.
@@ -58,6 +62,7 @@ public class AiMemberActionService {
     static final String CHAT_DESTINATION = "/sub/chat/main";
     static final String BUDGET_KEY = "snowthing:limits:{ai-members}:global:day";
     private static final String ANONYMOUS_BOARD = "ANONYMOUS";
+    private static final int MIN_LENGTH_FOR_SIMILARITY = 15;
 
     private final AiMemberProperties properties;
     private final AiComposeGateway gateway;
@@ -72,9 +77,11 @@ public class AiMemberActionService {
     private final ScheduledExecutorService aiMemberExecutor;
 
     public void writePost(AiMember member, LocalDateTime now) {
-        String board =
-                AiMemberQueryRepository.BOARDS.get(
-                        ThreadLocalRandom.current().nextInt(AiMemberQueryRepository.BOARDS.size()));
+        if (!isActive(member)) {
+            return;
+        }
+        SplittableRandom random = new SplittableRandom();
+        String board = AiComposeBriefs.board(member.persona(), random);
         Context context = context(now);
         ComposeResponse response =
                 compose(
@@ -86,12 +93,17 @@ public class AiMemberActionService {
                                 null,
                                 null,
                                 null,
-                                context));
+                                context,
+                                AiComposeBriefs.post(member.persona(), board, random)));
         if (response == null || response.title() == null || response.content() == null) {
             return;
         }
-        if (ContactFilter.containsAnyContact(response.title() + "\n" + response.content())
-                || context.recentTitles().contains(response.title().strip())) {
+        String text = response.title() + "\n" + response.content();
+        if (PoliticalContentFilter.containsPolitics(text)
+                || ContactFilter.containsAnyContact(text)
+                || AiTextSimilarity.tooSimilar(
+                        response.title(), context.recentTitles(), AiTextSimilarity.TITLE_THRESHOLD)
+                || repeatsRecentContent(response.content(), now)) {
             log.info("AI member post dropped: key={}", member.persona().key());
             return;
         }
@@ -108,7 +120,11 @@ public class AiMemberActionService {
      */
     public boolean writeComment(Reaction reaction, List<CommentView> comments, LocalDateTime now) {
         AiMember member = roster.byMemberId(reaction.memberId()).orElse(null);
-        if (member == null) {
+        if (member == null || !isActive(member)) {
+            return false;
+        }
+        if (threadHasPolitics(reaction, comments)) {
+            log.info("AI member skipped political thread: postId={}", reaction.post().postId());
             return false;
         }
         Labels labels = new Labels(member);
@@ -133,11 +149,14 @@ public class AiMemberActionService {
                                                 Math.max(0, thread.size() - 30), thread.size())),
                                 null,
                                 null,
-                                context(now)));
+                                context(now),
+                                AiComposeBriefs.comment(new SplittableRandom())));
         if (response == null || response.content() == null) {
             return false;
         }
-        if (ContactFilter.containsAnyContact(response.content())) {
+        if (PoliticalContentFilter.containsPolitics(response.content())
+                || ContactFilter.containsAnyContact(response.content())
+                || repeatsRecentContent(response.content(), now)) {
             log.info("AI member comment dropped: key={}", member.persona().key());
             return false;
         }
@@ -159,7 +178,11 @@ public class AiMemberActionService {
     }
 
     /** 대화를 한 번에 만들고 20~90초 간격으로 나눠 보낸다. */
-    public void chat(List<AiMember> participants, int lineCount, LocalDateTime now) {
+    public void chat(List<AiMember> candidates, int lineCount, LocalDateTime now) {
+        List<AiMember> participants = candidates.stream().filter(this::isActive).toList();
+        if (participants.isEmpty()) {
+            return;
+        }
         Map<String, AiMember> byKey = new HashMap<>();
         participants.forEach(member -> byKey.put(member.persona().key(), member));
         Map<String, String> publicIdToKey = new HashMap<>();
@@ -168,6 +191,10 @@ public class AiMemberActionService {
         Map<String, String> others = new HashMap<>();
         List<Message> recent = new ArrayList<>();
         for (ChatMessageResponse message : chatService.getRecentMessages()) {
+            // 정치 얘기는 맥락으로도 넘기지 않아 모델이 받아줄 수 없게 한다.
+            if (PoliticalContentFilter.containsPolitics(message.content())) {
+                continue;
+            }
             String publicId = message.sender() != null ? message.sender().publicId() : "";
             String speaker =
                     publicIdToKey.containsKey(publicId)
@@ -185,8 +212,15 @@ public class AiMemberActionService {
                                 null,
                                 recent,
                                 lineCount,
-                                context(now)));
+                                context(now),
+                                null));
         if (response == null || response.lines() == null) {
+            return;
+        }
+        // 뒷말이 앞말을 받는 대화이므로 한 줄이라도 걸리면 대화 전체를 버린다.
+        if (response.lines().stream()
+                .anyMatch(line -> PoliticalContentFilter.containsPolitics(line.text()))) {
+            log.info("AI member chat dropped: reason=politics");
             return;
         }
         long delaySeconds = 0;
@@ -205,6 +239,9 @@ public class AiMemberActionService {
 
     private void sendChat(AiMember member, String text) {
         try {
+            if (!isActive(member)) {
+                return;
+            }
             ChatMessageResponse message =
                     chatService.processMessage(
                             new ChatMessageRequest(null, text), userDetails(member), null);
@@ -247,9 +284,34 @@ public class AiMemberActionService {
                 now.toLocalDate().toString(),
                 season(now.getMonth()),
                 queryRepository.findResortNames(),
-                queryRepository.findRecentSnowReports(now.minusDays(1)),
+                withoutPolitics(queryRepository.findRecentSnowReports(now.minusDays(1))),
                 queryRepository.findTitlesSince(roster.memberIds(), now.minusDays(7)),
-                properties.topicKeywords());
+                withoutPolitics(properties.topicKeywords()));
+    }
+
+    /** "ㅇㅈ", "ㅋㅋ" 같은 짧은 말은 사람 글에서도 늘 겹치므로 일정 길이 이상만 본다. */
+    private boolean repeatsRecentContent(String content, LocalDateTime now) {
+        return content.strip().length() >= MIN_LENGTH_FOR_SIMILARITY
+                && AiTextSimilarity.tooSimilar(
+                        content,
+                        queryRepository.findRecentContents(roster.memberIds(), now.minusDays(7)),
+                        AiTextSimilarity.BODY_THRESHOLD);
+    }
+
+    private static List<String> withoutPolitics(List<String> values) {
+        return values.stream()
+                .filter(value -> !PoliticalContentFilter.containsPolitics(value))
+                .toList();
+    }
+
+    /** 사용자가 정치 얘기를 걸어도 응하지 않도록, 글이나 댓글 어디든 걸리면 그 글에 달지 않는다. */
+    private static boolean threadHasPolitics(Reaction reaction, List<CommentView> comments) {
+        return PoliticalContentFilter.containsPolitics(reaction.post().title())
+                || PoliticalContentFilter.containsPolitics(reaction.post().content())
+                || comments.stream()
+                        .anyMatch(
+                                comment ->
+                                        PoliticalContentFilter.containsPolitics(comment.content()));
     }
 
     static String season(Month month) {
@@ -260,6 +322,12 @@ public class AiMemberActionService {
             case MARCH -> "폐장 무렵";
             default -> "비시즌";
         };
+    }
+
+    /** 명단은 기동 때 만들어지므로 그 뒤의 정지는 여기서 본다. 유료 compose 호출 전에 확인한다. */
+    private boolean isActive(AiMember member) {
+        return memberRepository.findStatusById(member.memberId()).orElse(null)
+                == MemberStatus.ACTIVE;
     }
 
     private CustomUserDetails userDetails(AiMember member) {
