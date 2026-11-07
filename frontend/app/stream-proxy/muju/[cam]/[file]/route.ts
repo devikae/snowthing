@@ -47,6 +47,9 @@ export async function GET(
 ) {
   try {
     const { cam, file } = await params;
+    if (!/^\d{1,2}$/.test(cam) || file.length > 120 || !/^[A-Za-z0-9_-]+\.(m3u8|ts|m4s|mp4|aac)$/.test(file)) {
+      return new NextResponse("Invalid camera path", { status: 400 });
+    }
     const paddedCam = cam.padStart(2, "0");
 
     if (file === "playlist.m3u8") {
@@ -64,7 +67,6 @@ export async function GET(
       return new NextResponse(content, {
         headers: {
           "Content-Type": "application/vnd.apple.mpegurl",
-          "Access-Control-Allow-Origin": "*",
           "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
@@ -93,14 +95,13 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=60",
       },
     });
   } catch (error) {
     console.error("[MujuStreamProxy] Error:", error);
     return new NextResponse(
-      JSON.stringify({ error: "Stream unavailable", detail: String(error) }),
+      JSON.stringify({ error: "Stream unavailable" }),
       {
         status: 502,
         headers: { "Content-Type": "application/json" },
