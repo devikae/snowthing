@@ -2,7 +2,9 @@ package com.ikae.snowthing.global.security;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.util.UUID;
@@ -97,5 +99,50 @@ class ContentWriteRateLimitIntegrationTest {
         mockMvc.perform(request)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("COMMON_003"));
+    }
+
+    @Test
+    void guestPasswordAttemptsAreLimitedPerIp() throws Exception {
+        var request =
+                delete("/api/v1/posts/" + post.publicId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"anonymousPassword\":\"0000\"}");
+
+        // 회원 글이라 비밀번호가 맞을 수 없다. 앞의 세 번은 권한 오류, 네 번째는 제한에 걸린다.
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mockMvc.perform(request)
+                    .andExpect(
+                            result ->
+                                    org.assertj.core.api.Assertions.assertThat(
+                                                    result.getResponse().getStatus())
+                                            .isBetween(400, 428));
+        }
+        mockMvc.perform(request)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("COMMON_003"));
+    }
+
+    @Test
+    void guestCannotPumpReactionsOnOnePostByDroppingCookies() throws Exception {
+        var request = put("/api/v1/posts/" + post.publicId() + "/reaction").with(csrf());
+
+        for (int attempt = 0; attempt < 4; attempt++) {
+            mockMvc.perform(request).andExpect(status().isOk());
+        }
+        mockMvc.perform(request)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("COMMON_003"));
+    }
+
+    @Test
+    void memberReactionIsNotLimitedByGuestReactionBudget() throws Exception {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            mockMvc.perform(
+                            put("/api/v1/posts/" + post.publicId() + "/reaction")
+                                    .with(csrf())
+                                    .with(user(userDetails)))
+                    .andExpect(status().isOk());
+        }
     }
 }

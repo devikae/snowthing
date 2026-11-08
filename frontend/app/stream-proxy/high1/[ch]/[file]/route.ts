@@ -35,7 +35,6 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Access-Control-Allow-Origin": "*",
         "Cache-Control": file.endsWith(".m3u8") ? "no-cache, no-store, must-revalidate" : "public, max-age=60",
       },
     });

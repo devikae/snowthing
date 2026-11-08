@@ -76,7 +76,9 @@ public class CommentController {
     public ResponseEntity<CommentUpdateResponse> updateComment(
             @PathVariable Long commentId,
             @Valid @RequestBody CommentUpdateRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
+        checkGuestPassword(userDetails, httpRequest);
         CommentUpdateResponse response =
                 commentService.updateComment(commentId, request, userDetails);
         return ResponseEntity.ok(response);
@@ -86,10 +88,22 @@ public class CommentController {
     public ResponseEntity<Map<String, Object>> deleteComment(
             @PathVariable Long commentId,
             @RequestBody(required = false) CommentDeleteRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
+        checkGuestPassword(userDetails, httpRequest);
         String password = (request != null) ? request.anonymousPassword() : null;
         commentService.deleteComment(commentId, password, userDetails);
         return ResponseEntity.ok(
                 Map.of("message", "댓글이 정상적으로 삭제(Soft Delete) 처리되었습니다.", "commentId", commentId));
+    }
+
+    /** 비회원 댓글은 비밀번호로 수정, 삭제하므로 대입과 BCrypt 연산 남용을 IP 단위로 묶는다. */
+    private void checkGuestPassword(CustomUserDetails userDetails, HttpServletRequest httpRequest) {
+        if (userDetails == null) {
+            contentWriteRateLimiter.check(
+                    null,
+                    clientIpResolver.resolve(httpRequest),
+                    ContentWriteRateLimiter.Action.GUEST_PASSWORD);
+        }
     }
 }

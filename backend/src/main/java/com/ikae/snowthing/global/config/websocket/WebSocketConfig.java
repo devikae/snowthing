@@ -1,5 +1,6 @@
 package com.ikae.snowthing.global.config.websocket;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -29,28 +30,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private static final int SEND_BUFFER_SIZE_LIMIT_BYTES = 512 * 1024;
     private static final int MESSAGE_SIZE_LIMIT_BYTES = 16 * 1024;
 
+    // 운영 프로필은 localhost를 빼고 https 출처만 둔다.
+    @Value(
+            "${snowthing.web.websocket-allowed-origin-patterns:http://localhost:3000,https://snowthing.org,https://www.snowthing.org,http://localhost:*}")
+    private String[] allowedOriginPatterns;
+
     private final ChatHandshakeInterceptor chatHandshakeInterceptor;
     private final ChatConnectionRegistry chatConnectionRegistry;
     private final ChatAuditLogger chatAuditLogger;
+    private final StompDestinationGuard stompDestinationGuard;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Raw WebSocket endpoint
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns(
-                        "http://localhost:3000",
-                        "https://snowthing.org",
-                        "https://www.snowthing.org",
-                        "http://localhost:*")
+                .setAllowedOriginPatterns(allowedOriginPatterns)
                 .addInterceptors(chatHandshakeInterceptor);
 
         // SockJS fallback endpoint
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns(
-                        "http://localhost:3000",
-                        "https://snowthing.org",
-                        "https://www.snowthing.org",
-                        "http://localhost:*")
+                .setAllowedOriginPatterns(allowedOriginPatterns)
                 .addInterceptors(chatHandshakeInterceptor)
                 .withSockJS();
     }
@@ -71,6 +70,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         configureChannelExecutor(registration);
+        registration.interceptors(stompDestinationGuard);
     }
 
     @Override
