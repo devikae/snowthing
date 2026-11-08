@@ -8,7 +8,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
@@ -270,5 +273,42 @@ class WebSocketChatIntegrationTest {
         ChatErrorResponse error = errorFuture.get(5, TimeUnit.SECONDS);
         assertThat(error.code()).isEqualTo("CHAT_004");
         assertThat(error.message()).contains("공백 메시지");
+    }
+
+    @Test
+    @DisplayName("브로커 경로로 직접 보낸 메시지는 구독자에게 전달되지 않는다")
+    void sendToBrokerDestination_isNotBroadcast() throws Exception {
+        WebSocketHttpHeaders wsHeaders = new WebSocketHttpHeaders();
+        wsHeaders.add(HttpHeaders.COOKIE, sessionCookie);
+        String wsUrl = "http://localhost:" + port + "/ws-chat";
+        BlockingQueue<ChatMessageResponse> received = new LinkedBlockingQueue<>();
+
+        StompSession session =
+                stompClient
+                        .connectAsync(wsUrl, wsHeaders, new StompSessionHandlerAdapter() {})
+                        .get(5, TimeUnit.SECONDS);
+        session.subscribe(
+                "/sub/chat/main",
+                new StompFrameHandler() {
+                    @Override
+                    public Type getPayloadType(StompHeaders headers) {
+                        return ChatMessageResponse.class;
+                    }
+
+                    @Override
+                    public void handleFrame(StompHeaders headers, Object payload) {
+                        received.add((ChatMessageResponse) payload);
+                    }
+                });
+
+        session.send(
+                "/sub/chat/main", Map.of("sender", Map.of("nickname", "운영자"), "content", "가짜 공지"));
+        assertThat(received.poll(1500, TimeUnit.MILLISECONDS)).isNull();
+
+        session.send("/pub/chat/messages", new ChatMessageRequest("PHOENIX", "정상 메시지입니다"));
+        ChatMessageResponse response = received.poll(5, TimeUnit.SECONDS);
+        assertThat(response).isNotNull();
+        assertThat(response.content()).isEqualTo("정상 메시지입니다");
+        assertThat(response.sender().nickname()).isEqualTo("슬로프장인");
     }
 }

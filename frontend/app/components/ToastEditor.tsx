@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "re
 import Editor from "@toast-ui/editor";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { sanitizeHtml } from "../lib/sanitizeHtml";
 import { readErrorMessage } from "../lib/messageApi";
 import { useImageUploadLease } from "../lib/useImageUploadLease";
 import { prepareImageForUpload } from "../lib/imageFile";
@@ -40,6 +41,7 @@ export const ToastEditor = forwardRef<ToastEditorHandle, ToastEditorProps>(
         initialEditType: "wysiwyg",
         autofocus: false,
         useCommandShortcut: true,
+        customHTMLSanitizer: sanitizeHtml,
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
