@@ -70,4 +70,41 @@ class ContentWriteRateLimiterTest {
 
         verifyNoInteractions(shared);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void guestIpv6AddressesInSameSlash64ShareOneWindow() {
+        when(shared.acquire(any())).thenReturn(new SharedRequestLimiter.Decision(true, 0));
+        ArgumentCaptor<List<SharedRequestLimiter.Limit>> captor =
+                ArgumentCaptor.forClass(List.class);
+
+        limiter.check(null, "2001:db8:1:2::1", ContentWriteRateLimiter.Action.COMMENT);
+        limiter.check(null, "2001:db8:1:2::abcd", ContentWriteRateLimiter.Action.COMMENT);
+        limiter.check(null, "2001:db8:1:3::1", ContentWriteRateLimiter.Action.COMMENT);
+
+        verify(shared, times(3)).acquire(captor.capture());
+        var calls = captor.getAllValues();
+        assertThat(calls.get(1).get(0).key()).isEqualTo(calls.get(0).get(0).key());
+        assertThat(calls.get(2).get(0).key()).isNotEqualTo(calls.get(0).get(0).key());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void guestReactionAddsPerPostDailyWindow() {
+        when(shared.acquire(any())).thenReturn(new SharedRequestLimiter.Decision(true, 0));
+        ArgumentCaptor<List<SharedRequestLimiter.Limit>> captor =
+                ArgumentCaptor.forClass(List.class);
+
+        limiter.checkGuestReaction("1.2.3.4", "postA");
+        limiter.checkGuestReaction("1.2.3.4", "postB");
+
+        verify(shared, times(2)).acquire(captor.capture());
+        var first = captor.getAllValues().get(0);
+        var second = captor.getAllValues().get(1);
+        assertThat(first).extracting(SharedRequestLimiter.Limit::count).containsExactly(5, 120, 4);
+        assertThat(first.get(0).key()).isEqualTo(second.get(0).key());
+        assertThat(first.get(2).key()).isNotEqualTo(second.get(2).key());
+        assertThat(first)
+                .allSatisfy(limit -> assertThat(limit.key()).hasSizeLessThanOrEqualTo(100));
+    }
 }

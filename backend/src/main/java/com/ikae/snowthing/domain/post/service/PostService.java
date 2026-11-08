@@ -22,6 +22,7 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
+import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
@@ -462,14 +463,17 @@ public class PostService {
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {
+        List<String> storageValues =
+                imageUrls.stream().map(imageUrlResolver::toStorageValue).toList();
+        // 외부 주소를 받으면 추적 픽셀이나 http 혼합 콘텐츠가 글에 붙는다. 우리 업로드 키만 받는다.
+        if (storageValues.stream().anyMatch(value -> !imageUrlResolver.isManagedOriginal(value))
+                || storageValues.stream().distinct().count() != storageValues.size()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
         List<PostImage> images = new ArrayList<>();
         int sortOrder = FIRST_IMAGE_SORT_ORDER;
-        for (String imageUrl : imageUrls) {
-            images.add(
-                    PostImage.builder()
-                            .imageUrl(imageUrlResolver.toStorageValue(imageUrl))
-                            .sortOrder(sortOrder++)
-                            .build());
+        for (String storageValue : storageValues) {
+            images.add(PostImage.builder().imageUrl(storageValue).sortOrder(sortOrder++).build());
         }
         return images;
     }

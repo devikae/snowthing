@@ -6,6 +6,9 @@ export async function GET(
 ) {
   try {
     const { file } = await params;
+    if (file.length > 120 || !/^[A-Za-z0-9_-]+\.(m3u8|ts|m4s|mp4|aac)$/.test(file)) {
+      return new NextResponse("Invalid camera path", { status: 400 });
+    }
     const targetUrl = `http://118.46.149.144:8080/ramdisk/${file}`;
 
     const res = await fetch(targetUrl, {
@@ -30,13 +33,12 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Access-Control-Allow-Origin": "*",
         "Cache-Control": file.endsWith(".m3u8") ? "no-cache, no-store, must-revalidate" : "public, max-age=60",
       },
     });
-  } catch (error) {
+  } catch {
     return new NextResponse(
-      JSON.stringify({ error: "O2 stream unavailable", detail: String(error) }),
+      JSON.stringify({ error: "O2 stream unavailable" }),
       {
         status: 502,
         headers: { "Content-Type": "application/json" },

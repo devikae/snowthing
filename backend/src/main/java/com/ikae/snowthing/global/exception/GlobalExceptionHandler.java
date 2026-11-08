@@ -17,8 +17,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -94,8 +96,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
             IllegalArgumentException e) {
+        // 라이브러리 내부 문구가 사용자에게 그대로 나가지 않게 고정 문구로 답하고 원문은 로그에만 남긴다.
+        log.debug("IllegalArgumentException: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, e.getMessage()));
+                .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
+    }
+
+    // 모바일에서 사진 업로드가 끊기거나 multipart 본문이 깨지면 난다. 사용자 쪽 문제라 500 알림으로 보내지 않는다.
+    // 크기 초과(MaxUploadSizeExceededException)는 더 구체적인 처리기가 따로 받는다.
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponse> handleMultipartException(MultipartException e) {
+        log.debug("Malformed multipart request: {}", e.getMessage());
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
+    }
+
+    // 응답을 쓰는 중에 클라이언트가 연결을 끊었다. 보낼 곳이 없으므로 알림 없이 끝낸다.
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientDisconnected(AsyncRequestNotUsableException e) {
+        log.debug("Client disconnected: {}", e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
