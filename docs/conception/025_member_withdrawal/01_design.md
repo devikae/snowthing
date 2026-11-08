@@ -56,6 +56,7 @@
 | `post_reaction` | `writer_ip` | NULL |
 | `market_listing` | `contact` | `탈퇴한 회원`으로 교체(NOT NULL, CHECK 때문), 응답에서는 null. `trade_status`는 `SOLD` |
 | `carpool_detail` | `contact_info` | NULL, 비회원 공개 해제 |
+| `carpool_rider` | 처리 전(`REQUESTED`) 탑승 요청 | 행 삭제. 확정과 거절 기록은 남긴다 (`027_carpool_review`) |
 | `post_image_upload` | `owner_email` | 익명 이메일로 교체 |
 | 메모리 `ChatRecentHistoryBuffer` | 닉네임, 대화 | 해당 회원 메시지 제거 |
 
@@ -65,6 +66,7 @@
 |---|---|---|
 | `post`, `comment`, `resort_report` | 본문 | 설계 결정. 본문 안에 직접 쓴 개인정보는 자동으로 지우지 못한다 |
 | `direct_message` | 쪽지 본문 | `022_direct_message` 설계대로 상대 화면에 남긴다 |
+| `carpool_rider`, `carpool_review`, `carpool_review_tag` | 확정된 탑승 기록과 후기(글 포함) | 상대의 카풀 횟수와 좋았어요 개수가 탈퇴로 줄지 않게 남긴다. 익명화된 회원을 가리킨다 (`027_carpool_review`) |
 | `notification.preview` | 남이 받은 알림의 댓글 미리보기 | 알림 보관 기간이 지나면 지워진다 |
 | `answer_draft`, `answer_draft_audit` | 회원 ID | 익명화된 회원을 가리킨다 |
 | `idempotency_record` | `member:{id}` | 보관 기간이 지나면 지워진다 |

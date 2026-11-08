@@ -1,0 +1,199 @@
+/* IKA-63 카풀 탑승 확인과 후기 */
+.post-detail-author small.carpool-writer-summary { color: var(--snow-ink-soft); }
+
+.carpool-ride {
+  display: grid;
+  gap: 12px;
+  border-bottom: 1px solid var(--snow-border);
+  padding: 24px 0;
+}
+
+.carpool-ride h2 {
+  margin: 0;
+  color: var(--snow-ink);
+  font: 600 16px/24px var(--font-hanken);
+}
+
+.carpool-ride-notice,
+.carpool-ride-meta {
+  margin: 0;
+  color: var(--snow-ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.carpool-ride-meta { color: var(--snow-muted); font-size: 13px; }
+
+div.carpool-ride-notice { display: grid; gap: 12px; justify-items: start; }
+div.carpool-ride-notice p { margin: 0; }
+
+.carpool-ride-error { margin: 0; color: var(--snow-error); font-size: 13px; }
+
+.carpool-ride-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.carpool-ride-list > li {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--snow-border);
+  border-radius: 8px;
+  background: var(--snow-canvas);
+  padding: 12px;
+}
+
+.carpool-ride-member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.carpool-ride-member > :is(img, svg) { flex: none; border-radius: 50%; color: var(--snow-muted); }
+
+.carpool-ride-member > div:not(.carpool-ride-actions) {
+  display: grid;
+  min-width: 0;
+}
+
+.carpool-ride-member strong {
+  overflow: hidden;
+  color: var(--snow-ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carpool-ride-member small { color: var(--snow-muted); font-size: 12px; }
+
+.carpool-ride-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.carpool-ride-button {
+  min-height: 36px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 8px;
+  background: var(--snow-canvas);
+  padding: 0 12px;
+  color: var(--snow-ink-soft);
+  font: 500 13px/20px var(--font-hanken);
+  cursor: pointer;
+}
+
+.carpool-ride-button.primary {
+  border-color: var(--snow-ink);
+  background: var(--snow-ink);
+  color: var(--snow-canvas);
+}
+
+.carpool-ride-button:disabled { cursor: not-allowed; opacity: .5; }
+
+.carpool-ride-done { color: var(--snow-muted); font-size: 13px; }
+
+.carpool-review-form fieldset {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.carpool-review-form legend {
+  margin-bottom: 4px;
+  color: var(--snow-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.carpool-review-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.carpool-review-tags button {
+  min-height: 36px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 999px;
+  background: var(--snow-canvas);
+  padding: 0 12px;
+  color: var(--snow-ink-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.carpool-review-tags button[aria-pressed="true"] {
+  border-color: var(--snow-ink);
+  color: var(--snow-ink);
+  font-weight: 600;
+}
+
+.carpool-review-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--snow-muted);
+  font-size: 12px;
+}
+
+.carpool-review-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 8px;
+  background: var(--snow-canvas);
+  padding: 10px 12px;
+  color: var(--snow-ink);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.carpool-review-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.carpool-my-reviews { display: grid; gap: 16px; min-width: 0; }
+.carpool-my-reviews > p[role="alert"] { margin: 0; color: var(--snow-error); font-size: 13px; }
+.carpool-my-reviews-meta { margin: 0; color: var(--snow-muted); font-size: 13px; }
+
+.carpool-my-reviews-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.carpool-my-reviews-stats > div {
+  border: 1px solid var(--snow-border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.carpool-my-reviews-stats dt { color: var(--snow-muted); font-size: 12px; }
+.carpool-my-reviews-stats dd { margin: 4px 0 0; color: var(--snow-ink); font-size: 16px; font-weight: 600; }
+
+.carpool-my-reviews-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+
+.carpool-my-reviews-list > li {
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid var(--snow-border);
+  padding: 0 0 12px;
+  font-size: 13px;
+}
+
+.carpool-my-reviews-list strong { color: var(--snow-ink); font-size: 14px; }
+.carpool-my-reviews-list span { color: var(--snow-ink-soft); }
+.carpool-my-reviews-list p { margin: 0; color: var(--snow-ink); overflow-wrap: anywhere; }
+.carpool-my-reviews-list small { color: var(--snow-muted); font-size: 12px; }
+.carpool-my-reviews-list a { color: inherit; }
+
+@media (max-width: 640px) {
+  .carpool-ride-member { flex-wrap: wrap; }
+  .carpool-ride-actions { width: 100%; justify-content: flex-start; margin-left: 44px; }
+  .carpool-my-reviews-stats { grid-template-columns: 1fr; }
+}

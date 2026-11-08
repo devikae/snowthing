@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { BlockedMembersSection } from "../components/BlockedMembersSection";
+import { CarpoolReviewSection } from "../components/CarpoolReviewSection";
 import { CommentProfileAvatar } from "../components/CommentProfileAvatar";
 import { MarketingConsentSection } from "../components/MarketingConsentSection";
 import { API_ENDPOINTS } from "../lib/api";
@@ -210,6 +211,7 @@ export default function ProfilePage() {
         <div className="profile-actions"><button className="profile-button-cancel" type="button" onClick={() => { if (!profileDirty || window.confirm("수정한 정보를 취소할까요?")) { setForm(toForm(profile)); setCheckedNickname(null); setNicknameMessage(""); } }}>수정 취소</button><button type="submit" className="profile-button-primary" disabled={!profileDirty || (form.nickname !== profile.nickname && checkedNickname !== form.nickname)}>{busy === "save" ? "저장 중" : "정보 저장"}</button></div>
       </div></fieldset></form>
       <MarketingConsentSection />
+      <CarpoolReviewSection />
       <BlockedMembersSection />
       <section className="profile-section profile-withdrawal"><div><h2>회원 탈퇴</h2><p>탈퇴하면 되돌릴 수 없습니다.</p></div>{withdrawOpen ? <form onSubmit={withdraw}><fieldset className="profile-fields" disabled={!!busy}>
         <ul className="profile-withdrawal-notice">
