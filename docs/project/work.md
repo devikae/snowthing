@@ -1,3 +1,11 @@
+## 프론트 실행 이미지의 next.config 누락 (IKA-58, 2026-11-08)
+
+- 상태: 구현과 검증 완료, PR 생성.
+- 발견: 오픈 준비 PR 배포 뒤 운영 확인에서 IKA-46의 `poweredByHeader: false`가 적용되지 않았다. 보안 헤더는 적용됐다.
+- 원인: `frontend/Dockerfile` 실행 단계가 `next.config.ts`를 복사하지 않는다. `headers()`는 빌드 결과에 들어가지만 `poweredByHeader`는 `next start`가 시작할 때 설정 파일을 읽는다.
+- 완료: 실행 단계에 `next.config.ts` 복사.
+- 검증: 로컬에서 설정 파일 없이 `next start` 하면 `X-Powered-By`가 붙고, 있으면 없다. 실제 Dockerfile로 이미지를 빌드해 컨테이너 응답에 `X-Powered-By`가 없고 CSP는 있는 것을 확인했다.
+
 ## 인앱 브라우저 구글 로그인 (IKA-50, 2026-11-08)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.
