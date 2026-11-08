@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ResortCameraItem } from "./types";
+import { toCamStreamUrl } from "./camStreamUrl";
 import styles from "./resortCam.module.css";
 
 interface CameraPlayerProps {
@@ -41,6 +42,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
   useEffect(() => {
     const video = videoRef.current;
     if (camera.sourceType !== "HLS" || !video || !shouldLoad) return;
+    const streamUrl = toCamStreamUrl(camera.sourceUrl);
 
     let disposed = false;
     let usingHls = false;
@@ -77,7 +79,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
           destroy = () => hls.destroy();
           let mediaRecoveries = 0;
           let nativeFallback = false;
-          hls.loadSource(camera.sourceUrl);
+          hls.loadSource(streamUrl);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             if (disposed) return;
@@ -94,13 +96,13 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
                 destroy = undefined;
                 window.clearTimeout(startupTimer);
                 startupTimer = window.setTimeout(() => fail("startup-timeout"), 18000);
-                video.src = camera.sourceUrl;
+                video.src = streamUrl;
                 video.load();
                 void video.play().catch(() => undefined);
               } else fail(data.details);
             }
           });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = camera.sourceUrl;
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = streamUrl;
         else { fail("unsupported-browser"); return; }
         void video.play().catch(() => undefined);
       } catch {

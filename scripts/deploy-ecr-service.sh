@@ -13,6 +13,7 @@ NGINX_CONF_D_PATH="/etc/nginx/conf.d"
 NGINX_SITES_ENABLED_PATH="/etc/nginx/sites-enabled"
 NGINX_WEBSOCKET_SNIPPET_PATH="/etc/nginx/snippets/snowthing-websocket.conf"
 NGINX_WEBSOCKET_INCLUDE="include /etc/nginx/snippets/snowthing-websocket.conf;"
+NGINX_CAM_ORIGIN_CONFIG_PATH="/etc/nginx/conf.d/snowthing-cam-origin.conf"
 CLOUDFLARE_IPV4_RANGES=(
   "173.245.48.0/20"
   "103.21.244.0/22"
@@ -104,6 +105,51 @@ cleanup_service_images() {
   echo "보호 이미지: current=$current_image_id previous=${PREVIOUS_IMAGE_ID:-none}"
   echo "Docker 이미지 정리 후 사용량"
   docker system df || true
+}
+
+configure_nginx_cam_origin() {
+  # CloudFront(cam.snowthing.org)가 캠 영상 조각을 가져가는 원본 입구다.
+  # CloudFront는 Host에 EC2 공개 DNS 이름을 보내고, 보안 그룹이 CloudFront 주소만 80번에 들여보낸다.
+  local config_path backup_path
+  config_path="$NGINX_CAM_ORIGIN_CONFIG_PATH"
+  backup_path=""
+  if [[ -f "$config_path" ]]; then
+    backup_path="$(mktemp)"
+    cp "$config_path" "$backup_path"
+  fi
+
+  printf '%s\n' \
+    'server {' \
+    '    listen 80;' \
+    '    server_name ~^ec2-[0-9-]+\.ap-northeast-2\.compute\.amazonaws\.com$;' \
+    '    location /stream-proxy/ {' \
+    '        limit_except GET HEAD { deny all; }' \
+    '        proxy_pass http://127.0.0.1:3000;' \
+    '        proxy_http_version 1.1;' \
+    '        proxy_set_header Host snowthing.org;' \
+    '        proxy_set_header X-Forwarded-Proto https;' \
+    '    }' \
+    '    location / {' \
+    '        return 404;' \
+    '    }' \
+    '}' > "$config_path"
+
+  if nginx -t; then
+    systemctl reload nginx
+    [[ -n "$backup_path" ]] && rm -f "$backup_path"
+    echo "Nginx cam origin configured"
+    return 0
+  fi
+
+  if [[ -n "$backup_path" ]]; then
+    cp "$backup_path" "$config_path"
+    rm -f "$backup_path"
+  else
+    rm -f "$config_path"
+  fi
+  nginx -t || true
+  echo "Failed to configure the Nginx cam origin" >&2
+  return 1
 }
 
 configure_nginx_request_limits() {
@@ -368,6 +414,9 @@ if [[ "$SERVICE" == "backend" ]]; then
   configure_nginx_request_limits
   configure_nginx_websocket_proxy
   prepare_chat_audit_directory
+fi
+if [[ "$SERVICE" == "frontend" ]]; then
+  configure_nginx_cam_origin
 fi
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$REGISTRY"
