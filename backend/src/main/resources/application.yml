@@ -65,6 +65,10 @@ snowthing:
     read-timeout-millis: ${SNOWTHING_WEATHER_READ_TIMEOUT_MILLIS:2000}
     kma:
       service-key: ${SNOWTHING_KMA_SERVICE_KEY:}
+  # IKA-66 슬로프 현황 수집. 수집할 리조트 코드를 쉼표로 적는다(HIGH1,YONGPYONG,KONJIAM,PHOENIX). 기본은 비어 있어 수집하지 않는다.
+  slope-status:
+    enabled-resorts: ${SNOWTHING_SLOPE_STATUS_ENABLED_RESORTS:}
+    cron: ${SNOWTHING_SLOPE_STATUS_CRON:0 30 6-21/2 * * *}
   search:
     indexer:
       enabled: ${SNOWTHING_SEARCH_INDEXER_ENABLED:true}

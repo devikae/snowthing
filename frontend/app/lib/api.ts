@@ -64,6 +64,9 @@ export const API_ENDPOINTS = {
     list: `${API_V1_URL}/resort-cams`,
     weather: (resortCode: string) => `${API_V1_URL}/resort-cams/${encodeURIComponent(resortCode)}/weather`,
   },
+  slopeStatus: {
+    board: `${API_V1_URL}/slope-status`,
+  },
   market: {
     categories: `${API_V1_URL}/market/categories`,
     preview: `${API_V1_URL}/market-listings/preview`,

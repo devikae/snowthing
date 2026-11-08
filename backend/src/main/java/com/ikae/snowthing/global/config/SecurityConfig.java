@@ -275,6 +275,7 @@ public class SecurityConfig {
                                                 "/api/v1/master/riding-styles",
                                                 "/api/v1/resort-cams",
                                                 "/api/v1/resort-cams/*/weather",
+                                                "/api/v1/slope-status",
                                                 "/api/posts",
                                                 "/api/posts/**",
                                                 "/api/v1/posts",
