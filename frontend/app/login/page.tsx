@@ -10,6 +10,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { clearViewerCache } from "../lib/viewer";
 import styles from "./login.module.css";
 import { errorText } from "../lib/errorText";
+import { detectInAppBrowser, externalBrowserUrl, type InAppBrowser } from "../lib/inAppBrowser";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
 
@@ -70,7 +71,32 @@ export default function LoginPage() {
   }, []);
   const [loading, setLoading] = useState(false);
 
+  const [inAppBrowser, setInAppBrowser] = useState<InAppBrowser | null>(null);
+  const [showInAppGuide, setShowInAppGuide] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const detected = detectInAppBrowser(navigator.userAgent);
+    if (!detected) return;
+    const timer = window.setTimeout(() => setInAppBrowser(detected), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const copyPageUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+    } catch {
+      window.prompt("이 주소를 복사해 주세요.", window.location.href);
+    }
+  };
+
   const handleSocialLogin = (provider: SocialLoginProvider) => {
+    if (provider === "google" && inAppBrowser) {
+      setShowInAppGuide(true);
+      const external = externalBrowserUrl(inAppBrowser, window.location.href, navigator.userAgent);
+      if (external) window.location.href = external;
+      return;
+    }
     const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
     window.location.assign(API_ENDPOINTS.auth.oauth2Authorize(provider, returnUrl));
   };
@@ -146,6 +172,20 @@ export default function LoginPage() {
               Google로 계속하기
             </button>
           </div>
+          {inAppBrowser && (
+            <div className={`${styles.notice} ${styles.inAppNotice}`} role={showInAppGuide ? "alert" : "note"}>
+              <p>
+                {inAppBrowser === "kakaotalk" || inAppBrowser === "line"
+                  ? "앱 안 브라우저에서는 구글 로그인이 막혀 있어요. Google 버튼을 누르면 외부 브라우저에서 이 화면이 열려요."
+                  : "앱 안 브라우저에서는 구글 로그인이 막혀 있어요. 화면 위 메뉴에서 '다른 브라우저로 열기'를 누르거나, 주소를 복사해 크롬이나 사파리에서 열어 주세요. 네이버와 이메일 로그인은 여기서 바로 할 수 있어요."}
+              </p>
+              {inAppBrowser === "other" && (
+                <button type="button" className={styles.button} onClick={() => void copyPageUrl()}>
+                  {copied ? "주소를 복사했어요" : "주소 복사"}
+                </button>
+              )}
+            </div>
+          )}
           <p className={styles.signup}>아직 계정이 없나요?<Link href="/signup">회원가입</Link></p>
         </section>
       </main>
