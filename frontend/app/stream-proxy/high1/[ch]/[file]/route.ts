@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeLegacyAvcManifest } from "../../../../resort-cam/hlsManifest";
+import { toPublicWowzaManifest, toUpstreamWowzaFile } from "../../../wowzaSession";
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
     if (!/^[1-9]\d?$/.test(ch) || Number(ch) > 18 || file.length > 120 || !/^[A-Za-z0-9_-]+\.(m3u8|ts|m4s|mp4|aac)$/.test(file)) {
       return new NextResponse("Invalid camera path", { status: 400 });
     }
-    const targetUrl = `http://59.30.12.195:1935/live/_definst_/ch${ch}.stream/${file}${request.nextUrl.search}`;
+    const targetUrl = `http://59.30.12.195:1935/live/_definst_/ch${ch}.stream/${toUpstreamWowzaFile(file)}`;
 
     const res = await fetch(targetUrl, {
       cache: "no-store",
@@ -30,7 +31,9 @@ export async function GET(
       ? "video/MP2T"
       : "application/octet-stream";
 
-    const body = file.endsWith(".m3u8") ? normalizeLegacyAvcManifest(await res.text()) : res.body;
+    const body = file.endsWith(".m3u8")
+      ? normalizeLegacyAvcManifest(toPublicWowzaManifest(await res.text()))
+      : res.body;
     return new NextResponse(body, {
       status: 200,
       headers: {

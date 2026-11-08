@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { toPublicWowzaManifest, toUpstreamWowzaFile } from "../../../wowzaSession";
 
 interface CacheEntry {
   url: string;
@@ -63,7 +64,7 @@ export async function GET(
         return new NextResponse(`Upstream error: ${res.status}`, { status: res.status });
       }
 
-      const content = await res.text();
+      const content = toPublicWowzaManifest(await res.text());
       return new NextResponse(content, {
         headers: {
           "Content-Type": "application/vnd.apple.mpegurl",
@@ -72,9 +73,9 @@ export async function GET(
       });
     }
 
-    // chunklist or ts segment
-    const search = request.nextUrl.search;
-    const targetUrl = `http://muju.cache.cdn.cloudn.co.kr/mujuresort/_definst_/cam${paddedCam}.stream/${file}${search}`;
+    // chunklist 또는 조각. 시청자 주소에는 토큰이 없으므로 서버가 가진 토큰을 붙인다.
+    const token = new URL(await getMujuM3u8Url(paddedCam)).search;
+    const targetUrl = `http://muju.cache.cdn.cloudn.co.kr/mujuresort/_definst_/cam${paddedCam}.stream/${toUpstreamWowzaFile(file)}${token}`;
 
     const res = await fetch(targetUrl, {
       cache: "no-store",
@@ -82,6 +83,9 @@ export async function GET(
     });
 
     if (!res.ok) {
+      if (res.status === 400 || res.status === 403) {
+        tokenCache.delete(paddedCam);
+      }
       return new NextResponse(`Segment error: ${res.status}`, { status: res.status });
     }
 
@@ -91,11 +95,12 @@ export async function GET(
       ? "video/MP2T"
       : "application/octet-stream";
 
-    return new NextResponse(res.body, {
+    const body = file.endsWith(".m3u8") ? toPublicWowzaManifest(await res.text()) : res.body;
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=60",
+        "Cache-Control": file.endsWith(".m3u8") ? "no-cache, no-store, must-revalidate" : "public, max-age=60",
       },
     });
   } catch (error) {
