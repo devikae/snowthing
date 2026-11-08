@@ -49,6 +49,7 @@
 | `member_marketing_consent_history` | 광고 수신 변경 이력 | 행 삭제 |
 | `member_block` | 내가 건 차단 | 행 삭제. 나를 차단한 행은 상대가 풀 수 있게 유지 |
 | `email_verification` | `email`, `request_ip` | 행 삭제 |
+| `season_visit`, `season_share` | 시즌 방문 기록, 결산 공유 링크 | 행 삭제 (IKA-64) |
 | `api_token` | 토큰 | `revoked_at` 기록 |
 | `notification` | 내가 받은 알림 | 행 삭제 |
 | `notification` | 남이 받은 알림의 `actor_name` | `탈퇴한 회원`으로 교체 |

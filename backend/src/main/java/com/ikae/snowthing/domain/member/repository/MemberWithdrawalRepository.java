@@ -38,6 +38,9 @@ public class MemberWithdrawalRepository {
                     "DELETE FROM member_marketing_consent_history WHERE member_id = :memberId",
                     "DELETE FROM member_block WHERE blocker_id = :memberId",
                     "DELETE FROM notification WHERE receiver_id = :memberId",
+                    // 방문 기록은 언제 어디 있었는지 알려 주는 정보다. 공유 링크도 함께 닫는다.
+                    "DELETE FROM season_share WHERE member_id = :memberId",
+                    "DELETE FROM season_visit WHERE member_id = :memberId",
                     "UPDATE api_token SET revoked_at = :now"
                             + " WHERE member_id = :memberId AND revoked_at IS NULL",
                     // 연락처가 사라진 판매글이 판매 중으로 남으면 구매자가 막다른 길을 만나므로 함께 닫는다.
