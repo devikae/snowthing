@@ -154,6 +154,8 @@ CREATE TABLE `post` (
     `deleted_at` DATETIME NULL COMMENT '삭제 일시',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '수정 일시',
+    INDEX `idx_post_category_list` (`category_id`, `is_deleted`, `status`, `created_at` DESC, `post_id` DESC),
+    INDEX `idx_post_latest_list` (`is_deleted`, `status`, `created_at` DESC, `post_id` DESC),
     CONSTRAINT `fk_post_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE SET NULL,
     CONSTRAINT `fk_post_category` FOREIGN KEY (`category_id`) REFERENCES `post_category` (`category_id`),
     CONSTRAINT `chk_post_like_count_non_negative` CHECK (`like_count` >= 0),

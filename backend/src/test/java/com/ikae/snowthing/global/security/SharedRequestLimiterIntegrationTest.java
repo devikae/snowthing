@@ -112,4 +112,25 @@ class SharedRequestLimiterIntegrationTest {
         assertThat(new SharedRequestLimiter(unavailable, manager).acquire(limits()).available())
                 .isFalse();
     }
+
+    @Test
+    void cleanupRemovesMoreThanOneBatchOfExpiredWindows() {
+        jdbc.batchUpdate(
+                "INSERT INTO request_budget_window(budget_key,used_count,expires_at_millis) VALUES(?,1,1)",
+                java.util.stream.IntStream.range(0, 1205)
+                        .mapToObj(i -> new Object[] {"test:cleanup:" + i})
+                        .toList());
+        jdbc.update(
+                "INSERT INTO request_budget_window(budget_key,used_count,expires_at_millis) VALUES('test:cleanup:alive',1,?)",
+                System.currentTimeMillis() + 3_600_000L);
+
+        limiter.removeExpiredWindows();
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM request_budget_window WHERE budget_key LIKE 'test:cleanup:%'",
+                                Integer.class))
+                .isEqualTo(1);
+        jdbc.update("DELETE FROM request_budget_window WHERE budget_key LIKE 'test:cleanup:%'");
+    }
 }
