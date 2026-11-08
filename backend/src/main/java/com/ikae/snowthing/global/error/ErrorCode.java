@@ -102,6 +102,8 @@ public enum ErrorCode {
             HttpStatus.CONFLICT, "CONTENT_REPORT_004", "현재 상태에서는 할 수 없는 조치입니다."),
     NOTIFICATION_LOGIN_REQUIRED(
             HttpStatus.UNAUTHORIZED, "NOTIFICATION_002", "로그인 후 알림을 확인할 수 있습니다."),
+    PUSH_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "PUSH_001", "휴대폰 알림을 지금은 사용할 수 없습니다."),
+    PUSH_SUBSCRIPTION_INVALID(HttpStatus.BAD_REQUEST, "PUSH_002", "지원하지 않는 알림 구독 정보입니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_005", "요청한 주소를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),

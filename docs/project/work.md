@@ -1,3 +1,20 @@
+## 홈 화면 설치와 웹 푸시 알림 (IKA-65, 2026-11-09)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지, 운영 마이그레이션 045 적용, VAPID 키 등록은 사용자 확인 후.
+- 설계: `docs/conception/029_web_push/01_design.md`
+- 완료
+  - DB: `045_migration_push_subscription.sql` (endpoint 해시 유니크, 회원당 최근 10개).
+  - 백엔드: 구독 설정, 등록, 해지 API(`/api/v1/push`). 알림 저장(댓글 알림, 운영 조치 알림) 뒤 `NotificationsCreatedEvent`를 발행하고, 커밋 뒤 별도 풀에서 비동기로 발송한다. 404, 410이면 구독 삭제, 탈퇴 때 삭제.
+  - 프론트: manifest를 standalone으로 바꾸고 PNG 아이콘 추가, `public/sw.js`(push, notificationclick만), 알림 페이지 "휴대폰 알림 받기" 스위치, 로그아웃 때 이 기기 구독 해지.
+- 결정
+  - 웹 푸시 라이브러리 대신 JDK 표준 암호 API로 RFC 8291, 8292를 구현했다. `nl.martijndwars:web-push`는 2021년 이후 릴리스가 없고 BouncyCastle과 비동기 HTTP 클라이언트를 끌고 온다. RFC 8291 공개 예제와 바이트 단위로 같은지 테스트한다.
+  - endpoint 허용 목록(FCM, Apple, Mozilla, WNS)으로 SSRF를 막는다.
+  - 푸시 본문에는 작성자 이름, 미리보기를 넣지 않는다.
+  - 동시 등록 테스트에서 INSERT ON DUPLICATE KEY 교착이 재현됐다. 등록 문장을 자기 트랜잭션으로 바로 커밋하고 교착이면 최대 3번 다시 시도한다.
+  - `compose.prod.yml`에 VAPID 변수 전달 줄만 추가했다(빈 값이면 꺼짐).
+- 남은 항목: 운영 키 생성과 등록, 실제 휴대폰(안드로이드 크롬, iOS 홈 화면 앱) 수신 확인.
+- 검증: 아래 PR 본문 참고.
+
 ## 프론트 실행 이미지의 next.config 누락 (IKA-58, 2026-11-08)
 
 - 상태: 구현과 검증 완료, PR 생성.

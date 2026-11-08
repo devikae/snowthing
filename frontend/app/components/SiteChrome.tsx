@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
+import { disablePushBeforeLogout } from "../lib/push";
 import { clearViewerCache, fetchViewer, peekViewer } from "../lib/viewer";
 import { RotatingWordmark } from "./RotatingWordmark";
 import { SnowflakeMark } from "./SnowflakeMark";
@@ -162,6 +163,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
 
   const handleLogout = async () => {
     try {
+      await disablePushBeforeLogout();
       await csrfFetch(API_ENDPOINTS.auth.logout, { method: "POST" });
     } finally {
       clearViewerCache();
