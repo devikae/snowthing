@@ -44,27 +44,26 @@ public final class SlopeStatusParsers {
                 difficulty = blankToNull(group.text());
             }
             Elements cells = row.select("> td");
-            if (cells.size() < 3) {
+            if (cells.isEmpty()) {
                 continue;
             }
             String name = blankToNull(cells.get(0).text());
-            if (name == null) {
+            // 이름 다음부터 상태 아이콘(em.ico)이 든 칸이 주간, 야간(, 심야) 순서로 이어지고 그 뒤가 비고다. 시즌에 심야 칸이 다시
+            // 열려도 밀리지 않게 위치 대신 아이콘으로 상태 칸을 찾는다.
+            StatusCells statusCells = statusCells(cells, 1, "em.ico");
+            if (name == null || statusCells.statuses().isEmpty()) {
                 continue;
             }
-            String note = cells.size() > 3 ? blankToNull(cells.get(3).text()) : null;
-            slopes.add(
-                    new SlopeEntry(
-                            name,
-                            difficulty,
-                            status(cells.get(1).text()),
-                            status(cells.get(2).text()),
-                            null,
-                            note));
+            String note =
+                    statusCells.next() < cells.size()
+                            ? blankToNull(cells.get(statusCells.next()).text())
+                            : null;
+            slopes.add(entry(name, difficulty, statusCells.statuses(), note));
         }
         return snapshot("모나용평", slopes, yongpyongHours(document));
     }
 
-    /** 표 머리 둘째 줄에 주간, 야간 운영 시간이 있다. 빈 칸은 건너뛴다. */
+    /** 표 머리 둘째 줄에 시간대별 운영 시간이 있다. 빈 칸은 건너뛴다. */
     private static String yongpyongHours(Document document) {
         Element table = document.selectFirst("table:has(#slopeStatus)");
         if (table == null) {
@@ -74,13 +73,16 @@ public final class SlopeStatusParsers {
         if (rows.size() < 2) {
             return null;
         }
+        // 첫 줄에서 rowspan이 없는 칸(주간, 야간 등)이 둘째 줄 시간 칸과 순서대로 짝이 된다.
+        List<String> labels =
+                rows.get(0).select("> th:not([rowspan])").stream().map(Element::text).toList();
         Elements times = rows.get(1).select("> th");
-        String[] labels = {"주간", "야간"};
         List<String> parts = new ArrayList<>();
-        for (int i = 0; i < Math.min(times.size(), labels.length); i++) {
+        for (int i = 0; i < Math.min(times.size(), labels.size()); i++) {
+            String label = blankToNull(labels.get(i));
             String time = blankToNull(times.get(i).text());
-            if (time != null) {
-                parts.add(labels[i] + " " + time);
+            if (label != null && time != null) {
+                parts.add(label + " " + time);
             }
         }
         return parts.isEmpty() ? null : String.join(", ", parts);
@@ -146,22 +148,50 @@ public final class SlopeStatusParsers {
             if (!cells.isEmpty() && cells.get(0).hasAttr("rowspan")) {
                 course = courseName(cells.remove(0).text());
             }
-            // 번호, 주간, 야간, 난이도
-            if (cells.size() < 4 || course == null) {
+            if (cells.isEmpty() || course == null) {
+                continue;
+            }
+            // 번호 다음부터 span.slope_open 칸이 주간, 야간(, 심야) 순서로 이어지고 그 뒤가 난이도다. 심야 칸이 다시 열려도 밀리지
+            // 않게 표시로 찾는다.
+            StatusCells statusCells = statusCells(cells, 1, "span.slope_open");
+            if (statusCells.statuses().isEmpty()) {
                 continue;
             }
             String number = blankToNull(cells.get(0).text());
             String name = number == null ? course : course + " " + number;
-            slopes.add(
-                    new SlopeEntry(
-                            name,
-                            blankToNull(cells.get(3).text()),
-                            status(cells.get(1).text()),
-                            status(cells.get(2).text()),
-                            null,
-                            null));
+            String difficulty =
+                    statusCells.next() < cells.size()
+                            ? blankToNull(cells.get(statusCells.next()).text())
+                            : null;
+            slopes.add(entry(name, difficulty, statusCells.statuses(), null));
         }
         return snapshot("하이원", slopes, null);
+    }
+
+    /** 상태 칸 목록과 그 다음 칸 위치. */
+    private record StatusCells(List<SessionStatus> statuses, int next) {}
+
+    /** start부터 marker가 든 칸을 이어서 읽는다. 처음으로 marker가 없는 칸에서 멈춘다. */
+    private static StatusCells statusCells(List<Element> cells, int start, String marker) {
+        List<SessionStatus> statuses = new ArrayList<>();
+        int index = start;
+        while (index < cells.size() && cells.get(index).selectFirst(marker) != null) {
+            statuses.add(status(cells.get(index).text()));
+            index++;
+        }
+        return new StatusCells(statuses, index);
+    }
+
+    /** 상태 칸은 주간, 야간, 심야 순서다. 없는 칸은 null. */
+    private static SlopeEntry entry(
+            String name, String difficulty, List<SessionStatus> statuses, String note) {
+        return new SlopeEntry(
+                name,
+                difficulty,
+                statuses.get(0),
+                statuses.size() > 1 ? statuses.get(1) : null,
+                statuses.size() > 2 ? statuses.get(2) : null,
+                note);
     }
 
     /** "제우스 (Zeus)"에서 한글 이름만 남긴다. */

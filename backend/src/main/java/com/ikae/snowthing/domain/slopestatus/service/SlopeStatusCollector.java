@@ -76,7 +76,15 @@ public class SlopeStatusCollector {
                             ? exception.getMessage()
                             : "파싱 실패: " + exception.getClass().getSimpleName();
             log.warn("슬로프 현황 수집 실패. resortCode={}, reason={}", resortCode, reason);
-            writer.saveFailure(resort.get(), slopeSource.pageUrl(), reason, now);
+            try {
+                writer.saveFailure(resort.get(), slopeSource.pageUrl(), reason, now);
+            } catch (RuntimeException saveException) {
+                // 실패 기록마저 못 남겨도 다음 리조트 수집은 계속한다.
+                log.warn(
+                        "슬로프 현황 실패 기록 저장 실패. resortCode={}, error={}",
+                        resortCode,
+                        saveException.getClass().getSimpleName());
+            }
         }
         return true;
     }

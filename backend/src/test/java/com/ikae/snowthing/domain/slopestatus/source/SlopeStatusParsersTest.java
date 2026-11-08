@@ -131,6 +131,76 @@ class SlopeStatusParsersTest {
     }
 
     @Test
+    @DisplayName("하이원: 시즌에 심야 칸이 다시 열려도 난이도와 심야 상태를 제자리에서 읽는다")
+    void high1LateNightColumn() {
+        String html =
+                """
+                <table><caption>슬로프 오픈현황</caption><tbody>
+                <tr><td rowspan="2">제우스<br> (Zeus)</td><td>Ⅰ</td>
+                <td><span class='slope_open open'>OPEN</span></td>
+                <td><span class='slope_open open'>OPEN</span></td>
+                <td><span class='slope_open open'>OPEN</span></td>
+                <td>초급</td><td>2,328</td></tr>
+                <tr><td>Ⅱ</td>
+                <td><span class='slope_open close'>CLOSE</span></td>
+                <td><span class='slope_open close'>CLOSE</span></td>
+                <td><span class='slope_open close'>CLOSE</span></td>
+                <td>초급</td><td>2,198</td></tr>
+                </tbody></table>
+                """;
+
+        SlopeSnapshot snapshot = SlopeStatusParsers.high1(bytes(html));
+
+        assertThat(snapshot.slopes())
+                .containsExactly(
+                        new SlopeEntry(
+                                "제우스 Ⅰ",
+                                "초급",
+                                SessionStatus.OPEN,
+                                SessionStatus.OPEN,
+                                SessionStatus.OPEN,
+                                null),
+                        new SlopeEntry(
+                                "제우스 Ⅱ",
+                                "초급",
+                                SessionStatus.CLOSED,
+                                SessionStatus.CLOSED,
+                                SessionStatus.CLOSED,
+                                null));
+    }
+
+    @Test
+    @DisplayName("모나용평: 심야 칸이 추가되면 비고와 운영 시간이 밀리지 않는다")
+    void yongpyongLateNightColumn() {
+        String html =
+                """
+                <table><thead>
+                <tr><th rowspan="2">난이도</th><th rowspan="2">슬로프</th><th><em class="ico week"></em>주간</th>
+                <th><em class="ico nighttime"></em>야간</th><th><em class="ico midnight"></em>심야</th><th rowspan="2">비고</th></tr>
+                <tr><th>08:30~16:30</th><th>18:00~22:00</th><th>22:00~24:00</th></tr>
+                </thead><tbody id="slopeStatus">
+                <tr><th scope="row">초급</th><td><em class="ico yellow"></em>옐로우</td>
+                <td><em class="ico close">CLOSE</em></td><td><em class="ico open">OPEN</em></td>
+                <td><em class="ico open">OPEN</em></td><td>야간 연장</td></tr>
+                </tbody></table>
+                """;
+
+        SlopeSnapshot snapshot = SlopeStatusParsers.yongpyong(bytes(html));
+
+        assertThat(snapshot.slopes())
+                .containsExactly(
+                        new SlopeEntry(
+                                "옐로우",
+                                "초급",
+                                SessionStatus.CLOSED,
+                                SessionStatus.OPEN,
+                                SessionStatus.OPEN,
+                                "야간 연장"));
+        assertThat(snapshot.operatingNote())
+                .isEqualTo("주간 08:30~16:30, 야간 18:00~22:00, 심야 22:00~24:00");
+    }
+
+    @Test
     @DisplayName("휘닉스: 시즌 밖 응답(시간대 기록 없음)은 모든 슬로프를 닫힘으로 읽는다")
     void phoenixOffSeason() throws IOException {
         SlopeSnapshot snapshot = SlopeStatusParsers.phoenix(fixture("phoenix-slope.json"));

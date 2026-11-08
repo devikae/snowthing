@@ -77,7 +77,7 @@ export default function SlopesPage() {
   // 카드는 데이터를 받은 뒤에 그려지므로 주소의 #리조트로 직접 옮긴다(슬로프캠 헤더에서 들어올 때).
   useEffect(() => {
     if (board.status !== "ready" || !window.location.hash) return;
-    const target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+    const target = document.getElementById(window.location.hash.slice(1));
     target?.scrollIntoView({ block: "start" });
   }, [board.status]);
 
