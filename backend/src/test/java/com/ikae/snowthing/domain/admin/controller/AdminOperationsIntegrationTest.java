@@ -163,6 +163,21 @@ class AdminOperationsIntegrationTest {
     }
 
     @Test
+    @DisplayName("IP 차단 입력이 컬럼 길이를 넘으면 400이다")
+    void banIpRejectsTooLongInput() throws Exception {
+        mockMvc.perform(
+                        post("/api/v1/admin/chat/banned-ips")
+                                .session(adminSession)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"bannedIp\":\""
+                                                + "1".repeat(46)
+                                                + "\",\"reason\":\"test\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("없는 글을 블라인드하면 404다")
     void blindUnknownPost() throws Exception {
         mockMvc.perform(
