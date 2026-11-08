@@ -309,7 +309,6 @@ button:disabled {
 
 .home-main { min-height: calc(100vh - 130px); padding-block: 16px 40px; }
 .panel { border: 1px solid #dbe3ed; border-radius: 6px; background: white; box-shadow: 0 2px 5px rgba(15,23,42,.025); }
-.resort-panel { margin-top: 16px; padding: 12px; }
 .panel-heading, .mini-heading { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; }
 .panel-heading { padding-bottom: 9px; }
 .panel-heading h2 { display: flex; align-items: center; margin: 0; color: #0f172a; font-size: 14px; font-weight: 800; }
@@ -318,13 +317,8 @@ button:disabled {
 .panel-heading > div { display: flex; align-items: center; gap: 5px; }
 .panel-heading a { margin-right: 8px; color: #0369a1; font-size: 11px; font-weight: 700; }
 .panel-heading button { width: 26px; height: 26px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; }
-.resort-scroller { display: flex; gap: 10px; overflow-x: auto; padding-top: 10px; scrollbar-width: none; scroll-snap-type: x mandatory; }.resort-scroller::-webkit-scrollbar { display: none; }
-.resort-card { flex: 0 0 255px; scroll-snap-align: start; border: 1px solid #dbe3ed; border-radius: 5px; background: #fbfcfd; padding: 10px; transition: border-color .16s ease; }.resort-card:hover { border-color: #38bdf8; }
-.resort-card header { display: flex; align-items: center; gap: 6px; padding-bottom: 7px; }.resort-card header strong { color: #1e293b; }.resort-card header b { margin-left: auto; color: #0369a1; font-family: Inter,sans-serif; font-size: 12px; }
 .operation { border: 1px solid #a7f3d0; border-radius: 3px; background: #ecfdf5; padding: 1px 4px; color: #059669; font-size: 10px; font-weight: 800; }.operation.warn { border-color: #bae6fd; background: #f0f9ff; color: #0284c7; }.operation.busy { border-color: #fde68a; background: #fffbeb; color: #b45309; }
-.resort-card dl { margin: 0; border-top: 1px solid #f1f5f9; padding-top: 6px; }.resort-card dl div { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0; font-size: 11px; }.resort-card dt { color: #64748b; }.resort-card dd { margin: 0; color: #334155; font-weight: 650; text-align: right; }.resort-card dd em { color: #0284c7; font-size: 10px; font-style: normal; }
 .crowd { border-radius: 3px; background: #ecfdf5; padding: 2px 4px; color: #047857; font-size: 10px; }.crowd.warn { background: #fffbeb; color: #b45309; }.crowd.busy { background: #fff1f2; color: #be123c; }
-.resort-card footer { display: flex; justify-content: space-between; margin-top: 7px; border-top: 1px solid #f1f5f9; padding-top: 7px; color: #94a3b8; font-size: 10px; }.resort-card footer a { color: #0284c7; font-weight: 750; }
 .home-content-grid { display: grid; grid-template-columns: minmax(0,2fr) minmax(300px,1fr); align-items: start; gap: 16px; margin-top: 16px; }.home-feed,.home-sidebar { display: flex; min-width: 0; flex-direction: column; gap: 12px; }
 .post-board { overflow: hidden; }.board-tabs { display: flex; min-height: 46px; align-items: end; justify-content: space-between; gap: 12px; overflow: hidden; border-bottom: 1px solid #e2e8f0; background: #f8fafc; padding: 8px 12px 0; }.board-tabs > div { display: flex; min-width: 0; align-items: end; overflow-x: auto; scrollbar-width: none; }.board-tabs button { display: inline-flex; height: 37px; flex: none; align-items: center; border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 0 12px; color: #475569; font-size: 12px; font-weight: 750; }.board-tabs button:hover { background: #f1f5f9; color: #0f172a; }.board-tabs button.active { border-color: #0f2942; background: white; color: #0f2942; }.board-tabs .board-tabs-more { display: inline-flex; height: 37px; flex: none; align-items: center; color: #64748b; font-size: 11px; font-weight: 700; }.board-tabs .board-tabs-more:hover { color: #0284c7; }
 .compact-post-list { display: flex; flex-direction: column; }.compact-post { display: grid; grid-template-columns: minmax(0,1fr) 64px; align-items: center; gap: 12px; min-height: 72px; border-bottom: 1px solid #f1f5f9; padding: 11px 13px; transition: background .16s ease; }.compact-post:hover { background: #f8fafc; }
@@ -398,7 +392,7 @@ button:disabled {
   .header-profile-name { display: none; }
   .home-main { padding-top: 10px; }
   .panel-heading h2 { align-items: flex-start; font-size: 12px; }.panel-heading h2 small { display: block; }.panel-heading a { display: none; }
-  .resort-card { flex-basis: 245px; }.compact-post { grid-template-columns: minmax(0,1fr); min-height: 68px; gap: 8px; padding-inline: 9px; }.compact-post > img { display: none; }.post-summary strong { font-size: 12px; }.post-summary p span:last-child { display: none; }
+  .compact-post { grid-template-columns: minmax(0,1fr); min-height: 68px; gap: 8px; padding-inline: 9px; }.compact-post > img { display: none; }.post-summary strong { font-size: 12px; }.post-summary p span:last-child { display: none; }
   .technique-grid,.home-sidebar { grid-template-columns: 1fr; }.market-widget { grid-column: auto; }.community-footer-brand > span:last-child { display: none; }
 }
 
@@ -425,7 +419,6 @@ button:disabled {
   box-shadow: var(--community-card-shadow);
 }
 
-.resort-card,
 .technique-grid > a,
 .market-grid > a,
 .board-carpool article {
@@ -442,8 +435,6 @@ button:disabled {
 
 .panel-heading h2 small,
 .panel-heading a,
-.resort-card dl div,
-.resort-card footer,
 .post-summary p,
 .mini-heading > a,
 .technique-grid span,
@@ -835,7 +826,6 @@ html[data-theme="dark"] .header-profile-avatar {
 }
 
 html[data-theme="dark"] .panel,
-html[data-theme="dark"] .resort-card,
 html[data-theme="dark"] .technique-grid > a,
 html[data-theme="dark"] .market-grid > a,
 html[data-theme="dark"] .board-filter-panel,
@@ -875,7 +865,6 @@ html[data-theme="dark"] .compose-actions {
 
 html[data-theme="dark"] .panel-heading h2,
 html[data-theme="dark"] .mini-heading h2,
-html[data-theme="dark"] .resort-card header strong,
 html[data-theme="dark"] .post-summary strong,
 html[data-theme="dark"] .technique-grid strong,
 html[data-theme="dark"] .snow-report-list strong,
@@ -891,7 +880,6 @@ html[data-theme="dark"] .compose-side-card > header {
   color: var(--snow-ink);
 }
 
-html[data-theme="dark"] .resort-card,
 html[data-theme="dark"] .technique-grid > a,
 html[data-theme="dark"] .market-grid > a,
 html[data-theme="dark"] .board-tabs,
@@ -909,8 +897,6 @@ html[data-theme="dark"] .board-carpool article {
 html[data-theme="dark"] .board-tabs button,
 html[data-theme="dark"] .board-tabs .board-tabs-more,
 html[data-theme="dark"] .pagination button,
-html[data-theme="dark"] .resort-card dt,
-html[data-theme="dark"] .resort-card dd,
 html[data-theme="dark"] .post-summary p,
 html[data-theme="dark"] .board-post-copy p,
 html[data-theme="dark"] .board-post-copy p b,

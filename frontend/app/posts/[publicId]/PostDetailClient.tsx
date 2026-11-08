@@ -15,7 +15,7 @@ import { API_ENDPOINTS } from "../../lib/api";
 import { fetchViewer, isAdminViewer } from "../../lib/viewer";
 import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
-import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
+import { KOREAN_DATE_TIME, formatKoreanDate, formatShortDateTime } from "../../lib/koreanDate";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
   ssr: false,
@@ -907,7 +907,7 @@ function CommentRow({
               publicId={isAnonymousPost || item.isAnonymous || item.isDeleted ? null : item.writer?.publicId}
               nickname={isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
             />
-            <time>{formatCommentDate(item.createdAt)}</time>
+            <time>{formatShortDateTime(item.createdAt)}</time>
             {canDelete && (
               <CommentDeleteInline
                 comment={item}
@@ -1089,7 +1089,7 @@ function ReplyRow({
               publicId={isAnonymousPost || item.isAnonymous || item.isDeleted ? null : item.writer?.publicId}
               nickname={isAnonymousPost ? `익명 (${item.writerIp})` : getWriterName(item)}
             />
-            <time>{formatCommentDate(item.createdAt)}</time>
+            <time>{formatShortDateTime(item.createdAt)}</time>
           {canDelete && (
             <CommentDeleteInline
               comment={item}
@@ -1312,19 +1312,6 @@ function formatPostDateTime(dateString: string): string {
   return formatKoreanDate(dateString, KOREAN_DATE_TIME);
 }
 
-function formatCommentDate(dateString: string): string {
-  try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const min = String(d.getMinutes()).padStart(2, "0");
-    return `${mm}.${dd} ${hh}:${min}`;
-  } catch {
-    return dateString;
-  }
-}
 
 function canDeleteComment(comment: CommentItem): boolean {
   return comment.canDelete;

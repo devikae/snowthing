@@ -16,6 +16,7 @@ import { RESORT_MAP } from "./lib/resortTags";
 import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName, isResortReportSeason } from "./lib/resortReports";
 import { csrfFetch } from "./lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
+import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 
 interface HomePost {
   publicId: string;
@@ -88,22 +89,6 @@ interface MarketPreviewItem {
   thumbnailImageUrl: string | null;
 }
 
-function formatCompactTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffSec < 60) return "방금";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}분`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay === 1) return "어제";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${month}.${day}`;
-}
 
 function formatShortCategory(categoryCode: string, categoryName: string): string {
   switch (categoryCode) {
@@ -126,15 +111,6 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
   }
 }
 
-function formatCarpoolShortDate(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}.${day} ${hours}:${minutes}`;
-}
 
 export default function HomePageClient() {
   const router = useRouter();
@@ -525,7 +501,7 @@ export default function HomePageClient() {
                         <span className="arr">→</span>
                         <em>{item.destinationResortName}</em>
                       </div>
-                      <span className="cp-date">{formatCarpoolShortDate(item.departureAt)}</span>
+                      <span className="cp-date">{item.departureAt ? formatShortDateTime(item.departureAt) : ""}</span>
                     </div>
                     <div className="cp-right">
                       <span className="cp-seat">{item.passengerCapacity}명</span>
