@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
+import { fetchViewer, isAdminViewer } from "../../lib/viewer";
 import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
@@ -297,18 +298,13 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
       void (async () => {
         let movingToCarpool = false;
         try {
-          // 로그인 정보와 글을 함께 요청한다. 백엔드가 멈춰도 로딩 화면에 계속 머물지 않게 시간 제한을 둔다.
-          const mePromise = fetch(API_ENDPOINTS.members.me, { credentials: "include", signal: AbortSignal.timeout(POST_LOAD_TIMEOUT_MS) })
-            .then(async (meRes) => {
-              if (!meRes.ok) return;
-              const meData = await meRes.json();
-              setCurrentUserPublicId(meData.publicId || null);
-              setIsAdmin(meData.role === "ROLE_ADMIN");
-            })
-            .catch(() => {
-              setCurrentUserPublicId(null);
-              setIsAdmin(false);
-            });
+          // 로그인 정보, 글, 댓글을 함께 요청한다. 본문은 댓글을 기다리지 않고 먼저 보여 주고,
+          // 댓글 실패는 댓글 영역에만 표시한다. 백엔드가 멈춰도 로딩 화면에 머물지 않게 시간 제한을 둔다.
+          void fetchViewer().then((viewer) => {
+            setCurrentUserPublicId(viewer?.publicId ?? null);
+            setIsAdmin(isAdminViewer(viewer));
+          });
+          void fetchComments();
 
           const res = await fetch(API_ENDPOINTS.posts.detail(publicId), { credentials: "include", signal: AbortSignal.timeout(POST_LOAD_TIMEOUT_MS) });
           if (res.ok) {
@@ -323,7 +319,6 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
             const body = res.status === 403 ? await res.json().catch(() => null) : null;
             setErrorMsg(body?.code === "POST_009" ? body.message : res.status === 404 ? "게시글을 찾을 수 없거나 삭제되었습니다." : "게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
           }
-          await Promise.all([fetchComments(), mePromise]);
         } catch {
           setErrorMsg("게시글을 불러오지 못했습니다. 연결 상태를 확인하고 잠시 후 다시 시도해 주세요.");
         } finally {
