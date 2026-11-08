@@ -47,6 +47,8 @@ COPY --from=builder /app/frontend/package-lock.json ./package-lock.json
 COPY --from=builder /app/frontend/node_modules ./node_modules
 COPY --from=builder /app/frontend/.next ./.next
 COPY --from=builder /app/frontend/public ./public
+# poweredByHeader처럼 next start가 시작할 때 읽는 설정이 있어 설정 파일도 함께 둔다. headers()는 빌드 결과에 들어간다.
+COPY --from=builder /app/frontend/next.config.ts ./next.config.ts
 
 USER nextjs
 
