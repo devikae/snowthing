@@ -3,7 +3,10 @@ package com.ikae.snowthing.domain.carpool.repository;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,7 +19,20 @@ public interface CarpoolRiderRepository extends JpaRepository<CarpoolRider, Long
 
     boolean existsByCarpool_IdAndMember_Id(Long carpoolId, Long memberId);
 
-    long countByCarpool_IdAndStatus(Long carpoolId, CarpoolRiderStatus status);
+    /**
+     * 확정과 거절에서 쓰는 잠금 읽기. REPEATABLE READ에서 일반 SELECT는 트랜잭션의 첫 읽기 시점 스냅샷을 보므로, 카풀 행 잠금을 기다리는 동안 다른
+     * 요청이 커밋한 확정을 놓친다. 잠금 읽기는 최신 커밋을 본다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from CarpoolRider r where r.carpool.id = :carpoolId and r.status = :status")
+    List<CarpoolRider> findForUpdateByStatus(
+            @Param("carpoolId") Long carpoolId, @Param("status") CarpoolRiderStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "select r from CarpoolRider r where r.carpool.id = :carpoolId and r.member.id = :memberId")
+    Optional<CarpoolRider> findForUpdate(
+            @Param("carpoolId") Long carpoolId, @Param("memberId") Long memberId);
 
     @Query(
             """

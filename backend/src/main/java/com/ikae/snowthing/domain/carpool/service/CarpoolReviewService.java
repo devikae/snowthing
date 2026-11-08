@@ -185,7 +185,8 @@ public class CarpoolReviewService {
         if (!isDriver(post, memberId)) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
-        // 동시 확정이 정원을 넘지 않게 카풀 행을 먼저 잠근다.
+        // 동시 결정을 줄 세우려고 카풀 행을 먼저 잠근다. 그 뒤의 탑승 행 읽기도 잠금 읽기라서
+        // 앞서 커밋된 확정과 거절을 본다(일반 SELECT는 트랜잭션 첫 읽기 시점 스냅샷을 본다).
         CarpoolDetail detail =
                 carpoolDetailRepository
                         .findByIdForUpdate(post.getId())
@@ -196,7 +197,7 @@ public class CarpoolReviewService {
                         .orElseThrow(() -> new CustomException(ErrorCode.CARPOOL_RIDE_NOT_FOUND));
         CarpoolRider row =
                 riderRepository
-                        .findByCarpool_IdAndMember_Id(detail.getId(), rider.getId())
+                        .findForUpdate(detail.getId(), rider.getId())
                         .orElseThrow(() -> new CustomException(ErrorCode.CARPOOL_RIDE_NOT_FOUND));
         if (!row.isRequested()) {
             throw new CustomException(ErrorCode.CARPOOL_RIDE_ALREADY_DECIDED);
@@ -206,8 +207,9 @@ public class CarpoolReviewService {
             return;
         }
         long confirmed =
-                riderRepository.countByCarpool_IdAndStatus(
-                        detail.getId(), CarpoolRiderStatus.CONFIRMED);
+                riderRepository
+                        .findForUpdateByStatus(detail.getId(), CarpoolRiderStatus.CONFIRMED)
+                        .size();
         if (confirmed >= detail.getPassengerCapacity()) {
             throw new CustomException(ErrorCode.CARPOOL_RIDE_CAPACITY_FULL);
         }
