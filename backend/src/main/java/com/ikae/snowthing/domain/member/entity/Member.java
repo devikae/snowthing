@@ -13,7 +13,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "member")
+// 운영 DDL은 컬럼에 UNIQUE를 바로 걸어 MySQL이 제약 이름을 컬럼명(email, nickname)으로 붙인다.
+// 테스트의 Hibernate DDL도 같은 이름을 쓰도록 명시한다. 서비스가 이 이름으로 충돌한 제약을 구분한다.
+@Table(
+        name = "member",
+        uniqueConstraints = {
+            @UniqueConstraint(name = Member.EMAIL_UNIQUE_CONSTRAINT, columnNames = "email"),
+            @UniqueConstraint(name = Member.NICKNAME_UNIQUE_CONSTRAINT, columnNames = "nickname")
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseTimeEntity {
@@ -30,13 +37,13 @@ public class Member extends BaseTimeEntity {
     @Column(name = "public_id", nullable = false, unique = true, length = 36)
     private String publicId;
 
-    @Column(name = "email", nullable = false, unique = true, length = 100)
+    @Column(name = "email", nullable = false, length = 100)
     private String email;
 
     @Column(name = "password", length = 255)
     private String password;
 
-    @Column(name = "nickname", nullable = false, unique = true, length = 50)
+    @Column(name = "nickname", nullable = false, length = 50)
     private String nickname;
 
     @Column(name = "profile_image_url", length = 500)

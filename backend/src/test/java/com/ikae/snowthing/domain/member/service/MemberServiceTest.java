@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -140,12 +142,62 @@ class MemberServiceTest {
         given(memberRepository.existsByEmail("new@snowthing.com")).willReturn(false);
         given(memberRepository.existsByNickname("동시가입닉네임")).willReturn(false);
         given(passwordEncoder.encode("Password123!")).willReturn("bcrypted_password_123");
-        given(memberRepository.saveAndFlush(any(Member.class)))
-                .willThrow(new DataIntegrityViolationException("nickname unique constraint"));
+        DataIntegrityViolationException violation =
+                constraintViolation(Member.NICKNAME_UNIQUE_CONSTRAINT);
+        given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
         assertThatThrownBy(() -> memberService.signUp(request))
                 .isInstanceOf(com.ikae.snowthing.global.exception.CustomAuthException.class)
                 .extracting("errorCode")
                 .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.DUPLICATE_NICKNAME);
+    }
+
+    @Test
+    @DisplayName("동시 가입의 이메일 unique 위반은 사전 검사와 같은 이미 가입된 이메일 오류로 변환해야 한다")
+    void signUp_ConcurrentDuplicateEmail_Exception() {
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("race@snowthing.com")
+                        .password("Password123!")
+                        .nickname("이메일경쟁")
+                        .build();
+
+        given(memberRepository.existsByEmail("race@snowthing.com")).willReturn(false);
+        given(memberRepository.existsByNickname("이메일경쟁")).willReturn(false);
+        given(passwordEncoder.encode("Password123!")).willReturn("bcrypted_password_123");
+        // MySQL은 "테이블.제약" 형태로 이름을 돌려준다
+        DataIntegrityViolationException violation =
+                constraintViolation("member." + Member.EMAIL_UNIQUE_CONSTRAINT);
+        given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
+
+        assertThatThrownBy(() -> memberService.signUp(request))
+                .isInstanceOf(com.ikae.snowthing.global.exception.CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ikae.snowthing.global.error.ErrorCode.EMAIL_ALREADY_REGISTERED);
+    }
+
+    @Test
+    @DisplayName("회원 unique 제약이 아닌 무결성 위반은 바꾸지 않고 그대로 던져야 한다")
+    void signUp_OtherIntegrityViolation_Rethrown() {
+        MemberSignUpRequest request =
+                MemberSignUpRequest.builder()
+                        .email("other@snowthing.com")
+                        .password("Password123!")
+                        .nickname("다른제약")
+                        .build();
+        DataIntegrityViolationException violation = constraintViolation("uk_member_public_id");
+
+        given(memberRepository.existsByEmail("other@snowthing.com")).willReturn(false);
+        given(memberRepository.existsByNickname("다른제약")).willReturn(false);
+        given(passwordEncoder.encode("Password123!")).willReturn("bcrypted_password_123");
+        given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
+
+        assertThatThrownBy(() -> memberService.signUp(request)).isSameAs(violation);
+    }
+
+    private DataIntegrityViolationException constraintViolation(String constraintName) {
+        ConstraintViolationException cause = mock(ConstraintViolationException.class);
+        given(cause.getConstraintName()).willReturn(constraintName);
+        return new DataIntegrityViolationException("constraint violation", cause);
     }
 }
