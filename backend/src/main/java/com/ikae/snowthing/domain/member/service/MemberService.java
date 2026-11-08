@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.member.service;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.hibernate.exception.ConstraintViolationException;
@@ -129,6 +130,12 @@ public class MemberService {
         try {
             savedMember = memberRepository.saveAndFlush(member);
         } catch (DataIntegrityViolationException exception) {
+            // 사전 검사를 같이 통과한 동시 가입은 여기서 진다. 걸린 제약에 맞는 오류로 바꾼다.
+            MemberUniqueConstraint violated =
+                    violatedConstraint(exception).orElseThrow(() -> exception);
+            if (violated == MemberUniqueConstraint.EMAIL) {
+                throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED, exception);
+            }
             throw new CustomAuthException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
@@ -199,15 +206,10 @@ public class MemberService {
         try {
             memberRepository.flush();
         } catch (DataIntegrityViolationException exception) {
-            Throwable cause = exception;
-            while (cause != null) {
-                if (cause instanceof ConstraintViolationException violation
-                        && MemberUniqueConstraint.fromDatabaseName(violation.getConstraintName())
-                                .filter(value -> value == MemberUniqueConstraint.NICKNAME)
-                                .isPresent()) {
-                    throw new CustomException(ErrorCode.DUPLICATE_NICKNAME, exception);
-                }
-                cause = cause.getCause();
+            if (violatedConstraint(exception)
+                    .filter(MemberUniqueConstraint.NICKNAME::equals)
+                    .isPresent()) {
+                throw new CustomException(ErrorCode.DUPLICATE_NICKNAME, exception);
             }
             throw exception;
         }
@@ -243,5 +245,16 @@ public class MemberService {
         }
 
         return MemberSignUpResponse.from(member);
+    }
+
+    /** 원인 사슬에서 회원 unique 제약(이메일, 닉네임) 위반을 찾는다. 다른 제약이면 비어 있다. */
+    private static Optional<MemberUniqueConstraint> violatedConstraint(
+            DataIntegrityViolationException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation) {
+                return MemberUniqueConstraint.fromDatabaseName(violation.getConstraintName());
+            }
+        }
+        return Optional.empty();
     }
 }

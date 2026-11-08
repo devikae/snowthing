@@ -2,6 +2,8 @@ package com.ikae.snowthing.domain.member.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,6 +20,8 @@ import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberResortRepository;
 import com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository;
+import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.CustomException;
 
 @SpringBootTest
 class MemberConcurrencyTest {
@@ -89,6 +93,51 @@ class MemberConcurrencyTest {
 
         assertThat(successCount.get()).isEqualTo(1);
         assertThat(failCount.get()).isEqualTo(9);
+        assertThat(memberRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("같은 이메일에 닉네임만 다르게 동시 가입하면 진 요청은 모두 이미 가입된 이메일 오류를 받아야 한다")
+    void signUp_ConcurrentSameEmail_FailsWithEmailError() throws InterruptedException {
+        int threadCount = 10;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch readyLatch = new CountDownLatch(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger(0);
+        Queue<Object> failures = new ConcurrentLinkedQueue<>();
+
+        for (int i = 0; i < threadCount; i++) {
+            MemberSignUpRequest signUpRequest =
+                    MemberSignUpRequest.builder()
+                            .email("same-email@snowthing.com")
+                            .password("Password123!")
+                            .nickname("이메일경쟁" + i)
+                            .build();
+            executorService.submit(
+                    () -> {
+                        try {
+                            readyLatch.countDown();
+                            startLatch.await();
+                            memberService.signUp(signUpRequest);
+                            successCount.incrementAndGet();
+                        } catch (CustomException e) {
+                            failures.add(e.getErrorCode());
+                        } catch (Exception e) {
+                            failures.add(e.getClass().getSimpleName());
+                        } finally {
+                            doneLatch.countDown();
+                        }
+                    });
+        }
+
+        readyLatch.await();
+        startLatch.countDown();
+        doneLatch.await();
+        executorService.shutdown();
+
+        assertThat(successCount.get()).isEqualTo(1);
+        assertThat(failures).hasSize(9).containsOnly(ErrorCode.EMAIL_ALREADY_REGISTERED);
         assertThat(memberRepository.count()).isEqualTo(1);
     }
 }
