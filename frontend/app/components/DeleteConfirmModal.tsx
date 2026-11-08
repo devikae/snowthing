@@ -62,74 +62,58 @@ export function DeleteConfirmModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 font-sans">
+    <div className="delete-modal-backdrop">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded-2xl border border-[var(--snow-border)] bg-[var(--snow-canvas)] p-6 shadow-2xl shadow-black/30"
+        className="delete-modal"
       >
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-[var(--snow-line-soft)] pb-3">
-          <h3 id={titleId} className="text-base font-bold text-[var(--snow-ink)]">
-            {title}
-          </h3>
+        <div className="delete-modal-head">
+          <h3 id={titleId}>{title}</h3>
           <button
             type="button"
             onClick={handleClose}
             disabled={submitting}
             aria-label="삭제 확인 모달 닫기"
-            className="text-[var(--snow-muted)] hover:text-[var(--snow-ink)] font-bold text-base p-1 rounded-lg hover:bg-[var(--snow-surface-low)] transition"
           >
-            ✕
+            <span className="material-symbols-outlined" aria-hidden="true">close</span>
           </button>
         </div>
 
-        {/* Modal Description */}
-        <p className="mt-3.5 text-xs leading-relaxed text-[var(--snow-ink-soft)]">
-          {description}
-        </p>
+        <p className="delete-modal-description">{description}</p>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="mt-4 grid gap-3.5">
+        <form onSubmit={handleSubmit} className="delete-modal-form">
           {requirePassword && (
-            <label htmlFor={passwordId} className="grid gap-1.5">
-              <span className="text-xs font-semibold text-[var(--snow-ink-soft)]">
-                비밀번호 입력
-              </span>
+            <label htmlFor={passwordId}>
+              <span>비밀번호</span>
               <input
                 id={passwordId}
                 type="password"
-                placeholder="비밀번호를 입력하세요"
+                placeholder="작성할 때 입력한 비밀번호"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
-                className="snow-input text-xs"
               />
             </label>
           )}
 
           {errorMsg && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-900/50 p-2.5 text-xs font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
-              <span>⚠️</span>
-              <span>{errorMsg}</span>
-            </div>
+            <p className="delete-modal-error" role="alert">{errorMsg}</p>
           )}
 
-          {/* Action Buttons */}
-          <div className="mt-2 flex items-center justify-end gap-2.5">
+          <div className="delete-modal-actions">
             <button
               type="button"
               onClick={handleClose}
               disabled={submitting}
-              className="px-4 py-2 text-xs font-semibold rounded-xl border border-[var(--snow-border)] text-[var(--snow-ink-soft)] hover:bg-[var(--snow-surface-low)] hover:text-[var(--snow-ink)] transition"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition disabled:opacity-50"
+              className="delete-modal-confirm"
             >
               {submitting ? submittingLabel : confirmLabel}
             </button>

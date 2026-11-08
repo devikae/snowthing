@@ -1,12 +1,14 @@
 package com.ikae.snowthing.domain.chat.service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.util.ContactFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,26 +34,15 @@ import lombok.RequiredArgsConstructor;
 public class ChatService {
 
     private static final int MAX_CONTENT_LENGTH = 100;
-    private static final int BURST_ATTEMPT_LIMIT = 5;
     private static final int MAX_RATE_LIMIT_ENTRIES = 10_000;
-    private static final long BURST_WINDOW_MILLIS = 1_000L;
-    private static final long DUPLICATE_COOLDOWN_MILLIS = 5000L;
+    private static final long SEND_INTERVAL_MILLIS = 1_000L;
+    private static final long MINUTE_WINDOW_MILLIS = 60_000L;
+    private static final int MINUTE_MESSAGE_LIMIT = 20;
+    private static final long DUPLICATE_WINDOW_MILLIS = 30_000L;
+    private static final int DUPLICATE_HISTORY_SIZE = 5;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private static final Pattern URL_PATTERN =
-            Pattern.compile(
-                    "(?i)(?:https?://|www\\.)\\S+"
-                            + "|\\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+"
-                            + "(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})(?::\\d{1,5})?(?:/\\S*)?"
-                            + "|\\b(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}"
-                            + "(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?::\\d{1,5})?(?:/\\S*)?");
-    private static final Pattern MESSENGER_IDENTIFIER_PATTERN =
-            Pattern.compile(
-                    "(?i)(?:\\bt\\.me/\\S+|\\btelegram\\b|\\bopen\\.kakao\\.com/\\S+|(?<![\\w.])@[a-z0-9_]{3,})");
     private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
-    private static final Pattern BOT_PHONE_PATTERN =
-            Pattern.compile(
-                    "(?<![0-9])(?:\\+82[ .-]?(?:1[016789]|2|[3-6][1-5]|70)|0(?:1[016789]|2|[3-6][1-5]|70))[ .-]?[0-9]{3,4}[ .-]?[0-9]{4}(?![0-9])");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
     private static final String[] ANONYMOUS_PREFIXES = {
@@ -59,44 +51,74 @@ public class ChatService {
     };
 
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
+    private final Clock clock;
     private final ChatIpBanService chatIpBanService;
     private final SystemConfigService systemConfigService;
 
-    private final Cache<String, LastMessageInfo> anonRecentMessageCache =
+    /** 도배 판정 상태. 회원은 "member:{id}", 비회원은 "ip:{ip}" 키로 같은 규칙을 쓴다. */
+    private final Cache<String, AbuseState> abuseStateCache =
             Caffeine.newBuilder()
                     .maximumSize(MAX_RATE_LIMIT_ENTRIES)
-                    .expireAfterWrite(Duration.ofMillis(DUPLICATE_COOLDOWN_MILLIS))
-                    .build();
-    private final Cache<String, BurstWindow> anonBurstWindowCache =
-            Caffeine.newBuilder()
-                    .maximumSize(MAX_RATE_LIMIT_ENTRIES)
-                    .expireAfterWrite(Duration.ofMillis(BURST_WINDOW_MILLIS))
+                    .expireAfterWrite(Duration.ofMillis(MINUTE_WINDOW_MILLIS))
                     .build();
 
-    private final Cache<Long, LastMessageInfo> recentMessageCache =
-            Caffeine.newBuilder()
-                    .maximumSize(MAX_RATE_LIMIT_ENTRIES)
-                    .expireAfterWrite(Duration.ofMillis(DUPLICATE_COOLDOWN_MILLIS))
-                    .build();
-    private final Cache<Long, BurstWindow> burstWindowCache =
-            Caffeine.newBuilder()
-                    .maximumSize(MAX_RATE_LIMIT_ENTRIES)
-                    .expireAfterWrite(Duration.ofMillis(BURST_WINDOW_MILLIS))
-                    .build();
+    private record SentMessage(String normalizedContent, long sentAtMillis) {}
 
-    private record LastMessageInfo(String normalizedContent, long sentAtMillis) {}
+    /** 회원별 도배 판정 상태. 전송된 메시지만 기록하므로 거절된 문장은 다음 시도의 중복 판정에 들어가지 않는다. */
+    private record AbuseState(
+            long minuteStartedAtMillis, int minuteCount, List<SentMessage> recentMessages) {
 
-    private record BurstWindow(long startedAtMillis, int attempts) {}
+        private static AbuseState empty(long now) {
+            return new AbuseState(now, 0, List.of());
+        }
+
+        private ErrorCode rejectionFor(String normalizedContent, long now) {
+            boolean duplicated =
+                    recentMessages.stream()
+                            .anyMatch(
+                                    message ->
+                                            message.normalizedContent().equals(normalizedContent)
+                                                    && now - message.sentAtMillis()
+                                                            < DUPLICATE_WINDOW_MILLIS);
+            if (duplicated) {
+                return ErrorCode.CHAT_DUPLICATE_MESSAGE;
+            }
+            if (!recentMessages.isEmpty()
+                    && now - recentMessages.getLast().sentAtMillis() < SEND_INTERVAL_MILLIS) {
+                return ErrorCode.CHAT_BURST_RATE_LIMIT;
+            }
+            if (now - minuteStartedAtMillis < MINUTE_WINDOW_MILLIS
+                    && minuteCount >= MINUTE_MESSAGE_LIMIT) {
+                return ErrorCode.CHAT_BURST_RATE_LIMIT;
+            }
+            return null;
+        }
+
+        private AbuseState withSent(String normalizedContent, long now) {
+            List<SentMessage> updated = new ArrayList<>(recentMessages);
+            updated.add(new SentMessage(normalizedContent, now));
+            if (updated.size() > DUPLICATE_HISTORY_SIZE) {
+                updated.removeFirst();
+            }
+            return now - minuteStartedAtMillis >= MINUTE_WINDOW_MILLIS
+                    ? new AbuseState(now, 1, List.copyOf(updated))
+                    : new AbuseState(minuteStartedAtMillis, minuteCount + 1, List.copyOf(updated));
+        }
+    }
 
     public ChatMessageResponse processMessage(
             ChatMessageRequest request, CustomUserDetails userDetails, String clientIp) {
 
-        // 0. IP Ban Check
+        // 1. IP ban and authentication validation. 비회원은 관리자가 켠 경우에만 보낼 수 있다.
         if (chatIpBanService.isBanned(clientIp)) {
             throw new CustomException(ErrorCode.CHAT_IP_BANNED);
         }
+        Member member = userDetails != null ? userDetails.getMember() : null;
+        if (member == null && !systemConfigService.isAnonymousChatEnabled()) {
+            throw new CustomException(ErrorCode.CHAT_UNAUTHORIZED);
+        }
 
-        // 1. Content validation
+        // 2. Content validation
         String rawContent = request != null ? request.content() : null;
         if (rawContent == null || rawContent.trim().isEmpty()) {
             throw new CustomException(ErrorCode.CHAT_MESSAGE_EMPTY);
@@ -106,34 +128,20 @@ public class ChatService {
             throw new CustomException(ErrorCode.CHAT_MESSAGE_TOO_LONG);
         }
 
-        // 2. External link and messenger identifier blocking
+        // 3. External link and messenger identifier blocking
         if (containsForbiddenContact(trimmedContent)) {
             throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
 
-        // 3. Normalization for duplicate and abuse check
+        // 4. Per-member duplicate, send interval and per-minute checks
         String normalizedContent =
                 NORMALIZATION_IGNORED_PATTERN
                         .matcher(trimmedContent)
                         .replaceAll("")
                         .toLowerCase(Locale.ROOT);
-        long now = System.currentTimeMillis();
-
-        // 4. Authentication validation and sender / abuse check resolution
-        SenderDto sender;
-        if (userDetails != null && userDetails.getMember() != null) {
-            Member member = userDetails.getMember();
-            sender = new SenderDto(member.getPublicId(), member.getNickname());
-            validateAbuseLimits(member.getId(), normalizedContent, now);
-        } else {
-            if (!systemConfigService.isAnonymousChatEnabled()) {
-                throw new CustomException(ErrorCode.CHAT_UNAUTHORIZED);
-            }
-            String anonNickname = generateAnonymousNickname(clientIp);
-            String anonId = "anon-" + UUID.randomUUID();
-            sender = new SenderDto(anonId, anonNickname);
-            validateAnonymousAbuseLimits(clientIp, normalizedContent, now);
-        }
+        long now = clock.millis();
+        String abuseKey = member != null ? "member:" + member.getId() : "ip:" + clientIp;
+        validateAbuseLimits(abuseKey, normalizedContent, now);
 
         // 5. Resort tag resolution
         ResortTag tag = ResortTag.from(request.resortTag());
@@ -142,6 +150,10 @@ public class ChatService {
         // 6. Construct response payload. React renders content as escaped JSX text.
         String messageId = UUID.randomUUID().toString();
         String sentAt = LocalDateTime.now().format(ISO_FORMATTER);
+        SenderDto sender =
+                member != null
+                        ? new SenderDto(member.getPublicId(), member.getNickname())
+                        : new SenderDto("anon-" + UUID.randomUUID(), anonymousNickname(clientIp));
 
         ChatMessageResponse response =
                 new ChatMessageResponse(messageId, sender, resolvedTag, trimmedContent, sentAt);
@@ -149,37 +161,11 @@ public class ChatService {
         return response;
     }
 
-    private String generateAnonymousNickname(String clientIp) {
-        if (clientIp == null || clientIp.isBlank()) {
-            return "눈사람#" + String.format("%04d", (int) (Math.random() * 10000));
-        }
-        int hash = Math.abs(clientIp.hashCode());
-        String prefix = ANONYMOUS_PREFIXES[hash % ANONYMOUS_PREFIXES.length];
-        int num = hash % 10000;
-        return prefix + "#" + String.format("%04d", num);
-    }
-
-    private void validateAnonymousAbuseLimits(String clientIp, String normalizedContent, long now) {
-        String key = clientIp != null ? clientIp : "unknown";
-        BurstWindow window = anonBurstWindowCache.get(key, k -> new BurstWindow(now, 0));
-        if (window != null) {
-            if (now - window.startedAtMillis() > BURST_WINDOW_MILLIS) {
-                anonBurstWindowCache.put(key, new BurstWindow(now, 1));
-            } else {
-                int attempts = window.attempts() + 1;
-                if (attempts > BURST_ATTEMPT_LIMIT) {
-                    throw new CustomException(ErrorCode.CHAT_BURST_RATE_LIMIT);
-                }
-                anonBurstWindowCache.put(key, new BurstWindow(window.startedAtMillis(), attempts));
-            }
-        }
-        LastMessageInfo lastMessage = anonRecentMessageCache.getIfPresent(key);
-        if (lastMessage != null
-                && now - lastMessage.sentAtMillis() <= DUPLICATE_COOLDOWN_MILLIS
-                && lastMessage.normalizedContent().equals(normalizedContent)) {
-            throw new CustomException(ErrorCode.CHAT_DUPLICATE_MESSAGE);
-        }
-        anonRecentMessageCache.put(key, new LastMessageInfo(normalizedContent, now));
+    /** 같은 IP는 같은 닉네임을 받는다. IP 원문은 내보내지 않는다. */
+    private String anonymousNickname(String clientIp) {
+        int hash = clientIp == null ? 0 : clientIp.hashCode();
+        String prefix = ANONYMOUS_PREFIXES[Math.floorMod(hash, ANONYMOUS_PREFIXES.length)];
+        return prefix + "#" + String.format("%04d", Math.floorMod(hash, 10_000));
     }
 
     public List<ChatMessageResponse> getRecentMessages() {
@@ -188,8 +174,7 @@ public class ChatService {
 
     public ChatMessageResponse createBotMessage(String resortTag, String content) {
         String safeContent = content == null ? "" : content.trim();
-        if (containsForbiddenContact(safeContent)
-                || BOT_PHONE_PATTERN.matcher(safeContent).find()) {
+        if (containsForbiddenContact(safeContent) || ContactFilter.containsPhone(safeContent)) {
             throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
         if (safeContent.length() > MAX_CONTENT_LENGTH) {
@@ -203,7 +188,7 @@ public class ChatService {
         }
         if (safeContent.isEmpty()
                 || containsForbiddenContact(safeContent)
-                || BOT_PHONE_PATTERN.matcher(safeContent).find()) {
+                || ContactFilter.containsPhone(safeContent)) {
             throw new CustomException(ErrorCode.CHAT_EXTERNAL_LINK_FORBIDDEN);
         }
         ChatMessageResponse response =
@@ -219,62 +204,30 @@ public class ChatService {
 
     /** Cache eviction for tests or periodic maintenance */
     public void clearCache() {
-        recentMessageCache.invalidateAll();
-        burstWindowCache.invalidateAll();
+        abuseStateCache.invalidateAll();
         chatRecentHistoryBuffer.clear();
     }
 
     private boolean containsForbiddenContact(String content) {
         String contactCheckTarget = BOT_MENTION_PREFIX.matcher(content).replaceFirst("");
-        return URL_PATTERN.matcher(contactCheckTarget).find()
-                || MESSENGER_IDENTIFIER_PATTERN.matcher(contactCheckTarget).find();
+        return ContactFilter.containsLinkOrMessenger(contactCheckTarget);
     }
 
-    private void validateAbuseLimits(Long memberId, String normalizedContent, long now) {
-        validateBurstLimit(memberId, now);
-        validateDuplicateMessage(memberId, normalizedContent, now);
-    }
-
-    private void validateBurstLimit(Long memberId, long now) {
-        AtomicBoolean rejected = new AtomicBoolean();
-        burstWindowCache
+    private void validateAbuseLimits(String abuseKey, String normalizedContent, long now) {
+        AtomicReference<ErrorCode> rejection = new AtomicReference<>();
+        abuseStateCache
                 .asMap()
                 .compute(
-                        memberId,
+                        abuseKey,
                         (ignored, current) -> {
-                            BurstWindow updated =
-                                    current == null
-                                                    || now - current.startedAtMillis()
-                                                            >= BURST_WINDOW_MILLIS
-                                            ? new BurstWindow(now, 1)
-                                            : new BurstWindow(
-                                                    current.startedAtMillis(),
-                                                    current.attempts() + 1);
-                            rejected.set(updated.attempts() >= BURST_ATTEMPT_LIMIT);
-                            return updated;
+                            AbuseState state = current == null ? AbuseState.empty(now) : current;
+                            rejection.set(state.rejectionFor(normalizedContent, now));
+                            return rejection.get() == null
+                                    ? state.withSent(normalizedContent, now)
+                                    : state;
                         });
-        if (rejected.get()) {
-            throw new CustomException(ErrorCode.CHAT_BURST_RATE_LIMIT);
-        }
-    }
-
-    private void validateDuplicateMessage(Long memberId, String normalizedContent, long now) {
-        AtomicBoolean rejected = new AtomicBoolean();
-        recentMessageCache
-                .asMap()
-                .compute(
-                        memberId,
-                        (ignored, current) -> {
-                            if (current != null
-                                    && current.normalizedContent().equals(normalizedContent)
-                                    && now - current.sentAtMillis() < DUPLICATE_COOLDOWN_MILLIS) {
-                                rejected.set(true);
-                                return current;
-                            }
-                            return new LastMessageInfo(normalizedContent, now);
-                        });
-        if (rejected.get()) {
-            throw new CustomException(ErrorCode.CHAT_DUPLICATE_MESSAGE);
+        if (rejection.get() != null) {
+            throw new CustomException(rejection.get());
         }
     }
 }

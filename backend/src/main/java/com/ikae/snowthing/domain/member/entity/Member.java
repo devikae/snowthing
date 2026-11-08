@@ -13,13 +13,21 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "member")
+// 운영 DDL은 컬럼에 UNIQUE를 바로 걸어 MySQL이 제약 이름을 컬럼명(email, nickname)으로 붙인다.
+// 테스트의 Hibernate DDL도 같은 이름을 쓰도록 명시한다. 서비스가 이 이름으로 충돌한 제약을 구분한다.
+@Table(
+        name = "member",
+        uniqueConstraints = {
+            @UniqueConstraint(name = Member.EMAIL_UNIQUE_CONSTRAINT, columnNames = "email"),
+            @UniqueConstraint(name = Member.NICKNAME_UNIQUE_CONSTRAINT, columnNames = "nickname")
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseTimeEntity {
 
     public static final String EMAIL_UNIQUE_CONSTRAINT = "email";
     public static final String NICKNAME_UNIQUE_CONSTRAINT = "nickname";
+    public static final String WITHDRAWN_NICKNAME = "탈퇴한 회원";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,13 +37,13 @@ public class Member extends BaseTimeEntity {
     @Column(name = "public_id", nullable = false, unique = true, length = 36)
     private String publicId;
 
-    @Column(name = "email", nullable = false, unique = true, length = 100)
+    @Column(name = "email", nullable = false, length = 100)
     private String email;
 
     @Column(name = "password", length = 255)
     private String password;
 
-    @Column(name = "nickname", nullable = false, unique = true, length = 50)
+    @Column(name = "nickname", nullable = false, length = 50)
     private String nickname;
 
     @Column(name = "profile_image_url", length = 500)
@@ -140,6 +148,24 @@ public class Member extends BaseTimeEntity {
         this.profileImageUrl = profileImageUrl;
     }
 
+    public boolean isWithdrawn() {
+        return this.status == MemberStatus.WITHDRAWN;
+    }
+
+    /** 개인정보를 지우고 탈퇴 상태로 바꾼다. 글과 댓글의 FK가 남도록 행은 지우지 않는다. */
+    public void withdraw(String anonymizedEmail, String anonymizedNickname) {
+        this.email = anonymizedEmail;
+        this.nickname = anonymizedNickname;
+        this.password = null;
+        this.profileImageUrl = null;
+        this.bio = null;
+        this.departureRegion = null;
+        this.emailVerifiedAt = null;
+        this.crewId = null;
+        this.crewRole = null;
+        this.status = MemberStatus.WITHDRAWN;
+    }
+
     public void verifyEmail(LocalDateTime verifiedAt) {
         this.emailVerifiedAt = verifiedAt;
     }
@@ -148,9 +174,11 @@ public class Member extends BaseTimeEntity {
         this.password = encodedPassword;
     }
 
-    public void updateStatus(MemberStatus status) {
-        if (status != null) {
-            this.status = status;
-        }
+    public void suspend() {
+        this.status = MemberStatus.SUSPENDED;
+    }
+
+    public void reinstate() {
+        this.status = MemberStatus.ACTIVE;
     }
 }

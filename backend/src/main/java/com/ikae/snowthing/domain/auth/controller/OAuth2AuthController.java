@@ -12,10 +12,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,14 +27,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
+import com.ikae.snowthing.domain.auth.service.AuthService;
 import com.ikae.snowthing.domain.auth.service.OAuthAuthorizationIpRateLimiter;
 import com.ikae.snowthing.domain.auth.service.SocialAuthService;
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -51,6 +57,7 @@ import lombok.RequiredArgsConstructor;
 public class OAuth2AuthController {
 
     static final String SESSION_STATE_ATTRIBUTE = "SNOWTHING_OAUTH2_AUTH_STATE";
+    static final String SESSION_PENDING_SIGNUP_ATTRIBUTE = "SNOWTHING_OAUTH2_PENDING_SIGNUP";
     private static final Duration STATE_TTL = Duration.ofMinutes(10);
     private static final int DEFAULT_SESSION_TIMEOUT_SECONDS =
             (int) Duration.ofHours(1).toSeconds();
@@ -59,6 +66,7 @@ public class OAuth2AuthController {
 
     private final OAuth2ExternalClient oauth2ExternalClient;
     private final SocialAuthService socialAuthService;
+    private final AuthService authService;
     private final OAuth2Properties oauth2Properties;
     private final SecurityContextRepository securityContextRepository;
     private final MemberSessionRegistry memberSessionRegistry;
@@ -114,17 +122,63 @@ public class OAuth2AuthController {
 
             OAuthUserProfile profile =
                     oauth2ExternalClient.fetchUserProfile(socialProvider, code, state);
-            Member member = socialAuthService.authenticateOrRegister(profile);
+            Optional<Member> member = socialAuthService.findMemberForLogin(profile);
+            if (member.isEmpty()) {
+                httpRequest
+                        .getSession(true)
+                        .setAttribute(
+                                SESSION_PENDING_SIGNUP_ATTRIBUTE,
+                                PendingSocialSignUp.of(
+                                        profile,
+                                        savedState.returnUrl(),
+                                        Instant.now(clock).plus(STATE_TTL)));
+                return redirectToFrontend("/signup/social");
+            }
 
-            establishAuthenticatedSession(member, httpRequest, httpResponse);
-
-            URI redirectUri =
-                    URI.create(
-                            oauth2Properties.effectiveFrontendBaseUrl() + savedState.returnUrl());
-            return ResponseEntity.status(HttpStatus.FOUND).location(redirectUri).build();
+            establishAuthenticatedSession(member.get(), httpRequest, httpResponse);
+            return redirectToFrontend(savedState.returnUrl());
         } catch (CustomException exception) {
             return redirectToLoginError(exception.getErrorCode());
         }
+    }
+
+    @GetMapping("/signup/pending")
+    public ResponseEntity<PendingSocialSignUpResponse> pendingSignUp(
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(
+                new PendingSocialSignUpResponse(requirePendingSignUp(httpRequest).provider()));
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<SocialSignUpResponse> completeSignUp(
+            @Valid @RequestBody SocialSignUpRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        PendingSocialSignUp pending = requirePendingSignUp(httpRequest);
+        Member member = socialAuthService.completeSignUp(pending.toProfile(), request);
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) {
+            session.removeAttribute(SESSION_PENDING_SIGNUP_ATTRIBUTE);
+        }
+        establishAuthenticatedSession(member, httpRequest, httpResponse);
+        return ResponseEntity.ok(new SocialSignUpResponse(pending.returnUrl()));
+    }
+
+    private PendingSocialSignUp requirePendingSignUp(HttpServletRequest httpRequest) {
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null
+                && session.getAttribute(SESSION_PENDING_SIGNUP_ATTRIBUTE)
+                        instanceof PendingSocialSignUp pending
+                && Instant.now(clock).isBefore(pending.expiresAt())) {
+            return pending;
+        }
+        throw new CustomException(ErrorCode.OAUTH_SIGNUP_EXPIRED);
+    }
+
+    private ResponseEntity<Void> redirectToFrontend(String path) {
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(oauth2Properties.effectiveFrontendBaseUrl() + path))
+                .build();
     }
 
     private OAuth2AuthorizationSession consumeAndValidateState(
@@ -213,6 +267,13 @@ public class OAuth2AuthController {
         securityContextRepository.saveContext(securityContext, httpRequest, httpResponse);
         session.setMaxInactiveInterval(DEFAULT_SESSION_TIMEOUT_SECONDS);
         memberSessionRegistry.register(userDetails.getPublicId(), session);
+        // 인증과 등록 사이의 정지를 잡는다. 이유는 AuthService.ensureStillActive 참고.
+        try {
+            authService.ensureStillActive(userDetails.getPublicId());
+        } catch (CustomException exception) {
+            memberSessionRegistry.invalidateAll(userDetails.getPublicId());
+            throw exception;
+        }
     }
 
     private ResponseEntity<Void> redirectToLoginError(ErrorCode errorCode) {
@@ -250,6 +311,39 @@ public class OAuth2AuthController {
             return "/";
         }
         return trimmed;
+    }
+
+    public record PendingSocialSignUpResponse(SocialProvider provider) {}
+
+    public record SocialSignUpResponse(String returnUrl) {}
+
+    /** 동의를 마칠 때까지 소셜 프로필을 서버 세션에만 둔다. 클라이언트가 값을 고칠 수 없다. */
+    record PendingSocialSignUp(
+            SocialProvider provider,
+            String providerUserId,
+            String email,
+            boolean emailAuthoritative,
+            String nickname,
+            String returnUrl,
+            Instant expiresAt)
+            implements Serializable {
+
+        static PendingSocialSignUp of(
+                OAuthUserProfile profile, String returnUrl, Instant expiresAt) {
+            return new PendingSocialSignUp(
+                    profile.provider(),
+                    profile.providerUserId(),
+                    profile.email(),
+                    profile.emailAuthoritative(),
+                    profile.nickname(),
+                    returnUrl,
+                    expiresAt);
+        }
+
+        OAuthUserProfile toProfile() {
+            return new OAuthUserProfile(
+                    provider, providerUserId, email, emailAuthoritative, nickname);
+        }
     }
 
     record OAuth2AuthorizationSession(

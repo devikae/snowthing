@@ -139,4 +139,40 @@ class WebCookieManagerTest {
 
         assertThat(ip).isEqualTo("203.0.113.20");
     }
+
+    @Test
+    @DisplayName("본 글 표시는 최근 50개만 남겨 쿠키가 4KB 한도에 닿지 않는다")
+    void markIfFirstView_keepsOnlyRecentPosts() {
+        ViewCountCookieManager manager = new ViewCountCookieManager();
+        StringBuilder existing = new StringBuilder();
+        for (int i = 0; i < 120; i++) {
+            existing.append("[").append(java.util.UUID.randomUUID()).append("]");
+        }
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(
+                new Cookie(ViewCountCookieManager.VIEWED_POSTS_COOKIE_NAME, existing.toString()));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        String newest = java.util.UUID.randomUUID().toString();
+
+        boolean first = manager.markIfFirstView(newest, request, response);
+
+        String value =
+                response.getCookie(ViewCountCookieManager.VIEWED_POSTS_COOKIE_NAME).getValue();
+        assertThat(first).isTrue();
+        assertThat(value.chars().filter(c -> c == '[').count())
+                .isEqualTo(ViewCountCookieManager.MAX_REMEMBERED_POSTS);
+        assertThat(value).endsWith("[" + newest + "]").startsWith("[");
+        assertThat(value.length()).isLessThan(2_000);
+    }
+
+    @Test
+    @DisplayName("서버 미리보기가 보내는 [id] 하나짜리 쿠키도 이미 본 글로 처리한다")
+    void markIfFirstView_singleMarkerFromPreviewSkipsCount() {
+        ViewCountCookieManager manager = new ViewCountCookieManager();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie(ViewCountCookieManager.VIEWED_POSTS_COOKIE_NAME, "[abc]"));
+
+        assertThat(manager.markIfFirstView("abc", request, new MockHttpServletResponse()))
+                .isFalse();
+    }
 }

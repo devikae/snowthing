@@ -160,6 +160,14 @@ public class ImageService {
                                                                 java.time.Duration.ofSeconds(20)))
                                         .build())
                         .asByteArray();
+        createMarketThumbnailFromBytes(source, targetKey, gate);
+    }
+
+    /** S3 원본 없이 이미 가진 사진 바이트로 매물 썸네일을 만든다. 본문 base64 사진에 쓴다. */
+    public void createMarketThumbnailFromBytes(
+            byte[] source, String targetKey, ImageProcessingGate gate) {
+        if (!targetKey.matches("public/posts/thumbnails/market-[0-9a-f-]{36}\\.jpg"))
+            throw new com.ikae.snowthing.global.exception.CustomException(ErrorCode.INVALID_INPUT);
         byte[] thumbnail = gate.run(() -> createThumbnail(source));
         s3Client.putObject(
                 PutObjectRequest.builder()
@@ -226,6 +234,34 @@ public class ImageService {
     private void validateProfileKey(String key) {
         if (key == null || !key.matches("public/profiles/[0-9a-fA-F-]{36}\\.jpg"))
             throw new com.ikae.snowthing.global.exception.CustomException(ErrorCode.INVALID_INPUT);
+    }
+
+    /** 파일을 지워도 CDN 캐시는 주소로 계속 열린다. 파일은 이미 지워졌으므로 무효화 실패가 정리를 되돌리지 않게 기록만 남긴다. */
+    public void invalidateDeletedPostImages(java.util.List<String> keys) {
+        if (distributionId == null || distributionId.isBlank() || keys.isEmpty()) return;
+        try {
+            java.util.List<String> paths = keys.stream().map(key -> "/" + key).toList();
+            cloudFrontClient.createInvalidation(
+                    CreateInvalidationRequest.builder()
+                            .overrideConfiguration(
+                                    c -> c.apiCallTimeout(java.time.Duration.ofSeconds(20)))
+                            .distributionId(distributionId)
+                            .invalidationBatch(
+                                    InvalidationBatch.builder()
+                                            .callerReference("post-image-delete-" + keys.get(0))
+                                            .paths(
+                                                    Paths.builder()
+                                                            .quantity(paths.size())
+                                                            .items(paths)
+                                                            .build())
+                                            .build())
+                            .build());
+        } catch (RuntimeException failure) {
+            org.slf4j.LoggerFactory.getLogger(getClass())
+                    .warn(
+                            "Post image CDN invalidation failed: {}",
+                            failure.getClass().getSimpleName());
+        }
     }
 
     public void deleteProfileImage(String key) {

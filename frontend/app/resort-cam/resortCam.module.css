@@ -146,6 +146,101 @@
   font-size: 13px;
 }
 
+.resortTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 리조트 이름 옆 개장 D-DAY 배지. 다크모드에서도 대비가 나도록 글자색은 배경(캔버스)색을 쓴다. */
+.ddayBadge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  border-radius: 999px;
+  background: var(--community-accent, #2563eb);
+  padding: 4px 11px;
+  color: var(--snow-canvas, #fff);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.ddayBadge small {
+  font-size: 11px;
+  font-weight: 650;
+  opacity: 0.85;
+}
+
+.resortHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.weatherChip,
+.weatherChipPlaceholder {
+  min-height: 52px;
+}
+
+.weatherChipPlaceholder {
+  width: 150px;
+}
+
+.weatherChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--snow-border, #e4e4e7);
+  border-radius: 10px;
+  background: var(--snow-canvas, #fff);
+  padding: 7px 14px 7px 10px;
+}
+
+.skyIcon {
+  color: #64748b;
+  font-size: 28px;
+}
+
+.skyIcon[data-tone="sun"] {
+  color: #f59e0b;
+}
+
+.skyIcon[data-tone="night"] {
+  color: #6366f1;
+}
+
+.skyIcon[data-tone="rain"] {
+  color: #0ea5e9;
+}
+
+.skyIcon[data-tone="snow"] {
+  color: #38bdf8;
+}
+
+.skyIcon[data-tone="fog"] {
+  color: #94a3b8;
+}
+
+.weatherChip strong {
+  display: block;
+  color: var(--snow-ink, #0f172a);
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.weatherChip small {
+  display: block;
+  margin-top: 2px;
+  color: var(--snow-muted, #71717a);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .backLink {
   display: inline-flex;
   min-height: 38px;
@@ -604,13 +699,14 @@
 
 @media (max-width: 480px) {
   .resortNavTrack {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 3px;
     padding: 4px;
   }
   .resortTab {
-    min-height: 36px;
-    padding: 3px 1px;
-    font-size: 10px;
+    min-height: 40px;
+    padding: 3px 4px;
+    font-size: 12px;
     letter-spacing: -0.03em;
   }
 }

@@ -208,6 +208,7 @@ export default function AdminBannersPage() {
                             src={b.imageUrl}
                             alt={b.title}
                             fill
+                            unoptimized
                             className="object-cover"
                           />
                         ) : (

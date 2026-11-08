@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -27,8 +28,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SQLDelete(
         sql =
-                "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW() WHERE post_id = ?")
-@SQLRestriction("is_deleted = false AND is_blinded = false")
+                "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW(),"
+                        + " content_version = content_version + 1 WHERE post_id = ?")
+@SQLRestriction("is_deleted = false")
+// 전체 컬럼을 쓰면 먼저 읽어 둔 수정 요청이 임시조치 상태를 NORMAL로 되돌릴 수 있다.
+@org.hibernate.annotations.DynamicUpdate
 @Check(constraints = "like_count >= 0 AND dislike_count >= 0")
 public class Post extends BaseTimeEntity {
 
@@ -86,14 +90,19 @@ public class Post extends BaseTimeEntity {
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
 
-    @Column(name = "is_blinded", nullable = false)
-    private boolean isBlinded = false;
-
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /** 글을 지운 회원. 작성자 삭제와 관리자 삭제를 관리자 화면에서 구분한다. 삭제 전과 옛 글은 null이다. */
     @Column(name = "deleted_by_member_id")
     private Long deletedByMemberId;
+
+    /**
+     * 검색 근거용 내용 버전. 제목·본문·카테고리·상태·삭제가 바뀔 때만 1 올린다. 낙관적 락(@Version)이 아니다. 조회수·반응 수 갱신과 비관적 락 경로에는
+     * 영향을 주지 않는다.
+     */
+    @Column(name = "content_version", nullable = false)
+    private long contentVersion = 0L;
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
@@ -141,17 +150,31 @@ public class Post extends BaseTimeEntity {
     }
 
     public void changeStatus(PostStatus status) {
+        if (this.status != status) {
+            this.contentVersion++;
+        }
         this.status = status;
     }
 
-    public void setBlinded(boolean blinded) {
-        this.isBlinded = blinded;
-    }
-
     public void update(String title, String content, PostCategory category) {
+        if (!Objects.equals(this.title, title)
+                || !Objects.equals(this.content, content)
+                || !isSameCategory(this.category, category)) {
+            this.contentVersion++;
+        }
         this.title = title;
         this.content = content;
         this.category = category;
+    }
+
+    private static boolean isSameCategory(PostCategory current, PostCategory next) {
+        if (current == next) {
+            return true;
+        }
+        if (current == null || next == null || current.getId() == null) {
+            return false;
+        }
+        return current.getId().equals(next.getId());
     }
 
     public void updateImageStatus(boolean hasImage) {
@@ -167,6 +190,9 @@ public class Post extends BaseTimeEntity {
     }
 
     public void softDelete(Long deleterMemberId) {
+        if (!this.isDeleted) {
+            this.contentVersion++;
+        }
         this.isDeleted = true;
         this.status = PostStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
@@ -175,13 +201,6 @@ public class Post extends BaseTimeEntity {
 
     public void softDelete() {
         softDelete(null);
-    }
-
-    public void restore() {
-        this.isDeleted = false;
-        this.status = PostStatus.NORMAL;
-        this.deletedAt = null;
-        this.deletedByMemberId = null;
     }
 
     public void increaseViewCount() {

@@ -1,13 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ResortCameraItem } from "./types";
+import { toCamStreamUrl } from "./camStreamUrl";
 import styles from "./resortCam.module.css";
 
 interface CameraPlayerProps {
   camera: ResortCameraItem;
   autoPlay: boolean;
   focused?: boolean;
+}
+
+// 아무 조작 없이 영상을 계속 받으면 서버 송신량이 시청 시간만큼 늘어난다.
+const IDLE_STOP_MS = 20 * 60 * 1000;
+const ACTIVITY_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
+
+function subscribeVisibility(onChange: () => void) {
+  document.addEventListener("visibilitychange", onChange);
+  return () => document.removeEventListener("visibilitychange", onChange);
+}
+
+function usePageVisible() {
+  return useSyncExternalStore(subscribeVisibility, () => document.visibilityState !== "hidden", () => true);
 }
 
 export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayerProps) {
@@ -18,12 +32,17 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [failureReason, setFailureReason] = useState("");
 
-  const shouldLoad = focused || manualPlay || autoPlay;
+  const [idleStopped, setIdleStopped] = useState(false);
+  const pageVisible = usePageVisible();
+
+  // 탭이 가려지면 재생을 멈추고, 돌아오면 다시 연결한다.
+  const shouldLoad = (focused || manualPlay || autoPlay) && pageVisible && !idleStopped;
   const officialUrl = camera.externalPageUrl || camera.sourceUrl || "";
 
   useEffect(() => {
     const video = videoRef.current;
     if (camera.sourceType !== "HLS" || !video || !shouldLoad) return;
+    const streamUrl = toCamStreamUrl(camera.sourceUrl);
 
     let disposed = false;
     let usingHls = false;
@@ -60,7 +79,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
           destroy = () => hls.destroy();
           let mediaRecoveries = 0;
           let nativeFallback = false;
-          hls.loadSource(camera.sourceUrl);
+          hls.loadSource(streamUrl);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             if (disposed) return;
@@ -77,13 +96,13 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
                 destroy = undefined;
                 window.clearTimeout(startupTimer);
                 startupTimer = window.setTimeout(() => fail("startup-timeout"), 18000);
-                video.src = camera.sourceUrl;
+                video.src = streamUrl;
                 video.load();
                 void video.play().catch(() => undefined);
               } else fail(data.details);
             }
           });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = camera.sourceUrl;
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = streamUrl;
         else { fail("unsupported-browser"); return; }
         void video.play().catch(() => undefined);
       } catch {
@@ -102,6 +121,20 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
       video.load();
     };
   }, [camera.sourceType, camera.sourceUrl, manualPlay, shouldLoad, retryAttempt]);
+
+  useEffect(() => {
+    if (!shouldLoad) return;
+    let timer = window.setTimeout(() => setIdleStopped(true), IDLE_STOP_MS);
+    const resetTimer = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setIdleStopped(true), IDLE_STOP_MS);
+    };
+    ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
+    return () => {
+      window.clearTimeout(timer);
+      ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [shouldLoad]);
 
   // 순수 영상 iframe 전용 (vivaldi.html, rtsp.me 등)
   const isDedicatedVideoIframe =
@@ -190,11 +223,14 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
         <button
           type="button"
           className={styles.playCover}
-          onClick={() => setManualPlay(true)}
-          aria-label={`${camera.name} 라이브 영상 재생`}
+          onClick={() => {
+            setIdleStopped(false);
+            setManualPlay(true);
+          }}
+          aria-label={`${camera.name} 라이브 영상 ${idleStopped ? "계속 보기" : "재생"}`}
         >
           <span className="material-symbols-outlined playIcon">play_circle</span>
-          <span className={styles.playText}>실시간 영상 재생</span>
+          <span className={styles.playText}>{idleStopped ? "오래 켜 둔 영상을 멈췄어요. 계속 보기" : "실시간 영상 재생"}</span>
         </button>
       )}
     </div>

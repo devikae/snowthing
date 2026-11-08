@@ -114,3 +114,44 @@
    - 문자열 리터럴 예외 금지. `ErrorCode` Enum (`ADMIN_ACCESS_DENIED`, `CHAT_IP_BANNED`, `CONFIG_NOT_FOUND` 등) 및 `CustomException` 일원화.
 3. **계층 분리 (Rule 24)**:
    - Service 계층에서 서블릿 세션 조작 금지, Controller의 Repository 직접 호출 금지.
+
+---
+
+## 6. 최신 main에 맞춘 변경 (IKA-68, 2026-11-09)
+
+PR #48이 main보다 222커밋 뒤처진 사이 main에 신고 처리, 회원 정지, 답변 초안, API 토큰, 검색 인덱스 관리자 화면이 들어왔다. 겹치는 부분은 main 구현을 기준으로 남기고 #48의 새 기능만 붙였다. 위 2~4절에서 아래와 다른 내용은 이 절이 우선한다.
+
+### 6.1 마이그레이션
+
+- 027을 `047_migration_admin_operations.sql`로 옮겼다. main의 027은 검색 문서 테이블이다.
+- `system_config`, `chat_banned_ip`, `banner`, `post.deleted_by_member_id`만 만든다. main에 같은 이름의 테이블이나 컬럼은 없다.
+- `post.is_blinded`는 만들지 않는다 (6.2). `deleted_by_member_id` 인덱스도 뺐다. 이 컬럼으로 찾는 조회가 없다.
+
+### 6.2 블라인드는 `post.status = 'BLOCKED'`
+
+| 선택지 | 장점 | 단점 |
+|---|---|---|
+| #48의 `is_blinded` 컬럼 + `@SQLRestriction` 조건 | 기존 조회가 자동으로 거른다 | 검색 반영(outbox), 신고 처리, 사진 정리, 관리자 상세 조회가 블라인드 글을 엔티티로 못 읽는다. 컬럼 추가 마이그레이션 필요 |
+| main의 `status` 재사용 (채택) | main 공개 조회가 이미 `status = NORMAL`만 보여 준다. 시장 글 관리자 조치가 같은 방식이다. 마이그레이션 불필요 | 신고 임시조치(TEMPORARY_HOLD)와 겹치지 않게 막아야 한다 |
+
+- 블라인드: NORMAL에서 BLOCKED, 해제: BLOCKED에서 NORMAL. 이미 그 상태면 그대로 성공한다. 임시조치 등 다른 상태면 409(`CONTENT_REPORT_004`).
+- 바꿀 때 글 행을 잠그고(`FOR UPDATE`), `contentVersion`을 올리고 검색 outbox에 알린다.
+
+### 6.3 API 변경
+
+- 회원 관리(3.3)는 main의 `GET /api/v1/admin/members`, `POST .../{publicId}/suspend`, `POST .../{publicId}/reinstate`를 쓴다. #48의 상태 변경, 닉네임 변경, 프로필 사진 삭제 API는 뺐다.
+- `GET /api/v1/admin/posts?filter=ALL|DELETED|BLINDED&page=&size=`: 크기는 최대 50. 정렬은 글 ID 역순, DELETED는 삭제 시각 역순 다음 ID 역순.
+  - 응답에 회원 내부 ID(`authorMemberId`, `deletedByMemberId`)를 내보내지 않는다. 작성자 삭제 여부는 `isDeletedByAuthor`로 준다.
+- `DELETE /api/v1/admin/posts/{publicId}`: 일반 삭제 흐름(`PostService.deletePost`)을 그대로 탄다. 첨부 사진 정리와 검색 반영이 함께 된다. 지운 회원은 `deleted_by_member_id`에 남는다 (작성자 삭제도 같다).
+- `PATCH /api/v1/admin/posts/{publicId}/restore`(복구)는 뺐다. main은 삭제 때 사진을 정리 대기열에 넣으므로 복구하면 사진이 깨진 글이 다시 보인다.
+
+### 6.4 비회원 라이브톡
+
+- 도배 제한은 main 규칙(30초 안 같은 문장, 1초 간격, 분당 20건)을 그대로 쓴다. 회원은 `member:{id}`, 비회원은 `ip:{ip}` 키로 센다. #48의 비회원 전용 캐시는 없앴다.
+- 비회원 닉네임은 IP 해시로 정하므로 같은 IP는 같은 닉네임을 받는다. IP 원문은 내보내지 않는다.
+- IP 차단은 회원에게도 적용된다. AI 회원 메시지는 IP가 없어 차단 버튼을 눌러도 그 메시지만 지워진다 (관리자에게만 보이는 버튼).
+
+### 6.5 화면
+
+- 관리자 레이아웃은 main의 `AdminGate` 탭을 쓰고 대시보드, 게시글, 라이브톡 차단, 배너 탭을 더했다. #48의 사이드바 레이아웃과 회원 화면은 뺐다.
+- 게시글 화면은 main 관리자 화면 스타일(`admin.css`)로 다시 썼다. 대시보드, 라이브톡 차단, 배너 화면은 #48 그대로다.

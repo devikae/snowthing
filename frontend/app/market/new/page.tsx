@@ -10,7 +10,11 @@ import { PageHeading } from "../../components/PageHeading";
 import type { ToastEditorHandle } from "../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { useLeaveWarning } from "../../lib/useLeaveWarning";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
+import { errorText } from "../../lib/errorText";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), { ssr: false });
 
@@ -40,6 +44,7 @@ const transactionMethods = [
 
 export default function MarketCreatePage() {
   const router = useRouter();
+  useLeaveWarning();
   const editorRef = useRef<ToastEditorHandle>(null);
   const [categories, setCategories] = useState<MarketCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
@@ -54,6 +59,8 @@ export default function MarketCreatePage() {
   useImageUploadLease(images.map(image => image.imageUrl));
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -83,22 +90,31 @@ export default function MarketCreatePage() {
       setError("사진은 최대 10장까지 등록할 수 있습니다.");
       return;
     }
+    // 축소가 끝날 때까지 등록 버튼과 파일 칸을 막는다.
     setUploading(true);
     setError("");
+    const selected = Array.from(files);
+    const prepared = await prepareImagesForUpload(selected).catch(() => selected);
+    if (prepared.some(isOversizedImage)) {
+      setError(OVERSIZED_IMAGE_MESSAGE);
+      setUploading(false);
+      return;
+    }
     try {
-      for (const file of Array.from(files)) {
+      for (const file of prepared) {
+        if (file.size > 5 * 1024 * 1024) throw new Error("사진은 한 장에 5MB까지 올릴 수 있습니다.");
         const formData = new FormData();
         formData.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: formData });
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || "이미지 업로드에 실패했습니다.");
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.message || "이미지 업로드에 실패했습니다.");
         }
         const uploaded: UploadedImage = await response.json();
         setImages((current) => [...current, uploaded]);
       }
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "이미지 업로드에 실패했습니다.");
+      setError(errorText(uploadError, "이미지 업로드에 실패했습니다."));
     } finally {
       setUploading(false);
     }
@@ -106,6 +122,7 @@ export default function MarketCreatePage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (submitting || isSubmittingRef.current) return;
     const content = editorRef.current?.getInstance().getMarkdown()?.trim() ?? "";
     if (!categoryCode || !title.trim() || !content || !contact.trim()) {
       setError("상품 분류, 제목, 본문, 연락처를 모두 입력해 주세요.");
@@ -116,24 +133,26 @@ export default function MarketCreatePage() {
       setError("가격은 1원 이상 2,000만원 이하로 입력해 주세요.");
       return;
     }
+    isSubmittingRef.current = true;
     setSubmitting(true);
     setError("");
     try {
+      const body = JSON.stringify({
+        categoryCode,
+        title: title.trim(),
+        content,
+        productCondition,
+        transactionMethod,
+        price: numericPrice,
+        negotiable: free ? false : negotiable,
+        free,
+        contact: contact.trim(),
+        imageUrls: images.map((image) => image.imageUrl),
+      });
       const response = await csrfFetch(API_ENDPOINTS.market.create, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoryCode,
-          title: title.trim(),
-          content,
-          productCondition,
-          transactionMethod,
-          price: numericPrice,
-          negotiable: free ? false : negotiable,
-          free,
-          contact: contact.trim(),
-          imageUrls: images.map((image) => image.imageUrl),
-        }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: idempotencyKey.keyFor(body) },
+        body,
       });
       if (response.status === 401) {
         router.replace(`/login?returnUrl=${encodeURIComponent("/market/new")}`);
@@ -143,11 +162,13 @@ export default function MarketCreatePage() {
         const data = await response.json();
         throw new Error(data.message || "판매글을 등록하지 못했습니다.");
       }
+      idempotencyKey.reset();
       const data: { publicId: string } = await response.json();
       router.push(`/market/${data.publicId}`);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "판매글을 등록하지 못했습니다.");
+      setError(errorText(submitError, "판매글을 등록하지 못했습니다."));
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };

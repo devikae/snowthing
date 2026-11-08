@@ -1,5 +1,8 @@
 package com.ikae.snowthing.domain.carpool.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,6 +11,9 @@ import com.ikae.snowthing.domain.carpool.dto.CarpoolCreateRequest;
 import com.ikae.snowthing.domain.carpool.dto.CarpoolResponse;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolCostMode;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolDetail;
+import com.ikae.snowthing.domain.carpool.entity.CarpoolFuelPriceSource;
+import com.ikae.snowthing.domain.carpool.entity.CarpoolFuelType;
+import com.ikae.snowthing.domain.carpool.entity.CarpoolRouteSource;
 import com.ikae.snowthing.domain.carpool.repository.CarpoolDetailRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
@@ -35,6 +41,8 @@ public class CarpoolWriterService {
     private final MemberRepository memberRepository;
     private final ResortRepository resortRepository;
     private final CarpoolDetailRepository carpoolDetailRepository;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
+    private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
 
     @Transactional
     public CarpoolResponse save(
@@ -67,14 +75,16 @@ public class CarpoolWriterService {
                         .hasImage(false)
                         .build();
         postRepository.save(post);
+        searchOutbox.postChanged(post);
 
+        CostSnapshot cost = CostSnapshot.of(request, calculation);
         CarpoolDetail detail =
                 CarpoolDetail.builder()
                         .post(post)
                         .departureRegion(request.departureRegion())
                         .meetingPlace(request.meetingPlace())
-                        .departureLatitude(request.departureLatitude())
-                        .departureLongitude(request.departureLongitude())
+                        .departureLatitude(cost.departureLatitude())
+                        .departureLongitude(cost.departureLongitude())
                         .destinationResort(resort)
                         .destinationLatitude(resort.getRouteLatitude())
                         .destinationLongitude(resort.getRouteLongitude())
@@ -82,19 +92,19 @@ public class CarpoolWriterService {
                         .departureAt(request.departureAt())
                         .returnAt(request.returnAt())
                         .passengerCapacity(request.passengerCapacity())
-                        .fuelType(request.fuelType())
-                        .fuelEfficiency(request.fuelEfficiency())
+                        .fuelType(cost.fuelType())
+                        .fuelEfficiency(cost.fuelEfficiency())
                         .costMode(request.costMode())
-                        .fuelPrice(calculation.fuelPrice())
-                        .fuelPriceSource(calculation.fuelPriceSource())
-                        .fuelPriceObservedAt(calculation.fuelPriceObservedAt())
-                        .routeDistanceKm(calculation.distanceKm())
-                        .routeTollFee(calculation.tollFee())
-                        .estimatedFuelCost(calculation.estimatedFuelCost())
-                        .estimatedTotalCost(resolveTotalCost(request, calculation))
-                        .estimatedCostPerPerson(resolveCostPerPerson(request, calculation))
-                        .routeSource(calculation.routeSource())
-                        .routeCalculatedAt(calculation.routeCalculatedAt())
+                        .fuelPrice(cost.fuelPrice())
+                        .fuelPriceSource(cost.fuelPriceSource())
+                        .fuelPriceObservedAt(cost.fuelPriceObservedAt())
+                        .routeDistanceKm(cost.routeDistanceKm())
+                        .routeTollFee(cost.routeTollFee())
+                        .estimatedFuelCost(cost.estimatedFuelCost())
+                        .estimatedTotalCost(cost.estimatedTotalCost())
+                        .estimatedCostPerPerson(cost.estimatedCostPerPerson())
+                        .routeSource(cost.routeSource())
+                        .routeCalculatedAt(cost.routeCalculatedAt())
                         .contactInfo(request.contactInfo())
                         .contactPublicToGuest(request.contactPublicToGuest())
                         .equipmentLoadAvailable(request.equipmentLoadAvailable())
@@ -127,11 +137,13 @@ public class CarpoolWriterService {
                         .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CARPOOL_VALUE));
 
         post.update(request.title(), request.content(), post.getCategory());
+        searchOutbox.postChanged(post);
+        CostSnapshot cost = CostSnapshot.of(request, calculation);
         detail.update(
                 request.departureRegion(),
                 request.meetingPlace(),
-                request.departureLatitude(),
-                request.departureLongitude(),
+                cost.departureLatitude(),
+                cost.departureLongitude(),
                 resort,
                 resort.getRouteLatitude(),
                 resort.getRouteLongitude(),
@@ -139,19 +151,19 @@ public class CarpoolWriterService {
                 request.departureAt(),
                 request.returnAt(),
                 request.passengerCapacity(),
-                request.fuelType(),
-                request.fuelEfficiency(),
+                cost.fuelType(),
+                cost.fuelEfficiency(),
                 request.costMode(),
-                calculation.fuelPrice(),
-                calculation.fuelPriceSource(),
-                calculation.fuelPriceObservedAt(),
-                calculation.distanceKm(),
-                calculation.tollFee(),
-                calculation.estimatedFuelCost(),
-                resolveTotalCost(request, calculation),
-                resolveCostPerPerson(request, calculation),
-                calculation.routeSource(),
-                calculation.routeCalculatedAt(),
+                cost.fuelPrice(),
+                cost.fuelPriceSource(),
+                cost.fuelPriceObservedAt(),
+                cost.routeDistanceKm(),
+                cost.routeTollFee(),
+                cost.estimatedFuelCost(),
+                cost.estimatedTotalCost(),
+                cost.estimatedCostPerPerson(),
+                cost.routeSource(),
+                cost.routeCalculatedAt(),
                 request.contactInfo(),
                 request.contactPublicToGuest(),
                 request.equipmentLoadAvailable());
@@ -170,6 +182,8 @@ public class CarpoolWriterService {
             throw new CustomException(ErrorCode.CARPOOL_DETAIL_REQUIRED);
         }
         post.softDelete();
+        imageLifecycle.releasePostImages(post);
+        searchOutbox.postChanged(post);
     }
 
     private void validateManagePermission(Post post, String memberPublicId, boolean admin) {
@@ -190,16 +204,57 @@ public class CarpoolWriterService {
         return clientIp == null || clientIp.isBlank() ? DEFAULT_WRITER_IP : clientIp;
     }
 
-    private int resolveCostPerPerson(
-            CarpoolCreateRequest request, CarpoolAutoPreviewResponse calculation) {
-        return request.costMode() == CarpoolCostMode.MANUAL
-                ? request.manualCostPerPerson().intValueExact()
-                : calculation.estimatedCostPerPerson();
-    }
+    /** 저장할 비용 값. 직접 입력(MANUAL)은 계산하지 않으므로 1인 금액 외에는 모두 null이다. */
+    private record CostSnapshot(
+            BigDecimal departureLatitude,
+            BigDecimal departureLongitude,
+            CarpoolFuelType fuelType,
+            BigDecimal fuelEfficiency,
+            BigDecimal fuelPrice,
+            CarpoolFuelPriceSource fuelPriceSource,
+            LocalDateTime fuelPriceObservedAt,
+            BigDecimal routeDistanceKm,
+            Integer routeTollFee,
+            Integer estimatedFuelCost,
+            Integer estimatedTotalCost,
+            int estimatedCostPerPerson,
+            CarpoolRouteSource routeSource,
+            LocalDateTime routeCalculatedAt) {
 
-    private int resolveTotalCost(
-            CarpoolCreateRequest request, CarpoolAutoPreviewResponse calculation) {
-        return Math.multiplyExact(
-                resolveCostPerPerson(request, calculation), calculation.totalPassengerCount());
+        static CostSnapshot of(
+                CarpoolCreateRequest request, CarpoolAutoPreviewResponse calculation) {
+            if (request.costMode() == CarpoolCostMode.MANUAL) {
+                return new CostSnapshot(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        request.manualCostPerPerson().intValueExact(),
+                        null,
+                        null);
+            }
+            return new CostSnapshot(
+                    request.departureLatitude(),
+                    request.departureLongitude(),
+                    request.fuelType(),
+                    request.fuelEfficiency(),
+                    calculation.fuelPrice(),
+                    calculation.fuelPriceSource(),
+                    calculation.fuelPriceObservedAt(),
+                    calculation.distanceKm(),
+                    calculation.tollFee(),
+                    calculation.estimatedFuelCost(),
+                    calculation.estimatedTotalCost(),
+                    calculation.estimatedCostPerPerson(),
+                    calculation.routeSource(),
+                    calculation.routeCalculatedAt());
+        }
     }
 }

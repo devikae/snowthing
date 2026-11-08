@@ -1,17 +1,21 @@
 package com.ikae.snowthing.domain.comment.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.comment.dto.CommentCreateRequest;
 import com.ikae.snowthing.domain.comment.dto.CommentResponse;
 import com.ikae.snowthing.domain.comment.entity.Comment;
+import com.ikae.snowthing.domain.comment.event.CommentCreatedEvent;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.domain.post.service.InquiryAccess;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -25,6 +29,8 @@ class CommentCommandService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final MarketListingRepository marketListingRepository;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     CommentResponse createComment(
@@ -48,6 +54,10 @@ class CommentCommandService {
             if (request.isAnonymous()) {
                 throw new CustomAuthException(ErrorCode.MARKET_ANONYMOUS_COMMENT_NOT_ALLOWED);
             }
+        }
+        InquiryAccess.requireReadable(post, userDetails);
+        if (PostCategoryCodes.isInquiry(post) && request.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
         Comment parent = null;
         if (request.parentId() != null) {
@@ -82,8 +92,11 @@ class CommentCommandService {
                         clientIp != null ? clientIp : "127.0.0.1",
                         request.isAnonymous(),
                         encodedPassword);
+        Comment saved = commentRepository.save(comment);
+        searchOutbox.commentChanged(saved, false);
+        eventPublisher.publishEvent(CommentCreatedEvent.from(saved));
         CommentResponse response =
-                CommentResponse.from(commentRepository.save(comment))
+                CommentResponse.from(saved)
                         .withViewerPermissions(
                                 userDetails == null ? null : userDetails.getPublicId());
         postRepository.increaseCommentCount(post.getId());

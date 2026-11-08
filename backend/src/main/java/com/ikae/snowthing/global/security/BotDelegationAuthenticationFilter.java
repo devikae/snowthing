@@ -32,6 +32,7 @@ public class BotDelegationAuthenticationFilter extends OncePerRequestFilter {
             List.of(
                     Pattern.compile("^/api/v1/master/(?:resorts|riding-styles)$"),
                     Pattern.compile("^/api/v1/resort-cams$"),
+                    Pattern.compile("^/api/v1/resort-cams/[A-Z0-9_]{1,40}/weather$"),
                     Pattern.compile("^/api/v1/resort-reports/today$"),
                     Pattern.compile("^/api/v1/posts(?:/[0-9a-fA-F-]{36})?$"),
                     Pattern.compile("^/api/v1/carpools(?:/[0-9a-fA-F-]{36})?$"),
@@ -47,7 +48,9 @@ public class BotDelegationAuthenticationFilter extends OncePerRequestFilter {
             HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+        if (authorization == null
+                || !authorization.startsWith(BEARER_PREFIX)
+                || ApiTokenAuthenticationFilter.isApiTokenRequest(request)) {
             filterChain.doFilter(request, response);
             return;
         }

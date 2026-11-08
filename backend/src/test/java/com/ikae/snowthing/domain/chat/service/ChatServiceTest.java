@@ -2,7 +2,12 @@ package com.ikae.snowthing.domain.chat.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -35,7 +40,7 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
 
-    private static final int BURST_REJECTED_ATTEMPT = 5;
+    private static final int MINUTE_MESSAGE_LIMIT = 20;
     private static final int CONCURRENT_DUPLICATE_REQUESTS = 2;
     private static final long CONCURRENT_TEST_TIMEOUT_SECONDS = 10L;
 
@@ -46,12 +51,50 @@ class ChatServiceTest {
     private ChatRecentHistoryBuffer chatRecentHistoryBuffer;
     @Mock private ChatIpBanService chatIpBanService;
     @Mock private SystemConfigService systemConfigService;
+    private MutableClock clock;
+
+    private static final class MutableClock extends Clock {
+        private Instant now = Instant.parse("2026-11-05T00:00:00Z");
+
+        private void advance(Duration duration) {
+            now = now.plus(duration);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("Asia/Seoul");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
+    }
+
+    private ChatMessageResponse send(CustomUserDetails sender, String content) {
+        return chatService.processMessage(
+                new ChatMessageRequest(null, content), sender, "127.0.0.1");
+    }
+
+    private void assertRejected(String content, ErrorCode errorCode) {
+        assertThatThrownBy(() -> send(testUserDetails, content))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(errorCode);
+    }
 
     @BeforeEach
     void setUp() {
         chatRecentHistoryBuffer = new ChatRecentHistoryBuffer();
+        clock = new MutableClock();
         chatService =
-                new ChatService(chatRecentHistoryBuffer, chatIpBanService, systemConfigService);
+                new ChatService(
+                        chatRecentHistoryBuffer, clock, chatIpBanService, systemConfigService);
         testMember =
                 Member.builder()
                         .publicId("0191a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4")
@@ -271,26 +314,76 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("1초 안에 서로 다른 메시지를 다섯 번 시도하면 CHAT_BURST_RATE_LIMIT으로 차단한다")
-        void burstRateLimit_blocksFifthAttempt() {
-            for (int attempt = 1; attempt < BURST_REJECTED_ATTEMPT; attempt++) {
-                chatService.processMessage(
-                        new ChatMessageRequest(null, "서로 다른 메시지 " + attempt),
-                        testUserDetails,
-                        "127.0.0.1");
+        @DisplayName("1초 안의 두 번째 메시지는 내용이 달라도 CHAT_BURST_RATE_LIMIT으로 차단하고 1초 뒤에는 보낼 수 있다")
+        void sendInterval_blocksSecondMessageWithinOneSecond() {
+            send(testUserDetails, "첫 번째 메시지");
+
+            clock.advance(Duration.ofMillis(999));
+            assertRejected("두 번째 메시지", ErrorCode.CHAT_BURST_RATE_LIMIT);
+
+            clock.advance(Duration.ofMillis(1));
+            send(testUserDetails, "두 번째 메시지");
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("간격 제한에 걸린 문장은 기록되지 않아 다시 보낼 때 중복으로 거절되지 않는다")
+        void rejectedMessage_isNotRememberedAsDuplicate() {
+            send(testUserDetails, "첫 번째 메시지");
+            assertRejected("두 번째 메시지", ErrorCode.CHAT_BURST_RATE_LIMIT);
+
+            clock.advance(Duration.ofSeconds(1));
+
+            send(testUserDetails, "두 번째 메시지");
+        }
+
+        @Test
+        @DisplayName("1분에 21번째 메시지는 차단하고 1분이 지나면 다시 보낼 수 있다")
+        void minuteLimit_blocksTwentyFirstMessage() {
+            for (int index = 1; index <= MINUTE_MESSAGE_LIMIT; index++) {
+                send(testUserDetails, "메시지 " + (char) ('가' + index));
+                clock.advance(Duration.ofSeconds(2));
             }
 
-            assertThatThrownBy(
-                            () ->
-                                    chatService.processMessage(
-                                            new ChatMessageRequest(null, "다섯 번째 메시지"),
-                                            testUserDetails,
-                                            "127.0.0.1"))
-                    .isInstanceOf(CustomException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(ErrorCode.CHAT_BURST_RATE_LIMIT);
+            assertRejected("한도를 넘긴 메시지", ErrorCode.CHAT_BURST_RATE_LIMIT);
+
+            clock.advance(Duration.ofSeconds(20));
+            send(testUserDetails, "한도를 넘긴 메시지");
             assertThat(chatRecentHistoryBuffer.getRecentMessages())
-                    .hasSize(BURST_REJECTED_ATTEMPT - 1);
+                    .hasSize(MINUTE_MESSAGE_LIMIT + 1);
+        }
+
+        @Test
+        @DisplayName("두 문장을 번갈아 보내면 30초 안에는 CHAT_DUPLICATE_MESSAGE로 차단하고 30초가 지나면 보낼 수 있다")
+        void alternatingMessages_blockedForThirtySeconds() {
+            send(testUserDetails, "문장 에이");
+            clock.advance(Duration.ofSeconds(2));
+            send(testUserDetails, "문장 비");
+            clock.advance(Duration.ofSeconds(2));
+
+            assertRejected("문장 에이", ErrorCode.CHAT_DUPLICATE_MESSAGE);
+
+            clock.advance(Duration.ofSeconds(26));
+            send(testUserDetails, "문장 에이");
+        }
+
+        @Test
+        @DisplayName("제한은 회원별로 따로 계산한다")
+        void abuseLimits_areCountedPerMember() {
+            Member otherMember =
+                    Member.builder()
+                            .publicId("0191a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b5")
+                            .email("other@snowthing.org")
+                            .nickname("다른회원")
+                            .role(Role.ROLE_USER)
+                            .status(MemberStatus.ACTIVE)
+                            .build();
+            ReflectionTestUtils.setField(otherMember, "id", 101L);
+
+            send(testUserDetails, "같은 문장");
+
+            send(new CustomUserDetails(otherMember), "같은 문장");
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).hasSize(2);
         }
 
         @Test
@@ -414,6 +507,66 @@ class ChatServiceTest {
             assertThat(response.content()).isEqualTo(prefix + emoji);
             assertThat(response.content().codePointCount(0, response.content().length()))
                     .isEqualTo(100);
+        }
+    }
+
+    @Nested
+    @DisplayName("관리자 운영 제어 (IP 차단, 비회원 라이브톡)")
+    class AdminControl {
+
+        @Test
+        @DisplayName("차단된 IP는 회원이어도 CHAT_IP_BANNED")
+        void bannedIp_rejectedEvenForMember() {
+            given(chatIpBanService.isBanned("10.0.0.1")).willReturn(true);
+
+            assertThatThrownBy(
+                            () ->
+                                    chatService.processMessage(
+                                            new ChatMessageRequest(null, "안녕하세요"),
+                                            testUserDetails,
+                                            "10.0.0.1"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_IP_BANNED);
+        }
+
+        @Test
+        @DisplayName("비회원 발신을 켜면 같은 IP는 같은 닉네임으로 보낸다")
+        void anonymousEnabled_sameIpSameNickname() {
+            given(systemConfigService.isAnonymousChatEnabled()).willReturn(true);
+
+            ChatMessageResponse first =
+                    chatService.processMessage(
+                            new ChatMessageRequest(null, "첫 메시지"), null, "10.0.0.2");
+            clock.advance(Duration.ofSeconds(2));
+            ChatMessageResponse second =
+                    chatService.processMessage(
+                            new ChatMessageRequest(null, "두번째 메시지"), null, "10.0.0.2");
+
+            assertThat(first.sender().nickname()).isEqualTo(second.sender().nickname());
+            assertThat(first.sender().publicId()).startsWith("anon-");
+            assertThat(first.sender().nickname()).doesNotContain("10.0.0.2");
+        }
+
+        @Test
+        @DisplayName("비회원 도배 제한은 IP 단위로 센다")
+        void anonymousAbuseLimit_countedPerIp() {
+            given(systemConfigService.isAnonymousChatEnabled()).willReturn(true);
+            chatService.processMessage(new ChatMessageRequest(null, "같은 말"), null, "10.0.0.3");
+
+            assertThatThrownBy(
+                            () ->
+                                    chatService.processMessage(
+                                            new ChatMessageRequest(null, "같은 말"), null, "10.0.0.3"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_DUPLICATE_MESSAGE);
+            assertThat(
+                            chatService
+                                    .processMessage(
+                                            new ChatMessageRequest(null, "같은 말"), null, "10.0.0.4")
+                                    .content())
+                    .isEqualTo("같은 말");
         }
     }
 }

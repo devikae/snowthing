@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
 import { CompactSelect } from "./components/CompactSelect";
+import { OpeningDdayBanner } from "./components/OpeningDdayBanner";
 import { PostImageIcon } from "./components/PostImageIcon";
 import { PostListAuthor } from "./components/PostListAuthor";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
+import { fetchViewer } from "./lib/viewer";
 import { RESORT_MAP } from "./lib/resortTags";
 import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName, isResortReportSeason } from "./lib/resortReports";
 import { csrfFetch } from "./lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
+import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 
 interface HomePost {
   publicId: string;
@@ -20,6 +25,7 @@ interface HomePost {
   title: string;
   writerNickname: string;
   writerProfileImageUrl?: string | null;
+  writerPublicId?: string | null;
   thumbnailImageUrl: string | null;
   hasImage: boolean;
   viewCount: number;
@@ -83,22 +89,6 @@ interface MarketPreviewItem {
   thumbnailImageUrl: string | null;
 }
 
-function formatCompactTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffSec < 60) return "방금";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}분`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay === 1) return "어제";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${month}.${day}`;
-}
 
 function formatShortCategory(categoryCode: string, categoryName: string): string {
   switch (categoryCode) {
@@ -121,22 +111,16 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
   }
 }
 
-function formatCarpoolShortDate(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}.${day} ${hours}:${minutes}`;
-}
 
 export default function HomePageClient() {
+  const router = useRouter();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [activeFeed, setActiveFeed] = useState<HomeFeedKey>("all");
   const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(emptyFeeds);
   const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
-  const [feedsLoading, setFeedsLoading] = useState(true);
+  // 탭마다 처음 열 때 한 번만 요청한다. 홈 첫 화면은 "전체" 탭만 받는다.
+  const [feedLoading, setFeedLoading] = useState<Record<HomeFeedKey, boolean>>(() => ({ ...emptyFeedErrors, all: true }));
+  const requestedFeeds = useRef(new Set<HomeFeedKey>());
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
 
   const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
@@ -146,9 +130,14 @@ export default function HomePageClient() {
   const [resortMasterList, setResortMasterList] = useState<{ id: number; name: string }[]>([]);
   const [resortMasterError, setResortMasterError] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
+  const isSubmittingReportRef = useRef(false);
+  const reportIdempotencyKey = useIdempotencyKey();
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const reportSeasonOpen = isResortReportSeason(new Date());
   const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
+  // 공지는 관리자만 쓰므로 일반 글쓰기로 보내고, 나머지 탭은 해당 게시판을 미리 골라 둔다.
+  const writeCategory = activeFeedConfig.query.categoryCode;
+  const writeHref = writeCategory && writeCategory !== "NOTICE" ? `/posts/create?category=${writeCategory}` : "/posts/create";
 
   const loadTodayReports = async () => {
     try {
@@ -186,13 +175,13 @@ export default function HomePageClient() {
 
   const handleSnowReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!snowReportContent.trim() || submittingReport) return;
+    if (!snowReportContent.trim() || submittingReport || isSubmittingReportRef.current) return;
     if (!reportSeasonOpen) {
       alert("설질 제보는 10월부터 다음 해 4월까지만 등록할 수 있습니다.");
       return;
     }
     if (!profile) {
-      alert("설질 제보는 로그인 후 등록할 수 있습니다.");
+      router.push("/login");
       return;
     }
     const resortId = Number(snowReportResort);
@@ -201,17 +190,20 @@ export default function HomePageClient() {
       return;
     }
 
+    isSubmittingReportRef.current = true;
     setSubmittingReport(true);
     try {
+      const body = JSON.stringify({
+        resortId,
+        content: snowReportContent.trim(),
+      });
       const res = await csrfFetch(API_ENDPOINTS.resortReports.create, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resortId,
-          content: snowReportContent.trim(),
-        }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: reportIdempotencyKey.keyFor(body) },
+        body,
       });
       if (res.ok) {
+        reportIdempotencyKey.reset();
         setSnowReportContent("");
         await loadTodayReports();
       } else {
@@ -221,19 +213,13 @@ export default function HomePageClient() {
     } catch {
       alert("서버 통신 중 오류가 발생했습니다.");
     } finally {
+      isSubmittingReportRef.current = false;
       setSubmittingReport(false);
     }
   };
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
-        setProfile(response.ok ? await response.json() : null);
-      } catch {
-        setProfile(null);
-      }
-    })();
+    void fetchViewer().then(setProfile);
   }, []);
 
   useEffect(() => {
@@ -241,39 +227,6 @@ export default function HomePageClient() {
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then((data) => setCarpools(Array.isArray(data.content) ? data.content : []))
       .catch(() => setCarpools([]));
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const results = await Promise.allSettled(
-        HOME_FEED_TABS.map(async (tab) => {
-          const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
-          const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
-          if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
-          const data = await response.json();
-          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 15) : [] };
-        }),
-      );
-
-      if (cancelled) return;
-
-      const nextFeeds = { ...emptyFeeds };
-      const nextErrors = { ...emptyFeedErrors };
-      results.forEach((result, index) => {
-        const key = HOME_FEED_TABS[index].key;
-        if (result.status === "fulfilled") nextFeeds[key] = result.value.posts;
-        else nextErrors[key] = true;
-      });
-      setFeeds(nextFeeds);
-      setFeedErrors(nextErrors);
-      setFeedsLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {
@@ -294,8 +247,10 @@ export default function HomePageClient() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const retryFeed = async (tab: HomeFeedTab) => {
+  const loadFeed = useCallback(async (tab: HomeFeedTab) => {
+    requestedFeeds.current.add(tab.key);
     setFeedErrors((current) => ({ ...current, [tab.key]: false }));
+    setFeedLoading((current) => ({ ...current, [tab.key]: true }));
     const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
     try {
       const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
@@ -304,17 +259,31 @@ export default function HomePageClient() {
       setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 15) : [] }));
     } catch {
       setFeedErrors((current) => ({ ...current, [tab.key]: true }));
+    } finally {
+      setFeedLoading((current) => ({ ...current, [tab.key]: false }));
     }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadFeed(HOME_FEED_TABS[0]), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadFeed]);
+
+  const selectFeed = (tab: HomeFeedTab) => {
+    setActiveFeed(tab.key);
+    if (!requestedFeeds.current.has(tab.key)) void loadFeed(tab);
   };
 
   return (
     <div className="community-page">
       <TopNav active="home" />
       <main className="community-container home-main">
+        <OpeningDdayBanner />
         {/* TIER 1: Left Board Feed + Right Live Chat */}
         <div className="home-tier-1">
           <section className="home-feed tier-1-left">
             <div className="post-board">
+              <h1 className="sr-only">눈팅 SnowThing</h1>
               <nav className="board-tabs" aria-label="홈 게시판 선택">
                 <div className="filter-pills">
                   {HOME_FEED_TABS.map((tab) => (
@@ -322,7 +291,7 @@ export default function HomePageClient() {
                       key={tab.key}
                       type="button"
                       className={activeFeed === tab.key ? "active" : ""}
-                      onClick={() => setActiveFeed(tab.key)}
+                      onClick={() => selectFeed(tab)}
                     >
                       {tab.label}
                     </button>
@@ -331,10 +300,14 @@ export default function HomePageClient() {
                 <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
                   더보기 ↗
                 </Link>
+                <Link href={writeHref} className="board-tabs-write">
+                  <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+                  글쓰기
+                </Link>
               </nav>
 
               <div className="compact-post-list">
-                {feedsLoading ? (
+                {feedLoading[activeFeed] ? (
                   <div className="home-feed-state">
                     <span className="material-symbols-outlined spin">progress_activity</span>
                     <strong>게시글을 불러오는 중입니다.</strong>
@@ -343,7 +316,7 @@ export default function HomePageClient() {
                   <div className="home-feed-state error">
                     <span className="material-symbols-outlined">cloud_off</span>
                     <strong>게시글을 불러오지 못했습니다.</strong>
-                    <button type="button" onClick={() => void retryFeed(activeFeedConfig)}>
+                    <button type="button" onClick={() => void loadFeed(activeFeedConfig)}>
                       다시 시도
                     </button>
                   </div>
@@ -366,7 +339,7 @@ export default function HomePageClient() {
                           {post.hasImage && <PostImageIcon />}
                         </div>
                         <div className="m-row-right">
-                          <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
+                          <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} publicId={post.writerPublicId} />
                           <span className="m-stats">
                             {post.commentCount > 0 ? (
                               <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>
@@ -431,23 +404,30 @@ export default function HomePageClient() {
             <input
               value={snowReportContent}
               onChange={(event) => setSnowReportContent(event.target.value)}
+              onClick={() => {
+                if (!profile) {
+                  router.push("/login");
+                }
+              }}
+              readOnly={!profile}
               maxLength={100}
               placeholder={
                 !reportSeasonOpen
                   ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다"
                   : profile
                     ? "지금 슬로프 설질·대기시간·정설 상태를 한 줄(100자 이내)로 공유해주세요..."
-                    : "로그인 후 오늘의 설질 제보를 남겨주세요"
+                    : "로그인하고 오늘의 설질을 제보해보세요"
               }
               aria-label="설질 제보 내용"
+              className={!profile ? "cursor-pointer" : undefined}
               disabled={!reportSeasonOpen || resortMasterError}
             />
             <button
               type="submit"
               className="capsule-send-btn"
-              disabled={!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0}
+              disabled={profile ? (!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0) : false}
             >
-              {submittingReport ? "등록중" : "제보 등록"}
+              {profile ? (submittingReport ? "등록중" : "제보 등록") : "로그인"}
             </button>
           </form>
 
@@ -521,7 +501,7 @@ export default function HomePageClient() {
                         <span className="arr">→</span>
                         <em>{item.destinationResortName}</em>
                       </div>
-                      <span className="cp-date">{formatCarpoolShortDate(item.departureAt)}</span>
+                      <span className="cp-date">{item.departureAt ? formatShortDateTime(item.departureAt) : ""}</span>
                     </div>
                     <div className="cp-right">
                       <span className="cp-seat">{item.passengerCapacity}명</span>

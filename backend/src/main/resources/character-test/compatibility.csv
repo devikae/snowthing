@@ -1,0 +1,175 @@
+# 스키장 캐릭터 테스트 궁합표. 한 줄이 한 조합이다: 유형,유형,단계
+# 단계: 찰떡, 같이 타요, 무난, 티격태격, 각자 타요
+# 16유형의 대칭표라 같은 유형끼리를 포함해 136줄이고, A,B를 한 번만 적으면 B,A도 같은 값이다.
+# 조합이 빠지거나 중복되면 서버가 기동하지 않고, CharacterCompatibilityTableTest가 먼저 실패한다.
+#
+# 초안의 근거: 많이 도는 궁합 경향을 기억에 기대어 참고했다. 출처를 검증하지 않았고 공식 자료도 아니다.
+# 정확한 궁합이 아니라 재미로 보는 표이며, 사용자가 자유롭게 고친다. 화면과 API에 이 코드를 내보내지 않는다.
+
+# ESTJ
+ESTJ,ESTJ,같이 타요
+ESTJ,ESTP,무난
+ESTJ,ESFJ,무난
+ESTJ,ESFP,티격태격
+ESTJ,ENTJ,무난
+ESTJ,ENTP,무난
+ESTJ,ENFJ,각자 타요
+ESTJ,ENFP,각자 타요
+ESTJ,ISTJ,같이 타요
+ESTJ,ISTP,찰떡
+ESTJ,ISFJ,무난
+ESTJ,ISFP,찰떡
+ESTJ,INTJ,무난
+ESTJ,INTP,찰떡
+ESTJ,INFJ,각자 타요
+ESTJ,INFP,각자 타요
+
+# ESTP
+ESTP,ESTP,같이 타요
+ESTP,ESFJ,티격태격
+ESTP,ESFP,무난
+ESTP,ENTJ,무난
+ESTP,ENTP,무난
+ESTP,ENFJ,각자 타요
+ESTP,ENFP,각자 타요
+ESTP,ISTJ,찰떡
+ESTP,ISTP,같이 타요
+ESTP,ISFJ,찰떡
+ESTP,ISFP,무난
+ESTP,INTJ,무난
+ESTP,INTP,무난
+ESTP,INFJ,각자 타요
+ESTP,INFP,각자 타요
+
+# ESFJ
+ESFJ,ESFJ,같이 타요
+ESFJ,ESFP,무난
+ESFJ,ENTJ,티격태격
+ESFJ,ENTP,티격태격
+ESFJ,ENFJ,각자 타요
+ESFJ,ENFP,각자 타요
+ESFJ,ISTJ,무난
+ESFJ,ISTP,찰떡
+ESFJ,ISFJ,같이 타요
+ESFJ,ISFP,찰떡
+ESFJ,INTJ,티격태격
+ESFJ,INTP,티격태격
+ESFJ,INFJ,각자 타요
+ESFJ,INFP,각자 타요
+
+# ESFP
+ESFP,ESFP,같이 타요
+ESFP,ENTJ,티격태격
+ESFP,ENTP,티격태격
+ESFP,ENFJ,각자 타요
+ESFP,ENFP,각자 타요
+ESFP,ISTJ,찰떡
+ESFP,ISTP,무난
+ESFP,ISFJ,찰떡
+ESFP,ISFP,같이 타요
+ESFP,INTJ,티격태격
+ESFP,INTP,티격태격
+ESFP,INFJ,각자 타요
+ESFP,INFP,각자 타요
+
+# ENTJ
+ENTJ,ENTJ,같이 타요
+ENTJ,ENTP,무난
+ENTJ,ENFJ,무난
+ENTJ,ENFP,같이 타요
+ENTJ,ISTJ,무난
+ENTJ,ISTP,무난
+ENTJ,ISFJ,티격태격
+ENTJ,ISFP,티격태격
+ENTJ,INTJ,같이 타요
+ENTJ,INTP,찰떡
+ENTJ,INFJ,무난
+ENTJ,INFP,찰떡
+
+# ENTP
+ENTP,ENTP,같이 타요
+ENTP,ENFJ,같이 타요
+ENTP,ENFP,무난
+ENTP,ISTJ,무난
+ENTP,ISTP,무난
+ENTP,ISFJ,티격태격
+ENTP,ISFP,티격태격
+ENTP,INTJ,찰떡
+ENTP,INTP,같이 타요
+ENTP,INFJ,찰떡
+ENTP,INFP,무난
+
+# ENFJ
+ENFJ,ENFJ,같이 타요
+ENFJ,ENFP,무난
+ENFJ,ISTJ,각자 타요
+ENFJ,ISTP,각자 타요
+ENFJ,ISFJ,각자 타요
+ENFJ,ISFP,찰떡
+ENFJ,INTJ,무난
+ENFJ,INTP,같이 타요
+ENFJ,INFJ,같이 타요
+ENFJ,INFP,찰떡
+
+# ENFP
+ENFP,ENFP,같이 타요
+ENFP,ISTJ,각자 타요
+ENFP,ISTP,각자 타요
+ENFP,ISFJ,각자 타요
+ENFP,ISFP,각자 타요
+ENFP,INTJ,찰떡
+ENFP,INTP,무난
+ENFP,INFJ,찰떡
+ENFP,INFP,같이 타요
+
+# ISTJ
+ISTJ,ISTJ,같이 타요
+ISTJ,ISTP,무난
+ISTJ,ISFJ,무난
+ISTJ,ISFP,티격태격
+ISTJ,INTJ,무난
+ISTJ,INTP,무난
+ISTJ,INFJ,각자 타요
+ISTJ,INFP,각자 타요
+
+# ISTP
+ISTP,ISTP,같이 타요
+ISTP,ISFJ,티격태격
+ISTP,ISFP,무난
+ISTP,INTJ,무난
+ISTP,INTP,무난
+ISTP,INFJ,각자 타요
+ISTP,INFP,각자 타요
+
+# ISFJ
+ISFJ,ISFJ,같이 타요
+ISFJ,ISFP,무난
+ISFJ,INTJ,티격태격
+ISFJ,INTP,티격태격
+ISFJ,INFJ,각자 타요
+ISFJ,INFP,각자 타요
+
+# ISFP
+ISFP,ISFP,같이 타요
+ISFP,INTJ,티격태격
+ISFP,INTP,티격태격
+ISFP,INFJ,각자 타요
+ISFP,INFP,각자 타요
+
+# INTJ
+INTJ,INTJ,같이 타요
+INTJ,INTP,무난
+INTJ,INFJ,무난
+INTJ,INFP,같이 타요
+
+# INTP
+INTP,INTP,같이 타요
+INTP,INFJ,같이 타요
+INTP,INFP,무난
+
+# INFJ
+INFJ,INFJ,같이 타요
+INFJ,INFP,무난
+
+# INFP
+INFP,INFP,같이 타요

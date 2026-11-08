@@ -26,18 +26,18 @@ member (1) ─── (N) post (1) ─── (1) carpool_detail (N) ─── (1)
 | `departure_at` | DATETIME NOT NULL | 출발 시각 |
 | `return_at` | DATETIME NULL | 왕복 복귀 시각 |
 | `passenger_capacity` | INT NOT NULL, CHECK > 0 | 운전자 제외 인원 |
-| `fuel_type` | VARCHAR(30) NOT NULL | 연료 종류 |
-| `fuel_efficiency` | DECIMAL(6,2) NOT NULL, CHECK > 0 | km/L |
+| `fuel_type` | VARCHAR(30) NULL | 연료 종류 |
+| `fuel_efficiency` | DECIMAL(6,2) NULL, CHECK > 0 | km/L |
 | `cost_mode` | VARCHAR(20) NOT NULL DEFAULT `AUTO` | 자동 계산/1인 금액 직접 지정 |
-| `fuel_price` | DECIMAL(10,2) NOT NULL, CHECK >= 0 | 유가 스냅샷 |
-| `fuel_price_source` | VARCHAR(20) NOT NULL | `OPINET`, `CACHE`, `USER_INPUT` |
-| `fuel_price_observed_at` | DATETIME NOT NULL | 유가 조회 시각 |
-| `route_distance_km` | DECIMAL(8,2) NOT NULL, CHECK > 0 | 최종 적용 거리 |
-| `route_toll_fee` | INT NOT NULL, CHECK >= 0 | 최종 적용 통행료 |
-| `estimated_fuel_cost` | INT NOT NULL, CHECK >= 0 | 예상 연료비 |
-| `estimated_total_cost` | INT NOT NULL, CHECK >= 0 | 총 예상 비용 |
-| `estimated_cost_per_person` | INT NOT NULL, CHECK >= 0 | 운전자 포함 1인 비용 |
-| `route_source` | VARCHAR(20) NOT NULL | 거리·통행료 계산 출처(`KAKAO`) |
+| `fuel_price` | DECIMAL(10,2) NULL, CHECK >= 0 | 유가 스냅샷 |
+| `fuel_price_source` | VARCHAR(20) NULL | `OPINET`, `CACHE`, `USER_INPUT` |
+| `fuel_price_observed_at` | DATETIME NULL | 유가 조회 시각 |
+| `route_distance_km` | DECIMAL(8,2) NULL, CHECK > 0 | 최종 적용 거리 |
+| `route_toll_fee` | INT NULL, CHECK >= 0 | 최종 적용 통행료 |
+| `estimated_fuel_cost` | INT NULL, CHECK >= 0 | 예상 연료비 |
+| `estimated_total_cost` | INT NULL, CHECK >= 0 | 총 예상 비용 |
+| `estimated_cost_per_person` | INT NOT NULL, CHECK >= 0 | 1인 금액. 자동 계산은 운전자 포함 1인 비용 |
+| `route_source` | VARCHAR(20) NULL | 거리·통행료 계산 출처(`KAKAO`) |
 | `route_calculated_at` | DATETIME NULL | 경로 계산 시각 |
 | `contact_info` | VARCHAR(500) NULL | 외부 연락 수단 |
 | `contact_public_to_guest` | BOOLEAN NOT NULL DEFAULT FALSE | 비회원 공개 동의 |
@@ -53,4 +53,4 @@ member (1) ─── (N) post (1) ─── (1) carpool_detail (N) ─── (1)
 | `route_latitude` | DECIMAL(10,7) NULL | 검증된 스키장 진입 지점 위도 |
 | `route_longitude` | DECIMAL(10,7) NULL | 검증된 스키장 진입 지점 경도 |
 
-운영 DB는 `ddl-auto: validate`이므로 신규 테이블은 `007`, 비용 방식은 `008`, 장비 적재 여부는 `009`, 미래 일정 검색 인덱스와 13개 리조트 기준 좌표는 `010`, 유가 출처와 계산 당시 목적지 좌표 스냅샷은 `011`, 최신순 정렬 인덱스는 `012` production migration으로 순서대로 반영합니다. 기존 마이그레이션은 체크섬이 기록되므로 수정하지 않습니다.
+운영 DB는 `ddl-auto: validate`이므로 신규 테이블은 `007`, 비용 방식은 `008`, 장비 적재 여부는 `009`, 미래 일정 검색 인덱스와 13개 리조트 기준 좌표는 `010`, 유가 출처와 계산 당시 목적지 좌표 스냅샷은 `011`, 최신순 정렬 인덱스는 `012`, 직접 입력 글의 계산 컬럼 NULL 허용과 `AUTO` 값 필수 CHECK(`chk_carpool_auto_cost_snapshot`)는 `035` production migration으로 순서대로 반영합니다. 기존 마이그레이션은 체크섬이 기록되므로 수정하지 않습니다.

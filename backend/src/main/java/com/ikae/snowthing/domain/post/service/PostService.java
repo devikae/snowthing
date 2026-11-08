@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.post.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.image.service.ImageUrlResolver;
 import com.ikae.snowthing.domain.member.entity.Member;
-import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.*;
@@ -22,6 +22,7 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
+import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
@@ -34,10 +35,8 @@ import lombok.extern.slf4j.Slf4j;
 public class PostService {
 
     private static final String ANONYMOUS_CATEGORY_CODE = "ANONYMOUS";
-    private static final String MARKET_CATEGORY_CODE = "MARKET";
     private static final String CREW_CATEGORY_CODE = "CREW";
     private static final String SEASON_ROOM_CATEGORY_CODE = "SEASON_ROOM";
-    private static final String NOTICE_CATEGORY_CODE = "NOTICE";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
     private static final int MAX_OFFSET_PAGE = 100;
@@ -52,6 +51,7 @@ public class PostService {
     private final PasswordEncoder passwordEncoder;
     private final ImageUrlResolver imageUrlResolver;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
 
     @Transactional
     public PostResponse createPost(
@@ -61,10 +61,20 @@ public class PostService {
                         .findByCode(request.categoryCode())
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
-        rejectMarketCategory(category);
+        rejectOwnScreenCategory(category);
         requireNoticeAdmin(category, userDetails);
-        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && request.isAnonymous()) {
+        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode())
+                && request.isAnonymous()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
+        if (PostCategoryCodes.isInquiry(category.getCode())
+                && !InquiryAccess.isSessionUser(userDetails)) {
+            throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
+        }
+
+        // 비회원은 익명게시판에만 쓴다. isAnonymous=true로 다른 게시판에 쓰는 API 경로를 막는다.
+        if (userDetails == null && !ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+            throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         if (isAnonymousDisallowedCategory(category.getCode())) {
@@ -116,6 +126,7 @@ public class PostService {
                         .anonymousPassword(encodedPassword)
                         .hasImage(false)
                         .build();
+        imageLifecycle.rejectNewInlineImages(request.content(), null);
         imageLifecycle.protectAll(
                 request.imageUrls(),
                 request.content(),
@@ -123,7 +134,9 @@ public class PostService {
         post.replaceImages(toPostImages(request.imageUrls()));
         post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
 
-        return PostResponse.from(postRepository.save(post));
+        Post saved = postRepository.save(post);
+        searchOutbox.postChanged(saved);
+        return PostResponse.from(saved);
     }
 
     @Transactional
@@ -143,10 +156,14 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
         rejectMarketPost(post);
+        InquiryAccess.requireReadable(post, userDetails);
 
         if (post.getStatus() != PostStatus.NORMAL) {
             if (!isAdmin(userDetails)) {
-                throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+                throw new CustomAuthException(
+                        post.getStatus() == PostStatus.TEMPORARY_HOLD
+                                ? ErrorCode.CONTENT_TEMPORARILY_HELD
+                                : ErrorCode.POST_NOT_FOUND);
             }
         }
 
@@ -160,7 +177,8 @@ public class PostService {
             postRepository.increaseViewCount(post.getId());
             viewCount++;
         }
-        return PostDetailResponse.from(post, viewCount, imageUrls);
+        return PostDetailResponse.from(
+                post, viewCount, imageUrls, userDetails == null ? null : userDetails.getPublicId());
     }
 
     public Page<PostListResponse> getPostList(String categoryCode, int page, int size) {
@@ -180,31 +198,72 @@ public class PostService {
 
         Page<Post> posts;
         if (categoryCode != null && !categoryCode.isBlank()) {
-            posts = postRepository.findByCategoryCodeWithMemberAndCategory(categoryCode, pageable);
+            posts =
+                    postRepository.findByCategoryCodeWithMemberAndCategory(
+                            categoryCode, PostCategoryCodes.HIDDEN_FROM_PUBLIC, pageable);
         } else {
-            posts = postRepository.findAllWithMemberAndCategory(pageable);
+            posts =
+                    postRepository.findAllWithMemberAndCategory(
+                            PostCategoryCodes.HIDDEN_FROM_BOARD_LIST, pageable);
         }
 
         return posts.map(this::toPostListResponse);
     }
 
-    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
-            searchPostsByOffset(PostSearchRequest request) {
+    public CursorPageResponse<PostListResponse> searchPostsByOffset(PostSearchRequest request) {
+        return searchPostsByOffset(request, null);
+    }
+
+    public CursorPageResponse<PostListResponse> searchPostsByOffset(
+            PostSearchRequest request, CustomUserDetails userDetails) {
         if (request.page() != null && request.page() > MAX_OFFSET_PAGE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_LIMIT);
         }
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return resolveThumbnailUrls(postRepository.findPostsByOffset(request));
+        PostSearchRequest scoped = scopeInquiry(request, userDetails);
+        return withAnswered(scoped, postRepository.findPostsByOffset(scoped));
     }
 
-    public com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>
-            searchPostsByCursor(PostSearchRequest request) {
+    public CursorPageResponse<PostListResponse> searchPostsByCursor(PostSearchRequest request) {
+        return searchPostsByCursor(request, null);
+    }
+
+    public CursorPageResponse<PostListResponse> searchPostsByCursor(
+            PostSearchRequest request, CustomUserDetails userDetails) {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
-        return resolveThumbnailUrls(postRepository.findPostsByCursor(request));
+        PostSearchRequest scoped = scopeInquiry(request, userDetails);
+        return withAnswered(scoped, postRepository.findPostsByCursor(scoped));
+    }
+
+    /** 1:1 문의 목록은 로그인이 필요하고, 관리자가 아니면 본인 글로 좁힌다. 요청에 담긴 작성자 값은 믿지 않는다. */
+    private PostSearchRequest scopeInquiry(
+            PostSearchRequest request, CustomUserDetails userDetails) {
+        if (!PostCategoryCodes.isInquiry(request.categoryCode())) {
+            return request.withWriterPublicId(null);
+        }
+        if (!InquiryAccess.isSessionUser(userDetails)) {
+            throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
+        }
+        return request.withWriterPublicId(isAdmin(userDetails) ? null : userDetails.getPublicId());
+    }
+
+    private CursorPageResponse<PostListResponse> withAnswered(
+            PostSearchRequest request, CursorPageResponse<PostListResponse> page) {
+        if (!PostCategoryCodes.isInquiry(request.categoryCode()) || page.content().isEmpty()) {
+            return page;
+        }
+        Set<String> answered =
+                postRepository.findPublicIdsAnsweredByAdmin(
+                        page.content().stream().map(PostListResponse::publicId).toList());
+        List<PostListResponse> content =
+                page.content().stream()
+                        .map(item -> item.withAnswered(answered.contains(item.publicId())))
+                        .toList();
+        return new CursorPageResponse<>(content, page.pageInfo());
     }
 
     @Transactional
@@ -219,6 +278,7 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
 
+        InquiryAccess.requireReadable(post, userDetails);
         // 수정 권한: 작성자 본인만 수정 가능 (관리자 수정 불가)
         validateEditPermission(post, request.anonymousPassword(), userDetails);
 
@@ -227,11 +287,12 @@ public class PostService {
                         .findByCode(request.categoryCode())
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
-        rejectMarketPost(post);
-        rejectMarketCategory(category);
+        rejectOwnScreenPost(post);
+        rejectOwnScreenCategory(category);
+        rejectInquiryBoundaryChange(post.getCategory(), category);
         requireNoticeAdmin(post.getCategory(), userDetails);
         requireNoticeAdmin(category, userDetails);
-        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && post.isAnonymous()) {
+        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode()) && post.isAnonymous()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
@@ -239,6 +300,14 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
+        // 비회원 글을 수정으로 다른 게시판에 옮겨 작성 제한을 우회하지 못하게 한다.
+        if (post.getMember() == null
+                && !category.getCode().equalsIgnoreCase(post.getCategory().getCode())
+                && !ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        }
+
+        imageLifecycle.rejectNewInlineImages(request.content(), post.getContent());
         imageLifecycle.protectExisting(
                 request.imageUrls(),
                 request.content(),
@@ -250,6 +319,7 @@ public class PostService {
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }
+        searchOutbox.postChanged(post);
         return PostResponse.from(post);
     }
 
@@ -264,14 +334,16 @@ public class PostService {
         if (post.isDeleted()) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
-        rejectMarketPost(post);
+        rejectOwnScreenPost(post);
+        InquiryAccess.requireReadable(post, userDetails);
 
         boolean isAdmin = isAdmin(userDetails);
 
         validateDeletePermission(post, anonymousPassword, userDetails, isAdmin);
 
-        Long deleterMemberId = userDetails != null ? userDetails.getMemberId() : null;
-        post.softDelete(deleterMemberId);
+        post.softDelete(userDetails != null ? userDetails.getMemberId() : null);
+        imageLifecycle.releasePostImages(post);
+        searchOutbox.postChanged(post);
     }
 
     private void validateEditPermission(
@@ -334,57 +406,64 @@ public class PostService {
     }
 
     private void rejectMarketPost(Post post) {
-        if (MARKET_CATEGORY_CODE.equalsIgnoreCase(post.getCategory().getCode())) {
+        if (PostCategoryCodes.MARKET.equalsIgnoreCase(post.getCategory().getCode())) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
     }
 
-    private void rejectMarketCategory(PostCategory category) {
-        if (MARKET_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+    private void rejectOwnScreenPost(Post post) {
+        if (PostCategoryCodes.hasOwnScreen(post.getCategory().getCode())) {
+            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    private void rejectOwnScreenCategory(PostCategory category) {
+        if (PostCategoryCodes.hasOwnScreen(category.getCode())) {
             throw new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND);
         }
     }
 
     private void requireNoticeAdmin(PostCategory category, CustomUserDetails userDetails) {
-        if (NOTICE_CATEGORY_CODE.equalsIgnoreCase(category.getCode()) && !isAdmin(userDetails)) {
+        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode())
+                && !isAdmin(userDetails)) {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /** 문의에서 나가면 관리자 답변이 공개되고, 문의로 들어오면 기존 댓글 작성자가 자기 댓글을 못 본다. */
+    private void rejectInquiryBoundaryChange(PostCategory current, PostCategory requested) {
+        if (PostCategoryCodes.isInquiry(current.getCode())
+                != PostCategoryCodes.isInquiry(requested.getCode())) {
+            throw new CustomAuthException(ErrorCode.INQUIRY_CATEGORY_CHANGE_NOT_ALLOWED);
         }
     }
 
     private boolean isAnonymousDisallowedCategory(String categoryCode) {
         return CREW_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
-                || SEASON_ROOM_CATEGORY_CODE.equalsIgnoreCase(categoryCode);
+                || SEASON_ROOM_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
+                || PostCategoryCodes.isInquiry(categoryCode);
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {
-        return userDetails != null
-                && userDetails.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals(Role.ROLE_ADMIN.getKey()));
+        return InquiryAccess.isAdmin(userDetails);
     }
 
     private PostListResponse toPostListResponse(Post post) {
-        PostListResponse response = PostListResponse.from(post);
-        return response.withThumbnailImageUrl(null);
-    }
-
-    private CursorPageResponse<PostListResponse> resolveThumbnailUrls(
-            CursorPageResponse<PostListResponse> page) {
-        List<PostListResponse> content =
-                page.content().stream()
-                        .map(response -> response.withThumbnailImageUrl(null))
-                        .toList();
-        return new CursorPageResponse<>(content, page.pageInfo());
+        return PostListResponse.from(post);
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {
+        List<String> storageValues =
+                imageUrls.stream().map(imageUrlResolver::toStorageValue).toList();
+        // 외부 주소를 받으면 추적 픽셀이나 http 혼합 콘텐츠가 글에 붙는다. 우리 업로드 키만 받는다.
+        if (storageValues.stream().anyMatch(value -> !imageUrlResolver.isManagedOriginal(value))
+                || storageValues.stream().distinct().count() != storageValues.size()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
         List<PostImage> images = new ArrayList<>();
         int sortOrder = FIRST_IMAGE_SORT_ORDER;
-        for (String imageUrl : imageUrls) {
-            images.add(
-                    PostImage.builder()
-                            .imageUrl(imageUrlResolver.toStorageValue(imageUrl))
-                            .sortOrder(sortOrder++)
-                            .build());
+        for (String storageValue : storageValues) {
+            images.add(PostImage.builder().imageUrl(storageValue).sortOrder(sortOrder++).build());
         }
         return images;
     }

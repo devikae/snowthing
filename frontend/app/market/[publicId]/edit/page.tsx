@@ -10,7 +10,10 @@ import { PageHeading } from "../../../components/PageHeading";
 import type { ToastEditorHandle } from "../../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
+import { errorText } from "../../../lib/errorText";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
 
@@ -36,6 +39,7 @@ const methods = [["DIRECT", "직거래"], ["DELIVERY", "택배"], ["BOTH", "모�
 export default function MarketEditPage({ params }: { params: Promise<{ publicId: string }> }) {
   const { publicId } = use(params);
   const router = useRouter();
+  useLeaveWarning();
   const editorRef = useRef<ToastEditorHandle>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -93,10 +97,19 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
       setError("사진은 최대 10장까지 등록할 수 있습니다.");
       return;
     }
+    // 축소가 끝날 때까지 등록 버튼과 파일 칸을 막는다.
     setUploading(true);
     setError("");
+    const selected = Array.from(files);
+    const prepared = await prepareImagesForUpload(selected).catch(() => selected);
+    if (prepared.some(isOversizedImage)) {
+      setError(OVERSIZED_IMAGE_MESSAGE);
+      setUploading(false);
+      return;
+    }
     try {
-      for (const file of Array.from(files)) {
+      for (const file of prepared) {
+        if (file.size > 5 * 1024 * 1024) throw new Error("사진은 한 장에 5MB까지 올릴 수 있습니다.");
         const formData = new FormData();
         formData.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, {
@@ -111,7 +124,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
         setImages((current) => [...current, uploaded.imageUrl]);
       }
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "이미지 업로드에 실패했습니다.");
+      setError(errorText(uploadError, "이미지 업로드에 실패했습니다."));
     } finally {
       setUploading(false);
     }
@@ -132,29 +145,33 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
     }
     setSubmitting(true);
     setError("");
-    const response = await csrfFetch(API_ENDPOINTS.market.update(publicId), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        version: detail.version,
-        categoryCode,
-        title: title.trim(),
-        content,
-        productCondition,
-        transactionMethod,
-        price: numericPrice,
-        negotiable: free ? false : negotiable,
-        free,
-        contact: contact.trim(),
-        imageUrls: images,
-      }),
-    });
-    if (response.ok) {
-      router.replace(`/market/${publicId}`);
-      return;
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.market.update(publicId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          version: detail.version,
+          categoryCode,
+          title: title.trim(),
+          content,
+          productCondition,
+          transactionMethod,
+          price: numericPrice,
+          negotiable: free ? false : negotiable,
+          free,
+          contact: contact.trim(),
+          imageUrls: images,
+        }),
+      });
+      if (response.ok) {
+        router.replace(`/market/${publicId}`);
+        return;
+      }
+      const data = await response.json().catch(() => null);
+      setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해주세요.");
+    } catch {
+      setError("판매글을 수정하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요.");
     }
-    const data = await response.json().catch(() => null);
-    setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해주세요.");
     setSubmitting(false);
   };
 

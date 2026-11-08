@@ -1,6 +1,7 @@
 package com.ikae.snowthing.domain.carpool.service;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -44,8 +45,8 @@ public class CarpoolService {
             CarpoolCreateRequest request, CustomUserDetails userDetails, String clientIp) {
         requireAuthenticated(userDetails);
         validateRequest(request);
-        CarpoolAutoPreviewResponse calculation = calculate(request);
-        return carpoolWriterService.save(request, userDetails.getPublicId(), clientIp, calculation);
+        return carpoolWriterService.save(
+                request, userDetails.getPublicId(), clientIp, calculate(request));
     }
 
     public CarpoolResponse update(
@@ -53,9 +54,12 @@ public class CarpoolService {
         requireAuthenticated(userDetails);
         validateRequest(request);
         validateManagePermission(publicId, userDetails);
-        CarpoolAutoPreviewResponse calculation = calculate(request);
         return carpoolWriterService.update(
-                publicId, request, userDetails.getPublicId(), isAdmin(userDetails), calculation);
+                publicId,
+                request,
+                userDetails.getPublicId(),
+                isAdmin(userDetails),
+                calculate(request));
     }
 
     public void delete(String publicId, CustomUserDetails userDetails) {
@@ -69,6 +73,9 @@ public class CarpoolService {
                 postRepository
                         .findWithMemberAndCategoryByPublicId(publicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
+        if (!post.isDeleted() && post.getStatus() == PostStatus.TEMPORARY_HOLD) {
+            throw new CustomAuthException(ErrorCode.CONTENT_TEMPORARILY_HELD);
+        }
         if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
@@ -84,27 +91,47 @@ public class CarpoolService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CarpoolSummaryResponse> findPage(int page, int size) {
+    public Page<CarpoolSummaryResponse> findPage(int page, int size, String keyword) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
         if (page > MAX_PAGE_INDEX) {
             throw new CustomAuthException(ErrorCode.CARPOOL_PAGE_LIMIT_EXCEEDED);
         }
+        PageRequest pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(Sort.Direction.DESC, "createdAt")
+                                .and(Sort.by(Sort.Direction.DESC, "id")));
         Page<CarpoolDetail> details =
-                carpoolDetailRepository
-                        .findByPostStatusAndPostIsDeletedFalseAndDepartureAtGreaterThanEqual(
+                keyword == null || keyword.isBlank()
+                        ? carpoolDetailRepository
+                                .findByPostStatusAndPostIsDeletedFalseAndDepartureAtGreaterThanEqual(
+                                        PostStatus.NORMAL, LocalDateTime.now(), pageable)
+                        : carpoolDetailRepository.searchVisible(
                                 PostStatus.NORMAL,
                                 LocalDateTime.now(),
-                                PageRequest.of(
-                                        page,
-                                        size,
-                                        Sort.by(Sort.Direction.DESC, "createdAt")
-                                                .and(Sort.by(Sort.Direction.DESC, "id"))));
+                                likePattern(keyword),
+                                pageable);
         return details.map(CarpoolSummaryResponse::from);
     }
 
+    private String likePattern(String keyword) {
+        String escaped =
+                keyword.trim()
+                        .toLowerCase(Locale.ROOT)
+                        .replace("!", "!!")
+                        .replace("%", "!%")
+                        .replace("_", "!_");
+        return "%" + escaped + "%";
+    }
+
+    /** 1인 금액을 직접 입력한 글은 계산하지 않으므로 외부 API를 호출하지 않고 null을 돌려준다. */
     private CarpoolAutoPreviewResponse calculate(CarpoolCreateRequest request) {
+        if (request.costMode() == CarpoolCostMode.MANUAL) {
+            return null;
+        }
         return carpoolAutoCalculationService.preview(
                 new CarpoolAutoPreviewRequest(
                         request.departureLongitude(),
@@ -122,10 +149,15 @@ public class CarpoolService {
 
     private void validateRequest(CarpoolCreateRequest request) {
         validateSchedule(request);
-        if (request.costMode() == CarpoolCostMode.MANUAL && request.manualCostPerPerson() == null) {
-            throw new CustomAuthException(ErrorCode.INVALID_CARPOOL_VALUE);
+        if (request.costMode() == CarpoolCostMode.MANUAL) {
+            if (request.manualCostPerPerson() == null) {
+                throw new CustomAuthException(ErrorCode.INVALID_CARPOOL_VALUE);
+            }
+            return;
         }
-        if (request.routeSource() == null
+        if (request.fuelType() == null
+                || request.fuelEfficiency() == null
+                || request.routeSource() == null
                 || (request.routeSource() == CarpoolRouteSource.KAKAO
                         && (request.departureLatitude() == null
                                 || request.departureLongitude() == null))) {

@@ -65,43 +65,43 @@ public class CarpoolDetail extends BaseTimeEntity {
     private int passengerCapacity;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "fuel_type", nullable = false, length = 30)
+    @Column(name = "fuel_type", length = 30)
     private CarpoolFuelType fuelType;
 
-    @Column(name = "fuel_efficiency", nullable = false, precision = 6, scale = 2)
+    @Column(name = "fuel_efficiency", precision = 6, scale = 2)
     private BigDecimal fuelEfficiency;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "cost_mode", nullable = false, length = 20)
     private CarpoolCostMode costMode;
 
-    @Column(name = "fuel_price", nullable = false, precision = 10, scale = 2)
+    @Column(name = "fuel_price", precision = 10, scale = 2)
     private BigDecimal fuelPrice;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "fuel_price_source", nullable = false, length = 20)
+    @Column(name = "fuel_price_source", length = 20)
     private CarpoolFuelPriceSource fuelPriceSource;
 
-    @Column(name = "fuel_price_observed_at", nullable = false)
+    @Column(name = "fuel_price_observed_at")
     private LocalDateTime fuelPriceObservedAt;
 
-    @Column(name = "route_distance_km", nullable = false, precision = 8, scale = 2)
+    @Column(name = "route_distance_km", precision = 8, scale = 2)
     private BigDecimal routeDistanceKm;
 
-    @Column(name = "route_toll_fee", nullable = false)
-    private int routeTollFee;
+    @Column(name = "route_toll_fee")
+    private Integer routeTollFee;
 
-    @Column(name = "estimated_fuel_cost", nullable = false)
-    private int estimatedFuelCost;
+    @Column(name = "estimated_fuel_cost")
+    private Integer estimatedFuelCost;
 
-    @Column(name = "estimated_total_cost", nullable = false)
-    private int estimatedTotalCost;
+    @Column(name = "estimated_total_cost")
+    private Integer estimatedTotalCost;
 
     @Column(name = "estimated_cost_per_person", nullable = false)
     private int estimatedCostPerPerson;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "route_source", nullable = false, length = 20)
+    @Column(name = "route_source", length = 20)
     private CarpoolRouteSource routeSource;
 
     @Column(name = "route_calculated_at")
@@ -137,9 +137,9 @@ public class CarpoolDetail extends BaseTimeEntity {
             CarpoolFuelPriceSource fuelPriceSource,
             LocalDateTime fuelPriceObservedAt,
             BigDecimal routeDistanceKm,
-            int routeTollFee,
-            int estimatedFuelCost,
-            int estimatedTotalCost,
+            Integer routeTollFee,
+            Integer estimatedFuelCost,
+            Integer estimatedTotalCost,
             int estimatedCostPerPerson,
             CarpoolRouteSource routeSource,
             LocalDateTime routeCalculatedAt,
@@ -195,9 +195,9 @@ public class CarpoolDetail extends BaseTimeEntity {
             CarpoolFuelPriceSource fuelPriceSource,
             LocalDateTime fuelPriceObservedAt,
             BigDecimal routeDistanceKm,
-            int routeTollFee,
-            int estimatedFuelCost,
-            int estimatedTotalCost,
+            Integer routeTollFee,
+            Integer estimatedFuelCost,
+            Integer estimatedTotalCost,
             int estimatedCostPerPerson,
             CarpoolRouteSource routeSource,
             LocalDateTime routeCalculatedAt,

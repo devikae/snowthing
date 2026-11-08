@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostImage;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
@@ -18,6 +19,8 @@ public record PostDetailResponse(
         String content,
         PostStatus status,
         boolean isAnonymous,
+        boolean isAuthor,
+        boolean requiresPassword,
         int viewCount,
         int commentCount,
         int likeCount,
@@ -32,6 +35,17 @@ public record PostDetailResponse(
         activeReactionTypes = Set.copyOf(activeReactionTypes);
     }
 
+    private static WriterInfo memberWriter(Member member) {
+        if (member == null) {
+            return WriterInfo.anonymous("알 수 없음");
+        }
+        if (member.isWithdrawn()) {
+            return WriterInfo.member(null, Member.WITHDRAWN_NICKNAME, null);
+        }
+        return WriterInfo.member(
+                member.getPublicId(), member.getNickname(), member.getProfileImageUrl());
+    }
+
     public record WriterInfo(String publicId, String nickname, String profileImageUrl) {
         public static WriterInfo anonymous(String maskedIp) {
             return new WriterInfo(null, maskedIp, null);
@@ -42,17 +56,17 @@ public record PostDetailResponse(
         }
     }
 
-    public static PostDetailResponse from(Post post, int viewCount, List<String> imageUrls) {
+    public static PostDetailResponse from(
+            Post post, int viewCount, List<String> imageUrls, String viewerPublicId) {
+        boolean isAuthor =
+                viewerPublicId != null
+                        && post.getMember() != null
+                        && viewerPublicId.equals(post.getMember().getPublicId());
         WriterInfo writerInfo =
                 post.isAnonymous()
                         ? WriterInfo.anonymous(
                                 WriterDisplayFormatter.formatAnonymous(post.getWriterIp()))
-                        : (post.getMember() != null
-                                ? WriterInfo.member(
-                                        post.getMember().getPublicId(),
-                                        post.getMember().getNickname(),
-                                        post.getMember().getProfileImageUrl())
-                                : WriterInfo.anonymous("알 수 없음"));
+                        : memberWriter(post.getMember());
 
         return new PostDetailResponse(
                 post.getPublicId(),
@@ -62,6 +76,8 @@ public record PostDetailResponse(
                 post.getContent(),
                 post.getStatus(),
                 post.isAnonymous(),
+                isAuthor,
+                post.isAnonymous() && !isAuthor && post.getAnonymousPassword() != null,
                 viewCount,
                 post.getCommentCount(),
                 post.getLikeCount(),
@@ -81,6 +97,8 @@ public record PostDetailResponse(
                 content,
                 status,
                 isAnonymous,
+                isAuthor,
+                requiresPassword,
                 viewCount,
                 commentCount,
                 likeCount,
@@ -93,7 +111,7 @@ public record PostDetailResponse(
 
     public static PostDetailResponse from(Post post, int viewCount) {
         List<String> imageUrls = post.getImages().stream().map(PostImage::getImageUrl).toList();
-        return from(post, viewCount, imageUrls);
+        return from(post, viewCount, imageUrls, null);
     }
 
     public static PostDetailResponse from(Post post) {

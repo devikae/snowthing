@@ -2,7 +2,6 @@ package com.ikae.snowthing.domain.resortreport.controller;
 
 import jakarta.validation.Valid;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +12,9 @@ import com.ikae.snowthing.domain.resortreport.service.ResortReportService;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
+import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
+import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
@@ -23,17 +25,28 @@ import lombok.RequiredArgsConstructor;
 public class ResortReportController {
 
     private final ResortReportService resortReportService;
+    private final ContentWriteRateLimiter contentWriteRateLimiter;
+    private final IdempotentCreateHandler idempotentCreateHandler;
 
     @PostMapping
-    public ResponseEntity<ResortReportResponse> createReport(
+    public ResponseEntity<Object> createReport(
             @Valid @RequestBody ResortReportCreateRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = IdempotentCreateHandler.HEADER, required = false)
+                    String idempotencyKey) {
         if (userDetails == null || userDetails.getMember() == null) {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
-        ResortReportResponse response =
-                resortReportService.createReport(userDetails.getMember().getId(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return idempotentCreateHandler.create(
+                IdempotencyTarget.RESORT_REPORT,
+                idempotencyKey,
+                userDetails,
+                null,
+                request,
+                () ->
+                        contentWriteRateLimiter.check(
+                                userDetails, null, ContentWriteRateLimiter.Action.RESORT_REPORT),
+                () -> resortReportService.createReport(userDetails.getMember().getId(), request));
     }
 
     @GetMapping("/today")

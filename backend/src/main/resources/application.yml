@@ -47,6 +47,11 @@ snowthing:
     delegation-secret: ${SNOWTHING_BOT_DELEGATION_SECRET:}
     delegation-ttl: ${SNOWTHING_BOT_DELEGATION_TTL:60s}
     request-timeout: ${SNOWTHING_BOT_REQUEST_TIMEOUT:15s}
+  ai-members:
+    enabled: ${SNOWTHING_AI_MEMBERS_ENABLED:false}
+    persona-file: ${SNOWTHING_AI_MEMBERS_PERSONA_FILE:}
+    daily-call-limit: ${SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT:100}
+    topic-keywords: ${SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS:}
   carpool:
     external:
       connect-timeout-millis: ${SNOWTHING_CARPOOL_CONNECT_TIMEOUT_MILLIS:2000}
@@ -55,6 +60,58 @@ snowthing:
         rest-api-key: ${SNOWTHING_KAKAO_REST_API_KEY:}
       opinet:
         api-key: ${SNOWTHING_OPINET_API_KEY:}
+  weather:
+    connect-timeout-millis: ${SNOWTHING_WEATHER_CONNECT_TIMEOUT_MILLIS:1000}
+    read-timeout-millis: ${SNOWTHING_WEATHER_READ_TIMEOUT_MILLIS:2000}
+    kma:
+      service-key: ${SNOWTHING_KMA_SERVICE_KEY:}
+  search:
+    indexer:
+      enabled: ${SNOWTHING_SEARCH_INDEXER_ENABLED:true}
+      poll-interval-ms: ${SNOWTHING_SEARCH_INDEXER_POLL_INTERVAL_MS:1000}
+      batch-size: 50
+      lease-ms: 60000
+      max-attempts: 5
+      retry-base-delay-ms: 1000
+      retry-max-delay-ms: 600000
+    reconcile:
+      enabled: ${SNOWTHING_SEARCH_RECONCILE_ENABLED:true}
+      cron: "0 30 4 * * *"
+    reindex:
+      batch-size: 500
+    outbox:
+      done-retention-days: 7
+    # 색인이 비어 있고(search_index_state 0행) 공개 게시글이 있으면 기동 때 재인덱싱을 한 번 넣는다 (indexer.enabled=true일 때만)
+    bootstrap-on-empty: ${SNOWTHING_SEARCH_BOOTSTRAP_ON_EMPTY:true}
+    # IKA-11 의미 검색 비교 실험. 기본 꺼짐: 제공자 호출과 비용이 없고 근거 검색은 키워드만 쓴다.
+    # provider: none | hashing(로컬 파이프라인 확인용, 의미 모델 아님) | http(OpenAI 호환, 호출마다 비용 가능, 사용자 승인 후)
+    semantic:
+      enabled: ${SNOWTHING_SEARCH_SEMANTIC_ENABLED:false}
+      provider: ${SNOWTHING_SEARCH_SEMANTIC_PROVIDER:none}
+      rrf-k: ${SNOWTHING_SEARCH_SEMANTIC_RRF_K:60}
+      candidate-k: ${SNOWTHING_SEARCH_SEMANTIC_CANDIDATE_K:50}
+      refresh-batch-size: 32
+      refresh-max-batches: 4
+      refresh-idle-interval-ms: 30000
+      max-vector-scan: ${SNOWTHING_SEARCH_SEMANTIC_MAX_VECTOR_SCAN:5000}
+      http:
+        base-url: ${SNOWTHING_SEARCH_EMBEDDING_BASE_URL:}
+        model: ${SNOWTHING_SEARCH_EMBEDDING_MODEL:}
+        dimension: ${SNOWTHING_SEARCH_EMBEDDING_DIMENSION:0}
+        api-key: ${SNOWTHING_SEARCH_EMBEDDING_API_KEY:}
+        connect-timeout-millis: 2000
+        read-timeout-millis: 10000
+  discord:
+    # IKA-18. 비어 있으면 그 채널 알림은 꺼진다. 웹훅 URL은 비밀값이라 운영 prod.env에만 둔다.
+    alert-webhook: ${DISCORD_WEBHOOK_ALERT:}
+    event-webhook: ${DISCORD_WEBHOOK_EVENT:}
+    timeout: 3s
+  admin:
+    # IKA-12. 쉼표 구분 이메일. 기동할 때 해당 활성 회원을 ROLE_ADMIN으로 올린다. 목록에서 빼도 권한은 거두지 않는다.
+    bootstrap-emails: ${SNOWTHING_ADMIN_BOOTSTRAP_EMAILS:}
+  answer-draft:
+    # IKA-12. 승인된 답변 초안의 댓글 게시. 운영 기본값은 꺼짐(읽기 전용). 켜도 사람이 관리자 세션에서 승인하고 게시해야 한다.
+    publish-enabled: ${SNOWTHING_ANSWER_DRAFT_PUBLISH_ENABLED:false}
   oauth2:
     frontend-base-url: ${SNOWTHING_FRONTEND_BASE_URL:http://localhost:3000}
     connect-timeout-millis: ${SNOWTHING_OAUTH2_CONNECT_TIMEOUT_MILLIS:2000}
@@ -148,7 +205,8 @@ spring:
     username: ${SNOWTHING_DB_USERNAME:snowthing_app}
     password: ${SNOWTHING_DB_PASSWORD:}
     hikari:
-      maximum-pool-size: 10
+      # 댓글 커밋 뒤 알림 저장(REQUIRES_NEW)은 원래 커넥션을 쥔 채 하나를 더 잡는다. 동시 댓글이 몰려도 풀이 바닥나지 않게 넉넉히 둔다.
+      maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000
       idle-timeout: 600000
@@ -188,3 +246,14 @@ snowthing:
       redirect-uri: ${SNOWTHING_GOOGLE_REDIRECT_URI:https://snowthing.org/api/v1/auth/oauth2/callback/google}
     naver:
       redirect-uri: ${SNOWTHING_NAVER_REDIRECT_URI:https://snowthing.org/api/v1/auth/oauth2/callback/naver}
+  # 운영은 https로만 열리므로 쿠키에 Secure를 붙이고, 개발용 localhost 출처를 받지 않는다.
+  web:
+    secure-cookies: true
+    allowed-origins: https://snowthing.org,https://www.snowthing.org
+    websocket-allowed-origin-patterns: https://snowthing.org,https://www.snowthing.org
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true

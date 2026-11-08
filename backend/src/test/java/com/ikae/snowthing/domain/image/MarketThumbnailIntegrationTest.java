@@ -26,6 +26,15 @@ class MarketThumbnailIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired com.ikae.snowthing.domain.post.repository.PostRepository posts;
     @Autowired com.ikae.snowthing.domain.post.repository.PostCategoryRepository categories;
+    @Autowired com.ikae.snowthing.domain.market.service.MarketListingService listings;
+
+    @Autowired
+    com.ikae.snowthing.domain.market.repository.MarketListingRepository listingRepository;
+
+    @Autowired
+    com.ikae.snowthing.domain.market.repository.MarketCategoryRepository marketCategories;
+
+    @Autowired com.ikae.snowthing.domain.member.repository.MemberRepository members;
     @MockitoBean ImageService images;
     @MockitoBean S3Client s3;
     @MockitoBean SharedRequestLimiter limits;
@@ -61,8 +70,260 @@ class MarketThumbnailIntegrationTest {
         when(limits.acquire(any())).thenReturn(new SharedRequestLimiter.Decision(true, 0));
     }
 
+    private record Seed(com.ikae.snowthing.domain.member.entity.Member member, String publicId) {
+        com.ikae.snowthing.global.security.CustomUserDetails user() {
+            return new com.ikae.snowthing.global.security.CustomUserDetails(member);
+        }
+    }
+
+    private Seed seedListing(String content) {
+        return new TransactionTemplate(manager)
+                .execute(
+                        status -> {
+                            String unique = UUID.randomUUID().toString();
+                            var member =
+                                    members.save(
+                                            com.ikae.snowthing.domain.member.entity.Member.builder()
+                                                    .email(unique + "@test.invalid")
+                                                    .nickname(unique)
+                                                    .role(
+                                                            com.ikae.snowthing.domain.member.entity
+                                                                    .Role.ROLE_USER)
+                                                    .build());
+                            var postCategory =
+                                    categories
+                                            .findByCode("MARKET")
+                                            .orElseGet(
+                                                    () ->
+                                                            categories.save(
+                                                                    com.ikae.snowthing.domain.post
+                                                                            .entity.PostCategory
+                                                                            .builder()
+                                                                            .code("MARKET")
+                                                                            .name("Market")
+                                                                            .build()));
+                            var category =
+                                    marketCategories
+                                            .findByCode("SNOWBOARD")
+                                            .orElseGet(
+                                                    () ->
+                                                            marketCategories.save(
+                                                                    com.ikae.snowthing.domain.market
+                                                                            .entity.MarketCategory
+                                                                            .builder()
+                                                                            .code("SNOWBOARD")
+                                                                            .name("Snowboard")
+                                                                            .active(true)
+                                                                            .build()));
+                            var post =
+                                    posts.save(
+                                            com.ikae.snowthing.domain.post.entity.Post.builder()
+                                                    .member(member)
+                                                    .category(postCategory)
+                                                    .title("market thumbnail " + unique)
+                                                    .content(content)
+                                                    .writerIp("192.0.2.0")
+                                                    .isAnonymous(false)
+                                                    .build());
+                            listingRepository.save(
+                                    com.ikae.snowthing.domain.market.entity.MarketListing.builder()
+                                            .post(post)
+                                            .category(category)
+                                            .productCondition(
+                                                    com.ikae.snowthing.domain.market.entity
+                                                            .ProductCondition.GOOD)
+                                            .transactionMethod(
+                                                    com.ikae.snowthing.domain.market.entity
+                                                            .TransactionMethod.DIRECT)
+                                            .price(10000L)
+                                            .contact("test-contact")
+                                            .build());
+                            return new Seed(member, post.getPublicId());
+                        });
+    }
+
+    private void removeListing(String publicId) {
+        jdbc.update(
+                "DELETE m FROM market_listing m JOIN post p ON p.post_id=m.post_id WHERE p.public_id=?",
+                publicId);
+        jdbc.update("DELETE FROM market_thumbnail WHERE post_public_id=?", publicId);
+        jdbc.update("DELETE FROM post WHERE public_id=?", publicId);
+    }
+
+    private String previewThumbnail(String publicId) {
+        return listings.getPreview().items().stream()
+                .filter(item -> item.publicId().equals(publicId))
+                .findFirst()
+                .orElseThrow()
+                .thumbnailImageUrl();
+    }
+
+    private void runBackfillMigration() throws java.io.IOException {
+        jdbc.execute(
+                java.nio.file.Files.readString(
+                        java.nio.file.Path.of(
+                                "../database/manual/ika36_market_inline_thumbnail_backfill.sql")));
+    }
+
+    @Test
+    void backfilledInlineListingShowsThumbnailOnEveryScreenWithoutChangingContent()
+            throws java.io.IOException {
+        String content = "설명 ![a](data:image/png;base64,QUJD) 끝";
+        Seed seed = seedListing(content);
+        String listingId = seed.publicId();
+        String target = "public/posts/thumbnails/market-" + listingId + ".jpg";
+        try {
+            assertThat(previewThumbnail(listingId)).isNull();
+
+            runBackfillMigration();
+            thumbnails.processOne(listingId);
+
+            verify(images)
+                    .createMarketThumbnailFromBytes(
+                            eq("ABC".getBytes(java.nio.charset.StandardCharsets.US_ASCII)),
+                            eq(target),
+                            any(ImageProcessingGate.class));
+            assertThat(previewThumbnail(listingId)).endsWith(target);
+            assertThat(
+                            listings.search(1, 50, null, null, null, null).content().stream()
+                                    .filter(item -> item.publicId().equals(listingId))
+                                    .findFirst()
+                                    .orElseThrow()
+                                    .thumbnailImageUrl())
+                    .endsWith(target);
+            var detail = listings.getDetail(listingId, seed.user(), false);
+            assertThat(detail.images()).isEmpty();
+            assertThat(detail.coverImageUrl()).endsWith(target);
+            assertThat(detail.content()).isEqualTo(content);
+
+            // 이미 끝난 작업은 다시 실행해도 건드리지 않는다.
+            runBackfillMigration();
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT revision FROM market_thumbnail WHERE post_public_id=?",
+                                    Long.class,
+                                    listingId))
+                    .isZero();
+        } finally {
+            removeListing(listingId);
+        }
+    }
+
+    @Test
+    void backfillSkipsListingsWithoutInlineOnlyPhoto() throws java.io.IOException {
+        Seed plain = seedListing("사진 없는 본문");
+        Seed withKey =
+                seedListing(
+                        "![a](data:image/png;base64,QUJD) ![b](https://images.snowthing.org/"
+                                + first
+                                + ")");
+        try {
+            runBackfillMigration();
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM market_thumbnail WHERE post_public_id IN (?,?)",
+                                    Long.class,
+                                    plain.publicId(),
+                                    withKey.publicId()))
+                    .isZero();
+        } finally {
+            removeListing(plain.publicId());
+            removeListing(withKey.publicId());
+        }
+    }
+
+    @Test
+    void changedFirstInlineImageRegeneratesThumbnail() {
+        String content = "![a](data:image/png;base64,QUJD)";
+        String changed = "![a](data:image/png;base64,REVG)";
+        Seed seed = seedListing(content);
+        String listingId = seed.publicId();
+        try {
+            new TransactionTemplate(manager)
+                    .executeWithoutResult(
+                            status ->
+                                    thumbnails.queue(listingId, thumbnails.inlineSource(content)));
+            thumbnails.processOne(listingId);
+            assertThat(thumbnails.readyUrls(List.of(listingId))).containsKey(listingId);
+            jdbc.update("UPDATE post SET content=? WHERE public_id=?", changed, listingId);
+            new TransactionTemplate(manager)
+                    .executeWithoutResult(
+                            status ->
+                                    thumbnails.queue(listingId, thumbnails.inlineSource(changed)));
+            assertThat(thumbnails.readyUrls(List.of(listingId))).isEmpty();
+            thumbnails.processOne(listingId);
+            verify(images)
+                    .createMarketThumbnailFromBytes(
+                            eq("DEF".getBytes(java.nio.charset.StandardCharsets.US_ASCII)),
+                            anyString(),
+                            any(ImageProcessingGate.class));
+            assertThat(thumbnails.readyUrls(List.of(listingId))).containsKey(listingId);
+        } finally {
+            removeListing(listingId);
+        }
+    }
+
+    @Test
+    void brokenInlineImageStopsWithoutRetry() {
+        String content = "![a](data:image/png;base64,A)";
+        Seed seed = seedListing(content);
+        String listingId = seed.publicId();
+        try {
+            new TransactionTemplate(manager)
+                    .executeWithoutResult(
+                            status ->
+                                    thumbnails.queue(listingId, thumbnails.inlineSource(content)));
+            assertThatThrownBy(() -> thumbnails.processOne(listingId))
+                    .isInstanceOf(com.ikae.snowthing.global.exception.CustomException.class);
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT due_at FROM market_thumbnail WHERE post_public_id=?",
+                                    java.sql.Timestamp.class,
+                                    listingId))
+                    .isNull();
+            assertThat(previewThumbnail(listingId)).isNull();
+            verifyNoInteractions(images);
+        } finally {
+            removeListing(listingId);
+        }
+    }
+
+    @Test
+    void bodyPhotoFillsDetailCoverWithoutJoiningGalleryImages() {
+        String key = "public/posts/originals/m-" + UUID.randomUUID() + ".jpg";
+        Seed seed = seedListing("![a](https://images.snowthing.org/" + key + ")");
+        try {
+            var detail = listings.getDetail(seed.publicId(), seed.user(), false);
+            assertThat(detail.images()).isEmpty();
+            assertThat(detail.coverImageUrl()).endsWith(key);
+        } finally {
+            removeListing(seed.publicId());
+        }
+    }
+
     private void queue(String key) {
         new TransactionTemplate(manager).executeWithoutResult(status -> thumbnails.queue(id, key));
+    }
+
+    @Test
+    void deletingThumbnailKeepsRetryingPastAttemptLimit() {
+        doThrow(new IllegalStateException("test failure"))
+                .when(s3)
+                .deleteObject(any(DeleteObjectRequest.class));
+        queue(null);
+        for (int attempt = 0; attempt < 7; attempt++) {
+            jdbc.update(
+                    "UPDATE market_thumbnail SET due_at='2000-01-01',lease_until=NULL WHERE post_public_id=?",
+                    id);
+            assertThatThrownBy(() -> thumbnails.processOne(id))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT due_at IS NOT NULL FROM market_thumbnail WHERE post_public_id=?",
+                                    Boolean.class,
+                                    id))
+                    .isTrue();
+        }
     }
 
     @Test

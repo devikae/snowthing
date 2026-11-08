@@ -16,8 +16,9 @@ on:
         type: string
 
 concurrency:
-  group: deploy-frontend-${{ github.ref }}
+  group: ec2-production-deployment
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -42,9 +43,6 @@ jobs:
 
   deploy-frontend:
     name: Build, Push and Deploy Frontend Digest
-    concurrency:
-      group: ec2-production-deployment
-      cancel-in-progress: false
     needs: [ci-frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -151,9 +149,6 @@ jobs:
 
   rollback-frontend:
     name: Roll Back Frontend to Selected Digest
-    concurrency:
-      group: ec2-production-deployment
-      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

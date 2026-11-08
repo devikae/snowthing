@@ -1,6 +1,5 @@
 package com.ikae.snowthing.domain.chat.bot;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -9,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +20,6 @@ import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.global.config.BotProperties;
-import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.security.BotDelegationTokenService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
@@ -177,48 +174,5 @@ class BotMentionServiceTest {
         service.submit(second, userDetails);
 
         verify(gateway, times(1)).answer(any());
-    }
-
-    @Test
-    @DisplayName("봇 호출 시 전역 시간/일간 예산 및 계정별 시간당 예산을 함께 전달한다")
-    void submit_IncludesAccountHourlyLimitInAcquire() {
-        @SuppressWarnings("unchecked")
-        org.mockito.ArgumentCaptor<
-                        List<com.ikae.snowthing.global.security.SharedRequestLimiter.Limit>>
-                captor = org.mockito.ArgumentCaptor.forClass(List.class);
-
-        service.submit(
-                new ChatMessageResponse("msg-limit", null, "GENERAL", "@bot 질문", "now"),
-                userDetails);
-
-        verify(sharedLimiter).acquire(captor.capture());
-        List<com.ikae.snowthing.global.security.SharedRequestLimiter.Limit> limits =
-                captor.getValue();
-        assertThat(limits).hasSize(3);
-        assertThat(limits.get(2).key())
-                .isEqualTo("snowthing:limits:{bot}:account:" + userDetails.getPublicId() + ":hour");
-        assertThat(limits.get(2).count()).isEqualTo(5);
-        assertThat(limits.get(2).duration()).isEqualTo(java.time.Duration.ofHours(1));
-    }
-
-    @Test
-    @DisplayName("답변 생성 중 CustomException 발생 시 요청자에게 비즈니스 에러를 전달한다")
-    void answer_CustomExceptionNotifiesRequester() {
-        when(gateway.answer(any()))
-                .thenThrow(
-                        new com.ikae.snowthing.global.exception.CustomException(
-                                ErrorCode.CHAT_BOT_BUSY));
-
-        service.submit(
-                new ChatMessageResponse("msg-custom-err", null, "GENERAL", "@bot 질문", "now"),
-                userDetails);
-
-        verify(messagingTemplate)
-                .convertAndSendToUser(
-                        org.mockito.ArgumentMatchers.eq(userDetails.getUsername()),
-                        org.mockito.ArgumentMatchers.eq("/queue/errors"),
-                        org.mockito.ArgumentMatchers.argThat(
-                                (com.ikae.snowthing.domain.chat.dto.ChatErrorResponse resp) ->
-                                        resp.code().equals(ErrorCode.CHAT_BOT_BUSY.getCode())));
     }
 }

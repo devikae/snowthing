@@ -10,6 +10,8 @@ export const API_ENDPOINTS = {
     logout: `${API_V1_URL}/auth/logout`,
     oauth2Authorize: (provider: SocialLoginProvider, returnUrl?: string | null) =>
       `${API_V1_URL}/auth/oauth2/authorize/${provider}${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`,
+    oauth2SignUpPending: `${API_V1_URL}/auth/oauth2/signup/pending`,
+    oauth2SignUp: `${API_V1_URL}/auth/oauth2/signup`,
     requestSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up`,
     confirmSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up/confirm`,
     requestPasswordReset: `${API_V1_URL}/auth/password-reset/requests`,
@@ -18,8 +20,10 @@ export const API_ENDPOINTS = {
   },
   members: {
     settings: `${API_V1_URL}/members/me/settings`,
+    marketingConsent: `${API_V1_URL}/members/me/marketing-consent`,
     nicknameAvailability: `${API_V1_URL}/members/me/nickname-availability`,
     changePassword: `${API_V1_URL}/members/me/password`,
+    withdrawal: `${API_V1_URL}/members/me/withdrawal`,
     resetProfileImage: `${API_V1_URL}/members/me/profile-image`,
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
@@ -58,6 +62,7 @@ export const API_ENDPOINTS = {
   },
   resortCams: {
     list: `${API_V1_URL}/resort-cams`,
+    weather: (resortCode: string) => `${API_V1_URL}/resort-cams/${encodeURIComponent(resortCode)}/weather`,
   },
   market: {
     categories: `${API_V1_URL}/market/categories`,
@@ -84,23 +89,35 @@ export const API_ENDPOINTS = {
     create: `${API_V1_URL}/resort-reports`,
     delete: (reportId: number) => `${API_V1_URL}/resort-reports/${reportId}`,
   },
+  reports: {
+    create: `${API_V1_URL}/reports`,
+  },
   admin: {
-    stats: () => `${API_V1_URL}/admin/dashboard/stats`,
+    reports: (status: string, page: number) => `${API_V1_URL}/admin/reports?status=${status}&page=${page}`,
+    reportAction: (reportId: number) => `${API_V1_URL}/admin/reports/${reportId}/actions`,
+    answerDrafts: (status: string, page: number, size = 20) =>
+      `${API_V1_URL}/admin/answer-drafts?page=${page}&size=${size}${status ? `&status=${encodeURIComponent(status)}` : ""}`,
+    answerDraft: (draftId: string) => `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}`,
+    answerDraftAction: (draftId: string, action: "approve" | "reject" | "publish") =>
+      `${API_V1_URL}/admin/answer-drafts/${encodeURIComponent(draftId)}/${action}`,
+    apiTokens: `${API_V1_URL}/admin/api-tokens`,
+    revokeApiToken: (tokenId: string) => `${API_V1_URL}/admin/api-tokens/${encodeURIComponent(tokenId)}/revoke`,
+    members: (query: string, page: number, size = 20) =>
+      `${API_V1_URL}/admin/members?page=${page}&size=${size}${query ? `&query=${encodeURIComponent(query)}` : ""}`,
+    memberStatusAction: (publicId: string, action: "suspend" | "reinstate") =>
+      `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
+    searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
+    searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
+    stats: `${API_V1_URL}/admin/dashboard/stats`,
     configs: `${API_V1_URL}/admin/configs`,
-    updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${key}`,
-    members: (query?: string, status?: string, page = 0, size = 20) =>
-      `${API_V1_URL}/admin/members?page=${page}&size=${size}${query ? `&query=${encodeURIComponent(query)}` : ""}${status ? `&status=${status}` : ""}`,
-    updateMemberStatus: (publicId: string) => `${API_V1_URL}/admin/members/${publicId}/status`,
-    updateMemberNickname: (publicId: string) => `${API_V1_URL}/admin/members/${publicId}/nickname`,
-    deleteMemberProfileImage: (publicId: string) => `${API_V1_URL}/admin/members/${publicId}/profile-image`,
-    posts: (onlyDeleted = false, page = 0, size = 20) =>
-      `${API_V1_URL}/admin/posts?onlyDeleted=${onlyDeleted}&page=${page}&size=${size}`,
-    blindPost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}/blind`,
-    deletePost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}`,
-    restorePost: (publicId: string) => `${API_V1_URL}/admin/posts/${publicId}/restore`,
+    updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${encodeURIComponent(key)}`,
+    posts: (filter: AdminPostFilter, page = 0, size = 20) =>
+      `${API_V1_URL}/admin/posts?filter=${filter}&page=${page}&size=${size}`,
+    blindPost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}/blind`,
+    deletePost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}`,
     bannedIps: `${API_V1_URL}/admin/chat/banned-ips`,
     unbanIp: (id: number) => `${API_V1_URL}/admin/chat/banned-ips/${id}`,
-    banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${messageId}/ban-ip`,
+    banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${encodeURIComponent(messageId)}/ban-ip`,
     banners: `${API_V1_URL}/admin/banners`,
     bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
   },
@@ -148,38 +165,24 @@ export interface SystemConfigItem {
   updatedBy: string;
 }
 
-export interface AdminMemberItem {
-  publicId: string;
-  email: string;
-  nickname: string;
-  status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN";
-  role: "ROLE_USER" | "ROLE_ADMIN";
-  profileImageUrl: string | null;
-  createdAt: string;
-}
+export type AdminPostFilter = "ALL" | "DELETED" | "BLINDED";
 
 export interface AdminPostItem {
   publicId: string;
   title: string;
   content: string;
-  authorMemberId: number | null;
   writerNickname: string | null;
   writerEmail: string | null;
   isAnonymous: boolean;
   isDeleted: boolean;
   deletedAt: string | null;
-  deletedByMemberId: number | null;
   deleterNickname: string | null;
-  deleterEmail: string | null;
   deleterRole: string | null;
   isDeletedByAuthor: boolean;
   isBlinded: boolean;
+  status: string;
   createdAt: string;
   categoryName: string;
-  authorNickname?: string;
-  authorEmail?: string;
-  resortName?: string | null;
-  category?: string;
 }
 
 export interface ChatBannedIpItem {

@@ -10,19 +10,25 @@ import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.auth.dto.MemberLoginResponse;
 import com.ikae.snowthing.domain.auth.service.AuthService;
+import com.ikae.snowthing.domain.chat.service.ChatRecentHistoryBuffer;
 import com.ikae.snowthing.domain.email.dto.EmailAvailabilityResponse;
 import com.ikae.snowthing.domain.email.dto.EmailRequest;
 import com.ikae.snowthing.domain.email.service.EmailAvailabilityIpRateLimiter;
 import com.ikae.snowthing.domain.email.service.EmailVerificationService;
 import com.ikae.snowthing.domain.email.service.VerifiedMemberRegistrationService;
 import com.ikae.snowthing.domain.image.service.ProfileImageLifecycleService;
+import com.ikae.snowthing.domain.member.dto.MarketingConsentResponse;
+import com.ikae.snowthing.domain.member.dto.MarketingConsentUpdateRequest;
 import com.ikae.snowthing.domain.member.dto.MemberPasswordChangeRequest;
 import com.ikae.snowthing.domain.member.dto.MemberProfileUpdateRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSettingsResponse;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
+import com.ikae.snowthing.domain.member.dto.MemberWithdrawalRequest;
 import com.ikae.snowthing.domain.member.dto.NicknameCheckRequest;
+import com.ikae.snowthing.domain.member.service.MarketingConsentService;
 import com.ikae.snowthing.domain.member.service.MemberService;
+import com.ikae.snowthing.domain.member.service.MemberWithdrawalService;
 import com.ikae.snowthing.domain.member.service.ProfileActionRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
@@ -44,6 +50,9 @@ public class MemberController {
     private final MemberSessionRegistry memberSessionRegistry;
     private final ProfileActionRateLimiter profileActionRateLimiter;
     private final ProfileImageLifecycleService profileImages;
+    private final MarketingConsentService marketingConsentService;
+    private final MemberWithdrawalService memberWithdrawalService;
+    private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
 
     @GetMapping("/me/settings")
     public ResponseEntity<MemberSettingsResponse> getSettings(
@@ -57,6 +66,20 @@ public class MemberController {
             @Valid @RequestBody MemberProfileUpdateRequest request) {
         memberService.updateMyProfile(user.getUsername(), request);
         return ResponseEntity.ok(memberService.getMySettings(user.getUsername()));
+    }
+
+    @GetMapping("/me/marketing-consent")
+    public ResponseEntity<MarketingConsentResponse> getMarketingConsent(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(marketingConsentService.get(user.getUsername()));
+    }
+
+    @PutMapping("/me/marketing-consent")
+    public ResponseEntity<MarketingConsentResponse> updateMarketingConsent(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @Valid @RequestBody MarketingConsentUpdateRequest request) {
+        return ResponseEntity.ok(
+                marketingConsentService.update(user.getUsername(), request.agreed()));
     }
 
     @PostMapping("/me/nickname-availability")
@@ -81,6 +104,19 @@ public class MemberController {
                 user.getUsername(), ProfileActionRateLimiter.Action.PASSWORD);
         String publicId = memberService.changePassword(user.getUsername(), request);
         memberSessionRegistry.invalidateAll(publicId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/withdrawal")
+    public ResponseEntity<Void> withdraw(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @Valid @RequestBody MemberWithdrawalRequest request) {
+        profileActionRateLimiter.check(
+                user.getUsername(), ProfileActionRateLimiter.Action.WITHDRAWAL);
+        String publicId = memberWithdrawalService.withdraw(user.getMember().getId(), request);
+        // 트랜잭션이 커밋된 뒤에 끊는다. 실패한 탈퇴가 세션을 끊지 않게 한다.
+        memberSessionRegistry.invalidateAll(publicId);
+        chatRecentHistoryBuffer.removeSender(publicId);
         return ResponseEntity.noContent().build();
     }
 

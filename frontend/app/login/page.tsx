@@ -7,7 +7,10 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS, SocialLoginProvider } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { clearViewerCache } from "../lib/viewer";
 import styles from "./login.module.css";
+import { errorText } from "../lib/errorText";
+import { detectInAppBrowser, externalBrowserUrl, type InAppBrowser } from "../lib/inAppBrowser";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
 
@@ -20,13 +23,20 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   OAUTH_EMAIL_NOT_VERIFIED: "인증되지 않은 소셜 이메일 계정으로는 로그인할 수 없습니다.",
   ACCOUNT_SUSPENDED: "이용이 정지된 계정입니다.",
   ACCOUNT_WITHDRAWN: "탈퇴 처리된 계정입니다.",
+  WITHDRAWN_EMAIL_RESTRICTED: "탈퇴 후 30일이 지나지 않은 이메일은 다시 가입할 수 없습니다.",
   OAUTH_RATE_LIMIT: "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
   OAUTH_ACCOUNT_LINK_REQUIRED:
     "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요.",
+  OAUTH_SIGNUP_EXPIRED: "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요.",
+};
+
+const LOGIN_FAILURE_MESSAGES: Record<number, string> = {
+  401: "이메일 또는 비밀번호가 올바르지 않습니다.",
+  429: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+  return errorText(error, "요청을 처리하지 못했습니다.");
 }
 
 export default function LoginPage() {
@@ -35,6 +45,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [withdrawn, setWithdrawn] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("withdrawn") !== "1") return;
+    const timer = window.setTimeout(() => setWithdrawn(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  // 세션이 만료돼 로그인으로 온 경우 헤더가 예전 프로필을 보여 주지 않게 내 정보 캐시를 비운다.
+  // 자식인 헤더의 effect가 이 페이지의 effect보다 먼저 돌기 때문에, 헤더가 그려지기 전인 첫 렌더에서 비운다.
+  useState(() => clearViewerCache());
+  const [fromMarket, setFromMarket] = useState(false);
+  useEffect(() => {
+    const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") ?? "";
+    if (!returnUrl.startsWith("/market")) return;
+    const timer = window.setTimeout(() => setFromMarket(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(() => {
     const oauthError = new URLSearchParams(window.location.search).get("error");
     if (!oauthError) return;
@@ -45,7 +71,32 @@ export default function LoginPage() {
   }, []);
   const [loading, setLoading] = useState(false);
 
+  const [inAppBrowser, setInAppBrowser] = useState<InAppBrowser | null>(null);
+  const [showInAppGuide, setShowInAppGuide] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const detected = detectInAppBrowser(navigator.userAgent);
+    if (!detected) return;
+    const timer = window.setTimeout(() => setInAppBrowser(detected), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const copyPageUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+    } catch {
+      window.prompt("이 주소를 복사해 주세요.", window.location.href);
+    }
+  };
+
   const handleSocialLogin = (provider: SocialLoginProvider) => {
+    if (provider === "google" && inAppBrowser) {
+      setShowInAppGuide(true);
+      const external = externalBrowserUrl(inAppBrowser, window.location.href, navigator.userAgent);
+      if (external) window.location.href = external;
+      return;
+    }
     const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
     window.location.assign(API_ENDPOINTS.auth.oauth2Authorize(provider, returnUrl));
   };
@@ -68,11 +119,13 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || "이메일 또는 비밀번호가 올바르지 않습니다.");
+        // 프록시가 HTML로 답해도 JSON 파싱 오류가 화면에 나오지 않게 상태 코드별 기본 문구를 둔다.
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || errorData?.error || LOGIN_FAILURE_MESSAGES[response.status] || "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
+      clearViewerCache();
       router.push(safeReturnUrl(returnUrl));
     } catch (error) {
       setErrorMsg(getErrorMessage(error));
@@ -88,8 +141,9 @@ export default function LoginPage() {
         <section className={styles.panel} aria-labelledby="login-heading">
           <header className={styles.heading}>
             <h1 id="login-heading">로그인</h1>
-            <p>SnowThing 계정으로 로그인하세요.</p>
+            <p>{fromMarket ? "중고장터는 로그인한 회원만 이용할 수 있어요." : "SnowThing 계정으로 로그인하세요."}</p>
           </header>
+          {withdrawn && <div className={styles.notice} role="status">탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.</div>}
           {errorMsg && <div className={styles.error} role="alert">{errorMsg}</div>}
           <form onSubmit={handleSubmit} className={styles.form} aria-busy={loading}>
             <label className={styles.field}>이메일<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="user@snowthing.com" autoComplete="email" autoCapitalize="none" required disabled={loading} /></label>
@@ -118,6 +172,20 @@ export default function LoginPage() {
               Google로 계속하기
             </button>
           </div>
+          {inAppBrowser && (
+            <div className={`${styles.notice} ${styles.inAppNotice}`} role={showInAppGuide ? "alert" : "note"}>
+              <p>
+                {inAppBrowser === "kakaotalk" || inAppBrowser === "line"
+                  ? "앱 안 브라우저에서는 구글 로그인이 막혀 있어요. Google 버튼을 누르면 외부 브라우저에서 이 화면이 열려요."
+                  : "앱 안 브라우저에서는 구글 로그인이 막혀 있어요. 화면 위 메뉴에서 '다른 브라우저로 열기'를 누르거나, 주소를 복사해 크롬이나 사파리에서 열어 주세요. 네이버와 이메일 로그인은 여기서 바로 할 수 있어요."}
+              </p>
+              {inAppBrowser === "other" && (
+                <button type="button" className={styles.button} onClick={() => void copyPageUrl()}>
+                  {copied ? "주소를 복사했어요" : "주소 복사"}
+                </button>
+              )}
+            </div>
+          )}
           <p className={styles.signup}>아직 계정이 없나요?<Link href="/signup">회원가입</Link></p>
         </section>
       </main>

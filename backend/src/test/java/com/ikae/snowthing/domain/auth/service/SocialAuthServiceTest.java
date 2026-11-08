@@ -21,18 +21,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest;
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberSocialAccount;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
+import com.ikae.snowthing.domain.member.event.MemberSignedUpEvent;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
+import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
+import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.domain.member.validation.NicknamePolicy;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -42,6 +47,11 @@ class SocialAuthServiceTest {
 
     @Mock private MemberRepository memberRepository;
     @Mock private MemberSocialAccountRepository memberSocialAccountRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private RegistrationConsentService consentService;
+    @Mock private WithdrawnEmailService withdrawnEmails;
+
+    private static final SocialSignUpRequest CONSENT = SocialSignUpRequest.builder().build();
 
     private SocialAuthService socialAuthService;
 
@@ -55,7 +65,115 @@ class SocialAuthServiceTest {
                         memberSocialAccountRepository,
                         new EmailNormalizer(),
                         new SocialNicknameGenerator(),
-                        fixedClock);
+                        fixedClock,
+                        eventPublisher,
+                        consentService,
+                        withdrawnEmails);
+    }
+
+    private Member completeSignUp(OAuthUserProfile profile) {
+        return socialAuthService.completeSignUp(profile, CONSENT);
+    }
+
+    @Test
+    @DisplayName("처음 온 소셜 사용자는 콜백에서 회원을 만들지 않는다")
+    void findMemberForLogin_NewUser_DoesNotCreateMember() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.NAVER, "naver-new", "new@naver.com", false, "새보더");
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.NAVER, "naver-new"))
+                .willReturn(Optional.empty());
+
+        assertThat(socialAuthService.findMemberForLogin(profile)).isEmpty();
+
+        verify(memberRepository, never()).saveAndFlush(any());
+        verify(memberSocialAccountRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("탈퇴 후 30일이 지나지 않은 이메일은 동의 화면으로 보내기 전에 거부한다")
+    void findMemberForLogin_WithdrawnEmail_IsRejected() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE, "google-new", "left@gmail.com", true, "구글보더");
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-new"))
+                .willReturn(Optional.empty());
+        org.mockito.BDDMockito.willThrow(new CustomException(ErrorCode.WITHDRAWN_EMAIL_RESTRICTED))
+                .given(withdrawnEmails)
+                .requireNotBlocked("left@gmail.com");
+
+        assertThatThrownBy(() -> socialAuthService.findMemberForLogin(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.WITHDRAWN_EMAIL_RESTRICTED);
+    }
+
+    @Test
+    @DisplayName("이미 가입된 이메일이면 동의 화면으로 보내기 전에 거부한다")
+    void findMemberForLogin_ExistingEmail_RequiresAccountLink() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.GOOGLE, "google-new", "used@gmail.com", true, "구글보더");
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.GOOGLE, "google-new"))
+                .willReturn(Optional.empty());
+        given(memberRepository.findByEmail("used@gmail.com"))
+                .willReturn(Optional.of(mock(Member.class)));
+
+        assertThatThrownBy(() -> socialAuthService.findMemberForLogin(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
+    }
+
+    @Test
+    @DisplayName("동의 검증에 실패하면 회원을 만들지 않는다")
+    void completeSignUp_InvalidConsent_DoesNotCreateMember() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.NAVER, "naver-new", "new@naver.com", false, "새보더");
+        org.mockito.BDDMockito.willThrow(new CustomException(ErrorCode.INVALID_INPUT))
+                .given(consentService)
+                .validate(CONSENT);
+
+        assertThatThrownBy(() -> completeSignUp(profile))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+
+        verify(memberRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("가입을 마치면 새 회원의 동의 기록을 함께 저장한다")
+    void completeSignUp_NewUser_RecordsConsent() {
+        OAuthUserProfile profile =
+                new OAuthUserProfile(
+                        SocialProvider.NAVER, "naver-new", "new@naver.com", false, "새보더");
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.NAVER, "naver-new"))
+                .willReturn(Optional.empty());
+        given(memberRepository.saveAndFlush(any(Member.class)))
+                .willAnswer(
+                        invocation -> {
+                            Member saved = invocation.getArgument(0);
+                            ReflectionTestUtils.setField(saved, "id", 11L);
+                            return saved;
+                        });
+
+        completeSignUp(profile);
+
+        verify(consentService)
+                .record(
+                        org.mockito.ArgumentMatchers.eq(11L),
+                        org.mockito.ArgumentMatchers.eq(CONSENT),
+                        any());
     }
 
     @Test
@@ -78,7 +196,7 @@ class SocialAuthServiceTest {
                             return saved;
                         });
 
-        Member member = socialAuthService.authenticateOrRegister(profile);
+        Member member = completeSignUp(profile);
 
         assertThat(member.getId()).isEqualTo(10L);
         assertThat(member.getEmail()).matches("oauth-naver-[A-Za-z0-9_-]{43}@users\\.invalid");
@@ -94,6 +212,7 @@ class SocialAuthServiceTest {
         assertThat(socialCaptor.getValue().getProviderUserId()).isEqualTo("naver-1001");
         assertThat(socialCaptor.getValue().getProviderEmail()).isEqualTo("newrider@naver.com");
         verify(memberRepository, never()).findByEmail("newrider@naver.com");
+        verify(eventPublisher).publishEvent(new MemberSignedUpEvent("네이버보더", "NAVER"));
     }
 
     @Test
@@ -115,7 +234,7 @@ class SocialAuthServiceTest {
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
-        Member member = socialAuthService.authenticateOrRegister(profile);
+        Member member = completeSignUp(profile);
 
         assertThat(member.getEmail()).isEqualTo("rider@gmail.com");
         assertThat(member.getEmailVerifiedAt()).isNotNull();
@@ -148,7 +267,7 @@ class SocialAuthServiceTest {
                 .willReturn(Optional.empty());
         given(memberRepository.findByEmail("rider@snowthing.org"))
                 .willReturn(Optional.of(existingMember));
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(googleProfile))
+        assertThatThrownBy(() -> completeSignUp(googleProfile))
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
@@ -173,7 +292,7 @@ class SocialAuthServiceTest {
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
-        Member created = socialAuthService.authenticateOrRegister(profile);
+        Member created = completeSignUp(profile);
 
         assertThat(created.getNickname())
                 .isNotEqualTo("설원라이더")
@@ -192,7 +311,7 @@ class SocialAuthServiceTest {
                                 SocialProvider.NAVER, "naver-200"))
                 .willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(missingEmailProfile))
+        assertThatThrownBy(() -> completeSignUp(missingEmailProfile))
                 .isInstanceOf(CustomException.class)
                 .extracting(ex -> ((CustomException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.OAUTH_EMAIL_REQUIRED);
@@ -223,11 +342,12 @@ class SocialAuthServiceTest {
                                 SocialProvider.NAVER, "naver-201"))
                 .willReturn(Optional.of(socialAccount));
 
-        Member authenticated = socialAuthService.authenticateOrRegister(profile);
+        Member authenticated = completeSignUp(profile);
 
         assertThat(authenticated).isSameAs(linkedMember);
         assertThat(authenticated.getEmailVerifiedAt()).isNull();
         verify(memberRepository, never()).findByEmail(any());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -287,12 +407,12 @@ class SocialAuthServiceTest {
                                 SocialProvider.GOOGLE, "google-withdrawn"))
                 .willReturn(Optional.of(withdrawnSocialAccount));
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(suspendedProfile))
+        assertThatThrownBy(() -> completeSignUp(suspendedProfile))
                 .isInstanceOf(CustomException.class)
                 .extracting(ex -> ((CustomException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.ACCOUNT_SUSPENDED);
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(withdrawnProfile))
+        assertThatThrownBy(() -> completeSignUp(withdrawnProfile))
                 .isInstanceOf(CustomException.class)
                 .extracting(ex -> ((CustomException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.ACCOUNT_WITHDRAWN);
@@ -320,7 +440,7 @@ class SocialAuthServiceTest {
         given(memberRepository.existsByNickname("동시가입자")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+        assertThatThrownBy(() -> completeSignUp(profile))
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(ErrorCode.DUPLICATE_NICKNAME);
@@ -349,7 +469,7 @@ class SocialAuthServiceTest {
         given(memberRepository.existsByNickname("동시가입자")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+        assertThatThrownBy(() -> completeSignUp(profile))
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(ErrorCode.OAUTH_ACCOUNT_LINK_REQUIRED);
@@ -374,7 +494,7 @@ class SocialAuthServiceTest {
         given(memberRepository.existsByNickname("내부충돌")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+        assertThatThrownBy(() -> completeSignUp(profile))
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
@@ -402,7 +522,7 @@ class SocialAuthServiceTest {
         given(memberSocialAccountRepository.saveAndFlush(any(MemberSocialAccount.class)))
                 .willThrow(violation);
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
+        assertThatThrownBy(() -> completeSignUp(profile))
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
@@ -428,8 +548,7 @@ class SocialAuthServiceTest {
         given(memberRepository.existsByNickname("알수없는오류")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
-        assertThatThrownBy(() -> socialAuthService.authenticateOrRegister(profile))
-                .isSameAs(violation);
+        assertThatThrownBy(() -> completeSignUp(profile)).isSameAs(violation);
     }
 
     private DataIntegrityViolationException constraintViolation(String constraintName) {

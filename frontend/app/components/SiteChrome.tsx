@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
+import { clearViewerCache, fetchViewer, peekViewer } from "../lib/viewer";
 import { RotatingWordmark } from "./RotatingWordmark";
+import { SnowflakeMark } from "./SnowflakeMark";
+import { CommentProfileAvatar } from "./CommentProfileAvatar";
+import { MessageNavLink } from "./MessageNavLink";
+import { NotificationBell } from "./NotificationBell";
 
 type ThemeSetting = "light" | "dark";
 
@@ -70,7 +74,7 @@ function ChevronDownIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools";
+export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools" | "inquiry";
 
 interface MemberUser {
   publicId: string;
@@ -98,8 +102,41 @@ const boardItems: NavItem[] = [
 
 export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const router = useRouter();
-  const [user, setUser] = useState<MemberUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+  const boardMenuRef = useRef<HTMLDetailsElement>(null);
+  const profileMenuRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (boardMenuRef.current?.hasAttribute("open")) {
+      boardMenuRef.current.removeAttribute("open");
+    }
+    if (profileMenuRef.current?.hasAttribute("open")) {
+      profileMenuRef.current.removeAttribute("open");
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        boardMenuRef.current?.hasAttribute("open") &&
+        !boardMenuRef.current.contains(target)
+      ) {
+        boardMenuRef.current.removeAttribute("open");
+      }
+      if (
+        profileMenuRef.current?.hasAttribute("open") &&
+        !profileMenuRef.current.contains(target)
+      ) {
+        profileMenuRef.current.removeAttribute("open");
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+  // 화면을 옮겨도 이미 받은 내 정보가 있으면 헤더를 비우지 않고 바로 그린다.
+  const [user, setUser] = useState<MemberUser | null>(() => peekViewer() ?? null);
+  const [loading, setLoading] = useState(() => peekViewer() === undefined);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -108,16 +145,10 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
 
   useEffect(() => {
     const refreshProfile = async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
-        setUser(response.ok ? await response.json() : null);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+      setUser(await fetchViewer());
+      setLoading(false);
     };
-    const onUpdate = () => { void refreshProfile(); };
+    const onUpdate = () => { clearViewerCache(); void refreshProfile(); };
     void refreshProfile();
     window.addEventListener("snowthing-profile-updated", onUpdate);
     return () => window.removeEventListener("snowthing-profile-updated", onUpdate);
@@ -126,13 +157,14 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const keyword = search.trim();
-    if (keyword) router.push(`/posts?keyword=${encodeURIComponent(keyword)}`);
+    if (keyword) router.push(`/search?q=${encodeURIComponent(keyword)}`);
   };
 
   const handleLogout = async () => {
     try {
       await csrfFetch(API_ENDPOINTS.auth.logout, { method: "POST" });
     } finally {
+      clearViewerCache();
       setUser(null);
       window.location.href = "/";
     }
@@ -144,10 +176,11 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
         <div className="community-container community-header-inner">
           <div className="community-header-left">
             <Link href="/" aria-label="눈팅 SnowThing 홈" className="alpine-logo">
+              <SnowflakeMark />
               <RotatingWordmark />
             </Link>
             <nav className="community-main-nav" aria-label="메인 메뉴">
-              <details className="header-board-menu">
+              <details className="header-board-menu" ref={boardMenuRef}>
                 <summary className={boardActive ? "nav-active" : ""}>
                   게시판
                   <ChevronDownIcon />
@@ -159,6 +192,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                       href={item.href}
                       className={isBoardItemActive(item.key) ? "nav-active" : ""}
                       aria-current={isBoardItemActive(item.key) ? "page" : undefined}
+                      onClick={() => {
+                        boardMenuRef.current?.removeAttribute("open");
+                      }}
                     >
                       {item.label}
                     </Link>
@@ -184,26 +220,47 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <button type="button" onClick={() => setSearchOpen((open) => !open)} aria-label={searchOpen ? "검색 닫기" : "검색 열기"} aria-expanded={searchOpen}>
                 <span className="material-symbols-outlined">search</span>
               </button>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
             </form>
+            {!loading && user && <MessageNavLink />}
+            {!loading && user && <NotificationBell />}
             {!loading && (user ? (
               <div className="header-profile-wrap">
-                <details className="header-profile-menu">
-                <summary className="header-profile" title={`${user.nickname} 프로필`} aria-label="프로필 메뉴">
-                  <Image
-                    src={user.profileImageUrl || "/images/default-profile-avatar.png"}
-                    alt=""
-                    width={30}
-                    height={30}
-                    unoptimized={Boolean(user.profileImageUrl)}
-                    className={user.profileImageUrl ? undefined : "header-default-profile"}
-                  />
-                </summary>
-                <div className="header-profile-dropdown">
-                  <Link href="/profile" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>내 정보 수정</Link>
-                </div>
+                <details ref={profileMenuRef} className="header-profile-menu">
+                  <summary className="header-profile" title={`${user.nickname} 프로필`} aria-label="프로필 메뉴">
+                    <CommentProfileAvatar
+                      nickname={user.nickname}
+                      profileImageUrl={user.profileImageUrl}
+                      size={32}
+                      className="header-profile-avatar"
+                    />
+                    <span className="header-profile-name">{user.nickname}</span>
+                  </summary>
+                  <div className="header-profile-dropdown">
+                    <Link
+                      href="/profile"
+                      onClick={() => profileMenuRef.current?.removeAttribute("open")}
+                    >
+                      내 정보 수정
+                    </Link>
+                    <Link
+                      href="/posts?category=INQUIRY"
+                      onClick={() => profileMenuRef.current?.removeAttribute("open")}
+                    >
+                      1:1 문의
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        profileMenuRef.current?.removeAttribute("open");
+                        handleLogout();
+                      }}
+                      className="header-dropdown-logout"
+                    >
+                      로그아웃
+                    </button>
+                  </div>
                 </details>
-                <button type="button" onClick={handleLogout} className="header-logout">로그아웃</button>
               </div>
             ) : (
               <Link href="/login" className="header-login" aria-label="로그인" title="로그인"><span className="material-symbols-outlined">person</span></Link>
@@ -217,7 +274,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
           <div className="community-container">
             <form className="mobile-header-search" onSubmit={handleSearch}>
               <span className="material-symbols-outlined">search</span>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="게시글 검색" aria-label="통합 검색" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" />
               <button type="submit">검색</button>
             </form>
             <nav aria-label="모바일 메뉴">
@@ -229,6 +286,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀·동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
+              {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}
             </nav>
           </div>
         </div>
@@ -237,16 +295,12 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   );
 }
 
-export function SideCategories({ active = "all" }: { active?: string }) {
-  return <aside hidden data-active-category={active} aria-hidden="true" />;
-}
-
 export function Footer() {
   return (
     <footer className="community-footer">
       <div className="community-container community-footer-inner">
-        <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>스노보드 커뮤니티</span></div>
-        <nav aria-label="사이트 안내"><Link href="/privacy">개인정보처리방침</Link><Link href="/posts?category=NOTICE">공지사항</Link><a href="mailto:82snowthing@gmail.com">82snowthing@gmail.com</a></nav>
+        <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>윈터스포츠 커뮤니티</span></div>
+        <nav aria-label="사이트 안내"><Link href="/terms">이용약관</Link><Link href="/privacy">개인정보처리방침</Link><Link href="/posts?category=NOTICE">공지사항</Link><Link href="/posts?category=INQUIRY">1:1 문의</Link><a href="mailto:82snowthing@gmail.com">82snowthing@gmail.com</a></nav>
       </div>
       <div className="community-container community-copyright">Copyright © SNOWTHING Alpine Community. All rights reserved.</div>
     </footer>

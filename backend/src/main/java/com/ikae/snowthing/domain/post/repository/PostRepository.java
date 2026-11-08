@@ -35,21 +35,28 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
 
     Optional<Post> findByPublicId(String publicId);
 
+    /** 네이티브 조회라 SQLRestriction이 붙지 않는다. 이미 삭제된 글의 사진도 지울 수 있어야 한다. */
+    @Query(value = "SELECT * FROM post WHERE public_id = :publicId FOR UPDATE", nativeQuery = true)
+    Optional<Post> findIncludingDeletedForUpdate(@Param("publicId") String publicId);
+
     @Query(
             "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.publicId = :publicId")
     Optional<Post> findWithMemberAndCategoryByPublicId(@Param("publicId") String publicId);
 
     @Query(
-            "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.category.code = :categoryCode AND p.category.code <> 'MARKET' AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
+            "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.category.code = :categoryCode AND p.category.code NOT IN :hiddenCodes AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
     Page<Post> findByCategoryCodeWithMemberAndCategory(
-            @Param("categoryCode") String categoryCode, Pageable pageable);
+            @Param("categoryCode") String categoryCode,
+            @Param("hiddenCodes") List<String> hiddenCodes,
+            Pageable pageable);
 
     @Query(
             value =
-                    "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.category.code <> 'MARKET' AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false",
+                    "SELECT p FROM Post p LEFT JOIN FETCH p.member JOIN FETCH p.category WHERE p.category.code NOT IN :hiddenCodes AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false",
             countQuery =
-                    "SELECT COUNT(p) FROM Post p WHERE p.category.code <> 'MARKET' AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
-    Page<Post> findAllWithMemberAndCategory(Pageable pageable);
+                    "SELECT COUNT(p) FROM Post p WHERE p.category.code NOT IN :hiddenCodes AND p.status = com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL AND p.isDeleted = false")
+    Page<Post> findAllWithMemberAndCategory(
+            @Param("hiddenCodes") List<String> hiddenCodes, Pageable pageable);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
@@ -145,85 +152,42 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
 
         String getDeleterNickname();
 
-        String getDeleterEmail();
-
         String getDeleterRole();
 
-        Boolean getIsBlinded();
+        String getStatus();
 
         java.time.LocalDateTime getCreatedAt();
 
         String getCategoryName();
     }
 
+    /**
+     * 관리자 게시글 목록. 삭제된 글도 봐야 해서 SQLRestriction이 붙지 않는 네이티브 조회를 쓴다. filter는 ALL, DELETED, BLINDED 중
+     * 하나다. 블라인드는 관리자가 status를 BLOCKED로 바꾼 글이다.
+     */
     @Query(
             value =
-                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content, "
-                            + "p.member_id AS authorMemberId, m.nickname AS writerNickname, m.email AS writerEmail, "
-                            + "p.is_anonymous AS isAnonymous, p.is_deleted AS isDeleted, p.deleted_at AS deletedAt, "
-                            + "p.deleted_by_member_id AS deletedByMemberId, del.nickname AS deleterNickname, del.email AS deleterEmail, del.role AS deleterRole, "
-                            + "p.is_blinded AS isBlinded, p.created_at AS createdAt, c.name AS categoryName "
-                            + "FROM post p "
-                            + "LEFT JOIN member m ON p.member_id = m.member_id "
-                            + "LEFT JOIN member del ON p.deleted_by_member_id = del.member_id "
-                            + "JOIN post_category c ON p.category_id = c.category_id "
-                            + "ORDER BY p.post_id DESC",
-            countQuery = "SELECT COUNT(*) FROM post",
-            nativeQuery = true)
-    Page<AdminPostProjection> findAllForAdmin(Pageable pageable);
-
-    @Query(
-            value =
-                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content, "
-                            + "p.member_id AS authorMemberId, m.nickname AS writerNickname, m.email AS writerEmail, "
-                            + "p.is_anonymous AS isAnonymous, p.is_deleted AS isDeleted, p.deleted_at AS deletedAt, "
-                            + "p.deleted_by_member_id AS deletedByMemberId, del.nickname AS deleterNickname, del.email AS deleterEmail, del.role AS deleterRole, "
-                            + "p.is_blinded AS isBlinded, p.created_at AS createdAt, c.name AS categoryName "
-                            + "FROM post p "
-                            + "LEFT JOIN member m ON p.member_id = m.member_id "
-                            + "LEFT JOIN member del ON p.deleted_by_member_id = del.member_id "
-                            + "JOIN post_category c ON p.category_id = c.category_id "
-                            + "WHERE p.is_deleted = true "
-                            + "ORDER BY p.deleted_at DESC",
-            countQuery = "SELECT COUNT(*) FROM post WHERE is_deleted = true",
-            nativeQuery = true)
-    Page<AdminPostProjection> findDeletedForAdmin(Pageable pageable);
-
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(
-            value = "UPDATE post SET is_blinded = :blinded WHERE public_id = :publicId",
-            nativeQuery = true)
-    int updateBlindedByPublicId(
-            @Param("publicId") String publicId, @Param("blinded") boolean blinded);
-
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(
-            value =
-                    "UPDATE post SET is_deleted = true, status = 'DELETED', deleted_at = NOW(), deleted_by_member_id = :deleterId WHERE public_id = :publicId",
-            nativeQuery = true)
-    int softDeleteByAdmin(@Param("publicId") String publicId, @Param("deleterId") Long deleterId);
-
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(
-            value =
-                    "UPDATE post SET is_deleted = false, status = 'NORMAL', deleted_at = NULL, deleted_by_member_id = NULL WHERE public_id = :publicId",
-            nativeQuery = true)
-    int restorePostByAdmin(@Param("publicId") String publicId);
-
-    @Query(
-            value =
-                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content, "
-                            + "p.member_id AS authorMemberId, m.nickname AS writerNickname, m.email AS writerEmail, "
-                            + "p.is_anonymous AS isAnonymous, p.is_deleted AS isDeleted, p.deleted_at AS deletedAt, "
-                            + "p.deleted_by_member_id AS deletedByMemberId, del.nickname AS deleterNickname, del.email AS deleterEmail, del.role AS deleterRole, "
-                            + "p.is_blinded AS isBlinded, p.created_at AS createdAt, c.name AS categoryName "
-                            + "FROM post p LEFT JOIN member m ON p.member_id=m.member_id "
-                            + "LEFT JOIN member del ON p.deleted_by_member_id=del.member_id "
-                            + "JOIN post_category c ON p.category_id=c.category_id "
-                            + "WHERE p.is_blinded=true AND (:deletedOnly=false OR p.is_deleted=true) ORDER BY p.post_id DESC",
+                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content,"
+                            + " p.member_id AS authorMemberId, m.nickname AS writerNickname,"
+                            + " m.email AS writerEmail, p.is_anonymous AS isAnonymous,"
+                            + " p.is_deleted AS isDeleted, p.deleted_at AS deletedAt,"
+                            + " p.deleted_by_member_id AS deletedByMemberId,"
+                            + " del.nickname AS deleterNickname, del.role AS deleterRole,"
+                            + " p.status AS status, p.created_at AS createdAt, c.name AS categoryName"
+                            + " FROM post p"
+                            + " LEFT JOIN member m ON p.member_id = m.member_id"
+                            + " LEFT JOIN member del ON p.deleted_by_member_id = del.member_id"
+                            + " JOIN post_category c ON p.category_id = c.category_id"
+                            + " WHERE (:filter = 'ALL'"
+                            + " OR (:filter = 'DELETED' AND p.is_deleted = true)"
+                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED'))"
+                            + " ORDER BY CASE WHEN :filter = 'DELETED' THEN p.deleted_at END DESC,"
+                            + " p.post_id DESC",
             countQuery =
-                    "SELECT COUNT(*) FROM post WHERE is_blinded=true AND (:deletedOnly=false OR is_deleted=true)",
+                    "SELECT COUNT(*) FROM post p"
+                            + " WHERE (:filter = 'ALL'"
+                            + " OR (:filter = 'DELETED' AND p.is_deleted = true)"
+                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED'))",
             nativeQuery = true)
-    Page<AdminPostProjection> findBlindedForAdmin(
-            @Param("deletedOnly") boolean deletedOnly, Pageable pageable);
+    Page<AdminPostProjection> findForAdmin(@Param("filter") String filter, Pageable pageable);
 }

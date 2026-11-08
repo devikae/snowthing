@@ -7,6 +7,8 @@ import { Footer, TopNav, type ActiveNav } from "../components/SiteChrome";
 import { PostImageIcon } from "../components/PostImageIcon";
 import { PostListAuthor } from "../components/PostListAuthor";
 import { API_ENDPOINTS } from "../lib/api";
+import { fetchViewer, isAdminViewer } from "../lib/viewer";
+import { formatCompactTime } from "../lib/koreanDate";
 
 interface PostItem {
   publicId: string;
@@ -15,6 +17,7 @@ interface PostItem {
   title: string;
   writerNickname: string;
   writerProfileImageUrl?: string | null;
+  writerPublicId?: string | null;
   thumbnailImageUrl: string | null;
   hasImage: boolean;
   viewCount: number;
@@ -24,21 +27,12 @@ interface PostItem {
   status: string;
   isDeleted: boolean;
   createdAt: string;
+  answered?: boolean | null;
 }
 
 interface BoardConfig {
   name: string;
   navKey: ActiveNav;
-}
-
-interface CarpoolSidebarItem {
-  publicId: string;
-  title: string;
-  departureRegion: string;
-  destinationResortName: string;
-  departureAt: string;
-  passengerCapacity: number;
-  estimatedCostPerPerson: number;
 }
 
 const categories = [
@@ -61,24 +55,9 @@ const boardConfigs: Record<string, BoardConfig> = {
   FOOD: { name: "리조트 맛집", navKey: "food" },
   CREW: { name: "동호회 모집", navKey: "crew" },
   SEASON_ROOM: { name: "시즌방 모집", navKey: "seasonRoom" },
+  INQUIRY: { name: "1:1 문의", navKey: "inquiry" },
 };
 
-function formatCompactTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffSec < 60) return "방금";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}분`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay === 1) return "어제";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${month}.${day}`;
-}
 
 function formatShortCategory(categoryCode: string, categoryName: string): string {
   switch (categoryCode) {
@@ -101,6 +80,14 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
   }
 }
 
+const DEFAULT_SEARCH_TYPE = "TITLE_CONTENT";
+const SEARCH_TYPES = [
+  { value: "TITLE_CONTENT", label: "제목+내용" },
+  { value: "TITLE", label: "제목" },
+  { value: "CONTENT", label: "내용" },
+  { value: "WRITER", label: "작성자" },
+];
+
 function PostListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -109,16 +96,21 @@ function PostListContent() {
   const currentView = searchParams.get("view")?.toLowerCase() === "best" ? "best" : "";
   const page = Math.max(0, Number(searchParams.get("page") ?? "1") - 1 || 0);
   const keywordFromUrl = searchParams.get("keyword") ?? "";
+  const requestedSearchType = searchParams.get("searchType") ?? "";
+  const searchTypeFromUrl = SEARCH_TYPES.some((type) => type.value === requestedSearchType)
+    ? requestedSearchType
+    : DEFAULT_SEARCH_TYPE;
   const config = boardConfigs[currentCategory];
+  const isInquiry = currentCategory === "INQUIRY";
 
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [notices, setNotices] = useState<PostItem[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState(keywordFromUrl);
+  const [searchType, setSearchType] = useState(searchTypeFromUrl);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [carpools, setCarpools] = useState<CarpoolSidebarItem[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -128,10 +120,9 @@ function PostListContent() {
       .catch(() => {
         if (!controller.signal.aborted) setNotices([]);
       });
-    void fetch(API_ENDPOINTS.members.me, { credentials: "include", signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((member) => setIsAdmin(member?.role === "ROLE_ADMIN"))
-      .catch(() => {});
+    void fetchViewer().then((viewer) => {
+      if (!controller.signal.aborted) setIsAdmin(isAdminViewer(viewer));
+    });
     return () => controller.abort();
   }, []);
 
@@ -143,11 +134,18 @@ function PostListContent() {
         const params = new URLSearchParams({ page: String(page + 1), size: "20" });
         if (currentCategory) params.set("categoryCode", currentCategory);
         if (currentView === "best") params.set("viewType", "BEST");
-        if (keywordFromUrl.trim()) params.set("keyword", keywordFromUrl.trim());
+        if (keywordFromUrl.trim()) {
+          params.set("keyword", keywordFromUrl.trim());
+          params.set("searchType", searchTypeFromUrl);
+        }
         const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, {
           credentials: "include",
           signal,
         });
+        if (response.status === 401 && currentCategory === "INQUIRY") {
+          router.replace(`/login?returnUrl=${encodeURIComponent("/posts?category=INQUIRY")}`);
+          return;
+        }
         if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
         const data = await response.json();
         if (signal?.aborted) return;
@@ -162,7 +160,7 @@ function PostListContent() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [currentCategory, currentView, keywordFromUrl, page],
+    [currentCategory, currentView, keywordFromUrl, page, router, searchTypeFromUrl],
   );
 
   useEffect(() => {
@@ -174,30 +172,12 @@ function PostListContent() {
     };
   }, [fetchPosts]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((data: { content?: CarpoolSidebarItem[] }) =>
-        setCarpools(Array.isArray(data.content) ? data.content : []),
-      )
-      .catch((carpoolError) => {
-        if (!(carpoolError instanceof DOMException && carpoolError.name === "AbortError")) {
-          setCarpools([]);
-        }
-      });
-    return () => controller.abort();
-  }, []);
-
   const visiblePages = useMemo(() => {
     const start = Math.max(0, Math.min(page - 2, totalPages - 5));
     return Array.from({ length: Math.min(5, totalPages) }, (_, index) => start + index);
   }, [page, totalPages]);
 
-  const moveTo = (next: { category?: string; page?: number; keyword?: string; view?: string }) => {
+  const moveTo = (next: { category?: string; page?: number; keyword?: string; searchType?: string; view?: string }) => {
     const params = new URLSearchParams();
     const category = next.category ?? currentCategory;
     const nextPage = next.page ?? page;
@@ -206,13 +186,20 @@ function PostListContent() {
     if (category) params.set("category", category);
     if (view) params.set("view", view);
     if (nextPage > 0) params.set("page", String(nextPage + 1));
-    if (keyword.trim()) params.set("keyword", keyword.trim());
-    router.push(`/posts${params.size ? `?${params}` : ""}`);
+    if (keyword.trim()) {
+      params.set("keyword", keyword.trim());
+      const nextType = next.searchType ?? searchTypeFromUrl;
+      if (nextType !== DEFAULT_SEARCH_TYPE) params.set("searchType", nextType);
+    }
+    const url = `/posts${params.size ? `?${params}` : ""}`;
+    // 검색어가 걸린 이동은 Next 라우터가 프리패치된 주소로 되돌려 검색어를 잃는 경우가 있어 새로 불러온다.
+    if (keyword.trim() || keywordFromUrl) window.location.assign(url);
+    else router.push(url);
   };
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
-    moveTo({ page: 0, keyword: searchKeyword });
+    moveTo({ page: 0, keyword: searchKeyword, searchType });
   };
 
   const handlePostClick = (event: React.MouseEvent, post: PostItem) => {
@@ -229,8 +216,15 @@ function PostListContent() {
     <div className="community-page">
       <TopNav active={currentView === "best" ? "best" : config.navKey} />
       <main className="community-container board-page">
+        <h1 className="sr-only">{config.name}</h1>
         <div className="board-layout">
           <section className="board-primary">
+            {isInquiry ? (
+              <section className="board-filter-panel board-inquiry-guide" aria-label="1:1 문의 안내">
+                <strong>{isAdmin ? "전체 문의" : "1:1 문의"}</strong>
+                <p>{isAdmin ? "회원이 남긴 모든 문의입니다. 댓글로 답변해 주세요." : "내가 남긴 문의만 보입니다. 답변은 운영자가 댓글로 남깁니다."}</p>
+              </section>
+            ) : (
             <nav className="board-filter-panel" aria-label="게시판 선택">
               <div className="board-category-tabs filter-pills">
                 {categories.map((category) => (
@@ -245,8 +239,9 @@ function PostListContent() {
                 ))}
               </div>
             </nav>
+            )}
 
-            {currentCategory !== "NOTICE" && notices.length > 0 && (
+            {currentCategory !== "NOTICE" && !isInquiry && notices.length > 0 && (
               <section className="board-notices" aria-label="게시판 공지">
                 {notices.map((notice) => (
                   <article key={notice.publicId} className="m-row">
@@ -261,8 +256,7 @@ function PostListContent() {
                         <b>{notice.writerNickname}</b>
                       </span>
                       <span className="m-stats">
-                        <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
-                        <span className="m-stat m-stat-view" title={`조회 ${notice.viewCount.toLocaleString()}`}>
+                        <span className="m-stat">
                           <span className="material-symbols-outlined" aria-hidden="true">
                             visibility
                           </span>
@@ -293,10 +287,16 @@ function PostListContent() {
               ) : posts.length === 0 ? (
                 <div className="board-state">
                   <span className="material-symbols-outlined">edit_note</span>
-                  <strong>등록된 게시글이 없습니다.</strong>
-                  {(currentCategory !== "NOTICE" || isAdmin) && (
+                  <strong>
+                    {keywordFromUrl
+                      ? "검색 결과가 없습니다."
+                      : isInquiry
+                        ? isAdmin ? "들어온 문의가 없습니다." : "남긴 문의가 없습니다."
+                        : "등록된 게시글이 없습니다."}
+                  </strong>
+                  {!keywordFromUrl && (currentCategory !== "NOTICE" || isAdmin) && (
                     <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}>
-                      첫 글 작성하기
+                      {isInquiry ? "문의하기" : "첫 글 작성하기"}
                     </Link>
                   )}
                 </div>
@@ -312,7 +312,7 @@ function PostListContent() {
                   return (
                     <Link
                       key={post.publicId}
-                      href={`/posts/${post.publicId}`}
+                      href={post.categoryCode === "CARPOOL" ? `/carpool/${post.publicId}` : `/posts/${post.publicId}`}
                       onClick={(event) => handlePostClick(event, post)}
                       className={`board-post-row m-row ${unavailable ? "unavailable" : ""}`}
                     >
@@ -322,24 +322,27 @@ function PostListContent() {
                             {formatShortCategory(post.categoryCode, post.categoryName)}
                           </span>
                         )}
+                        {post.answered != null && (
+                          <span className={`m-cat ${post.answered ? "accent" : ""}`}>
+                            {post.answered ? "답변 완료" : "답변 대기"}
+                          </span>
+                        )}
                         {post.likeCount >= 50 && <em className="board-hot-badge">HOT</em>}
                         <strong className="m-title">{title}</strong>
                         {post.hasImage && <PostImageIcon />}
                       </div>
                       <div className="m-row-right">
-                        <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} />
+                        <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} publicId={post.writerPublicId} />
                         <span className="m-stats">
-                          {post.commentCount > 0 ? (
-                            <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>
+                          {post.commentCount > 0 && (
+                            <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 chat_bubble
                               </span>
                               {post.commentCount}
                             </span>
-                          ) : (
-                            <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                           )}
-                          <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                          <span className="m-stat" title={`조회 ${post.viewCount.toLocaleString()}`}>
                             <span className="material-symbols-outlined" aria-hidden="true">
                               visibility
                             </span>
@@ -380,8 +383,8 @@ function PostListContent() {
               </nav>
               <div className="board-navigation-actions">
                 <form className="board-search" onSubmit={handleSearch}>
-                  <select aria-label="검색 범위">
-                    <option>제목+내용</option>
+                  <select aria-label="검색 범위" value={searchType} onChange={(event) => setSearchType(event.target.value)}>
+                    {SEARCH_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
                   </select>
                   <input
                     value={searchKeyword}
@@ -395,53 +398,14 @@ function PostListContent() {
                     href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}
                     className="board-write-button"
                   >
-                    <span className="material-symbols-outlined">edit</span>글쓰기
+                    <span className="material-symbols-outlined">edit</span>
+                    {isInquiry ? "문의하기" : "글쓰기"}
                   </Link>
                 )}
               </div>
             </div>
           </section>
 
-          <aside className="board-sidebar">
-            <section className="board-widget board-carpool" id="carpool">
-              <header>
-                <div>
-                  <small className="section-eyebrow">RIDE SHARE</small>
-                  <h2>카풀 &amp; 동행</h2>
-                </div>
-                <Link href="/carpool/new">+ 등록</Link>
-              </header>
-              <div>
-                {carpools.length === 0 ? (
-                  <p className="board-carpool-empty">현재 모집 중인 카풀이 없습니다.</p>
-                ) : (
-                  carpools.map((item) => (
-                    <Link href={`/carpool/${item.publicId}`} key={item.publicId}>
-                      <article>
-                        <div>
-                          <strong>
-                            {item.departureRegion} <span>→</span> <em>{item.destinationResortName}</em>
-                          </strong>
-                          <b>{item.passengerCapacity}명</b>
-                        </div>
-                        <p>
-                          <span>
-                            {new Date(item.departureAt).toLocaleString("ko-KR", {
-                              month: "numeric",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                          <strong>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</strong>
-                        </p>
-                      </article>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </section>
-          </aside>
         </div>
       </main>
       <Footer />

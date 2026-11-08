@@ -1,9 +1,13 @@
 package com.ikae.snowthing.domain.image.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,6 +33,17 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 public class MarketThumbnailService {
     private static final int MAX_ATTEMPTS = 5;
     private static final String SOURCE_PATTERN = "public/posts/originals/m-[0-9a-f-]{36}\\.jpg";
+
+    /** 본문 base64 사진에서 만든 작업의 source_key 접두어. 뒤에는 사진 내용의 해시가 온다. */
+    private static final String INLINE_PREFIX = "inline:";
+
+    private static final Pattern INLINE_IMAGE =
+            Pattern.compile(
+                    "data:image/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)",
+                    Pattern.CASE_INSENSITIVE);
+    // 디코딩하면 약 10MB다. 이보다 크면 변환하지 않고 영구 실패로 둔다.
+    private static final int MAX_INLINE_BASE64_CHARS = 14_000_000;
+
     private final JdbcTemplate jdbc;
     private final NamedParameterJdbcTemplate namedJdbc;
     private final ImageService images;
@@ -69,12 +84,36 @@ public class MarketThumbnailService {
     public void queue(String postId, String firstImage) {
         String key = urls.toStorageValue(firstImage);
         // Old uploads already have thumbnails. New uploads create none until selected here.
-        if (key != null && !key.matches(SOURCE_PATTERN)) key = null;
+        if (key != null && !key.matches(SOURCE_PATTERN) && !key.startsWith(INLINE_PREFIX))
+            key = null;
         jdbc.update(
                 "INSERT INTO market_thumbnail(post_public_id,source_key,revision,due_at,attempts) VALUES(?,?,0,?,0) ON DUPLICATE KEY UPDATE source_key=VALUES(source_key),revision=revision+1,due_at=VALUES(due_at),attempts=0",
                 postId,
                 key,
                 Timestamp.from(clock.instant()));
+    }
+
+    /** 글의 썸네일을 지운다. 장터 글이 아니면 줄이 없어 아무 일도 하지 않으므로 글 종류를 따지지 않는다. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void release(String postId) {
+        jdbc.update(
+                "UPDATE market_thumbnail SET source_key=NULL,revision=revision+1,due_at=?,attempts=0 WHERE post_public_id=?",
+                Timestamp.from(clock.instant()),
+                postId);
+    }
+
+    /** 본문 첫 base64 사진을 가리키는 작업 출처 값. 없으면 null. 내용 해시라서 첫 사진이 바뀌면 값도 바뀌어 썸네일을 다시 만든다. */
+    public String inlineSource(String content) {
+        var matcher = INLINE_IMAGE.matcher(content == null ? "" : content);
+        if (!matcher.find()) return null;
+        try {
+            byte[] hash =
+                    MessageDigest.getInstance("SHA-256")
+                            .digest(matcher.group(1).getBytes(StandardCharsets.US_ASCII));
+            return INLINE_PREFIX + HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException failure) {
+            throw new IllegalStateException(failure);
+        }
     }
 
     public Map<String, String> readyUrls(List<String> postIds) {
@@ -176,7 +215,9 @@ public class MarketThumbnailService {
                             false);
                     return;
                 }
-                images.createMarketThumbnail(job.source(), objectKey(id), gate);
+                if (job.source().startsWith(INLINE_PREFIX))
+                    images.createMarketThumbnailFromBytes(readInlineImage(id), objectKey(id), gate);
+                else images.createMarketThumbnail(job.source(), objectKey(id), gate);
             } else if (job.source() == null)
                 s3.deleteObject(
                         DeleteObjectRequest.builder()
@@ -217,7 +258,9 @@ public class MarketThumbnailService {
                                                     == ErrorCode.IMAGE_DIMENSIONS_EXCEEDED);
             int attempts = job.attempts() + 1;
             Duration delay = Duration.ofMinutes(1L << Math.min(attempts - 1, 6));
-            if (permanent || attempts >= MAX_ATTEMPTS) {
+            // 삭제는 횟수가 차도 포기하지 않는다. 포기하면 지운 글의 썸네일이 계속 열린다.
+            boolean deleting = job.source() == null && !job.orphan();
+            if (permanent || (attempts >= MAX_ATTEMPTS && !deleting)) {
                 tx.executeWithoutResult(
                         status ->
                                 jdbc.update(
@@ -240,6 +283,19 @@ public class MarketThumbnailService {
                                     id,
                                     job.revision()));
             throw failure;
+        }
+    }
+
+    private byte[] readInlineImage(String id) {
+        String content =
+                jdbc.queryForObject("SELECT content FROM post WHERE public_id=?", String.class, id);
+        var matcher = INLINE_IMAGE.matcher(content == null ? "" : content);
+        if (!matcher.find() || matcher.end(1) - matcher.start(1) > MAX_INLINE_BASE64_CHARS)
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        try {
+            return Base64.getDecoder().decode(matcher.group(1));
+        } catch (IllegalArgumentException invalidBase64) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
     }
 

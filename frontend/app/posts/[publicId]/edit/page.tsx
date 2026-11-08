@@ -8,12 +8,15 @@ import dynamic from "next/dynamic";
 import { ToastEditorHandle } from "../../../components/ToastEditor";
 import { Footer, TopNav } from "../../../components/SiteChrome";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../../lib/api";
+import { errorText } from "../../../lib/errorText";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm font-mono text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
 });
 
 interface PostDetail {
@@ -22,6 +25,7 @@ interface PostDetail {
   title: string;
   content: string;
   isAnonymous: boolean;
+  isAuthor: boolean;
   images: string[];
   writer?: {
     publicId: string;
@@ -41,6 +45,7 @@ const categoryOptions = [
 
 function PostEditForm({ publicId }: { publicId: string }) {
   const router = useRouter();
+  useLeaveWarning();
   const editorRef = useRef<ToastEditorHandle>(null);
   const [categoryCode, setCategoryCode] = useState("FREE");
   const [title, setTitle] = useState("");
@@ -77,8 +82,12 @@ function PostEditForm({ publicId }: { publicId: string }) {
           });
           if (res.ok) {
             const data: PostDetail = await res.json();
+            if (data.categoryCode === "CARPOOL") {
+              router.replace(`/carpool/${publicId}/edit`);
+              return;
+            }
 
-            const isWriter = Boolean(currentUserPublicId && data.writer?.publicId === currentUserPublicId);
+            const isWriter = data.isAuthor;
             setIsAuthor(isWriter);
             setCanUploadImages(Boolean(currentUserPublicId));
 
@@ -113,10 +122,18 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const uploadImages = async (files: FileList | null) => {
     if (!files?.length || uploadingImages) return;
     if (images.length + files.length > 10) { setErrorMsg("사진은 최대 10장까지 등록할 수 있습니다."); return; }
+    // 축소가 끝날 때까지 등록 버튼과 파일 칸을 막는다.
     setUploadingImages(true);
     setErrorMsg("");
+    const selected = Array.from(files);
+    const prepared = await prepareImagesForUpload(selected).catch(() => selected);
+    if (prepared.some(isOversizedImage)) {
+      setErrorMsg(OVERSIZED_IMAGE_MESSAGE);
+      setUploadingImages(false);
+      return;
+    }
     try {
-      for (const file of Array.from(files)) {
+      for (const file of prepared) {
         const form = new FormData();
         form.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: form });
@@ -124,7 +141,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
         const uploaded: { imageUrl: string } = await response.json();
         setImages((current) => [...current, uploaded.imageUrl]);
       }
-    } catch (error) { setErrorMsg(error instanceof Error ? error.message : "사진 업로드에 실패했습니다."); }
+    } catch (error) { setErrorMsg(errorText(error, "사진 업로드에 실패했습니다.")); }
     finally { setUploadingImages(false); }
   };
 
@@ -207,6 +224,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
         </div>
       </header>
 
+      {categoryCode !== "INQUIRY" && (
       <nav className="compose-category-bar" aria-label="게시판 변경">
         <div className="filter-pills">
           {categoryOptions.map((option) => (
@@ -221,6 +239,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
           ))}
         </div>
       </nav>
+      )}
 
       <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (

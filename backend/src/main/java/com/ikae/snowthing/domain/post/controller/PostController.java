@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +14,9 @@ import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.domain.post.service.ReactionService;
+import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
+import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
+import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.web.AnonymousVoterCookieManager;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -35,15 +37,27 @@ public class PostController {
     private final ClientIpResolver clientIpResolver;
     private final ViewCountCookieManager viewCountCookieManager;
     private final AnonymousVoterCookieManager anonymousVoterCookieManager;
+    private final ContentWriteRateLimiter contentWriteRateLimiter;
+    private final IdempotentCreateHandler idempotentCreateHandler;
 
     @PostMapping
-    public ResponseEntity<PostResponse> createPost(
+    public ResponseEntity<Object> createPost(
             @Valid @RequestBody PostCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = IdempotentCreateHandler.HEADER, required = false)
+                    String idempotencyKey,
             HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
-        PostResponse response = postService.createPost(request, userDetails, clientIp);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return idempotentCreateHandler.create(
+                IdempotencyTarget.POST,
+                idempotencyKey,
+                userDetails,
+                clientIp,
+                request,
+                () ->
+                        contentWriteRateLimiter.check(
+                                userDetails, clientIp, ContentWriteRateLimiter.Action.POST),
+                () -> postService.createPost(request, userDetails, clientIp));
     }
 
     @GetMapping("/{publicId}")
@@ -71,11 +85,12 @@ public class PostController {
                     @RequestParam(required = false) String keyword,
                     @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false, defaultValue = "1") Integer page,
-                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size) {
+                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size,
+                    @AuthenticationPrincipal CustomUserDetails userDetails) {
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, page, null, size);
-        return ResponseEntity.ok(postService.searchPostsByOffset(request));
+        return ResponseEntity.ok(postService.searchPostsByOffset(request, userDetails));
     }
 
     @GetMapping("/scroll")
@@ -87,18 +102,21 @@ public class PostController {
                     @RequestParam(required = false) String keyword,
                     @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false) String cursor,
-                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size) {
+                    @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size,
+                    @AuthenticationPrincipal CustomUserDetails userDetails) {
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, null, cursor, size);
-        return ResponseEntity.ok(postService.searchPostsByCursor(request));
+        return ResponseEntity.ok(postService.searchPostsByCursor(request, userDetails));
     }
 
     @PutMapping("/{publicId}")
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable String publicId,
             @Valid @RequestBody PostUpdateRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
+        checkGuestPassword(userDetails, httpRequest);
         PostResponse response = postService.updatePost(publicId, request, userDetails);
         return ResponseEntity.ok(response);
     }
@@ -107,7 +125,9 @@ public class PostController {
     public ResponseEntity<Map<String, Object>> deletePost(
             @PathVariable String publicId,
             @RequestBody(required = false) PostDeleteRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
+        checkGuestPassword(userDetails, httpRequest);
         String password = request != null ? request.anonymousPassword() : null;
         postService.deletePost(publicId, password, userDetails);
         return ResponseEntity.ok(
@@ -122,6 +142,9 @@ public class PostController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         String clientIp = clientIpResolver.resolve(httpRequest);
+        if (userDetails == null) {
+            contentWriteRateLimiter.checkGuestReaction(clientIp, publicId);
+        }
         String anonymousVoterId =
                 userDetails == null
                         ? anonymousVoterCookieManager.getOrCreate(httpRequest, httpResponse)
@@ -144,5 +167,15 @@ public class PostController {
                         : null;
         return ResponseEntity.ok(
                 reactionService.remove(publicId, type, userDetails, clientIp, anonymousVoterId));
+    }
+
+    /** 비회원 글은 비밀번호로 수정, 삭제하므로 대입과 BCrypt 연산 남용을 IP 단위로 묶는다. */
+    private void checkGuestPassword(CustomUserDetails userDetails, HttpServletRequest httpRequest) {
+        if (userDetails == null) {
+            contentWriteRateLimiter.check(
+                    null,
+                    clientIpResolver.resolve(httpRequest),
+                    ContentWriteRateLimiter.Action.GUEST_PASSWORD);
+        }
     }
 }

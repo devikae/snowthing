@@ -1,8 +1,16 @@
+# 컨테이너 로그가 디스크를 채우지 않게 서비스마다 50MB x 5개까지만 남긴다.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   backend:
     image: ${BACKEND_IMAGE_URI:-snowthing-backend:latest}
     container_name: snowthing-backend
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "127.0.0.1:8080:8080"
     environment:
@@ -15,6 +23,7 @@ services:
       - SNOWTHING_IMAGE_BASE_URL=${SNOWTHING_IMAGE_BASE_URL:-https://images.snowthing.org}
       - SNOWTHING_KAKAO_REST_API_KEY=${SNOWTHING_KAKAO_REST_API_KEY:?SNOWTHING_KAKAO_REST_API_KEY must be set}
       - SNOWTHING_OPINET_API_KEY=${SNOWTHING_OPINET_API_KEY:?SNOWTHING_OPINET_API_KEY must be set}
+      - SNOWTHING_KMA_SERVICE_KEY=${SNOWTHING_KMA_SERVICE_KEY:-}
       - SNOWTHING_FRONTEND_BASE_URL=${SNOWTHING_FRONTEND_BASE_URL:-https://snowthing.org}
       - SNOWTHING_GOOGLE_CLIENT_ID=${SNOWTHING_GOOGLE_CLIENT_ID:-}
       - SNOWTHING_GOOGLE_CLIENT_SECRET=${SNOWTHING_GOOGLE_CLIENT_SECRET:-}
@@ -32,23 +41,34 @@ services:
       - SNOWTHING_IMAGE_BUDGET_LOG_PATH=/var/log/snowthing-chat/image_budget.jsonl
       - SNOWTHING_CHAT_MAX_CONNECTIONS=${SNOWTHING_CHAT_MAX_CONNECTIONS:-500}
       - SNOWTHING_BOT_ENABLED=${SNOWTHING_BOT_ENABLED:-false}
-      - SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID=${SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID:?SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID must be set}
+      - SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID=${SNOWTHING_CLOUDFRONT_DISTRIBUTION_ID:-}
       - SNOWTHING_BOT_BASE_URL=${SNOWTHING_BOT_BASE_URL:-http://mcp-bot:3100}
       - SNOWTHING_BOT_INTERNAL_SECRET=${SNOWTHING_BOT_INTERNAL_SECRET:-}
       - SNOWTHING_BOT_DELEGATION_SECRET=${SNOWTHING_BOT_DELEGATION_SECRET:-}
       - SNOWTHING_BOT_DELEGATION_TTL=${SNOWTHING_BOT_DELEGATION_TTL:-60s}
       - SNOWTHING_BOT_REQUEST_TIMEOUT=${SNOWTHING_BOT_REQUEST_TIMEOUT:-15s}
-      - JAVA_TOOL_OPTIONS=-javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
+      # AI 멤버(IKA-14). 페르소나 파일은 저장소 밖 호스트 디렉터리에 둔다.
+      - SNOWTHING_AI_MEMBERS_ENABLED=${SNOWTHING_AI_MEMBERS_ENABLED:-false}
+      - SNOWTHING_AI_MEMBERS_PERSONA_FILE=/etc/snowthing-ai/personas.yml
+      - SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT=${SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT:-100}
+      - SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS=${SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS:-}
+      # Discord 알림(IKA-18). 비어 있으면 그 채널 알림은 꺼진다.
+      - DISCORD_WEBHOOK_ALERT=${DISCORD_WEBHOOK_ALERT:-}
+      - DISCORD_WEBHOOK_EVENT=${DISCORD_WEBHOOK_EVENT:-}
+      # OOM 뒤 멈춘 채 남지 않고 종료되어 restart 정책으로 다시 뜨게 한다.
+      - JAVA_TOOL_OPTIONS=-XX:+ExitOnOutOfMemoryError -javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
       - TZ=Asia/Seoul
     volumes:
       - /var/log/snowthing-chat:/var/log/snowthing-chat
       - /opt/pinpoint-agent-3.1.0:/opt/pinpoint-agent:ro
       - /var/log/pinpoint-agent:/opt/pinpoint-agent/logs
+      - /opt/snowthing-ai:/etc/snowthing-ai:ro
 
   frontend:
     image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:latest}
     container_name: snowthing-frontend
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "127.0.0.1:3000:3000"
     environment:
@@ -59,6 +79,7 @@ services:
     image: ${MCP_BOT_IMAGE_URI:-snowthing-mcp-bot:latest}
     container_name: snowthing-mcp-bot
     restart: unless-stopped
+    logging: *default-logging
     init: true
     expose:
       - "3100"

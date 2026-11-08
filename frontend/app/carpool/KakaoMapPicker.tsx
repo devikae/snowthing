@@ -98,6 +98,7 @@ export default function KakaoMapPicker({
   const [results, setResults] = useState<KakaoPlaceResult[]>([]);
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
+  const [locating, setLocating] = useState(false);
 
   const reportError = useCallback(
     (value: string) => {
@@ -221,6 +222,34 @@ export default function KakaoMapPicker({
     selectCoordinate(coordinate, true);
   };
 
+  const handleCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      reportError("이 브라우저에서는 위치 정보(GPS) 기능을 지원하지 않습니다.");
+      return;
+    }
+    setLocating(true);
+    reportError("");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        if (!window.kakao) return;
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const coordinate = new window.kakao.maps.LatLng(lat, lng);
+        selectCoordinate(coordinate, true);
+      },
+      (error) => {
+        setLocating(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          reportError("위치 접근 권한이 차단되었습니다. 브라우저 주소창에서 위치 권한을 허용해 주세요.");
+        } else {
+          reportError("현재 위치를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
   return (
     <div className="kakao-map-picker">
       <div className="carpool-place-search">
@@ -237,6 +266,18 @@ export default function KakaoMapPicker({
         />
         <button type="button" onClick={search} disabled={!ready}>
           검색
+        </button>
+        <button
+          type="button"
+          onClick={handleCurrentLocation}
+          disabled={!ready || locating}
+          className="carpool-gps-btn"
+          title="현재 위치로 출발지 설정"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "16px", verticalAlign: "middle" }} aria-hidden="true">
+            my_location
+          </span>
+          {locating ? "위치 확인 중..." : "현재 위치"}
         </button>
       </div>
       <div ref={mapElement} className="kakao-map" aria-label="출발 장소 지도" />

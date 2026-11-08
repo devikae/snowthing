@@ -1,6 +1,10 @@
 import { API_ENDPOINTS } from "./api";
 
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
+// Spring Security가 CSRF 검사에서 거절하면 accessDeniedHandler가 이 코드로 답한다.
+// 서비스의 권한 검사(남의 글 수정 등)도 같은 코드를 쓴다. 이 경우는 쓰기 전에 트랜잭션 안에서 거절되어
+// 다시 보내도 두 번 처리되지 않고, 같은 403을 한 번 더 받을 뿐이다.
+const ACCESS_DENIED_CODE = "AUTH_002";
 
 let cachedCsrfToken: string | null = null;
 
@@ -26,18 +30,32 @@ async function getCsrfToken() {
   return cachedCsrfToken;
 }
 
+async function isCsrfRejection(response: Response) {
+  if (response.status !== 403) return false;
+  const body = await response.clone().json().catch(() => null);
+  return body?.code === ACCESS_DENIED_CODE;
+}
+
 export async function csrfFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   const method = (init.method ?? "GET").toUpperCase();
-  const headers = new Headers(init.headers);
+  const send = async () => {
+    const headers = new Headers(init.headers);
+    if (isUnsafeMethod(method)) {
+      headers.set(CSRF_HEADER_NAME, await getCsrfToken());
+    }
+    return fetch(input, {
+      ...init,
+      method,
+      headers,
+      credentials: init.credentials ?? "include",
+    });
+  };
 
-  if (isUnsafeMethod(method)) {
-    headers.set(CSRF_HEADER_NAME, await getCsrfToken());
+  const response = await send();
+  // 다른 탭의 로그아웃이나 로그인으로 토큰이 바뀌면 캐시한 토큰이 거절된다. 한 번만 새 토큰으로 다시 보낸다.
+  if (isUnsafeMethod(method) && cachedCsrfToken && (await isCsrfRejection(response))) {
+    cachedCsrfToken = null;
+    return send();
   }
-
-  return fetch(input, {
-    ...init,
-    method,
-    headers,
-    credentials: init.credentials ?? "include",
-  });
+  return response;
 }

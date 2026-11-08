@@ -2,6 +2,7 @@ package com.ikae.snowthing.global.config.websocket;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -94,6 +95,22 @@ class ChatConnectionRegistryTest {
         registry.register(session);
 
         registry.disconnectHttpSession(HTTP_SESSION_ID);
+
+        verify(session).close(ChatConnectionRegistry.MEMBER_LOGOUT);
+        assertThat(registry.connectionCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("회원 기준으로 끊으면 HTTP 세션 ID가 달라진 연결도 종료한다")
+    void disconnectMemberClosesConnectionRegardlessOfHttpSessionId() throws Exception {
+        ChatConnectionRegistry registry = new ChatConnectionRegistry(MAX_CONNECTIONS);
+        WebSocketSession session = memberSession(FIRST_SESSION_ID, MEMBER_ID, HTTP_SESSION_ID);
+        registry.register(session);
+
+        registry.disconnectHttpSession("rotated-http-session");
+        verify(session, never()).close(ChatConnectionRegistry.MEMBER_LOGOUT);
+
+        registry.disconnectMember(MEMBER_ID);
 
         verify(session).close(ChatConnectionRegistry.MEMBER_LOGOUT);
         assertThat(registry.connectionCount()).isZero();

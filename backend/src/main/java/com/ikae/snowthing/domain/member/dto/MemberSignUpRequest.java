@@ -18,12 +18,14 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class MemberSignUpRequest {
+public class MemberSignUpRequest implements RegistrationConsentRequest {
 
     @NotNull @AssertTrue private Boolean ageConfirmed;
     @NotNull @AssertTrue private Boolean privacyAgreed;
+    @NotNull @AssertTrue private Boolean termsAgreed;
     @NotNull private Boolean marketingEmailAgreed;
     @NotBlank private String privacyVersion;
+    @NotBlank private String termsVersion;
 
     @NotBlank(message = "이메일은 필수 입력값입니다.")
     @Pattern(
@@ -42,8 +44,10 @@ public class MemberSignUpRequest {
     @Pattern(regexp = NicknamePolicy.REGEXP, message = NicknamePolicy.MESSAGE)
     private String nickname;
 
+    @Size(max = 255, message = "자기소개는 255자까지 입력할 수 있습니다.")
     private String bio;
 
+    @Size(max = 100, message = "출발 지역은 100자까지 입력할 수 있습니다.")
     private String departureRegion;
 
     private List<Long> resortIds = new ArrayList<>();
@@ -62,8 +66,10 @@ public class MemberSignUpRequest {
             List<Long> ridingStyleIds,
             Boolean ageConfirmed,
             Boolean privacyAgreed,
+            Boolean termsAgreed,
             Boolean marketingEmailAgreed,
-            String privacyVersion) {
+            String privacyVersion,
+            String termsVersion) {
         this.email = email;
         this.password = password;
         this.emailVerificationToken = emailVerificationToken;
@@ -72,8 +78,10 @@ public class MemberSignUpRequest {
         this.departureRegion = departureRegion;
         this.ageConfirmed = ageConfirmed;
         this.privacyAgreed = privacyAgreed;
+        this.termsAgreed = termsAgreed;
         this.marketingEmailAgreed = marketingEmailAgreed;
         this.privacyVersion = privacyVersion;
+        this.termsVersion = termsVersion;
         this.resortIds = resortIds != null ? new ArrayList<>(resortIds) : new ArrayList<>();
         this.ridingStyleIds =
                 ridingStyleIds != null ? new ArrayList<>(ridingStyleIds) : new ArrayList<>();

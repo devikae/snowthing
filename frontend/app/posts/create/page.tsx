@@ -9,12 +9,15 @@ import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { useLeaveWarning } from "../../lib/useLeaveWarning";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm font-mono text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
 });
 
 interface MemberProfile {
@@ -35,6 +38,7 @@ const COMPOSE_CATEGORIES = [
 
 function PostCreateForm() {
   const router = useRouter();
+  useLeaveWarning();
   const searchParams = useSearchParams();
 
   const initialCat = searchParams.get("category") || "FREE";
@@ -51,6 +55,8 @@ function PostCreateForm() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
 
   const editorRef = useRef<ToastEditorHandle>(null);
   const hasAlertedRef = useRef(false);
@@ -101,6 +107,8 @@ function PostCreateForm() {
   }, [searchParams, router]);
 
   const isAnonCategory = categoryCode === "ANONYMOUS";
+  // 1:1 문의는 다른 게시판으로 옮길 수 없으므로 카테고리 선택을 숨기고 고정한다.
+  const isInquiry = categoryCode === "INQUIRY";
 
   const handleCategorySelect = (nextCode: string) => {
     if (!userProfile && nextCode !== "ANONYMOUS") {
@@ -117,10 +125,18 @@ function PostCreateForm() {
       return;
     }
 
+    // 축소가 끝날 때까지 등록 버튼과 파일 칸을 막는다.
     setUploadingImage(true);
     setErrorMsg("");
+    const selected = Array.from(files);
+    const prepared = await prepareImagesForUpload(selected).catch(() => selected);
+    if (prepared.some(isOversizedImage)) {
+      setErrorMsg(OVERSIZED_IMAGE_MESSAGE);
+      setUploadingImage(false);
+      return;
+    }
     try {
-      for (const file of Array.from(files)) {
+      for (const file of prepared) {
       const formData = new FormData();
       formData.append("file", file);
       const response = await csrfFetch(API_ENDPOINTS.images.upload, {
@@ -145,6 +161,7 @@ function PostCreateForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current || submitting) return;
     const editorContent = editorRef.current?.getInstance().getMarkdown() || "";
 
     if (!title.trim()) {
@@ -159,29 +176,32 @@ function PostCreateForm() {
       setErrorMsg("자유/질문/맛집 게시판은 로그인이 필요합니다.");
       return;
     }
-    if (isAnonCategory && !userProfile && !anonymousPassword.trim()) {
-      setErrorMsg("비로그인 사용자는 익명글 수정/삭제용 비밀번호를 반드시 입력해야 합니다.");
+    if (isAnonCategory && !userProfile && (anonymousPassword.trim().length < 4 || anonymousPassword.length > 20)) {
+      setErrorMsg("익명글 수정/삭제용 비밀번호를 4자 이상 20자 이하로 입력해 주세요.");
       return;
     }
 
+    isSubmittingRef.current = true;
     setSubmitting(true);
     setErrorMsg("");
 
     try {
+      const body = JSON.stringify({
+        categoryCode,
+        title: title.trim(),
+        content: editorContent.trim(),
+        isAnonymous: isAnonCategory,
+        anonymousPassword: isAnonCategory && !userProfile ? anonymousPassword : null,
+        imageUrls: images.map((image) => image.imageKey),
+      });
       const res = await csrfFetch(API_ENDPOINTS.posts.create, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoryCode,
-          title: title.trim(),
-          content: editorContent.trim(),
-          isAnonymous: isAnonCategory,
-          anonymousPassword: isAnonCategory && !userProfile ? anonymousPassword : null,
-          imageUrls: images.map((image) => image.imageKey),
-        }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: idempotencyKey.keyFor(body) },
+        body,
       });
 
       if (res.ok) {
+        idempotencyKey.reset();
         const data = await res.json();
         if (toolDraft) { try { sessionStorage.removeItem(DECK_QUESTION_KEY); } catch { /* Draft cleanup must not prevent navigation. */ } }
         router.push(`/posts/${data.publicId}`);
@@ -192,20 +212,22 @@ function PostCreateForm() {
     } catch {
       setErrorMsg("서버 통신 오류가 발생했습니다.");
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };
 
   if (checkingAuth) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-20 text-center text-xs font-mono text-[var(--snow-muted)]">
+      <div className="max-w-4xl mx-auto px-6 py-20 text-center text-xs text-[var(--snow-muted)]">
         작성 권한 및 세션을 확인하는 중입니다...
       </div>
     );
   }
 
-  const boardName =
-    COMPOSE_CATEGORIES.find((item) => item.code === categoryCode)?.label ?? "자유게시판";
+  const boardName = isInquiry
+    ? "1:1 문의"
+    : (COMPOSE_CATEGORIES.find((item) => item.code === categoryCode)?.label ?? "자유게시판");
   const writerName = isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자";
   const writerInitial = writerName.trim().charAt(0) || "익";
 
@@ -230,7 +252,8 @@ function PostCreateForm() {
               <span className="material-symbols-outlined">lock</span>
               <input
                 type="password"
-                placeholder="수정·삭제 비밀번호"
+                placeholder="수정, 삭제 비밀번호 (4~20자)"
+                maxLength={20}
                 value={anonymousPassword}
                 onChange={(e) => setAnonymousPassword(e.target.value)}
               />
@@ -239,6 +262,7 @@ function PostCreateForm() {
         </div>
       </header>
 
+      {!isInquiry && (
       <nav className="compose-category-bar" aria-label="작성할 게시판 선택">
         <div className="filter-pills">
           {COMPOSE_CATEGORIES.filter((cat) => !cat.adminOnly || userProfile?.role === "ROLE_ADMIN").map((cat) => (
@@ -253,6 +277,7 @@ function PostCreateForm() {
           ))}
         </div>
       </nav>
+      )}
 
       <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (
@@ -352,7 +377,7 @@ export default function PostCreatePage() {
   return (
     <div className="community-page">
       <TopNav active="posts" />
-      <Suspense fallback={<div className="p-20 text-center text-xs font-mono text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다...</div>}>
+      <Suspense fallback={<div className="p-20 text-center text-xs text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다...</div>}>
         <PostCreateForm />
       </Suspense>
       <Footer />

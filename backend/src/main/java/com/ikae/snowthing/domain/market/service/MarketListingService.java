@@ -58,6 +58,7 @@ public class MarketListingService {
     private final ImageUrlResolver imageUrlResolver;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
     private final com.ikae.snowthing.domain.image.service.MarketThumbnailService marketThumbnails;
+    private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
 
     public MarketCategoryListResponse getCategories() {
         return new MarketCategoryListResponse(
@@ -121,6 +122,7 @@ public class MarketListingService {
                 postCategoryRepository
                         .findByCode(MARKET_POST_CATEGORY_CODE)
                         .orElseThrow(() -> new CustomException(ErrorCode.POST_CATEGORY_NOT_FOUND));
+        imageLifecycle.rejectNewInlineImages(request.content(), null);
         imageLifecycle.protectAll(
                 request.imageUrls(), request.content(), userDetails.getUsername());
         List<PostImage> images = toPostImages(request.imageUrls());
@@ -138,8 +140,8 @@ public class MarketListingService {
         post.replaceImages(images);
         post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
         postRepository.save(post);
-        marketThumbnails.queue(
-                post.getPublicId(), images.isEmpty() ? null : images.get(0).getImageUrl());
+        searchOutbox.postChanged(post);
+        marketThumbnails.queue(post.getPublicId(), representativeImage(images, request.content()));
 
         MarketListing listing =
                 MarketListing.builder()
@@ -188,6 +190,7 @@ public class MarketListingService {
         MarketListing listing = findForUpdate(publicId);
         validateWriter(listing.getPost(), userDetails);
         validateVersion(listing, request.version());
+        imageLifecycle.rejectNewInlineImages(request.content(), listing.getPost().getContent());
         imageLifecycle.protectAll(
                 request.imageUrls(), request.content(), userDetails.getUsername());
         MarketCategory category = requireActiveCategory(request.categoryCode());
@@ -207,9 +210,9 @@ public class MarketListingService {
                 request.free(),
                 request.contact());
         marketListingRepository.flush();
+        searchOutbox.postChanged(listing.getPost());
         marketThumbnails.queue(
-                listing.getPost().getPublicId(),
-                images.isEmpty() ? null : images.get(0).getImageUrl());
+                listing.getPost().getPublicId(), representativeImage(images, request.content()));
         return new MarketListingUpdateResponse(
                 publicId, listing.getVersion(), listing.getUpdatedAt());
     }
@@ -242,6 +245,8 @@ public class MarketListingService {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
         listing.getPost().softDelete();
+        imageLifecycle.releasePostImages(listing.getPost());
+        searchOutbox.postChanged(listing.getPost());
     }
 
     @Transactional
@@ -257,7 +262,11 @@ public class MarketListingService {
                 marketListingRepository
                         .findForUpdateByPostPublicId(publicId)
                         .orElseThrow(() -> new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND));
+        if (listing.getPost().getStatus() == PostStatus.TEMPORARY_HOLD) {
+            throw new CustomException(ErrorCode.CONTENT_REPORT_ACTION_INVALID);
+        }
         listing.getPost().changeStatus(status);
+        searchOutbox.postChanged(listing.getPost());
     }
 
     private MarketListingSummaryResponse toSummary(
@@ -276,12 +285,19 @@ public class MarketListingService {
                 listing.isNegotiable(),
                 listing.isFree(),
                 thumbnailImageUrl,
-                new MarketListingSummaryResponse.Seller(
-                        seller.getPublicId(), seller.getNickname(), seller.getProfileImageUrl()),
+                sellerOf(seller),
                 post.getViewCount(),
                 post.getCommentCount(),
                 listing.getCreatedAt(),
                 listing.getUpdatedAt());
+    }
+
+    private static MarketListingSummaryResponse.Seller sellerOf(Member seller) {
+        if (seller.isWithdrawn()) {
+            return new MarketListingSummaryResponse.Seller(null, Member.WITHDRAWN_NICKNAME, null);
+        }
+        return new MarketListingSummaryResponse.Seller(
+                seller.getPublicId(), seller.getNickname(), seller.getProfileImageUrl());
     }
 
     private MarketListingDetailResponse toDetail(
@@ -305,10 +321,10 @@ public class MarketListingService {
                 listing.getPrice(),
                 listing.isNegotiable(),
                 listing.isFree(),
-                includeContact ? listing.getContact() : null,
-                new MarketListingSummaryResponse.Seller(
-                        seller.getPublicId(), seller.getNickname(), seller.getProfileImageUrl()),
+                includeContact && !seller.isWithdrawn() ? listing.getContact() : null,
+                sellerOf(seller),
                 images,
+                coverImageUrl(post, images),
                 viewCount,
                 post.getCommentCount(),
                 listing.getVersion(),
@@ -331,12 +347,44 @@ public class MarketListingService {
             thumbnails.putIfAbsent(
                     image.getPost().getId(),
                     ready.getOrDefault(
-                            image.getPost().getPublicId(),
-                            image.getImageUrl().startsWith("public/posts/originals/m-")
-                                    ? imageUrlResolver.toPublicUrl(image.getImageUrl())
-                                    : imageUrlResolver.toThumbnailPublicUrl(image.getImageUrl())));
+                            image.getPost().getPublicId(), toListImageUrl(image.getImageUrl())));
+        }
+        // 사진 칸 사진이 없으면 본문의 첫 사진이 대표 사진이다.
+        for (MarketListing listing : listings) {
+            Post post = listing.getPost();
+            if (thumbnails.containsKey(post.getId())) continue;
+            String key = imageLifecycle.firstContentKey(post.getContent());
+            if (key != null) {
+                thumbnails.put(
+                        post.getId(), ready.getOrDefault(post.getPublicId(), toListImageUrl(key)));
+            } else if (ready.containsKey(post.getPublicId())) {
+                // 본문에 base64 사진만 있으면 만들어 둔 썸네일이 유일한 대표 사진이다.
+                thumbnails.put(post.getId(), ready.get(post.getPublicId()));
+            }
         }
         return thumbnails;
+    }
+
+    private String toListImageUrl(String imageKey) {
+        return imageKey.startsWith("public/posts/originals/m-")
+                ? imageUrlResolver.toPublicUrl(imageKey)
+                : imageUrlResolver.toThumbnailPublicUrl(imageKey);
+    }
+
+    /** 대표 사진을 따로 고르는 화면이 없어서 사진 칸의 첫 사진, 없으면 본문의 첫 S3 사진, 없으면 본문의 첫 base64 사진을 쓴다. */
+    private String representativeImage(List<PostImage> images, String content) {
+        if (!images.isEmpty()) return images.get(0).getImageUrl();
+        String key = imageLifecycle.firstContentKey(content);
+        return key != null ? key : marketThumbnails.inlineSource(content);
+    }
+
+    /** 사진 칸이 비었을 때 상세 사진 자리에 보여 줄 본문 사진. 수정 화면이 쓰는 images와 섞이지 않도록 따로 내린다. */
+    private String coverImageUrl(Post post, List<String> images) {
+        if (!images.isEmpty()) return null;
+        String key = imageLifecycle.firstContentKey(post.getContent());
+        return key != null
+                ? imageUrlResolver.toPublicUrl(key)
+                : marketThumbnails.readyUrls(List.of(post.getPublicId())).get(post.getPublicId());
     }
 
     private List<PostImage> toPostImages(List<String> imageUrls) {
@@ -384,6 +432,9 @@ public class MarketListingService {
 
     private void validateVisible(MarketListing listing) {
         Post post = listing.getPost();
+        if (!post.isDeleted() && post.getStatus() == PostStatus.TEMPORARY_HOLD) {
+            throw new CustomException(ErrorCode.CONTENT_TEMPORARILY_HELD);
+        }
         if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
             throw new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND);
         }

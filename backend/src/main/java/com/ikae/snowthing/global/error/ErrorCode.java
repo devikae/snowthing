@@ -26,13 +26,22 @@ public enum ErrorCode {
             HttpStatus.TOO_MANY_REQUESTS, "AUTH_011", "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     OAUTH_ACCOUNT_LINK_REQUIRED(
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
+    LOGIN_ATTEMPT_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 최대 15분 뒤 다시 시도해 주세요."),
+    OAUTH_SIGNUP_EXPIRED(HttpStatus.GONE, "AUTH_014", "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
+    MEMBER_SELF_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_010", "자신의 계정은 정지할 수 없습니다."),
+    MEMBER_ADMIN_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_011", "관리자 계정은 정지할 수 없습니다."),
+    MEMBER_WITHDRAWN_STATUS_LOCKED(HttpStatus.CONFLICT, "MEMBER_012", "탈퇴한 회원의 상태는 바꿀 수 없습니다."),
     PROFILE_LIMIT_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     PROFILE_CDN_NOT_CONFIGURED(
             HttpStatus.SERVICE_UNAVAILABLE, "FILE_006", "프로필 이미지 캐시 정리 설정이 필요합니다."),
     REGISTRATION_POLICY_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_008", "가입 동의 문서를 불러올 수 없습니다."),
+    WITHDRAWN_EMAIL_RESTRICTED(
+            HttpStatus.CONFLICT, "MEMBER_010", "탈퇴 후 30일이 지나지 않은 이메일은 다시 가입할 수 없습니다."),
+    WITHDRAWAL_CONFIRMATION_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_011", "확인 문구가 일치하지 않습니다."),
     REGISTRATION_POLICY_CHANGED(
             HttpStatus.CONFLICT, "MEMBER_009", "가입 동의 문서가 변경되었습니다. 새로고침 후 다시 확인해 주세요."),
     CHAT_BOT_BUDGET_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "CHAT_010", "봇의 전체 호출 한도에 도달했습니다."),
@@ -40,6 +49,7 @@ public enum ErrorCode {
     CHAT_BOT_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_012", "봇의 대기 요청이 많습니다."),
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "MEMBER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_003", "이미 사용 중인 닉네임입니다."),
+    RESERVED_NICKNAME(HttpStatus.BAD_REQUEST, "MEMBER_020", "사용할 수 없는 닉네임입니다."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_004", "현재 비밀번호가 일치하지 않습니다."),
     PASSWORD_CHANGE_UNAVAILABLE(
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
@@ -71,13 +81,35 @@ public enum ErrorCode {
             "POST_005",
             "게시판 조회의 최대 한계선은 100페이지(2,000개 글)까지입니다. 더 이전 글은 검색 기능을 이용해 주세요."),
     ANONYMOUS_POST_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "POST_006", "해당 게시판은 익명 작성을 지원하지 않습니다."),
+    INQUIRY_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "POST_007", "로그인 후 1:1 문의를 이용할 수 있습니다."),
+    INQUIRY_CATEGORY_CHANGE_NOT_ALLOWED(
+            HttpStatus.BAD_REQUEST, "POST_008", "1:1 문의와 다른 게시판 사이에서는 카테고리를 바꿀 수 없습니다."),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "존재하지 않거나 이미 삭제된 댓글입니다."),
     PARENT_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_002", "존재하지 않는 부모 댓글입니다."),
     INVALID_COMMENT_PARENT(HttpStatus.BAD_REQUEST, "COMMENT_003", "동일한 게시글의 댓글에만 대댓글을 달 수 있습니다."),
     COMMENT_REPLY_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "COMMENT_004", "루트 댓글 1개당 작성 가능한 대댓글 수는 최대 100개입니다."),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "존재하지 않는 알림입니다."),
+    CONTENT_TEMPORARILY_HELD(
+            HttpStatus.FORBIDDEN,
+            "POST_009",
+            "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 82snowthing@gmail.com으로 문의해 주세요."),
+    CONTENT_REPORT_TARGET_NOT_FOUND(
+            HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
+    CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),
+    CONTENT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_REPORT_003", "존재하지 않는 신고입니다."),
+    CONTENT_REPORT_ACTION_INVALID(
+            HttpStatus.CONFLICT, "CONTENT_REPORT_004", "현재 상태에서는 할 수 없는 조치입니다."),
+    NOTIFICATION_LOGIN_REQUIRED(
+            HttpStatus.UNAUTHORIZED, "NOTIFICATION_002", "로그인 후 알림을 확인할 수 있습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
+    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_005", "요청한 주소를 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "COMMON_002", "페이지 크기는 1 이상 100 이하이어야 합니다."),
+    CONTENT_WRITE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "COMMON_003", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    CONTENT_WRITE_LIMIT_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE, "COMMON_004", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     MARKET_LISTING_NOT_FOUND(HttpStatus.NOT_FOUND, "MARKET_001", "존재하지 않거나 조회할 수 없는 중고장터 판매글입니다."),
     MARKET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "MARKET_002", "존재하지 않는 중고장터 상품 분류입니다."),
     MARKET_CATEGORY_INACTIVE(HttpStatus.BAD_REQUEST, "MARKET_003", "현재 선택할 수 없는 중고장터 상품 분류입니다."),
@@ -95,6 +127,15 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "MARKET_010", "중고장터 페이지 크기는 1 이상 50 이하이어야 합니다."),
     MARKET_PAGE_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "MARKET_011", "중고장터는 최대 100페이지까지 조회할 수 있습니다."),
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MESSAGE_001", "존재하지 않거나 삭제된 쪽지입니다."),
+    MESSAGE_RECEIVER_UNAVAILABLE(HttpStatus.BAD_REQUEST, "MESSAGE_002", "보낼 수 없는 회원입니다."),
+    MESSAGE_RECEIVER_BLOCKED(HttpStatus.BAD_REQUEST, "MESSAGE_003", "차단한 회원에게는 보낼 수 없습니다."),
+    MESSAGE_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "MESSAGE_004", "자기 자신에게는 쪽지를 보낼 수 없습니다."),
+    MESSAGE_MARKET_RECEIVER_MISMATCH(
+            HttpStatus.BAD_REQUEST, "MESSAGE_005", "판매글 작성자에게만 쪽지를 보낼 수 있습니다."),
+    MESSAGE_INVALID_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST, "MESSAGE_006", "쪽지 페이지 크기는 1 이상 50 이하이어야 합니다."),
+    MEMBER_BLOCK_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "BLOCK_001", "자기 자신은 차단할 수 없습니다."),
     INVALID_CARPOOL_SCHEDULE(HttpStatus.BAD_REQUEST, "CARPOOL_001", "카풀 출발·복귀 일정을 확인해 주세요."),
     INVALID_CARPOOL_VALUE(HttpStatus.BAD_REQUEST, "CARPOOL_002", "카풀 인원·연비·거리·통행료 값을 확인해 주세요."),
     CARPOOL_DETAIL_REQUIRED(HttpStatus.BAD_REQUEST, "CARPOOL_003", "카풀 상세 정보가 필요합니다."),
@@ -123,7 +164,7 @@ public enum ErrorCode {
     CHAT_EXTERNAL_LINK_FORBIDDEN(
             HttpStatus.BAD_REQUEST, "CHAT_001", "외부 링크 및 메신저 연락처는 전송할 수 없습니다."),
     CHAT_DUPLICATE_MESSAGE(
-            HttpStatus.TOO_MANY_REQUESTS, "CHAT_002", "동일한 메시지를 연속으로 보낼 수 없습니다 (5초간 대기)."),
+            HttpStatus.TOO_MANY_REQUESTS, "CHAT_002", "같은 메시지를 짧은 시간에 반복해서 보낼 수 없습니다."),
     CHAT_BURST_RATE_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "CHAT_003", "메시지 전송 속도가 너무 빠릅니다. 잠시 후 다시 시도해 주세요."),
     CHAT_MESSAGE_EMPTY(HttpStatus.BAD_REQUEST, "CHAT_004", "공백 메시지는 전송할 수 없습니다."),
@@ -135,6 +176,8 @@ public enum ErrorCode {
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE_002", "파일 크기는 최대 5MB까지 업로드 가능합니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_003", "존재하지 않는 파일입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_004", "파일 업로드에 실패했습니다."),
+    INLINE_IMAGE_NOT_ALLOWED(
+            HttpStatus.BAD_REQUEST, "FILE_008", "본문에 사진을 직접 넣을 수 없습니다. 사진은 로그인 후 올려 주세요."),
     IMAGE_DIMENSIONS_EXCEEDED(
             HttpStatus.BAD_REQUEST, "FILE_005", "이미지는 한 변 10,000px, 총 2,500만 화소 이하로 줄여 주세요."),
     RESORT_NOT_FOUND(HttpStatus.NOT_FOUND, "RESORT_001", "존재하지 않거나 비활성화된 리조트입니다."),
@@ -149,11 +192,71 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "REPORT_005", "설질 제보는 최대 100페이지까지 조회할 수 있습니다."),
     RESORT_REPORT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "REPORT_006", "설질 제보 페이지 크기는 1 이상 100 이하이어야 합니다."),
+    SEARCH_INVALID_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "SEARCH_001",
+            "검색어는 2자 이상 100자 이하, 결과 수는 1 이상 20 이하, 근거 ID와 해시는 정해진 형식이어야 합니다."),
+    SEARCH_MODE_UNAVAILABLE(
+            HttpStatus.CONFLICT, "SEARCH_002", "요청한 검색 방식(의미 검색 또는 재정렬)이 이 서버에서 꺼져 있습니다."),
+    SEARCH_PROVIDER_FAILED(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "SEARCH_003",
+            "의미 검색 제공자를 호출하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVIDENCE_001", "존재하지 않거나 볼 수 없는 근거입니다."),
+    EVIDENCE_HASH_MISMATCH(HttpStatus.CONFLICT, "EVIDENCE_002", "근거 원문이 검색 이후 바뀌었습니다. 다시 검색해 주세요."),
+    API_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "API_TOKEN_001", "유효하지 않거나 만료되었거나 폐기된 API 토큰입니다."),
+    API_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "API_TOKEN_002", "존재하지 않는 API 토큰입니다."),
+    API_TOKEN_INVALID_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "API_TOKEN_003",
+            "토큰 이름은 1자 이상 50자 이하, 범위는 READ 또는 DRAFT, 만료 기간은 1일 이상 30일 이하여야 합니다."),
+    API_TOKEN_LIMIT_EXCEEDED(
+            HttpStatus.CONFLICT, "API_TOKEN_004", "사용 중인 API 토큰은 최대 10개까지 만들 수 있습니다."),
+    ANSWER_DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_001", "존재하지 않는 답변 초안입니다."),
+    ANSWER_DRAFT_INVALID_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "DRAFT_002",
+            "대상 게시글 ID, 본문(1자 이상 1,000자 이하), 근거(1개 이상 20개 이하, 중복 없음, 해시 필수), 멱등성 키 형식을 확인해 주세요."),
+    ANSWER_DRAFT_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_003", "답변 대상 게시글이 없거나 볼 수 없습니다."),
+    ANSWER_DRAFT_IDEMPOTENCY_CONFLICT(
+            HttpStatus.CONFLICT, "DRAFT_004", "같은 멱등성 키로 다른 내용의 초안이 이미 저장되어 있습니다."),
+    ANSWER_DRAFT_INVALID_STATUS(HttpStatus.CONFLICT, "DRAFT_005", "현재 초안 상태에서는 할 수 없는 작업입니다."),
+    ANSWER_DRAFT_PUBLISH_DISABLED(HttpStatus.FORBIDDEN, "DRAFT_006", "답변 게시 기능이 꺼져 있습니다."),
+    ANSWER_DRAFT_TARGET_UNAVAILABLE(
+            HttpStatus.CONFLICT, "DRAFT_007", "대상 게시글이 삭제되었거나 볼 수 없게 되어 게시할 수 없습니다."),
+    ANSWER_DRAFT_TARGET_CHANGED(
+            HttpStatus.CONFLICT, "DRAFT_008", "승인 이후 대상 게시글이 수정되었습니다. 다시 검토해 주세요."),
+    ANSWER_DRAFT_EVIDENCE_CHANGED(
+            HttpStatus.CONFLICT, "DRAFT_009", "초안 저장 이후 근거 원문이 바뀌었거나 볼 수 없게 되었습니다."),
+    ANSWER_DRAFT_APPROVER_INVALID(
+            HttpStatus.CONFLICT, "DRAFT_010", "승인한 회원이 더 이상 활성 관리자가 아니어서 게시할 수 없습니다."),
+    ANSWER_DRAFT_UPDATE_CONFLICT(
+            HttpStatus.CONFLICT, "DRAFT_011", "다른 요청이 초안을 먼저 바꿨습니다. 새로고침 후 다시 시도해 주세요."),
+    ANSWER_DRAFT_TOO_MANY_PENDING(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "DRAFT_012",
+            "검토 대기 초안이 너무 많습니다. 기존 초안을 처리한 뒤 다시 저장해 주세요."),
+
+    // 스키장 캐릭터 테스트 (036)
+    CHARACTER_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "CHARACTER_001", "존재하지 않는 모임이거나 볼 수 없습니다."),
+    CHARACTER_GROUP_FULL(HttpStatus.CONFLICT, "CHARACTER_002", "모임 인원이 가득 찼습니다."),
+    CHARACTER_NICKNAME_DUPLICATED(
+            HttpStatus.CONFLICT, "CHARACTER_003", "이 모임에서 이미 쓰는 이름입니다. 다른 이름을 입력해 주세요."),
+    CHARACTER_NICKNAME_FORBIDDEN(HttpStatus.BAD_REQUEST, "CHARACTER_004", "쓸 수 없는 이름입니다."),
+
+    // 작성 API Idempotency-Key (032)
+    IDEMPOTENCY_KEY_INVALID(
+            HttpStatus.BAD_REQUEST, "IDEMPOTENCY_001", "Idempotency-Key 헤더는 UUID 형식이어야 합니다."),
+    IDEMPOTENCY_KEY_REUSED(
+            HttpStatus.CONFLICT,
+            "IDEMPOTENCY_002",
+            "같은 요청 키로 다른 내용이 이미 등록됐습니다. 새로고침 후 다시 작성해 주세요."),
+
+    // 관리자 운영 제어 (047)
     CHAT_IP_BANNED(HttpStatus.FORBIDDEN, "CHAT_008", "차단된 IP입니다. 라이브톡에 참여할 수 없습니다."),
     CHAT_ANONYMOUS_DISABLED(HttpStatus.FORBIDDEN, "CHAT_009", "현재 비로그인 사용자의 라이브톡 발신이 제한되어 있습니다."),
     CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_001", "존재하지 않는 시스템 설정입니다."),
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_002", "존재하지 않는 배너입니다."),
-    POST_BLINDED(HttpStatus.FORBIDDEN, "POST_007", "관리자에 의해 블라인드 처리된 게시글입니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

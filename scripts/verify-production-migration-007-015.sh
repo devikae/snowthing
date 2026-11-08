@@ -50,7 +50,10 @@ for version in \
   024_migration_post_image_upload \
   025_migration_market_thumbnail \
   026_migration_post_content_image_reference \
-  027_migration_admin_system_dashboard; do
+  027_migration_search_document \
+  028_migration_search_outbox \
+  029_migration_answer_draft \
+  030_migration_search_embedding; do
   grep -q "Migration already applied: $version" <<< "$second_run_output"
   [[ "$(mysql_test --execute="SELECT COUNT(*) FROM schema_migration WHERE version = '$version'")" == "1" ]]
 done
@@ -90,6 +93,21 @@ done
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'request_budget_window'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'market_thumbnail' AND column_name = 'attempts'")" == "1" ]]
 [[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'post_content_image_reference' AND index_name = 'idx_content_image_key'")" == "1" ]]
-[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name IN ('system_config','chat_banned_ip','banner')")" == "3" ]]
-[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'post' AND column_name IN ('is_blinded','deleted_by_member_id')")" == "2" ]]
-echo "Production migrations 007-018 + 021-027 verification passed."
+[[ "$(mysql_test --execute="SELECT CONCAT(data_type, ':', is_nullable, ':', column_default) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'post' AND column_name = 'content_version'")" == "bigint:NO:0" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'search_document'")" == "1" ]]
+[[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_document' AND index_name = 'ftx_search_document_title_body' AND index_type = 'FULLTEXT'")" == "title,body" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_document' AND index_name IN ('uk_search_document_evidence', 'idx_search_document_post', 'idx_search_document_source')")" == "3" ]]
+mysql_test --execute="SHOW CREATE TABLE search_document" | grep -q 'WITH PARSER `ngram`'
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name IN ('search_outbox', 'search_index_state', 'search_reindex_checkpoint')")" == "3" ]]
+[[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_outbox' AND index_name = 'idx_search_outbox_status_due'")" == "status,due_at" ]]
+[[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_index_state' AND index_name = 'PRIMARY'")" == "source_type,source_id" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'search_outbox' AND column_name IN ('content', 'title', 'body')")" == "0" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name IN ('api_token', 'answer_draft', 'answer_draft_evidence', 'answer_draft_audit')")" == "4" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'answer_draft' AND index_name IN ('uk_answer_draft_public_id', 'uk_answer_draft_creator_idempotency', 'uk_answer_draft_published_comment', 'idx_answer_draft_status_created', 'idx_answer_draft_target_post')")" == "5" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'api_token' AND column_name IN ('token', 'plaintext', 'secret')")" == "0" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = '$DB_NAME' AND (constraint_name LIKE 'fk_answer_draft%' OR constraint_name = 'fk_api_token_member')")" == "12" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_name = 'search_embedding'")" == "1" ]]
+[[ "$(mysql_test --execute="SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') FROM information_schema.statistics WHERE table_schema = '$DB_NAME' AND table_name = 'search_embedding' AND index_name = 'uk_search_embedding_evidence_model'")" == "evidence_id,model_id" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_schema = '$DB_NAME' AND table_name = 'search_embedding' AND constraint_type = 'CHECK' AND constraint_name IN ('chk_search_embedding_source_type', 'chk_search_embedding_dimension', 'chk_search_embedding_vector_length')")" == "3" ]]
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$DB_NAME' AND table_name = 'search_embedding' AND column_name IN ('title', 'body', 'content')")" == "0" ]]
+echo "Production migrations 007-018 + 021-030 verification passed."

@@ -1,10 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
+import { fetchViewer } from "../lib/viewer";
 import { csrfFetch } from "../lib/csrfFetch";
+import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
+import { AuthorMenu } from "./AuthorMenu";
+import { ReportButton } from "./ReportButton";
+import { errorText } from "../lib/errorText";
+import { formatShortDateTime } from "../lib/koreanDate";
 
 interface WriterInfo {
   publicId: string | null;
@@ -66,6 +72,9 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [working, setWorking] = useState(false);
+  // state는 다음 렌더에 반영되므로 연타는 ref로 동기 차단한다.
+  const isCreatingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -83,7 +92,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       setNextCursor(data.nextCursor ?? null);
       setHasNext(Boolean(data.hasNext));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "댓글을 불러오지 못했습니다.");
+      setError(errorText(loadError, "댓글을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -92,26 +101,29 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadComments();
-      void fetch(API_ENDPOINTS.members.me, { credentials: "include" })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((member) => setCurrentUserPublicId(member?.publicId ?? null))
-        .catch(() => setCurrentUserPublicId(null));
+      void fetchViewer().then((viewer) => setCurrentUserPublicId(viewer?.publicId ?? null));
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadComments]);
 
   const createComment = async (parentId: string | null) => {
     const value = (parentId ? replyContent : content).trim();
-    if (!currentUserPublicId || !value || working) return;
+    if (!currentUserPublicId || !value || working || isCreatingRef.current) return;
+    isCreatingRef.current = true;
     setWorking(true);
     setError("");
     try {
+      const body = JSON.stringify({ parentId, content: value, isAnonymous: false, anonymousPassword: null });
       const response = await csrfFetch(API_ENDPOINTS.posts.comments(postPublicId), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId, content: value, isAnonymous: false, anonymousPassword: null }),
+        headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: idempotencyKey.keyFor(body) },
+        body,
       });
-      if (!response.ok) throw new Error("댓글을 등록하지 못했습니다.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "댓글을 등록하지 못했습니다.");
+      }
+      idempotencyKey.reset();
       const created: CommentItem = await response.json();
       if (parentId) {
         setComments((current) => current.map((root) => root.commentId === parentId
@@ -125,8 +137,9 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       }
       setTotalCount((current) => current + 1);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "댓글을 등록하지 못했습니다.");
+      setError(errorText(submitError, "댓글을 등록하지 못했습니다."));
     } finally {
+      isCreatingRef.current = false;
       setWorking(false);
     }
   };
@@ -145,7 +158,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         ? { ...item, replyCount: data.totalReplyCount, previewReplies: mergeUnique(item.previewReplies, data.replies || []), hasMoreReplies: data.hasNext }
         : item));
     } catch (replyError) {
-      setError(replyError instanceof Error ? replyError.message : "답글을 불러오지 못했습니다.");
+      setError(errorText(replyError, "답글을 불러오지 못했습니다."));
     } finally {
       setWorking(false);
     }
@@ -169,7 +182,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       setEditingId(null);
       setEditingContent("");
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "댓글을 수정하지 못했습니다.");
+      setError(errorText(updateError, "댓글을 수정하지 못했습니다."));
     } finally {
       setWorking(false);
     }
@@ -187,7 +200,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       if (!response.ok) throw new Error("댓글을 삭제하지 못했습니다.");
       await loadComments();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "댓글을 삭제하지 못했습니다.");
+      setError(errorText(deleteError, "댓글을 삭제하지 못했습니다."));
     } finally {
       setWorking(false);
     }
@@ -199,7 +212,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         {reply && <span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
-          <header><strong>{item.writer?.nickname || "탈퇴한 회원"}</strong><time>{new Date(item.createdAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })}</time></header>
+          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatShortDateTime(item.createdAt)}</time></header>
           {editingId === item.commentId ? (
             <div className="comment-inline-editor">
               <textarea maxLength={1000} value={editingContent} onChange={(event) => setEditingContent(event.target.value)} />
@@ -211,22 +224,23 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
             {!reply && <button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button>}
             {item.canEdit && <button type="button" onClick={() => { setEditingId(item.commentId); setEditingContent(item.content); }}>수정</button>}
             {item.canDelete && <button type="button" onClick={() => void deleteComment(item.commentId)}>삭제</button>}
+            <ReportButton targetType="COMMENT" targetId={String(item.commentId)} />
           </div>}
         </div>
       </div>
       {!reply && item.previewReplies.map((child) => renderComment(child, true))}
       {!reply && item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" disabled={working} onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
       {!reply && replyParentId === item.commentId && <div className="post-reply-compose">
-        <textarea className="post-comment-textarea" maxLength={1000} value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력하세요." />
+        <textarea className="post-comment-textarea" aria-label="답글 입력" maxLength={1000} value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력하세요." />
         <div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={working || !replyContent.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div>
       </div>}
     </article>
   );
 
-  return <section className="post-comments-card carpool-comments-card">
+  return <section id="comments" className="post-comments-card carpool-comments-card">
     <header><h2>댓글 <span>{totalCount}</span></h2></header>
     {currentUserPublicId ? <div className="post-comment-compose">
-      <textarea className="post-comment-textarea" maxLength={1000} value={content} onChange={(event) => setContent(event.target.value)} placeholder="댓글을 입력하세요." />
+      <textarea className="post-comment-textarea" aria-label="댓글 입력" maxLength={1000} value={content} onChange={(event) => setContent(event.target.value)} placeholder="댓글을 입력하세요." />
       <div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={working || !content.trim()} onClick={() => void createComment(null)}>댓글 등록</button></div>
     </div> : <div className="comment-login-guide"><p>댓글을 작성하려면 로그인이 필요합니다.</p><Link href={`/login?returnUrl=${encodeURIComponent(`/carpool/${postPublicId}`)}`}>로그인</Link><Link href="/signup">회원가입</Link></div>}
     {error && <p className="carpool-form-error" role="alert">{error}</p>}
@@ -236,3 +250,4 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     {hasNext && nextCursor && <div className="post-comments-more"><button className="post-comments-more-button" type="button" disabled={working} onClick={() => void loadComments(nextCursor, true)}>댓글 더보기</button></div>}
   </section>;
 }
+

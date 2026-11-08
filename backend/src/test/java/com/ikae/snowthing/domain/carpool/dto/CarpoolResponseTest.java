@@ -72,4 +72,46 @@ class CarpoolResponseTest {
         assertThat(managerResponse.departureLatitude()).isEqualByComparingTo("37.5");
         assertThat(managerResponse.departureLongitude()).isEqualByComparingTo("127.0");
     }
+
+    @Test
+    void hidesCalculationValuesOfExistingManualCostPost() {
+        LocalDateTime now = LocalDateTime.of(2026, 10, 3, 12, 0);
+        Post post = mock(Post.class);
+        Resort resort = mock(Resort.class);
+
+        CarpoolDetail detail =
+                CarpoolDetail.builder()
+                        .post(post)
+                        .departureRegion("서울")
+                        .meetingPlace("서울역")
+                        .departureLatitude(BigDecimal.valueOf(37.5))
+                        .departureLongitude(BigDecimal.valueOf(127.0))
+                        .destinationResort(resort)
+                        .tripType(CarpoolTripType.ONE_WAY)
+                        .departureAt(now.plusDays(1))
+                        .passengerCapacity(3)
+                        .fuelType(CarpoolFuelType.GASOLINE)
+                        .fuelEfficiency(BigDecimal.valueOf(12))
+                        .costMode(CarpoolCostMode.MANUAL)
+                        .fuelPrice(BigDecimal.valueOf(1700))
+                        .fuelPriceObservedAt(now)
+                        .routeDistanceKm(BigDecimal.valueOf(100))
+                        .routeTollFee(5000)
+                        .estimatedFuelCost(15000)
+                        .estimatedTotalCost(40000)
+                        .estimatedCostPerPerson(10000)
+                        .routeSource(CarpoolRouteSource.KAKAO)
+                        .routeCalculatedAt(now)
+                        .build();
+
+        CarpoolResponse response = CarpoolResponse.from(post, detail, null, true);
+
+        assertThat(response.estimatedCostPerPerson()).isEqualTo(10000);
+        assertThat(response.estimatedTotalCost()).isNull();
+        assertThat(response.routeDistanceKm()).isNull();
+        assertThat(response.fuelPrice()).isNull();
+        assertThat(response.fuelType()).isNull();
+        assertThat(response.routeSource()).isNull();
+        assertThat(response.departureLatitude()).isNull();
+    }
 }

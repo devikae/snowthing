@@ -14,7 +14,7 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback((signal?: AbortSignal) => {
-    return csrfFetch(API_ENDPOINTS.admin.stats(), {
+    return csrfFetch(API_ENDPOINTS.admin.stats, {
         credentials: "include",
         signal,
       })

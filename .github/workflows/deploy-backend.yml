@@ -12,8 +12,9 @@ on:
         type: string
 
 concurrency:
-  group: deploy-backend-${{ github.ref }}
+  group: ec2-production-deployment
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -81,9 +82,6 @@ jobs:
 
   deploy-backend:
     name: Build, Push and Deploy Backend Digest
-    concurrency:
-      group: ec2-production-deployment
-      cancel-in-progress: false
     needs: [ci-backend]
     runs-on: ubuntu-latest
     environment: production-migration

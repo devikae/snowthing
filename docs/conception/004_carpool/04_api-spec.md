@@ -84,14 +84,16 @@
 }
 ```
 
-`costMode`가 `AUTO`이면 외부 경로·유가를 기준으로 1인 비용을 계산한다. `MANUAL`이면 모집자가 `manualCostPerPerson`에 입력한 1인 금액을 게시글의 기준 금액으로 저장한다.
+`costMode`가 `AUTO`이면 외부 경로와 유가를 기준으로 1인 비용을 계산하고, `fuelType`, `fuelEfficiency`, `routeSource`가 없으면 `CARPOOL_002`를 반환한다. `MANUAL`이면 외부 API를 호출하지 않고 `manualCostPerPerson`만 저장한다. 이때 `fuelType`, `fuelEfficiency`, `routeSource`, 출발 좌표, 수동 거리와 통행료와 유가는 무시한다.
+
+응답의 계산 필드(`fuelType`, `fuelEfficiency`, `fuelPrice`, `fuelPriceSource`, `fuelPriceObservedAt`, `routeDistanceKm`, `routeTollFee`, `estimatedFuelCost`, `estimatedTotalCost`, `routeSource`, `routeCalculatedAt`)와 출발 좌표는 `MANUAL`이면 null이다. 상세 응답에는 `writerPublicId`, `writerProfileImageUrl`이 있고 목록 응답에는 `costMode`가 있다.
 
 ## 모집글 수정·삭제
 
 - `PUT /api/v1/carpools/{publicId}`
 - `DELETE /api/v1/carpools/{publicId}`
 
-수정 요청은 생성 요청과 같은 입력 계약을 사용한다. 작성자·관리자 권한을 외부 API 호출 전에 먼저 확인하고, 외부 경로·유가를 서버에서 다시 계산한 뒤 기존 `Post`와 `CarpoolDetail`을 한 트랜잭션에서 변경한다. 삭제는 `Post`를 소프트 삭제하며 상세 데이터는 감사·복구 가능성을 위해 물리 삭제하지 않는다.
+수정 요청은 생성 요청과 같은 입력 계약을 사용한다. 작성자·관리자 권한을 외부 API 호출 전에 먼저 확인하고, `AUTO`이면 외부 경로와 유가를 서버에서 다시 계산한 뒤 기존 `Post`와 `CarpoolDetail`을 한 트랜잭션에서 변경한다. 삭제는 `Post`를 소프트 삭제하며 상세 데이터는 감사·복구 가능성을 위해 물리 삭제하지 않는다.
 
 ## 목록·상세
 

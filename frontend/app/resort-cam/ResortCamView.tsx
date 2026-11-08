@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeading } from "../components/PageHeading";
 import { useEffect, useRef, useState } from "react";
 import { CameraPlayer } from "./CameraPlayer";
+import { OpeningDdayTag, ResortWeatherChip } from "./ResortHeaderInfo";
 import styles from "./resortCam.module.css";
 import type { ResortCameraGroup } from "./types";
 import { cameraSlug, resortSlug } from "./types";
@@ -96,14 +97,20 @@ export function ResortCamView({
                 <span className={styles.officialMeta}>공식 스트리밍 센터</span>
               )}
             </div>
-            <h2>{selectedCamera ? selectedCamera.name : selectedResort.name}</h2>
+            <div className={styles.resortTitle}>
+              <h2>{selectedCamera ? selectedCamera.name : selectedResort.name}</h2>
+              <OpeningDdayTag resortCode={selectedResort.code} />
+            </div>
           </div>
-          {selectedCamera && (
-            <Link className={styles.backLink} href={`/resort-cam/${resortSlug(selectedResort.code)}`}>
-              <span className="material-symbols-outlined" aria-hidden="true">grid_view</span>
-              전체 보기
-            </Link>
-          )}
+          <div className={styles.resortHeaderActions}>
+            <ResortWeatherChip resortCode={selectedResort.code} />
+            {selectedCamera && (
+              <Link className={styles.backLink} href={`/resort-cam/${resortSlug(selectedResort.code)}`}>
+                <span className="material-symbols-outlined" aria-hidden="true">grid_view</span>
+                전체 보기
+              </Link>
+            )}
+          </div>
         </header>
 
         {cameras.length === 0 ? (

@@ -1,9 +1,6 @@
 package com.ikae.snowthing.domain.admin.controller;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,34 +28,24 @@ public class AdminPostController {
 
     @GetMapping
     public ResponseEntity<Page<AdminPostResponse>> getPosts(
-            @RequestParam(name = "onlyDeleted", defaultValue = "true") boolean onlyDeleted,
-            @RequestParam(name = "onlyBlinded", defaultValue = "false") boolean onlyBlinded,
-            @PageableDefault(size = 20, sort = "deleted_at", direction = Sort.Direction.DESC)
-                    Pageable pageable) {
-        Page<AdminPostResponse> posts =
-                adminPostService.getPosts(onlyDeleted, onlyBlinded, pageable);
-        return ResponseEntity.ok(posts);
+            @RequestParam(name = "filter", defaultValue = "ALL") AdminPostService.Filter filter,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        return ResponseEntity.ok(adminPostService.getPosts(filter, page, size));
     }
 
     @DeleteMapping("/{publicId}")
     public ResponseEntity<Void> deletePost(
             @PathVariable("publicId") String publicId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        Long adminMemberId = userDetails != null ? userDetails.getMemberId() : null;
-        adminPostService.deletePostByAdmin(publicId, adminMemberId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PatchMapping("/{publicId}/restore")
-    public ResponseEntity<Void> restorePost(@PathVariable("publicId") String publicId) {
-        adminPostService.restorePostByAdmin(publicId);
+        adminPostService.deletePost(publicId, userDetails);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{publicId}/blind")
     public ResponseEntity<Void> setBlinded(
             @PathVariable("publicId") String publicId, @RequestBody AdminPostBlindRequest request) {
-        adminPostService.toggleBlindPost(publicId, request.blinded());
+        adminPostService.setBlinded(publicId, request.blinded());
         return ResponseEntity.noContent().build();
     }
 }
