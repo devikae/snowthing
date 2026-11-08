@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
@@ -60,5 +61,27 @@ class GlobalExceptionHandlerTest {
                         new IllegalStateException("boom"), new MockHttpServletRequest());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    @DisplayName("끊기거나 깨진 multipart 요청은 500이 아니라 400으로 답한다")
+    void handleMultipartException_returnsInvalidInput() {
+        ResponseEntity<ErrorResponse> response =
+                handler.handleMultipartException(
+                        new MultipartException("Failed to parse multipart servlet request"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("IllegalArgumentException의 내부 문구를 응답에 그대로 내보내지 않는다")
+    void handleIllegalArgumentException_hidesInternalMessage() {
+        ResponseEntity<ErrorResponse> response =
+                handler.handleIllegalArgumentException(
+                        new IllegalArgumentException("No enum constant com.ikae.Internal.X"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(ErrorCode.INVALID_INPUT));
     }
 }

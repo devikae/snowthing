@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
+import { clearViewerCache, fetchViewer, peekViewer } from "../lib/viewer";
 import { RotatingWordmark } from "./RotatingWordmark";
 import { SnowflakeMark } from "./SnowflakeMark";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
@@ -100,6 +101,7 @@ const boardItems: NavItem[] = [
 ];
 
 export function TopNav({ active = "home" }: { active?: ActiveNav }) {
+  const router = useRouter();
   const pathname = usePathname();
   const boardMenuRef = useRef<HTMLDetailsElement>(null);
   const profileMenuRef = useRef<HTMLDetailsElement>(null);
@@ -132,8 +134,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
-  const [user, setUser] = useState<MemberUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // 화면을 옮겨도 이미 받은 내 정보가 있으면 헤더를 비우지 않고 바로 그린다.
+  const [user, setUser] = useState<MemberUser | null>(() => peekViewer() ?? null);
+  const [loading, setLoading] = useState(() => peekViewer() === undefined);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -142,16 +145,10 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
 
   useEffect(() => {
     const refreshProfile = async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
-        setUser(response.ok ? await response.json() : null);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+      setUser(await fetchViewer());
+      setLoading(false);
     };
-    const onUpdate = () => { void refreshProfile(); };
+    const onUpdate = () => { clearViewerCache(); void refreshProfile(); };
     void refreshProfile();
     window.addEventListener("snowthing-profile-updated", onUpdate);
     return () => window.removeEventListener("snowthing-profile-updated", onUpdate);
@@ -160,13 +157,14 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const keyword = search.trim();
-    if (keyword) window.location.assign(`/search?q=${encodeURIComponent(keyword)}`);
+    if (keyword) router.push(`/search?q=${encodeURIComponent(keyword)}`);
   };
 
   const handleLogout = async () => {
     try {
       await csrfFetch(API_ENDPOINTS.auth.logout, { method: "POST" });
     } finally {
+      clearViewerCache();
       setUser(null);
       window.location.href = "/";
     }
@@ -295,10 +293,6 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
       </header>
     </>
   );
-}
-
-export function SideCategories({ active = "all" }: { active?: string }) {
-  return <aside hidden data-active-category={active} aria-hidden="true" />;
 }
 
 export function Footer() {

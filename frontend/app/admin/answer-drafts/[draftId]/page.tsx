@@ -103,7 +103,7 @@ export default function AnswerDraftDetailPage() {
         <h2>대상 게시글</h2>
         {draft.target.visible && draft.target.url ? (
           <p>
-            <Link className="admin-link" href={draft.target.url} target="_blank">
+            <Link className="admin-link" href={draft.target.url} target="_blank" rel="noopener noreferrer">
               {draft.target.title}
             </Link>{" "}
             <span className="admin-meta">현재 내용 버전 {draft.target.contentVersion}</span>
@@ -140,7 +140,7 @@ export default function AnswerDraftDetailPage() {
                 {EVIDENCE_STATE_LABEL[item.currentStatus]}
               </span>
               {item.url && (
-                <Link href={item.url} target="_blank">
+                <Link href={item.url} target="_blank" rel="noopener noreferrer">
                   {item.title ?? "원문 보기"}
                 </Link>
               )}

@@ -107,7 +107,7 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "COMMON_002", "페이지 크기는 1 이상 100 이하이어야 합니다."),
     CONTENT_WRITE_LIMIT(
-            HttpStatus.TOO_MANY_REQUESTS, "COMMON_003", "작성 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+            HttpStatus.TOO_MANY_REQUESTS, "COMMON_003", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     CONTENT_WRITE_LIMIT_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "COMMON_004", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     MARKET_LISTING_NOT_FOUND(HttpStatus.NOT_FOUND, "MARKET_001", "존재하지 않거나 조회할 수 없는 중고장터 판매글입니다."),

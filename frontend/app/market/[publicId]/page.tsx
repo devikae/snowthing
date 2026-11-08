@@ -107,10 +107,11 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
     router.replace(`/login?returnUrl=${encodeURIComponent(`/market/${publicId}`)}`);
   }, [publicId, router]);
 
-  const loadComments = useCallback(async (cursor: string | null = null, append = false) => {
+  const loadComments = useCallback(async (cursor: string | null = null, append = false, redirectOnUnauthorized = true) => {
     const response = await fetch(API_ENDPOINTS.posts.comments(publicId, cursor), { credentials: "include" });
     if (response.status === 401) {
-      redirectToLogin();
+      // 판매글과 함께 부를 때는 판매글 응답이 로그인 이동을 정한다.
+      if (redirectOnUnauthorized) redirectToLogin();
       return;
     }
     if (!response.ok) throw new Error("댓글을 불러오지 못했습니다.");
@@ -123,6 +124,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    // 댓글은 판매글과 함께 요청하되 기다리지 않는다. 댓글 실패는 판매글 위 안내로만 보여 준다.
+    const commentsPromise = loadComments(null, false, false).catch((commentError) => commentError as unknown);
     try {
       const response = await fetch(API_ENDPOINTS.market.detail(publicId), { credentials: "include" });
       if (response.status === 401) {
@@ -135,7 +138,9 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
         throw new Error(response.status === 404 ? "판매글을 찾을 수 없거나 숨김 처리되었습니다." : "판매글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
       setListing(await response.json());
-      await loadComments();
+      void commentsPromise.then((commentError) => {
+        if (commentError) setError(errorText(commentError, "댓글을 불러오지 못했습니다."));
+      });
     } catch (loadError) {
       setError(errorText(loadError, "판매글을 불러오지 못했습니다."));
     } finally {
@@ -200,20 +205,29 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
     }
   };
 
+  const [changingTradeStatus, setChangingTradeStatus] = useState(false);
   const changeTradeStatus = async (tradeStatus: string) => {
-    if (!listing) return;
-    const response = await csrfFetch(API_ENDPOINTS.market.tradeStatus(publicId), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tradeStatus, version: listing.version }),
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => null);
-      setError(data?.message || "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해주세요.");
-      return;
+    if (!listing || changingTradeStatus) return;
+    setChangingTradeStatus(true);
+    setError("");
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.market.tradeStatus(publicId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tradeStatus, version: listing.version }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setError(data?.message || "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해주세요.");
+        return;
+      }
+      const data: { tradeStatus: string; version: number; updatedAt: string } = await response.json();
+      setListing((current) => (current ? { ...current, ...data } : current));
+    } catch {
+      setError("거래 상태를 변경하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요.");
+    } finally {
+      setChangingTradeStatus(false);
     }
-    const data: { tradeStatus: string; version: number; updatedAt: string } = await response.json();
-    setListing({ ...listing, ...data });
   };
 
   const deleteListing = async () => {
@@ -270,14 +284,14 @@ export default function MarketDetailPage({ params }: { params: Promise<{ publicI
 
         <section id="comments" className="market-comments post-comments-card unified-comments-card">
           <header><h2>댓글 <span>{listing.commentCount}</span></h2></header>
-          <div className="post-comment-compose"><textarea className="post-comment-textarea" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="판매자에게 궁금한 내용을 남겨보세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !comment.trim()} onClick={() => void createComment(null)}>댓글 등록</button></div></div>
+          <div className="post-comment-compose"><textarea className="post-comment-textarea" aria-label="댓글 입력" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="판매자에게 궁금한 내용을 남겨보세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !comment.trim()} onClick={() => void createComment(null)}>댓글 등록</button></div></div>
           <div className="market-comment-list post-comment-list">
             {comments.length === 0 && <p className="market-comment-empty">아직 댓글이 없습니다.</p>}
             {comments.map((item) => <div className="market-comment post-comment-item" key={item.commentId}>
               <div className="comment-youtube-row"><MarketCommentAvatar item={item} /><div className="comment-youtube-body"><header><AuthorMenu publicId={item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(item.createdAt)}</time></header><p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>{!item.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button><ReportButton targetType="COMMENT" targetId={item.commentId} /></div>}</div></div>
               <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><AuthorMenu publicId={child.isDeleted ? null : child.writer?.publicId} nickname={child.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p>{!child.isDeleted && <div className="comment-youtube-actions"><ReportButton targetType="COMMENT" targetId={child.commentId} /></div>}</div></div></div>)}</div>
               {item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
-              {replyParentId === item.commentId && <div className="post-reply-compose"><textarea className="post-comment-textarea" value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div></div>}
+              {replyParentId === item.commentId && <div className="post-reply-compose"><textarea className="post-comment-textarea" aria-label="답글 입력" value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div></div>}
             </div>)}
           </div>
           {hasNext && nextCursor && <button className="market-comments-more" type="button" onClick={() => void loadComments(nextCursor, true)}>댓글 더보기</button>}

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 // @ts-expect-error -- Toast UI Editor 3.2.2의 타입 선언이 package.json exports를 통해 노출되지 않습니다.
 import Viewer from "@toast-ui/editor/dist/toastui-editor-viewer";
+import { sanitizeHtml } from "../lib/sanitizeHtml";
 
 interface ToastViewerProps {
   content: string;
@@ -17,6 +18,7 @@ export function ToastViewer({ content }: ToastViewerProps) {
     const viewer = new Viewer({
       el: containerRef.current,
       initialValue: content || "",
+      customHTMLSanitizer: sanitizeHtml,
     });
 
     return () => {

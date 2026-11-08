@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
+import { fetchViewer } from "../lib/viewer";
 import { csrfFetch } from "../lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../lib/idempotencyKey";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { AuthorMenu } from "./AuthorMenu";
 import { ReportButton } from "./ReportButton";
 import { errorText } from "../lib/errorText";
+import { formatShortDateTime } from "../lib/koreanDate";
 
 interface WriterInfo {
   publicId: string | null;
@@ -99,10 +101,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadComments();
-      void fetch(API_ENDPOINTS.members.me, { credentials: "include" })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((member) => setCurrentUserPublicId(member?.publicId ?? null))
-        .catch(() => setCurrentUserPublicId(null));
+      void fetchViewer().then((viewer) => setCurrentUserPublicId(viewer?.publicId ?? null));
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadComments]);
@@ -213,7 +212,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         {reply && <span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
-          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatCommentDate(item.createdAt)}</time></header>
+          <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatShortDateTime(item.createdAt)}</time></header>
           {editingId === item.commentId ? (
             <div className="comment-inline-editor">
               <textarea maxLength={1000} value={editingContent} onChange={(event) => setEditingContent(event.target.value)} />
@@ -232,7 +231,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       {!reply && item.previewReplies.map((child) => renderComment(child, true))}
       {!reply && item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" disabled={working} onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
       {!reply && replyParentId === item.commentId && <div className="post-reply-compose">
-        <textarea className="post-comment-textarea" maxLength={1000} value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력하세요." />
+        <textarea className="post-comment-textarea" aria-label="답글 입력" maxLength={1000} value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력하세요." />
         <div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={working || !replyContent.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div>
       </div>}
     </article>
@@ -241,7 +240,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   return <section id="comments" className="post-comments-card carpool-comments-card">
     <header><h2>댓글 <span>{totalCount}</span></h2></header>
     {currentUserPublicId ? <div className="post-comment-compose">
-      <textarea className="post-comment-textarea" maxLength={1000} value={content} onChange={(event) => setContent(event.target.value)} placeholder="댓글을 입력하세요." />
+      <textarea className="post-comment-textarea" aria-label="댓글 입력" maxLength={1000} value={content} onChange={(event) => setContent(event.target.value)} placeholder="댓글을 입력하세요." />
       <div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={working || !content.trim()} onClick={() => void createComment(null)}>댓글 등록</button></div>
     </div> : <div className="comment-login-guide"><p>댓글을 작성하려면 로그인이 필요합니다.</p><Link href={`/login?returnUrl=${encodeURIComponent(`/carpool/${postPublicId}`)}`}>로그인</Link><Link href="/signup">회원가입</Link></div>}
     {error && <p className="carpool-form-error" role="alert">{error}</p>}
@@ -252,8 +251,3 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   </section>;
 }
 
-function formatCommentDate(value: string) {
-  const date = new Date(value);
-  const pad = (number: number) => String(number).padStart(2, "0");
-  return `${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}

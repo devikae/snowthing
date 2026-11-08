@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
@@ -11,10 +11,12 @@ import { OpeningDdayBanner } from "./components/OpeningDdayBanner";
 import { PostImageIcon } from "./components/PostImageIcon";
 import { PostListAuthor } from "./components/PostListAuthor";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "./lib/api";
+import { fetchViewer } from "./lib/viewer";
 import { RESORT_MAP } from "./lib/resortTags";
 import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName, isResortReportSeason } from "./lib/resortReports";
 import { csrfFetch } from "./lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
+import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 
 interface HomePost {
   publicId: string;
@@ -87,22 +89,6 @@ interface MarketPreviewItem {
   thumbnailImageUrl: string | null;
 }
 
-function formatCompactTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffSec < 60) return "방금";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}분`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay === 1) return "어제";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${month}.${day}`;
-}
 
 function formatShortCategory(categoryCode: string, categoryName: string): string {
   switch (categoryCode) {
@@ -125,15 +111,6 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
   }
 }
 
-function formatCarpoolShortDate(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}.${day} ${hours}:${minutes}`;
-}
 
 export default function HomePageClient() {
   const router = useRouter();
@@ -141,7 +118,9 @@ export default function HomePageClient() {
   const [activeFeed, setActiveFeed] = useState<HomeFeedKey>("all");
   const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(emptyFeeds);
   const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
-  const [feedsLoading, setFeedsLoading] = useState(true);
+  // 탭마다 처음 열 때 한 번만 요청한다. 홈 첫 화면은 "전체" 탭만 받는다.
+  const [feedLoading, setFeedLoading] = useState<Record<HomeFeedKey, boolean>>(() => ({ ...emptyFeedErrors, all: true }));
+  const requestedFeeds = useRef(new Set<HomeFeedKey>());
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
 
   const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
@@ -240,14 +219,7 @@ export default function HomePageClient() {
   };
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.members.me, { credentials: "include" });
-        setProfile(response.ok ? await response.json() : null);
-      } catch {
-        setProfile(null);
-      }
-    })();
+    void fetchViewer().then(setProfile);
   }, []);
 
   useEffect(() => {
@@ -255,39 +227,6 @@ export default function HomePageClient() {
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then((data) => setCarpools(Array.isArray(data.content) ? data.content : []))
       .catch(() => setCarpools([]));
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const results = await Promise.allSettled(
-        HOME_FEED_TABS.map(async (tab) => {
-          const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
-          const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
-          if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
-          const data = await response.json();
-          return { key: tab.key, posts: Array.isArray(data.content) ? data.content.slice(0, 15) : [] };
-        }),
-      );
-
-      if (cancelled) return;
-
-      const nextFeeds = { ...emptyFeeds };
-      const nextErrors = { ...emptyFeedErrors };
-      results.forEach((result, index) => {
-        const key = HOME_FEED_TABS[index].key;
-        if (result.status === "fulfilled") nextFeeds[key] = result.value.posts;
-        else nextErrors[key] = true;
-      });
-      setFeeds(nextFeeds);
-      setFeedErrors(nextErrors);
-      setFeedsLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {
@@ -308,8 +247,10 @@ export default function HomePageClient() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const retryFeed = async (tab: HomeFeedTab) => {
+  const loadFeed = useCallback(async (tab: HomeFeedTab) => {
+    requestedFeeds.current.add(tab.key);
     setFeedErrors((current) => ({ ...current, [tab.key]: false }));
+    setFeedLoading((current) => ({ ...current, [tab.key]: true }));
     const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
     try {
       const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
@@ -318,7 +259,19 @@ export default function HomePageClient() {
       setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 15) : [] }));
     } catch {
       setFeedErrors((current) => ({ ...current, [tab.key]: true }));
+    } finally {
+      setFeedLoading((current) => ({ ...current, [tab.key]: false }));
     }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadFeed(HOME_FEED_TABS[0]), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadFeed]);
+
+  const selectFeed = (tab: HomeFeedTab) => {
+    setActiveFeed(tab.key);
+    if (!requestedFeeds.current.has(tab.key)) void loadFeed(tab);
   };
 
   return (
@@ -338,7 +291,7 @@ export default function HomePageClient() {
                       key={tab.key}
                       type="button"
                       className={activeFeed === tab.key ? "active" : ""}
-                      onClick={() => setActiveFeed(tab.key)}
+                      onClick={() => selectFeed(tab)}
                     >
                       {tab.label}
                     </button>
@@ -354,7 +307,7 @@ export default function HomePageClient() {
               </nav>
 
               <div className="compact-post-list">
-                {feedsLoading ? (
+                {feedLoading[activeFeed] ? (
                   <div className="home-feed-state">
                     <span className="material-symbols-outlined spin">progress_activity</span>
                     <strong>게시글을 불러오는 중입니다.</strong>
@@ -363,7 +316,7 @@ export default function HomePageClient() {
                   <div className="home-feed-state error">
                     <span className="material-symbols-outlined">cloud_off</span>
                     <strong>게시글을 불러오지 못했습니다.</strong>
-                    <button type="button" onClick={() => void retryFeed(activeFeedConfig)}>
+                    <button type="button" onClick={() => void loadFeed(activeFeedConfig)}>
                       다시 시도
                     </button>
                   </div>
@@ -548,7 +501,7 @@ export default function HomePageClient() {
                         <span className="arr">→</span>
                         <em>{item.destinationResortName}</em>
                       </div>
-                      <span className="cp-date">{formatCarpoolShortDate(item.departureAt)}</span>
+                      <span className="cp-date">{item.departureAt ? formatShortDateTime(item.departureAt) : ""}</span>
                     </div>
                     <div className="cp-right">
                       <span className="cp-seat">{item.passengerCapacity}명</span>

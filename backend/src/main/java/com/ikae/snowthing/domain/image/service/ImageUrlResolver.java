@@ -29,6 +29,14 @@ public class ImageUrlResolver {
         return imageReference;
     }
 
+    /** 우리가 올린 원본 사진 키인지 본다. 외부 주소, 경로 이동, 다른 폴더는 받지 않는다. */
+    public boolean isManagedOriginal(String storedValue) {
+        return storedValue != null
+                && storedValue.startsWith(ORIGINAL_PREFIX)
+                && !storedValue.contains("..")
+                && !storedValue.contains("\\");
+    }
+
     public String toPublicUrl(String storedValue) {
         if (storedValue == null
                 || storedValue.startsWith("http://")
