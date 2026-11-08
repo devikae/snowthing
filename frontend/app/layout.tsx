@@ -55,13 +55,16 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/* 가변 폰트를 글자 범위별로 나눠, 화면에 쓰인 글자 조각만 받는다. 굵기별 정적 파일(각 약 770KB)을 받지 않는다. */}
         <link
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
           rel="stylesheet"
           crossOrigin="anonymous"
         />
+        {/* 굵기와 채움 축을 쓰지 않아 기본 인스턴스만 받는다(1.1MB에서 0.3MB). */}
+        {/* eslint-disable-next-line @next/next/google-font-display -- 아이콘 폰트는 받기 전에 아이콘 이름이 글자로 보이면 안 되어 block을 쓴다. */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block"
           rel="stylesheet"
         />
       </head>

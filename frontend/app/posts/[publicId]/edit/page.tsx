@@ -8,10 +8,11 @@ import dynamic from "next/dynamic";
 import { ToastEditorHandle } from "../../../components/ToastEditor";
 import { Footer, TopNav } from "../../../components/SiteChrome";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { errorText } from "../../../lib/errorText";
-import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage } from "../../../lib/imageFile";
+import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
@@ -44,6 +45,7 @@ const categoryOptions = [
 
 function PostEditForm({ publicId }: { publicId: string }) {
   const router = useRouter();
+  useLeaveWarning();
   const editorRef = useRef<ToastEditorHandle>(null);
   const [categoryCode, setCategoryCode] = useState("FREE");
   const [title, setTitle] = useState("");
@@ -120,14 +122,18 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const uploadImages = async (files: FileList | null) => {
     if (!files?.length || uploadingImages) return;
     if (images.length + files.length > 10) { setErrorMsg("사진은 최대 10장까지 등록할 수 있습니다."); return; }
-    if (Array.from(files).some(isOversizedImage)) {
-      setErrorMsg(OVERSIZED_IMAGE_MESSAGE);
-      return;
-    }
+    // 축소가 끝날 때까지 등록 버튼과 파일 칸을 막는다.
     setUploadingImages(true);
     setErrorMsg("");
+    const selected = Array.from(files);
+    const prepared = await prepareImagesForUpload(selected).catch(() => selected);
+    if (prepared.some(isOversizedImage)) {
+      setErrorMsg(OVERSIZED_IMAGE_MESSAGE);
+      setUploadingImages(false);
+      return;
+    }
     try {
-      for (const file of Array.from(files)) {
+      for (const file of prepared) {
         const form = new FormData();
         form.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: form });

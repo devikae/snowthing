@@ -8,6 +8,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { sanitizeHtml } from "../lib/sanitizeHtml";
 import { readErrorMessage } from "../lib/messageApi";
 import { useImageUploadLease } from "../lib/useImageUploadLease";
+import { prepareImageForUpload } from "../lib/imageFile";
 
 export interface ToastEditorHandle {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,7 +57,7 @@ export const ToastEditor = forwardRef<ToastEditorHandle, ToastEditorProps>(
             let error = "";
             try {
               const formData = new FormData();
-              formData.append("file", blob);
+              formData.append("file", await prepareImageForUpload(blob));
               const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: formData });
               if (response.status === 401) {
                 error = "사진은 로그인 후 올릴 수 있습니다. 글은 그대로 작성할 수 있습니다.";
