@@ -102,6 +102,8 @@ public enum ErrorCode {
             HttpStatus.CONFLICT, "CONTENT_REPORT_004", "현재 상태에서는 할 수 없는 조치입니다."),
     NOTIFICATION_LOGIN_REQUIRED(
             HttpStatus.UNAUTHORIZED, "NOTIFICATION_002", "로그인 후 알림을 확인할 수 있습니다."),
+    SCRAP_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "SCRAP_001", "로그인 후 글을 스크랩할 수 있습니다."),
+    SCRAP_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SCRAP_002", "판매글과 카풀 글은 스크랩할 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_005", "요청한 주소를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),
@@ -157,6 +159,21 @@ public enum ErrorCode {
             "현재 유가를 조회할 수 없습니다. 리터당 유가를 직접 입력해 주세요."),
     CARPOOL_PAGE_LIMIT_EXCEEDED(
             HttpStatus.BAD_REQUEST, "CARPOOL_010", "카풀 목록은 최대 100페이지까지 조회할 수 있습니다."),
+    // 카풀 탑승 확인과 후기 (043)
+    CARPOOL_NOT_DEPARTED(HttpStatus.BAD_REQUEST, "CARPOOL_011", "출발 시각이 지난 뒤에 할 수 있습니다."),
+    CARPOOL_REVIEW_PERIOD_ENDED(
+            HttpStatus.BAD_REQUEST, "CARPOOL_012", "출발 후 30일이 지나 더 이상 남길 수 없습니다."),
+    CARPOOL_RIDE_DRIVER_NOT_ALLOWED(
+            HttpStatus.BAD_REQUEST, "CARPOOL_013", "모집한 회원은 탑승 확인을 요청할 수 없습니다."),
+    CARPOOL_RIDE_ALREADY_REQUESTED(HttpStatus.CONFLICT, "CARPOOL_014", "이미 탑승 확인을 요청했습니다."),
+    CARPOOL_RIDE_NOT_FOUND(HttpStatus.NOT_FOUND, "CARPOOL_015", "탑승 확인 요청을 찾을 수 없습니다."),
+    CARPOOL_RIDE_CAPACITY_FULL(HttpStatus.CONFLICT, "CARPOOL_016", "모집 인원만큼 이미 탑승을 확정했습니다."),
+    CARPOOL_REVIEW_NOT_PARTICIPANT(
+            HttpStatus.FORBIDDEN, "CARPOOL_017", "이 카풀을 함께 탄 회원끼리만 후기를 남길 수 있습니다."),
+    CARPOOL_REVIEW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CARPOOL_018", "자신에게는 후기를 남길 수 없습니다."),
+    CARPOOL_REVIEW_DUPLICATED(HttpStatus.CONFLICT, "CARPOOL_019", "이 회원에게는 이미 후기를 남겼습니다."),
+    CARPOOL_REVIEW_INVALID_TAG(HttpStatus.BAD_REQUEST, "CARPOOL_020", "후기에서 고른 좋았던 점을 확인해 주세요."),
+    CARPOOL_RIDE_ALREADY_DECIDED(HttpStatus.CONFLICT, "CARPOOL_021", "이미 처리한 탑승 확인 요청입니다."),
     COMMENT_INVALID_PAGE_SIZE(
             HttpStatus.BAD_REQUEST, "COMMENT_005", "댓글 페이지 크기는 1 이상 50 이하이어야 합니다."),
     COMMENT_UPDATE_CONFLICT(
@@ -262,6 +279,12 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "IDEMPOTENCY_002",
             "같은 요청 키로 다른 내용이 이미 등록됐습니다. 새로고침 후 다시 작성해 주세요."),
+
+    // 관리자 운영 제어 (047)
+    CHAT_IP_BANNED(HttpStatus.FORBIDDEN, "CHAT_008", "차단된 IP입니다. 라이브톡에 참여할 수 없습니다."),
+    CHAT_ANONYMOUS_DISABLED(HttpStatus.FORBIDDEN, "CHAT_009", "현재 비로그인 사용자의 라이브톡 발신이 제한되어 있습니다."),
+    CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_001", "존재하지 않는 시스템 설정입니다."),
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_002", "존재하지 않는 배너입니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

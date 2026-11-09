@@ -1,10 +1,14 @@
 package com.ikae.snowthing.domain.chat.service;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.springframework.stereotype.Component;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 
 /**
@@ -17,15 +21,57 @@ public class ChatRecentHistoryBuffer {
     public static final int MAX_RECENT_MESSAGES = 30;
 
     private final ConcurrentLinkedDeque<ChatMessageResponse> buffer = new ConcurrentLinkedDeque<>();
+    private final Cache<String, String> messageIpCache =
+            Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofHours(2)).build();
 
     public synchronized void append(ChatMessageResponse message) {
+        append(message, null);
+    }
+
+    public synchronized void append(ChatMessageResponse message, String clientIp) {
         if (message == null) {
             return;
+        }
+        if (clientIp != null) {
+            messageIpCache.put(message.messageId(), clientIp);
         }
         buffer.addLast(message);
         while (buffer.size() > MAX_RECENT_MESSAGES) {
             buffer.pollFirst();
         }
+    }
+
+    public String getIpForMessage(String messageId) {
+        return messageIpCache.getIfPresent(messageId);
+    }
+
+    public synchronized List<String> removeByIp(String targetIp) {
+        if (targetIp == null) return List.of();
+        List<String> removed = new ArrayList<>();
+        buffer.removeIf(
+                m -> {
+                    String ip = messageIpCache.getIfPresent(m.messageId());
+                    if (targetIp.equals(ip)) {
+                        removed.add(m.messageId());
+                        return true;
+                    }
+                    return false;
+                });
+        return List.copyOf(removed);
+    }
+
+    public synchronized List<String> removeByMessageId(String messageId) {
+        if (messageId == null) return List.of();
+        List<String> removed = new ArrayList<>();
+        buffer.removeIf(
+                m -> {
+                    if (messageId.equals(m.messageId())) {
+                        removed.add(m.messageId());
+                        return true;
+                    }
+                    return false;
+                });
+        return List.copyOf(removed);
     }
 
     public synchronized List<ChatMessageResponse> getRecentMessages() {
