@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { BlockedMembersSection } from "../components/BlockedMembersSection";
+import { CarpoolReviewSection } from "../components/CarpoolReviewSection";
 import { CommentProfileAvatar } from "../components/CommentProfileAvatar";
 import { MarketingConsentSection } from "../components/MarketingConsentSection";
 import { ScrappedPostsSection } from "../components/ScrappedPostsSection";
@@ -212,6 +213,7 @@ export default function ProfilePage() {
       </div></fieldset></form>
       <ScrappedPostsSection />
       <MarketingConsentSection />
+      <CarpoolReviewSection />
       <BlockedMembersSection />
       <section className="profile-section profile-withdrawal"><div><h2>회원 탈퇴</h2><p>탈퇴하면 되돌릴 수 없습니다.</p></div>{withdrawOpen ? <form onSubmit={withdraw}><fieldset className="profile-fields" disabled={!!busy}>
         <ul className="profile-withdrawal-notice">

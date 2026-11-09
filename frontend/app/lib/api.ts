@@ -85,6 +85,14 @@ export const API_ENDPOINTS = {
     delete: (publicId: string) => `${API_V1_URL}/carpools/${publicId}`,
     autoPreview: `${API_V1_URL}/carpools/auto-preview`,
     places: (query: string) => `${API_V1_URL}/carpools/places?query=${encodeURIComponent(query)}`,
+    participation: (publicId: string) => `${API_V1_URL}/carpools/${publicId}/participation`,
+    requestRide: (publicId: string) => `${API_V1_URL}/carpools/${publicId}/riders`,
+    decideRide: (publicId: string, memberPublicId: string, action: "confirm" | "reject") =>
+      `${API_V1_URL}/carpools/${publicId}/riders/${encodeURIComponent(memberPublicId)}/${action}`,
+    reviews: (publicId: string) => `${API_V1_URL}/carpools/${publicId}/reviews`,
+    reviewSummary: (memberPublicId: string) =>
+      `${API_V1_URL}/carpools/members/${encodeURIComponent(memberPublicId)}/review-summary`,
+    myReviews: `${API_V1_URL}/carpools/reviews/me`,
   },
   resortReports: {
     today: (resortId?: number, page = 1, size = 20) =>

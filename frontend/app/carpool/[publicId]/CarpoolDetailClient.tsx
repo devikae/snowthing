@@ -11,6 +11,8 @@ import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { ReportButton } from "../../components/ReportButton";
 import { carpoolCostLabel, formatCarpoolDateTime } from "../format";
+import { carpoolSummaryText, type CarpoolReviewSummary } from "../review";
+import { CarpoolParticipation } from "./CarpoolParticipation";
 
 interface CarpoolDetail {
   publicId: string;
@@ -67,6 +69,23 @@ export default function CarpoolDetailClient() {
   const [heldMessage, setHeldMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [writerSummary, setWriterSummary] = useState("");
+  const writerPublicId = item?.writerPublicId ?? null;
+
+  // 작성자의 공개 카풀 요약. 실패하거나 기록이 없으면 아무것도 표시하지 않는다.
+  useEffect(() => {
+    if (!writerPublicId) return;
+    let cancelled = false;
+    void fetch(API_ENDPOINTS.carpool.reviewSummary(writerPublicId), { credentials: "include" })
+      .then((response) => (response.ok ? (response.json() as Promise<CarpoolReviewSummary>) : null))
+      .then((summary) => {
+        if (!cancelled) setWriterSummary(carpoolSummaryText(summary));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [writerPublicId]);
 
   const deleteCarpool = async () => {
     if (!window.confirm("이 카풀 모집글을 삭제하시겠습니까?")) return;
@@ -146,6 +165,7 @@ export default function CarpoolDetailClient() {
                   <div>
                     <AuthorMenu publicId={item.writerPublicId} nickname={item.writerName} />
                     <small>{formatCarpoolDateTime(item.createdAt)}</small>
+                    {writerSummary && <small className="carpool-writer-summary">{writerSummary}</small>}
                   </div>
                   <ReportButton targetType="POST" targetId={publicId} />
                   {item.canManage && (
@@ -204,6 +224,7 @@ export default function CarpoolDetailClient() {
                   <h2>모집 내용</h2>
                   <p>{item.content}</p>
                 </section>
+                <CarpoolParticipation publicId={publicId} />
                 <PostComments postPublicId={publicId} />
               </div>
             </div>

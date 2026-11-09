@@ -38,6 +38,8 @@ public class MemberWithdrawalRepository {
                     "DELETE FROM member_marketing_consent_history WHERE member_id = :memberId",
                     "DELETE FROM member_block WHERE blocker_id = :memberId",
                     "DELETE FROM notification WHERE receiver_id = :memberId",
+                    // 운전자가 아직 처리하지 않은 탑승 요청. 확정되거나 거절된 기록과 후기는 남긴다(027).
+                    "DELETE FROM carpool_rider WHERE member_id = :memberId AND status = 'REQUESTED'",
                     "DELETE FROM post_scrap WHERE member_id = :memberId",
                     "UPDATE api_token SET revoked_at = :now"
                             + " WHERE member_id = :memberId AND revoked_at IS NULL",
