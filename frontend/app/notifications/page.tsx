@@ -13,6 +13,7 @@ import {
   notificationHref,
   notificationMessage,
 } from "../lib/notifications";
+import PushToggle from "./PushToggle";
 import "./notifications.css";
 
 type Tab = "all" | "unread";
@@ -91,6 +92,7 @@ export default function NotificationsPage() {
             모두 읽음
           </button>
         </div>
+        <PushToggle />
         <div className="notifications-tabs" role="tablist" aria-label="알림 보기">
           {(["all", "unread"] as const).map((value) => (
             <button

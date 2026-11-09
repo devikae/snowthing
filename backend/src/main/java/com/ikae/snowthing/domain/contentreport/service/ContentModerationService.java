@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -31,6 +32,7 @@ import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.notification.entity.Notification;
 import com.ikae.snowthing.domain.notification.entity.NotificationType;
+import com.ikae.snowthing.domain.notification.event.NotificationsCreatedEvent;
 import com.ikae.snowthing.domain.notification.repository.NotificationRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
@@ -61,6 +63,7 @@ public class ContentModerationService {
     private final MemberRepository memberRepository;
     private final NotificationRepository notificationRepository;
     private final SearchOutboxWriter searchOutbox;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -253,7 +256,9 @@ public class ContentModerationService {
         if (target.author() != null && authorMessage != null) {
             addNotification(notifications, target.author(), target, authorMessage);
         }
-        notificationRepository.saveAll(new ArrayList<>(notifications.values()));
+        List<Notification> saved =
+                notificationRepository.saveAll(new ArrayList<>(notifications.values()));
+        eventPublisher.publishEvent(NotificationsCreatedEvent.of(saved));
     }
 
     private void addNotification(
