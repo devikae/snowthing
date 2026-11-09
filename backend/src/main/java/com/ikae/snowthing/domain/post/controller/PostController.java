@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.ReactionType;
+import com.ikae.snowthing.domain.post.service.PostScrapService;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.domain.post.service.ReactionService;
 import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
@@ -34,6 +35,7 @@ public class PostController {
 
     private final PostService postService;
     private final ReactionService reactionService;
+    private final PostScrapService postScrapService;
     private final ClientIpResolver clientIpResolver;
     private final ViewCountCookieManager viewCountCookieManager;
     private final AnonymousVoterCookieManager anonymousVoterCookieManager;
@@ -72,8 +74,11 @@ public class PostController {
                 postService.getPostDetail(publicId, userDetails, shouldIncreaseViewCount);
         String anonymousVoterId = anonymousVoterCookieManager.find(request).orElse(null);
         return ResponseEntity.ok(
-                postDetailResponse.withActiveReactionTypes(
-                        reactionService.findActiveTypes(publicId, userDetails, anonymousVoterId)));
+                postDetailResponse
+                        .withActiveReactionTypes(
+                                reactionService.findActiveTypes(
+                                        publicId, userDetails, anonymousVoterId))
+                        .withScrapped(postScrapService.isScrapped(publicId, userDetails)));
     }
 
     @GetMapping

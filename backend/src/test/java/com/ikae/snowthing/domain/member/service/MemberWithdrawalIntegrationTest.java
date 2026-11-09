@@ -70,6 +70,7 @@ import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.domain.post.service.PostScrapService;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -99,6 +100,7 @@ class MemberWithdrawalIntegrationTest {
     @Autowired private EmailVerificationHasher hasher;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private PostService postService;
+    @Autowired private PostScrapService postScrapService;
     @Autowired private CommentService commentService;
     @Autowired private MarketListingService marketListingService;
     @Autowired private MarketCategoryRepository marketCategoryRepository;
@@ -136,6 +138,11 @@ class MemberWithdrawalIntegrationTest {
                             + " (SELECT post_id FROM post WHERE member_id = ?)",
                     id);
             jdbc.update("DELETE FROM notification WHERE receiver_id = ?", id);
+            jdbc.update(
+                    "DELETE FROM post_scrap WHERE member_id = ? OR post_id IN"
+                            + " (SELECT post_id FROM post WHERE member_id = ?)",
+                    id,
+                    id);
             jdbc.update("DELETE FROM member_block WHERE blocker_id = ? OR blocked_id = ?", id, id);
             jdbc.update("DELETE FROM api_token WHERE member_id = ?", id);
             jdbc.update("DELETE FROM member_social_account WHERE member_id = ?", id);
@@ -209,6 +216,7 @@ class MemberWithdrawalIntegrationTest {
                                 IP)
                         .publicId();
         Long carpoolPostId = saveCarpool(member);
+        postScrapService.scrap(otherPostId, principal);
         jdbc.update(
                 "INSERT INTO member_registration_consent"
                         + " (member_id, privacy_version, age_confirmed, marketing_email_agreed,"
@@ -249,6 +257,7 @@ class MemberWithdrawalIntegrationTest {
 
         assertThat(count("member_registration_consent", member.getId())).isZero();
         assertThat(count("member_marketing_consent_history", member.getId())).isZero();
+        assertThat(count("post_scrap", member.getId())).isZero();
         assertThat(
                         jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM post_image_upload WHERE owner_email = ?",

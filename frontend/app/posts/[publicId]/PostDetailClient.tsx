@@ -44,6 +44,7 @@ export interface PostDetail {
   likeCount: number;
   dislikeCount: number;
   activeReactionTypes: ("LIKE" | "DISLIKE")[];
+  scrapped: boolean;
   writer: WriterInfo;
   images: string[];
   createdAt: string;
@@ -117,6 +118,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
   const [loading, setLoading] = useState(!initialPost);
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
+  const [scrapBusy, setScrapBusy] = useState(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -363,6 +365,35 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       setReactionMsg(errorData.message || "투표 처리 실패");
     } catch {
       setReactionMsg("서버 통신 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 로그인 여부는 서버 응답(401)으로 판단한다. 화면의 로그인 정보가 늦게 오더라도 로그인한 회원을 로그인 화면으로 보내지 않는다.
+  const handleScrap = async () => {
+    if (!post || scrapBusy) return;
+    setScrapBusy(true);
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.posts.scrap(publicId), {
+        method: post.scrapped ? "DELETE" : "PUT",
+      });
+      if (res.ok) {
+        const data: { scrapped: boolean } = await res.json();
+        setPost((current) => (current ? { ...current, scrapped: data.scrapped } : current));
+        setReactionMsg(data.scrapped ? "스크랩했습니다. 내 정보에서 다시 볼 수 있습니다." : "스크랩을 취소했습니다.");
+        return;
+      }
+      if (res.status === 401) {
+        if (confirm("스크랩하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
+          router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
+        }
+        return;
+      }
+      const errorData = await res.json().catch(() => ({}));
+      setReactionMsg(errorData.message || "스크랩하지 못했습니다.");
+    } catch {
+      setReactionMsg("서버 통신 중 오류가 발생했습니다.");
+    } finally {
+      setScrapBusy(false);
     }
   };
 
@@ -689,6 +720,10 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                   <button onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
                   <span className="material-symbols-outlined text-[17px]">thumb_down</span>
                   비추천 {post.dislikeCount}
+                </button>
+                <button type="button" onClick={() => void handleScrap()} disabled={scrapBusy} className={post.scrapped ? "active" : ""} aria-pressed={post.scrapped}>
+                  <span className="material-symbols-outlined text-[17px]">bookmark</span>
+                  {post.scrapped ? "스크랩됨" : "스크랩"}
                 </button>
                 <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined">share</span>공유</button>
                 <ReportButton targetType="POST" targetId={publicId} />

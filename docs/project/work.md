@@ -1,3 +1,20 @@
+## 글 스크랩 (IKA-62, 2026-11-09)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 운영 마이그레이션은 사용자 확인 후.
+- 설계: `docs/conception/026_post_scrap/01_design.md`
+- 완료
+  - `042_migration_post_scrap.sql`: `post_scrap` 테이블, `UNIQUE (member_id, post_id)`, 목록 인덱스.
+  - API: `PUT`, `DELETE /api/v1/posts/{publicId}/scrap`(멱등), `GET /api/v1/members/me/scraps`(커서), 글 상세 `scrapped`.
+  - 회원 탈퇴 때 스크랩 행 삭제(025 설계 표에도 추가).
+  - 프론트: 글 상세 스크랩 버튼, 내 정보 화면 스크랩한 글 구역.
+- 결정
+  - 삭제, 임시조치 글의 스크랩은 남기고 조회할 때 뺀다. 복구되면 다시 보인다. 글 FK는 실제 삭제 대비 `ON DELETE CASCADE`.
+  - 중복은 UNIQUE + `ON DUPLICATE KEY`로 막는다. 존재 확인 후 insert는 동시 요청에서 500이 난다.
+  - 목록은 스크랩 시각 최신순 + ID 커서. 프로필 구역은 더 보기만 있으면 된다.
+  - 판매글, 카풀은 400, 1:1 문의는 존재를 드러내지 않게 404.
+- 사용자 결정 필요: PR 리뷰 포인트(페이징 방식, 정렬 기준, 위치, 쓰기 횟수 제한).
+- 검증: 백엔드 spotlessCheck test, 프론트 lint, build. 운영 미적용.
+
 ## 게시판 목록과 글 상세 서버 렌더링 (IKA-67, 2026-11-09)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.
