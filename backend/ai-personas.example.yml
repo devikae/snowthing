@@ -13,7 +13,7 @@
 # - boards: FREE, ANONYMOUS, QNA 비중. 기본 모두 1
 # - topics: 글감 (100자 이하). 없으면 모델이 고른다. 정치 글감이 있으면 파일 전체를 거부한다.
 #
-# 최대 12명.
+# 최대 30명.
 personas:
   - key: a1
     email: ai-agent01@snowthing.invalid
