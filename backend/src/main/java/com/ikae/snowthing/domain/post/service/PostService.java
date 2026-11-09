@@ -341,7 +341,7 @@ public class PostService {
 
         validateDeletePermission(post, anonymousPassword, userDetails, isAdmin);
 
-        post.softDelete();
+        post.softDelete(userDetails != null ? userDetails.getMemberId() : null);
         imageLifecycle.releasePostImages(post);
         searchOutbox.postChanged(post);
     }

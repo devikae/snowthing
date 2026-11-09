@@ -102,6 +102,8 @@ public enum ErrorCode {
             HttpStatus.CONFLICT, "CONTENT_REPORT_004", "현재 상태에서는 할 수 없는 조치입니다."),
     NOTIFICATION_LOGIN_REQUIRED(
             HttpStatus.UNAUTHORIZED, "NOTIFICATION_002", "로그인 후 알림을 확인할 수 있습니다."),
+    SCRAP_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "SCRAP_001", "로그인 후 글을 스크랩할 수 있습니다."),
+    SCRAP_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SCRAP_002", "판매글과 카풀 글은 스크랩할 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 입력값입니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_005", "요청한 주소를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),
@@ -266,6 +268,12 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "IDEMPOTENCY_002",
             "같은 요청 키로 다른 내용이 이미 등록됐습니다. 새로고침 후 다시 작성해 주세요."),
+
+    // 관리자 운영 제어 (047)
+    CHAT_IP_BANNED(HttpStatus.FORBIDDEN, "CHAT_008", "차단된 IP입니다. 라이브톡에 참여할 수 없습니다."),
+    CHAT_ANONYMOUS_DISABLED(HttpStatus.FORBIDDEN, "CHAT_009", "현재 비로그인 사용자의 라이브톡 발신이 제한되어 있습니다."),
+    CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_001", "존재하지 않는 시스템 설정입니다."),
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_002", "존재하지 않는 배너입니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

@@ -57,4 +57,6 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
                     + " OR m.email LIKE :pattern ESCAPE '!'"
                     + " ORDER BY m.createdAt DESC, m.id DESC")
     Slice<Member> searchForAdmin(@Param("pattern") String pattern, Pageable pageable);
+
+    long countByCreatedAtAfter(java.time.LocalDateTime createdAt);
 }

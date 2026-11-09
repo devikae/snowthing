@@ -7,9 +7,11 @@ import { sanitizeHtml } from "../lib/sanitizeHtml";
 
 interface ToastViewerProps {
   content: string;
+  /** 뷰어가 본문을 그린 뒤 부른다. 서버가 넣어 둔 평문 본문을 이때 치운다. */
+  onRendered?: () => void;
 }
 
-export function ToastViewer({ content }: ToastViewerProps) {
+export function ToastViewer({ content, onRendered }: ToastViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -20,11 +22,12 @@ export function ToastViewer({ content }: ToastViewerProps) {
       initialValue: content || "",
       customHTMLSanitizer: sanitizeHtml,
     });
+    onRendered?.();
 
     return () => {
       viewer.destroy();
     };
-  }, [content]);
+  }, [content, onRendered]);
 
   return <div ref={containerRef} className="toast-viewer-wrapper text-base leading-8 text-[var(--snow-ink)]" />;
 }

@@ -51,6 +51,7 @@
 | `email_verification` | `email`, `request_ip` | 행 삭제 |
 | `api_token` | 토큰 | `revoked_at` 기록 |
 | `notification` | 내가 받은 알림 | 행 삭제 |
+| `post_scrap` | 내가 스크랩한 글 | 행 삭제 (IKA-62) |
 | `notification` | 남이 받은 알림의 `actor_name` | `탈퇴한 회원`으로 교체 |
 | `post`, `comment` | `writer_ip` | IPv4는 앞 두 자리만 남기고 나머지는 `0.0.0.0` |
 | `post_reaction` | `writer_ip` | NULL |

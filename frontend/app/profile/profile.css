@@ -71,6 +71,10 @@
 .profile-withdrawal-notice { margin: 0; padding-left: 18px; line-height: 1.75; list-style: disc; }
 .profile-settings .profile-button-danger { background: var(--snow-error); border-color: var(--snow-error); color: #fff; font-weight: 600; }
 .profile-settings .profile-button-danger:disabled { opacity: 0.5; }
+.profile-scrap-item { display: grid; gap: 4px; min-width: 0; }
+.profile-scrap-item a { overflow: hidden; color: var(--snow-ink); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.profile-scrap-item a:hover { text-decoration: underline; }
+.profile-scrap-more { margin-top: 12px; }
 @media (max-width: 640px) {
   .profile-settings { padding-block: 24px 48px; }
   .profile-section { grid-template-columns: minmax(0,1fr); gap: 24px; padding-block: 24px; }

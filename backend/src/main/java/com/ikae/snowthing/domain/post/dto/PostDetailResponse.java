@@ -28,6 +28,7 @@ public record PostDetailResponse(
         WriterInfo writer,
         List<String> images,
         Set<ReactionType> activeReactionTypes,
+        boolean scrapped,
         LocalDateTime createdAt) {
 
     public PostDetailResponse {
@@ -85,6 +86,7 @@ public record PostDetailResponse(
                 writerInfo,
                 List.copyOf(imageUrls),
                 Set.of(),
+                false,
                 post.getCreatedAt());
     }
 
@@ -106,6 +108,30 @@ public record PostDetailResponse(
                 writer,
                 images,
                 reactionTypes,
+                scrapped,
+                createdAt);
+    }
+
+    /** 로그인한 회원이 이 글을 스크랩했는지. 추천 여부처럼 컨트롤러가 붙인다. */
+    public PostDetailResponse withScrapped(boolean isScrapped) {
+        return new PostDetailResponse(
+                publicId,
+                categoryName,
+                categoryCode,
+                title,
+                content,
+                status,
+                isAnonymous,
+                isAuthor,
+                requiresPassword,
+                viewCount,
+                commentCount,
+                likeCount,
+                dislikeCount,
+                writer,
+                images,
+                activeReactionTypes,
+                isScrapped,
                 createdAt);
     }
 
