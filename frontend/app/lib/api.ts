@@ -103,6 +103,13 @@ export const API_ENDPOINTS = {
   reports: {
     create: `${API_V1_URL}/reports`,
   },
+  seasonLogs: {
+    me: (season?: number) => `${API_V1_URL}/season-logs/me${season ? `?season=${season}` : ""}`,
+    visits: `${API_V1_URL}/season-logs/me/visits`,
+    visit: (visitDate: string) => `${API_V1_URL}/season-logs/me/visits/${visitDate}`,
+    share: (seasonStartYear: number) => `${API_V1_URL}/season-logs/me/shares/${seasonStartYear}`,
+    shared: (shareToken: string) => `${API_V1_URL}/season-shares/${encodeURIComponent(shareToken)}`,
+  },
   admin: {
     reports: (status: string, page: number) => `${API_V1_URL}/admin/reports?status=${status}&page=${page}`,
     reportAction: (reportId: number) => `${API_V1_URL}/admin/reports/${reportId}/actions`,

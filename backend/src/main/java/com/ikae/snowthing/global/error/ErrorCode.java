@@ -261,6 +261,17 @@ public enum ErrorCode {
             HttpStatus.CONFLICT, "CHARACTER_003", "이 모임에서 이미 쓰는 이름입니다. 다른 이름을 입력해 주세요."),
     CHARACTER_NICKNAME_FORBIDDEN(HttpStatus.BAD_REQUEST, "CHARACTER_004", "쓸 수 없는 이름입니다."),
 
+    // 시즌 방문 기록과 결산 공유 (044)
+    SEASON_VISIT_DUPLICATED(
+            HttpStatus.CONFLICT, "SEASON_001", "이 날짜에는 이미 기록이 있습니다. 기존 기록을 지운 뒤 다시 남겨 주세요."),
+    SEASON_VISIT_FUTURE_DATE(HttpStatus.BAD_REQUEST, "SEASON_002", "오늘 이후 날짜는 기록할 수 없습니다."),
+    SEASON_VISIT_OUT_OF_SEASON(
+            HttpStatus.BAD_REQUEST, "SEASON_003", "시즌 기간(11월 1일부터 4월 30일까지)의 날짜만 기록할 수 있습니다."),
+    SEASON_VISIT_TOO_OLD(HttpStatus.BAD_REQUEST, "SEASON_004", "지난 시즌까지만 기록할 수 있습니다."),
+    SEASON_VISIT_NOT_FOUND(HttpStatus.NOT_FOUND, "SEASON_005", "이 날짜에 남긴 기록이 없습니다."),
+    SEASON_INVALID(HttpStatus.BAD_REQUEST, "SEASON_006", "볼 수 없는 시즌입니다."),
+    SEASON_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "SEASON_007", "공유가 꺼져 있거나 없는 시즌 결산입니다."),
+
     // 작성 API Idempotency-Key (032)
     IDEMPOTENCY_KEY_INVALID(
             HttpStatus.BAD_REQUEST, "IDEMPOTENCY_001", "Idempotency-Key 헤더는 UUID 형식이어야 합니다."),

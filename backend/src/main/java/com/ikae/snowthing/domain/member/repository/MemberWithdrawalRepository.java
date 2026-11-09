@@ -38,6 +38,9 @@ public class MemberWithdrawalRepository {
                     "DELETE FROM member_marketing_consent_history WHERE member_id = :memberId",
                     "DELETE FROM member_block WHERE blocker_id = :memberId",
                     "DELETE FROM notification WHERE receiver_id = :memberId",
+                    // 방문 기록은 언제 어디 있었는지 알려 주는 정보다. 공유 링크도 함께 닫는다.
+                    "DELETE FROM season_share WHERE member_id = :memberId",
+                    "DELETE FROM season_visit WHERE member_id = :memberId",
                     // 운전자가 아직 처리하지 않은 탑승 요청. 확정되거나 거절된 기록과 후기는 남긴다(027).
                     "DELETE FROM carpool_rider WHERE member_id = :memberId AND status = 'REQUESTED'",
                     "DELETE FROM post_scrap WHERE member_id = :memberId",
