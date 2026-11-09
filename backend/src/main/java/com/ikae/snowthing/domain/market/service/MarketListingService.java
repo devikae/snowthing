@@ -157,7 +157,6 @@ public class MarketListingService {
         return MarketListingCreateResponse.from(marketListingRepository.save(listing));
     }
 
-    @Transactional
     /** 조회수를 올리지 않는다. 숨김, 삭제된 글은 상세와 같은 예외로 막는다. */
     public MarketSharePreviewResponse getSharePreview(String publicId) {
         MarketListing listing = findVisible(publicId);
@@ -171,6 +170,7 @@ public class MarketListingService {
                 findThumbnailUrls(List.of(listing)).get(post.getId()));
     }
 
+    @Transactional
     public MarketListingDetailResponse getDetail(
             String publicId, CustomUserDetails userDetails, boolean increaseViewCount) {
         requireMember(userDetails);
