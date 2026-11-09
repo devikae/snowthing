@@ -70,7 +70,7 @@ class AiMemberActionServiceTest {
         roster.replace(List.of(MEMBER));
         service =
                 new AiMemberActionService(
-                        new AiMemberProperties(true, "personas.yml", 100, List.of()),
+                        new AiMemberProperties(true, "personas.yml", 100, List.of(), null),
                         gateway,
                         queryRepository,
                         roster,

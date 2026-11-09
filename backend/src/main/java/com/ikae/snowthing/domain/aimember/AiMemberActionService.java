@@ -1,8 +1,8 @@
 package com.ikae.snowthing.domain.aimember;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Month;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +61,8 @@ public class AiMemberActionService {
 
     static final String CHAT_DESTINATION = "/sub/chat/main";
     static final String BUDGET_KEY = "snowthing:limits:{ai-members}:global:day";
+    private static final int PRE_OPENING_MONTHS = 3;
+    private static final int EARLY_SEASON_WEEKS = 3;
     private static final String ANONYMOUS_BOARD = "ANONYMOUS";
     private static final int MIN_LENGTH_FOR_SIMILARITY = 15;
 
@@ -282,7 +284,7 @@ public class AiMemberActionService {
     private Context context(LocalDateTime now) {
         return new Context(
                 now.toLocalDate().toString(),
-                season(now.getMonth()),
+                season(now.toLocalDate(), properties.firstOpeningDate()),
                 queryRepository.findResortNames(),
                 withoutPolitics(queryRepository.findRecentSnowReports(now.minusDays(1))),
                 queryRepository.findTitlesSince(roster.memberIds(), now.minusDays(7)),
@@ -314,15 +316,29 @@ public class AiMemberActionService {
                                         PoliticalContentFilter.containsPolitics(comment.content()));
     }
 
-    static String season(Month month) {
-        return switch (month) {
-            case NOVEMBER -> "시즌 개장 무렵";
+    /**
+     * 모델은 월만 보면 이미 개장한 것처럼 쓴다. 첫 개장일 전에는 아직 아무도 못 탔다고 분명히 알린다. 봇 서버 검증에 맞춰 50자 이하로 둔다.
+     */
+    static String season(LocalDate today, LocalDate firstOpeningDate) {
+        if (firstOpeningDate != null) {
+            if (today.isBefore(firstOpeningDate)
+                    && !today.isBefore(firstOpeningDate.minusMonths(PRE_OPENING_MONTHS))) {
+                return "국내 스키장 개장 전. 이번 시즌은 아직 아무도 못 탔다";
+            }
+            if (!today.isBefore(firstOpeningDate)
+                    && today.isBefore(firstOpeningDate.plusWeeks(EARLY_SEASON_WEEKS))) {
+                return "개장 초반. 연 스키장이 몇 곳뿐이다";
+            }
+        }
+        return switch (today.getMonth()) {
+            case NOVEMBER -> "개장 전후. 이번 시즌에 탔다고 단정하지 않는다";
             case DECEMBER, JANUARY -> "시즌 한창";
             case FEBRUARY -> "시즌 후반";
             case MARCH -> "폐장 무렵";
             default -> "비시즌";
         };
     }
+
 
     /** 명단은 기동 때 만들어지므로 그 뒤의 정지는 여기서 본다. 유료 compose 호출 전에 확인한다. */
     private boolean isActive(AiMember member) {
