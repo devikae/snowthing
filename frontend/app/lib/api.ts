@@ -111,6 +111,22 @@ export const API_ENDPOINTS = {
       `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
     searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
     searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
+    stats: `${API_V1_URL}/admin/dashboard/stats`,
+    configs: `${API_V1_URL}/admin/configs`,
+    updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${encodeURIComponent(key)}`,
+    posts: (filter: AdminPostFilter, page = 0, size = 20) =>
+      `${API_V1_URL}/admin/posts?filter=${filter}&page=${page}&size=${size}`,
+    blindPost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}/blind`,
+    deletePost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}`,
+    bannedIps: `${API_V1_URL}/admin/chat/banned-ips`,
+    unbanIp: (id: number) => `${API_V1_URL}/admin/chat/banned-ips/${id}`,
+    banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${encodeURIComponent(messageId)}/ban-ip`,
+    banners: `${API_V1_URL}/admin/banners`,
+    bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
+  },
+  public: {
+    configs: `${API_V1_URL}/public/configs`,
+    banners: `${API_V1_URL}/public/banners`,
   },
 } as const;
 
@@ -134,4 +150,60 @@ export interface OffsetPage<T> {
     hasNext: boolean;
     pageSize: number;
   };
+}
+
+
+export interface AdminDashboardStats {
+  totalMembers: number;
+  todayNewMembers: number;
+  anonymousChatEnabled: boolean;
+}
+
+export interface SystemConfigItem {
+  key: string;
+  value: string;
+  valueType: string;
+  description: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export type AdminPostFilter = "ALL" | "DELETED" | "BLINDED";
+
+export interface AdminPostItem {
+  publicId: string;
+  title: string;
+  content: string;
+  writerNickname: string | null;
+  writerEmail: string | null;
+  isAnonymous: boolean;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  deleterNickname: string | null;
+  deleterRole: string | null;
+  isDeletedByAuthor: boolean;
+  isBlinded: boolean;
+  status: string;
+  createdAt: string;
+  categoryName: string;
+}
+
+export interface ChatBannedIpItem {
+  id: number;
+  bannedIp: string;
+  reason: string;
+  bannedUntil: string | null;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface BannerItem {
+  id: number;
+  title: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  displayOrder: number;
+  isActive: boolean;
+  startAt: string | null;
+  endAt: string | null;
 }

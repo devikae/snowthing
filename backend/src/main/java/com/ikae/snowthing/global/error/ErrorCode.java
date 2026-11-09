@@ -254,6 +254,12 @@ public enum ErrorCode {
             "IDEMPOTENCY_002",
             "같은 요청 키로 다른 내용이 이미 등록됐습니다. 새로고침 후 다시 작성해 주세요."),
 
+    // 관리자 운영 제어 (047)
+    CHAT_IP_BANNED(HttpStatus.FORBIDDEN, "CHAT_008", "차단된 IP입니다. 라이브톡에 참여할 수 없습니다."),
+    CHAT_ANONYMOUS_DISABLED(HttpStatus.FORBIDDEN, "CHAT_009", "현재 비로그인 사용자의 라이브톡 발신이 제한되어 있습니다."),
+    CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_001", "존재하지 않는 시스템 설정입니다."),
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_002", "존재하지 않는 배너입니다."),
+
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

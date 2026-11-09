@@ -46,6 +46,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         {state === "admin" ? (
           <>
             <nav className="admin-tabs" aria-label="관리자 메뉴">
+              <Link href="/admin" aria-current={pathname === "/admin" ? "page" : undefined}>
+                대시보드
+              </Link>
               <Link href="/admin/reports" aria-current={pathname?.startsWith("/admin/reports") ? "page" : undefined}>
                 신고 처리
               </Link>
@@ -60,6 +63,15 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
               </Link>
               <Link href="/admin/members" aria-current={pathname?.startsWith("/admin/members") ? "page" : undefined}>
                 회원
+              </Link>
+              <Link href="/admin/posts" aria-current={pathname?.startsWith("/admin/posts") ? "page" : undefined}>
+                게시글
+              </Link>
+              <Link href="/admin/chat" aria-current={pathname?.startsWith("/admin/chat") ? "page" : undefined}>
+                라이브톡 차단
+              </Link>
+              <Link href="/admin/banners" aria-current={pathname?.startsWith("/admin/banners") ? "page" : undefined}>
+                배너
               </Link>
             </nav>
             {children}
