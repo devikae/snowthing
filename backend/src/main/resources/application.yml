@@ -110,6 +110,14 @@ snowthing:
     alert-webhook: ${DISCORD_WEBHOOK_ALERT:}
     event-webhook: ${DISCORD_WEBHOOK_EVENT:}
     timeout: 3s
+  web-push:
+    # IKA-65. VAPID 키(base64url)와 연락처(mailto: 또는 https:). 하나라도 비어 있으면 휴대폰 알림이 꺼진다.
+    # 비밀키는 비밀값이라 운영 prod.env에만 둔다.
+    public-key: ${WEB_PUSH_VAPID_PUBLIC_KEY:}
+    private-key: ${WEB_PUSH_VAPID_PRIVATE_KEY:}
+    subject: ${WEB_PUSH_VAPID_SUBJECT:}
+    timeout: 5s
+    ttl: 1d
   admin:
     # IKA-12. 쉼표 구분 이메일. 기동할 때 해당 활성 회원을 ROLE_ADMIN으로 올린다. 목록에서 빼도 권한은 거두지 않는다.
     bootstrap-emails: ${SNOWTHING_ADMIN_BOOTSTRAP_EMAILS:}

@@ -93,6 +93,10 @@ public class Post extends BaseTimeEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /** 글을 지운 회원. 작성자 삭제와 관리자 삭제를 관리자 화면에서 구분한다. 삭제 전과 옛 글은 null이다. */
+    @Column(name = "deleted_by_member_id")
+    private Long deletedByMemberId;
+
     /**
      * 검색 근거용 내용 버전. 제목·본문·카테고리·상태·삭제가 바뀔 때만 1 올린다. 낙관적 락(@Version)이 아니다. 조회수·반응 수 갱신과 비관적 락 경로에는
      * 영향을 주지 않는다.
@@ -185,13 +189,18 @@ public class Post extends BaseTimeEntity {
         updateImageStatus(!this.images.isEmpty());
     }
 
-    public void softDelete() {
+    public void softDelete(Long deleterMemberId) {
         if (!this.isDeleted) {
             this.contentVersion++;
         }
         this.isDeleted = true;
         this.status = PostStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
+        this.deletedByMemberId = deleterMemberId;
+    }
+
+    public void softDelete() {
+        softDelete(null);
     }
 
     public void increaseViewCount() {

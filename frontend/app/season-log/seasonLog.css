@@ -1,0 +1,64 @@
+.season-log .season-log-select { width: auto; min-height: 40px; padding: 8px 12px; }
+.season-log-loading { color: var(--snow-muted); }
+.season-log-login { border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 24px; }
+.season-log-login > div { display: flex; gap: 16px; margin-top: 12px; font-size: 14px; }
+.season-log-login a { text-decoration: underline; text-underline-offset: 4px; }
+
+.season-log-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; align-items: start; }
+.season-log-layout > section { min-width: 0; border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 24px; }
+.season-log-record { display: grid; gap: 16px; }
+.season-log .season-log-record .tool-primary { margin-top: 0; }
+.season-log-other { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: end; }
+.season-log .season-log-hint { margin: 0; color: var(--snow-muted); font-size: 13px; }
+.season-log-today-done { margin: 0; font-weight: 600; }
+.season-log .season-log-notice { margin: 0; font-size: 13px; color: var(--snow-ink); }
+
+.season-log-facts { display: grid; gap: 8px; margin: 16px 0; }
+.season-log-facts > div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.season-log-facts dt { color: var(--snow-muted); }
+.season-log-facts dd { margin: 0; font-weight: 600; }
+.season-log-bars { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.season-log-bars li { display: grid; grid-template-columns: 96px minmax(0,1fr) 40px; gap: 8px; align-items: center; font-size: 13px; }
+.season-log-bars li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season-log-bar { height: 10px; border-radius: 999px; background: var(--snow-accent); }
+.season-log-bars strong { text-align: right; font-variant-numeric: tabular-nums; }
+
+.season-log-share { display: grid; gap: 12px; margin-top: 24px; border-top: 1px solid var(--snow-border); padding-top: 20px; }
+.season-log-share h3 { margin: 0; font-size: 15px; }
+.season-log .season-log-share p { margin: 0; font-size: 13px; }
+.season-log-share-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+.season-log .season-log-share-actions .tool-primary { width: auto; margin-top: 0; }
+.season-log-share-actions a { text-decoration: underline; text-underline-offset: 4px; }
+
+.season-log-calendar { grid-column: 1 / -1; }
+.season-log-months { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; margin-top: 16px; }
+.season-log-month h3 { margin: 0 0 8px; font-size: 14px; }
+.season-log-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 3px; }
+.season-log-weekday { color: var(--snow-muted); font-size: 11px; text-align: center; }
+.season-log-day { display: grid; place-items: center; min-height: 36px; border-radius: 6px; color: var(--snow-ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
+.season-log-day.today { outline: 1px solid var(--snow-border-strong); }
+.season-log .season-log-day.visited { min-height: 36px; padding: 2px; border: 0; background: var(--snow-accent); color: #fff; font-size: 12px; font-weight: 700; line-height: 1.1; }
+.season-log .season-log-day.visited:hover { background: var(--snow-accent); opacity: .85; }
+.season-log-day.visited small { font-size: 9px; font-weight: 500; white-space: nowrap; overflow: hidden; max-width: 100%; }
+
+.season-share-page { max-width: 640px; margin-inline: auto; }
+.season-share-card { border-radius: 16px; background: var(--alpine-navy); color: #fff; padding: 32px; }
+.season-share-card > span { color: #cbd5e1; font-size: 14px; }
+.season-share-card h2 { margin: 8px 0 24px; color: #fff; font-size: 26px; line-height: 1.3; }
+.season-share-card .season-share-days { display: block; font-size: 64px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.season-share-card .season-share-top { margin: 16px 0 0; color: #e2e8f0; font-size: 16px; }
+.season-share-card ul { display: grid; gap: 6px; margin: 24px 0 0; padding: 16px 0 0; border-top: 1px solid rgba(255,255,255,.2); list-style: none; font-size: 14px; }
+.season-share-card li { display: flex; justify-content: space-between; }
+.season-share-cta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; font-size: 14px; }
+.season-share-cta a { text-decoration: underline; text-underline-offset: 4px; }
+
+@media (max-width: 860px) {
+  .season-log-layout { grid-template-columns: minmax(0,1fr); }
+  .season-log-months { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 520px) {
+  .season-log-layout > section { padding: 16px; }
+  .season-log-months { grid-template-columns: minmax(0,1fr); }
+  .season-share-card { padding: 24px; }
+  .season-share-card .season-share-days { font-size: 52px; }
+}

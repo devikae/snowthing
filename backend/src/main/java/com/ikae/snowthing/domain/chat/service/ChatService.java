@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.dto.SenderDto;
@@ -43,10 +45,18 @@ public class ChatService {
     private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
 
+    private static final String[] ANONYMOUS_PREFIXES = {
+        "눈사람", "카빙꿈나무", "스노우러버", "파우더헌터", "트릭마스터",
+        "슬로프요정", "안전라이더", "시즌권러버", "설질지킴이", "덕스탠스"
+    };
+
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
     private final Clock clock;
+    private final ChatIpBanService chatIpBanService;
+    private final SystemConfigService systemConfigService;
 
-    private final Cache<Long, AbuseState> abuseStateCache =
+    /** 도배 판정 상태. 회원은 "member:{id}", 비회원은 "ip:{ip}" 키로 같은 규칙을 쓴다. */
+    private final Cache<String, AbuseState> abuseStateCache =
             Caffeine.newBuilder()
                     .maximumSize(MAX_RATE_LIMIT_ENTRIES)
                     .expireAfterWrite(Duration.ofMillis(MINUTE_WINDOW_MILLIS))
@@ -99,11 +109,14 @@ public class ChatService {
     public ChatMessageResponse processMessage(
             ChatMessageRequest request, CustomUserDetails userDetails, String clientIp) {
 
-        // 1. Authentication validation
-        if (userDetails == null || userDetails.getMember() == null) {
+        // 1. IP ban and authentication validation. 비회원은 관리자가 켠 경우에만 보낼 수 있다.
+        if (chatIpBanService.isBanned(clientIp)) {
+            throw new CustomException(ErrorCode.CHAT_IP_BANNED);
+        }
+        Member member = userDetails != null ? userDetails.getMember() : null;
+        if (member == null && !systemConfigService.isAnonymousChatEnabled()) {
             throw new CustomException(ErrorCode.CHAT_UNAUTHORIZED);
         }
-        Member member = userDetails.getMember();
 
         // 2. Content validation
         String rawContent = request != null ? request.content() : null;
@@ -127,7 +140,8 @@ public class ChatService {
                         .replaceAll("")
                         .toLowerCase(Locale.ROOT);
         long now = clock.millis();
-        validateAbuseLimits(member.getId(), normalizedContent, now);
+        String abuseKey = member != null ? "member:" + member.getId() : "ip:" + clientIp;
+        validateAbuseLimits(abuseKey, normalizedContent, now);
 
         // 5. Resort tag resolution
         ResortTag tag = ResortTag.from(request.resortTag());
@@ -136,12 +150,22 @@ public class ChatService {
         // 6. Construct response payload. React renders content as escaped JSX text.
         String messageId = UUID.randomUUID().toString();
         String sentAt = LocalDateTime.now().format(ISO_FORMATTER);
-        SenderDto sender = new SenderDto(member.getPublicId(), member.getNickname());
+        SenderDto sender =
+                member != null
+                        ? new SenderDto(member.getPublicId(), member.getNickname())
+                        : new SenderDto("anon-" + UUID.randomUUID(), anonymousNickname(clientIp));
 
         ChatMessageResponse response =
                 new ChatMessageResponse(messageId, sender, resolvedTag, trimmedContent, sentAt);
-        chatRecentHistoryBuffer.append(response);
+        chatRecentHistoryBuffer.append(response, clientIp);
         return response;
+    }
+
+    /** 같은 IP는 같은 닉네임을 받는다. IP 원문은 내보내지 않는다. */
+    private String anonymousNickname(String clientIp) {
+        int hash = clientIp == null ? 0 : clientIp.hashCode();
+        String prefix = ANONYMOUS_PREFIXES[Math.floorMod(hash, ANONYMOUS_PREFIXES.length)];
+        return prefix + "#" + String.format("%04d", Math.floorMod(hash, 10_000));
     }
 
     public List<ChatMessageResponse> getRecentMessages() {
@@ -189,12 +213,12 @@ public class ChatService {
         return ContactFilter.containsLinkOrMessenger(contactCheckTarget);
     }
 
-    private void validateAbuseLimits(Long memberId, String normalizedContent, long now) {
+    private void validateAbuseLimits(String abuseKey, String normalizedContent, long now) {
         AtomicReference<ErrorCode> rejection = new AtomicReference<>();
         abuseStateCache
                 .asMap()
                 .compute(
-                        memberId,
+                        abuseKey,
                         (ignored, current) -> {
                             AbuseState state = current == null ? AbuseState.empty(now) : current;
                             rejection.set(state.rejectionFor(normalizedContent, now));

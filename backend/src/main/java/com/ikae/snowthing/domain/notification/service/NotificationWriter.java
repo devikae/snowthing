@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.notification.service;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.notification.entity.Notification;
 import com.ikae.snowthing.domain.notification.entity.NotificationType;
+import com.ikae.snowthing.domain.notification.event.NotificationsCreatedEvent;
 import com.ikae.snowthing.domain.notification.repository.NotificationRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class NotificationWriter {
 
     private final NotificationRepository notificationRepository;
     private final MemberRepository memberRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int createForComment(CommentCreatedEvent event) {
@@ -44,6 +47,8 @@ public class NotificationWriter {
                                                 member, recipients.get(member.getId()), event))
                         .toList();
         notificationRepository.saveAll(notifications);
+        // 이 새 트랜잭션이 커밋된 뒤에 웹 푸시 리스너가 받는다.
+        eventPublisher.publishEvent(NotificationsCreatedEvent.of(notifications));
         return notifications.size();
     }
 

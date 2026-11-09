@@ -7,6 +7,7 @@ import { Client } from "@stomp/stompjs";
 import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
 import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
+import { csrfFetch } from "../lib/csrfFetch";
 
 export interface MemberProfile {
   publicId: string;
@@ -35,6 +36,7 @@ interface ChatError {
 }
 
 const LOCAL_STORAGE_TAG_KEY = "snowthing_chat_resort";
+const GUEST_ECHO_WINDOW_MILLIS = 15000;
 const MAX_DOM_MESSAGES = 100;
 const SEND_INTERVAL_MILLIS = 1000;
 const RECONNECT_BASE_DELAY_MILLIS = 1000;
@@ -92,6 +94,12 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const [toastError, setToastError] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [localHelp, setLocalHelp] = useState<LocalChatCommand | null>(null);
+  // 관리자가 비회원 발신을 켜면 로그인 없이도 보낼 수 있다. 서버가 같은 설정으로 다시 확인한다.
+  const [anonymousChatEnabled, setAnonymousChatEnabled] = useState(false);
+  const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => new Set());
+  const pendingGuestSendsRef = useRef<{ content: string; time: number }[]>([]);
+  const canSend = Boolean(currentMember) || anonymousChatEnabled;
+  const isAdmin = currentMember?.role === "ROLE_ADMIN";
 
   const stompClientRef = useRef<Client | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -134,6 +142,19 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
 
   // 4. 웹소켓 STOMP 클라이언트 연결 생명주기
   useEffect(() => {
+    let cancelled = false;
+    fetch(API_ENDPOINTS.public.configs)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((config: { anonymousChatEnabled?: boolean } | null) => {
+        if (!cancelled && config) setAnonymousChatEnabled(config.anonymousChatEnabled === true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const wsUrl = API_BASE_URL.replace(/^http/, "ws") + "/ws-chat";
 
     const client = new Client({
@@ -149,7 +170,25 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         // 메인 광장 브로드캐스트 채널 구독
         client.subscribe("/sub/chat/main", (frame) => {
           try {
-            const newMsg: ChatMessage = JSON.parse(frame.body);
+            const payload = JSON.parse(frame.body);
+            if (payload.type === "PURGE_MESSAGES") {
+              const purged = new Set<string>(Array.isArray(payload.messageIds) ? payload.messageIds : []);
+              setMessages((previous) => previous.filter((message) => !purged.has(message.messageId)));
+              return;
+            }
+            if (payload.type === "CONFIG_UPDATED") {
+              if (payload.key === "CHAT_ANONYMOUS_ENABLED") setAnonymousChatEnabled(payload.value === true);
+              return;
+            }
+            const newMsg: ChatMessage = payload;
+            // 비회원 메시지는 매번 새 ID로 오므로 방금 보낸 내용과 맞춰 내 메시지로 표시한다.
+            const pendingIndex = pendingGuestSendsRef.current.findIndex(
+              (pending) => pending.content === newMsg.content && Date.now() - pending.time < GUEST_ECHO_WINDOW_MILLIS,
+            );
+            if (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-")) {
+              pendingGuestSendsRef.current.splice(pendingIndex, 1);
+              setMyGuestMessageIds((previous) => new Set(previous).add(newMsg.messageId));
+            }
             setMessages((previous) => mergeMessages(previous, [newMsg]));
 
             // 스크롤이 바닥 근처에 있을 때만 자동 스크롤
@@ -231,7 +270,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       setInputContent("");
       return;
     }
-    if (!currentMember) {
+    if (!canSend) {
       router.push("/login");
       return;
     }
@@ -250,6 +289,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       return;
     }
     lastSentAtRef.current = now;
+    if (!currentMember) {
+      pendingGuestSendsRef.current.push({ content: trimmed, time: now });
+    }
 
     const payload = {
       resortTag: selectedResort || null,
@@ -262,6 +304,17 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     });
 
     setInputContent("");
+  };
+
+  const banMessageSender = async (message: ChatMessage) => {
+    if (!window.confirm(`${message.sender.nickname}의 IP를 7일 동안 차단하고 최근 메시지를 지울까요?`)) return;
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.admin.banMessageIp(message.messageId), { method: "POST" });
+      if (!response.ok) throw new Error();
+      setMessages((previous) => previous.filter((item) => item.messageId !== message.messageId));
+    } catch {
+      setToastError("IP 차단에 실패했습니다.");
+    }
   };
 
   return (
@@ -298,7 +351,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             </div>
           ) : (
             messages.map((msg) => {
-              const isMine = Boolean(currentMember && msg.sender.publicId === currentMember.publicId);
+              const isMine = currentMember
+                ? msg.sender.publicId === currentMember.publicId
+                : myGuestMessageIds.has(msg.messageId);
               const resort = msg.resortTag ? RESORT_MAP[msg.resortTag] : null;
               return (
                 <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
@@ -309,6 +364,16 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
                       {resort ? resort.koreanName : "일반"}
                     </span>
                     <time>{formatRelativeTime(msg.sentAt)}</time>
+                    {isAdmin && !isMine && (
+                      <button
+                        type="button"
+                        onClick={() => void banMessageSender(msg)}
+                        title="이 사용자 IP 차단 및 최근 메시지 삭제"
+                        className="ml-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-100"
+                      >
+                        차단
+                      </button>
+                    )}
                   </div>
                   <div className="live-chat-message-bubble">{msg.content}</div>
                 </div>
@@ -342,9 +407,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       <form onSubmit={handleSubmit} className="live-chat-compose unified-capsule-form">
         <div className="capsule-select-wrap">
           <select
-            value={currentMember ? selectedResort : ""}
+            value={canSend ? selectedResort : ""}
             onChange={handleResortChange}
-            disabled={!currentMember}
+            disabled={!canSend}
             aria-label="리조트 태그"
             className="live-chat-compose-select capsule-select"
           >
@@ -362,30 +427,32 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           value={inputContent}
           onChange={(e) => setInputContent(e.target.value)}
           onClick={() => {
-            if (!currentMember) {
+            if (!canSend) {
               router.push("/login");
             }
           }}
           onFocus={() => {
-            if (!currentMember) {
+            if (!canSend) {
               router.push("/login");
             }
           }}
           placeholder={
             currentMember
               ? "메세지를 입력하세요"
-              : "로그인하고 라이브톡에 참여해보세요"
+              : anonymousChatEnabled
+                ? "로그인 없이 대화할 수 있어요 (닉네임 자동)"
+                : "로그인하고 라이브톡에 참여해보세요"
           }
           className="live-chat-compose-input capsule-input"
         />
 
         <button
           type="submit"
-          disabled={Boolean(currentMember && !inputContent.trim())}
-          aria-label={!currentMember ? "로그인" : "메시지 전송"}
+          disabled={Boolean(canSend && !inputContent.trim())}
+          aria-label={!canSend ? "로그인" : "메시지 전송"}
           className="live-chat-compose-submit capsule-send-btn"
         >
-          {!currentMember ? (
+          {!canSend ? (
             <span>로그인</span>
           ) : (
             <>
