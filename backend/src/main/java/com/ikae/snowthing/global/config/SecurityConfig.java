@@ -231,6 +231,7 @@ public class SecurityConfig {
                                 auth.requestMatchers(
                                                 HttpMethod.GET,
                                                 "/api/v1/market-listings/preview",
+                                                "/api/v1/market-listings/*/share-preview",
                                                 "/api/v1/carpools/**",
                                                 "/api/carpools/**",
                                                 "/api/v1/resort-reports/**")
@@ -256,6 +257,9 @@ public class SecurityConfig {
                                                 HttpMethod.DELETE,
                                                 "/api/v1/character-participants/me")
                                         .permitAll()
+                                        // IKA-64 공유를 켠 시즌 결산만 공개한다. 내 기록 API는 아래 인증 규칙을 따른다.
+                                        .requestMatchers(HttpMethod.GET, "/api/v1/season-shares/*")
+                                        .permitAll()
                                         .requestMatchers(
                                                 "/api/members",
                                                 "/api/v1/members",
@@ -275,6 +279,7 @@ public class SecurityConfig {
                                                 "/api/v1/master/riding-styles",
                                                 "/api/v1/resort-cams",
                                                 "/api/v1/resort-cams/*/weather",
+                                                "/api/v1/slope-status",
                                                 "/api/posts",
                                                 "/api/posts/**",
                                                 "/api/v1/posts",
@@ -285,7 +290,8 @@ public class SecurityConfig {
                                                 "/api/v1/comments/**",
                                                 "/ws-chat",
                                                 "/ws-chat/**",
-                                                "/api/v1/chat/**")
+                                                "/api/v1/chat/**",
+                                                "/api/v1/public/**")
                                         .permitAll()
                                         .requestMatchers(
                                                 HttpMethod.GET,

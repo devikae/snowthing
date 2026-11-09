@@ -25,6 +25,8 @@ export const API_ENDPOINTS = {
     changePassword: `${API_V1_URL}/members/me/password`,
     withdrawal: `${API_V1_URL}/members/me/withdrawal`,
     resetProfileImage: `${API_V1_URL}/members/me/profile-image`,
+    scraps: (cursor?: string | null, size = 20) =>
+      `${API_V1_URL}/members/me/scraps?size=${size}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
     emailAvailability: `${API_V1_URL}/members/email-availability`,
@@ -45,6 +47,7 @@ export const API_ENDPOINTS = {
     delete: (publicId: string) => `${API_V1_URL}/posts/${publicId}`,
     reaction: (publicId: string, type: "LIKE" | "DISLIKE") =>
       `${API_V1_URL}/posts/${publicId}/reaction?type=${type}`,
+    scrap: (publicId: string) => `${API_V1_URL}/posts/${publicId}/scrap`,
     comments: (publicId: string, cursor?: string | null, size = 20) =>
       `${API_V1_URL}/posts/${publicId}/comments?${
         cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`
@@ -64,6 +67,9 @@ export const API_ENDPOINTS = {
     list: `${API_V1_URL}/resort-cams`,
     weather: (resortCode: string) => `${API_V1_URL}/resort-cams/${encodeURIComponent(resortCode)}/weather`,
   },
+  slopeStatus: {
+    board: `${API_V1_URL}/slope-status`,
+  },
   market: {
     categories: `${API_V1_URL}/market/categories`,
     preview: `${API_V1_URL}/market-listings/preview`,
@@ -82,6 +88,14 @@ export const API_ENDPOINTS = {
     delete: (publicId: string) => `${API_V1_URL}/carpools/${publicId}`,
     autoPreview: `${API_V1_URL}/carpools/auto-preview`,
     places: (query: string) => `${API_V1_URL}/carpools/places?query=${encodeURIComponent(query)}`,
+    participation: (publicId: string) => `${API_V1_URL}/carpools/${publicId}/participation`,
+    requestRide: (publicId: string) => `${API_V1_URL}/carpools/${publicId}/riders`,
+    decideRide: (publicId: string, memberPublicId: string, action: "confirm" | "reject") =>
+      `${API_V1_URL}/carpools/${publicId}/riders/${encodeURIComponent(memberPublicId)}/${action}`,
+    reviews: (publicId: string) => `${API_V1_URL}/carpools/${publicId}/reviews`,
+    reviewSummary: (memberPublicId: string) =>
+      `${API_V1_URL}/carpools/members/${encodeURIComponent(memberPublicId)}/review-summary`,
+    myReviews: `${API_V1_URL}/carpools/reviews/me`,
   },
   resortReports: {
     today: (resortId?: number, page = 1, size = 20) =>
@@ -91,6 +105,13 @@ export const API_ENDPOINTS = {
   },
   reports: {
     create: `${API_V1_URL}/reports`,
+  },
+  seasonLogs: {
+    me: (season?: number) => `${API_V1_URL}/season-logs/me${season ? `?season=${season}` : ""}`,
+    visits: `${API_V1_URL}/season-logs/me/visits`,
+    visit: (visitDate: string) => `${API_V1_URL}/season-logs/me/visits/${visitDate}`,
+    share: (seasonStartYear: number) => `${API_V1_URL}/season-logs/me/shares/${seasonStartYear}`,
+    shared: (shareToken: string) => `${API_V1_URL}/season-shares/${encodeURIComponent(shareToken)}`,
   },
   admin: {
     reports: (status: string, page: number) => `${API_V1_URL}/admin/reports?status=${status}&page=${page}`,
@@ -108,6 +129,22 @@ export const API_ENDPOINTS = {
       `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
     searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
     searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
+    stats: `${API_V1_URL}/admin/dashboard/stats`,
+    configs: `${API_V1_URL}/admin/configs`,
+    updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${encodeURIComponent(key)}`,
+    posts: (filter: AdminPostFilter, page = 0, size = 20) =>
+      `${API_V1_URL}/admin/posts?filter=${filter}&page=${page}&size=${size}`,
+    blindPost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}/blind`,
+    deletePost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}`,
+    bannedIps: `${API_V1_URL}/admin/chat/banned-ips`,
+    unbanIp: (id: number) => `${API_V1_URL}/admin/chat/banned-ips/${id}`,
+    banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${encodeURIComponent(messageId)}/ban-ip`,
+    banners: `${API_V1_URL}/admin/banners`,
+    bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
+  },
+  public: {
+    configs: `${API_V1_URL}/public/configs`,
+    banners: `${API_V1_URL}/public/banners`,
   },
 } as const;
 
@@ -131,4 +168,60 @@ export interface OffsetPage<T> {
     hasNext: boolean;
     pageSize: number;
   };
+}
+
+
+export interface AdminDashboardStats {
+  totalMembers: number;
+  todayNewMembers: number;
+  anonymousChatEnabled: boolean;
+}
+
+export interface SystemConfigItem {
+  key: string;
+  value: string;
+  valueType: string;
+  description: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export type AdminPostFilter = "ALL" | "DELETED" | "BLINDED";
+
+export interface AdminPostItem {
+  publicId: string;
+  title: string;
+  content: string;
+  writerNickname: string | null;
+  writerEmail: string | null;
+  isAnonymous: boolean;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  deleterNickname: string | null;
+  deleterRole: string | null;
+  isDeletedByAuthor: boolean;
+  isBlinded: boolean;
+  status: string;
+  createdAt: string;
+  categoryName: string;
+}
+
+export interface ChatBannedIpItem {
+  id: number;
+  bannedIp: string;
+  reason: string;
+  bannedUntil: string | null;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface BannerItem {
+  id: number;
+  title: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  displayOrder: number;
+  isActive: boolean;
+  startAt: string | null;
+  endAt: string | null;
 }

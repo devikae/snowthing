@@ -1,0 +1,201 @@
+.notice {
+  margin: 24px 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  align-items: start;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--snow-border, #e4e4e7);
+  border-radius: 10px;
+  background: var(--snow-canvas, #fff);
+  padding: 18px;
+  scroll-margin-top: 80px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardHeader h2 {
+  margin: 2px 0 0;
+  color: var(--snow-ink, #0f172a);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.region {
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--snow-muted, #64748b);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.count strong {
+  color: var(--snow-ink-soft, #475569);
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.count strong[data-open="true"] {
+  color: var(--snow-success, #059669);
+}
+
+.headline {
+  margin: 0;
+  color: var(--snow-ink-soft, #475569);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.headline[data-open="true"] {
+  color: var(--snow-success, #059669);
+}
+
+.note {
+  margin: 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--snow-ink-soft, #475569);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.slopeList {
+  display: flex;
+  flex-direction: column;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slopeList li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  border-top: 1px solid var(--snow-line, #eef2f7);
+  padding: 8px 0;
+}
+
+.slopeName {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.slopeName strong {
+  color: var(--snow-ink, #0f172a);
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.slopeName small {
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sessions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.session {
+  border-radius: 999px;
+  background: var(--snow-surface-low, #f1f5f9);
+  padding: 2px 8px;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.session[data-open="true"] {
+  background: var(--snow-success-soft, #ecfdf5);
+  color: var(--snow-success, #059669);
+}
+
+.slopeNote {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+.cardFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  border-top: 1px solid var(--snow-line, #eef2f7);
+  padding-top: 10px;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+.cardFooter a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--snow-ink-soft, #475569);
+  font-weight: 700;
+}
+
+.cardFooter a span {
+  font-size: 15px;
+}
+
+.stale {
+  display: block;
+  color: var(--snow-error, #e11d48);
+  font-style: normal;
+}
+
+.unsupported {
+  margin: 20px 0 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 14px;
+  }
+}

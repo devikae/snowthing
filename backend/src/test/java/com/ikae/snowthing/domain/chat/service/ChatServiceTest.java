@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.chat.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -20,9 +21,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.model.ResortTag;
@@ -45,6 +49,8 @@ class ChatServiceTest {
     private Member testMember;
 
     private ChatRecentHistoryBuffer chatRecentHistoryBuffer;
+    @Mock private ChatIpBanService chatIpBanService;
+    @Mock private SystemConfigService systemConfigService;
     private MutableClock clock;
 
     private static final class MutableClock extends Clock {
@@ -86,7 +92,9 @@ class ChatServiceTest {
     void setUp() {
         chatRecentHistoryBuffer = new ChatRecentHistoryBuffer();
         clock = new MutableClock();
-        chatService = new ChatService(chatRecentHistoryBuffer, clock);
+        chatService =
+                new ChatService(
+                        chatRecentHistoryBuffer, clock, chatIpBanService, systemConfigService);
         testMember =
                 Member.builder()
                         .publicId("0191a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4")
@@ -499,6 +507,66 @@ class ChatServiceTest {
             assertThat(response.content()).isEqualTo(prefix + emoji);
             assertThat(response.content().codePointCount(0, response.content().length()))
                     .isEqualTo(100);
+        }
+    }
+
+    @Nested
+    @DisplayName("관리자 운영 제어 (IP 차단, 비회원 라이브톡)")
+    class AdminControl {
+
+        @Test
+        @DisplayName("차단된 IP는 회원이어도 CHAT_IP_BANNED")
+        void bannedIp_rejectedEvenForMember() {
+            given(chatIpBanService.isBanned("10.0.0.1")).willReturn(true);
+
+            assertThatThrownBy(
+                            () ->
+                                    chatService.processMessage(
+                                            new ChatMessageRequest(null, "안녕하세요"),
+                                            testUserDetails,
+                                            "10.0.0.1"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_IP_BANNED);
+        }
+
+        @Test
+        @DisplayName("비회원 발신을 켜면 같은 IP는 같은 닉네임으로 보낸다")
+        void anonymousEnabled_sameIpSameNickname() {
+            given(systemConfigService.isAnonymousChatEnabled()).willReturn(true);
+
+            ChatMessageResponse first =
+                    chatService.processMessage(
+                            new ChatMessageRequest(null, "첫 메시지"), null, "10.0.0.2");
+            clock.advance(Duration.ofSeconds(2));
+            ChatMessageResponse second =
+                    chatService.processMessage(
+                            new ChatMessageRequest(null, "두번째 메시지"), null, "10.0.0.2");
+
+            assertThat(first.sender().nickname()).isEqualTo(second.sender().nickname());
+            assertThat(first.sender().publicId()).startsWith("anon-");
+            assertThat(first.sender().nickname()).doesNotContain("10.0.0.2");
+        }
+
+        @Test
+        @DisplayName("비회원 도배 제한은 IP 단위로 센다")
+        void anonymousAbuseLimit_countedPerIp() {
+            given(systemConfigService.isAnonymousChatEnabled()).willReturn(true);
+            chatService.processMessage(new ChatMessageRequest(null, "같은 말"), null, "10.0.0.3");
+
+            assertThatThrownBy(
+                            () ->
+                                    chatService.processMessage(
+                                            new ChatMessageRequest(null, "같은 말"), null, "10.0.0.3"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_DUPLICATE_MESSAGE);
+            assertThat(
+                            chatService
+                                    .processMessage(
+                                            new ChatMessageRequest(null, "같은 말"), null, "10.0.0.4")
+                                    .content())
+                    .isEqualTo("같은 말");
         }
     }
 }

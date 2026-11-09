@@ -102,6 +102,21 @@ class MarketListingControllerTest {
     }
 
     @Test
+    void 공유_미리보기는_비로그인도_제목과_가격만_조회한다() throws Exception {
+        String publicId = createListing();
+        mockMvc.perform(
+                        get("/api/v1/market-listings/{publicId}/share-preview", publicId)
+                                .with(anonymous()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").isNotEmpty())
+                .andExpect(jsonPath("$.price").isNumber())
+                .andExpect(jsonPath("$.content").doesNotExist())
+                .andExpect(jsonPath("$.contact").doesNotExist());
+        mockMvc.perform(get("/api/v1/market-listings/{publicId}", publicId).with(anonymous()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void 중고장터_목록은_비로그인_요청을_거부한다() throws Exception {
         mockMvc.perform(get("/api/v1/market-listings").with(anonymous()))
                 .andExpect(status().isUnauthorized());

@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { detailMetadata, fetchPreview, firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
+import { detailMetadata, fetchPreview } from "../../lib/sharePreview";
 import MarketDetailClient from "./MarketDetailClient";
 
+// 로그인 없이 공개되는 공유 미리보기 API. 본문, 연락처, 판매자는 내려오지 않는다.
 interface MarketPreview {
   title: string;
-  content: string;
   price: number;
   negotiable: boolean;
   free: boolean;
-  images: string[] | null;
-  coverImageUrl: string | null;
+  tradeStatus: "ON_SALE" | "RESERVED" | "SOLD";
+  imageUrl: string | null;
 }
+
+const tradeLabels: Record<MarketPreview["tradeStatus"], string> = { ON_SALE: "", RESERVED: "예약 중", SOLD: "판매 완료" };
 
 type Props = { params: Promise<{ publicId: string }> };
 
@@ -21,16 +23,17 @@ function priceText({ price, negotiable, free }: MarketPreview) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { publicId } = await params;
-  // 상세 API는 viewed_posts 쿠키에 판매글 ID가 없으면 조회수를 올린다. 미리보기 조회는 조회수에 넣지 않는다.
   const preview = await fetchPreview(
-    `/market-listings/${encodeURIComponent(publicId)}`,
+    `/market-listings/${encodeURIComponent(publicId)}/share-preview`,
     (listing: MarketPreview) => {
+      const status = tradeLabels[listing.tradeStatus];
       const price = priceText(listing);
-      const body = plainTextSummary(listing.content, 80);
-      const images = listing.coverImageUrl ? [listing.coverImageUrl, ...(listing.images ?? [])] : listing.images;
-      return { title: listing.title, description: body ? `${price}. ${body}` : price, image: firstImageUrl(images, listing.content) };
+      return {
+        title: listing.title,
+        description: `${status ? `${status}. ` : ""}${price}. 눈팅 중고장터`,
+        image: listing.imageUrl,
+      };
     },
-    { Cookie: `viewed_posts=[${publicId}]` },
   );
   if (!preview) return {};
   return detailMetadata({ ...preview, path: `/market/${encodeURIComponent(publicId)}` });

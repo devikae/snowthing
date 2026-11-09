@@ -55,6 +55,10 @@ services:
       # Discord 알림(IKA-18). 비어 있으면 그 채널 알림은 꺼진다.
       - DISCORD_WEBHOOK_ALERT=${DISCORD_WEBHOOK_ALERT:-}
       - DISCORD_WEBHOOK_EVENT=${DISCORD_WEBHOOK_EVENT:-}
+      # 웹 푸시(IKA-65). 셋 중 하나라도 비어 있으면 휴대폰 알림 발송과 구독 등록이 꺼진다.
+      - WEB_PUSH_VAPID_PUBLIC_KEY=${WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      - WEB_PUSH_VAPID_PRIVATE_KEY=${WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      - WEB_PUSH_VAPID_SUBJECT=${WEB_PUSH_VAPID_SUBJECT:-}
       # OOM 뒤 멈춘 채 남지 않고 종료되어 restart 정책으로 다시 뜨게 한다.
       - JAVA_TOOL_OPTIONS=-XX:+ExitOnOutOfMemoryError -javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
       - TZ=Asia/Seoul
