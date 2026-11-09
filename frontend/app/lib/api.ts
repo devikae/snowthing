@@ -25,6 +25,8 @@ export const API_ENDPOINTS = {
     changePassword: `${API_V1_URL}/members/me/password`,
     withdrawal: `${API_V1_URL}/members/me/withdrawal`,
     resetProfileImage: `${API_V1_URL}/members/me/profile-image`,
+    scraps: (cursor?: string | null, size = 20) =>
+      `${API_V1_URL}/members/me/scraps?size=${size}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     me: `${API_V1_URL}/members/me`,
     signup: `${API_V1_URL}/members`,
     emailAvailability: `${API_V1_URL}/members/email-availability`,
@@ -45,6 +47,7 @@ export const API_ENDPOINTS = {
     delete: (publicId: string) => `${API_V1_URL}/posts/${publicId}`,
     reaction: (publicId: string, type: "LIKE" | "DISLIKE") =>
       `${API_V1_URL}/posts/${publicId}/reaction?type=${type}`,
+    scrap: (publicId: string) => `${API_V1_URL}/posts/${publicId}/scrap`,
     comments: (publicId: string, cursor?: string | null, size = 20) =>
       `${API_V1_URL}/posts/${publicId}/comments?${
         cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`
