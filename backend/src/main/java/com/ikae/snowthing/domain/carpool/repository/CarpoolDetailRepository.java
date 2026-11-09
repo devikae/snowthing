@@ -3,10 +3,13 @@ package com.ikae.snowthing.domain.carpool.repository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +19,11 @@ import com.ikae.snowthing.domain.post.entity.PostStatus;
 public interface CarpoolDetailRepository extends JpaRepository<CarpoolDetail, Long> {
 
     Optional<CarpoolDetail> findByPostPublicId(String publicId);
+
+    /** 탑승 확정이 정원을 넘지 않게 카풀 행을 잠근다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from CarpoolDetail d where d.id = :postId")
+    Optional<CarpoolDetail> findByIdForUpdate(@Param("postId") Long postId);
 
     @EntityGraph(attributePaths = {"post", "post.member", "destinationResort"})
     Page<CarpoolDetail> findByPostStatusAndPostIsDeletedFalseAndDepartureAtGreaterThanEqual(

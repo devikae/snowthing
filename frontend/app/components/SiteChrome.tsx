@@ -246,6 +246,12 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                       내 정보 수정
                     </Link>
                     <Link
+                      href="/season-log"
+                      onClick={() => profileMenuRef.current?.removeAttribute("open")}
+                    >
+                      내 시즌 기록
+                    </Link>
+                    <Link
                       href="/posts?category=INQUIRY"
                       onClick={() => profileMenuRef.current?.removeAttribute("open")}
                     >
@@ -288,6 +294,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀·동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
+              {user && <Link href="/season-log" onClick={() => setMobileOpen(false)}>내 시즌 기록</Link>}
               {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}
             </nav>
           </div>

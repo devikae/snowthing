@@ -128,4 +128,66 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
     @Query(
             "UPDATE Post p SET p.commentCount = p.commentCount - 1 WHERE p.id = :postId AND p.commentCount > 0")
     void decreaseCommentCount(@Param("postId") Long postId);
+
+    interface AdminPostProjection {
+        String getPublicId();
+
+        String getTitle();
+
+        String getContent();
+
+        Long getAuthorMemberId();
+
+        String getWriterNickname();
+
+        String getWriterEmail();
+
+        Boolean getIsAnonymous();
+
+        Boolean getIsDeleted();
+
+        java.time.LocalDateTime getDeletedAt();
+
+        Long getDeletedByMemberId();
+
+        String getDeleterNickname();
+
+        String getDeleterRole();
+
+        String getStatus();
+
+        java.time.LocalDateTime getCreatedAt();
+
+        String getCategoryName();
+    }
+
+    /**
+     * 관리자 게시글 목록. 삭제된 글도 봐야 해서 SQLRestriction이 붙지 않는 네이티브 조회를 쓴다. filter는 ALL, DELETED, BLINDED 중
+     * 하나다. 블라인드는 관리자가 status를 BLOCKED로 바꾼 글이다.
+     */
+    @Query(
+            value =
+                    "SELECT p.public_id AS publicId, p.title AS title, p.content AS content,"
+                            + " p.member_id AS authorMemberId, m.nickname AS writerNickname,"
+                            + " m.email AS writerEmail, p.is_anonymous AS isAnonymous,"
+                            + " p.is_deleted AS isDeleted, p.deleted_at AS deletedAt,"
+                            + " p.deleted_by_member_id AS deletedByMemberId,"
+                            + " del.nickname AS deleterNickname, del.role AS deleterRole,"
+                            + " p.status AS status, p.created_at AS createdAt, c.name AS categoryName"
+                            + " FROM post p"
+                            + " LEFT JOIN member m ON p.member_id = m.member_id"
+                            + " LEFT JOIN member del ON p.deleted_by_member_id = del.member_id"
+                            + " JOIN post_category c ON p.category_id = c.category_id"
+                            + " WHERE (:filter = 'ALL'"
+                            + " OR (:filter = 'DELETED' AND p.is_deleted = true)"
+                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED'))"
+                            + " ORDER BY CASE WHEN :filter = 'DELETED' THEN p.deleted_at END DESC,"
+                            + " p.post_id DESC",
+            countQuery =
+                    "SELECT COUNT(*) FROM post p"
+                            + " WHERE (:filter = 'ALL'"
+                            + " OR (:filter = 'DELETED' AND p.is_deleted = true)"
+                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED'))",
+            nativeQuery = true)
+    Page<AdminPostProjection> findForAdmin(@Param("filter") String filter, Pageable pageable);
 }
