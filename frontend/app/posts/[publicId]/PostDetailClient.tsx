@@ -16,11 +16,10 @@ import { fetchViewer, isAdminViewer } from "../../lib/viewer";
 import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate, formatShortDateTime } from "../../lib/koreanDate";
+import { markdownToPlainText } from "../../lib/markdownText";
 
-const ToastViewer = dynamic(() => import("../../components/ToastViewer"), {
-  ssr: false,
-  loading: () => <div className="p-6 text-sm text-[var(--snow-muted)]">본문을 불러오는 중입니다...</div>,
-});
+// 뷰어 코드를 받는 동안에는 아래 평문 본문이 자리를 채운다.
+const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
 const POST_LOAD_TIMEOUT_MS = 10_000;
 
@@ -30,7 +29,7 @@ interface WriterInfo {
   profileImageUrl: string | null;
 }
 
-interface PostDetail {
+export interface PostDetail {
   publicId: string;
   categoryName: string;
   categoryCode: string;
@@ -97,10 +96,13 @@ interface CommentUpdateResponse {
   updatedAt: string;
 }
 
-export default function PostDetailClient({ params }: { params: Promise<{ publicId: string }> }) {
+export default function PostDetailClient({ params, initialPost }: { params: Promise<{ publicId: string }>; initialPost: PostDetail | null }) {
   const router = useRouter();
   const { publicId } = use(params);
-  const [post, setPost] = useState<PostDetail | null>(null);
+  // 서버가 비로그인 기준으로 받은 글을 먼저 그린다. 작성자 여부, 추천 여부, 조회수 반영은 아래 브라우저 요청이 덮어쓴다.
+  const [post, setPost] = useState<PostDetail | null>(initialPost);
+  const [bodyRendered, setBodyRendered] = useState(false);
+  const handleBodyRendered = useCallback(() => setBodyRendered(true), []);
   useEffect(() => {
     if (post) document.title = `${post.title} | 눈팅 SnowThing`;
   }, [post]);
@@ -113,7 +115,7 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
   const [loadMoreCommentError, setLoadMoreCommentError] = useState("");
   const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
   const [replyPagingByRootId, setReplyPagingByRootId] = useState<Record<string, ReplyPagingState>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialPost);
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
   const [scrapBusy, setScrapBusy] = useState(false);
@@ -317,12 +319,15 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
               return;
             }
             setPost(data);
+          } else if (initialPost && res.status >= 500) {
+            // 일시 장애면 서버가 그린 글을 그대로 둔다. 삭제(404)와 임시조치(403)는 아래처럼 안내로 바꾼다.
           } else {
             const body = res.status === 403 ? await res.json().catch(() => null) : null;
             setErrorMsg(body?.code === "POST_009" ? body.message : res.status === 404 ? "게시글을 찾을 수 없거나 삭제되었습니다." : "게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
           }
         } catch {
-          setErrorMsg("게시글을 불러오지 못했습니다. 연결 상태를 확인하고 잠시 후 다시 시도해 주세요.");
+          // 서버가 그린 글이 있으면 연결 오류로 본문을 지우지 않는다. 로그인 상태만 반영되지 않는다.
+          if (!initialPost) setErrorMsg("게시글을 불러오지 못했습니다. 연결 상태를 확인하고 잠시 후 다시 시도해 주세요.");
         } finally {
           if (!movingToCarpool) setLoading(false);
         }
@@ -330,7 +335,7 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [fetchComments, publicId, router]);
+  }, [fetchComments, initialPost, publicId, router]);
 
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
     try {
@@ -690,7 +695,10 @@ export default function PostDetailClient({ params }: { params: Promise<{ publicI
 
             <section className="post-detail-content-panel" aria-label="게시글 내용">
               <div className="post-detail-content">
-                <ToastViewer content={post.content} />
+                {!bodyRendered && (
+                  <div className="whitespace-pre-line text-base leading-8 text-[var(--snow-ink)]">{markdownToPlainText(post.content)}</div>
+                )}
+                <ToastViewer content={post.content} onRendered={handleBodyRendered} />
               </div>
             </section>
 
