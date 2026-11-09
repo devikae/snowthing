@@ -41,15 +41,15 @@ class PersonaActivityLoaderTest {
     }
 
     @Test
-    @DisplayName("12명까지 받고 13명이면 거부한다")
+    @DisplayName("30명까지 받고 31명이면 거부한다")
     void limitsPersonaCount() {
         List<Map<String, Object>> entries = new ArrayList<>();
-        for (int i = 1; i <= 12; i++) {
+        for (int i = 1; i <= 30; i++) {
             entries.add(entry(i));
         }
-        assertThat(PersonaFileLoader.parse(Map.of("personas", entries))).hasSize(12);
+        assertThat(PersonaFileLoader.parse(Map.of("personas", entries))).hasSize(30);
 
-        entries.add(entry(13));
+        entries.add(entry(31));
         assertThatThrownBy(() -> PersonaFileLoader.parse(Map.of("personas", entries)))
                 .hasMessageContaining("personas");
     }
