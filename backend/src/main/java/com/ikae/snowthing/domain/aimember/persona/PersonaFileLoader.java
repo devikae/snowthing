@@ -31,7 +31,7 @@ import com.ikae.snowthing.domain.aimember.persona.Persona.Window;
 public final class PersonaFileLoader {
 
     public static final String EMAIL_DOMAIN = "@snowthing.invalid";
-    private static final int MAX_PERSONAS = 12;
+    private static final int MAX_PERSONAS = 30;
     private static final Set<String> BOARDS = Set.of("FREE", "ANONYMOUS", "QNA");
     private static final Pattern WINDOW = Pattern.compile("^(\\d{1,2})-(\\d{1,2})$");
     private static final Pattern KEY = Pattern.compile("^[a-z0-9-]{1,20}$");
