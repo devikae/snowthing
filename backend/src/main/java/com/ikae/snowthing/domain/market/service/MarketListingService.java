@@ -157,6 +157,19 @@ public class MarketListingService {
         return MarketListingCreateResponse.from(marketListingRepository.save(listing));
     }
 
+    /** 조회수를 올리지 않는다. 숨김, 삭제된 글은 상세와 같은 예외로 막는다. */
+    public MarketSharePreviewResponse getSharePreview(String publicId) {
+        MarketListing listing = findVisible(publicId);
+        Post post = listing.getPost();
+        return new MarketSharePreviewResponse(
+                post.getTitle(),
+                listing.getPrice(),
+                listing.isNegotiable(),
+                listing.isFree(),
+                listing.getTradeStatus(),
+                findThumbnailUrls(List.of(listing)).get(post.getId()));
+    }
+
     @Transactional
     public MarketListingDetailResponse getDetail(
             String publicId, CustomUserDetails userDetails, boolean increaseViewCount) {
