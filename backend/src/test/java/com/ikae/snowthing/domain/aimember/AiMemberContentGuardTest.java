@@ -91,7 +91,8 @@ class AiMemberContentGuardTest {
         roster.replace(List.of(MEMBER));
         service =
                 new AiMemberActionService(
-                        new AiMemberProperties(true, "personas.yml", 100, List.of("대통령", "왁싱")),
+                        new AiMemberProperties(
+                                true, "personas.yml", 100, List.of("대통령", "왁싱"), null),
                         gateway,
                         queryRepository,
                         roster,

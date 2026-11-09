@@ -52,6 +52,7 @@ snowthing:
     persona-file: ${SNOWTHING_AI_MEMBERS_PERSONA_FILE:}
     daily-call-limit: ${SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT:100}
     topic-keywords: ${SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS:}
+    first-opening-date: ${SNOWTHING_AI_MEMBERS_FIRST_OPENING_DATE:2026-11-20}
   carpool:
     external:
       connect-timeout-millis: ${SNOWTHING_CARPOOL_CONNECT_TIMEOUT_MILLIS:2000}
