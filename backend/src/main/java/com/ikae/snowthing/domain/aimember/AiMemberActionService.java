@@ -316,9 +316,7 @@ public class AiMemberActionService {
                                         PoliticalContentFilter.containsPolitics(comment.content()));
     }
 
-    /**
-     * 모델은 월만 보면 이미 개장한 것처럼 쓴다. 첫 개장일 전에는 아직 아무도 못 탔다고 분명히 알린다. 봇 서버 검증에 맞춰 50자 이하로 둔다.
-     */
+    /** 모델은 월만 보면 이미 개장한 것처럼 쓴다. 첫 개장일 전에는 아직 아무도 못 탔다고 분명히 알린다. 봇 서버 검증에 맞춰 50자 이하로 둔다. */
     static String season(LocalDate today, LocalDate firstOpeningDate) {
         if (firstOpeningDate != null) {
             if (today.isBefore(firstOpeningDate)
@@ -338,7 +336,6 @@ public class AiMemberActionService {
             default -> "비시즌";
         };
     }
-
 
     /** 명단은 기동 때 만들어지므로 그 뒤의 정지는 여기서 본다. 유료 compose 호출 전에 확인한다. */
     private boolean isActive(AiMember member) {
