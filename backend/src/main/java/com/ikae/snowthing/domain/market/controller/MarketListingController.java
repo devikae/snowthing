@@ -81,6 +81,14 @@ public class MarketListingController {
                 () -> marketListingService.create(request, userDetails, clientIp));
     }
 
+    @GetMapping("/{publicId}/share-preview")
+    public ResponseEntity<MarketSharePreviewResponse> getSharePreview(
+            @PathVariable String publicId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(60, TimeUnit.SECONDS).cachePublic())
+                .body(marketListingService.getSharePreview(publicId));
+    }
+
     @GetMapping("/{publicId}")
     public ResponseEntity<MarketListingDetailResponse> getDetail(
             @PathVariable String publicId,

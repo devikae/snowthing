@@ -231,6 +231,7 @@ public class SecurityConfig {
                                 auth.requestMatchers(
                                                 HttpMethod.GET,
                                                 "/api/v1/market-listings/preview",
+                                                "/api/v1/market-listings/*/share-preview",
                                                 "/api/v1/carpools/**",
                                                 "/api/carpools/**",
                                                 "/api/v1/resort-reports/**")
