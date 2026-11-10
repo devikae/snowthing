@@ -301,6 +301,8 @@ button:disabled {
 .header-profile { display: flex; height: 32px; align-items: center; gap: 8px; border: 0; border-radius: 999px; background: transparent; color: var(--snow-muted); cursor: pointer; padding: 0; outline: none; }
 .header-profile-name { max-width: 120px; overflow: hidden; color: var(--snow-ink); font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .header-profile:hover, .header-profile:focus-visible { opacity: .88; }
+.header-profile:focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
+.header-profile-dropdown :is(a, button):focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: -2px; }
 .header-profile-avatar, .header-profile img, .header-profile svg { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: block; }
 .header-logout { border: 0; background: transparent; color: #64748b; font-size: 11px; font-weight: 600; }
 .header-login { display: grid; width: 36px; height: 36px; place-items: center; color: #64748b; transition: color .16s ease; }
