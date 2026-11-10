@@ -329,7 +329,7 @@ export default function KakaoMapPicker({
           <span className="material-symbols-outlined" style={{ fontSize: "16px", verticalAlign: "middle" }} aria-hidden="true">
             my_location
           </span>
-          {locating ? "위치 확인 중..." : "현재 위치"}
+          {locating ? "위치 확인 중" : "현재 위치"}
         </button>
       </div>
       <div ref={mapElement} className="kakao-map" aria-label="출발 장소 지도" />
