@@ -604,7 +604,7 @@ export default function NewCarpoolPage() {
           <section className="carpool-auth-gate">
             <span className="material-symbols-outlined">lock</span>
             <h2>카풀 모집글은 회원만 작성할 수 있습니다.</h2>
-            <p>회원가입 후 출발지와 예상 비용을 계산해 모집글을 등록해보세요.</p>
+            <p>회원가입 후 출발지와 예상 비용을 계산해 모집글을 등록해 보세요.</p>
             <div><Link className="carpool-primary-button" href="/signup">회원가입</Link><Link href="/login?returnUrl=/carpool/new">이미 회원이라면 로그인</Link></div>
           </section>
         ) : <form className="carpool-form" onSubmit={submit}>
@@ -1062,7 +1062,7 @@ export default function NewCarpoolPage() {
             <textarea
               required
               maxLength={MAX_CONTENT_LENGTH}
-              placeholder="카풀 일정과 장비 적재 가능 여부를 적어주세요."
+              placeholder="카풀 일정과 장비 적재 가능 여부를 적어 주세요."
               value={form.content}
               onChange={(event) => update("content", event.target.value)}
             />

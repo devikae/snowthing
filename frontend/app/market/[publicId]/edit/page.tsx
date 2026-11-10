@@ -136,11 +136,11 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
     const content = editorRef.current?.getInstance().getMarkdown()?.trim() ?? detail.content.trim();
     const numericPrice = free ? 0 : Number(price);
     if (!categoryCode || !title.trim() || !content || !contact.trim()) {
-      setError("상품 분류, 제목, 본문, 연락처를 모두 입력해주세요.");
+      setError("상품 분류, 제목, 본문, 연락처를 모두 입력해 주세요.");
       return;
     }
     if (!free && (!Number.isInteger(numericPrice) || numericPrice < 1 || numericPrice > 20_000_000)) {
-      setError("가격은 1원 이상 2,000만원 이하로 입력해주세요.");
+      setError("가격은 1원 이상 2,000만원 이하로 입력해 주세요.");
       return;
     }
     setSubmitting(true);
@@ -168,9 +168,9 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
         return;
       }
       const data = await response.json().catch(() => null);
-      setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해주세요.");
+      setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해 주세요.");
     } catch {
-      setError("판매글을 수정하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요.");
+      setError("판매글을 수정하지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요.");
     }
     setSubmitting(false);
   };

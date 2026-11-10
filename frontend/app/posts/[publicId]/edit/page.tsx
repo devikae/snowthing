@@ -151,12 +151,12 @@ function PostEditForm({ publicId }: { publicId: string }) {
     const editorContent = editorRef.current?.getInstance().getMarkdown() || content;
 
     if (!title.trim()) {
-      setErrorMsg("제목을 입력해주세요.");
+      setErrorMsg("제목을 입력해 주세요.");
       return;
     }
 
     if (!editorContent.trim()) {
-      setErrorMsg("본문 내용을 입력해주세요.");
+      setErrorMsg("본문 내용을 입력해 주세요.");
       return;
     }
 
@@ -301,7 +301,7 @@ export default function PostEditPage({ params }: { params: Promise<{ publicId: s
   return (
     <div className="community-page">
       <TopNav active="posts" />
-      <Suspense fallback={<div className="p-12 text-center text-sm text-[var(--snow-muted)]">로딩 중입니다.</div>}>
+      <Suspense fallback={<div className="p-12 text-center text-sm text-[var(--snow-muted)]">불러오는 중입니다.</div>}>
         <PostEditForm publicId={publicId} />
       </Suspense>
       <Footer />

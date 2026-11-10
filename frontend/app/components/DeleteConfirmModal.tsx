@@ -34,7 +34,7 @@ export function DeleteConfirmModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (requirePassword && !password.trim()) {
-      setErrorMsg("비밀번호를 입력해주세요.");
+      setErrorMsg("비밀번호를 입력해 주세요.");
       return;
     }
 

@@ -417,8 +417,8 @@ export default function HomePageClient() {
                 !reportSeasonOpen
                   ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다"
                   : profile
-                    ? "지금 슬로프 설질·대기시간·정설 상태를 한 줄(100자 이내)로 공유해주세요..."
-                    : "로그인하고 오늘의 설질을 제보해보세요"
+                    ? "지금 슬로프의 설질, 대기 시간, 정설 상태를 한 줄(100자 이내)로 공유해 주세요"
+                    : "로그인하고 오늘의 설질을 제보해 보세요"
               }
               aria-label="설질 제보 내용"
               className={!profile ? "cursor-pointer" : undefined}
@@ -429,7 +429,7 @@ export default function HomePageClient() {
               className="capsule-send-btn"
               disabled={profile ? (!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0) : false}
             >
-              {profile ? (submittingReport ? "등록중" : "제보 등록") : "로그인"}
+              {profile ? (submittingReport ? "등록 중" : "제보 등록") : "로그인"}
             </button>
           </form>
 

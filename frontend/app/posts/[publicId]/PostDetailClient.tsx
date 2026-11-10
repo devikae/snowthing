@@ -155,7 +155,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     } else if (post?.requiresPassword) {
       setDeleteModalConfig({
         title: "익명 게시글 삭제",
-        description: "익명 게시글 삭제를 위해 작성 시 설정한 비밀번호를 입력해주세요.",
+        description: "익명 게시글 삭제를 위해 작성 시 설정한 비밀번호를 입력해 주세요.",
         requirePassword: true,
       });
     } else {
@@ -423,7 +423,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     if (isSubmittingCommentRef.current || submittingComment) return;
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
-      alert("댓글 내용을 입력해주세요.");
+      alert("댓글 내용을 입력해 주세요.");
       return;
     }
 
@@ -435,7 +435,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       if (!currentUserPublicId) {
         const pwd = parentId ? replyAnonPassword : commentAnonPassword;
         if (!pwd.trim()) {
-          alert("비밀번호를 입력해주세요.");
+          alert("비밀번호를 입력해 주세요.");
           return;
         }
         anonymousPassword = pwd.trim();
@@ -533,15 +533,15 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     const content = editCommentText.trim();
     const requiresPassword = comment.requiresPassword;
     if (!content) {
-      setEditCommentError("댓글 내용을 입력해주세요.");
+      setEditCommentError("댓글 내용을 입력해 주세요.");
       return;
     }
     if (content.length > 1000) {
-      setEditCommentError("댓글은 1,000자 이하로 입력해주세요.");
+      setEditCommentError("댓글은 1,000자 이하로 입력해 주세요.");
       return;
     }
     if (requiresPassword && !editCommentPassword.trim()) {
-      setEditCommentError("익명 댓글 비밀번호를 입력해주세요.");
+      setEditCommentError("익명 댓글 비밀번호를 입력해 주세요.");
       return;
     }
     if (content === comment.content) {
@@ -592,7 +592,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
   const handleConfirmDeleteComment = async (comment: CommentItem) => {
     if (comment.requiresDeletePassword && !deleteCommentPassword.trim()) {
-      setDeleteCommentError("비밀번호를 입력해주세요.");
+      setDeleteCommentError("비밀번호를 입력해 주세요.");
       return;
     }
 
@@ -625,7 +625,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     return (
       <div className="min-h-screen bg-[var(--snow-background)]">
         <TopNav active="posts" />
-        <div className="p-12 text-center text-sm text-[var(--snow-muted)]">로딩 중입니다.</div>
+        <div className="p-12 text-center text-sm text-[var(--snow-muted)]">불러오는 중입니다.</div>
       </div>
     );
   }
@@ -739,7 +739,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
             <div className="post-comment-compose">
               <textarea
                 rows={3}
-                placeholder={canWriteComment ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
+                placeholder={canWriteComment ? "댓글을 작성해 보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
                 disabled={!canWriteComment}
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
@@ -787,7 +787,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                   </button>
                 </div>
               ) : comments.length === 0 ? (
-                <p className="py-8 text-center text-sm text-[var(--snow-muted)]">첫 댓글을 작성해보세요.</p>
+                <p className="py-8 text-center text-sm text-[var(--snow-muted)]">첫 댓글을 작성해 보세요.</p>
               ) : (
                 comments.map((comment) => (
                   <CommentRow
@@ -997,7 +997,7 @@ function CommentRow({
               rows={2}
               value={replyText}
               onChange={(event) => setReplyText(event.target.value)}
-              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
+              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해 보세요." : "로그인 후 답글을 작성할 수 있습니다."}
               className="post-comment-textarea"
               aria-label="답글 입력"
             />

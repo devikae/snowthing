@@ -218,13 +218,13 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        setError(data?.message || "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해주세요.");
+        setError(data?.message || "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해 주세요.");
         return;
       }
       const data: { tradeStatus: string; version: number; updatedAt: string } = await response.json();
       setListing((current) => (current ? { ...current, ...data } : current));
     } catch {
-      setError("거래 상태를 변경하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요.");
+      setError("거래 상태를 변경하지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요.");
     } finally {
       setChangingTradeStatus(false);
     }
