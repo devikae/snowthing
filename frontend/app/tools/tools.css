@@ -62,3 +62,4 @@
   .tool-form,.tool-result { padding: 20px 16px; }
   .tool-key-result > strong { font-size: 36px; }
 }
+.tool-share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

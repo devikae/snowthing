@@ -111,3 +111,4 @@
 .ct-gallery strong { font-size: 15px; font-weight: 700; }
 .ct-gallery span { color: var(--snow-muted); }
 .ct-gallery p { margin: 0; color: var(--snow-ink-soft); }
+.ct-kakao-share { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }

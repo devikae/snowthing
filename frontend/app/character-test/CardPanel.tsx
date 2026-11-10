@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { CharacterResult } from "./api";
 import { renderCard } from "./cardImage";
 import { QUESTIONS, characterName, descriptionSentences, type Sport } from "./data";
+import KakaoShareButton from "../components/KakaoShareButton";
 import { shareOrSaveImage } from "./shareFile";
 
 // 결과는 카드 한 장으로 보여 준다. 카드에 이름, 스탯, 설명, 찰떡 타입이 다 들어 있어 따로 그리지 않는다.
@@ -50,6 +51,15 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
         ? <img className="ct-card-preview" src={card.url} width={270} height={480} alt={alt} />
         : <div className="ct-card-preview ct-card-loading" role="img" aria-label={`${name} 카드를 만드는 중`} />}
       <button type="button" className="ct-primary" onClick={() => void share()} disabled={!card}>카드 공유 또는 저장</button>
+      <div className="ct-kakao-share">
+        <KakaoShareButton
+          title="나는 어떤 스키장 캐릭터일까"
+          description={`나는 스키장에서 ${name}래. 너는 어떤 캐릭터야?`}
+          url="/character-test"
+          imageUrl="/character-test/og-test.png"
+          buttonTitle="테스트 하러 가기"
+        />
+      </div>
       <p className="ct-fineprint" role="status">{notice || "지원되는 폰은 공유 창이 열리고, 아니면 이미지로 저장돼요."}</p>
       {answers && <div className="ct-card-evidence">
         <h3>이렇게 골랐어요</h3>
