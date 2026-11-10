@@ -9,7 +9,9 @@ import com.ikae.snowthing.domain.admin.dto.AdminPostResponse;
 import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
 import com.ikae.snowthing.domain.admin.log.AdminActionType;
 import com.ikae.snowthing.domain.admin.log.AdminTargetType;
+import com.ikae.snowthing.domain.image.service.PostImageLifecycleService;
 import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.domain.post.service.PostService;
@@ -43,6 +45,7 @@ public class AdminPostService {
     private final PostRepository postRepository;
     private final PostService postService;
     private final SearchOutboxWriter searchOutbox;
+    private final PostImageLifecycleService imageLifecycle;
     private final AdminActionLogger actionLogger;
 
     @Transactional(readOnly = true)
@@ -60,7 +63,20 @@ public class AdminPostService {
 
     @Transactional
     public void deletePost(String publicId, CustomUserDetails admin) {
-        postService.deletePost(publicId, null, admin);
+        Post post =
+                postRepository
+                        .findIncludingDeletedForUpdate(publicId)
+                        .filter(found -> !found.isDeleted())
+                        .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        if (PostCategoryCodes.hasOwnScreen(post.getCategory().getCode())) {
+            // 시장과 카풀 글은 일반 삭제 흐름이 404로 막는다. 같은 정리(사진 해제, 검색 반영)를 여기서 한다 (IKA-78).
+            // 카풀 전용 삭제는 정상 상태 글만 받아 블라인드한 글을 지울 수 없어 쓰지 않는다.
+            post.softDelete(admin.getMemberId());
+            imageLifecycle.releasePostImages(post);
+            searchOutbox.postChanged(post);
+        } else {
+            postService.deletePost(publicId, null, admin);
+        }
         actionLogger.record(AdminActionType.POST_DELETE, AdminTargetType.POST, publicId, null);
         log.info(
                 "Post soft-deleted by admin: publicId={}, admin={}", publicId, admin.getPublicId());

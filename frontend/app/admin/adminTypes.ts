@@ -122,6 +122,145 @@ export interface AdminMemberListResponse {
   hasNext: boolean;
 }
 
+export interface AdminPage<T> {
+  items: T[];
+  page: number;
+  size: number;
+  hasNext: boolean;
+}
+
+export interface AdminDailyCount {
+  date: string;
+  signups: number;
+  posts: number;
+  comments: number;
+}
+
+export interface AdminOverview {
+  days: number;
+  today: AdminDailyCount;
+  series: AdminDailyCount[];
+  pendingReports: number;
+  unansweredInquiries: number;
+}
+
+export interface AdminActionLogItem {
+  id: number;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reason: string | null;
+  actorNickname: string | null;
+  actorPublicId: string | null;
+  createdAt: string;
+}
+
+export interface AdminMemberDetail {
+  publicId: string;
+  maskedEmail: string;
+  nickname: string;
+  status: AdminMemberStatus;
+  role: AdminMember["role"];
+  createdAt: string;
+  emailVerified: boolean;
+  hasPassword: boolean;
+  socialProviders: string[];
+  postCount: number;
+  commentCount: number;
+  recentPosts: {
+    publicId: string;
+    title: string;
+    categoryCode: string;
+    categoryName: string;
+    status: string;
+    isDeleted: boolean;
+    createdAt: string;
+  }[];
+  recentComments: {
+    commentId: number;
+    contentPreview: string;
+    postPublicId: string;
+    postTitle: string;
+    postCategoryCode: string;
+    isDeleted: boolean;
+    isHeld: boolean;
+    createdAt: string;
+  }[];
+  history: AdminActionLogItem[];
+}
+
+export interface AdminCommentItem {
+  commentId: number;
+  contentPreview: string;
+  writerNickname: string | null;
+  writerPublicId: string | null;
+  isAnonymous: boolean;
+  isDeleted: boolean;
+  isHeld: boolean;
+  postPublicId: string;
+  postTitle: string;
+  postCategoryCode: string;
+  createdAt: string;
+}
+
+export interface AdminInquiryItem {
+  publicId: string;
+  title: string;
+  writerNickname: string | null;
+  answered: boolean;
+  commentCount: number;
+  createdAt: string;
+}
+
+export interface AdminResortReportItem {
+  reportId: number;
+  resortName: string;
+  content: string;
+  writerNickname: string | null;
+  status: "NORMAL" | "HIDDEN" | "BLOCKED" | "DELETED";
+  createdAt: string;
+}
+
+export const ACTION_LABEL: Record<string, string> = {
+  MEMBER_SUSPEND: "회원 정지",
+  MEMBER_REINSTATE: "정지 해제",
+  ADMIN_GRANT: "운영자 지정",
+  ADMIN_REVOKE: "운영자 해제",
+  POST_BLIND: "글 블라인드",
+  POST_UNBLIND: "글 블라인드 해제",
+  POST_DELETE: "글 삭제",
+  COMMENT_BLIND: "댓글 블라인드",
+  COMMENT_UNBLIND: "댓글 블라인드 해제",
+  COMMENT_DELETE: "댓글 삭제",
+  MARKET_MODERATION: "시장 글 상태 변경",
+  RESORT_REPORT_MODERATION: "설질 제보 상태 변경",
+  CONTENT_REPORT_ACTION: "신고 처리",
+  BANNER_CREATE: "배너 추가",
+  BANNER_UPDATE: "배너 수정",
+  BANNER_DELETE: "배너 삭제",
+  CHAT_IP_BAN: "라이브톡 IP 차단",
+  CHAT_IP_UNBAN: "라이브톡 IP 차단 해제",
+  CONFIG_UPDATE: "운영 설정 변경",
+};
+
+export const TARGET_LABEL: Record<string, string> = {
+  MEMBER: "회원",
+  POST: "글",
+  COMMENT: "댓글",
+  RESORT_REPORT: "설질 제보",
+  CONTENT_REPORT: "신고",
+  BANNER: "배너",
+  CHAT_BAN: "IP 차단",
+  CONFIG: "설정",
+};
+
+/** 게시판 코드에 맞는 공개 상세 주소. 시장과 카풀은 전용 화면이 있다. */
+export function postHref(categoryCode: string, publicId: string) {
+  if (categoryCode === "MARKET") return `/market/${publicId}`;
+  if (categoryCode === "CARPOOL") return `/carpool/${publicId}`;
+  return `/posts/${publicId}`;
+}
+
 export interface ApiErrorBody {
   code?: string;
   message?: string;

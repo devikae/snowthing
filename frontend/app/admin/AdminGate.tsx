@@ -8,6 +8,24 @@ import { API_ENDPOINTS } from "../lib/api";
 
 type GateState = "checking" | "admin" | "forbidden" | "anonymous";
 
+const ADMIN_TABS: { href: string; label: string }[] = [
+  { href: "/admin", label: "대시보드" },
+  { href: "/admin/reports", label: "신고 처리" },
+  { href: "/admin/inquiries", label: "1:1 문의" },
+  { href: "/admin/members", label: "회원" },
+  { href: "/admin/posts", label: "게시글" },
+  { href: "/admin/comments", label: "댓글" },
+  { href: "/admin/market", label: "중고장터" },
+  { href: "/admin/carpool", label: "카풀" },
+  { href: "/admin/resort-reports", label: "설질 제보" },
+  { href: "/admin/answer-drafts", label: "답변 초안" },
+  { href: "/admin/api-tokens", label: "API 토큰" },
+  { href: "/admin/search", label: "검색 인덱스" },
+  { href: "/admin/chat", label: "라이브톡 차단" },
+  { href: "/admin/banners", label: "배너" },
+  { href: "/admin/action-logs", label: "조치 기록" },
+];
+
 /**
  * 관리자 화면 진입 확인. 화면을 숨기는 것은 편의일 뿐이고 실제 권한은 서버가 `/api/v1/admin/**`에서 ROLE_ADMIN으로 막는다.
  */
@@ -46,33 +64,14 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         {state === "admin" ? (
           <>
             <nav className="admin-tabs" aria-label="관리자 메뉴">
-              <Link href="/admin" aria-current={pathname === "/admin" ? "page" : undefined}>
-                대시보드
-              </Link>
-              <Link href="/admin/reports" aria-current={pathname?.startsWith("/admin/reports") ? "page" : undefined}>
-                신고 처리
-              </Link>
-              <Link href="/admin/answer-drafts" aria-current={pathname?.startsWith("/admin/answer-drafts") ? "page" : undefined}>
-                답변 초안
-              </Link>
-              <Link href="/admin/api-tokens" aria-current={pathname?.startsWith("/admin/api-tokens") ? "page" : undefined}>
-                API 토큰
-              </Link>
-              <Link href="/admin/search" aria-current={pathname?.startsWith("/admin/search") ? "page" : undefined}>
-                검색 인덱스
-              </Link>
-              <Link href="/admin/members" aria-current={pathname?.startsWith("/admin/members") ? "page" : undefined}>
-                회원
-              </Link>
-              <Link href="/admin/posts" aria-current={pathname?.startsWith("/admin/posts") ? "page" : undefined}>
-                게시글
-              </Link>
-              <Link href="/admin/chat" aria-current={pathname?.startsWith("/admin/chat") ? "page" : undefined}>
-                라이브톡 차단
-              </Link>
-              <Link href="/admin/banners" aria-current={pathname?.startsWith("/admin/banners") ? "page" : undefined}>
-                배너
-              </Link>
+              {ADMIN_TABS.map((tab) => {
+                const current = tab.href === "/admin" ? pathname === "/admin" : pathname?.startsWith(tab.href);
+                return (
+                  <Link key={tab.href} href={tab.href} aria-current={current ? "page" : undefined}>
+                    {tab.label}
+                  </Link>
+                );
+              })}
             </nav>
             {children}
           </>

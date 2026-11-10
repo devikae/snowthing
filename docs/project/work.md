@@ -1,3 +1,21 @@
+## 관리자 화면 운영 기능 확장 (IKA-78, 2026-11-11)
+
+- 상태: 구현 완료, PR 생성(#127 위에 쌓음, #127 머지 후 main으로 바꿔 머지). 머지와 배포, 운영 마이그레이션은 사용자 확인 후.
+- 완료
+  - 대시보드: 오늘 가입, 글, 댓글 수, 대기 신고와 답변 대기 문의 수와 바로가기, 7일과 30일 일별 막대 그래프(SVG).
+  - 회원 상세 `/admin/members/[publicId]`: 가린 이메일, 로그인 방법, 글과 댓글 수, 최근 글과 댓글 10개, 조치 이력, 정지와 운영자 버튼.
+  - 댓글 관리 `/admin/comments`, 중고장터 `/admin/market`, 카풀 `/admin/carpool`, 설질 제보 `/admin/resort-reports`, 1:1 문의 `/admin/inquiries`, 조치 기록 `/admin/action-logs`.
+  - 050 마이그레이션: `admin_action_log`, member, post, comment의 created_at 인덱스.
+- 결정
+  - 조치 기록은 조치와 같은 트랜잭션(MANDATORY)에서 쓰고, 처리자는 요청 인증 정보에서 읽는다. 서비스마다 관리자 인자를 늘리지 않으려는 선택이다. 다른 안: 서비스 인자로 처리자를 넘기기(시그니처 변경 많음), AOP 애너테이션(대상 ID를 꺼내기 어렵다).
+  - 댓글 블라인드는 신고 임시조치와 같은 `moderation_held`를 쓴다. 새 컬럼 없이 목록, 검색, AI 조회에서 이미 빠진다. 만료 행을 만들지 않아 스케줄러가 풀지 않는다.
+  - 시장과 카풀 글 삭제는 일반 삭제 흐름이 막아서 관리자 삭제에서 직접 정리한다. 카풀 전용 삭제는 정상 상태 글만 받아 블라인드한 글을 못 지운다.
+  - 대시보드 숫자는 삭제된 글과 댓글도 그날 작성 수에 넣는다. 활동량을 보려는 것이라서다.
+  - 목록은 전체 건수를 세지 않고 다음 쪽 여부만 준다(게시글, 시장, 카풀은 기존 API라 전체 건수가 있다).
+  - 정지 이력은 050 이후 조치 기록에서만 보인다. 이전 이력은 `admin.audit` 로그에만 있다.
+- 남은 항목: 운영 DB에 050 적용(배포 전), 머지 순서(#127 다음).
+- 검증: 백엔드 단위 테스트(AdminAccessTest, AdminMemberRoleWriterTest, ChatIpBanServiceTest, SystemConfigServiceTest, ResortReportServiceTest) 로컬 통과, DB 통합 테스트는 CI. 프론트 `npx tsc --noEmit`, `npm run lint`, `next build --webpack` 통과(Turbopack 빌드는 worktree의 node_modules 링크 때문에 로컬에서 실패).
+
 ## 관리자 화면에서 운영자 지정과 해제 (IKA-77, 2026-11-11)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.

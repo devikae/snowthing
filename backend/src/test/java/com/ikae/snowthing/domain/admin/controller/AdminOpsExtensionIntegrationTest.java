@@ -261,6 +261,19 @@ class AdminOpsExtensionIntegrationTest {
         List<String> ids = new ArrayList<>();
         content.forEach(item -> ids.add(item.get("publicId").asText()));
         assertThat(ids).contains(carpool.getPublicId()).doesNotContain(free.getPublicId());
+
+        // 카풀 글은 일반 삭제 흐름이 막지만 관리자 삭제는 된다.
+        mockMvc.perform(
+                        delete("/api/v1/admin/posts/" + carpool.getPublicId())
+                                .session(adminSession)
+                                .with(csrf()))
+                .andExpect(status().isNoContent());
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT is_deleted FROM post WHERE public_id = ?",
+                                Boolean.class,
+                                carpool.getPublicId()))
+                .isTrue();
     }
 
     private static long sum(JsonNode overview, String field) {
