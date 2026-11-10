@@ -2,11 +2,11 @@
 .rider-tools h2 { margin: 0 0 16px; font-size: 20px; font-weight: 600; }
 .rider-tools p { color: var(--snow-ink-soft); font-size: 14px; line-height: 1.75; }
 .tools-directory { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
-.tools-directory > a { display: grid; gap: 12px; border: 1px solid var(--snow-border); border-radius: 12px; padding: 24px; background: var(--snow-canvas); }
+.tools-directory > a { display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px; border: 1px solid var(--snow-border); border-radius: 12px; padding: 24px; background: var(--snow-canvas); }
 .tools-directory > a:hover { border-color: var(--snow-ink-soft); }
 .tools-directory span { color: var(--snow-muted); font-size: 12px; }
 .tools-directory h2,.tools-directory p { margin: 0; }
-.tools-directory strong { margin-top: 16px; font-size: 14px; }
+.tools-directory strong { align-self: end; margin-top: 16px; font-size: 14px; }
 .tools-community, .tool-explanation { margin-top: 48px; border-top: 1px solid var(--snow-border); padding-top: 32px; }
 .tools-community > div,.tools-related { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; font-size: 14px; }
 .tools-community a,.tools-related a { display: inline-flex; min-height: 36px; align-items: center; text-decoration: underline; text-underline-offset: 4px; }
