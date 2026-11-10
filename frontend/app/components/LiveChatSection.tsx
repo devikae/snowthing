@@ -313,7 +313,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       if (!response.ok) throw new Error();
       setMessages((previous) => previous.filter((item) => item.messageId !== message.messageId));
     } catch {
-      setToastError("IP 차단에 실패했습니다.");
+      setToastError("IP를 차단하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
 

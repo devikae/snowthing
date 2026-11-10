@@ -118,13 +118,13 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
         });
         if (!response.ok) {
           const data = await response.json().catch(() => null);
-          throw new Error(data?.message || "이미지 업로드에 실패했습니다.");
+          throw new Error(data?.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
         }
         const uploaded: { imageUrl: string } = await response.json();
         setImages((current) => [...current, uploaded.imageUrl]);
       }
     } catch (uploadError) {
-      setError(errorText(uploadError, "이미지 업로드에 실패했습니다."));
+      setError(errorText(uploadError, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setUploading(false);
     }

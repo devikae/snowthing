@@ -60,10 +60,10 @@ export default function AdminDashboardPage() {
           body: JSON.stringify({ value: String(nextVal) }),
         }
       );
-      if (!res.ok) throw new Error("설정 변경에 실패했습니다.");
+      if (!res.ok) throw new Error("설정을 바꾸지 못했습니다.");
       setStats({ ...stats, anonymousChatEnabled: nextVal });
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "설정 변경 중 오류가 발생했습니다."));
+      alert((err instanceof Error ? err.message : "설정을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setUpdatingChat(false);
     }
@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
   if (error || !stats) {
     return (
       <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700">
-        <p className="font-semibold mb-2">데이터 로드 실패</p>
+        <p className="font-semibold mb-2">데이터를 불러오지 못했습니다</p>
         <p className="text-sm">{error}</p>
         <button
           onClick={() => { setLoading(true); void fetchStats(); }}

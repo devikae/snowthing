@@ -429,7 +429,7 @@ export default function NewCarpoolPage() {
         setError(
           previewError instanceof Error
             ? previewError.message
-            : "자동 계산에 실패했습니다.",
+            : "비용을 자동으로 계산하지 못했습니다. 금액을 직접 입력하거나 잠시 후 다시 시도해 주세요.",
         );
       }
     } finally {
@@ -566,7 +566,7 @@ export default function NewCarpoolPage() {
           response,
           response.status === 401
             ? "로그인이 필요합니다."
-            : "모집글 등록에 실패했습니다.",
+            : "모집글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         );
         if (["CARPOOL_004", "CARPOOL_006"].includes(apiError.code ?? "")) {
           setRouteSource("MANUAL");
@@ -585,7 +585,7 @@ export default function NewCarpoolPage() {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "등록에 실패했습니다.",
+          : "모집글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
     } finally {
       isSubmittingRef.current = false;

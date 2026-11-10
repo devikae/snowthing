@@ -208,10 +208,10 @@ export default function HomePageClient() {
         await loadTodayReports();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.message || "설질 제보 등록에 실패했습니다.");
+        alert(data.message || "설질 제보를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
     } catch {
-      alert("서버 통신 중 오류가 발생했습니다.");
+      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       isSubmittingReportRef.current = false;
       setSubmittingReport(false);

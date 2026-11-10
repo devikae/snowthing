@@ -93,7 +93,7 @@ export default function ResortReportsPage() {
       return;
     }
     const data = await response.json().catch(() => ({}));
-    alert(data.message || "설질 제보 삭제에 실패했습니다.");
+    alert(data.message || "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
   };
 
   return (

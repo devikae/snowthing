@@ -55,11 +55,11 @@ export default function AdminChatPage() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) throw new Error("차단 해제에 실패했습니다.");
+      if (!res.ok) throw new Error("차단을 해제하지 못했습니다.");
       setBannedIps((prev) => prev.filter((b) => b.id !== item.id));
       alert("차단이 해제되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "차단 해제 실패"));
+      alert((err instanceof Error ? err.message : "차단을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -88,7 +88,7 @@ export default function AdminChatPage() {
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.message || "IP 차단 등록에 실패했습니다.");
+        throw new Error(errJson?.message || "IP 차단을 등록하지 못했습니다.");
       }
 
       setShowBanModal(false);
@@ -97,7 +97,7 @@ export default function AdminChatPage() {
       fetchBannedIps();
       alert("IP가 성공적으로 차단 목록에 등록되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "차단 등록 실패"));
+      alert((err instanceof Error ? err.message : "IP 차단을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }

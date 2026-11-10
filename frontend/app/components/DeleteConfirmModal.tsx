@@ -47,7 +47,7 @@ export function DeleteConfirmModal({
       if (err instanceof Error) {
         setErrorMsg(err.message);
       } else {
-        setErrorMsg("비밀번호가 일치하지 않거나 삭제 처리에 실패했습니다.");
+        setErrorMsg("삭제하지 못했습니다. 비밀번호를 확인한 뒤 다시 시도해 주세요.");
       }
     } finally {
       setSubmitting(false);

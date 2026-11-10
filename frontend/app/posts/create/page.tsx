@@ -145,7 +145,7 @@ function PostCreateForm() {
       });
       if (!response.ok) {
         const error = await response.json();
-        setErrorMsg(error.message || "이미지 업로드에 실패했습니다.");
+        setErrorMsg(error.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
 
@@ -153,7 +153,7 @@ function PostCreateForm() {
       setImages((current) => [...current, uploaded]);
       }
     } catch {
-      setErrorMsg("이미지 업로드 중 서버 통신 오류가 발생했습니다.");
+      setErrorMsg("사진을 올리지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       setUploadingImage(false);
     }
@@ -207,10 +207,10 @@ function PostCreateForm() {
         router.push(`/posts/${data.publicId}`);
       } else {
         const err = await res.json();
-        setErrorMsg(err.message || "게시글 작성 실패");
+        setErrorMsg(err.message || "글을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
     } catch {
-      setErrorMsg("서버 통신 오류가 발생했습니다.");
+      setErrorMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       isSubmittingRef.current = false;
       setSubmitting(false);

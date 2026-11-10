@@ -93,12 +93,12 @@ export default function AdminBannersPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("배너 저장에 실패했습니다.");
+      if (!res.ok) throw new Error("배너를 저장하지 못했습니다.");
       setShowModal(false);
       fetchBanners();
       alert("배너가 성공적으로 저장되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "저장 실패"));
+      alert((err instanceof Error ? err.message : "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -114,14 +114,14 @@ export default function AdminBannersPage() {
         body: JSON.stringify({ title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl,
           displayOrder: b.displayOrder, isActive: !b.isActive, startAt: b.startAt, endAt: b.endAt }),
       });
-      if (!res.ok) throw new Error("상태 변경에 실패했습니다.");
+      if (!res.ok) throw new Error("상태를 바꾸지 못했습니다.");
       setBanners((prev) =>
         prev.map((item) =>
           item.id === b.id ? { ...item, isActive: !b.isActive } : item
         )
       );
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "상태 변경 실패"));
+      alert((err instanceof Error ? err.message : "상태를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -136,11 +136,11 @@ export default function AdminBannersPage() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) throw new Error("배너 삭제에 실패했습니다.");
+      if (!res.ok) throw new Error("배너를 삭제하지 못했습니다.");
       setBanners((prev) => prev.filter((item) => item.id !== b.id));
       alert("배너가 삭제되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "삭제 실패"));
+      alert((err instanceof Error ? err.message : "삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }

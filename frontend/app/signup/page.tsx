@@ -96,7 +96,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const availabilityResponse = await csrfFetch(API_ENDPOINTS.members.emailAvailability, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-      if (!availabilityResponse.ok) throw new Error(await readError(availabilityResponse, "이메일 중복 확인에 실패했습니다."));
+      if (!availabilityResponse.ok) throw new Error(await readError(availabilityResponse, "이메일 중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const availability = await availabilityResponse.json();
       if (!availability.available) throw new Error("이미 가입된 이메일이거나 탈퇴 후 30일이 지나지 않은 이메일입니다.");
       const response = await csrfFetch(API_ENDPOINTS.auth.requestSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
@@ -124,7 +124,7 @@ export default function SignUpPage() {
       setEmailVerificationError("");
       setNotice("이메일 인증이 완료되었습니다.");
     } catch (error) {
-      setErrorMsg(errorText(error, "인증번호 확인에 실패했습니다."));
+      setErrorMsg(errorText(error, "인증번호를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally { setLoading(false); }
   };
 
@@ -142,7 +142,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ...consentPayload(consent) }) });
-      if (!response.ok) throw new Error(await readError(response, "회원가입에 실패했습니다."));
+      if (!response.ok) throw new Error(await readError(response, "가입하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
       clearViewerCache();
       router.push(loginResponse.ok ? "/" : "/login");

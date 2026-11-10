@@ -183,7 +183,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       router.push("/posts");
     } else {
       const data = await res.json();
-      throw new Error(data.message || "게시글 삭제 처리에 실패했습니다.");
+      throw new Error(data.message || "글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
 
@@ -216,7 +216,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       setHasNextComments(Boolean(data.hasNext));
     } catch (error) {
       console.error("댓글 로드 실패:", error);
-      const message = errorText(error, "서버 통신 중 오류가 발생했습니다.");
+      const message = errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
       if (append) {
         setLoadMoreCommentError(message);
       } else {
@@ -362,9 +362,9 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       }
 
       const errorData = await res.json();
-      setReactionMsg(errorData.message || "투표 처리 실패");
+      setReactionMsg(errorData.message || "반응을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } catch {
-      setReactionMsg("서버 통신 중 오류가 발생했습니다.");
+      setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     }
   };
 
@@ -391,7 +391,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       const errorData = await res.json().catch(() => ({}));
       setReactionMsg(errorData.message || "스크랩하지 못했습니다.");
     } catch {
-      setReactionMsg("서버 통신 중 오류가 발생했습니다.");
+      setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       setScrapBusy(false);
     }
@@ -504,9 +504,9 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       }
 
       const errorData = await res.json();
-      alert(`댓글 작성 실패: ${errorData.message || "요청을 처리하지 못했습니다."}`);
+      alert(errorData.message || "댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } catch {
-      alert("서버 통신 중 오류가 발생했습니다.");
+      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       isSubmittingCommentRef.current = false;
       setSubmittingComment(false);
@@ -562,7 +562,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "댓글 수정에 실패했습니다.");
+        throw new Error(errorData.message || "댓글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       const updated: CommentUpdateResponse = await res.json();
@@ -572,7 +572,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       setEditCommentPassword("");
       setEditCommentError("");
     } catch (error) {
-      setEditCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
+      setEditCommentError(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setSubmittingEditComment(false);
     }
@@ -607,7 +607,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "댓글 삭제에 실패했습니다.");
+        throw new Error(errorData.message || "댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       handleCancelDeleteComment();
@@ -615,7 +615,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       await fetchComments();
       setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
     } catch (error) {
-      setDeleteCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
+      setDeleteCommentError(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setSubmittingDeleteComment(false);
     }
