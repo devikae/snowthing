@@ -12,7 +12,6 @@ import { renderMapImage } from "../../mapImage";
 import { NicknameForm } from "../../NicknameForm";
 import { QuizFlow } from "../../QuizFlow";
 import { RelationshipMap } from "../../RelationshipMap";
-import { ResultPanel } from "../../ResultPanel";
 import { shareLink, shareOrSaveImage } from "../../shareFile";
 import { ShareGroupLink } from "../../ShareGroupLink";
 
@@ -106,15 +105,14 @@ export function GroupApp({ publicId }: { publicId: string }) {
     };
     return (
       <>
-        <ResultPanel result={result} sport={sport} answers={answers} />
+        <CardPanel result={result} sport={sport} answers={answers}>
+          <ShareGroupLink groupPublicId={publicId} groupName={preview.name} />
+        </CardPanel>
         <section className="ct-panel" aria-labelledby="ct-join-title">
           <h2 id="ct-join-title">{preview.name}에 들어가기</h2>
           <p className="ct-lead">이름만 넣으면 이 모임 사람들과 어떤 사이인지 지도로 보여 줘요.</p>
           <NicknameForm submitLabel="모임에 들어가기" onSubmit={join} />
         </section>
-        <CardPanel result={result} sport={sport}>
-          <ShareGroupLink groupPublicId={publicId} groupName={preview.name} />
-        </CardPanel>
       </>
     );
   }

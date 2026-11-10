@@ -10,7 +10,6 @@ import { getSavedAnswers, saveAnswers } from "./localStore";
 import { QuizFlow } from "./QuizFlow";
 import { SEND_LINK_LABEL } from "./ShareGroupLink";
 import { RelationshipMap } from "./RelationshipMap";
-import { ResultPanel } from "./ResultPanel";
 
 const EMPTY_LEVELS = (["BEST", "GOOD", "NEUTRAL", "BICKER", "APART"] as const).map((level) => ({ level, participants: [] }));
 const subscribeNothing = () => () => {};
@@ -44,8 +43,7 @@ export function CharacterTestApp() {
   if (stage.kind === "result") {
     return (
       <>
-        <ResultPanel result={stage.result} sport={stage.sport} answers={stage.answers} />
-        <CardPanel result={stage.result} sport={stage.sport}>
+        <CardPanel result={stage.result} sport={stage.sport} answers={stage.answers}>
           <InviteSection answers={stage.answers} sport={stage.sport} label={SEND_LINK_LABEL} primary={false} />
         </CardPanel>
         <section className="ct-panel" aria-labelledby="ct-map-title">
