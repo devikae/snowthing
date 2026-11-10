@@ -39,7 +39,7 @@
 .season-log-day.today { outline: 1px solid var(--snow-border-strong); }
 .season-log .season-log-day.visited { min-height: 36px; padding: 2px; border: 0; background: var(--snow-accent); color: #fff; font-size: 12px; font-weight: 700; line-height: 1.1; }
 .season-log .season-log-day.visited:hover { background: var(--snow-accent); opacity: .85; }
-.season-log-day.visited small { font-size: 9px; font-weight: 500; white-space: nowrap; overflow: hidden; max-width: 100%; }
+.season-log-day.visited small { color: #fff; font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; max-width: 100%; }
 
 .season-share-page { max-width: 640px; margin-inline: auto; }
 .season-share-card { border-radius: 16px; background: var(--alpine-navy); color: #fff; padding: 32px; }
