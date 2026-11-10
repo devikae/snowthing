@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.ikae.snowthing.domain.auth.service.LoginAttemptLimiter;
 import com.ikae.snowthing.domain.email.entity.EmailVerification;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationPurpose;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationStatus;
@@ -35,6 +37,7 @@ class PasswordResetServiceTest {
     private EmailVerificationRepository verificationRepository;
     private MemberRepository memberRepository;
     private EmailVerificationHasher hasher;
+    private LoginAttemptLimiter loginAttemptLimiter;
     private PasswordResetService service;
 
     @BeforeEach
@@ -43,9 +46,15 @@ class PasswordResetServiceTest {
         memberRepository = mock(MemberRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         hasher = new EmailVerificationHasher("password-reset-test-secret-at-least-32-bytes");
+        loginAttemptLimiter = mock(LoginAttemptLimiter.class);
         service =
                 new PasswordResetService(
-                        verificationRepository, hasher, memberRepository, passwordEncoder, CLOCK);
+                        verificationRepository,
+                        hasher,
+                        memberRepository,
+                        passwordEncoder,
+                        loginAttemptLimiter,
+                        CLOCK);
         given(passwordEncoder.encode("NewPassword1!")).willReturn("encoded-new-password");
     }
 
@@ -71,6 +80,7 @@ class PasswordResetServiceTest {
         assertThat(member.getPassword()).isEqualTo("encoded-new-password");
         assertThat(member.getEmailVerifiedAt()).isEqualTo(LocalDateTime.now(CLOCK));
         assertThat(verification.getStatus()).isEqualTo(EmailVerificationStatus.CONSUMED);
+        verify(loginAttemptLimiter).clearAccount(EMAIL);
     }
 
     @Test

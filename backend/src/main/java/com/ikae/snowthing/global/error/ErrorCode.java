@@ -29,7 +29,7 @@ public enum ErrorCode {
     OAUTH_ACCOUNT_LINK_REQUIRED(
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
     LOGIN_ATTEMPT_LIMIT(
-            HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 최대 15분 뒤 다시 시도해 주세요."),
+            HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     OAUTH_SIGNUP_EXPIRED(HttpStatus.GONE, "AUTH_014", "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요."),
     SOCIAL_ACCOUNT_IN_USE(
             HttpStatus.CONFLICT,
