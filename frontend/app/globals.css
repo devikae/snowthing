@@ -2041,8 +2041,15 @@ html[data-theme="dark"] .m-cat.notice {
 }
 
 .m-title-link {
+  display: flex;
   min-width: 0;
+  min-height: 36px;
+  align-items: center;
   overflow: hidden;
+}
+
+.m-title-link > .m-title {
+  min-width: 0;
 }
 
 .m-title {
