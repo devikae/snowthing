@@ -108,13 +108,13 @@ export default function MarketCreatePage() {
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: formData });
         if (!response.ok) {
           const data = await response.json().catch(() => null);
-          throw new Error(data?.message || "이미지 업로드에 실패했습니다.");
+          throw new Error(data?.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
         }
         const uploaded: UploadedImage = await response.json();
         setImages((current) => [...current, uploaded]);
       }
     } catch (uploadError) {
-      setError(errorText(uploadError, "이미지 업로드에 실패했습니다."));
+      setError(errorText(uploadError, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setUploading(false);
     }
@@ -179,7 +179,7 @@ export default function MarketCreatePage() {
       <main className="community-container market-compose-page content-compose-page">
         <PageHeading title="판매글 등록" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 작성해 주세요." />
         <form className="market-compose-card" onSubmit={submit}>
-          {error && <div className="compose-error" role="alert"><span className="material-symbols-outlined">error</span>{error}</div>}
+          {error && <div className="compose-error" role="alert"><span className="material-symbols-outlined" aria-hidden="true">error</span>{error}</div>}
           <div className="market-form-grid">
             <label><span>상품 분류 *</span><select value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} required>{categories.map((category) => <option key={category.code} value={category.code}>{category.name}</option>)}</select></label>
             <label><span>상품 상태 *</span><select value={productCondition} onChange={(event) => setProductCondition(event.target.value)}>{productConditions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>
@@ -193,7 +193,7 @@ export default function MarketCreatePage() {
           </div>
           <label className="market-form-field"><span>연락처 * <small>전화번호나 카카오톡 ID 등 자유 입력, 최대 30자</small></span><input value={contact} onChange={(event) => setContact(event.target.value)} maxLength={30} placeholder="구매 희망자가 연락할 수단을 입력해 주세요." required /></label>
           <section className="market-editor-field"><span>본문 *</span><p>상품 상태, 사용 기간, 하자 여부, 거래 조건은 판매자가 직접 확인해 작성해 주세요.</p><div className="compose-editor"><ToastEditor ref={editorRef} height="440px" /></div></section>
-          <section className="market-image-field"><div><span>사진 <small>선택, 최대 10장</small></span><b>{images.length}/10</b></div><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />{images.length > 0 && <div className="market-image-previews">{images.map((image, index) => <div key={image.imageKey}><Image src={image.imageUrl} alt={`첨부 이미지 ${index + 1}`} width={120} height={90} unoptimized /><button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`${index + 1}번째 이미지 제거`}><span className="material-symbols-outlined">close</span></button></div>)}</div>}</section>
+          <section className="market-image-field"><div><span>사진 <small>선택, 최대 10장</small></span><b>{images.length}/10</b></div><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />{images.length > 0 && <div className="market-image-previews">{images.map((image, index) => <div key={image.imageKey}><Image src={image.imageUrl} alt={`첨부 이미지 ${index + 1}`} width={120} height={90} unoptimized /><button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`${index + 1}번째 이미지 제거`}><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div>)}</div>}</section>
           <div className="market-compose-actions"><Link href="/market">취소</Link><button type="submit" disabled={submitting || uploading}>{submitting ? "등록 중..." : "판매글 등록"}</button></div>
         </form>
       </main>

@@ -35,7 +35,7 @@ public class ResortReportController {
             @RequestHeader(value = IdempotentCreateHandler.HEADER, required = false)
                     String idempotencyKey) {
         if (userDetails == null || userDetails.getMember() == null) {
-            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
         }
         return idempotentCreateHandler.create(
                 IdempotencyTarget.RESORT_REPORT,

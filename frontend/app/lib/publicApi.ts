@@ -14,15 +14,20 @@ export function isPublicId(value: string) {
 }
 
 export async function fetchPublicJson<T>(path: string, headers?: Record<string, string>): Promise<T | null> {
+  return (await fetchPublicResult<T>(path, headers)).data;
+}
+
+// missing은 백엔드가 404로 답한 경우다. 시간 초과나 다른 실패는 missing이 아니다.
+export async function fetchPublicResult<T>(path: string, headers?: Record<string, string>): Promise<{ data: T | null; missing: boolean }> {
   try {
     const response = await fetch(`${API_V1_URL}${path}`, {
       cache: "no-store",
       headers,
       signal: AbortSignal.timeout(PUBLIC_FETCH_TIMEOUT_MS),
     });
-    if (!response.ok) return null;
-    return (await response.json()) as T;
+    if (!response.ok) return { data: null, missing: response.status === 404 };
+    return { data: (await response.json()) as T, missing: false };
   } catch {
-    return null;
+    return { data: null, missing: false };
   }
 }

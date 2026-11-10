@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { detailMetadata, fetchPreview } from "../../lib/sharePreview";
+import { notFound } from "next/navigation";
+import { detailMetadata, fetchPreviewResult } from "../../lib/sharePreview";
 import MarketDetailClient from "./MarketDetailClient";
 
 // 로그인 없이 공개되는 공유 미리보기 API. 본문, 연락처, 판매자는 내려오지 않는다.
@@ -21,9 +22,8 @@ function priceText({ price, negotiable, free }: MarketPreview) {
   return `${price.toLocaleString("ko-KR")}원${negotiable ? " (가격 협의 가능)" : ""}`;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { publicId } = await params;
-  const preview = await fetchPreview(
+function loadPreview(publicId: string) {
+  return fetchPreviewResult(
     `/market-listings/${encodeURIComponent(publicId)}/share-preview`,
     (listing: MarketPreview) => {
       const status = tradeLabels[listing.tradeStatus];
@@ -35,10 +35,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       };
     },
   );
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { publicId } = await params;
+  const { value: preview } = await loadPreview(publicId);
   if (!preview) return {};
   return detailMetadata({ ...preview, path: `/market/${encodeURIComponent(publicId)}` });
 }
 
-export default function MarketDetailPage({ params }: Props) {
+// 공유 미리보기 API는 로그인과 상관없이 같은 판매글을 보여 주므로, 404면 누구에게나 없는 판매글이다.
+// 미리보기 값은 60초 보관하므로 같은 글을 매번 다시 조회하지는 않는다.
+export default async function MarketDetailPage({ params }: Props) {
+  const { publicId } = await params;
+  if ((await loadPreview(publicId)).missing) notFound();
   return <MarketDetailClient params={params} />;
 }

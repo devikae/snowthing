@@ -274,7 +274,7 @@ public class CarpoolReviewService {
     @Transactional(readOnly = true)
     public CarpoolMyReviewResponse mine(CustomUserDetails userDetails) {
         if (userDetails == null) {
-            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
         }
         Long memberId = userDetails.getMember().getId();
         return new CarpoolMyReviewResponse(
@@ -344,7 +344,7 @@ public class CarpoolReviewService {
     /** 쓰기는 로그인한 회원 본인만 한다. 봇 위임 토큰은 읽기 전용이다. */
     private Long requireWriter(CustomUserDetails userDetails) {
         if (userDetails == null) {
-            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
         }
         if (userDetails instanceof BotDelegatedUserDetails) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);

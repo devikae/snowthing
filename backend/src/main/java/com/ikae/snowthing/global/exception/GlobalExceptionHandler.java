@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CustomAuthException.class)
     public ResponseEntity<ErrorResponse> handleCustomAuthException(CustomAuthException e) {
         ErrorCode errorCode =
-                e.getErrorCode() != null ? e.getErrorCode() : ErrorCode.INVALID_CREDENTIALS;
+                e.getErrorCode() != null ? e.getErrorCode() : ErrorCode.LOGIN_REQUIRED;
         return ResponseEntity.status(errorCode.getStatus()).body(ErrorResponse.from(errorCode));
     }
 

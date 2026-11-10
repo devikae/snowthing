@@ -74,12 +74,12 @@ public class PostService {
 
         // 비회원은 익명게시판에만 쓴다. isAnonymous=true로 다른 게시판에 쓰는 API 경로를 막는다.
         if (userDetails == null && !ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
-            throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
         }
 
         if (isAnonymousDisallowedCategory(category.getCode())) {
             if (userDetails == null) {
-                throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+                throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
             }
             if (request.isAnonymous()) {
                 throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
@@ -107,7 +107,7 @@ public class PostService {
             }
         } else {
             if (userDetails == null) {
-                throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+                throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
             }
             member =
                     memberRepository

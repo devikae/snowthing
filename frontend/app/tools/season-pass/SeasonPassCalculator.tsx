@@ -11,6 +11,7 @@ import {
   type SeasonPassInput,
 } from "../../lib/seasonPass";
 import ShareResult from "../ShareResult";
+import { currentPass, RESORT_PASS_PRICES, SEASON_PASS_PRICE_CHECKED_AT } from "../../lib/seasonPassPrices";
 
 const labels: Record<keyof SeasonPassInput, string> = {
   passPrice: "시즌권 실제 결제액",
@@ -29,6 +30,8 @@ const initial: Record<keyof SeasonPassInput, string> = {
   visited: "",
   planned: "",
 };
+
+const KST_TODAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" });
 
 const won = (value: number) => `${Math.round(value).toLocaleString("ko-KR")}원`;
 
@@ -61,6 +64,8 @@ export default function SeasonPassCalculator() {
   const [fields, setFields] = useState(initial);
   const [input, setInput] = useState<SeasonPassInput | null>(null);
   const [error, setError] = useState("");
+  const [resortCode, setResortCode] = useState("");
+  const [resortNote, setResortNote] = useState("");
 
   useEffect(() => {
     const restore = () => {
@@ -101,6 +106,27 @@ export default function SeasonPassCalculator() {
     setInput(null);
   };
 
+  // 고른 리조트의 대략 가격으로 시즌권과 리프트권 칸을 채운다. 채운 뒤에도 직접 고칠 수 있다.
+  const pickResort = (code: string) => {
+    setResortCode(code);
+    const resort = RESORT_PASS_PRICES.find((item) => item.code === code);
+    if (!resort) {
+      setResortNote("");
+      return;
+    }
+    const pass = currentPass(resort, KST_TODAY.format(new Date()));
+    setFields((prev) => ({
+      ...prev,
+      passPrice: pass.price === null ? prev.passPrice : formatDisplay("passPrice", String(pass.price)),
+      ticketPrice: formatDisplay("ticketPrice", String(resort.ticketPrice)),
+    }));
+    setResortNote(
+      `시즌권은 ${pass.label}, 리프트권은 ${resort.ticketLabel} 기준이에요. ${SEASON_PASS_PRICE_CHECKED_AT}에 조사한 대략값이라 실제와 다를 수 있어요. 고쳐 써도 돼요.`,
+    );
+    setInput(null);
+    setError("");
+  };
+
   const calculate = (event: React.FormEvent) => {
     event.preventDefault();
     const next = Object.fromEntries(
@@ -139,6 +165,16 @@ export default function SeasonPassCalculator() {
         <form className="tool-form" onSubmit={calculate}>
           <h2>내 시즌 비용</h2>
           <div className="tool-fields">
+            <label>
+              리조트 골라서 가격 채우기
+              <select value={resortCode} onChange={(event) => pickResort(event.target.value)}>
+                <option value="">직접 입력</option>
+                {RESORT_PASS_PRICES.map((resort) => (
+                  <option key={resort.code} value={resort.code}>{resort.name}</option>
+                ))}
+              </select>
+              {resortNote && <small className="tool-resort-note">{resortNote}</small>}
+            </label>
             {SEASON_PASS_FIELDS.map((key) => (
               <label key={key}>
                 {labels[key]}
@@ -303,7 +339,7 @@ export default function SeasonPassCalculator() {
           </p>
         </details>
         <div className="tools-related">
-          <Link href="/carpool">카풀·동행으로 교통비 비교하기 →</Link>
+          <Link href="/carpool">카풀과 동행에서 교통비 비교하기 →</Link>
           <Link href="/resort-reports">오늘의 설질 확인하기 →</Link>
         </div>
       </section>

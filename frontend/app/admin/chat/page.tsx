@@ -44,7 +44,7 @@ export default function AdminChatPage() {
   async function handleUnban(item: ChatBannedIpItem) {
     if (
       !window.confirm(
-        `[${item.bannedIp}] IP 차단을 해제하시겠습니까?\n해당 IP에서 다시 채팅 전송이 가능해집니다.`
+        `[${item.bannedIp}] IP 차단을 해제할까요?\n이 IP에서 다시 채팅을 보낼 수 있게 됩니다.`
       )
     )
       return;
@@ -55,11 +55,11 @@ export default function AdminChatPage() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) throw new Error("차단 해제에 실패했습니다.");
+      if (!res.ok) throw new Error("차단을 해제하지 못했습니다.");
       setBannedIps((prev) => prev.filter((b) => b.id !== item.id));
       alert("차단이 해제되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "차단 해제 실패"));
+      alert((err instanceof Error ? err.message : "차단을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -88,7 +88,7 @@ export default function AdminChatPage() {
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.message || "IP 차단 등록에 실패했습니다.");
+        throw new Error(errJson?.message || "IP 차단을 등록하지 못했습니다.");
       }
 
       setShowBanModal(false);
@@ -97,7 +97,7 @@ export default function AdminChatPage() {
       fetchBannedIps();
       alert("IP가 성공적으로 차단 목록에 등록되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "차단 등록 실패"));
+      alert((err instanceof Error ? err.message : "IP 차단을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -142,13 +142,13 @@ export default function AdminChatPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     차단 목록을 불러오는 중입니다...
                   </td>
                 </tr>
               ) : bannedIps.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     현재 차단된 IP가 없습니다.
                   </td>
                 </tr>
@@ -167,7 +167,7 @@ export default function AdminChatPage() {
                     <td className="py-3.5 px-4 text-xs text-slate-500">
                       {b.createdBy || "시스템"}
                     </td>
-                    <td className="py-3.5 px-4 text-xs font-mono text-slate-400">
+                    <td className="py-3.5 px-4 text-xs font-mono text-slate-500">
                       {b.createdAt ? b.createdAt.slice(0, 10) : "-"}
                     </td>
                     <td className="py-3.5 px-4 text-right">

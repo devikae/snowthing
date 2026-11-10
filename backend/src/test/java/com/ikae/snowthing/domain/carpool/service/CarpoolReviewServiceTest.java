@@ -302,8 +302,7 @@ class CarpoolReviewServiceTest {
     @Test
     @DisplayName("비회원은 쓸 수 없고 봇 위임 토큰도 쓸 수 없다")
     void rejectsGuestAndBot() {
-        assertError(
-                () -> service.requestRide(post.getPublicId(), null), ErrorCode.INVALID_CREDENTIALS);
+        assertError(() -> service.requestRide(post.getPublicId(), null), ErrorCode.LOGIN_REQUIRED);
         assertError(
                 () -> service.requestRide(post.getPublicId(), new BotDelegatedUserDetails(rider)),
                 ErrorCode.ACCESS_DENIED);

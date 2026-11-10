@@ -151,6 +151,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
     const start = Math.max(0, Math.min(page - 2, totalPages - 5));
     return Array.from({ length: Math.min(5, totalPages) }, (_, index) => start + index);
   }, [page, totalPages]);
+  const lastVisiblePage = visiblePages[visiblePages.length - 1] ?? 0;
 
   const moveTo = (next: { category?: string; page?: number; keyword?: string; searchType?: string; view?: string }) => {
     const params = new URLSearchParams();
@@ -248,12 +249,12 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
             <section className="board-post-list" aria-live="polite">
               {loading ? (
                 <div className="board-state">
-                  <span className="material-symbols-outlined spin">progress_activity</span>
+                  <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                   <strong>게시글을 불러오는 중입니다.</strong>
                 </div>
               ) : error ? (
                 <div className="board-state error">
-                  <span className="material-symbols-outlined">cloud_off</span>
+                  <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                   <strong>게시글을 불러오지 못했습니다.</strong>
                   <button type="button" onClick={() => void fetchPosts()}>
                     다시 시도
@@ -261,7 +262,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                 </div>
               ) : posts.length === 0 ? (
                 <div className="board-state">
-                  <span className="material-symbols-outlined">edit_note</span>
+                  <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
                   <strong>
                     {keywordFromUrl
                       ? "검색 결과가 없습니다."
@@ -334,8 +335,8 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
 
             <div className="board-navigation">
               <nav className="board-pagination" aria-label="페이지 이동">
-                <button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })}>
-                  <span className="material-symbols-outlined">chevron_left</span>
+                <button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })} aria-label="이전 페이지">
+                  <span className="material-symbols-outlined" aria-hidden="true">chevron_left</span>
                 </button>
                 {visiblePages.map((pageNumber) => (
                   <button
@@ -346,14 +347,15 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     {pageNumber + 1}
                   </button>
                 ))}
-                {totalPages > 6 && (
+                {/* 마지막 페이지가 이미 번호 목록에 있으면 다시 그리지 않는다. 바로 앞까지 보이면 말줄임표는 빼고 붙인다. */}
+                {lastVisiblePage < totalPages - 1 && (
                   <>
-                    <span>…</span>
+                    {lastVisiblePage < totalPages - 2 && <span>…</span>}
                     <button onClick={() => moveTo({ page: totalPages - 1 })}>{totalPages}</button>
                   </>
                 )}
-                <button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })}>
-                  <span className="material-symbols-outlined">chevron_right</span>
+                <button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })} aria-label="다음 페이지">
+                  <span className="material-symbols-outlined" aria-hidden="true">chevron_right</span>
                 </button>
               </nav>
               <div className="board-navigation-actions">
@@ -373,7 +375,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}
                     className="board-write-button"
                   >
-                    <span className="material-symbols-outlined">edit</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">edit</span>
                     {isInquiry ? "문의하기" : "글쓰기"}
                   </Link>
                 )}

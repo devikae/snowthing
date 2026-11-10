@@ -1,5 +1,5 @@
 import { ResortCamRoute } from "../../ResortCamRoute";
-import { webcamMetadata } from "../../metadata";
+import { findWebcamOrNotFound, webcamMetadata } from "../../metadata";
 
 export async function generateMetadata({ params }: { params: Promise<{ resortCode: string; cameraCode: string }> }) {
   const { resortCode, cameraCode } = await params;
@@ -12,5 +12,6 @@ export default async function ResortCamDetailPage({
   params: Promise<{ resortCode: string; cameraCode: string }>;
 }) {
   const { resortCode, cameraCode } = await params;
+  await findWebcamOrNotFound(resortCode, cameraCode);
   return <ResortCamRoute resortPath={resortCode} cameraPath={cameraCode} />;
 }

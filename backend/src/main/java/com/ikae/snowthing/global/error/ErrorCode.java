@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_001", "이메일 또는 비밀번호가 일치하지 않습니다."),
+    // 로그인하지 않은 채 회원 전용 기능을 부를 때. 로그인 실패(AUTH_001)와 문구를 나눈다.
+    LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "AUTH_020", "로그인이 필요합니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_002", "해당 작업을 수행할 권한이 없습니다."),
     OAUTH_PROVIDER_UNSUPPORTED(HttpStatus.BAD_REQUEST, "AUTH_003", "지원하지 않는 소셜 로그인 제공자입니다."),
     OAUTH_PROVIDER_NOT_CONFIGURED(

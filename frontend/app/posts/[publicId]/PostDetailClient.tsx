@@ -22,6 +22,7 @@ import { markdownToPlainText } from "../../lib/markdownText";
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
 const POST_LOAD_TIMEOUT_MS = 10_000;
+const COMMENT_MAX_LENGTH = 1000;
 
 interface WriterInfo {
   publicId: string | null;
@@ -141,7 +142,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteModalConfig, setDeleteModalConfig] = useState({
     title: "게시글 삭제 확인",
-    description: "정말로 이 게시글을 삭제하시겠습니까?",
+    description: "이 게시글을 삭제할까요?",
     requirePassword: false,
   });
 
@@ -155,13 +156,13 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     } else if (post?.requiresPassword) {
       setDeleteModalConfig({
         title: "익명 게시글 삭제",
-        description: "익명 게시글 삭제를 위해 작성 시 설정한 비밀번호를 입력해주세요.",
+        description: "익명 게시글 삭제를 위해 작성 시 설정한 비밀번호를 입력해 주세요.",
         requirePassword: true,
       });
     } else {
       setDeleteModalConfig({
         title: "게시글 삭제 확인",
-        description: "정말로 이 게시글을 삭제하시겠습니까?",
+        description: "이 게시글을 삭제할까요?",
         requirePassword: false,
       });
     }
@@ -183,7 +184,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       router.push("/posts");
     } else {
       const data = await res.json();
-      throw new Error(data.message || "게시글 삭제 처리에 실패했습니다.");
+      throw new Error(data.message || "글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
 
@@ -216,7 +217,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       setHasNextComments(Boolean(data.hasNext));
     } catch (error) {
       console.error("댓글 로드 실패:", error);
-      const message = errorText(error, "서버 통신 중 오류가 발생했습니다.");
+      const message = errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
       if (append) {
         setLoadMoreCommentError(message);
       } else {
@@ -362,9 +363,9 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       }
 
       const errorData = await res.json();
-      setReactionMsg(errorData.message || "투표 처리 실패");
+      setReactionMsg(errorData.message || "반응을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } catch {
-      setReactionMsg("서버 통신 중 오류가 발생했습니다.");
+      setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     }
   };
 
@@ -383,7 +384,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
         return;
       }
       if (res.status === 401) {
-        if (confirm("스크랩하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
+        if (confirm("스크랩하려면 로그인이 필요해요. 로그인 화면으로 이동할까요?")) {
           router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
         }
         return;
@@ -391,7 +392,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       const errorData = await res.json().catch(() => ({}));
       setReactionMsg(errorData.message || "스크랩하지 못했습니다.");
     } catch {
-      setReactionMsg("서버 통신 중 오류가 발생했습니다.");
+      setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       setScrapBusy(false);
     }
@@ -423,7 +424,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     if (isSubmittingCommentRef.current || submittingComment) return;
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
-      alert("댓글 내용을 입력해주세요.");
+      alert("댓글 내용을 입력해 주세요.");
       return;
     }
 
@@ -435,15 +436,19 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       if (!currentUserPublicId) {
         const pwd = parentId ? replyAnonPassword : commentAnonPassword;
         if (!pwd.trim()) {
-          alert("비밀번호를 입력해주세요.");
+          alert("비밀번호를 입력해 주세요.");
+          return;
+        }
+        if (pwd.trim().length < 4 || pwd.trim().length > 20) {
+          alert("비밀번호는 4~20자로 입력해 주세요.");
           return;
         }
         anonymousPassword = pwd.trim();
       }
     } else {
       if (!currentUserPublicId) {
-        if (confirm("댓글을 작성하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
-          router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        if (confirm("댓글을 작성하려면 로그인이 필요합니다. 로그인 화면으로 이동할까요?")) {
+          router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
         }
         return;
       }
@@ -504,9 +509,9 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       }
 
       const errorData = await res.json();
-      alert(`댓글 작성 실패: ${errorData.message || "요청을 처리하지 못했습니다."}`);
+      alert(errorData.message || "댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } catch {
-      alert("서버 통신 중 오류가 발생했습니다.");
+      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       isSubmittingCommentRef.current = false;
       setSubmittingComment(false);
@@ -533,15 +538,15 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     const content = editCommentText.trim();
     const requiresPassword = comment.requiresPassword;
     if (!content) {
-      setEditCommentError("댓글 내용을 입력해주세요.");
+      setEditCommentError("댓글 내용을 입력해 주세요.");
       return;
     }
     if (content.length > 1000) {
-      setEditCommentError("댓글은 1,000자 이하로 입력해주세요.");
+      setEditCommentError("댓글은 1,000자 이하로 입력해 주세요.");
       return;
     }
     if (requiresPassword && !editCommentPassword.trim()) {
-      setEditCommentError("익명 댓글 비밀번호를 입력해주세요.");
+      setEditCommentError("익명 댓글 비밀번호를 입력해 주세요.");
       return;
     }
     if (content === comment.content) {
@@ -562,7 +567,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "댓글 수정에 실패했습니다.");
+        throw new Error(errorData.message || "댓글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       const updated: CommentUpdateResponse = await res.json();
@@ -572,7 +577,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       setEditCommentPassword("");
       setEditCommentError("");
     } catch (error) {
-      setEditCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
+      setEditCommentError(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setSubmittingEditComment(false);
     }
@@ -592,7 +597,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
   const handleConfirmDeleteComment = async (comment: CommentItem) => {
     if (comment.requiresDeletePassword && !deleteCommentPassword.trim()) {
-      setDeleteCommentError("비밀번호를 입력해주세요.");
+      setDeleteCommentError("비밀번호를 입력해 주세요.");
       return;
     }
 
@@ -607,7 +612,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "댓글 삭제에 실패했습니다.");
+        throw new Error(errorData.message || "댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       handleCancelDeleteComment();
@@ -615,7 +620,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       await fetchComments();
       setPost((current) => (current ? { ...current, commentCount: Math.max(0, current.commentCount - 1) } : current));
     } catch (error) {
-      setDeleteCommentError(errorText(error, "서버 통신 중 오류가 발생했습니다."));
+      setDeleteCommentError(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setSubmittingDeleteComment(false);
     }
@@ -625,7 +630,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     return (
       <div className="min-h-screen bg-[var(--snow-background)]">
         <TopNav active="posts" />
-        <div className="p-12 text-center text-sm text-[var(--snow-muted)]">로딩 중입니다.</div>
+        <div className="p-12 text-center text-sm text-[var(--snow-muted)]">불러오는 중입니다.</div>
       </div>
     );
   }
@@ -649,14 +654,14 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       <TopNav active="posts" />
       <main className="post-detail-page community-container content-detail-page">
         <div className="post-detail-toolbar">
-          <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link>
+          <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
         </div>
         <div className="post-detail-layout">
           <div className="post-detail-primary">
           <article className="post-detail-card">
             <div className="post-detail-meta-top">
               <span>#{post.categoryCode === "QNA" ? "질문게시판" : post.categoryName}</span>
-              <div><span className="material-symbols-outlined">visibility</span>{post.viewCount}<span className="material-symbols-outlined">chat_bubble</span>{post.commentCount}<span className="material-symbols-outlined">thumb_up</span>{post.likeCount}</div>
+              <div><span className="material-symbols-outlined" aria-hidden="true">visibility</span><span className="sr-only">조회</span>{post.viewCount}<span className="material-symbols-outlined" aria-hidden="true">chat_bubble</span><span className="sr-only">댓글</span>{post.commentCount}<span className="material-symbols-outlined" aria-hidden="true">thumb_up</span><span className="sr-only">추천</span>{post.likeCount}</div>
             </div>
 
             <h1>{post.title}</h1>
@@ -714,18 +719,18 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
             <div className="post-detail-reactions">
               <div>
                   <button onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
-                  <span className="material-symbols-outlined text-[17px]">thumb_up</span>
+                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">thumb_up</span>
                   추천 {post.likeCount}
                 </button>
                   <button onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
-                  <span className="material-symbols-outlined text-[17px]">thumb_down</span>
+                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">thumb_down</span>
                   비추천 {post.dislikeCount}
                 </button>
                 <button type="button" onClick={() => void handleScrap()} disabled={scrapBusy} className={post.scrapped ? "active" : ""} aria-pressed={post.scrapped}>
-                  <span className="material-symbols-outlined text-[17px]">bookmark</span>
+                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">bookmark</span>
                   {post.scrapped ? "스크랩됨" : "스크랩"}
                 </button>
-                <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined">share</span>공유</button>
+                <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined" aria-hidden="true">share</span>공유</button>
                 <ReportButton targetType="POST" targetId={publicId} />
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
@@ -739,20 +744,24 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
             <div className="post-comment-compose">
               <textarea
                 rows={3}
-                placeholder={canWriteComment ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
+                placeholder={canWriteComment ? "댓글을 작성해 보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
                 disabled={!canWriteComment}
+                maxLength={COMMENT_MAX_LENGTH}
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
                 className="post-comment-textarea"
                 aria-label="댓글 입력"
               />
+              {canWriteComment && <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{newCommentText.length}/{COMMENT_MAX_LENGTH}</div>}
               <div className="post-comment-compose-footer">
                 {isAnonymousPost && !currentUserPublicId && (
                   <label className="post-comment-password">
                     <span>비밀번호</span>
                     <input
                       type="password"
-                      placeholder="비밀번호를 입력하세요"
+                      placeholder="비밀번호 (4~20자)"
+                      minLength={4}
+                      maxLength={20}
                       value={commentAnonPassword}
                       onChange={(event) => setCommentAnonPassword(event.target.value)}
                     />
@@ -760,7 +769,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                 )}
                 {canWriteComment ? (
                   <button className="post-comment-submit-button" disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
-                    댓글 등록 <span className="material-symbols-outlined">send</span>
+                    댓글 등록 <span className="material-symbols-outlined" aria-hidden="true">send</span>
                   </button>
                 ) : (
                   <Link className="post-comment-submit-button" href={`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`}>
@@ -787,7 +796,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                   </button>
                 </div>
               ) : comments.length === 0 ? (
-                <p className="py-8 text-center text-sm text-[var(--snow-muted)]">첫 댓글을 작성해보세요.</p>
+                <p className="py-8 text-center text-sm text-[var(--snow-muted)]">첫 댓글을 작성해 보세요.</p>
               ) : (
                 comments.map((comment) => (
                   <CommentRow
@@ -995,19 +1004,23 @@ function CommentRow({
           <div className="post-reply-compose">
             <textarea
               rows={2}
+              maxLength={COMMENT_MAX_LENGTH}
               value={replyText}
               onChange={(event) => setReplyText(event.target.value)}
-              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
+              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해 보세요." : "로그인 후 답글을 작성할 수 있습니다."}
               className="post-comment-textarea"
               aria-label="답글 입력"
             />
+            <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{replyText.length}/{COMMENT_MAX_LENGTH}</div>
             <div className="post-comment-compose-footer">
               {isAnonymousPost && !currentUserPublicId && (
                 <label className="post-comment-password">
                   <span>비밀번호</span>
                     <input
                       type="password"
-                      placeholder="비밀번호를 입력하세요"
+                      placeholder="비밀번호 (4~20자)"
+                      minLength={4}
+                      maxLength={20}
                       value={replyAnonPassword}
                       onChange={(event) => setReplyAnonPassword(event.target.value)}
                     />

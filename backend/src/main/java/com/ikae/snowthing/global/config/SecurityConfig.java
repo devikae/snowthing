@@ -214,7 +214,7 @@ public class SecurityConfig {
                                                     objectMapper.writeValue(
                                                             response.getWriter(),
                                                             ErrorResponse.from(
-                                                                    ErrorCode.INVALID_CREDENTIALS));
+                                                                    ErrorCode.LOGIN_REQUIRED));
                                                 })
                                         .accessDeniedHandler(
                                                 (request, response, accessDeniedException) -> {

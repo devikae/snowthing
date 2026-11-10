@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { fetchPublicJson, isPublicId } from "../../lib/publicApi";
+import { cookies } from "next/headers";
+import { notFound, redirect } from "next/navigation";
+import { fetchPublicResult, isPublicId } from "../../lib/publicApi";
 import { detailMetadata, fetchPreview, firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
 import PostDetailClient, { type PostDetail } from "./PostDetailClient";
 
@@ -29,9 +30,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 // 조회수는 기존처럼 브라우저의 상세 요청에서만 오른다. 받지 못하면(1:1 문의, 장애) 브라우저가 기존처럼 부른다.
 export default async function PostDetailPage({ params }: Props) {
   const { publicId } = await params;
-  const initialPost = isPublicId(publicId)
-    ? await fetchPublicJson<PostDetail>(`/posts/${publicId}`, { Cookie: `viewed_posts=[${publicId}]` })
-    : null;
+  if (!isPublicId(publicId)) notFound();
+  const { data: initialPost, missing } = await fetchPublicResult<PostDetail>(`/posts/${publicId}`, { Cookie: `viewed_posts=[${publicId}]` });
+  // 비로그인 조회가 404면 삭제됐거나 없는 글이라 404 페이지로 답한다. 공유 미리보기와 검색엔진이 빈 글을 담지 않게 한다.
+  // 1:1 문의는 작성자에게도 비로그인 조회가 404라서, 로그인 세션 쿠키가 있으면 기존처럼 브라우저가 다시 부르게 둔다.
+  if (missing && !(await hasSessionCookie())) notFound();
   if (initialPost?.categoryCode === "CARPOOL") redirect(`/carpool/${publicId}`);
   return <PostDetailClient params={params} initialPost={initialPost} />;
+}
+
+async function hasSessionCookie() {
+  const store = await cookies();
+  return store.has("JSESSIONID") || store.has("SESSION");
 }

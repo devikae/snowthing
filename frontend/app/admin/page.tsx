@@ -44,8 +44,8 @@ export default function AdminDashboardPage() {
     if (!stats || updatingChat) return;
     const nextVal = !stats.anonymousChatEnabled;
     const confirmMsg = nextVal
-      ? "비로그인 유저도 라이브톡에 메시지를 전송할 수 있도록 허용하시겠습니까?"
-      : "비로그인 유저의 라이브톡 전송을 차단하고 기존대로 로그인 회원 전용으로 변경하시겠습니까?";
+      ? "로그인하지 않은 사용자도 라이브톡에 메시지를 보낼 수 있게 할까요?"
+      : "로그인하지 않은 사용자의 라이브톡 전송을 막고 로그인 회원만 보낼 수 있게 할까요?";
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -60,10 +60,10 @@ export default function AdminDashboardPage() {
           body: JSON.stringify({ value: String(nextVal) }),
         }
       );
-      if (!res.ok) throw new Error("설정 변경에 실패했습니다.");
+      if (!res.ok) throw new Error("설정을 바꾸지 못했습니다.");
       setStats({ ...stats, anonymousChatEnabled: nextVal });
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "설정 변경 중 오류가 발생했습니다."));
+      alert((err instanceof Error ? err.message : "설정을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setUpdatingChat(false);
     }
@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
   if (error || !stats) {
     return (
       <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700">
-        <p className="font-semibold mb-2">데이터 로드 실패</p>
+        <p className="font-semibold mb-2">데이터를 불러오지 못했습니다</p>
         <p className="text-sm">{error}</p>
         <button
           onClick={() => { setLoading(true); void fetchStats(); }}
@@ -116,7 +116,7 @@ export default function AdminDashboardPage() {
             <span className="text-3xl font-black text-slate-900">
               {stats.totalMembers.toLocaleString()}
             </span>
-            <span className="text-xs text-slate-400 font-normal">명</span>
+            <span className="text-xs text-slate-500 font-normal">명</span>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>오늘 신규 가입</span>
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
               >
                 {stats.anonymousChatEnabled ? "허용 (ON)" : "차단 (OFF)"}
               </span>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 mt-0.5">
                 {stats.anonymousChatEnabled
                   ? "비회원 랜덤 닉네임 발신 가능"
                   : "로그인 회원만 채팅 가능"}
