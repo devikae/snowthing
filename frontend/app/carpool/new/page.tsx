@@ -613,6 +613,7 @@ export default function NewCarpoolPage() {
             <label>
               <input
                 required
+                maxLength={200}
                 value={form.title}
                 onChange={(event) => update("title", event.target.value)}
                 placeholder="카풀 모집글 제목"
