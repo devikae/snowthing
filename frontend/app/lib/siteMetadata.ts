@@ -32,6 +32,11 @@ export function publicPageMetadata(title: string, description: string, path: str
 
 export const PRIVATE_PAGE_ROBOTS: Metadata["robots"] = { index: false, follow: true };
 
+// 검색엔진에 올리지 않는 화면도 탭 제목과 공유 미리보기에는 그 화면의 설명을 보여 준다.
+export function privatePageMetadata(title: string, description: string): Metadata {
+  return { ...sectionOpenGraph(`${title} | 눈팅 SnowThing`, description), robots: PRIVATE_PAGE_ROBOTS };
+}
+
 export const websiteStructuredData = {
   "@context": "https://schema.org",
   "@type": "WebSite",
