@@ -442,7 +442,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           }}
           placeholder={
             currentMember
-              ? "메세지를 입력하세요"
+              ? "메시지를 입력하세요"
               : anonymousChatEnabled
                 ? "로그인 없이 대화할 수 있어요 (닉네임 자동)"
                 : "로그인하고 라이브톡에 참여해 보세요"

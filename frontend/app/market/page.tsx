@@ -154,7 +154,7 @@ function MarketPageContent() {
 
         <section className="market-filter-card">
           <form onSubmit={handleSearch} className="market-search-row">
-            <input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="상품 제목 검색" aria-label="상품 제목 검색" />
+            <input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="상품 제목 검색" aria-label="상품 제목 검색" maxLength={100} />
             <button type="submit">검색</button>
           </form>
           <div className="market-filter-row">

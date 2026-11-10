@@ -434,10 +434,10 @@ export default function HomePageClient() {
               maxLength={100}
               placeholder={
                 !reportSeasonOpen
-                  ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다"
+                  ? "설질 제보는 10월부터 4월까지 받습니다"
                   : profile
-                    ? "지금 슬로프의 설질, 대기 시간, 정설 상태를 한 줄(100자 이내)로 공유해 주세요"
-                    : "로그인하고 오늘의 설질을 제보해 보세요"
+                    ? "지금 설질과 대기 시간을 한 줄로 알려 주세요"
+                    : "로그인하고 설질 제보하기"
               }
               aria-label="설질 제보 내용"
               className={!profile ? "cursor-pointer" : undefined}

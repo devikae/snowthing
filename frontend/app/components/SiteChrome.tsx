@@ -222,7 +222,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <button type="button" onClick={() => setSearchOpen((open) => !open)} aria-label={searchOpen ? "검색 닫기" : "검색 열기"} aria-expanded={searchOpen}>
                 <span className="material-symbols-outlined" aria-hidden="true">search</span>
               </button>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" maxLength={100} tabIndex={searchOpen ? 0 : -1} />
             </form>
             {!loading && user && <MessageNavLink />}
             {!loading && user && <NotificationBell />}
@@ -282,7 +282,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
           <div className="community-container">
             <form className="mobile-header-search" onSubmit={handleSearch}>
               <span className="material-symbols-outlined" aria-hidden="true">search</span>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" maxLength={100} />
               <button type="submit">검색</button>
             </form>
             <nav aria-label="모바일 메뉴">

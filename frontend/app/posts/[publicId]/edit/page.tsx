@@ -16,7 +16,7 @@ import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } fro
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다.</div>,
 });
 
 interface PostDetail {
@@ -273,7 +273,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
           </div>
           <div className="compose-sheet-attach">
             <div className="compose-attach-row">
-              <label htmlFor="post-edit-images" className={`compose-attach-btn ${!canUploadImages || uploadingImages || images.length >= 10 ? "disabled" : ""}`}><span className="material-symbols-outlined" aria-hidden="true">image</span><span>{uploadingImages ? "업로드 중..." : "사진 첨부"}</span></label>
+              <label htmlFor="post-edit-images" className={`compose-attach-btn ${!canUploadImages || uploadingImages || images.length >= 10 ? "disabled" : ""}`}><span className="material-symbols-outlined" aria-hidden="true">image</span><span>{uploadingImages ? "업로드 중" : "사진 첨부"}</span></label>
               <input id="post-edit-images" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={!canUploadImages || uploadingImages || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />
               <span className="compose-attach-hint">{canUploadImages ? `장당 최대 5MB, ${images.length}/10장` : "사진 첨부는 로그인한 회원만 가능합니다."}</span>
             </div>
@@ -287,7 +287,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
           </Link>
           <button type="submit" disabled={submitting || uploadingImages} className="compose-submit-pill">
             <span className="material-symbols-outlined" aria-hidden="true">check</span>
-            {submitting ? "수정 중..." : "수정 완료"}
+            {submitting ? "수정 중" : "수정 완료"}
           </button>
         </footer>
       </form>

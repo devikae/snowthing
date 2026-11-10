@@ -84,7 +84,7 @@ export async function fetchResult(answers: string): Promise<CharacterResult> {
     headers: jsonHeaders,
     body: JSON.stringify({ answers }),
   });
-  if (!response.ok) throw new Error(await readErrorMessage(response, "결과를 불러오지 못했습니다. 다시 시도해 주세요."));
+  if (!response.ok) throw new Error(await readErrorMessage(response, "결과를 불러오지 못했어요. 다시 시도해 주세요."));
   return response.json();
 }
 
@@ -95,7 +95,7 @@ async function postJoin(url: string, input: JoinInput): Promise<JoinResponse> {
     await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_RETRY_MS));
     response = await send();
   }
-  if (!response.ok) throw new Error(await readErrorMessage(response, "들어가지 못했습니다. 다시 시도해 주세요."));
+  if (!response.ok) throw new Error(await readErrorMessage(response, "들어가지 못했어요. 다시 시도해 주세요."));
   return response.json();
 }
 
@@ -111,7 +111,7 @@ export function joinGroup(groupPublicId: string, input: JoinInput) {
 export async function fetchPreview(groupPublicId: string): Promise<GroupPreview | null> {
   const response = await plainFetch(`${GROUPS}/${encodeURIComponent(groupPublicId)}`, { cache: "no-store" });
   if (await isGroupNotFound(response)) return null;
-  if (!response.ok) throw new Error("모임 정보를 불러오지 못했습니다.");
+  if (!response.ok) throw new Error("모임 정보를 불러오지 못했어요. 다시 시도해 주세요.");
   return response.json();
 }
 
@@ -122,7 +122,7 @@ export async function fetchMap(groupPublicId: string, token: string): Promise<Ch
     headers: { [TOKEN_HEADER]: token },
   });
   if (await isGroupNotFound(response)) return null;
-  if (!response.ok) throw new Error("지도를 불러오지 못했습니다.");
+  if (!response.ok) throw new Error("지도를 불러오지 못했어요. 다시 시도해 주세요.");
   return response.json();
 }
 
@@ -131,5 +131,5 @@ export async function leaveGroup(token: string) {
     method: "DELETE",
     headers: { [TOKEN_HEADER]: token },
   });
-  if (!response.ok && !(await isGroupNotFound(response))) throw new Error(await readErrorMessage(response, "나가지 못했습니다."));
+  if (!response.ok && !(await isGroupNotFound(response))) throw new Error(await readErrorMessage(response, "나가지 못했어요. 다시 시도해 주세요."));
 }
