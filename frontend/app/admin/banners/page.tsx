@@ -185,13 +185,13 @@ export default function AdminBannersPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     배너 목록을 불러오는 중입니다...
                   </td>
                 </tr>
               ) : banners.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     등록된 배너가 없습니다.
                   </td>
                 </tr>
@@ -212,7 +212,7 @@ export default function AdminBannersPage() {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-500">
                             No Img
                           </div>
                         )}
@@ -221,7 +221,7 @@ export default function AdminBannersPage() {
                     <td className="py-3.5 px-4 font-bold text-slate-900 max-w-xs truncate">
                       {b.title}
                     </td>
-                    <td className="py-3.5 px-4 text-xs font-mono text-slate-400 max-w-xs truncate">
+                    <td className="py-3.5 px-4 text-xs font-mono text-slate-500 max-w-xs truncate">
                       {b.linkUrl ? (
                         <a
                           href={b.linkUrl}

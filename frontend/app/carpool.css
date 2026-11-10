@@ -117,7 +117,7 @@
 .carpool-place-results span {
   overflow: hidden;
   color: #64748b;
-  font-size: 10px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

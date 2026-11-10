@@ -142,13 +142,13 @@ export default function AdminChatPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     차단 목록을 불러오는 중입니다...
                   </td>
                 </tr>
               ) : bannedIps.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     현재 차단된 IP가 없습니다.
                   </td>
                 </tr>
@@ -167,7 +167,7 @@ export default function AdminChatPage() {
                     <td className="py-3.5 px-4 text-xs text-slate-500">
                       {b.createdBy || "시스템"}
                     </td>
-                    <td className="py-3.5 px-4 text-xs font-mono text-slate-400">
+                    <td className="py-3.5 px-4 text-xs font-mono text-slate-500">
                       {b.createdAt ? b.createdAt.slice(0, 10) : "-"}
                     </td>
                     <td className="py-3.5 px-4 text-right">

@@ -116,7 +116,7 @@ export default function AdminDashboardPage() {
             <span className="text-3xl font-black text-slate-900">
               {stats.totalMembers.toLocaleString()}
             </span>
-            <span className="text-xs text-slate-400 font-normal">명</span>
+            <span className="text-xs text-slate-500 font-normal">명</span>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>오늘 신규 가입</span>
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
               >
                 {stats.anonymousChatEnabled ? "허용 (ON)" : "차단 (OFF)"}
               </span>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 mt-0.5">
                 {stats.anonymousChatEnabled
                   ? "비회원 랜덤 닉네임 발신 가능"
                   : "로그인 회원만 채팅 가능"}
