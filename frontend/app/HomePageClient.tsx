@@ -471,7 +471,7 @@ export default function HomePageClient() {
             <div className="section-head">
               <div className="section-head-title">
                 <small className="section-eyebrow">리조트 같이 가기</small>
-                <h2>카풀 &amp; 동행</h2>
+                <h2>카풀과 동행</h2>
               </div>
               <div className="section-actions">
                 <Link href="/carpool/new" className="btn-outline-pill">

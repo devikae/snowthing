@@ -598,7 +598,7 @@ export default function NewCarpoolPage() {
       <div className="community-page"><TopNav active="carpool" />
       <main className="community-container carpool-compose-page content-compose-page">
         <PageHeading title={`카풀 모집글 ${editPublicId ? "수정" : "등록"}`}
-          breadcrumb={<Link href="/carpool">카풀·동행</Link>}
+          breadcrumb={<Link href="/carpool">카풀과 동행</Link>}
           description="일정과 출발 장소를 정하고 함께할 라이더를 모집해 보세요." />
         {!authChecked ? <div className="carpool-auth-gate">로그인 상태를 확인하는 중입니다.</div> : !authenticated ? (
           <section className="carpool-auth-gate">

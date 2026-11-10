@@ -126,7 +126,7 @@ export default function CarpoolPage() {
     <div className="community-page">
       <TopNav active="carpool" />
       <main className="community-container carpool-page">
-        <PageHeading title="카풀·동행" description="출발지와 리조트가 맞는 동행을 찾아보세요."
+        <PageHeading title="카풀과 동행" description="출발지와 리조트가 맞는 동행을 찾아보세요."
           actions={<Link href="/carpool/new">모집글 등록</Link>} />
         <Suspense fallback={<div className="carpool-empty">카풀 모집글을 불러오는 중입니다.</div>}>
           <CarpoolList />

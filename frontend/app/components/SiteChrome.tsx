@@ -210,7 +210,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                 중고장터
               </Link>
               <Link href="/carpool" className={active === "carpool" ? "nav-active" : ""} aria-current={active === "carpool" ? "page" : undefined}>
-                카풀·동행
+                카풀과 동행
               </Link>
               <Link href="/tools" className={active === "tools" ? "nav-active" : ""} aria-current={active === "tools" ? "page" : undefined}>라이더 도구</Link>
             </nav>
@@ -292,7 +292,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               ))}
               <Link href="/resort-cam" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>슬로프캠</Link>
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
-              <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀·동행</Link>
+              <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀과 동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
               {user && <Link href="/season-log" onClick={() => setMobileOpen(false)}>내 시즌 기록</Link>}
               {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}

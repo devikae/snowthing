@@ -339,7 +339,7 @@ export default function SeasonPassCalculator() {
           </p>
         </details>
         <div className="tools-related">
-          <Link href="/carpool">카풀·동행으로 교통비 비교하기 →</Link>
+          <Link href="/carpool">카풀과 동행에서 교통비 비교하기 →</Link>
           <Link href="/resort-reports">오늘의 설질 확인하기 →</Link>
         </div>
       </section>
