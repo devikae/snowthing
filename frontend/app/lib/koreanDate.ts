@@ -3,7 +3,7 @@ export const KOREAN_DATE_TIME: Intl.DateTimeFormatOptions = { dateStyle: "medium
 const DATE_ONLY: Intl.DateTimeFormatOptions = { year: "numeric", month: "numeric", day: "numeric" };
 
 // 서버 시각은 오프셋 없는 KST 문자열이라 브라우저 시간대와 상관없이 KST로 읽는다.
-function toDate(value: string | Date) {
+export function toDate(value: string | Date) {
   if (value instanceof Date) return value;
   return new Date(/([zZ]|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}+09:00`);
 }

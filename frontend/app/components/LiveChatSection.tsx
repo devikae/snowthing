@@ -8,6 +8,7 @@ import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
 import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
 import { csrfFetch } from "../lib/csrfFetch";
+import { formatKoreanDate, toDate } from "../lib/koreanDate";
 
 export interface MemberProfile {
   publicId: string;
@@ -53,9 +54,11 @@ function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMes
     .slice(-MAX_DOM_MESSAGES);
 }
 
+const CHAT_DATE_TIME: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+
 function formatRelativeTime(isoString: string): string {
   try {
-    const sent = new Date(isoString);
+    const sent = toDate(isoString);
     const now = new Date();
     const diffSec = Math.floor((now.getTime() - sent.getTime()) / 1000);
 
@@ -66,7 +69,8 @@ function formatRelativeTime(isoString: string): string {
     const diffHours = Math.floor(diffMin / 60);
     if (diffHours < 24) return `${diffHours}시간 전`;
 
-    return sent.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+    // 하루가 지난 메시지는 시각만으로는 언제인지 알 수 없어 KST 날짜를 붙인다. 예: 11월 10일 21:04
+    return formatKoreanDate(sent, CHAT_DATE_TIME);
   } catch {
     return "방금";
   }
