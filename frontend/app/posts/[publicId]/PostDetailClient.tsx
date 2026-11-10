@@ -22,6 +22,7 @@ import { markdownToPlainText } from "../../lib/markdownText";
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
 const POST_LOAD_TIMEOUT_MS = 10_000;
+const COMMENT_MAX_LENGTH = 1000;
 
 interface WriterInfo {
   publicId: string | null;
@@ -438,6 +439,10 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
           alert("비밀번호를 입력해주세요.");
           return;
         }
+        if (pwd.trim().length < 4 || pwd.trim().length > 20) {
+          alert("비밀번호는 4~20자로 입력해 주세요.");
+          return;
+        }
         anonymousPassword = pwd.trim();
       }
     } else {
@@ -741,18 +746,22 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                 rows={3}
                 placeholder={canWriteComment ? "댓글을 작성해보세요." : "로그인 후 댓글을 작성할 수 있습니다."}
                 disabled={!canWriteComment}
+                maxLength={COMMENT_MAX_LENGTH}
                 value={newCommentText}
                 onChange={(event) => setNewCommentText(event.target.value)}
                 className="post-comment-textarea"
                 aria-label="댓글 입력"
               />
+              {canWriteComment && <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{newCommentText.length}/{COMMENT_MAX_LENGTH}</div>}
               <div className="post-comment-compose-footer">
                 {isAnonymousPost && !currentUserPublicId && (
                   <label className="post-comment-password">
                     <span>비밀번호</span>
                     <input
                       type="password"
-                      placeholder="비밀번호를 입력하세요"
+                      placeholder="비밀번호 (4~20자)"
+                      minLength={4}
+                      maxLength={20}
                       value={commentAnonPassword}
                       onChange={(event) => setCommentAnonPassword(event.target.value)}
                     />
@@ -995,19 +1004,23 @@ function CommentRow({
           <div className="post-reply-compose">
             <textarea
               rows={2}
+              maxLength={COMMENT_MAX_LENGTH}
               value={replyText}
               onChange={(event) => setReplyText(event.target.value)}
               placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해보세요." : "로그인 후 답글을 작성할 수 있습니다."}
               className="post-comment-textarea"
               aria-label="답글 입력"
             />
+            <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{replyText.length}/{COMMENT_MAX_LENGTH}</div>
             <div className="post-comment-compose-footer">
               {isAnonymousPost && !currentUserPublicId && (
                 <label className="post-comment-password">
                   <span>비밀번호</span>
                     <input
                       type="password"
-                      placeholder="비밀번호를 입력하세요"
+                      placeholder="비밀번호 (4~20자)"
+                      minLength={4}
+                      maxLength={20}
                       value={replyAnonPassword}
                       onChange={(event) => setReplyAnonPassword(event.target.value)}
                     />
