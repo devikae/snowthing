@@ -162,8 +162,9 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
     }
 
     /**
-     * 관리자 게시글 목록. 삭제된 글도 봐야 해서 SQLRestriction이 붙지 않는 네이티브 조회를 쓴다. filter는 ALL, DELETED, BLINDED 중
-     * 하나다. 블라인드는 관리자가 status를 BLOCKED로 바꾼 글이다.
+     * 관리자 게시글 목록. 삭제된 글도 봐야 해서 SQLRestriction이 붙지 않는 네이티브 조회를 쓴다. filter는 ALL, DELETED, BLINDED,
+     * HIDDEN(시장 글 숨김), HELD(신고 임시조치) 중 하나다. 블라인드는 관리자가 status를 BLOCKED로 바꾼 글이다. category가 있으면 그 게시판
+     * 코드만 본다 (IKA-78, 시장과 카풀 관리 화면).
      */
     @Query(
             value =
@@ -178,16 +179,26 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostRepositor
                             + " LEFT JOIN member m ON p.member_id = m.member_id"
                             + " LEFT JOIN member del ON p.deleted_by_member_id = del.member_id"
                             + " JOIN post_category c ON p.category_id = c.category_id"
-                            + " WHERE (:filter = 'ALL'"
+                            + " WHERE (:category IS NULL OR c.code = :category)"
+                            + " AND (:filter = 'ALL'"
                             + " OR (:filter = 'DELETED' AND p.is_deleted = true)"
-                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED'))"
+                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED')"
+                            + " OR (:filter = 'HIDDEN' AND p.is_deleted = false AND p.status = 'HIDDEN')"
+                            + " OR (:filter = 'HELD' AND p.is_deleted = false"
+                            + " AND p.status = 'TEMPORARY_HOLD'))"
                             + " ORDER BY CASE WHEN :filter = 'DELETED' THEN p.deleted_at END DESC,"
                             + " p.post_id DESC",
             countQuery =
                     "SELECT COUNT(*) FROM post p"
-                            + " WHERE (:filter = 'ALL'"
+                            + " JOIN post_category c ON p.category_id = c.category_id"
+                            + " WHERE (:category IS NULL OR c.code = :category)"
+                            + " AND (:filter = 'ALL'"
                             + " OR (:filter = 'DELETED' AND p.is_deleted = true)"
-                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED'))",
+                            + " OR (:filter = 'BLINDED' AND p.is_deleted = false AND p.status = 'BLOCKED')"
+                            + " OR (:filter = 'HIDDEN' AND p.is_deleted = false AND p.status = 'HIDDEN')"
+                            + " OR (:filter = 'HELD' AND p.is_deleted = false"
+                            + " AND p.status = 'TEMPORARY_HOLD'))",
             nativeQuery = true)
-    Page<AdminPostProjection> findForAdmin(@Param("filter") String filter, Pageable pageable);
+    Page<AdminPostProjection> findForAdmin(
+            @Param("filter") String filter, @Param("category") String category, Pageable pageable);
 }

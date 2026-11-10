@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ikae.snowthing.domain.admin.dto.ChatBannedIpResponse;
 import com.ikae.snowthing.domain.admin.entity.ChatBannedIp;
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
 import com.ikae.snowthing.domain.admin.repository.ChatBannedIpRepository;
 import com.ikae.snowthing.domain.chat.service.ChatRecentHistoryBuffer;
 
@@ -32,11 +33,15 @@ class ChatIpBanServiceTest {
 
     @Mock private SimpMessagingTemplate messagingTemplate;
 
+    @Mock private AdminActionLogger actionLogger;
+
     private ChatIpBanService chatIpBanService;
 
     @BeforeEach
     void setUp() {
-        chatIpBanService = new ChatIpBanService(repository, recentHistoryBuffer, messagingTemplate);
+        chatIpBanService =
+                new ChatIpBanService(
+                        repository, recentHistoryBuffer, messagingTemplate, actionLogger);
     }
 
     @Test

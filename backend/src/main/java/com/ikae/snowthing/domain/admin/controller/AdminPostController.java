@@ -29,9 +29,10 @@ public class AdminPostController {
     @GetMapping
     public ResponseEntity<Page<AdminPostResponse>> getPosts(
             @RequestParam(name = "filter", defaultValue = "ALL") AdminPostService.Filter filter,
+            @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
-        return ResponseEntity.ok(adminPostService.getPosts(filter, page, size));
+        return ResponseEntity.ok(adminPostService.getPosts(filter, category, page, size));
     }
 
     @DeleteMapping("/{publicId}")

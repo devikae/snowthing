@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -31,6 +32,7 @@ import com.ikae.snowthing.global.exception.CustomException;
 class AdminMemberRoleWriterTest {
 
     @Mock private MemberRepository memberRepository;
+    @Mock private AdminActionLogger actionLogger;
     @InjectMocks private AdminMemberRoleWriter writer;
 
     @Test

@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.admin.dto.ChatBannedIpResponse;
 import com.ikae.snowthing.domain.admin.entity.ChatBannedIp;
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.admin.repository.ChatBannedIpRepository;
 import com.ikae.snowthing.domain.chat.service.ChatRecentHistoryBuffer;
 
@@ -26,6 +29,7 @@ public class ChatIpBanService {
     private final ChatBannedIpRepository repository;
     private final ChatRecentHistoryBuffer historyBuffer;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AdminActionLogger actionLogger;
 
     // In-memory cache: ip -> bannedUntil (null / MAX means permanent)
     private final ConcurrentHashMap<String, LocalDateTime> activeBans = new ConcurrentHashMap<>();
@@ -33,10 +37,12 @@ public class ChatIpBanService {
     public ChatIpBanService(
             ChatBannedIpRepository repository,
             ChatRecentHistoryBuffer historyBuffer,
-            @Lazy SimpMessagingTemplate messagingTemplate) {
+            @Lazy SimpMessagingTemplate messagingTemplate,
+            AdminActionLogger actionLogger) {
         this.repository = repository;
         this.historyBuffer = historyBuffer;
         this.messagingTemplate = messagingTemplate;
+        this.actionLogger = actionLogger;
     }
 
     @PostConstruct
@@ -81,6 +87,8 @@ public class ChatIpBanService {
                         .build();
 
         ChatBannedIp saved = repository.save(entity);
+        actionLogger.record(
+                AdminActionType.CHAT_IP_BAN, AdminTargetType.CHAT_BAN, saved.getId(), reason);
         activeBans.put(ip, until == null ? LocalDateTime.MAX : until);
         log.info("Chat IP banned: ip={}, until={}, by={}", ip, until, createdBy);
 
@@ -99,6 +107,11 @@ public class ChatIpBanService {
                 .ifPresent(
                         ban -> {
                             repository.delete(ban);
+                            actionLogger.record(
+                                    AdminActionType.CHAT_IP_UNBAN,
+                                    AdminTargetType.CHAT_BAN,
+                                    id,
+                                    null);
                             activeBans.remove(ban.getBannedIp());
                             log.info("Chat IP unbanned: ip={}", ban.getBannedIp());
                         });
