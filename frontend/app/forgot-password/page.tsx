@@ -75,6 +75,6 @@ export default function ForgotPasswordPage() {
     {resetToken && resetToken !== "completed" && <form className="grid gap-3" onSubmit={resetPassword}><input type="password" className="snow-input" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="새 비밀번호 (8~20자)" autoComplete="new-password" minLength={8} maxLength={20} /><input type="password" className="snow-input" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} placeholder="새 비밀번호 확인" autoComplete="new-password" minLength={8} maxLength={20} /><button type="submit" className="snow-btn-primary" disabled={loading}>비밀번호 변경</button></form>}
     {resetToken === "completed"
       ? <Link href="/login" replace className="snow-btn-primary text-center">로그인하러 가기</Link>
-      : <Link href="/login" className="text-center text-sm font-bold text-sky-700 underline">로그인으로 돌아가기</Link>}
+      : <Link href="/login" className="py-2 text-center text-sm font-bold text-sky-700 underline">로그인으로 돌아가기</Link>}
   </section></main><Footer /></div>;
 }

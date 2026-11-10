@@ -27,14 +27,14 @@ export function RegistrationConsentForm({ value, onChange }: { value: Registrati
       </label>
       <p className="-mt-3 text-xs text-[var(--snow-muted)]">필수 및 선택 항목에 모두 동의합니다. 선택 항목은 동의하지 않아도 가입할 수 있습니다.</p>
       <div className="grid gap-2">
-        <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
+        <label className="flex min-h-9 cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
           <input type="checkbox" checked={value.ageConfirmed} onChange={(event) => set("ageConfirmed", event.target.checked)} className="h-4 w-4 shrink-0 accent-sky-700" />
           <span>[필수] 만 14세 이상입니다.</span>
         </label>
         <p className="pl-7 text-xs leading-5 text-[var(--snow-muted)]">SnowThing은 만 14세 이상만 회원으로 가입할 수 있습니다. 본인의 나이를 확인해 주세요.</p>
       </div>
       <div className="grid gap-2">
-        <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
+        <label className="flex min-h-9 cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
           <input type="checkbox" checked={value.termsAgreed} onChange={(event) => set("termsAgreed", event.target.checked)} className="h-4 w-4 shrink-0 accent-sky-700" />
           <span>[필수] 이용약관에 동의합니다.</span>
         </label>
@@ -49,12 +49,12 @@ export function RegistrationConsentForm({ value, onChange }: { value: Registrati
         <Link href={registrationPolicyUrl} target="_blank" className="font-bold text-[var(--alpine-sky)] underline">개인정보처리방침 보기</Link>
         <p className="text-xs text-[var(--snow-muted)]">문서 버전: {registrationPolicy.version}</p>
       </div>
-      <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
+      <label className="flex min-h-9 cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
         <input type="checkbox" checked={value.privacyAgreed} onChange={(event) => set("privacyAgreed", event.target.checked)} className="h-4 w-4 shrink-0 accent-sky-700" />
         <span>[필수] 개인정보 수집 및 이용에 동의합니다.</span>
       </label>
       <div className="grid gap-2">
-        <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
+        <label className="flex min-h-9 cursor-pointer items-center gap-3 text-sm font-semibold text-[var(--snow-ink)]">
           <input type="checkbox" checked={value.marketingEmailAgreed} onChange={(event) => set("marketingEmailAgreed", event.target.checked)} className="h-4 w-4 shrink-0 accent-sky-700" />
           <span>[선택] 광고성 이메일 수신 및 이를 위한 개인정보 이용에 동의합니다.</span>
         </label>

@@ -27,7 +27,8 @@
   line-height: 20px;
   text-wrap: pretty;
 }
-.breadcrumb { margin-bottom: 12px; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
+.breadcrumb { margin-bottom: 6px; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
+.breadcrumb a { display: inline-flex; min-height: 32px; align-items: center; }
 .breadcrumb a:hover { color: var(--snow-ink); }
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
 .actions > a {

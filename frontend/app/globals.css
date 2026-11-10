@@ -1794,6 +1794,10 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
   gap: 10px;
 }
 
+.section-actions > a.board-tabs-more {
+  min-height: 36px;
+}
+
 .board-tabs-more {
   display: inline-flex;
   align-items: center;

@@ -50,8 +50,8 @@
 .tool-share label { margin-top: 12px; }
 .tool-empty { display: grid; min-height: 240px; align-content: center; text-align: center; }
 .tool-explanation { max-width: 800px; }
-.tool-explanation details { border-bottom: 1px solid var(--snow-border); padding-block: 16px; }
-.tool-explanation summary { font-size: 14px; font-weight: 500; cursor: pointer; }
+.tool-explanation details { border-bottom: 1px solid var(--snow-border); padding-block: 8px; }
+.tool-explanation summary { padding-block: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
 .rider-tools small { color: var(--snow-muted); font-size: 12px; font-weight: 400; line-height: 1.65; }
 .tool-model-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-block: 24px; }
 .tool-question-draft { margin-top: 24px; }
