@@ -29,23 +29,6 @@
 .ct-choices { display: grid; gap: 10px; }
 .character-test .ct-choices button { min-height: 64px; padding: 14px 16px; font-size: 15px; font-weight: 500; text-align: left; overflow-wrap: anywhere; }
 
-.ct-result { justify-items: stretch; }
-.ct-sprite-wrap { position: relative; justify-self: center; width: 192px; height: 192px; }
-.ct-sprite { position: relative; display: block; width: 192px; height: 192px; image-rendering: pixelated; }
-.ct-sprite-gear { position: absolute; top: 0; left: -38px; width: 77px; height: 192px; image-rendering: pixelated; }
-.ct-result h2 { font-size: 24px; text-align: center; }
-.ct-description { display: grid; gap: 6px; border-radius: 10px; background: var(--snow-surface-low); padding: 14px 16px; text-align: center; font-size: 14px; line-height: 1.7; word-break: keep-all; text-wrap: balance; }
-.ct-description strong { color: var(--alpine-sky); font-size: 13px; font-weight: 800; }
-.ct-stats { display: grid; gap: 8px; margin: 0; }
-.ct-stats > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
-.ct-stats dt { font-weight: 600; }
-.ct-stats dd { display: inline-flex; align-items: center; gap: 4px; margin: 0; }
-.ct-stats dd span { width: 22px; height: 12px; border-radius: 2px; background: var(--snow-surface-mid); }
-.ct-stats dd span.is-on { background: var(--alpine-sky); }
-.ct-stats dd b { min-width: 20px; color: var(--snow-muted); font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-.ct-best-match { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; border-top: 1px solid var(--snow-border); padding-top: 12px; font-size: 14px; }
-.ct-best-match span { color: var(--snow-muted); }
-.ct-best-match strong { font-weight: 700; }
 .ct-evidence { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .ct-evidence li { display: grid; gap: 2px; font-size: 13px; line-height: 1.55; }
 .ct-evidence span { color: var(--snow-muted); }
@@ -53,7 +36,9 @@
 
 .ct-card { justify-items: center; }
 .ct-card h2 { justify-self: start; }
-.ct-card-preview { display: block; width: min(270px, 100%); height: auto; aspect-ratio: 9 / 16; border-radius: 12px; border: 1px solid var(--snow-border); }
+.ct-card-preview { display: block; width: min(320px, 100%); height: auto; aspect-ratio: 9 / 16; border-radius: 12px; border: 1px solid var(--snow-border); }
+.ct-card-evidence { display: grid; gap: 10px; width: 100%; border-top: 1px solid var(--snow-border); padding-top: 12px; }
+.ct-card-evidence h3 { margin: 0; font-size: 16px; }
 .ct-card-link { display: grid; gap: 8px; width: 100%; border-top: 1px solid var(--snow-border); padding-top: 12px; }
 .ct-card-loading { background: var(--snow-surface-mid); }
 
