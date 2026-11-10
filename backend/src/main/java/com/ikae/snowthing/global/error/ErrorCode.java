@@ -29,6 +29,19 @@ public enum ErrorCode {
     LOGIN_ATTEMPT_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 최대 15분 뒤 다시 시도해 주세요."),
     OAUTH_SIGNUP_EXPIRED(HttpStatus.GONE, "AUTH_014", "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요."),
+    SOCIAL_ACCOUNT_IN_USE(
+            HttpStatus.CONFLICT,
+            "AUTH_015",
+            "이미 다른 눈팅 계정에서 쓰고 있는 소셜 계정입니다. 이 계정에 연결하려면 그 계정을 먼저 탈퇴해 주세요."),
+    SOCIAL_PROVIDER_ALREADY_LINKED(
+            HttpStatus.CONFLICT, "AUTH_016", "이미 연결된 로그인 방법입니다. 다른 계정으로 바꾸려면 먼저 연결을 해제해 주세요."),
+    SOCIAL_ACCOUNT_NOT_LINKED(HttpStatus.NOT_FOUND, "AUTH_017", "연결되지 않은 소셜 계정입니다."),
+    SOCIAL_LAST_LOGIN_METHOD(
+            HttpStatus.CONFLICT, "AUTH_018", "마지막 남은 로그인 방법은 해제할 수 없습니다. 다른 로그인 방법을 먼저 연결해 주세요."),
+    SOCIAL_LINK_SESSION_MISMATCH(
+            HttpStatus.UNAUTHORIZED,
+            "AUTH_019",
+            "연결을 시작한 계정과 지금 로그인한 계정이 다릅니다. 다시 로그인한 뒤 시도해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     MEMBER_SELF_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_010", "자신의 계정은 정지할 수 없습니다."),
     MEMBER_ADMIN_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_011", "관리자 계정은 정지할 수 없습니다."),

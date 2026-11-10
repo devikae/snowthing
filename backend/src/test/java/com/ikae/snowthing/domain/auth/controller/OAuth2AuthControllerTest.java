@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,8 +24,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
@@ -39,6 +43,7 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
@@ -80,6 +85,164 @@ class OAuth2AuthControllerTest {
                         authorizationIpRateLimiter,
                         clientIpResolver,
                         fixedClock);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private static CustomUserDetails member(long id, String publicId) {
+        Member member =
+                Member.builder()
+                        .publicId(publicId)
+                        .email(publicId + "@snowthing.org")
+                        .password("encoded")
+                        .nickname(publicId)
+                        .role(Role.ROLE_USER)
+                        .status(MemberStatus.ACTIVE)
+                        .build();
+        ReflectionTestUtils.setField(member, "id", id);
+        return new CustomUserDetails(member);
+    }
+
+    private static void loginAs(CustomUserDetails user) {
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        SecurityContextHolder.setContext(context);
+    }
+
+    private static OAuth2AuthController.OAuth2AuthorizationSession pendingAuthorization(
+            MockHttpSession session) {
+        return ((OAuth2AuthController.OAuth2AuthorizationSessions)
+                        session.getAttribute(OAuth2AuthController.SESSION_STATE_ATTRIBUTE))
+                .pending()
+                .get(0);
+    }
+
+    private MockHttpSession startLink(CustomUserDetails user) {
+        given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.KAKAO), anyString()))
+                .willReturn(URI.create("https://kauth.kakao.com/oauth/authorize"));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        var response = controller.startLink("kakao", user, request);
+        assertThat(response.getBody().authorizationUrl())
+                .isEqualTo("https://kauth.kakao.com/oauth/authorize");
+        return (MockHttpSession) request.getSession(false);
+    }
+
+    private ResponseEntity<Void> linkCallback(MockHttpSession session, String state) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        return controller.callback(
+                "kakao", "code", state, null, request, new MockHttpServletResponse());
+    }
+
+    @Test
+    @DisplayName("로그인한 회원이 연결을 마치면 지금 회원에게 붙이고 세션은 새로 만들지 않는다")
+    void link_Success_AttachesToSessionMemberAndRedirectsToProfile() {
+        CustomUserDetails user = member(7L, "member-7");
+        MockHttpSession session = startLink(user);
+        OAuth2AuthController.OAuth2AuthorizationSession saved = pendingAuthorization(session);
+        assertThat(saved.linkMemberId()).isEqualTo(7L);
+        String state = saved.state();
+        OAuthUserProfile profile =
+                new OAuthUserProfile(SocialProvider.KAKAO, "kakao-1", "k@kakao.com", true, "보더");
+        given(oauth2ExternalClient.fetchUserProfile(SocialProvider.KAKAO, "code", state))
+                .willReturn(profile);
+        loginAs(user);
+
+        ResponseEntity<Void> response = linkCallback(session, state);
+
+        assertThat(response.getHeaders().getLocation())
+                .isEqualTo(URI.create("https://snowthing.org/profile?socialLinked=KAKAO"));
+        verify(socialAuthService).linkSocialAccount(7L, profile);
+        verify(socialAuthService, never()).findMemberForLogin(any());
+        verify(securityContextRepository, never()).saveContext(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("로그인하지 않은 사용자는 연결을 시작할 수 없다")
+    void startLink_Unauthenticated_Rejected() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> controller.startLink("kakao", null, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+        assertThat(request.getSession(false)).isNull();
+        verify(oauth2ExternalClient, never()).buildAuthorizationUri(any(), anyString());
+    }
+
+    @Test
+    @DisplayName("이미 같은 제공자가 연결돼 있으면 소셜 로그인 화면으로 보내지 않는다")
+    void startLink_ProviderAlreadyLinked_Rejected() {
+        CustomUserDetails user = member(7L, "member-7");
+        willThrow(new CustomException(ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED))
+                .given(socialAuthService)
+                .requireProviderNotLinked(7L, SocialProvider.KAKAO);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> controller.startLink("kakao", user, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED);
+        assertThat(request.getSession(false)).isNull();
+    }
+
+    @Test
+    @DisplayName("연결을 시작한 뒤 세션의 회원이 바뀌면 토큰을 교환하지 않고 거부한다")
+    void linkCallback_SessionMemberChanged_Rejected() {
+        MockHttpSession session = startLink(member(7L, "member-7"));
+        String state = pendingAuthorization(session).state();
+        loginAs(member(8L, "member-8"));
+
+        ResponseEntity<Void> response = linkCallback(session, state);
+
+        assertThat(response.getHeaders().getLocation())
+                .isEqualTo(
+                        URI.create(
+                                "https://snowthing.org/profile?socialLinkError=SOCIAL_LINK_SESSION_MISMATCH"));
+        verify(oauth2ExternalClient, never()).fetchUserProfile(any(), any(), any());
+        verify(socialAuthService, never()).linkSocialAccount(any(), any());
+    }
+
+    @Test
+    @DisplayName("연결 도중 로그아웃해 인증 정보가 없으면 거부한다")
+    void linkCallback_LoggedOut_Rejected() {
+        MockHttpSession session = startLink(member(7L, "member-7"));
+        String state = pendingAuthorization(session).state();
+
+        ResponseEntity<Void> response = linkCallback(session, state);
+
+        assertThat(response.getHeaders().getLocation().toString())
+                .endsWith("socialLinkError=SOCIAL_LINK_SESSION_MISMATCH");
+        verify(socialAuthService, never()).linkSocialAccount(any(), any());
+    }
+
+    @Test
+    @DisplayName("다른 눈팅 계정이 쓰는 소셜 계정이면 내 정보 화면에 이유를 전한다")
+    void linkCallback_AccountInUse_RedirectsWithError() {
+        CustomUserDetails user = member(7L, "member-7");
+        MockHttpSession session = startLink(user);
+        String state = pendingAuthorization(session).state();
+        OAuthUserProfile profile =
+                new OAuthUserProfile(SocialProvider.KAKAO, "kakao-1", "k@kakao.com", true, "보더");
+        given(oauth2ExternalClient.fetchUserProfile(SocialProvider.KAKAO, "code", state))
+                .willReturn(profile);
+        willThrow(new CustomException(ErrorCode.SOCIAL_ACCOUNT_IN_USE))
+                .given(socialAuthService)
+                .linkSocialAccount(7L, profile);
+        loginAs(user);
+
+        ResponseEntity<Void> response = linkCallback(session, state);
+
+        assertThat(response.getHeaders().getLocation())
+                .isEqualTo(
+                        URI.create(
+                                "https://snowthing.org/profile?socialLinkError=SOCIAL_ACCOUNT_IN_USE"));
     }
 
     private MockHttpSession startPendingSignUp() {

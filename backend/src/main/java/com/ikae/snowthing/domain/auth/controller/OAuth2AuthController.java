@@ -22,6 +22,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -45,6 +47,7 @@ import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
 import com.ikae.snowthing.global.web.ClientIpResolver;
@@ -58,6 +61,7 @@ public class OAuth2AuthController {
 
     static final String SESSION_STATE_ATTRIBUTE = "SNOWTHING_OAUTH2_AUTH_STATE";
     static final String SESSION_PENDING_SIGNUP_ATTRIBUTE = "SNOWTHING_OAUTH2_PENDING_SIGNUP";
+    static final String PROFILE_PATH = "/profile";
     private static final Duration STATE_TTL = Duration.ofMinutes(10);
     private static final int DEFAULT_SESSION_TIMEOUT_SECONDS =
             (int) Duration.ofHours(1).toSeconds();
@@ -95,12 +99,41 @@ public class OAuth2AuthController {
                             socialProvider,
                             state,
                             safeReturnUrl,
-                            Instant.now(clock).plus(STATE_TTL)));
+                            Instant.now(clock).plus(STATE_TTL),
+                            null));
 
             return ResponseEntity.status(HttpStatus.FOUND).location(authorizationUri).build();
         } catch (CustomException exception) {
             return redirectToLoginError(exception.getErrorCode());
         }
+    }
+
+    /**
+     * 로그인한 회원이 다른 소셜 로그인을 연결할 때 쓴다. CSRF 토큰을 받는 POST로 시작하고, 이동할 주소만 돌려준다.
+     *
+     * <p>연결할 회원 id는 클라이언트 값이 아니라 지금 세션의 인증 정보에서 꺼내 state와 함께 서버 세션에 둔다.
+     */
+    @PostMapping("/link/{provider}")
+    public ResponseEntity<SocialLinkStartResponse> startLink(
+            @PathVariable String provider,
+            @AuthenticationPrincipal CustomUserDetails user,
+            HttpServletRequest httpRequest) {
+        Long memberId = requireSessionMemberId(user);
+        SocialProvider socialProvider = SocialProvider.from(provider);
+        authorizationIpRateLimiter.check(clientIpResolver.resolve(httpRequest));
+        socialAuthService.requireProviderNotLinked(memberId, socialProvider);
+        String state = generateStateToken();
+        URI authorizationUri = oauth2ExternalClient.buildAuthorizationUri(socialProvider, state);
+
+        addPendingAuthorization(
+                httpRequest.getSession(true),
+                new OAuth2AuthorizationSession(
+                        socialProvider,
+                        state,
+                        PROFILE_PATH,
+                        Instant.now(clock).plus(STATE_TTL),
+                        memberId));
+        return ResponseEntity.ok(new SocialLinkStartResponse(authorizationUri.toString()));
     }
 
     @GetMapping("/callback/{provider}")
@@ -115,6 +148,9 @@ public class OAuth2AuthController {
             SocialProvider socialProvider = SocialProvider.from(provider);
             OAuth2AuthorizationSession savedState =
                     consumeAndValidateState(httpRequest, socialProvider, state);
+            if (savedState.linkMemberId() != null) {
+                return completeLink(socialProvider, savedState, code, state, error);
+            }
 
             if (error != null && !error.isBlank()) {
                 return redirectToLoginError(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
@@ -140,6 +176,57 @@ public class OAuth2AuthController {
         } catch (CustomException exception) {
             return redirectToLoginError(exception.getErrorCode());
         }
+    }
+
+    private ResponseEntity<Void> completeLink(
+            SocialProvider provider,
+            OAuth2AuthorizationSession savedState,
+            String code,
+            String state,
+            String error) {
+        try {
+            if (error != null && !error.isBlank()) {
+                throw new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
+            }
+            // 시작한 뒤 로그아웃하고 다른 계정으로 로그인했다면 세션 속성은 남아 있어도 회원이 바뀐다.
+            Long sessionMemberId = currentSessionMemberId();
+            if (!savedState.linkMemberId().equals(sessionMemberId)) {
+                throw new CustomException(ErrorCode.SOCIAL_LINK_SESSION_MISMATCH);
+            }
+            OAuthUserProfile profile = oauth2ExternalClient.fetchUserProfile(provider, code, state);
+            socialAuthService.linkSocialAccount(sessionMemberId, profile);
+            return redirectToProfile("socialLinked", provider.name());
+        } catch (CustomException exception) {
+            return redirectToProfile("socialLinkError", exception.getErrorCode().name());
+        }
+    }
+
+    private Long requireSessionMemberId(CustomUserDetails user) {
+        if (user == null || user instanceof BotDelegatedUserDetails || user.getMemberId() == null) {
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        return user.getMemberId();
+    }
+
+    private Long currentSessionMemberId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null
+                && authentication.getPrincipal() instanceof CustomUserDetails user
+                && !(user instanceof BotDelegatedUserDetails)) {
+            return user.getMemberId();
+        }
+        return null;
+    }
+
+    private ResponseEntity<Void> redirectToProfile(String parameter, String value) {
+        URI uri =
+                UriComponentsBuilder.fromUriString(
+                                oauth2Properties.effectiveFrontendBaseUrl() + PROFILE_PATH)
+                        .queryParam(parameter, value)
+                        .encode()
+                        .build()
+                        .toUri();
+        return ResponseEntity.status(HttpStatus.FOUND).location(uri).build();
     }
 
     @GetMapping("/signup/pending")
@@ -317,6 +404,8 @@ public class OAuth2AuthController {
 
     public record SocialSignUpResponse(String returnUrl) {}
 
+    public record SocialLinkStartResponse(String authorizationUrl) {}
+
     /** 동의를 마칠 때까지 소셜 프로필을 서버 세션에만 둔다. 클라이언트가 값을 고칠 수 없다. */
     record PendingSocialSignUp(
             SocialProvider provider,
@@ -346,8 +435,13 @@ public class OAuth2AuthController {
         }
     }
 
+    /** linkMemberId가 있으면 로그인이 아니라 그 회원에게 소셜 계정을 연결하는 요청이다. */
     record OAuth2AuthorizationSession(
-            SocialProvider provider, String state, String returnUrl, Instant expiresAt)
+            SocialProvider provider,
+            String state,
+            String returnUrl,
+            Instant expiresAt,
+            Long linkMemberId)
             implements Serializable {}
 
     record OAuth2AuthorizationSessions(List<OAuth2AuthorizationSession> pending)

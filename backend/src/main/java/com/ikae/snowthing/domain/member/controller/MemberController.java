@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.auth.dto.MemberLoginResponse;
 import com.ikae.snowthing.domain.auth.service.AuthService;
+import com.ikae.snowthing.domain.auth.service.SocialAuthService;
 import com.ikae.snowthing.domain.chat.service.ChatRecentHistoryBuffer;
 import com.ikae.snowthing.domain.email.dto.EmailAvailabilityResponse;
 import com.ikae.snowthing.domain.email.dto.EmailRequest;
@@ -26,6 +27,8 @@ import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpResponse;
 import com.ikae.snowthing.domain.member.dto.MemberWithdrawalRequest;
 import com.ikae.snowthing.domain.member.dto.NicknameCheckRequest;
+import com.ikae.snowthing.domain.member.dto.SocialAccountsResponse;
+import com.ikae.snowthing.domain.member.entity.SocialProvider;
 import com.ikae.snowthing.domain.member.service.MarketingConsentService;
 import com.ikae.snowthing.domain.member.service.MemberService;
 import com.ikae.snowthing.domain.member.service.MemberWithdrawalService;
@@ -53,6 +56,7 @@ public class MemberController {
     private final MarketingConsentService marketingConsentService;
     private final MemberWithdrawalService memberWithdrawalService;
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
+    private final SocialAuthService socialAuthService;
 
     @GetMapping("/me/settings")
     public ResponseEntity<MemberSettingsResponse> getSettings(
@@ -117,6 +121,20 @@ public class MemberController {
         // 트랜잭션이 커밋된 뒤에 끊는다. 실패한 탈퇴가 세션을 끊지 않게 한다.
         memberSessionRegistry.invalidateAll(publicId);
         chatRecentHistoryBuffer.removeSender(publicId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me/social-accounts")
+    public ResponseEntity<SocialAccountsResponse> getSocialAccounts(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(socialAuthService.getSocialAccounts(user.getMemberId()));
+    }
+
+    /** 연결은 OAuth 흐름을 거쳐야 해서 /api/v1/auth/oauth2/link/{provider}에서 시작한다. */
+    @DeleteMapping("/me/social-accounts/{provider}")
+    public ResponseEntity<Void> unlinkSocialAccount(
+            @AuthenticationPrincipal CustomUserDetails user, @PathVariable String provider) {
+        socialAuthService.unlinkSocialAccount(user.getMemberId(), SocialProvider.from(provider));
         return ResponseEntity.noContent().build();
     }
 

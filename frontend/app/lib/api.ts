@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
     logout: `${API_V1_URL}/auth/logout`,
     oauth2Authorize: (provider: SocialLoginProvider, returnUrl?: string | null) =>
       `${API_V1_URL}/auth/oauth2/authorize/${provider}${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`,
+    oauth2Link: (provider: SocialLoginProvider) => `${API_V1_URL}/auth/oauth2/link/${provider}`,
     oauth2SignUpPending: `${API_V1_URL}/auth/oauth2/signup/pending`,
     oauth2SignUp: `${API_V1_URL}/auth/oauth2/signup`,
     requestSignUpVerification: `${API_V1_URL}/auth/email-verifications/sign-up`,
@@ -25,6 +26,8 @@ export const API_ENDPOINTS = {
     changePassword: `${API_V1_URL}/members/me/password`,
     withdrawal: `${API_V1_URL}/members/me/withdrawal`,
     resetProfileImage: `${API_V1_URL}/members/me/profile-image`,
+    socialAccounts: `${API_V1_URL}/members/me/social-accounts`,
+    socialAccount: (provider: SocialLoginProvider) => `${API_V1_URL}/members/me/social-accounts/${provider}`,
     scraps: (cursor?: string | null, size = 20) =>
       `${API_V1_URL}/members/me/scraps?size=${size}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     me: `${API_V1_URL}/members/me`,
