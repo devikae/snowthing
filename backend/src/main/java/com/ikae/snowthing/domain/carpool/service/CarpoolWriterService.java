@@ -204,7 +204,11 @@ public class CarpoolWriterService {
         return clientIp == null || clientIp.isBlank() ? DEFAULT_WRITER_IP : clientIp;
     }
 
-    /** 저장할 비용 값. 직접 입력(MANUAL)은 계산하지 않으므로 1인 금액 외에는 모두 null이다. */
+    /**
+     * 저장할 비용 값. 직접 입력(MANUAL)은 계산하지 않으므로 1인 금액 외에는 모두 null이다.
+     *
+     * <p>출발 좌표는 계산 값이 아니라 지도에서 고른 출발 장소라 직접 입력에서도 둘 다 있으면 저장한다.
+     */
     private record CostSnapshot(
             BigDecimal departureLatitude,
             BigDecimal departureLongitude,
@@ -224,9 +228,11 @@ public class CarpoolWriterService {
         static CostSnapshot of(
                 CarpoolCreateRequest request, CarpoolAutoPreviewResponse calculation) {
             if (request.costMode() == CarpoolCostMode.MANUAL) {
+                boolean hasCoordinate =
+                        request.departureLatitude() != null && request.departureLongitude() != null;
                 return new CostSnapshot(
-                        null,
-                        null,
+                        hasCoordinate ? request.departureLatitude() : null,
+                        hasCoordinate ? request.departureLongitude() : null,
                         null,
                         null,
                         null,
