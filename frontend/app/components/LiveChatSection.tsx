@@ -322,7 +322,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       {/* 상단 헤더 바 */}
       <div className="live-chat-head">
         <div className="section-head-title">
-          <small className="section-eyebrow">LIVE STREAM</small>
+          <small className="section-eyebrow">실시간 채팅</small>
           <h2>라이브톡</h2>
         </div>
       </div>

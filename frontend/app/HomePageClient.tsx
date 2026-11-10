@@ -299,7 +299,7 @@ export default function HomePageClient() {
                 </div>
                 <div className="board-tabs-actions">
                   <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
-                    더보기 ↗
+                    더보기 →
                   </Link>
                   <Link href={writeHref} className="board-tabs-write">
                     <span className="material-symbols-outlined" aria-hidden="true">edit</span>
@@ -379,7 +379,7 @@ export default function HomePageClient() {
         <section className="snow-report-widget home-tier-2">
           <div className="section-head">
             <div className="section-head-title">
-              <small className="section-eyebrow">FIELD CONDITION DISPATCH</small>
+              <small className="section-eyebrow">라이더 현장 제보</small>
               <div className="section-title-inline">
                 <h2>오늘의 설질</h2>
                 <time className="snow-date-badge">{koreanToday}</time>
@@ -387,7 +387,7 @@ export default function HomePageClient() {
             </div>
             <div className="section-actions">
               <Link href="/resort-reports" className="board-tabs-more">
-                전체 제보 보기 ↗
+                전체 제보 보기 →
               </Link>
             </div>
           </div>
@@ -470,7 +470,7 @@ export default function HomePageClient() {
           <section className="carpool-widget tier-3-left" id="carpool">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">RIDE SHARE</small>
+                <small className="section-eyebrow">리조트 같이 가기</small>
                 <h2>카풀 &amp; 동행</h2>
               </div>
               <div className="section-actions">
@@ -478,7 +478,7 @@ export default function HomePageClient() {
                   + 모집 등록
                 </Link>
                 <Link href="/carpool" className="board-tabs-more">
-                  전체보기 ↗
+                  전체 보기 →
                 </Link>
               </div>
             </div>
@@ -518,12 +518,12 @@ export default function HomePageClient() {
           <section className="market-widget tier-3-right" id="market">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">VERIFIED GEAR ARCHIVE</small>
+                <small className="section-eyebrow">중고 장비 거래</small>
                 <h2>중고장터</h2>
               </div>
               <div className="section-actions">
                 <Link href="/market" className="board-tabs-more">
-                  장터 바로가기 ↗
+                  장터 바로가기 →
                 </Link>
               </div>
             </div>
@@ -543,7 +543,7 @@ export default function HomePageClient() {
                         )}
                         <div className="lookbook-glass">
                           <span>매물 보기</span>
-                          <i>↗</i>
+                          <i aria-hidden="true">→</i>
                         </div>
                       </div>
                     </Link>

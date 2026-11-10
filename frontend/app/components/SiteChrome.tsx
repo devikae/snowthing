@@ -311,7 +311,7 @@ export function Footer() {
         <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>윈터스포츠 커뮤니티</span></div>
         <nav aria-label="사이트 안내"><Link href="/terms">이용약관</Link><Link href="/privacy">개인정보처리방침</Link><Link href="/posts?category=NOTICE">공지사항</Link><Link href="/posts?category=INQUIRY">1:1 문의</Link><a href="mailto:manager@snowthing.org">manager@snowthing.org</a></nav>
       </div>
-      <div className="community-container community-copyright">Copyright © SNOWTHING Alpine Community. All rights reserved.</div>
+      <div className="community-container community-copyright">Copyright © 눈팅 SnowThing. All rights reserved.</div>
     </footer>
   );
 }
