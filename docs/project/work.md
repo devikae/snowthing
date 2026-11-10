@@ -1,3 +1,19 @@
+## 카카오 로그인 추가 (IKA-72, 2026-11-10)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지, 운영 마이그레이션 048, 운영 설정(Client Secret)은 사용자 확인 후.
+- 배경: 2026-10-26에 카카오 로그인을 이메일 동의 권한 제약과 KOE205 위험 때문에 뺐다. 이번에는 카카오 앱을 비즈 앱으로 전환해 이메일 동의항목을 받는 전제로 다시 넣는다.
+- 완료
+  - 백엔드: `SocialProvider.KAKAO`, 카카오 인가(`kauth.kakao.com/oauth/authorize`), 토큰, 회원정보(`kapi.kakao.com/v2/user/me`) 조회. 설정 `snowthing.oauth2.kakao`, client-id 기본값은 지도에 쓰는 같은 앱의 REST API 키.
+  - 마이그레이션 `048_migration_social_login_kakao.sql`: provider CHECK 제약에 KAKAO 추가. `verify-production-migration-007-015.sh`의 "KAKAO 없음" 확인을 "KAKAO 포함"으로 바꿨다.
+  - 프론트: 로그인 화면 맨 위에 카카오 버튼(카카오 디자인 가이드의 #FEE500 컨테이너, 검은 심볼, "카카오 로그인"), 소셜 가입 화면 이름, 내 정보 비밀번호 안내 문구, 인앱 브라우저 안내 문구.
+  - 처리방침 `2026-11-10-v2`: Kakao 위탁 문단에 카카오 로그인 본인 확인 목적을 더했다.
+- 결정
+  - 카카오 이메일은 `is_email_valid`와 `is_email_verified`가 모두 참일 때만 쓴다. 아니면 이메일 없음으로 보고 OAUTH_EMAIL_REQUIRED로 가입을 막는다.
+  - 네이버와 같이 이메일을 회원 이메일의 근거로 쓰지 않는다(emailAuthoritative=false). 내부 이메일로 회원을 만들어 다른 계정 이메일과 충돌하지 않는다.
+  - 기존 카카오 거부 테스트는 지원하지 않는 공급자(apple) 거부 테스트로 바꿨다.
+- 남은 항목: 카카오 콘솔 설정(로그인 활성화, Redirect URI, Client Secret, 닉네임과 이메일 동의항목, 비즈 앱 전환), prod.env `SNOWTHING_KAKAO_LOGIN_CLIENT_SECRET`.
+- 검증: 아래 PR 본문과 같다. 로컬에 MySQL이 없어 DB가 필요한 통합 테스트는 CI에서 확인한다.
+
 ## 개인정보처리방침과 이용약관 정식 버전 (IKA-71, 2026-11-10)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.

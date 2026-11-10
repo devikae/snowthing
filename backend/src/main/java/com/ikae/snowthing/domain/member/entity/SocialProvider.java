@@ -7,7 +7,8 @@ import com.ikae.snowthing.global.exception.CustomException;
 
 public enum SocialProvider {
     GOOGLE,
-    NAVER;
+    NAVER,
+    KAKAO;
 
     public static SocialProvider from(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {

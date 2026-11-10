@@ -65,7 +65,7 @@ class OAuth2AuthControllerTest {
         given(clientIpResolver.resolve(any())).willReturn("203.0.113.10");
 
         OAuth2Properties oauth2Properties =
-                new OAuth2Properties("https://snowthing.org", 3000, 5000, null, null);
+                new OAuth2Properties("https://snowthing.org", 3000, 5000, null, null, null);
         Clock fixedClock =
                 Clock.fixed(Instant.parse("2026-10-19T05:00:00Z"), ZoneId.of("Asia/Seoul"));
 
@@ -474,11 +474,11 @@ class OAuth2AuthControllerTest {
     }
 
     @Test
-    @DisplayName("지원 범위에서 제거된 카카오 로그인 요청은 OAUTH_PROVIDER_UNSUPPORTED로 거부된다")
-    void authorize_Kakao_RedirectsToUnsupportedProviderError() {
+    @DisplayName("지원하지 않는 공급자 로그인 요청은 OAUTH_PROVIDER_UNSUPPORTED로 거부된다")
+    void authorize_UnknownProvider_RedirectsToUnsupportedProviderError() {
         MockHttpServletRequest request = new MockHttpServletRequest();
 
-        ResponseEntity<Void> response = controller.authorize("kakao", null, request);
+        ResponseEntity<Void> response = controller.authorize("apple", null, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FOUND);
         assertThat(response.getHeaders().getLocation())

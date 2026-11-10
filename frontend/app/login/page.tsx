@@ -156,6 +156,12 @@ export default function LoginPage() {
           </form>
           <div className={styles.divider}>간편 로그인</div>
           <div className={styles.social}>
+            <button type="button" className={`${styles.button} ${styles.kakao}`} onClick={() => handleSocialLogin("kakao")} disabled={loading}>
+              <svg className={styles.providerIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.84 5.32 4.62 6.75l-.94 3.44c-.08.3.26.54.52.37l4.1-2.72c.55.07 1.12.11 1.7.11 5.52 0 10-3.58 10-8S17.52 3 12 3z" />
+              </svg>
+              카카오 로그인
+            </button>
             <button type="button" className={styles.button} onClick={() => handleSocialLogin("naver")} disabled={loading}>
               <svg className={`${styles.providerIcon} ${styles.naver}`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z" />
@@ -177,7 +183,7 @@ export default function LoginPage() {
               <p>
                 {inAppBrowser === "kakaotalk" || inAppBrowser === "line"
                   ? "앱 안 브라우저에서는 구글 로그인이 막혀 있어요. Google 버튼을 누르면 외부 브라우저에서 이 화면이 열려요."
-                  : "앱 안 브라우저에서는 구글 로그인이 막혀 있어요. 화면 위 메뉴에서 '다른 브라우저로 열기'를 누르거나, 주소를 복사해 크롬이나 사파리에서 열어 주세요. 네이버와 이메일 로그인은 여기서 바로 할 수 있어요."}
+                  : "앱 안 브라우저에서는 구글 로그인이 막혀 있어요. 화면 위 메뉴에서 '다른 브라우저로 열기'를 누르거나, 주소를 복사해 크롬이나 사파리에서 열어 주세요. 카카오, 네이버, 이메일 로그인은 여기서 바로 할 수 있어요."}
               </p>
               {inAppBrowser === "other" && (
                 <button type="button" className={styles.button} onClick={() => void copyPageUrl()}>

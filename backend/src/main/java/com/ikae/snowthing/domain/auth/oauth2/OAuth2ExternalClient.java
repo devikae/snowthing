@@ -35,6 +35,10 @@ public class OAuth2ExternalClient {
     private static final String NAVER_TOKEN_URL = "https://nid.naver.com/oauth2.0/token";
     private static final String NAVER_USER_INFO_URL = "https://openapi.naver.com/v1/nid/me";
 
+    private static final String KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize";
+    private static final String KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token";
+    private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
+
     private final OAuth2Properties properties;
     private final RestClient restClient;
 
@@ -61,8 +65,11 @@ public class OAuth2ExternalClient {
                             .encode()
                             .build()
                             .toUri();
-            case NAVER ->
-                    UriComponentsBuilder.fromUriString(NAVER_AUTH_URL)
+            case NAVER, KAKAO ->
+                    UriComponentsBuilder.fromUriString(
+                                    provider == SocialProvider.NAVER
+                                            ? NAVER_AUTH_URL
+                                            : KAKAO_AUTH_URL)
                             .queryParam("response_type", "code")
                             .queryParam("client_id", config.clientId())
                             .queryParam("redirect_uri", config.redirectUri())
@@ -100,6 +107,7 @@ public class OAuth2ExternalClient {
                 switch (provider) {
                     case GOOGLE -> GOOGLE_TOKEN_URL;
                     case NAVER -> NAVER_TOKEN_URL;
+                    case KAKAO -> KAKAO_TOKEN_URL;
                 };
 
         try {
@@ -131,6 +139,7 @@ public class OAuth2ExternalClient {
                 switch (provider) {
                     case GOOGLE -> GOOGLE_USER_INFO_URL;
                     case NAVER -> NAVER_USER_INFO_URL;
+                    case KAKAO -> KAKAO_USER_INFO_URL;
                 };
         try {
             JsonNode response =
@@ -146,6 +155,7 @@ public class OAuth2ExternalClient {
             return switch (provider) {
                 case GOOGLE -> parseGoogleProfile(response);
                 case NAVER -> parseNaverProfile(response);
+                case KAKAO -> parseKakaoProfile(response);
             };
         } catch (CustomException exception) {
             throw exception;
@@ -178,6 +188,28 @@ public class OAuth2ExternalClient {
         String nickname =
                 nullIfBlank(response.path("nickname").asText(response.path("name").asText(null)));
         return new OAuthUserProfile(SocialProvider.NAVER, id, email, false, nickname);
+    }
+
+    /**
+     * 카카오는 이메일 동의를 받았고 카카오가 인증한 유효한 이메일일 때만 이메일을 쓴다. 그 밖에는 이메일 없음으로 보고 가입을 막는다. 네이버와 같이 이메일을 회원
+     * 이메일의 근거로 쓰지 않는다(emailAuthoritative=false).
+     */
+    private OAuthUserProfile parseKakaoProfile(JsonNode root) {
+        String id = root.path("id").asText("").trim();
+        if (id.isBlank() || "0".equals(id)) {
+            throw new CustomException(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
+        }
+        JsonNode account = root.path("kakao_account");
+        boolean usableEmail =
+                account.path("is_email_valid").asBoolean(false)
+                        && account.path("is_email_verified").asBoolean(false);
+        String email = usableEmail ? nullIfBlank(account.path("email").asText(null)) : null;
+        String nickname =
+                nullIfBlank(
+                        account.path("profile")
+                                .path("nickname")
+                                .asText(root.path("properties").path("nickname").asText(null)));
+        return new OAuthUserProfile(SocialProvider.KAKAO, id, email, false, nickname);
     }
 
     private OAuth2Properties.Provider requireConfigured(SocialProvider provider) {
