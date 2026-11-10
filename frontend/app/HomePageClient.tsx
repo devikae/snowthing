@@ -74,6 +74,8 @@ const emptyFeedErrors: Record<HomeFeedKey, boolean> = {
   season_room: false,
 };
 
+type WidgetStatus = "loading" | "error" | "ready";
+
 interface HomeCarpoolItem {
   publicId: string;
   departureRegion: string;
@@ -122,8 +124,10 @@ export default function HomePageClient() {
   const [feedLoading, setFeedLoading] = useState<Record<HomeFeedKey, boolean>>(() => ({ ...emptyFeedErrors, all: true }));
   const requestedFeeds = useRef(new Set<HomeFeedKey>());
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
+  const [marketStatus, setMarketStatus] = useState<WidgetStatus>("loading");
 
   const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
+  const [carpoolStatus, setCarpoolStatus] = useState<WidgetStatus>("loading");
   const [snowReportResort, setSnowReportResort] = useState("1");
   const [snowReportContent, setSnowReportContent] = useState("");
   const [todayReports, setTodayReports] = useState<ResortReportItem[]>([]);
@@ -222,25 +226,40 @@ export default function HomePageClient() {
     void fetchViewer().then(setProfile);
   }, []);
 
-  useEffect(() => {
-    void fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, { credentials: "include" })
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((data) => setCarpools(Array.isArray(data.content) ? data.content : []))
-      .catch(() => setCarpools([]));
+  // 불러오는 중이거나 실패했을 때 "등록된 글이 없습니다"로 보이지 않게 상태를 따로 둔다.
+  const loadCarpools = useCallback(async () => {
+    setCarpoolStatus("loading");
+    try {
+      const response = await fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, { credentials: "include" });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      setCarpools(Array.isArray(data.content) ? data.content : []);
+      setCarpoolStatus("ready");
+    } catch {
+      setCarpoolStatus("error");
+    }
+  }, []);
+
+  const loadMarketPreviews = useCallback(async () => {
+    setMarketStatus("loading");
+    try {
+      const response = await fetch(API_ENDPOINTS.market.preview, { credentials: "include" });
+      if (!response.ok) throw new Error();
+      const data: { items?: MarketPreviewItem[] } = await response.json();
+      setMarketPreviews(Array.isArray(data.items) ? data.items.slice(0, 4) : []);
+      setMarketStatus("ready");
+    } catch {
+      setMarketStatus("error");
+    }
   }, []);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.market.preview, { credentials: "include" });
-        if (!response.ok) return;
-        const data: { items?: MarketPreviewItem[] } = await response.json();
-        setMarketPreviews(Array.isArray(data.items) ? data.items.slice(0, 4) : []);
-      } catch {
-        setMarketPreviews([]);
-      }
-    })();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadCarpools();
+      void loadMarketPreviews();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadCarpools, loadMarketPreviews]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setKoreanToday(formatKoreanCalendarDate(new Date())), 60_000);
@@ -484,7 +503,24 @@ export default function HomePageClient() {
             </div>
 
             <div className="carpool-compact-list">
-              {carpools.length === 0 ? (
+              {carpoolStatus === "loading" ? (
+                <div className="carpool-widget-empty">
+                  <span className="material-symbols-outlined spin" aria-hidden="true">
+                    progress_activity
+                  </span>
+                  <p>카풀 모집글을 불러오는 중입니다.</p>
+                </div>
+              ) : carpoolStatus === "error" ? (
+                <div className="carpool-widget-empty">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    cloud_off
+                  </span>
+                  <p>카풀 모집글을 불러오지 못했습니다.</p>
+                  <button type="button" className="home-widget-retry" onClick={() => void loadCarpools()}>
+                    다시 시도
+                  </button>
+                </div>
+              ) : carpools.length === 0 ? (
                 <div className="carpool-widget-empty">
                   <span className="material-symbols-outlined" aria-hidden="true">
                     directions_car
@@ -528,7 +564,20 @@ export default function HomePageClient() {
               </div>
             </div>
 
-            {marketPreviews.length > 0 ? (
+            {marketStatus === "loading" ? (
+              <div className="market-preview-empty">
+                <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
+                <p>판매 상품을 불러오는 중입니다.</p>
+              </div>
+            ) : marketStatus === "error" ? (
+              <div className="market-preview-empty">
+                <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                <p>판매 상품을 불러오지 못했습니다.</p>
+                <button type="button" className="home-widget-retry" onClick={() => void loadMarketPreviews()}>
+                  다시 시도
+                </button>
+              </div>
+            ) : marketPreviews.length > 0 ? (
               <div className="market-grid market-preview-grid market-lookbook-4">
                 {marketPreviews.map((item) => {
                   const detailHref = `/market/${item.publicId}`;

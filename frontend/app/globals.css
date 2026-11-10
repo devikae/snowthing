@@ -3913,6 +3913,17 @@ html[data-theme="dark"] .snow-empty-copy strong {
   color: var(--snow-faint);
 }
 
+.home-widget-retry {
+  border: 0;
+  border-radius: 6px;
+  background: #0f2942;
+  padding: 7px 11px;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .carpool-compact-list:has(.carpool-widget-empty) {
   border-top: none;
 }
