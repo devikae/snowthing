@@ -147,6 +147,50 @@ class CarpoolWriterServiceTest {
     }
 
     @Test
+    void manualCostKeepsDepartureCoordinateChosenOnMap() {
+        CarpoolDetail detail =
+                CarpoolDetail.builder().post(post).costMode(CarpoolCostMode.AUTO).build();
+        Resort resort = mock(Resort.class);
+        when(resort.isActive()).thenReturn(true);
+        when(resortRepository.findById(1L)).thenReturn(Optional.of(resort));
+        when(carpoolDetailRepository.findByPostPublicId(post.getPublicId()))
+                .thenReturn(Optional.of(detail));
+
+        service.update(
+                post.getPublicId(),
+                manualRequest(BigDecimal.valueOf(37.5384), BigDecimal.valueOf(127.1238)),
+                OWNER_PUBLIC_ID,
+                false,
+                null);
+
+        assertThat(detail.getCostMode()).isEqualTo(CarpoolCostMode.MANUAL);
+        assertThat(detail.getDepartureLatitude()).isEqualByComparingTo("37.5384");
+        assertThat(detail.getDepartureLongitude()).isEqualByComparingTo("127.1238");
+        assertThat(detail.getRouteDistanceKm()).isNull();
+    }
+
+    @Test
+    void manualCostDropsHalfCoordinate() {
+        CarpoolDetail detail =
+                CarpoolDetail.builder().post(post).costMode(CarpoolCostMode.AUTO).build();
+        Resort resort = mock(Resort.class);
+        when(resort.isActive()).thenReturn(true);
+        when(resortRepository.findById(1L)).thenReturn(Optional.of(resort));
+        when(carpoolDetailRepository.findByPostPublicId(post.getPublicId()))
+                .thenReturn(Optional.of(detail));
+
+        service.update(
+                post.getPublicId(),
+                manualRequest(BigDecimal.valueOf(37.5384), null),
+                OWNER_PUBLIC_ID,
+                false,
+                null);
+
+        assertThat(detail.getDepartureLatitude()).isNull();
+        assertThat(detail.getDepartureLongitude()).isNull();
+    }
+
+    @Test
     void autoCostStoresCalculatedTotalLikePreview() {
         CarpoolDetail detail =
                 CarpoolDetail.builder().post(post).costMode(CarpoolCostMode.MANUAL).build();
@@ -197,13 +241,17 @@ class CarpoolWriterServiceTest {
     }
 
     private CarpoolCreateRequest createRequest() {
+        return manualRequest(null, null);
+    }
+
+    private CarpoolCreateRequest manualRequest(BigDecimal latitude, BigDecimal longitude) {
         return new CarpoolCreateRequest(
                 "title",
                 "content",
                 "서울 강동구",
                 "천호역 1번 출구",
-                null,
-                null,
+                latitude,
+                longitude,
                 1L,
                 CarpoolTripType.ONE_WAY,
                 LocalDateTime.now().plusDays(1),

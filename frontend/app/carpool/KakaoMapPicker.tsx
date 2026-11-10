@@ -14,6 +14,9 @@ type KakaoMapPickerProps = {
   onSelect: (place: MapPlace) => void;
   onError: (message: string) => void;
   initialPlace?: MapPlace | null;
+  /** 위치 권한이 이미 허용돼 있으면 열자마자 지도를 현재 위치로 옮기고 동 단위 지역을 알려 준다. */
+  autoLocate?: boolean;
+  onLocate?: (region: string) => void;
 };
 
 const KAKAO_SDK_URL = "https://dapi.kakao.com/v2/maps/sdk.js";
@@ -80,7 +83,12 @@ type KakaoGeocoder = {
   ) => void;
 };
 type KakaoAddressResult = {
-  address?: { address_name: string };
+  address?: {
+    address_name: string;
+    region_1depth_name?: string;
+    region_2depth_name?: string;
+    region_3depth_name?: string;
+  };
   road_address?: { address_name: string };
 };
 
@@ -88,6 +96,8 @@ export default function KakaoMapPicker({
   onSelect,
   onError,
   initialPlace,
+  autoLocate = false,
+  onLocate,
 }: KakaoMapPickerProps) {
   const mapElement = useRef<HTMLDivElement>(null);
   const map = useRef<KakaoMap | null>(null);
@@ -99,6 +109,9 @@ export default function KakaoMapPicker({
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
   const [locating, setLocating] = useState(false);
+  const [hint, setHint] = useState("");
+  const autoLocated = useRef(false);
+  const userPicked = useRef(false);
 
   const reportError = useCallback(
     (value: string) => {
@@ -108,9 +121,10 @@ export default function KakaoMapPicker({
     [onError],
   );
 
-  const selectCoordinate = useCallback((coordinate: KakaoLatLng, moveMap: boolean) => {
+  const selectCoordinate = useCallback((coordinate: KakaoLatLng, moveMap: boolean, placeName?: string) => {
     if (!map.current || !marker.current || !geocoder.current || !window.kakao)
       return;
+    userPicked.current = true;
     marker.current.setPosition(coordinate);
     if (moveMap) map.current.panTo(coordinate);
     geocoder.current.coord2Address(
@@ -123,7 +137,7 @@ export default function KakaoMapPicker({
         }
         const item = items[0];
         const selectedPlace = {
-          name: item.road_address?.address_name || item.address?.address_name || "선택한 위치",
+          name: placeName || item.road_address?.address_name || item.address?.address_name || "선택한 위치",
           addressName: item.address?.address_name || item.road_address?.address_name || "",
           roadAddressName: item.road_address?.address_name || "",
           longitude: coordinate.getLng(),
@@ -219,8 +233,46 @@ export default function KakaoMapPicker({
       Number(item.x),
     );
     setResults([]);
-    selectCoordinate(coordinate, true);
+    selectCoordinate(coordinate, true, item.place_name);
   };
+
+  // 권한을 묻는 창은 띄우지 않는다. 이미 허용한 사람만 자동으로 옮긴다.
+  // 집에서 쓰면 현재 위치가 집이라, 장소는 고르지 않고 지도와 동 단위 지역만 채운다.
+  useEffect(() => {
+    if (!ready || !autoLocate || initialPlace || autoLocated.current) return;
+    if (!navigator.geolocation || !navigator.permissions?.query) return;
+    let cancelled = false;
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((status) => {
+        if (cancelled || status.state !== "granted") return;
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            // 위치를 받는 사이에 사람이 먼저 장소를 골랐으면 건드리지 않는다.
+            if (cancelled || userPicked.current || !window.kakao || !map.current || !marker.current || !geocoder.current) return;
+            autoLocated.current = true;
+            const coordinate = new window.kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
+            map.current.panTo(coordinate);
+            marker.current.setPosition(coordinate);
+            setHint("현재 위치 근처로 지도를 옮겼어요. 모일 장소를 검색하거나 지도에서 눌러 주세요.");
+            geocoder.current.coord2Address(coordinate.getLng(), coordinate.getLat(), (items, status) => {
+              if (cancelled || status !== window.kakao?.maps.services.Status.OK) return;
+              const address = items[0]?.address;
+              const region = [address?.region_1depth_name, address?.region_2depth_name, address?.region_3depth_name]
+                .filter(Boolean)
+                .join(" ");
+              if (region) onLocate?.(region);
+            });
+          },
+          () => {},
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, autoLocate, initialPlace, onLocate]);
 
   const handleCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -301,7 +353,7 @@ export default function KakaoMapPicker({
         </p>
       )}
       <p className="kakao-map-hint">
-        검색 결과를 선택하거나 지도를 직접 눌러 출발 장소를 지정하세요.
+        {hint || "검색 결과를 선택하거나 지도를 직접 눌러 출발 장소를 지정하세요."}
       </p>
     </div>
   );

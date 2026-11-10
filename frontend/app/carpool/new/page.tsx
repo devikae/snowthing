@@ -310,9 +310,7 @@ export default function NewCarpoolPage() {
   const changeCostMode = (nextMode: CostMode) => {
     if (nextMode === costMode) return;
     previewAbortController.current?.abort();
-    // 직접 입력에서는 지도가 사라지므로, 돌아올 때 고른 장소를 다시 보여 준다.
     if (nextMode === "AUTO") {
-      setInitialMapPlace(selectedPlace);
       // 경로는 지도 좌표로 계산하므로 직접 입력에서 고친 글자가 좌표와 어긋나지 않게 되돌린다.
       if (selectedPlace) {
         setForm((current) => ({
@@ -333,6 +331,12 @@ export default function NewCarpoolPage() {
       setRouteSource("MANUAL");
       setCalculation(null);
     }
+  }, []);
+  // 현재 위치는 동 단위 지역만 채운다. 이미 적었거나 장소를 고른 뒤라면 덮어쓰지 않는다.
+  const handleLocate = useCallback((region: string) => {
+    setForm((current) =>
+      current.departureRegion.trim() ? current : { ...current, departureRegion: region },
+    );
   }, []);
   const handlePlaceSelect = useCallback((place: MapPlace) => {
     setSelectedPlace(place);
@@ -527,10 +531,11 @@ export default function NewCarpoolPage() {
           manualFuelPrice:
             auto && manualFuelRequired ? Number(form.manualFuelPrice) : null,
           tripType,
+          // 직접 입력도 지도에서 고른 장소가 있으면 좌표를 함께 저장한다.
           departureLatitude:
-            auto && routeSource === "KAKAO" ? selectedPlace?.latitude : null,
+            !auto || routeSource === "KAKAO" ? selectedPlace?.latitude ?? null : null,
           departureLongitude:
-            auto && routeSource === "KAKAO" ? selectedPlace?.longitude : null,
+            !auto || routeSource === "KAKAO" ? selectedPlace?.longitude ?? null : null,
           departureAt: toIsoDateTime(
             form.departureDate,
             form.departurePeriod,
@@ -628,7 +633,14 @@ export default function NewCarpoolPage() {
           </section>
           <section>
             <h2>출발 장소</h2>
-            {costMode === "MANUAL" ? (
+            <KakaoMapPicker
+              onSelect={handlePlaceSelect}
+              onError={handleMapError}
+              initialPlace={initialMapPlace}
+              autoLocate={!editPublicId}
+              onLocate={handleLocate}
+            />
+            {costMode === "MANUAL" && (
               <div className="carpool-form-grid">
                 <label>
                   출발 지역
@@ -651,12 +663,6 @@ export default function NewCarpoolPage() {
                   />
                 </label>
               </div>
-            ) : (
-              <KakaoMapPicker
-                onSelect={handlePlaceSelect}
-                onError={handleMapError}
-                initialPlace={initialMapPlace}
-              />
             )}
             {costMode === "AUTO" && routeSource === "MANUAL" && (
               <div className="carpool-manual-fallback" role="status">
