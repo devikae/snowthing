@@ -297,13 +297,15 @@ export default function HomePageClient() {
                     </button>
                   ))}
                 </div>
-                <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
-                  더보기 ↗
-                </Link>
-                <Link href={writeHref} className="board-tabs-write">
-                  <span className="material-symbols-outlined" aria-hidden="true">edit</span>
-                  글쓰기
-                </Link>
+                <div className="board-tabs-actions">
+                  <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
+                    더보기 ↗
+                  </Link>
+                  <Link href={writeHref} className="board-tabs-write">
+                    <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+                    글쓰기
+                  </Link>
+                </div>
               </nav>
 
               <div className="compact-post-list">

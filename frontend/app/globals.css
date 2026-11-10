@@ -1811,6 +1811,9 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
   line-height: 1;
 }
 
+/* 더보기와 글쓰기는 함께 움직인다. 탭 옆에 자리가 없으면 둘이 같이 다음 줄로 간다. */
+.board-tabs-actions { display: flex; flex: 1 0 auto; align-items: center; gap: 12px; }
+
 .board-tabs .board-tabs-write {
   display: inline-flex;
   flex: none;
@@ -1885,6 +1888,9 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
 html[data-theme="dark"] .home-tier-1 .board-tabs {
   display: flex;
   min-height: 0;
+  /* 탭이 한 줄에 다 들어가지 않으면 탭을 자르지 않고 더보기와 글쓰기를 다음 줄로 보낸다. */
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
   overflow: visible;
@@ -1897,6 +1903,7 @@ html[data-theme="dark"] .home-tier-1 .board-tabs {
 .home-tier-1 .board-tabs > .filter-pills {
   display: inline-flex;
   max-width: 100%;
+  flex-shrink: 0;
   flex-wrap: nowrap;
   align-items: center;
   gap: 2px;
@@ -1921,7 +1928,7 @@ html[data-theme="dark"] .home-tier-1 .board-tabs button {
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  padding: 0 11px;
+  padding: 0 10px;
   color: var(--snow-muted);
   font-size: 12.5px;
   font-weight: 600;
