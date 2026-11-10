@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer, TopNav } from "./components/SiteChrome";
 
-export const metadata: Metadata = { title: "페이지를 찾을 수 없어요 | 눈팅 SnowThing", robots: { index: false } };
+// 404 응답에는 Next.js가 noindex 메타를 자동으로 넣으므로 여기서 다시 넣지 않는다.
+export const metadata: Metadata = { title: "페이지를 찾을 수 없어요 | 눈팅 SnowThing" };
 
 export default function NotFound() {
   return (
