@@ -130,6 +130,8 @@ export const API_ENDPOINTS = {
       `${API_V1_URL}/admin/members?page=${page}&size=${size}${query ? `&query=${encodeURIComponent(query)}` : ""}`,
     memberStatusAction: (publicId: string, action: "suspend" | "reinstate") =>
       `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
+    memberRoleAction: (publicId: string, action: "grant-admin" | "revoke-admin") =>
+      `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
     searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
     searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
     stats: `${API_V1_URL}/admin/dashboard/stats`,

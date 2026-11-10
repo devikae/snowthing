@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
+import com.ikae.snowthing.domain.member.entity.Role;
 
 public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
 
@@ -46,6 +47,16 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM Member m WHERE m.publicId = :publicId")
     Optional<Member> findByPublicIdForUpdate(@Param("publicId") String publicId);
+
+    /** 관리자 권한 변경 전에 잠글 행을 고른다. 잠그지 않는 읽기라 회원 표 전체를 잠그지 않는다. */
+    @Query("SELECT m.id FROM Member m WHERE m.role = :role AND m.status = :status ORDER BY m.id")
+    List<Long> findIdsByRoleAndStatus(
+            @Param("role") Role role, @Param("status") MemberStatus status);
+
+    /** ID 순서로 잠가 두 트랜잭션이 같은 행들을 다른 순서로 잡아 교착되지 않게 한다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM Member m WHERE m.id IN :ids ORDER BY m.id")
+    List<Member> findAllByIdInForUpdate(@Param("ids") List<Long> ids);
 
     /** 세션과 웹소켓에 든 회원 스냅샷 대신 현재 상태를 읽는다. */
     @Query("SELECT m.status FROM Member m WHERE m.id = :memberId")

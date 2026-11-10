@@ -35,6 +35,7 @@ public class AdminMemberService {
 
     private final MemberRepository memberRepository;
     private final AdminMemberStatusWriter statusWriter;
+    private final AdminMemberRoleWriter roleWriter;
     private final MemberSessionRegistry memberSessionRegistry;
     private final ChatConnectionRegistry chatConnectionRegistry;
 
@@ -72,6 +73,35 @@ public class AdminMemberService {
         AdminMemberStatusWriter.Change change = statusWriter.reinstate(targetPublicId);
         audit("REINSTATE", actorPublicId, change);
         return change.member();
+    }
+
+    /** 관리자로 지정한다. 세션 권한은 로그인 때 정해지므로 커밋 뒤 대상의 기존 세션을 끊어 다시 로그인하면 바로 관리자 화면을 쓰게 한다. */
+    public AdminMemberResponse grantAdmin(String actorPublicId, String targetPublicId) {
+        AdminMemberRoleWriter.Change change = roleWriter.grant(actorPublicId, targetPublicId);
+        afterRoleChange("GRANT_ADMIN", actorPublicId, change);
+        return change.member();
+    }
+
+    /** 관리자 권한을 해제한다. 커밋 뒤 대상의 기존 세션을 끊어 세션에 남은 ROLE_ADMIN을 바로 없앤다. */
+    public AdminMemberResponse revokeAdmin(String actorPublicId, String targetPublicId) {
+        AdminMemberRoleWriter.Change change = roleWriter.revoke(actorPublicId, targetPublicId);
+        afterRoleChange("REVOKE_ADMIN", actorPublicId, change);
+        return change.member();
+    }
+
+    private void afterRoleChange(
+            String action, String actorPublicId, AdminMemberRoleWriter.Change change) {
+        if (!change.changed()) {
+            return;
+        }
+        memberSessionRegistry.invalidateAll(change.member().publicId());
+        AUDIT_LOG.info(
+                "action={} actor={} target={} from={} to={}",
+                action,
+                actorPublicId,
+                change.member().publicId(),
+                change.previous(),
+                change.member().role());
     }
 
     private static void audit(

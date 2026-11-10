@@ -140,6 +140,11 @@ PR #48이 main보다 222커밋 뒤처진 사이 main에 신고 처리, 회원 �
 ### 6.3 API 변경
 
 - 회원 관리(3.3)는 main의 `GET /api/v1/admin/members`, `POST .../{publicId}/suspend`, `POST .../{publicId}/reinstate`를 쓴다. #48의 상태 변경, 닉네임 변경, 프로필 사진 삭제 API는 뺐다.
+- 운영자 지정과 해제 (IKA-77):
+  - `POST /api/v1/admin/members/{publicId}/grant-admin`: ROLE_ADMIN으로 바꾼다. 응답은 회원 목록 항목과 같은 `AdminMemberResponse`. 이미 관리자면 그대로 200.
+  - `POST /api/v1/admin/members/{publicId}/revoke-admin`: ROLE_USER로 바꾼다. 이미 일반 회원이면 그대로 200.
+  - 거부: 활동 중이 아니거나 AI 회원(`@snowthing.invalid`)이면 409 `MEMBER_015`, 자신을 해제하면 403 `MEMBER_013`, 마지막 활성 관리자를 해제하면 409 `MEMBER_014`, 호출자가 이미 관리자가 아니거나 봇 위임, API 토큰이면 403 `AUTH_002`, 없는 회원은 404 `MEMBER_001`.
+  - 활성 관리자 행을 ID 순서로 잠그고 호출자 권한을 다시 확인한다. 바뀌면 커밋 뒤 대상의 세션을 모두 끊고 `admin.audit` 로그에 GRANT_ADMIN, REVOKE_ADMIN을 남긴다.
 - `GET /api/v1/admin/posts?filter=ALL|DELETED|BLINDED&page=&size=`: 크기는 최대 50. 정렬은 글 ID 역순, DELETED는 삭제 시각 역순 다음 ID 역순.
   - 응답에 회원 내부 ID(`authorMemberId`, `deletedByMemberId`)를 내보내지 않는다. 작성자 삭제 여부는 `isDeletedByAuthor`로 준다.
 - `DELETE /api/v1/admin/posts/{publicId}`: 일반 삭제 흐름(`PostService.deletePost`)을 그대로 탄다. 첨부 사진 정리와 검색 반영이 함께 된다. 지운 회원은 `deleted_by_member_id`에 남는다 (작성자 삭제도 같다).

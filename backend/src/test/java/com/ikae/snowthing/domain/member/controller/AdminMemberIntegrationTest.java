@@ -415,6 +415,138 @@ class AdminMemberIntegrationTest {
         assertThat(auditLog.list).hasSize(1);
     }
 
+    @Test
+    @DisplayName("관리자로 지정하면 대상의 기존 세션이 끊기고 다시 로그인하면 관리자 API를 쓴다 (IKA-77)")
+    void grantAdminTakesEffectOnNextLogin() throws Exception {
+        MockHttpSession oldSession = login(target);
+        mockMvc.perform(get(MEMBERS).session(oldSession)).andExpect(status().isForbidden());
+
+        mockMvc.perform(roleRequest(target, "grant-admin").session(adminSession).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
+
+        assertThat(roleOf(target)).isEqualTo(Role.ROLE_ADMIN);
+        assertThat(oldSession.isInvalid()).isTrue();
+        MockHttpSession newSession = login(target);
+        mockMvc.perform(get(MEMBERS).session(newSession)).andExpect(status().isOk());
+        assertThat(auditLog.list).hasSize(1);
+        assertThat(auditLog.list.get(0).getFormattedMessage())
+                .contains("action=GRANT_ADMIN")
+                .contains("actor=" + admin.getPublicId())
+                .contains("from=ROLE_USER")
+                .contains("to=ROLE_ADMIN")
+                .doesNotContain(target.getEmail());
+    }
+
+    @Test
+    @DisplayName("관리자를 해제하면 대상 세션에 남은 관리자 권한이 바로 사라진다 (IKA-77)")
+    void revokeAdminRemovesSessionAuthority() throws Exception {
+        MockHttpSession otherAdminSession = login(otherAdmin);
+        mockMvc.perform(get(MEMBERS).session(otherAdminSession)).andExpect(status().isOk());
+
+        mockMvc.perform(roleRequest(otherAdmin, "revoke-admin").session(adminSession).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
+
+        assertThat(roleOf(otherAdmin)).isEqualTo(Role.ROLE_USER);
+        assertThat(otherAdminSession.isInvalid()).isTrue();
+        mockMvc.perform(get(MEMBERS).session(login(otherAdmin))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("자신은 해제할 수 없고, 비관리자와 CSRF 없는 요청은 403이며, AI와 정지 회원은 지정할 수 없다 (IKA-77)")
+    void rejectsForbiddenRoleChanges() throws Exception {
+        MockHttpSession userSession = login(target);
+        Member suspended = member("susp", Role.ROLE_USER, MemberStatus.SUSPENDED);
+        Member ai = aiMember();
+
+        mockMvc.perform(roleRequest(admin, "revoke-admin").session(adminSession).with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("MEMBER_013"));
+        mockMvc.perform(roleRequest(target, "grant-admin").session(userSession).with(csrf()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(roleRequest(admin, "revoke-admin").session(userSession).with(csrf()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(roleRequest(target, "grant-admin").session(adminSession))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(roleRequest(target, "grant-admin").with(csrf()))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(roleRequest(suspended, "grant-admin").session(adminSession).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("MEMBER_015"));
+        mockMvc.perform(roleRequest(ai, "grant-admin").session(adminSession).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("MEMBER_015"));
+
+        assertThat(roleOf(admin)).isEqualTo(Role.ROLE_ADMIN);
+        assertThat(roleOf(target)).isEqualTo(Role.ROLE_USER);
+        assertThat(roleOf(suspended)).isEqualTo(Role.ROLE_USER);
+        assertThat(roleOf(ai)).isEqualTo(Role.ROLE_USER);
+        assertThat(auditLog.list).isEmpty();
+    }
+
+    @Test
+    @DisplayName("두 관리자가 서로를 동시에 해제해도 한쪽만 성공해 관리자가 남는다 (IKA-77)")
+    void concurrentMutualRevokeKeepsOneAdmin() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        int succeeded = 0;
+        try {
+            Callable<Void> first =
+                    () -> {
+                        adminMemberService.revokeAdmin(
+                                admin.getPublicId(), otherAdmin.getPublicId());
+                        return null;
+                    };
+            Callable<Void> second =
+                    () -> {
+                        adminMemberService.revokeAdmin(
+                                otherAdmin.getPublicId(), admin.getPublicId());
+                        return null;
+                    };
+            for (Future<Void> result : executor.invokeAll(List.of(first, second))) {
+                try {
+                    result.get();
+                    succeeded++;
+                } catch (java.util.concurrent.ExecutionException failed) {
+                    assertThat(failed.getCause()).isInstanceOf(CustomException.class);
+                    assertThat(((CustomException) failed.getCause()).getErrorCode())
+                            .isEqualTo(ErrorCode.ACCESS_DENIED);
+                }
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(succeeded).isEqualTo(1);
+        assertThat(List.of(roleOf(admin), roleOf(otherAdmin)))
+                .containsExactlyInAnyOrder(Role.ROLE_ADMIN, Role.ROLE_USER);
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder roleRequest(
+            Member member, String action) {
+        return post(MEMBERS + "/{id}/" + action, member.getPublicId());
+    }
+
+    private Role roleOf(Member member) {
+        return members.findById(member.getId()).orElseThrow().getRole();
+    }
+
+    private Member aiMember() {
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        Member saved =
+                members.save(
+                        Member.builder()
+                                .email("persona-" + unique + "@snowthing.invalid")
+                                .password(passwordEncoder.encode(PASSWORD))
+                                .nickname("persona-" + unique)
+                                .role(Role.ROLE_USER)
+                                .status(MemberStatus.ACTIVE)
+                                .build());
+        memberIds.add(saved.getId());
+        return saved;
+    }
+
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
             suspendRequest(Member member) {
         return post(MEMBERS + "/{id}/suspend", member.getPublicId());
