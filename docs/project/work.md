@@ -1,3 +1,24 @@
+## 인증 메일과 로그인 남용 방어 강화 (IKA-76, 2026-11-11)
+
+- 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 배경: 인증 메일 IP 제한이 IPv6 주소마다 따로 세고, `a+1@gmail.com` 같은 별칭을 다른 수신자로 봤다. 가입 인증 요청은 IP 제한보다 먼저 "이미 가입된 이메일"을 알려 줬다. 로그인 제한은 이메일과 IP 조합, IP 단독뿐이라 여러 IP로 나눈 대입을 막지 못했다. 소셜 계정 연결은 세션만 있으면 다시 확인 없이 시작됐다.
+- 완료
+  - 인증 메일: IP 키를 `ClientIpResolver.normalizeForLimit`으로 바꿔 IPv6는 /64로 묶는다(IPv4는 그대로). 이메일 중복 확인 IP 제한도 같은 키를 쓴다. 메일함 제한(`EmailRecipientRateLimiter`)을 더했다. 소문자, `+태그` 제거, Gmail 점과 googlemail.com 정리로 묶고 가입과 재설정을 합쳐 한 시간 10통, 하루 20통.
+  - 가입 인증 요청: IP 제한을 가입 여부 확인보다 먼저 센다.
+  - 로그인: IP와 무관한 계정 상한 두 단계(15분 10회, 1시간 30회, 고정 창)를 더했다. 성공하면 계정 횟수를 지우고, 비밀번호 재설정을 마쳐도 지운다. 응답은 기존 AUTH_013이고 문구를 "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."로 바꿨다.
+  - 소셜 연결: 비밀번호 회원은 현재 비밀번호를 받아 확인하고 틀린 횟수를 로그인 계정 한도로 센다. 소셜 전용 회원은 이 세션에서 10분 안에 로그인했어야 한다(AUTH_021, 403). 로그인할 때 세션 속성 `SNOWTHING_AUTHENTICATED_AT`에 시각을 남긴다. 프론트 로그인 연결 구역에 비밀번호 입력 칸을 더했다.
+  - 문서: `005_email_verification/04_api-spec.md`, `008_social_login/04_api-spec.md`.
+- 결정
+  - "이미 가입된 이메일" 문구는 남겼다. 가입 화면 안내에 필요하고, 이메일 중복 확인 API(1분 10회)가 이미 같은 정보를 준다. 대신 IP 한도 안에서만 답한다.
+  - 메일함 횟수는 실제로 메일을 보낼 때만 센다. 가입된 주소로 가입 요청을 반복해 남의 재설정 메일을 막는 일을 피하려고.
+  - 메일함 제한은 IP 제한과 같은 프로세스 메모리(Caffeine)다. 서버를 다시 띄우면 초기화되지만 DB 의존을 늘리지 않는다. 로그인 계정 한도는 기존 로그인 제한과 같은 `request_budget_window` 테이블을 써서 마이그레이션이 필요 없다. Redis는 쓰지 않는다.
+  - 계정 잠금은 고정 창이라 남이 일부러 잠가도 최대 한 시간이다. 소셜 로그인과 비밀번호 재설정은 그대로 쓸 수 있고, 재설정을 마치면 바로 풀린다.
+  - 계정 키는 결합 문자와 제어 문자를 지워 같은 회원으로 찾히는 표기를 한 키로 모은다. 그래도 ASCII가 아닌 표기는 전체가 한 키를 함께 쓴다.
+  - 소셜 전용 회원의 최근 로그인은 세션 생성 시각을 쓰지 않았다. 소셜 인증 state를 담을 때 세션이 먼저 생기고 로그인 때 id만 바뀌기 때문이다. 이 기능 배포 전에 로그인한 세션은 기록이 없어 다시 로그인해야 연결할 수 있다.
+  - 한도 값은 `application.yml`의 `snowthing.email.verification.recipient-*`, `snowthing.login-limit.account.*`로 바꾼다. 환경 변수는 새로 만들지 않았다.
+- 남은 항목: 비밀번호 변경 API의 현재 비밀번호 확인은 아직 로그인 계정 한도를 쓰지 않는다(범위 밖).
+- 검증: 로컬에서 `spotlessApply`와 DB가 필요 없는 단위 테스트(LoginAttemptLimiterTest, SocialLinkReauthServiceTest, EmailRecipientRateLimiterTest, EmailVerificationIpRateLimiterTest, EmailVerificationRequestServiceTest, EmailVerificationServiceTest, PasswordResetServiceTest, OAuth2AuthControllerTest, EmailAvailabilityIpRateLimiterTest) 통과. 프론트 `tsc --noEmit`, eslint 통과. 로컬에 MySQL이 없어 DB가 필요한 통합 테스트(LoginAttemptLimitIntegrationTest, SocialAccountLinkSecurityIntegrationTest 등)는 CI에서 확인한다.
+
 ## 시즌권 계산기 리조트 가격 채우기, 비로그인 응답 문구, 홈 탭과 달력 글자 다듬기 (2026-11-11, 티켓 없음)
 
 - 상태: 구현 완료, PR #126. 머지와 배포는 사용자 확인 후.
