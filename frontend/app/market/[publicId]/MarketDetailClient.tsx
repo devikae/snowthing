@@ -231,7 +231,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   };
 
   const deleteListing = async () => {
-    if (!listing || !listing.canDelete || deleting || !window.confirm("이 판매글을 삭제하시겠습니까?")) return;
+    if (!listing || !listing.canDelete || deleting || !window.confirm("이 판매글을 삭제할까요?")) return;
     setDeleting(true);
     setError("");
     try {

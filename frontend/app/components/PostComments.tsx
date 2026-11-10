@@ -189,7 +189,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   };
 
   const deleteComment = async (commentId: string) => {
-    if (working || !window.confirm("댓글을 삭제하시겠습니까?")) return;
+    if (working || !window.confirm("댓글을 삭제할까요?")) return;
     setWorking(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.comments.delete(commentId), {

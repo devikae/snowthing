@@ -141,7 +141,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteModalConfig, setDeleteModalConfig] = useState({
     title: "게시글 삭제 확인",
-    description: "정말로 이 게시글을 삭제하시겠습니까?",
+    description: "이 게시글을 삭제할까요?",
     requirePassword: false,
   });
 
@@ -161,7 +161,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     } else {
       setDeleteModalConfig({
         title: "게시글 삭제 확인",
-        description: "정말로 이 게시글을 삭제하시겠습니까?",
+        description: "이 게시글을 삭제할까요?",
         requirePassword: false,
       });
     }
@@ -383,7 +383,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
         return;
       }
       if (res.status === 401) {
-        if (confirm("스크랩하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
+        if (confirm("스크랩하려면 로그인이 필요해요. 로그인 화면으로 이동할까요?")) {
           router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
         }
         return;

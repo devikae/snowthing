@@ -128,7 +128,7 @@ export default function AdminBannersPage() {
   }
 
   async function handleDelete(b: BannerItem) {
-    if (!window.confirm(`[${b.title}] 배너를 삭제하시겠습니까?`)) return;
+    if (!window.confirm(`[${b.title}] 배너를 삭제할까요?`)) return;
 
     try {
       setActionLoading(true);

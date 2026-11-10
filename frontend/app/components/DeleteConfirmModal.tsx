@@ -18,7 +18,7 @@ export function DeleteConfirmModal({
   onClose,
   onConfirm,
   title = "게시글 삭제 확인",
-  description = "이 게시글을 삭제하시겠습니까?",
+  description = "이 게시글을 삭제할까요?",
   requirePassword = true,
   confirmLabel = "삭제",
   submittingLabel = "삭제 중...",

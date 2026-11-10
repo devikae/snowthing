@@ -44,7 +44,7 @@ export default function AdminChatPage() {
   async function handleUnban(item: ChatBannedIpItem) {
     if (
       !window.confirm(
-        `[${item.bannedIp}] IP 차단을 해제하시겠습니까?\n해당 IP에서 다시 채팅 전송이 가능해집니다.`
+        `[${item.bannedIp}] IP 차단을 해제할까요?\n이 IP에서 다시 채팅을 보낼 수 있게 됩니다.`
       )
     )
       return;

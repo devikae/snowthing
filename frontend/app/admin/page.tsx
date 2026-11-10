@@ -44,8 +44,8 @@ export default function AdminDashboardPage() {
     if (!stats || updatingChat) return;
     const nextVal = !stats.anonymousChatEnabled;
     const confirmMsg = nextVal
-      ? "비로그인 유저도 라이브톡에 메시지를 전송할 수 있도록 허용하시겠습니까?"
-      : "비로그인 유저의 라이브톡 전송을 차단하고 기존대로 로그인 회원 전용으로 변경하시겠습니까?";
+      ? "로그인하지 않은 사용자도 라이브톡에 메시지를 보낼 수 있게 할까요?"
+      : "로그인하지 않은 사용자의 라이브톡 전송을 막고 로그인 회원만 보낼 수 있게 할까요?";
 
     if (!window.confirm(confirmMsg)) return;
 
