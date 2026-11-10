@@ -11,12 +11,23 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** 파일 공유를 지원하는 폰은 공유 창을 열고, 아니면 이미지를 저장한다. 공유 창이 권한 문제로 막혀도 저장으로 넘어간다. */
-export async function shareOrSaveImage(blob: Blob, filename: string, title: string): Promise<ShareOutcome> {
+/**
+ * 파일 공유를 지원하는 폰은 공유 창을 열고, 아니면 이미지를 저장한다. 공유 창이 권한 문제로 막혀도 저장으로 넘어간다.
+ *
+ * <p>문구와 링크도 함께 싣는다. 받는 앱이 글자를 버리면(인스타그램 스토리 등) 이미지만 간다.
+ */
+export async function shareOrSaveImage(
+  blob: Blob,
+  filename: string,
+  title: string,
+  extra?: { text: string; url: string },
+): Promise<ShareOutcome> {
   const file = new File([blob], filename, { type: "image/png" });
   if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+    // 파일과 글자를 같이 받지 못하는 브라우저는 파일만 보낸다.
+    const withText = extra && navigator.canShare({ files: [file], ...extra }) ? extra : {};
     try {
-      await navigator.share({ files: [file], title });
+      await navigator.share({ files: [file], title, ...withText });
       return "shared";
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return "cancelled";
