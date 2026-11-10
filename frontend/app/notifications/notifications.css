@@ -26,7 +26,7 @@
 .notification-item-preview { overflow: hidden; color: var(--snow-ink-soft); font-size: 12px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
 .notification-item-time { color: var(--snow-muted); font-size: 11px; }
 .notification-empty { margin: 0; padding: 24px 14px; color: var(--snow-muted); font-size: 13px; text-align: center; }
-.notification-error { margin: 0; padding: 12px 14px; color: #ef4444; font-size: 13px; }
+.notification-error { margin: 0; padding: 12px 14px; color: #dc2626; font-size: 13px; }
 
 /* /notifications 페이지 */
 .notifications-page { max-width: 720px; padding-top: 32px; padding-bottom: 48px; }
@@ -47,7 +47,9 @@
 .push-toggle-row strong { color: var(--snow-ink); font-size: 14px; }
 .push-toggle-row p { margin: 2px 0 0; color: var(--snow-ink-soft); font-size: 12px; line-height: 1.5; }
 .push-toggle-hint { margin: 10px 0 0; color: var(--snow-ink-soft); font-size: 12px; line-height: 1.5; }
-.push-toggle-hint.error { color: #ef4444; }
+.push-toggle-hint.error { color: #dc2626; }
+html[data-theme="dark"] .notification-error,
+html[data-theme="dark"] .push-toggle-hint.error { color: #f87171; }
 .push-switch { position: relative; flex: none; width: 44px; height: 26px; border: 0; border-radius: 999px; background: var(--snow-border); padding: 0; cursor: pointer; transition: background .16s ease; }
 .push-switch span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .16s ease; }
 .push-switch.on { background: var(--community-accent, #0f6fbd); }

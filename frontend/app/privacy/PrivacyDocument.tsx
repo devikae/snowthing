@@ -13,7 +13,7 @@ export default function PrivacyDocument({policy}:{policy:typeof termsDocument}) 
           <h2 className="text-lg font-bold">{section.title}</h2>
           {section.paragraphs.map(text=><p key={text}>{text}</p>)}
         </section>)}
-        <a className="text-sky-600 underline" href={`mailto:${policy.contact}`}>{policy.contact}</a>
+        <a className="text-[var(--alpine-sky)] underline" href={`mailto:${policy.contact}`}>{policy.contact}</a>
         <p className="text-sm text-[var(--snow-muted)]">{policy.notice}</p>
       </article>
     </main><Footer />
