@@ -13,16 +13,23 @@ const DESCRIPTION_LENGTH = 120;
 // Next 데이터 캐시(revalidate)는 200만 저장해 만료 뒤에도 예전 성공 값을 계속 돌려주므로 쓰지 않는다.
 const PREVIEW_CACHE_MS = 60_000;
 const PREVIEW_CACHE_MAX = 500;
-const previewCache = new Map<string, { at: number; value: unknown }>();
+const previewCache = new Map<string, { at: number; value: unknown; missing: boolean }>();
 
 export async function fetchPreview<T, P>(path: string, pick: (data: T) => P, headers?: Record<string, string>): Promise<P | null> {
+  return (await fetchPreviewResult(path, pick, headers)).value;
+}
+
+// missing은 백엔드가 404로 답한 경우다. 시간 초과, 5xx, 403(임시조치)은 missing이 아니다.
+export async function fetchPreviewResult<T, P>(path: string, pick: (data: T) => P, headers?: Record<string, string>): Promise<{ value: P | null; missing: boolean }> {
   const cached = previewCache.get(path);
-  if (cached && Date.now() - cached.at < PREVIEW_CACHE_MS) return cached.value as P | null;
+  if (cached && Date.now() - cached.at < PREVIEW_CACHE_MS) return { value: cached.value as P | null, missing: cached.missing };
   let value: P | null = null;
+  let missing = false;
   let remember = true;
   try {
     const response = await fetch(`${API_V1_URL}${path}`, { cache: "no-store", headers, signal: AbortSignal.timeout(PREVIEW_TIMEOUT_MS) });
     if (response.ok) value = pick((await response.json()) as T);
+    else if (response.status === 404) missing = true;
     // 5xx는 일시 장애일 수 있어 기억하지 않는다.
     else if (response.status >= 500) remember = false;
   } catch {
@@ -30,10 +37,10 @@ export async function fetchPreview<T, P>(path: string, pick: (data: T) => P, hea
   }
   if (remember) {
     previewCache.delete(path);
-    previewCache.set(path, { at: Date.now(), value });
+    previewCache.set(path, { at: Date.now(), value, missing });
     if (previewCache.size > PREVIEW_CACHE_MAX) previewCache.delete(previewCache.keys().next().value as string);
   }
-  return value;
+  return { value, missing };
 }
 
 // 본문은 마크다운이며 HTML이 섞일 수 있다. 미리보기용 평문으로 바꾼다.
