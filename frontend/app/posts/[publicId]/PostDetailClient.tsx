@@ -443,7 +443,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     } else {
       if (!currentUserPublicId) {
         if (confirm("댓글을 작성하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
-          router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+          router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
         }
         return;
       }
