@@ -66,6 +66,62 @@ class OfficialWeatherParsersTest {
     }
 
     @Test
+    @DisplayName("웰리힐리 기온이 다른 값과 겹쳐 Nuxt 인자 이름으로 오면 인자 목록에서 풀어 읽는다")
+    void welliHilliHoistedValues() throws IOException {
+        // 2026-11-11 실제 응답에서 "0"~"4"가 인자로 빠져 있었다. 기온이 2도이면 TEMP:"2"가 아니라 TEMP:j로 온다.
+        WeatherReading reading =
+                OfficialWeatherParsers.welliHilliNuxt(fixture("welli-nuxt-hoisted.html"), NOW);
+
+        assertThat(reading.temperature()).isEqualByComparingTo("2");
+        assertThat(reading.sky()).isEqualTo("맑음");
+        assertThat(reading.source()).isEqualTo(WeatherSourceType.OFFICIAL);
+    }
+
+    @Test
+    @DisplayName("웰리힐리 기온이 숫자 리터럴이거나 하늘 상태를 못 풀어도 기온은 읽는다")
+    void welliHilliNumberLiteralAndMissingSky() {
+        byte[] body =
+                "<script>window.__NUXT__=(function(a){return {state:{weather:{status:a,TEMP:-3.5}}}}(null));</script>"
+                        .getBytes(StandardCharsets.UTF_8);
+
+        WeatherReading reading = OfficialWeatherParsers.welliHilliNuxt(body, NOW);
+
+        assertThat(reading.temperature()).isEqualByComparingTo("-3.5");
+        assertThat(reading.sky()).isNull();
+    }
+
+    @Test
+    @DisplayName("곤지암 서버가 HTTP 200으로 오류 안내 페이지를 보내면 그 이유로 실패한다")
+    void konjiamErrorPage() {
+        assertThatThrownBy(() -> OfficialWeatherParsers.konjiam(fixture("konjiam-error.html"), NOW))
+                .isInstanceOf(WeatherFetchException.class)
+                .hasMessageContaining("오류 안내 페이지");
+    }
+
+    @Test
+    @DisplayName("곤지암 기온 칸이 비면 빈 값으로 실패하고, span 없이 온 기온은 dd에서 읽는다")
+    void konjiamEmptyOrUnwrappedTemperature() {
+        assertThatThrownBy(
+                        () ->
+                                OfficialWeatherParsers.konjiam(
+                                        ("<div id=\"weather\"><dl><dd class=\"temperature\"><span></span>℃</dd>"
+                                                        + "</dl></div>")
+                                                .getBytes(StandardCharsets.UTF_8),
+                                        NOW))
+                .isInstanceOf(WeatherFetchException.class)
+                .hasMessageContaining("비어 있습니다");
+
+        WeatherReading reading =
+                OfficialWeatherParsers.konjiam(
+                        ("<div id=\"weather\"><dl><dd class=\"icon\">흐림</dd>"
+                                        + "<dd class=\"temperature\">-0.4℃</dd></dl></div>")
+                                .getBytes(StandardCharsets.UTF_8),
+                        NOW);
+        assertThat(reading.temperature()).isEqualByComparingTo("-0.4");
+        assertThat(reading.sky()).isEqualTo("흐림");
+    }
+
+    @Test
     @DisplayName("한 글자씩 띄어 쓴 하늘 상태만 붙이고 일반 띄어쓰기는 유지한다")
     void normalizesSpacedSky() {
         assertThat(OfficialWeatherParsers.normalizeSky(" 흐 림 ")).isEqualTo("흐림");
@@ -111,6 +167,10 @@ class OfficialWeatherParsersTest {
         assertFails(OfficialWeatherParsers::konjiam, "<div id=\"weather\"></div>");
         assertFails(OfficialWeatherParsers::o2Resort, "<div class=\"o2-weather-temp\">-</div>");
         assertFails(OfficialWeatherParsers::welliHilliNuxt, "<script>window.__NUXT__={}</script>");
+        assertFails(OfficialWeatherParsers::welliHilliNuxt, "<p>no state</p>");
+        assertFails(
+                OfficialWeatherParsers::welliHilliNuxt,
+                "<script>window.__NUXT__=(function(a){return {weather:{TEMP:z}}}(\"1\"));</script>");
         assertFails(OfficialWeatherParsers::mujuWeatheri, "<table class=\"mTable2\"></table>");
         assertFails(
                 OfficialWeatherParsers::weatheriXml,

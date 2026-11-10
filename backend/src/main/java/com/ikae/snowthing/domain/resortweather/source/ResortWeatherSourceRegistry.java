@@ -11,12 +11,14 @@ import org.springframework.stereotype.Component;
 
 import com.ikae.snowthing.domain.resortweather.config.ResortWeatherProperties;
 
+import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.ObjectMapper;
 
 /**
  * 리조트 코드별 소스 순서. 공식 사이트가 있으면 먼저 쓰고, 기상청 초단기실황으로 대체한다. 조사 근거는
  * docs/conception/019_resort_weather_dday/01_design.md.
  */
+@Slf4j
 @Component
 public class ResortWeatherSourceRegistry {
 
@@ -78,6 +80,11 @@ public class ResortWeatherSourceRegistry {
         // 키가 없으면 기상청 소스를 아예 넣지 않는다. 기상청만 쓰는 리조트는 호출 없이 204가 된다.
         String kmaServiceKey = properties.kmaServiceKey();
         boolean kmaEnabled = kmaServiceKey != null && !kmaServiceKey.isBlank();
+        if (!kmaEnabled) {
+            // 키가 빠지면 대체 소스가 조용히 사라져 공식 사이트 실패가 곧 빈 기온이 된다. 기동 때 한 번 남겨 배포 설정 누락을 알아챈다.
+            log.warn(
+                    "기상청 서비스 키(SNOWTHING_KMA_SERVICE_KEY)가 없어 기온 대체 소스를 끕니다. 기상청만 쓰는 리조트는 기온을 보여 주지 않습니다.");
+        }
         Map<String, List<ResortWeatherSource>> chains = new HashMap<>();
         BASE_COORDINATES.forEach(
                 (resortCode, latLon) -> {

@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import com.ikae.snowthing.domain.resortweather.config.ResortWeatherProperties;
 
@@ -52,7 +53,20 @@ public class WeatherHttpClient {
         } catch (WeatherFetchException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            throw new WeatherFetchException("외부 호출 실패: " + exception.getClass().getSimpleName());
+            throw new WeatherFetchException("외부 호출 실패: " + reason(exception));
         }
+    }
+
+    /**
+     * 메시지 없이 원인을 구분할 만큼만 남긴다. 상태 코드 오류는 코드를, 타임아웃처럼 감싼 예외는 원인 종류까지 붙인다(ResourceAccessException만으로는
+     * 타임아웃인지 연결 거부인지 알 수 없다).
+     */
+    static String reason(RuntimeException exception) {
+        if (exception instanceof RestClientResponseException response) {
+            return "HTTP " + response.getStatusCode().value();
+        }
+        String name = exception.getClass().getSimpleName();
+        Throwable cause = exception.getCause();
+        return cause == null ? name : name + "(" + cause.getClass().getSimpleName() + ")";
     }
 }
