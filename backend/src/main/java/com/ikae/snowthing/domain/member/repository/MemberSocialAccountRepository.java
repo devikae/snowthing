@@ -16,4 +16,6 @@ public interface MemberSocialAccountRepository extends JpaRepository<MemberSocia
             SocialProvider provider, String providerUserId);
 
     List<MemberSocialAccount> findAllByMemberId(Long memberId);
+
+    boolean existsByMemberIdAndProvider(Long memberId, SocialProvider provider);
 }

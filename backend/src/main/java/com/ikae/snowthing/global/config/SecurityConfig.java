@@ -260,6 +260,9 @@ public class SecurityConfig {
                                         // IKA-64 공유를 켠 시즌 결산만 공개한다. 내 기록 API는 아래 인증 규칙을 따른다.
                                         .requestMatchers(HttpMethod.GET, "/api/v1/season-shares/*")
                                         .permitAll()
+                                        // 소셜 계정 연결은 로그인한 회원만 시작한다. 아래 oauth2 전체 허용보다 먼저 둔다.
+                                        .requestMatchers("/api/v1/auth/oauth2/link/**")
+                                        .authenticated()
                                         .requestMatchers(
                                                 "/api/members",
                                                 "/api/v1/members",

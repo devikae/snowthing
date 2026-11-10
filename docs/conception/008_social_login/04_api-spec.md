@@ -6,6 +6,9 @@
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/auth/oauth2/authorize/{provider}` | 소셜 로그인 인가 요청 시작 (302 Redirect) | `PermitAll` |
 | `GET` | `/api/v1/auth/oauth2/callback/{provider}` | 소셜 로그인 인가 코드 콜백 처리 및 세션 발급 (302 Redirect) | `PermitAll` |
+| `POST` | `/api/v1/auth/oauth2/link/{provider}` | 로그인한 회원의 소셜 계정 연결 시작 (IKA-73) | `Authenticated`, CSRF |
+| `GET` | `/api/v1/members/me/social-accounts` | 내 로그인 방법 목록 (IKA-73) | `Authenticated` |
+| `DELETE` | `/api/v1/members/me/social-accounts/{provider}` | 소셜 계정 연결 해제 (IKA-73) | `Authenticated`, CSRF |
 
 > 운영 Nginx가 `/api/` 하위 요청을 백엔드(`8080`)로 프록시하므로, 모든 OAuth2 엔드포인트는 `/api/v1/auth/oauth2/...` 경로 아래에 둔다.
 
@@ -36,6 +39,19 @@
 - **실패 시 응답 (`302 Found`)**:
   - `Location: {frontendBaseUrl}/login?error={ErrorCode.name()}`
 
+### 2.3. 소셜 계정 연결 (IKA-73)
+
+- `POST /api/v1/auth/oauth2/link/{provider}`: 로그인한 회원만 쓴다. 이미 같은 제공자가 연결돼 있으면 `SOCIAL_PROVIDER_ALREADY_LINKED`로 바로 거부한다. 성공하면 `200 {"authorizationUrl": "..."}`를 돌려주고 프론트가 그 주소로 이동한다. 인가 요청과 같은 IP 제한을 받는다.
+- 서버 세션의 state 목록에 연결할 회원 id(`linkMemberId`)를 함께 저장한다. 회원 id는 요청 값이 아니라 세션의 인증 정보에서 꺼낸다.
+- 콜백은 2.2와 같은 주소를 쓴다. state에 `linkMemberId`가 있으면 로그인 대신 연결로 처리한다.
+  1. 지금 세션의 회원이 `linkMemberId`와 다르면 토큰 교환 없이 `SOCIAL_LINK_SESSION_MISMATCH`로 끝낸다.
+  2. 회원 행을 잠그고 활성 상태인지 다시 확인한다.
+  3. 그 소셜 계정이 다른 회원에게 연결돼 있으면 `SOCIAL_ACCOUNT_IN_USE`로 거부한다. 계정을 합치지 않는다.
+  4. 같은 제공자가 이미 연결돼 있으면 `SOCIAL_PROVIDER_ALREADY_LINKED`로 거부한다.
+  5. 성공하면 `{frontendBaseUrl}/profile?socialLinked={PROVIDER}`, 실패하면 `{frontendBaseUrl}/profile?socialLinkError={ErrorCode.name()}`로 이동한다. 세션은 새로 만들지 않는다.
+- `GET /api/v1/members/me/social-accounts`: `{"passwordLogin": true, "accounts": [{"provider": "KAKAO", "connectedAt": "..."}]}`. `passwordLogin`은 `member.password`가 있는지다(이메일 가입 회원만 있다).
+- `DELETE /api/v1/members/me/social-accounts/{provider}`: `204`. 해제한 뒤 남는 로그인 방법(비밀번호 1개와 남은 소셜 연결 수의 합)이 0이면 `SOCIAL_LAST_LOGIN_METHOD`로 거부한다. 연결이 없으면 `SOCIAL_ACCOUNT_NOT_LINKED`.
+
 ---
 
 ## 3. 에러 코드 규격 (`ErrorCode`)
@@ -52,3 +68,8 @@
 | `ACCOUNT_WITHDRAWN` | `AUTH_010` | `403 Forbidden` | 탈퇴 처리된 계정입니다. |
 | `OAUTH_RATE_LIMIT` | `AUTH_011` | `429 Too Many Requests` | 소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요. |
 | `OAUTH_ACCOUNT_LINK_REQUIRED` | `AUTH_012` | `409 Conflict` | 이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요. |
+| `SOCIAL_ACCOUNT_IN_USE` | `AUTH_015` | `409 Conflict` | 이미 다른 눈팅 계정에서 쓰고 있는 소셜 계정입니다. 이 계정에 연결하려면 그 계정을 먼저 탈퇴해 주세요. |
+| `SOCIAL_PROVIDER_ALREADY_LINKED` | `AUTH_016` | `409 Conflict` | 이미 연결된 로그인 방법입니다. 다른 계정으로 바꾸려면 먼저 연결을 해제해 주세요. |
+| `SOCIAL_ACCOUNT_NOT_LINKED` | `AUTH_017` | `404 Not Found` | 연결되지 않은 소셜 계정입니다. |
+| `SOCIAL_LAST_LOGIN_METHOD` | `AUTH_018` | `409 Conflict` | 마지막 남은 로그인 방법은 해제할 수 없습니다. 다른 로그인 방법을 먼저 연결해 주세요. |
+| `SOCIAL_LINK_SESSION_MISMATCH` | `AUTH_019` | `401 Unauthorized` | 연결을 시작한 계정과 지금 로그인한 계정이 다릅니다. 다시 로그인한 뒤 시도해 주세요. |

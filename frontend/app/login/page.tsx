@@ -26,7 +26,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   WITHDRAWN_EMAIL_RESTRICTED: "탈퇴 후 30일이 지나지 않은 이메일은 다시 가입할 수 없습니다.",
   OAUTH_RATE_LIMIT: "소셜 로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
   OAUTH_ACCOUNT_LINK_REQUIRED:
-    "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요.",
+    "이미 가입된 이메일입니다. 기존 방법으로 로그인한 뒤 내 정보 수정에서 소셜 계정을 연결해 주세요.",
   OAUTH_SIGNUP_EXPIRED: "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요.",
 };
 

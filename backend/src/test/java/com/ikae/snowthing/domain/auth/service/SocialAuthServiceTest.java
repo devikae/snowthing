@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import org.hibernate.exception.ConstraintViolationException;
@@ -549,6 +550,217 @@ class SocialAuthServiceTest {
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
         assertThatThrownBy(() -> completeSignUp(profile)).isSameAs(violation);
+    }
+
+    private static Member memberWithId(long id, String password, MemberStatus status) {
+        Member member =
+                Member.builder()
+                        .publicId("member-" + id)
+                        .email("member" + id + "@snowthing.org")
+                        .password(password)
+                        .nickname("보더" + id)
+                        .role(Role.ROLE_USER)
+                        .status(status)
+                        .build();
+        ReflectionTestUtils.setField(member, "id", id);
+        return member;
+    }
+
+    private static MemberSocialAccount account(Member member, SocialProvider provider) {
+        return MemberSocialAccount.builder()
+                .member(member)
+                .provider(provider)
+                .providerUserId(provider.name().toLowerCase() + "-" + member.getId())
+                .providerEmail("social@snowthing.org")
+                .build();
+    }
+
+    private static final OAuthUserProfile KAKAO_PROFILE =
+            new OAuthUserProfile(SocialProvider.KAKAO, " kakao-1 ", "K@Kakao.com", true, "보더");
+
+    @Test
+    @DisplayName("연결하면 지금 회원에게 소셜 계정을 저장한다")
+    void linkSocialAccount_Success_SavesForCurrentMember() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.ACTIVE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.KAKAO, "kakao-1"))
+                .willReturn(Optional.empty());
+        given(memberSocialAccountRepository.existsByMemberIdAndProvider(7L, SocialProvider.KAKAO))
+                .willReturn(false);
+
+        socialAuthService.linkSocialAccount(7L, KAKAO_PROFILE);
+
+        ArgumentCaptor<MemberSocialAccount> captor =
+                ArgumentCaptor.forClass(MemberSocialAccount.class);
+        verify(memberSocialAccountRepository).saveAndFlush(captor.capture());
+        MemberSocialAccount saved = captor.getValue();
+        assertThat(saved.getMember()).isSameAs(member);
+        assertThat(saved.getProvider()).isEqualTo(SocialProvider.KAKAO);
+        assertThat(saved.getProviderUserId()).isEqualTo("kakao-1");
+        assertThat(saved.getProviderEmail()).isEqualTo("k@kakao.com");
+        verify(memberRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("다른 회원이 쓰는 소셜 계정은 합치지 않고 거부한다")
+    void linkSocialAccount_LinkedToAnotherMember_Rejected() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.ACTIVE);
+        Member other = memberWithId(8L, null, MemberStatus.ACTIVE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.KAKAO, "kakao-1"))
+                .willReturn(Optional.of(account(other, SocialProvider.KAKAO)));
+
+        assertThatThrownBy(() -> socialAuthService.linkSocialAccount(7L, KAKAO_PROFILE))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_ACCOUNT_IN_USE);
+        verify(memberSocialAccountRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("같은 제공자를 두 번 연결할 수 없다")
+    void linkSocialAccount_SameProviderTwice_Rejected() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.ACTIVE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.KAKAO, "kakao-1"))
+                .willReturn(Optional.empty());
+        given(memberSocialAccountRepository.existsByMemberIdAndProvider(7L, SocialProvider.KAKAO))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> socialAuthService.linkSocialAccount(7L, KAKAO_PROFILE))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED);
+        verify(memberSocialAccountRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("이미 내 계정에 연결된 소셜 계정을 다시 연결하면 거부한다")
+    void linkSocialAccount_AlreadyMine_Rejected() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.ACTIVE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.KAKAO, "kakao-1"))
+                .willReturn(Optional.of(account(member, SocialProvider.KAKAO)));
+
+        assertThatThrownBy(() -> socialAuthService.linkSocialAccount(7L, KAKAO_PROFILE))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED);
+    }
+
+    @Test
+    @DisplayName("동시에 다른 회원이 먼저 저장하면 사용 중인 계정으로 거부한다")
+    void linkSocialAccount_RaceOnProviderUser_Rejected() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.ACTIVE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(
+                        memberSocialAccountRepository.findByProviderAndProviderUserId(
+                                SocialProvider.KAKAO, "kakao-1"))
+                .willReturn(Optional.empty());
+        given(memberSocialAccountRepository.existsByMemberIdAndProvider(7L, SocialProvider.KAKAO))
+                .willReturn(false);
+        DataIntegrityViolationException violation =
+                constraintViolation(MemberSocialAccount.PROVIDER_USER_UNIQUE_CONSTRAINT);
+        given(memberSocialAccountRepository.saveAndFlush(any(MemberSocialAccount.class)))
+                .willThrow(violation);
+
+        assertThatThrownBy(() -> socialAuthService.linkSocialAccount(7L, KAKAO_PROFILE))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_ACCOUNT_IN_USE);
+    }
+
+    @Test
+    @DisplayName("정지된 회원은 소셜 계정을 연결할 수 없다")
+    void linkSocialAccount_SuspendedMember_Rejected() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.SUSPENDED);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> socialAuthService.linkSocialAccount(7L, KAKAO_PROFILE))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ACCOUNT_SUSPENDED);
+        verify(memberSocialAccountRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("비밀번호가 있는 회원은 하나뿐인 소셜 연결도 해제할 수 있다")
+    void unlinkSocialAccount_PasswordRemains_Deletes() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.ACTIVE);
+        MemberSocialAccount kakao = account(member, SocialProvider.KAKAO);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(memberSocialAccountRepository.findAllByMemberId(7L)).willReturn(List.of(kakao));
+
+        socialAuthService.unlinkSocialAccount(7L, SocialProvider.KAKAO);
+
+        verify(memberSocialAccountRepository).delete(kakao);
+    }
+
+    @Test
+    @DisplayName("소셜로 가입한 회원도 다른 소셜 연결이 남으면 해제할 수 있다")
+    void unlinkSocialAccount_AnotherSocialRemains_Deletes() {
+        Member member = memberWithId(7L, null, MemberStatus.ACTIVE);
+        MemberSocialAccount kakao = account(member, SocialProvider.KAKAO);
+        MemberSocialAccount google = account(member, SocialProvider.GOOGLE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(memberSocialAccountRepository.findAllByMemberId(7L))
+                .willReturn(List.of(kakao, google));
+
+        socialAuthService.unlinkSocialAccount(7L, SocialProvider.KAKAO);
+
+        verify(memberSocialAccountRepository).delete(kakao);
+    }
+
+    @Test
+    @DisplayName("마지막 남은 로그인 방법은 해제할 수 없다")
+    void unlinkSocialAccount_LastLoginMethod_Rejected() {
+        Member member = memberWithId(7L, null, MemberStatus.ACTIVE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(memberSocialAccountRepository.findAllByMemberId(7L))
+                .willReturn(List.of(account(member, SocialProvider.KAKAO)));
+
+        assertThatThrownBy(() -> socialAuthService.unlinkSocialAccount(7L, SocialProvider.KAKAO))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_LAST_LOGIN_METHOD);
+        verify(memberSocialAccountRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("연결되지 않은 제공자는 해제할 수 없다")
+    void unlinkSocialAccount_NotLinked_Rejected() {
+        Member member = memberWithId(7L, "encoded", MemberStatus.ACTIVE);
+        given(memberRepository.findByIdForUpdate(7L)).willReturn(Optional.of(member));
+        given(memberSocialAccountRepository.findAllByMemberId(7L)).willReturn(List.of());
+
+        assertThatThrownBy(() -> socialAuthService.unlinkSocialAccount(7L, SocialProvider.NAVER))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_ACCOUNT_NOT_LINKED);
+    }
+
+    @Test
+    @DisplayName("로그인 방법 목록은 비밀번호 여부와 연결된 제공자를 돌려준다")
+    void getSocialAccounts_ReturnsPasswordAndProviders() {
+        Member member = memberWithId(7L, null, MemberStatus.ACTIVE);
+        given(memberRepository.findById(7L)).willReturn(Optional.of(member));
+        given(memberSocialAccountRepository.findAllByMemberId(7L))
+                .willReturn(List.of(account(member, SocialProvider.KAKAO)));
+
+        var response = socialAuthService.getSocialAccounts(7L);
+
+        assertThat(response.passwordLogin()).isFalse();
+        assertThat(response.accounts())
+                .extracting(account -> account.provider())
+                .containsExactly(SocialProvider.KAKAO);
     }
 
     private DataIntegrityViolationException constraintViolation(String constraintName) {

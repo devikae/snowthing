@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
 import com.ikae.snowthing.domain.member.dto.RegistrationConsentRequest;
+import com.ikae.snowthing.domain.member.dto.SocialAccountsResponse;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberSocialAccount;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
@@ -93,6 +96,119 @@ public class SocialAuthService {
         eventPublisher.publishEvent(
                 new MemberSignedUpEvent(newMember.getNickname(), profile.provider().name()));
         return newMember;
+    }
+
+    /** 연결을 시작하기 전에 확인한다. 이미 같은 제공자가 연결돼 있으면 소셜 로그인 화면까지 보내지 않는다. */
+    @Transactional(readOnly = true)
+    public void requireProviderNotLinked(Long memberId, SocialProvider provider) {
+        ensureProviderFree(memberId, provider);
+    }
+
+    /**
+     * 로그인한 회원에게 소셜 계정을 붙인다. 다른 회원이 쓰는 소셜 계정은 합치지 않고 거부한다.
+     *
+     * <p>회원 행을 잠가서 같은 회원의 연결과 해제가 동시에 돌 때 로그인 방법 수를 잘못 세지 않게 한다.
+     */
+    @Transactional
+    public void linkSocialAccount(Long memberId, OAuthUserProfile profile) {
+        validateIdentity(profile);
+        Member member = lockActiveMember(memberId);
+        SocialProvider provider = profile.provider();
+        String providerUserId = profile.providerUserId().trim();
+
+        Optional<MemberSocialAccount> existing =
+                memberSocialAccountRepository.findByProviderAndProviderUserId(
+                        provider, providerUserId);
+        if (existing.isPresent()) {
+            boolean mine = memberId.equals(existing.get().getMember().getId());
+            throw new CustomException(
+                    mine
+                            ? ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED
+                            : ErrorCode.SOCIAL_ACCOUNT_IN_USE);
+        }
+        ensureProviderFree(memberId, provider);
+        // provider_email 컬럼이 NOT NULL이라 가입과 같은 기준으로 이메일 동의를 요구한다.
+        validateEmailPresent(profile);
+
+        try {
+            memberSocialAccountRepository.saveAndFlush(
+                    MemberSocialAccount.builder()
+                            .member(member)
+                            .provider(provider)
+                            .providerUserId(providerUserId)
+                            .providerEmail(emailNormalizer.normalize(profile.email()))
+                            .connectedAt(LocalDateTime.now(clock))
+                            .build());
+        } catch (DataIntegrityViolationException exception) {
+            // 확인과 저장 사이에 다른 요청이 먼저 저장한 경우다. 회원 행 잠금은 다른 회원의 요청까지 막지 못한다.
+            if (violatesConstraint(
+                    exception, MemberSocialAccount.PROVIDER_USER_UNIQUE_CONSTRAINT)) {
+                throw new CustomException(ErrorCode.SOCIAL_ACCOUNT_IN_USE, exception);
+            }
+            if (violatesConstraint(
+                    exception, MemberSocialAccount.MEMBER_PROVIDER_UNIQUE_CONSTRAINT)) {
+                throw new CustomException(ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED, exception);
+            }
+            throw exception;
+        }
+    }
+
+    /** 연결을 해제한다. 해제한 뒤 로그인할 방법이 하나도 남지 않으면 거부한다. */
+    @Transactional
+    public void unlinkSocialAccount(Long memberId, SocialProvider provider) {
+        Member member = lockActiveMember(memberId);
+        List<MemberSocialAccount> accounts =
+                memberSocialAccountRepository.findAllByMemberId(memberId);
+        MemberSocialAccount target =
+                accounts.stream()
+                        .filter(account -> account.getProvider() == provider)
+                        .findFirst()
+                        .orElseThrow(
+                                () -> new CustomException(ErrorCode.SOCIAL_ACCOUNT_NOT_LINKED));
+        int remainingLoginMethods = accounts.size() - 1 + (hasPasswordLogin(member) ? 1 : 0);
+        if (remainingLoginMethods < 1) {
+            throw new CustomException(ErrorCode.SOCIAL_LAST_LOGIN_METHOD);
+        }
+        memberSocialAccountRepository.delete(target);
+    }
+
+    @Transactional(readOnly = true)
+    public SocialAccountsResponse getSocialAccounts(Long memberId) {
+        Member member =
+                memberRepository
+                        .findById(memberId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+        List<SocialAccountsResponse.LinkedAccount> accounts =
+                memberSocialAccountRepository.findAllByMemberId(memberId).stream()
+                        .sorted(
+                                Comparator.comparing(MemberSocialAccount::getProvider)
+                                        .thenComparing(MemberSocialAccount::getId))
+                        .map(
+                                account ->
+                                        new SocialAccountsResponse.LinkedAccount(
+                                                account.getProvider(), account.getConnectedAt()))
+                        .toList();
+        return new SocialAccountsResponse(hasPasswordLogin(member), accounts);
+    }
+
+    private void ensureProviderFree(Long memberId, SocialProvider provider) {
+        if (memberSocialAccountRepository.existsByMemberIdAndProvider(memberId, provider)) {
+            throw new CustomException(ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED);
+        }
+    }
+
+    /** 이메일로 가입한 회원만 비밀번호가 있다. 소셜로 가입한 회원은 password가 null이다. */
+    private boolean hasPasswordLogin(Member member) {
+        return member.getPassword() != null;
+    }
+
+    private Member lockActiveMember(Long memberId) {
+        Member member =
+                memberRepository
+                        .findByIdForUpdate(memberId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+        validateActiveStatus(member);
+        return member;
     }
 
     private Optional<Member> findLinkedMember(OAuthUserProfile profile) {
