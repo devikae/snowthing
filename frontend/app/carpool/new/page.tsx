@@ -745,7 +745,7 @@ export default function NewCarpoolPage() {
                   <option value="">리조트 선택</option>
                   {resorts.map((resort) => (
                     <option key={resort.id} value={resort.id}>
-                      {resort.name} · {resort.regionName}
+                      {resort.name}, {resort.regionName}
                     </option>
                   ))}
                 </select>

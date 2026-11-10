@@ -461,7 +461,7 @@ export default function HomePageClient() {
               <div className="snow-empty-state">
                 <div className="snow-empty-copy">
                   <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>
-                  <span>위 입력창에서 리조트를 선택하고 첫 번째 현장 설질·대기열 소식을 공유해 보세요.</span>
+                  <span>위 입력창에서 리조트를 선택하고 첫 번째 현장 설질, 대기열 소식을 공유해 보세요.</span>
                 </div>
               </div>
             ) : (

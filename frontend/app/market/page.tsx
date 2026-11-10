@@ -39,7 +39,7 @@ const conditionLabels: Record<string, string> = {
   LIKE_NEW: "거의 새 상품",
   GOOD: "사용감 적음",
   USED: "사용감 있음",
-  DAMAGED: "수리·하자 있음",
+  DAMAGED: "수리, 하자 있음",
 };
 
 const tradeLabels: Record<string, string> = {
@@ -172,7 +172,7 @@ function MarketPageContent() {
             : items.length === 0 ? <div className="market-state"><span className="material-symbols-outlined" aria-hidden="true">inventory_2</span><p>조건에 맞는 판매글이 없습니다.</p></div>
             : items.map((item) => <Link href={`/market/${item.publicId}`} key={item.publicId} className="market-result-card">
               <div className="market-result-image"><MarketImage item={item} /><em data-status={item.tradeStatus}>{tradeLabels[item.tradeStatus] ?? item.tradeStatus}</em></div>
-              <div className="market-result-copy"><div><span>{item.category.name}</span><span>{conditionLabels[item.productCondition]}</span></div><strong>{item.title}</strong><p>{item.seller.nickname}<span>·</span>{formatKoreanDate(item.createdAt)}<span>·</span>댓글 {item.commentCount}</p></div>
+              <div className="market-result-copy"><div><span>{item.category.name}</span><span>{conditionLabels[item.productCondition]}</span></div><strong>{item.title}</strong><p><span>{item.seller.nickname}</span><span>{formatKoreanDate(item.createdAt)}</span><span>댓글 {item.commentCount}</span></p></div>
               <b>{item.free ? "무료 나눔" : `${item.price.toLocaleString()}원`}</b>
             </Link>)}
         </section>

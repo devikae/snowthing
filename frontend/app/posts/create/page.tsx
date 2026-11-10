@@ -333,7 +333,7 @@ function PostCreateForm() {
                   ? "이미지 첨부는 로그인한 회원만 사용할 수 있습니다."
                   : uploadingImage
                     ? "이미지를 서버에 업로드하고 있습니다..."
-                    : `JPG, PNG, WebP · 장당 최대 5MB · ${images.length}/10장`}
+                    : `JPG, PNG, WebP, 장당 최대 5MB, ${images.length}/10장`}
               </span>
             </div>
 

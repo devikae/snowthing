@@ -66,13 +66,13 @@ const conditionLabels: Record<string, string> = {
   LIKE_NEW: "거의 새 상품",
   GOOD: "사용감 적음",
   USED: "사용감 있음",
-  DAMAGED: "수리·하자 있음",
+  DAMAGED: "수리, 하자 있음",
 };
 
 const transactionLabels: Record<string, string> = {
   DIRECT: "직거래",
   DELIVERY: "택배",
-  BOTH: "직거래·택배",
+  BOTH: "직거래, 택배",
 };
 
 const tradeLabels: Record<string, string> = {

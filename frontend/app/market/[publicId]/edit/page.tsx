@@ -33,7 +33,7 @@ interface Detail {
   canEdit: boolean;
 }
 
-const conditions = [["NEW", "새 상품"], ["LIKE_NEW", "거의 새 상품"], ["GOOD", "사용감 적음"], ["USED", "사용감 있음"], ["DAMAGED", "수리·하자 있음"]] as const;
+const conditions = [["NEW", "새 상품"], ["LIKE_NEW", "거의 새 상품"], ["GOOD", "사용감 적음"], ["USED", "사용감 있음"], ["DAMAGED", "수리, 하자 있음"]] as const;
 const methods = [["DIRECT", "직거래"], ["DELIVERY", "택배"], ["BOTH", "모두 가능"]] as const;
 
 export default function MarketEditPage({ params }: { params: Promise<{ publicId: string }> }) {

@@ -212,7 +212,7 @@ export default function SeasonPassCalculator() {
             ))}
           </div>
           <p className="tool-help">
-            부대비용에는 교통·주차·렌털 등 방문마다 드는 비용을 넣으세요. 시즌권
+            부대비용에는 교통, 주차, 렌털 등 방문마다 드는 비용을 넣으세요. 시즌권
             혜택으로 절약하는 비용이 없다면 양쪽에 같은 값을 입력하면 됩니다.
           </p>
           <button type="submit" className="tool-primary">
@@ -326,7 +326,7 @@ export default function SeasonPassCalculator() {
         <details>
           <summary>시즌권 종류나 사용 시간은 반영되나요?</summary>
           <p>
-            시간대·이용 가능 리조트·횟수 제한·환불 조건은 가격만으로 비교할 수
+            시간대, 이용 가능 리조트, 횟수 제한, 환불 조건은 가격만으로 비교할 수
             없습니다. 이용 가능한 날짜와 시간을 먼저 확인하고, 실제로 대체할 수
             있는 리프트권 가격을 입력해 주세요.
           </p>
