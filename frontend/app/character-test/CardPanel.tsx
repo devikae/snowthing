@@ -33,7 +33,10 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
 
   const share = async () => {
     if (!card) return;
-    const outcome = await shareOrSaveImage(card.blob, `snowthing-character-${result.character.job}.png`, "내 스키장 캐릭터");
+    const outcome = await shareOrSaveImage(card.blob, `snowthing-character-${result.character.job}.png`, "내 스키장 캐릭터", {
+      text: `나는 스키장에서 ${name}래. 너는 어떤 캐릭터야?`,
+      url: new URL("/character-test", window.location.origin).toString(),
+    });
     setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "saved" ? "카드 이미지를 저장했어요." : "공유를 취소했어요.");
   };
 
@@ -60,7 +63,7 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
       </div>}
       {children && (
         <div className="ct-card-link">
-          <p className="ct-fineprint">카드는 사진만 전달돼요. 링크를 같이 보내면 받은 사람이 바로 들어올 수 있어요.</p>
+          <p className="ct-fineprint">카드와 함께 테스트 링크가 가요. 인스타그램처럼 사진만 받는 앱이면 모임 링크를 따로 보내 주세요.</p>
           {children}
         </div>
       )}
