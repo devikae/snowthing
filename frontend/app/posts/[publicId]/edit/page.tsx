@@ -109,7 +109,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
             setErrorMsg("수정할 게시글 정보를 불러오지 못했습니다.");
           }
         } catch {
-          setErrorMsg("서버 통신 중 오류가 발생했습니다.");
+          setErrorMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
         } finally {
           setLoading(false);
         }
@@ -137,11 +137,11 @@ function PostEditForm({ publicId }: { publicId: string }) {
         const form = new FormData();
         form.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: form });
-        if (!response.ok) { const data = await response.json().catch(() => null); throw new Error(data?.message || "사진 업로드에 실패했습니다."); }
+        if (!response.ok) { const data = await response.json().catch(() => null); throw new Error(data?.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요."); }
         const uploaded: { imageUrl: string } = await response.json();
         setImages((current) => [...current, uploaded.imageUrl]);
       }
-    } catch (error) { setErrorMsg(errorText(error, "사진 업로드에 실패했습니다.")); }
+    } catch (error) { setErrorMsg(errorText(error, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.")); }
     finally { setUploadingImages(false); }
   };
 
@@ -151,12 +151,12 @@ function PostEditForm({ publicId }: { publicId: string }) {
     const editorContent = editorRef.current?.getInstance().getMarkdown() || content;
 
     if (!title.trim()) {
-      setErrorMsg("제목을 입력해주세요.");
+      setErrorMsg("제목을 입력해 주세요.");
       return;
     }
 
     if (!editorContent.trim()) {
-      setErrorMsg("본문 내용을 입력해주세요.");
+      setErrorMsg("본문 내용을 입력해 주세요.");
       return;
     }
 
@@ -180,9 +180,9 @@ function PostEditForm({ publicId }: { publicId: string }) {
       }
 
       const errorData = await res.json();
-      setErrorMsg(errorData.message || "게시글 수정에 실패했습니다.");
+      setErrorMsg(errorData.message || "글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } catch {
-      setErrorMsg("서버 통신 중 오류가 발생했습니다.");
+      setErrorMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -212,7 +212,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
 
           {isAnonymous && !isAuthor && (
             <label className="compose-anon-pw-pill">
-              <span className="material-symbols-outlined">lock</span>
+              <span className="material-symbols-outlined" aria-hidden="true">lock</span>
               <input
                 type="password"
                 placeholder="작성 당시 익명 비밀번호"
@@ -244,7 +244,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
       <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (
           <div className="compose-error" role="alert">
-            <span className="material-symbols-outlined">error</span>
+            <span className="material-symbols-outlined" aria-hidden="true">error</span>
             {errorMsg}
           </div>
         )}
@@ -273,7 +273,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
           </div>
           <div className="compose-sheet-attach">
             <div className="compose-attach-row">
-              <label htmlFor="post-edit-images" className={`compose-attach-btn ${!canUploadImages || uploadingImages || images.length >= 10 ? "disabled" : ""}`}><span className="material-symbols-outlined">image</span><span>{uploadingImages ? "업로드 중..." : "사진 첨부"}</span></label>
+              <label htmlFor="post-edit-images" className={`compose-attach-btn ${!canUploadImages || uploadingImages || images.length >= 10 ? "disabled" : ""}`}><span className="material-symbols-outlined" aria-hidden="true">image</span><span>{uploadingImages ? "업로드 중..." : "사진 첨부"}</span></label>
               <input id="post-edit-images" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={!canUploadImages || uploadingImages || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />
               <span className="compose-attach-hint">{canUploadImages ? `장당 최대 5MB · ${images.length}/10장` : "사진 첨부는 로그인한 회원만 가능합니다."}</span>
             </div>
@@ -283,10 +283,10 @@ function PostEditForm({ publicId }: { publicId: string }) {
 
         <footer className="compose-footer-bar">
           <Link href={`/posts/${publicId}`} className="compose-cancel-pill">
-            <span className="material-symbols-outlined">arrow_back</span> 취소
+            <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 취소
           </Link>
           <button type="submit" disabled={submitting || uploadingImages} className="compose-submit-pill">
-            <span className="material-symbols-outlined">check</span>
+            <span className="material-symbols-outlined" aria-hidden="true">check</span>
             {submitting ? "수정 중..." : "수정 완료"}
           </button>
         </footer>
@@ -301,7 +301,7 @@ export default function PostEditPage({ params }: { params: Promise<{ publicId: s
   return (
     <div className="community-page">
       <TopNav active="posts" />
-      <Suspense fallback={<div className="p-12 text-center text-sm text-[var(--snow-muted)]">로딩 중입니다.</div>}>
+      <Suspense fallback={<div className="p-12 text-center text-sm text-[var(--snow-muted)]">불러오는 중입니다.</div>}>
         <PostEditForm publicId={publicId} />
       </Suspense>
       <Footer />

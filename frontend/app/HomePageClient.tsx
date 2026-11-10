@@ -212,10 +212,10 @@ export default function HomePageClient() {
         await loadTodayReports();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.message || "설질 제보 등록에 실패했습니다.");
+        alert(data.message || "설질 제보를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
     } catch {
-      alert("서버 통신 중 오류가 발생했습니다.");
+      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       isSubmittingReportRef.current = false;
       setSubmittingReport(false);
@@ -318,7 +318,7 @@ export default function HomePageClient() {
                 </div>
                 <div className="board-tabs-actions">
                   <Link href={activeFeedConfig.moreHref} className="board-tabs-more">
-                    더보기 ↗
+                    더보기 →
                   </Link>
                   <Link href={writeHref} className="board-tabs-write">
                     <span className="material-symbols-outlined" aria-hidden="true">edit</span>
@@ -330,12 +330,12 @@ export default function HomePageClient() {
               <div className="compact-post-list">
                 {feedLoading[activeFeed] ? (
                   <div className="home-feed-state">
-                    <span className="material-symbols-outlined spin">progress_activity</span>
+                    <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                     <strong>게시글을 불러오는 중입니다.</strong>
                   </div>
                 ) : feedErrors[activeFeed] ? (
                   <div className="home-feed-state error">
-                    <span className="material-symbols-outlined">cloud_off</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                     <strong>게시글을 불러오지 못했습니다.</strong>
                     <button type="button" onClick={() => void loadFeed(activeFeedConfig)}>
                       다시 시도
@@ -343,7 +343,7 @@ export default function HomePageClient() {
                   </div>
                 ) : feeds[activeFeed].length === 0 ? (
                   <div className="home-feed-state">
-                    <span className="material-symbols-outlined">edit_note</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
                     <strong>등록된 게시글이 없습니다.</strong>
                   </div>
                 ) : (
@@ -398,7 +398,7 @@ export default function HomePageClient() {
         <section className="snow-report-widget home-tier-2">
           <div className="section-head">
             <div className="section-head-title">
-              <small className="section-eyebrow">FIELD CONDITION DISPATCH</small>
+              <small className="section-eyebrow">라이더 현장 제보</small>
               <div className="section-title-inline">
                 <h2>오늘의 설질</h2>
                 <time className="snow-date-badge">{koreanToday}</time>
@@ -406,7 +406,7 @@ export default function HomePageClient() {
             </div>
             <div className="section-actions">
               <Link href="/resort-reports" className="board-tabs-more">
-                전체 제보 보기 ↗
+                전체 제보 보기 →
               </Link>
             </div>
           </div>
@@ -436,8 +436,8 @@ export default function HomePageClient() {
                 !reportSeasonOpen
                   ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다"
                   : profile
-                    ? "지금 슬로프 설질·대기시간·정설 상태를 한 줄(100자 이내)로 공유해주세요..."
-                    : "로그인하고 오늘의 설질을 제보해보세요"
+                    ? "지금 슬로프의 설질, 대기 시간, 정설 상태를 한 줄(100자 이내)로 공유해 주세요"
+                    : "로그인하고 오늘의 설질을 제보해 보세요"
               }
               aria-label="설질 제보 내용"
               className={!profile ? "cursor-pointer" : undefined}
@@ -448,7 +448,7 @@ export default function HomePageClient() {
               className="capsule-send-btn"
               disabled={profile ? (!snowReportContent.trim() || submittingReport || !reportSeasonOpen || resortMasterError || resortMasterList.length === 0) : false}
             >
-              {profile ? (submittingReport ? "등록중" : "제보 등록") : "로그인"}
+              {profile ? (submittingReport ? "등록 중" : "제보 등록") : "로그인"}
             </button>
           </form>
 
@@ -489,15 +489,15 @@ export default function HomePageClient() {
           <section className="carpool-widget tier-3-left" id="carpool">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">RIDE SHARE</small>
-                <h2>카풀 &amp; 동행</h2>
+                <small className="section-eyebrow">리조트 같이 가기</small>
+                <h2>카풀과 동행</h2>
               </div>
               <div className="section-actions">
                 <Link href="/carpool/new" className="btn-outline-pill">
                   + 모집 등록
                 </Link>
                 <Link href="/carpool" className="board-tabs-more">
-                  전체보기 ↗
+                  전체 보기 →
                 </Link>
               </div>
             </div>
@@ -554,12 +554,12 @@ export default function HomePageClient() {
           <section className="market-widget tier-3-right" id="market">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">VERIFIED GEAR ARCHIVE</small>
+                <small className="section-eyebrow">중고 장비 거래</small>
                 <h2>중고장터</h2>
               </div>
               <div className="section-actions">
                 <Link href="/market" className="board-tabs-more">
-                  장터 바로가기 ↗
+                  장터 바로가기 →
                 </Link>
               </div>
             </div>
@@ -588,11 +588,11 @@ export default function HomePageClient() {
                         {item.thumbnailImageUrl ? (
                           <Image src={item.thumbnailImageUrl} alt="" width={240} height={192} unoptimized />
                         ) : (
-                          <span className="market-image-placeholder material-symbols-outlined">inventory_2</span>
+                          <span className="market-image-placeholder material-symbols-outlined" aria-hidden="true">inventory_2</span>
                         )}
                         <div className="lookbook-glass">
                           <span>매물 보기</span>
-                          <i>↗</i>
+                          <i aria-hidden="true">→</i>
                         </div>
                       </div>
                     </Link>
@@ -601,7 +601,7 @@ export default function HomePageClient() {
               </div>
             ) : (
               <div className="market-preview-empty">
-                <span className="material-symbols-outlined">inventory_2</span>
+                <span className="material-symbols-outlined" aria-hidden="true">inventory_2</span>
                 <p>등록된 판매 상품이 없습니다.</p>
               </div>
             )}

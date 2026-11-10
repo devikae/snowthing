@@ -317,7 +317,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       if (!response.ok) throw new Error();
       setMessages((previous) => previous.filter((item) => item.messageId !== message.messageId));
     } catch {
-      setToastError("IP 차단에 실패했습니다.");
+      setToastError("IP를 차단하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
 
@@ -326,7 +326,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       {/* 상단 헤더 바 */}
       <div className="live-chat-head">
         <div className="section-head-title">
-          <small className="section-eyebrow">LIVE STREAM</small>
+          <small className="section-eyebrow">실시간 채팅</small>
           <h2>라이브톡</h2>
         </div>
       </div>
@@ -350,7 +350,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         >
           {messages.length === 0 ? (
             <div className="live-chat-empty">
-              <span className="material-symbols-outlined">forum</span>
+              <span className="material-symbols-outlined" aria-hidden="true">forum</span>
               <p>실시간 슬로프 현황이나 오늘의 라이딩 잡담을 나눠보세요!</p>
             </div>
           ) : (
@@ -394,14 +394,14 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             className="live-chat-scroll-btn"
           >
             <span>새 메시지 수신</span>
-            <span className="material-symbols-outlined">south</span>
+            <span className="material-symbols-outlined" aria-hidden="true">south</span>
           </button>
         )}
 
         {/* 도배/링크 차단 개인 에러 토스트 */}
         {toastError && (
           <div className="live-chat-toast-error">
-            <span className="material-symbols-outlined">warning</span>
+            <span className="material-symbols-outlined" aria-hidden="true">warning</span>
             <span>{toastError}</span>
           </div>
         )}
@@ -445,7 +445,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
               ? "메세지를 입력하세요"
               : anonymousChatEnabled
                 ? "로그인 없이 대화할 수 있어요 (닉네임 자동)"
-                : "로그인하고 라이브톡에 참여해보세요"
+                : "로그인하고 라이브톡에 참여해 보세요"
           }
           className="live-chat-compose-input capsule-input"
         />
@@ -460,7 +460,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             <span>로그인</span>
           ) : (
             <>
-              <span className="material-symbols-outlined">arrow_upward</span>
+              <span className="material-symbols-outlined" aria-hidden="true">arrow_upward</span>
               <span>전송</span>
             </>
           )}

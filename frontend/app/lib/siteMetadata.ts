@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const SITE_URL = "https://snowthing.org";
 export const SITE_NAME = "눈팅";
 export const SITE_TITLE = "눈팅 SnowThing | 윈터스포츠 커뮤니티";
-export const SITE_DESCRIPTION = "눈팅(SnowThing)은 윈터스포츠 커뮤니티입니다. 슬로프캠, 오늘의 설질, 카풀·동행과 장비 정보를 함께 나눠요.";
+export const SITE_DESCRIPTION = "눈팅(SnowThing)은 윈터스포츠 커뮤니티입니다. 슬로프캠, 오늘의 설질, 카풀과 동행, 장비 정보를 함께 나눠요.";
 
 // Next는 하위 페이지의 openGraph가 상위 값을 통째로 덮는다. openGraph를 정하는 곳마다 이 이미지를 넣는다.
 export const DEFAULT_OG_IMAGE = { url: "/og-default.png", width: 1200, height: 630, alt: "눈팅 SnowThing" };
@@ -31,6 +31,11 @@ export function publicPageMetadata(title: string, description: string, path: str
 }
 
 export const PRIVATE_PAGE_ROBOTS: Metadata["robots"] = { index: false, follow: true };
+
+// 검색엔진에 올리지 않는 화면도 탭 제목과 공유 미리보기에는 그 화면의 설명을 보여 준다.
+export function privatePageMetadata(title: string, description: string): Metadata {
+  return { ...sectionOpenGraph(`${title} | 눈팅 SnowThing`, description), robots: PRIVATE_PAGE_ROBOTS };
+}
 
 export const websiteStructuredData = {
   "@context": "https://schema.org",

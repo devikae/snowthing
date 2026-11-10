@@ -429,7 +429,7 @@ export default function NewCarpoolPage() {
         setError(
           previewError instanceof Error
             ? previewError.message
-            : "자동 계산에 실패했습니다.",
+            : "비용을 자동으로 계산하지 못했습니다. 금액을 직접 입력하거나 잠시 후 다시 시도해 주세요.",
         );
       }
     } finally {
@@ -566,7 +566,7 @@ export default function NewCarpoolPage() {
           response,
           response.status === 401
             ? "로그인이 필요합니다."
-            : "모집글 등록에 실패했습니다.",
+            : "모집글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         );
         if (["CARPOOL_004", "CARPOOL_006"].includes(apiError.code ?? "")) {
           setRouteSource("MANUAL");
@@ -585,7 +585,7 @@ export default function NewCarpoolPage() {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "등록에 실패했습니다.",
+          : "모집글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
     } finally {
       isSubmittingRef.current = false;
@@ -598,13 +598,13 @@ export default function NewCarpoolPage() {
       <div className="community-page"><TopNav active="carpool" />
       <main className="community-container carpool-compose-page content-compose-page">
         <PageHeading title={`카풀 모집글 ${editPublicId ? "수정" : "등록"}`}
-          breadcrumb={<Link href="/carpool">카풀·동행</Link>}
+          breadcrumb={<Link href="/carpool">카풀과 동행</Link>}
           description="일정과 출발 장소를 정하고 함께할 라이더를 모집해 보세요." />
         {!authChecked ? <div className="carpool-auth-gate">로그인 상태를 확인하는 중입니다.</div> : !authenticated ? (
           <section className="carpool-auth-gate">
-            <span className="material-symbols-outlined">lock</span>
+            <span className="material-symbols-outlined" aria-hidden="true">lock</span>
             <h2>카풀 모집글은 회원만 작성할 수 있습니다.</h2>
-            <p>회원가입 후 출발지와 예상 비용을 계산해 모집글을 등록해보세요.</p>
+            <p>회원가입 후 출발지와 예상 비용을 계산해 모집글을 등록해 보세요.</p>
             <div><Link className="carpool-primary-button" href="/signup">회원가입</Link><Link href="/login?returnUrl=/carpool/new">이미 회원이라면 로그인</Link></div>
           </section>
         ) : <form className="carpool-form" onSubmit={submit}>
@@ -779,7 +779,7 @@ export default function NewCarpoolPage() {
                     placeholder="날짜 선택"
                     value={form.departureDate ? `${form.departureDate}${getDayOfWeek(form.departureDate)}` : ""}
                   />
-                  <span className="material-symbols-outlined carpool-date-icon">calendar_month</span>
+                  <span className="material-symbols-outlined carpool-date-icon" aria-hidden="true">calendar_month</span>
                   <input
                     required
                     type="date"
@@ -853,7 +853,7 @@ export default function NewCarpoolPage() {
                         placeholder="날짜 선택"
                         value={form.returnDate ? `${form.returnDate}${getDayOfWeek(form.returnDate)}` : ""}
                       />
-                      <span className="material-symbols-outlined carpool-date-icon">calendar_month</span>
+                      <span className="material-symbols-outlined carpool-date-icon" aria-hidden="true">calendar_month</span>
                       <input
                         required
                         type="date"
@@ -1063,7 +1063,7 @@ export default function NewCarpoolPage() {
             <textarea
               required
               maxLength={MAX_CONTENT_LENGTH}
-              placeholder="카풀 일정과 장비 적재 가능 여부를 적어주세요."
+              placeholder="카풀 일정과 장비 적재 가능 여부를 적어 주세요."
               value={form.content}
               onChange={(event) => update("content", event.target.value)}
             />

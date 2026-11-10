@@ -210,7 +210,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                 중고장터
               </Link>
               <Link href="/carpool" className={active === "carpool" ? "nav-active" : ""} aria-current={active === "carpool" ? "page" : undefined}>
-                카풀·동행
+                카풀과 동행
               </Link>
               <Link href="/tools" className={active === "tools" ? "nav-active" : ""} aria-current={active === "tools" ? "page" : undefined}>라이더 도구</Link>
             </nav>
@@ -220,7 +220,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
             <ThemeToggle />
             <form className={`header-search${searchOpen ? " open" : ""}`} onSubmit={handleSearch}>
               <button type="button" onClick={() => setSearchOpen((open) => !open)} aria-label={searchOpen ? "검색 닫기" : "검색 열기"} aria-expanded={searchOpen}>
-                <span className="material-symbols-outlined">search</span>
+                <span className="material-symbols-outlined" aria-hidden="true">search</span>
               </button>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" tabIndex={searchOpen ? 0 : -1} />
             </form>
@@ -271,17 +271,17 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                 </details>
               </div>
             ) : (
-              <Link href="/login" className="header-login" aria-label="로그인" title="로그인"><span className="material-symbols-outlined">person</span></Link>
+              <Link href="/login" className="header-login" aria-label="로그인" title="로그인"><span className="material-symbols-outlined" aria-hidden="true">person</span></Link>
             ))}
             <button type="button" className="header-menu-button" onClick={() => setMobileOpen((open) => !open)} aria-label={mobileOpen ? "메뉴 닫기" : "메뉴 열기"} aria-expanded={mobileOpen}>
-              <span className="material-symbols-outlined">{mobileOpen ? "close" : "menu"}</span>
+              <span className="material-symbols-outlined" aria-hidden="true">{mobileOpen ? "close" : "menu"}</span>
             </button>
           </div>
         </div>
         <div className={`community-mobile-panel${mobileOpen ? " open" : ""}`}>
           <div className="community-container">
             <form className="mobile-header-search" onSubmit={handleSearch}>
-              <span className="material-symbols-outlined">search</span>
+              <span className="material-symbols-outlined" aria-hidden="true">search</span>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" />
               <button type="submit">검색</button>
             </form>
@@ -292,7 +292,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               ))}
               <Link href="/resort-cam" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>슬로프캠</Link>
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
-              <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀·동행</Link>
+              <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀과 동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
               {user && <Link href="/season-log" onClick={() => setMobileOpen(false)}>내 시즌 기록</Link>}
               {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}
@@ -311,7 +311,7 @@ export function Footer() {
         <div className="community-footer-brand"><strong>SNOWTHING | 눈팅</strong><span>윈터스포츠 커뮤니티</span></div>
         <nav aria-label="사이트 안내"><Link href="/terms">이용약관</Link><Link href="/privacy">개인정보처리방침</Link><Link href="/posts?category=NOTICE">공지사항</Link><Link href="/posts?category=INQUIRY">1:1 문의</Link><a href="mailto:manager@snowthing.org">manager@snowthing.org</a></nav>
       </div>
-      <div className="community-container community-copyright">Copyright © SNOWTHING Alpine Community. All rights reserved.</div>
+      <div className="community-container community-copyright">Copyright © 눈팅 SnowThing. All rights reserved.</div>
     </footer>
   );
 }

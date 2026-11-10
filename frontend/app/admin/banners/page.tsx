@@ -93,12 +93,12 @@ export default function AdminBannersPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("배너 저장에 실패했습니다.");
+      if (!res.ok) throw new Error("배너를 저장하지 못했습니다.");
       setShowModal(false);
       fetchBanners();
       alert("배너가 성공적으로 저장되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "저장 실패"));
+      alert((err instanceof Error ? err.message : "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -114,21 +114,21 @@ export default function AdminBannersPage() {
         body: JSON.stringify({ title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl,
           displayOrder: b.displayOrder, isActive: !b.isActive, startAt: b.startAt, endAt: b.endAt }),
       });
-      if (!res.ok) throw new Error("상태 변경에 실패했습니다.");
+      if (!res.ok) throw new Error("상태를 바꾸지 못했습니다.");
       setBanners((prev) =>
         prev.map((item) =>
           item.id === b.id ? { ...item, isActive: !b.isActive } : item
         )
       );
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "상태 변경 실패"));
+      alert((err instanceof Error ? err.message : "상태를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
   }
 
   async function handleDelete(b: BannerItem) {
-    if (!window.confirm(`[${b.title}] 배너를 삭제하시겠습니까?`)) return;
+    if (!window.confirm(`[${b.title}] 배너를 삭제할까요?`)) return;
 
     try {
       setActionLoading(true);
@@ -136,11 +136,11 @@ export default function AdminBannersPage() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) throw new Error("배너 삭제에 실패했습니다.");
+      if (!res.ok) throw new Error("배너를 삭제하지 못했습니다.");
       setBanners((prev) => prev.filter((item) => item.id !== b.id));
       alert("배너가 삭제되었습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "삭제 실패"));
+      alert((err instanceof Error ? err.message : "삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -185,13 +185,13 @@ export default function AdminBannersPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     배너 목록을 불러오는 중입니다...
                   </td>
                 </tr>
               ) : banners.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     등록된 배너가 없습니다.
                   </td>
                 </tr>
@@ -212,7 +212,7 @@ export default function AdminBannersPage() {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-500">
                             No Img
                           </div>
                         )}
@@ -221,7 +221,7 @@ export default function AdminBannersPage() {
                     <td className="py-3.5 px-4 font-bold text-slate-900 max-w-xs truncate">
                       {b.title}
                     </td>
-                    <td className="py-3.5 px-4 text-xs font-mono text-slate-400 max-w-xs truncate">
+                    <td className="py-3.5 px-4 text-xs font-mono text-slate-500 max-w-xs truncate">
                       {b.linkUrl ? (
                         <a
                           href={b.linkUrl}

@@ -102,13 +102,13 @@ function CarpoolList() {
       <div className="carpool-list-toolbar"><strong>카풀 모집글</strong><span>총 {data.totalElements.toLocaleString("ko-KR")}건</span></div>
       {loading ? <div className="carpool-empty">카풀 모집글을 불러오는 중입니다.</div>
         : error ? <div className="carpool-empty"><p>카풀 모집글을 불러오지 못했습니다.</p><button type="button" onClick={() => window.location.reload()}>다시 시도</button></div>
-          : data.content.length === 0 ? keyword ? <div className="carpool-empty"><p>검색 결과가 없습니다.</p></div> : <div className="carpool-empty"><span className="material-symbols-outlined">directions_car</span><p>등록된 카풀 모집글이 없습니다.</p><Link href="/carpool/new">첫 모집글 등록하기</Link></div>
+          : data.content.length === 0 ? keyword ? <div className="carpool-empty"><p>검색 결과가 없습니다.</p></div> : <div className="carpool-empty"><span className="material-symbols-outlined" aria-hidden="true">directions_car</span><p>등록된 카풀 모집글이 없습니다.</p><Link href="/carpool/new">첫 모집글 등록하기</Link></div>
             : data.content.map((item) => <Link className="carpool-card" href={`/carpool/${item.publicId}`} key={item.publicId}>
               <div className="carpool-card-main">
                 <div className="carpool-card-tags"><em>{item.tripType === "ROUND_TRIP" ? "왕복" : "편도"}</em><em>{item.equipmentLoadAvailable ? "장비 적재 가능" : "장비 적재 불가"}</em></div>
                 <h2>{item.title}</h2>
-                <p className="carpool-route"><strong>{item.departureRegion}</strong><span className="material-symbols-outlined">east</span><strong>{item.destinationResortName}</strong></p>
-                <p className="carpool-meta"><span className="material-symbols-outlined">schedule</span>{formatCarpoolDateTime(item.departureAt)}<span className="material-symbols-outlined">person</span>모집 {item.passengerCapacity}명</p>
+                <p className="carpool-route"><strong>{item.departureRegion}</strong><span className="material-symbols-outlined" aria-hidden="true">east</span><strong>{item.destinationResortName}</strong></p>
+                <p className="carpool-meta"><span className="material-symbols-outlined" aria-hidden="true">schedule</span>{formatCarpoolDateTime(item.departureAt)}<span className="material-symbols-outlined" aria-hidden="true">person</span>모집 {item.passengerCapacity}명</p>
               </div>
               <div className="carpool-card-cost"><small>{carpoolCostLabel(item.costMode)}</small><b>{item.estimatedCostPerPerson.toLocaleString("ko-KR")}원</b><span>작성자 {item.writerName}</span></div>
             </Link>)}
@@ -126,7 +126,7 @@ export default function CarpoolPage() {
     <div className="community-page">
       <TopNav active="carpool" />
       <main className="community-container carpool-page">
-        <PageHeading title="카풀·동행" description="출발지와 리조트가 맞는 동행을 찾아보세요."
+        <PageHeading title="카풀과 동행" description="출발지와 리조트가 맞는 동행을 찾아보세요."
           actions={<Link href="/carpool/new">모집글 등록</Link>} />
         <Suspense fallback={<div className="carpool-empty">카풀 모집글을 불러오는 중입니다.</div>}>
           <CarpoolList />

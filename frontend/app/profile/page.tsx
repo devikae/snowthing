@@ -107,12 +107,12 @@ export default function ProfilePage() {
     setCheckingNickname(true); setNicknameMessage("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.nicknameAvailability, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname }) });
-      if (!response.ok) throw new Error(await message(response, "중복 확인에 실패했습니다."));
+      if (!response.ok) throw new Error(await message(response, "중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const result: { nickname: string; available: boolean } = await response.json();
       if (version !== nicknameVersion.current) return;
       setCheckedNickname(result.available && result.nickname === nickname ? nickname : null);
       setNicknameMessage(result.available ? "사용할 수 있는 닉네임입니다." : "이미 사용 중인 닉네임입니다.");
-    } catch (e) { if (version === nicknameVersion.current) setNicknameMessage(errorText(e, "중복 확인에 실패했습니다.")); }
+    } catch (e) { if (version === nicknameVersion.current) setNicknameMessage(errorText(e, "중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요.")); }
     finally { setCheckingNickname(false); }
   };
   const save = async (event: React.FormEvent) => {
@@ -125,7 +125,7 @@ export default function ProfilePage() {
       const p: Settings = await response.json(); setProfile(p); setForm(toForm(p));
       setCheckedNickname(null); setNicknameMessage(""); setNotice("내 정보를 저장했습니다.");
       window.dispatchEvent(new Event("snowthing-profile-updated"));
-    } catch (e) { setError(errorText(e, "저장에 실패했습니다.")); }
+    } catch (e) { setError(errorText(e, "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.")); }
     finally { setBusy(null); }
   };
   const savePhoto = async (reset = false) => {
@@ -140,13 +140,13 @@ export default function ProfilePage() {
         if (fileRef.current) fileRef.current.value = "";
         return;
       }
-      if (!response.ok) throw new Error(await message(response, "프로필 사진 변경에 실패했습니다."));
+      if (!response.ok) throw new Error(await message(response, "프로필 사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const url = reset ? null : (await response.json()).imageUrl;
       setProfile({ ...profile, profileImageUrl: url }); setPhoto(null); setPreview(null);
       if (fileRef.current) fileRef.current.value = "";
       setNotice(reset ? "기본 이미지로 변경했습니다." : "프로필 사진을 변경했습니다.");
       window.dispatchEvent(new Event("snowthing-profile-updated"));
-    } catch (e) { setError(errorText(e, "사진 변경에 실패했습니다.")); }
+    } catch (e) { setError(errorText(e, "사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.")); }
     finally { setBusy(null); }
   };
   const changePassword = async (event: React.FormEvent) => {
@@ -161,7 +161,7 @@ export default function ProfilePage() {
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
       allowNavigation.current = true;
       window.location.href = "/login?passwordChanged=1";
-    } catch (e) { setError(errorText(e, "비밀번호 변경에 실패했습니다.")); setBusy(null); }
+    } catch (e) { setError(errorText(e, "비밀번호를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.")); setBusy(null); }
   };
   const withdraw = async (event: React.FormEvent) => {
     event.preventDefault(); if (!profile || busy) return;

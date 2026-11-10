@@ -18,7 +18,7 @@ export function DeleteConfirmModal({
   onClose,
   onConfirm,
   title = "게시글 삭제 확인",
-  description = "이 게시글을 삭제하시겠습니까?",
+  description = "이 게시글을 삭제할까요?",
   requirePassword = true,
   confirmLabel = "삭제",
   submittingLabel = "삭제 중...",
@@ -34,7 +34,7 @@ export function DeleteConfirmModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (requirePassword && !password.trim()) {
-      setErrorMsg("비밀번호를 입력해주세요.");
+      setErrorMsg("비밀번호를 입력해 주세요.");
       return;
     }
 
@@ -47,7 +47,7 @@ export function DeleteConfirmModal({
       if (err instanceof Error) {
         setErrorMsg(err.message);
       } else {
-        setErrorMsg("비밀번호가 일치하지 않거나 삭제 처리에 실패했습니다.");
+        setErrorMsg("삭제하지 못했습니다. 비밀번호를 확인한 뒤 다시 시도해 주세요.");
       }
     } finally {
       setSubmitting(false);

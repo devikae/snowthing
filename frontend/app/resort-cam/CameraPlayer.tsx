@@ -157,7 +157,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
           />
           {loading && (
             <div className={styles.loadingOverlay}>
-              <span className="material-symbols-outlined spin">progress_activity</span>
+              <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
               <span>실시간 스트림 연결 중...</span>
             </div>
           )}
@@ -192,7 +192,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
       {showStatus && (
         <div className={styles.offlineCard} role="status">
           <div className={styles.offlineIconBox}>
-            <span className="material-symbols-outlined">videocam_off</span>
+            <span className="material-symbols-outlined" aria-hidden="true">videocam_off</span>
           </div>
           <div className={styles.offlineText}>
             <h4>{camera.sourceIssue === "upstream-unavailable" ? "원본 영상에 연결할 수 없습니다" : camera.sourceIssue === "provider-restricted" ? "제공처에서 재생을 제한하고 있습니다" : camera.sourceIssue === "not-published" ? "현재 공개된 영상이 없습니다" : failed ? "영상에 연결하지 못했습니다" : "공식 페이지에서 확인해 주세요"}</h4>
@@ -210,7 +210,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
               rel="noopener noreferrer"
               className={styles.officialSiteBtn}
             >
-              <span className="material-symbols-outlined">open_in_new</span>
+              <span className="material-symbols-outlined" aria-hidden="true">open_in_new</span>
               리조트 공식 현황 보기
             </a>
           )}
@@ -229,7 +229,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
           }}
           aria-label={`${camera.name} 라이브 영상 ${idleStopped ? "계속 보기" : "재생"}`}
         >
-          <span className="material-symbols-outlined playIcon">play_circle</span>
+          <span className="material-symbols-outlined playIcon" aria-hidden="true">play_circle</span>
           <span className={styles.playText}>{idleStopped ? "오래 켜 둔 영상을 멈췄어요. 계속 보기" : "실시간 영상 재생"}</span>
         </button>
       )}

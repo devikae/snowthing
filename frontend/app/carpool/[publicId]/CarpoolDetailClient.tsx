@@ -88,7 +88,7 @@ export default function CarpoolDetailClient() {
   }, [writerPublicId]);
 
   const deleteCarpool = async () => {
-    if (!window.confirm("이 카풀 모집글을 삭제하시겠습니까?")) return;
+    if (!window.confirm("이 카풀 모집글을 삭제할까요?")) return;
     setDeleting(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.carpool.delete(publicId), {

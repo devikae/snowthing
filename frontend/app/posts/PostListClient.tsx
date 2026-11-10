@@ -249,12 +249,12 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
             <section className="board-post-list" aria-live="polite">
               {loading ? (
                 <div className="board-state">
-                  <span className="material-symbols-outlined spin">progress_activity</span>
+                  <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                   <strong>게시글을 불러오는 중입니다.</strong>
                 </div>
               ) : error ? (
                 <div className="board-state error">
-                  <span className="material-symbols-outlined">cloud_off</span>
+                  <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                   <strong>게시글을 불러오지 못했습니다.</strong>
                   <button type="button" onClick={() => void fetchPosts()}>
                     다시 시도
@@ -262,7 +262,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                 </div>
               ) : posts.length === 0 ? (
                 <div className="board-state">
-                  <span className="material-symbols-outlined">edit_note</span>
+                  <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
                   <strong>
                     {keywordFromUrl
                       ? "검색 결과가 없습니다."
@@ -335,8 +335,8 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
 
             <div className="board-navigation">
               <nav className="board-pagination" aria-label="페이지 이동">
-                <button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })}>
-                  <span className="material-symbols-outlined">chevron_left</span>
+                <button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })} aria-label="이전 페이지">
+                  <span className="material-symbols-outlined" aria-hidden="true">chevron_left</span>
                 </button>
                 {visiblePages.map((pageNumber) => (
                   <button
@@ -354,8 +354,8 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     <button onClick={() => moveTo({ page: totalPages - 1 })}>{totalPages}</button>
                   </>
                 )}
-                <button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })}>
-                  <span className="material-symbols-outlined">chevron_right</span>
+                <button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })} aria-label="다음 페이지">
+                  <span className="material-symbols-outlined" aria-hidden="true">chevron_right</span>
                 </button>
               </nav>
               <div className="board-navigation-actions">
@@ -375,7 +375,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}
                     className="board-write-button"
                   >
-                    <span className="material-symbols-outlined">edit</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">edit</span>
                     {isInquiry ? "문의하기" : "글쓰기"}
                   </Link>
                 )}
