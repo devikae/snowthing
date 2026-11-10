@@ -151,6 +151,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
     const start = Math.max(0, Math.min(page - 2, totalPages - 5));
     return Array.from({ length: Math.min(5, totalPages) }, (_, index) => start + index);
   }, [page, totalPages]);
+  const lastVisiblePage = visiblePages[visiblePages.length - 1] ?? 0;
 
   const moveTo = (next: { category?: string; page?: number; keyword?: string; searchType?: string; view?: string }) => {
     const params = new URLSearchParams();
@@ -346,9 +347,10 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     {pageNumber + 1}
                   </button>
                 ))}
-                {totalPages > 6 && (
+                {/* 마지막 페이지가 이미 번호 목록에 있으면 다시 그리지 않는다. 바로 앞까지 보이면 말줄임표는 빼고 붙인다. */}
+                {lastVisiblePage < totalPages - 1 && (
                   <>
-                    <span>…</span>
+                    {lastVisiblePage < totalPages - 2 && <span>…</span>}
                     <button onClick={() => moveTo({ page: totalPages - 1 })}>{totalPages}</button>
                   </>
                 )}
