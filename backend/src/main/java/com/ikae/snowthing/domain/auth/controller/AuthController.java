@@ -1,6 +1,8 @@
 package com.ikae.snowthing.domain.auth.controller;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +28,7 @@ import com.ikae.snowthing.domain.auth.service.LoginAttemptLimiter;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.security.RecentAuthentication;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
@@ -45,6 +48,7 @@ public class AuthController {
     private final MemberSessionRegistry memberSessionRegistry;
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final ClientIpResolver clientIpResolver;
+    private final Clock clock;
 
     @PostMapping("/login")
     public ResponseEntity<MemberLoginResponse> login(
@@ -75,6 +79,7 @@ public class AuthController {
         // 4. Remember-Me 세션 타임아웃 계산 및 적용 (별도 메서드 분리 및 상수 적용)
         int timeoutSeconds = calculateSessionTimeoutSeconds(loginRequest.isRememberMe());
         session.setMaxInactiveInterval(timeoutSeconds);
+        RecentAuthentication.mark(session, Instant.now(clock));
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         memberSessionRegistry.register(userDetails.getPublicId(), session);

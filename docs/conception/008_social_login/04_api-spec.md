@@ -42,6 +42,9 @@
 ### 2.3. 소셜 계정 연결 (IKA-73)
 
 - `POST /api/v1/auth/oauth2/link/{provider}`: 로그인한 회원만 쓴다. 이미 같은 제공자가 연결돼 있으면 `SOCIAL_PROVIDER_ALREADY_LINKED`로 바로 거부한다. 성공하면 `200 {"authorizationUrl": "..."}`를 돌려주고 프론트가 그 주소로 이동한다. 인가 요청과 같은 IP 제한을 받는다.
+- 본인 다시 확인 (IKA-76): 요청 본문 `{"currentPassword": "..."}`(선택, 200자 이하).
+  - 비밀번호가 있는 회원은 현재 비밀번호가 맞아야 한다. 비었거나 틀리면 `CURRENT_PASSWORD_MISMATCH`(400). 틀린 횟수는 로그인 실패와 같은 계정 한도(`LOGIN_ATTEMPT_LIMIT`)로 센다.
+  - 비밀번호가 없는 소셜 전용 회원은 이 세션에서 로그인한 지 10분 안이어야 한다. 아니면 `SOCIAL_LINK_REAUTH_REQUIRED`(403). 로그인 시각은 로그인할 때 세션 속성 `SNOWTHING_AUTHENTICATED_AT`에 남긴다.
 - 서버 세션의 state 목록에 연결할 회원 id(`linkMemberId`)를 함께 저장한다. 회원 id는 요청 값이 아니라 세션의 인증 정보에서 꺼낸다.
 - 콜백은 2.2와 같은 주소를 쓴다. state에 `linkMemberId`가 있으면 로그인 대신 연결로 처리한다.
   1. 지금 세션의 회원이 `linkMemberId`와 다르면 토큰 교환 없이 `SOCIAL_LINK_SESSION_MISMATCH`로 끝낸다.
@@ -73,3 +76,4 @@
 | `SOCIAL_ACCOUNT_NOT_LINKED` | `AUTH_017` | `404 Not Found` | 연결되지 않은 소셜 계정입니다. |
 | `SOCIAL_LAST_LOGIN_METHOD` | `AUTH_018` | `409 Conflict` | 마지막 남은 로그인 방법은 해제할 수 없습니다. 다른 로그인 방법을 먼저 연결해 주세요. |
 | `SOCIAL_LINK_SESSION_MISMATCH` | `AUTH_019` | `401 Unauthorized` | 연결을 시작한 계정과 지금 로그인한 계정이 다릅니다. 다시 로그인한 뒤 시도해 주세요. |
+| `SOCIAL_LINK_REAUTH_REQUIRED` | `AUTH_021` | `403 Forbidden` | 보안을 위해 다시 로그인한 뒤 연결해 주세요. |

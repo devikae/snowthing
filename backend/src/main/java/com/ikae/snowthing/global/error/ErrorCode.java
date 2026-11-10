@@ -44,6 +44,8 @@ public enum ErrorCode {
             HttpStatus.UNAUTHORIZED,
             "AUTH_019",
             "연결을 시작한 계정과 지금 로그인한 계정이 다릅니다. 다시 로그인한 뒤 시도해 주세요."),
+    // 비밀번호가 없는 소셜 전용 회원이 로그인한 지 오래되어 소셜 연결 전에 다시 로그인해야 할 때.
+    SOCIAL_LINK_REAUTH_REQUIRED(HttpStatus.FORBIDDEN, "AUTH_021", "보안을 위해 다시 로그인한 뒤 연결해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     MEMBER_SELF_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_010", "자신의 계정은 정지할 수 없습니다."),
     MEMBER_ADMIN_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_011", "관리자 계정은 정지할 수 없습니다."),

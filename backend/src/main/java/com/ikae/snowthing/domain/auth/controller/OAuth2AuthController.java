@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.ikae.snowthing.domain.auth.dto.SocialLinkStartRequest;
 import com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
@@ -43,6 +44,7 @@ import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
 import com.ikae.snowthing.domain.auth.service.AuthService;
 import com.ikae.snowthing.domain.auth.service.OAuthAuthorizationIpRateLimiter;
 import com.ikae.snowthing.domain.auth.service.SocialAuthService;
+import com.ikae.snowthing.domain.auth.service.SocialLinkReauthService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
 import com.ikae.snowthing.global.error.ErrorCode;
@@ -50,6 +52,7 @@ import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.security.RecentAuthentication;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
@@ -75,6 +78,7 @@ public class OAuth2AuthController {
     private final SecurityContextRepository securityContextRepository;
     private final MemberSessionRegistry memberSessionRegistry;
     private final OAuthAuthorizationIpRateLimiter authorizationIpRateLimiter;
+    private final SocialLinkReauthService socialLinkReauthService;
     private final ClientIpResolver clientIpResolver;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -112,16 +116,25 @@ public class OAuth2AuthController {
      * 로그인한 회원이 다른 소셜 로그인을 연결할 때 쓴다. CSRF 토큰을 받는 POST로 시작하고, 이동할 주소만 돌려준다.
      *
      * <p>연결할 회원 id는 클라이언트 값이 아니라 지금 세션의 인증 정보에서 꺼내 state와 함께 서버 세션에 둔다.
+     *
+     * <p>시작 전에 본인을 다시 확인한다. 비밀번호가 있으면 현재 비밀번호를, 소셜 전용이면 최근 10분 안의 로그인을 요구한다.
      */
     @PostMapping("/link/{provider}")
     public ResponseEntity<SocialLinkStartResponse> startLink(
             @PathVariable String provider,
+            @Valid @RequestBody(required = false) SocialLinkStartRequest request,
             @AuthenticationPrincipal CustomUserDetails user,
             HttpServletRequest httpRequest) {
         Long memberId = requireSessionMemberId(user);
         SocialProvider socialProvider = SocialProvider.from(provider);
-        authorizationIpRateLimiter.check(clientIpResolver.resolve(httpRequest));
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        authorizationIpRateLimiter.check(clientIp);
         socialAuthService.requireProviderNotLinked(memberId, socialProvider);
+        socialLinkReauthService.confirm(
+                memberId,
+                request == null ? null : request.currentPassword(),
+                httpRequest.getSession(false),
+                clientIp);
         String state = generateStateToken();
         URI authorizationUri = oauth2ExternalClient.buildAuthorizationUri(socialProvider, state);
 
@@ -353,6 +366,7 @@ public class OAuth2AuthController {
         httpRequest.changeSessionId();
         securityContextRepository.saveContext(securityContext, httpRequest, httpResponse);
         session.setMaxInactiveInterval(DEFAULT_SESSION_TIMEOUT_SECONDS);
+        RecentAuthentication.mark(session, Instant.now(clock));
         memberSessionRegistry.register(userDetails.getPublicId(), session);
         // 인증과 등록 사이의 정지를 잡는다. 이유는 AuthService.ensureStillActive 참고.
         try {
