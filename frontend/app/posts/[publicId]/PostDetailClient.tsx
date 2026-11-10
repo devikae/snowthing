@@ -649,14 +649,14 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       <TopNav active="posts" />
       <main className="post-detail-page community-container content-detail-page">
         <div className="post-detail-toolbar">
-          <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link>
+          <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
         </div>
         <div className="post-detail-layout">
           <div className="post-detail-primary">
           <article className="post-detail-card">
             <div className="post-detail-meta-top">
               <span>#{post.categoryCode === "QNA" ? "질문게시판" : post.categoryName}</span>
-              <div><span className="material-symbols-outlined">visibility</span>{post.viewCount}<span className="material-symbols-outlined">chat_bubble</span>{post.commentCount}<span className="material-symbols-outlined">thumb_up</span>{post.likeCount}</div>
+              <div><span className="material-symbols-outlined" aria-hidden="true">visibility</span><span className="sr-only">조회</span>{post.viewCount}<span className="material-symbols-outlined" aria-hidden="true">chat_bubble</span><span className="sr-only">댓글</span>{post.commentCount}<span className="material-symbols-outlined" aria-hidden="true">thumb_up</span><span className="sr-only">추천</span>{post.likeCount}</div>
             </div>
 
             <h1>{post.title}</h1>
@@ -714,18 +714,18 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
             <div className="post-detail-reactions">
               <div>
                   <button onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
-                  <span className="material-symbols-outlined text-[17px]">thumb_up</span>
+                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">thumb_up</span>
                   추천 {post.likeCount}
                 </button>
                   <button onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
-                  <span className="material-symbols-outlined text-[17px]">thumb_down</span>
+                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">thumb_down</span>
                   비추천 {post.dislikeCount}
                 </button>
                 <button type="button" onClick={() => void handleScrap()} disabled={scrapBusy} className={post.scrapped ? "active" : ""} aria-pressed={post.scrapped}>
-                  <span className="material-symbols-outlined text-[17px]">bookmark</span>
+                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">bookmark</span>
                   {post.scrapped ? "스크랩됨" : "스크랩"}
                 </button>
-                <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined">share</span>공유</button>
+                <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined" aria-hidden="true">share</span>공유</button>
                 <ReportButton targetType="POST" targetId={publicId} />
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
@@ -760,7 +760,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                 )}
                 {canWriteComment ? (
                   <button className="post-comment-submit-button" disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
-                    댓글 등록 <span className="material-symbols-outlined">send</span>
+                    댓글 등록 <span className="material-symbols-outlined" aria-hidden="true">send</span>
                   </button>
                 ) : (
                   <Link className="post-comment-submit-button" href={`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`}>

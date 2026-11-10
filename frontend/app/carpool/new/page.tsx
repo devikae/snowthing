@@ -602,7 +602,7 @@ export default function NewCarpoolPage() {
           description="일정과 출발 장소를 정하고 함께할 라이더를 모집해 보세요." />
         {!authChecked ? <div className="carpool-auth-gate">로그인 상태를 확인하는 중입니다.</div> : !authenticated ? (
           <section className="carpool-auth-gate">
-            <span className="material-symbols-outlined">lock</span>
+            <span className="material-symbols-outlined" aria-hidden="true">lock</span>
             <h2>카풀 모집글은 회원만 작성할 수 있습니다.</h2>
             <p>회원가입 후 출발지와 예상 비용을 계산해 모집글을 등록해 보세요.</p>
             <div><Link className="carpool-primary-button" href="/signup">회원가입</Link><Link href="/login?returnUrl=/carpool/new">이미 회원이라면 로그인</Link></div>
@@ -778,7 +778,7 @@ export default function NewCarpoolPage() {
                     placeholder="날짜 선택"
                     value={form.departureDate ? `${form.departureDate}${getDayOfWeek(form.departureDate)}` : ""}
                   />
-                  <span className="material-symbols-outlined carpool-date-icon">calendar_month</span>
+                  <span className="material-symbols-outlined carpool-date-icon" aria-hidden="true">calendar_month</span>
                   <input
                     required
                     type="date"
@@ -852,7 +852,7 @@ export default function NewCarpoolPage() {
                         placeholder="날짜 선택"
                         value={form.returnDate ? `${form.returnDate}${getDayOfWeek(form.returnDate)}` : ""}
                       />
-                      <span className="material-symbols-outlined carpool-date-icon">calendar_month</span>
+                      <span className="material-symbols-outlined carpool-date-icon" aria-hidden="true">calendar_month</span>
                       <input
                         required
                         type="date"

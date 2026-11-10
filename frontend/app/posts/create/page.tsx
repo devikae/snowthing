@@ -249,7 +249,7 @@ function PostCreateForm() {
 
           {isAnonCategory && !userProfile && (
             <label className="compose-anon-pw-pill">
-              <span className="material-symbols-outlined">lock</span>
+              <span className="material-symbols-outlined" aria-hidden="true">lock</span>
               <input
                 type="password"
                 placeholder="수정, 삭제 비밀번호 (4~20자)"
@@ -282,7 +282,7 @@ function PostCreateForm() {
       <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (
           <div className="compose-error" role="alert">
-            <span className="material-symbols-outlined">error</span>
+            <span className="material-symbols-outlined" aria-hidden="true">error</span>
             {errorMsg}
           </div>
         )}
@@ -316,7 +316,7 @@ function PostCreateForm() {
                 htmlFor="post-image"
                 className={`compose-attach-btn ${!userProfile || uploadingImage || images.length >= 10 ? "disabled" : ""}`}
               >
-                <span className="material-symbols-outlined">image</span>
+                <span className="material-symbols-outlined" aria-hidden="true">image</span>
                 <span>{uploadingImage ? "업로드 중..." : "사진 첨부"}</span>
               </label>
               <input
@@ -352,7 +352,7 @@ function PostCreateForm() {
                   aria-label={`${index + 1}번째 사진 제거`}
                   onClick={() => setImages((current) => current.filter((item) => item.imageKey !== image.imageKey))}
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <span className="material-symbols-outlined" aria-hidden="true">close</span>
                 </button>
               </div>
             ))}</div>
@@ -361,10 +361,10 @@ function PostCreateForm() {
 
         <footer className="compose-footer-bar">
           <Link href={`/posts${categoryCode ? `?category=${categoryCode}` : ""}`} className="compose-cancel-pill">
-            <span className="material-symbols-outlined">arrow_back</span> 목록으로
+            <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로
           </Link>
           <button type="submit" disabled={submitting || uploadingImage} className="compose-submit-pill">
-            <span className="material-symbols-outlined">check</span>
+            <span className="material-symbols-outlined" aria-hidden="true">check</span>
             {submitting ? "등록 처리 중..." : `${isAnonCategory ? "익명 " : ""}게시글 등록`}
           </button>
         </footer>

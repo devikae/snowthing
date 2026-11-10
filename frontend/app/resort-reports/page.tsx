@@ -137,7 +137,7 @@ export default function ResortReportsPage() {
             {loading ? (
               <div className="snow-empty-state vertical">
                 <span className="snow-empty-icon">
-                  <span className="material-symbols-outlined spin">progress_activity</span>
+                  <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                 </span>
                 <div className="snow-empty-copy">
                   <strong>설질 제보 목록을 불러오는 중입니다...</strong>
@@ -146,7 +146,7 @@ export default function ResortReportsPage() {
             ) : reports.length === 0 ? (
               <div className="snow-empty-state vertical">
                 <span className="snow-empty-icon">
-                  <span className="material-symbols-outlined">ac_unit</span>
+                  <span className="material-symbols-outlined" aria-hidden="true">ac_unit</span>
                 </span>
                 <div className="snow-empty-copy">
                   <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>

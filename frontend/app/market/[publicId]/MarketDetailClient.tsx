@@ -258,12 +258,12 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
     <div className="community-page">
       <TopNav active="market" />
       <main className="community-container market-detail-page content-detail-page">
-        <div className="post-detail-toolbar"><Link href="/market"><span className="material-symbols-outlined">arrow_back</span> 목록으로 돌아가기</Link></div>
+        <div className="post-detail-toolbar"><Link href="/market"><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link></div>
         {error && <div className="compose-error" role="alert">{error}</div>}
         <article className="market-detail-card">
           <section className="market-gallery">
             <div className="market-gallery-main">
-              {galleryImages.length ? <Image src={galleryImages[activeImage]} alt={`${listing.title} 상품 사진 ${activeImage + 1}`} width={720} height={540} unoptimized /> : <span className="material-symbols-outlined">inventory_2</span>}
+              {galleryImages.length ? <Image src={galleryImages[activeImage]} alt={`${listing.title} 상품 사진 ${activeImage + 1}`} width={720} height={540} unoptimized /> : <span className="material-symbols-outlined" aria-hidden="true">inventory_2</span>}
             </div>
             {listing.images.length > 1 && <div className="market-gallery-thumbs">{listing.images.map((image, index) => <button type="button" key={image} className={activeImage === index ? "active" : ""} onClick={() => setActiveImage(index)}><Image src={image} alt={`${index + 1}번 사진`} width={96} height={72} unoptimized /></button>)}</div>}
           </section>
@@ -289,7 +289,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             {comments.length === 0 && <p className="market-comment-empty">아직 댓글이 없습니다.</p>}
             {comments.map((item) => <div className="market-comment post-comment-item" key={item.commentId}>
               <div className="comment-youtube-row"><MarketCommentAvatar item={item} /><div className="comment-youtube-body"><header><AuthorMenu publicId={item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(item.createdAt)}</time></header><p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>{!item.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button><ReportButton targetType="COMMENT" targetId={item.commentId} /></div>}</div></div>
-              <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><AuthorMenu publicId={child.isDeleted ? null : child.writer?.publicId} nickname={child.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p>{!child.isDeleted && <div className="comment-youtube-actions"><ReportButton targetType="COMMENT" targetId={child.commentId} /></div>}</div></div></div>)}</div>
+              <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><AuthorMenu publicId={child.isDeleted ? null : child.writer?.publicId} nickname={child.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p>{!child.isDeleted && <div className="comment-youtube-actions"><ReportButton targetType="COMMENT" targetId={child.commentId} /></div>}</div></div></div>)}</div>
               {item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
               {replyParentId === item.commentId && <div className="post-reply-compose"><textarea className="post-comment-textarea" aria-label="답글 입력" value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div></div>}
             </div>)}

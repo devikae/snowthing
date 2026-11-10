@@ -346,7 +346,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         >
           {messages.length === 0 ? (
             <div className="live-chat-empty">
-              <span className="material-symbols-outlined">forum</span>
+              <span className="material-symbols-outlined" aria-hidden="true">forum</span>
               <p>실시간 슬로프 현황이나 오늘의 라이딩 잡담을 나눠보세요!</p>
             </div>
           ) : (
@@ -390,14 +390,14 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             className="live-chat-scroll-btn"
           >
             <span>새 메시지 수신</span>
-            <span className="material-symbols-outlined">south</span>
+            <span className="material-symbols-outlined" aria-hidden="true">south</span>
           </button>
         )}
 
         {/* 도배/링크 차단 개인 에러 토스트 */}
         {toastError && (
           <div className="live-chat-toast-error">
-            <span className="material-symbols-outlined">warning</span>
+            <span className="material-symbols-outlined" aria-hidden="true">warning</span>
             <span>{toastError}</span>
           </div>
         )}
@@ -456,7 +456,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             <span>로그인</span>
           ) : (
             <>
-              <span className="material-symbols-outlined">arrow_upward</span>
+              <span className="material-symbols-outlined" aria-hidden="true">arrow_upward</span>
               <span>전송</span>
             </>
           )}

@@ -194,7 +194,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
           <section className="market-image-field">
             <div><span>사진 <small>선택, 최대 10장</small></span><b>{images.length}/10</b></div>
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />
-            {images.length > 0 && <div className="market-image-previews">{images.map((imageUrl, index) => <div key={`${imageUrl}-${index}`}><Image src={imageUrl} alt={`상품 사진 ${index + 1}`} width={120} height={90} unoptimized /><button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`${index + 1}번 사진 제거`}><span className="material-symbols-outlined">close</span></button></div>)}</div>}
+            {images.length > 0 && <div className="market-image-previews">{images.map((imageUrl, index) => <div key={`${imageUrl}-${index}`}><Image src={imageUrl} alt={`상품 사진 ${index + 1}`} width={120} height={90} unoptimized /><button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`${index + 1}번 사진 제거`}><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div>)}</div>}
           </section>
           <div className="market-compose-actions"><Link href={`/market/${publicId}`}>취소</Link><button type="submit" disabled={submitting || uploading}>{submitting ? "수정 중..." : "수정 완료"}</button></div>
         </form>}

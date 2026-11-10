@@ -311,12 +311,12 @@ export default function HomePageClient() {
               <div className="compact-post-list">
                 {feedLoading[activeFeed] ? (
                   <div className="home-feed-state">
-                    <span className="material-symbols-outlined spin">progress_activity</span>
+                    <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                     <strong>게시글을 불러오는 중입니다.</strong>
                   </div>
                 ) : feedErrors[activeFeed] ? (
                   <div className="home-feed-state error">
-                    <span className="material-symbols-outlined">cloud_off</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                     <strong>게시글을 불러오지 못했습니다.</strong>
                     <button type="button" onClick={() => void loadFeed(activeFeedConfig)}>
                       다시 시도
@@ -324,7 +324,7 @@ export default function HomePageClient() {
                   </div>
                 ) : feeds[activeFeed].length === 0 ? (
                   <div className="home-feed-state">
-                    <span className="material-symbols-outlined">edit_note</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
                     <strong>등록된 게시글이 없습니다.</strong>
                   </div>
                 ) : (
@@ -539,7 +539,7 @@ export default function HomePageClient() {
                         {item.thumbnailImageUrl ? (
                           <Image src={item.thumbnailImageUrl} alt="" width={240} height={192} unoptimized />
                         ) : (
-                          <span className="market-image-placeholder material-symbols-outlined">inventory_2</span>
+                          <span className="market-image-placeholder material-symbols-outlined" aria-hidden="true">inventory_2</span>
                         )}
                         <div className="lookbook-glass">
                           <span>매물 보기</span>
@@ -552,7 +552,7 @@ export default function HomePageClient() {
               </div>
             ) : (
               <div className="market-preview-empty">
-                <span className="material-symbols-outlined">inventory_2</span>
+                <span className="material-symbols-outlined" aria-hidden="true">inventory_2</span>
                 <p>등록된 판매 상품이 없습니다.</p>
               </div>
             )}
