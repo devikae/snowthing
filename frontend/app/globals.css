@@ -99,10 +99,10 @@ button:disabled {
 
 .snow-label {
   color: var(--snow-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-hanken);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   line-height: 16px;
   text-transform: uppercase;
 }
@@ -300,6 +300,7 @@ button:disabled {
 .header-dropdown-logout:hover, .header-dropdown-logout:focus-visible { background: var(--snow-surface-mid); color: #dc2626; }
 html[data-theme="dark"] .header-dropdown-logout:hover, html[data-theme="dark"] .header-dropdown-logout:focus-visible { color: #f87171; }
 html[data-theme="dark"] .compose-error { border-color: rgba(248, 113, 113, .35); background: rgba(239, 68, 68, .12); color: #fca5a5; }
+html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-error, .comment-delete-error) { color: #fb7185; }
 .header-profile { display: flex; height: 32px; align-items: center; gap: 8px; border: 0; border-radius: 999px; background: transparent; color: var(--snow-muted); cursor: pointer; padding: 0; outline: none; }
 .header-profile-name { max-width: 120px; overflow: hidden; color: var(--snow-ink); font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .header-profile:hover, .header-profile:focus-visible { opacity: .88; }
@@ -1615,7 +1616,7 @@ html[data-theme="dark"] .detail-carpool-card > header > a {
   --community-accent: #2563eb;
   --community-accent-soft: #eff6ff;
   --font-hanken: "Plus Jakarta Sans", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, "Pretendard Variable", Pretendard, monospace;
 }
 
 html[data-theme="dark"] {
@@ -1764,10 +1765,10 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
 
 .section-eyebrow {
   color: var(--snow-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-hanken);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
@@ -2914,7 +2915,7 @@ html[data-theme="dark"] .cp-equip.ok {
   }
   .board-search select {
     flex: none;
-    width: 84px;
+    width: 96px;
     height: 38px;
     padding: 0 6px;
     font-size: 12px;
@@ -3554,10 +3555,10 @@ html[data-theme="dark"] .market-comments .post-comment-submit-button {
 
 .carpool-eyebrow {
   color: var(--community-accent) !important;
-  font-family: var(--font-mono);
+  font-family: var(--font-hanken);
   font-size: 11px !important;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
 }
 
 .carpool-heading h1,
