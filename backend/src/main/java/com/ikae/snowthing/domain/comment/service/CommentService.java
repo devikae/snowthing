@@ -75,7 +75,7 @@ public class CommentService {
             }
         } else {
             if (userDetails == null) {
-                throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+                throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
             }
             member =
                     memberRepository
@@ -305,7 +305,7 @@ public class CommentService {
             return;
         }
         if (userDetails == null) {
-            throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
         }
         if (anonymousRequested) {
             throw new CustomAuthException(ErrorCode.MARKET_ANONYMOUS_COMMENT_NOT_ALLOWED);

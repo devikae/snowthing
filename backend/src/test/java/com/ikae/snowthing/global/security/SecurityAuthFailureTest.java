@@ -67,7 +67,7 @@ class SecurityAuthFailureTest {
     void getMyProfile_WithoutSession_Returns401() throws Exception {
         mockMvc.perform(get("/api/v1/members/me"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
+                .andExpect(jsonPath("$.error").value("LOGIN_REQUIRED"));
     }
 
     @Test
@@ -79,7 +79,7 @@ class SecurityAuthFailureTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"nickname\":\"새닉네임\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
+                .andExpect(jsonPath("$.error").value("LOGIN_REQUIRED"));
     }
 
     @Test
@@ -90,7 +90,7 @@ class SecurityAuthFailureTest {
 
         mockMvc.perform(get("/api/v1/members/me").session(invalidSession))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
+                .andExpect(jsonPath("$.error").value("LOGIN_REQUIRED"));
     }
 
     @Test

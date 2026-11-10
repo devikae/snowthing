@@ -23,7 +23,7 @@
 }
 ```
 
-실패: `401 AUTH_001`, `404 RESORT_001`, `400 REPORT_001`, `429 REPORT_003`, `403 REPORT_004`.
+실패: `401 AUTH_020`, `404 RESORT_001`, `400 REPORT_001`, `429 REPORT_003`, `403 REPORT_004`.
 
 ## 오늘 목록
 
@@ -64,7 +64,7 @@
 
 `DELETE /api/v1/resort-reports/{reportId}` — 작성자 또는 관리자, 성공 `204 No Content`.
 
-실패: `401 AUTH_001`, `403 AUTH_002`, `404 REPORT_002`.
+실패: `401 AUTH_020`, `403 AUTH_002`, `404 REPORT_002`.
 
 ## 관리자 상태 변경
 

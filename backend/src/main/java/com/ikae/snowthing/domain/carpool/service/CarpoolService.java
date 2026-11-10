@@ -167,7 +167,7 @@ public class CarpoolService {
 
     private void requireAuthenticated(CustomUserDetails userDetails) {
         if (userDetails == null) {
-            throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
         }
     }
 

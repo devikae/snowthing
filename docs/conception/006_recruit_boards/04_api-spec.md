@@ -61,7 +61,7 @@
   ```
 - **예외 응답**:
   - **비로그인 사용자가 요청 시**:
-    - HTTP 401 Unauthorized (`ErrorCode.INVALID_CREDENTIALS` / `AUTH_001`)
+    - HTTP 401 Unauthorized (`ErrorCode.LOGIN_REQUIRED` / `AUTH_020`)
   - **`isAnonymous = true`로 요청 시**:
     - HTTP 400 Bad Request (`ErrorCode.ANONYMOUS_POST_NOT_ALLOWED` / `POST_006`)
     ```json

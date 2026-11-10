@@ -203,7 +203,7 @@ public class OAuth2AuthController {
 
     private Long requireSessionMemberId(CustomUserDetails user) {
         if (user == null || user instanceof BotDelegatedUserDetails || user.getMemberId() == null) {
-            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
         }
         return user.getMemberId();
     }

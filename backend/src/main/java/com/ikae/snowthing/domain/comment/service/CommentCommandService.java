@@ -49,7 +49,7 @@ class CommentCommandService {
         }
         if (marketListingRepository.existsByPostId(post.getId())) {
             if (userDetails == null) {
-                throw new CustomAuthException(ErrorCode.INVALID_CREDENTIALS);
+                throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
             }
             if (request.isAnonymous()) {
                 throw new CustomAuthException(ErrorCode.MARKET_ANONYMOUS_COMMENT_NOT_ALLOWED);

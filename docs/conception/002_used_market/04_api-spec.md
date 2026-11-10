@@ -521,7 +521,7 @@ DELETE /api/v1/posts/{publicId}/reaction?type=LIKE
 | `400` | `INVALID_INPUT` | `COMMON_001` | 필수값·길이·Enum 등 입력 검증 실패 |
 | `400` | `MARKET_PAGE_LIMIT_EXCEEDED` | `MARKET_011` | 100페이지 초과 요청 |
 | `400` | `MARKET_INVALID_PAGE_SIZE` | `MARKET_010` | 페이지 크기가 1~50 범위를 벗어남 |
-| `401` | `INVALID_CREDENTIALS` | `AUTH_001` | 비로그인 사용자의 중고장터 요청 |
+| `401` | `LOGIN_REQUIRED` | `AUTH_020` | 비로그인 사용자의 중고장터 요청 |
 | `403` | `ACCESS_DENIED` | `AUTH_002` | 다른 회원의 판매글 수정·삭제 |
 | `404` | `MARKET_LISTING_NOT_FOUND` | `MARKET_001` | 없거나 일반 회원에게 보이지 않는 판매글 |
 | `404` | `MARKET_CATEGORY_NOT_FOUND` | `MARKET_002` | 존재하지 않는 상품 분류 코드 |

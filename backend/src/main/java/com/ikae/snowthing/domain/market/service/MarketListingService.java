@@ -467,7 +467,7 @@ public class MarketListingService {
 
     private Member requireMember(CustomUserDetails userDetails) {
         if (userDetails == null) {
-            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
         }
         return memberRepository
                 .findByPublicId(userDetails.getPublicId())

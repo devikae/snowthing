@@ -312,7 +312,7 @@ class CommentCreateTest {
                                         "127.0.0.1"))
                 .isInstanceOf(CustomAuthException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                .isEqualTo(ErrorCode.LOGIN_REQUIRED);
     }
 
     @Test

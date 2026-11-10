@@ -177,7 +177,7 @@ public class ResortReportService {
 
     private Member requireMember(CustomUserDetails userDetails) {
         if (userDetails == null || userDetails.getMember() == null) {
-            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
         }
         return userDetails.getMember();
     }

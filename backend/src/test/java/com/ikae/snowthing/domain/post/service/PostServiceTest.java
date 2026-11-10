@@ -361,7 +361,7 @@ class PostServiceTest {
             assertThatThrownBy(() -> postService.createPost(request, null, "127.0.0.1"))
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
-                    .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                    .isEqualTo(ErrorCode.LOGIN_REQUIRED);
         }
 
         @Test
@@ -406,7 +406,7 @@ class PostServiceTest {
             assertThatThrownBy(() -> postService.createPost(request, null, "127.0.0.1"))
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
-                    .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                    .isEqualTo(ErrorCode.LOGIN_REQUIRED);
         }
 
         @Test
@@ -478,7 +478,7 @@ class PostServiceTest {
         }
 
         @Test
-        @DisplayName("비로그인 유저가 동호회/시즌방 게시판 작성을 시도하면 INVALID_CREDENTIALS 예외가 발생한다.")
+        @DisplayName("비로그인 유저가 동호회/시즌방 게시판 작성을 시도하면 LOGIN_REQUIRED 예외가 발생한다.")
         void createPost_recruitBoards_unauthorized_rejected() {
             PostCreateRequest crewRequest =
                     PostCreateRequest.builder()
@@ -491,7 +491,7 @@ class PostServiceTest {
             assertThatThrownBy(() -> postService.createPost(crewRequest, null, "127.0.0.1"))
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
-                    .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                    .isEqualTo(ErrorCode.LOGIN_REQUIRED);
         }
     }
 

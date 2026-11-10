@@ -170,7 +170,7 @@ class OAuth2AuthControllerTest {
                         () -> controller.startLink("kakao", null, request))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+                .isEqualTo(ErrorCode.LOGIN_REQUIRED);
         assertThat(request.getSession(false)).isNull();
         verify(oauth2ExternalClient, never()).buildAuthorizationUri(any(), anyString());
     }
