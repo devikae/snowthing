@@ -49,6 +49,7 @@ public class EmailVerificationService {
     private final EmailVerificationHasher hasher;
     private final EmailNormalizer normalizer;
     private final EmailVerificationIpRateLimiter ipRateLimiter;
+    private final EmailRecipientRateLimiter recipientRateLimiter;
     private final VerificationEmailSender emailSender;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -61,11 +62,14 @@ public class EmailVerificationService {
 
     public EmailVerificationSendResponse requestSignUp(String email, String clientIp) {
         String normalizedEmail = normalizer.normalize(email);
+        // 가입 여부를 알려 주기 전에 IP 횟수를 먼저 쓴다. 가입 화면은 "이미 가입된 이메일" 안내가 필요해 문구는 남기되,
+        // 이 응답으로 회원 목록을 대량으로 확인하지 못하게 메일 발송과 같은 IP 한도 안에서만 답한다.
+        ipRateLimiter.check(clientIp);
         if (memberRepository.existsByEmail(normalizedEmail)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         withdrawnEmails.requireNotBlocked(normalizedEmail);
-        return send(normalizedEmail, EmailVerificationPurpose.SIGN_UP, clientIp);
+        return sendAfterIpCheck(normalizedEmail, EmailVerificationPurpose.SIGN_UP, clientIp);
     }
 
     public EmailVerificationSendResponse requestPasswordReset(String email, String clientIp) {
@@ -132,14 +136,10 @@ public class EmailVerificationService {
                 token, EmailVerificationPolicy.TOKEN_TTL.toSeconds());
     }
 
-    private EmailVerificationSendResponse send(
-            String email, EmailVerificationPurpose purpose, String clientIp) {
-        ipRateLimiter.check(clientIp);
-        return sendAfterIpCheck(email, purpose, clientIp);
-    }
-
     private EmailVerificationSendResponse sendAfterIpCheck(
             String email, EmailVerificationPurpose purpose, String clientIp) {
+        // 실제로 메일을 보낼 때만 메일함 횟수를 쓴다. 가입된 주소로 가입 요청을 반복해 남의 재설정 메일을 막지 못하게 하기 위해서다.
+        recipientRateLimiter.check(email);
         String requestId = UUID.randomUUID().toString();
         String code = String.format("%06d", secureRandom.nextInt(CODE_BOUND));
         String digest = hasher.digestCode(requestId, email, purpose, code);
