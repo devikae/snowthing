@@ -1,3 +1,16 @@
+## 문의 메일을 manager@snowthing.org로 바꾸기 (IKA-75, 2026-11-11)
+
+- 상태: 코드 수정 완료, PR 생성. Cloudflare Email Routing 설정과 수신 확인은 사용자 로그인 후 진행. 머지와 배포는 사용자 확인 후.
+- 배경: 사이트에 보이는 문의 메일이 개인 Gmail(82snowthing@gmail.com)이었다. snowthing.org에는 MX, SPF, DMARC 레코드가 없다. snowthing.com은 다른 계정에서 Google 메일로 쓰는 중이고 snowthing.io는 등록되지 않아 서비스 도메인 snowthing.org를 골랐다.
+- 완료
+  - 프론트: 푸터 문의 메일(`SiteChrome.tsx`), 비회원 신고 안내(`ReportButton.tsx`).
+  - 백엔드: 임시조치 게시물 안내 메시지(`ErrorCode.java`).
+- 결정
+  - 처리방침(`2026-11-10-v2`)과 약관(`terms-2026-11-10-v1`)의 contact는 바꾸지 않았다. 계획 승인 때는 처리방침이 초안이라 그대로 고치려 했지만, 최신 main에서는 시행 중인 정식 버전이었다. 약관은 변경 7일 전 공지를, 처리방침은 시행 전 공지와 이전 버전 열람을 약속한다. 새 버전을 만들면 가입 중인 사람이 REGISTRATION_POLICY_CHANGED를 받고 공지도 필요하다. 기존 Gmail도 계속 받으므로 다음 방침 개정 때 함께 바꾼다. 다른 안: 지금 새 버전 파일을 만들고 7일 뒤 시행.
+  - 받는 방법은 Cloudflare Email Routing으로 기존 Gmail에 전달한다. 무료이고 DNS가 이미 Cloudflare에 있다. Google Workspace는 사용자당 월 비용이 들어 지금 규모에 맞지 않는다. Cloudflare가 넣는 SPF는 SES 발송에 영향이 없다(SES는 DKIM과 amazonses.com 반송 주소를 쓴다).
+- 남은 항목: Cloudflare Email Routing 켜기와 시험 메일 수신 확인(머지 전), 처리방침과 약관 contact 변경(다음 개정), manager@ 이름으로 답장 보내기(SES SMTP), AWS 예산 알림 주소.
+- 검증: PR 본문 참고.
+
 ## 기존 계정에 소셜 로그인 연결하기 (IKA-73, 2026-11-10)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.
