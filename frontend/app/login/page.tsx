@@ -106,7 +106,7 @@ export default function LoginPage() {
     setErrorMsg("");
 
     if (!EMAIL_REGEX.test(email)) {
-      setErrorMsg("올바른 이메일 형식으로 입력해 주세요. 예: user@snowthing.com");
+      setErrorMsg("올바른 이메일 형식으로 입력해 주세요. 예: you@example.com");
       return;
     }
 
@@ -146,7 +146,7 @@ export default function LoginPage() {
           {withdrawn && <div className={styles.notice} role="status">탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.</div>}
           {errorMsg && <div className={styles.error} role="alert">{errorMsg}</div>}
           <form onSubmit={handleSubmit} className={styles.form} aria-busy={loading}>
-            <label className={styles.field}>이메일<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="user@snowthing.com" autoComplete="email" autoCapitalize="none" required disabled={loading} /></label>
+            <label className={styles.field}>이메일<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" autoCapitalize="none" required disabled={loading} /></label>
             <label className={styles.field}>비밀번호<input name="password" type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="비밀번호를 입력해 주세요" autoComplete="current-password" required disabled={loading} /></label>
             <div className={styles.options}>
               <label className={styles.remember}><input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} disabled={loading} />로그인 상태 유지</label>
@@ -166,7 +166,7 @@ export default function LoginPage() {
               <svg className={`${styles.providerIcon} ${styles.naver}`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z" />
                   </svg>
-              네이버로 계속하기
+              네이버 로그인
             </button>
             <button type="button" className={styles.button} onClick={() => handleSocialLogin("google")} disabled={loading}>
               <svg className={styles.providerIcon} viewBox="0 0 24 24" aria-hidden="true">
@@ -175,7 +175,7 @@ export default function LoginPage() {
                     <path fill="#FBBC05" d="M5.274 14.27A7.218 7.218 0 0 1 4.896 12c0-.79.136-1.555.378-2.27V6.626H1.27A11.996 11.996 0 0 0 0 12c0 1.936.464 3.768 1.27 5.374l4.004-3.104z" />
                     <path fill="#EA4335" d="M12 4.775c1.762 0 3.344.606 4.588 1.794l3.442-3.442C17.95 1.19 15.235 0 12 0 7.305 0 3.245 2.705 1.27 6.626L5.274 9.73C6.22 6.89 8.87 4.775 12 4.775z" />
                   </svg>
-              Google로 계속하기
+              Google 로그인
             </button>
           </div>
           {inAppBrowser && (
