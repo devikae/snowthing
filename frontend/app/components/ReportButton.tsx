@@ -26,7 +26,7 @@ export function ReportButton({ targetType, targetId, className }: { targetType: 
     setBusy(true); setMessage("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.reports.create, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetType, targetId, reason, detail }) });
-      if (response.status === 401 || response.status === 403) { setMessage("로그인 후 신고할 수 있습니다. 비회원은 82snowthing@gmail.com으로 요청해 주세요."); return; }
+      if (response.status === 401 || response.status === 403) { setMessage("로그인 후 신고할 수 있습니다. 비회원은 manager@snowthing.org으로 요청해 주세요."); return; }
       if (!response.ok) { const body = await response.json().catch(() => null); setMessage(body?.message ?? "신고를 접수하지 못했습니다."); return; }
       setDone(true);
       setMessage("신고를 접수했습니다. 확인 후 알림으로 결과를 알려 드립니다.");
