@@ -8,7 +8,7 @@ import { csrfFetch } from "../../lib/csrfFetch";
 import { safeReturnUrl } from "../../lib/safeReturnUrl";
 import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "../RegistrationConsentForm";
 
-const PROVIDER_NAMES: Record<string, string> = { GOOGLE: "구글", NAVER: "네이버" };
+const PROVIDER_NAMES: Record<string, string> = { GOOGLE: "구글", NAVER: "네이버", KAKAO: "카카오" };
 
 export default function SocialSignUpPage() {
   const router = useRouter();

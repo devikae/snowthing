@@ -24,6 +24,9 @@
 .social { display: grid; gap: 12px; }
 .providerIcon { position: absolute; left: 16px; width: 16px; height: 16px; }
 .naver { color: #03c75a; }
+.kakao { border-color: #fee500; border-radius: 12px; background: #fee500; color: rgba(0,0,0,.85); }
+.kakao:hover:not(:disabled) { background: #fee500; opacity: .9; }
+.kakao .providerIcon { color: #000; }
 .signup { margin: 32px 0 0; text-align: center; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
 .signup a { margin-left: 8px; color: var(--snow-ink); font-weight: 500; }
 .notice { margin-bottom: 24px; border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-canvas); padding: 12px 16px; font-size: 14px; line-height: 20px; }

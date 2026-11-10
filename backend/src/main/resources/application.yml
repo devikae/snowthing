@@ -137,6 +137,11 @@ snowthing:
       client-id: ${SNOWTHING_NAVER_CLIENT_ID:}
       client-secret: ${SNOWTHING_NAVER_CLIENT_SECRET:}
       redirect-uri: ${SNOWTHING_NAVER_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth2/callback/naver}
+    kakao:
+      # 카풀 지도에 쓰는 같은 카카오 앱의 REST API 키를 기본값으로 쓴다.
+      client-id: ${SNOWTHING_KAKAO_LOGIN_CLIENT_ID:${SNOWTHING_KAKAO_REST_API_KEY:}}
+      client-secret: ${SNOWTHING_KAKAO_LOGIN_CLIENT_SECRET:}
+      redirect-uri: ${SNOWTHING_KAKAO_LOGIN_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth2/callback/kakao}
 
 server:
   servlet:
@@ -259,6 +264,8 @@ snowthing:
       redirect-uri: ${SNOWTHING_GOOGLE_REDIRECT_URI:https://snowthing.org/api/v1/auth/oauth2/callback/google}
     naver:
       redirect-uri: ${SNOWTHING_NAVER_REDIRECT_URI:https://snowthing.org/api/v1/auth/oauth2/callback/naver}
+    kakao:
+      redirect-uri: ${SNOWTHING_KAKAO_LOGIN_REDIRECT_URI:https://snowthing.org/api/v1/auth/oauth2/callback/kakao}
   # 운영은 https로만 열리므로 쿠키에 Secure를 붙이고, 개발용 localhost 출처를 받지 않는다.
   web:
     secure-cookies: true

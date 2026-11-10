@@ -10,7 +10,8 @@ public record OAuth2Properties(
         int connectTimeoutMillis,
         int readTimeoutMillis,
         Provider google,
-        Provider naver) {
+        Provider naver,
+        Provider kakao) {
 
     private static final String DEFAULT_FRONTEND_BASE_URL = "http://localhost:3000";
     private static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 2000;
@@ -51,6 +52,7 @@ public record OAuth2Properties(
         return switch (provider) {
             case GOOGLE -> google;
             case NAVER -> naver;
+            case KAKAO -> kakao;
         };
     }
 

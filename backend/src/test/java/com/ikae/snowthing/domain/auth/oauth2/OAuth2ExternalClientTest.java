@@ -43,7 +43,11 @@ class OAuth2ExternalClientTest {
                         new OAuth2Properties.Provider(
                                 "naver-client-id",
                                 "naver-client-secret",
-                                "https://snowthing.org/api/v1/auth/oauth2/callback/naver"));
+                                "https://snowthing.org/api/v1/auth/oauth2/callback/naver"),
+                        new OAuth2Properties.Provider(
+                                "kakao-client-id",
+                                "kakao-client-secret",
+                                "https://snowthing.org/api/v1/auth/oauth2/callback/kakao"));
 
         RestClient.Builder builder = RestClient.builder();
         mockServer = MockRestServiceServer.bindTo(builder).build();
@@ -169,6 +173,122 @@ class OAuth2ExternalClientTest {
     }
 
     @Test
+    @DisplayName("Kakao 인가 URI는 카카오 인가 주소와 필수 쿼리 파라미터를 쓴다")
+    void buildAuthorizationUri_Kakao_Success() {
+        URI kakaoUri =
+                oauth2ExternalClient.buildAuthorizationUri(SocialProvider.KAKAO, "state-789");
+
+        assertThat(kakaoUri.toString())
+                .startsWith("https://kauth.kakao.com/oauth/authorize?")
+                .contains("response_type=code")
+                .contains("client_id=kakao-client-id")
+                .contains("state=state-789")
+                .contains("redirect_uri=https://snowthing.org/api/v1/auth/oauth2/callback/kakao");
+    }
+
+    @Test
+    @DisplayName("Kakao 인가 코드로 토큰을 교환하고 인증된 이메일과 닉네임을 파싱한다")
+    void fetchUserProfile_Kakao_Success() {
+        expectKakaoToken();
+        expectKakaoUser(
+                """
+                {
+                  "id": 4100000001,
+                  "kakao_account": {
+                    "has_email": true,
+                    "is_email_valid": true,
+                    "is_email_verified": true,
+                    "email": "rider@kakao.com",
+                    "profile": {"nickname": "카카오보더"}
+                  }
+                }
+                """);
+
+        OAuthUserProfile profile =
+                oauth2ExternalClient.fetchUserProfile(
+                        SocialProvider.KAKAO, "kakao-code", "kakao-state");
+
+        assertThat(profile.provider()).isEqualTo(SocialProvider.KAKAO);
+        assertThat(profile.providerUserId()).isEqualTo("4100000001");
+        assertThat(profile.email()).isEqualTo("rider@kakao.com");
+        assertThat(profile.emailAuthoritative()).isFalse();
+        assertThat(profile.nickname()).isEqualTo("카카오보더");
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("Kakao 이메일이 인증되지 않았으면 이메일을 비우고, 닉네임은 properties에서 읽는다")
+    void fetchUserProfile_KakaoUnverifiedEmail_DropsEmail() {
+        expectKakaoToken();
+        expectKakaoUser(
+                """
+                {
+                  "id": 4100000002,
+                  "properties": {"nickname": "옛닉네임"},
+                  "kakao_account": {
+                    "is_email_valid": true,
+                    "is_email_verified": false,
+                    "email": "unverified@kakao.com"
+                  }
+                }
+                """);
+
+        OAuthUserProfile profile =
+                oauth2ExternalClient.fetchUserProfile(
+                        SocialProvider.KAKAO, "kakao-code", "kakao-state");
+
+        assertThat(profile.email()).isNull();
+        assertThat(profile.nickname()).isEqualTo("옛닉네임");
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("Kakao 응답에 회원번호가 없으면 OAUTH_AUTHENTICATION_FAILED")
+    void fetchUserProfile_KakaoWithoutId_Fails() {
+        expectKakaoToken();
+        expectKakaoUser("{\"kakao_account\": {}}");
+
+        assertThatThrownBy(
+                        () ->
+                                oauth2ExternalClient.fetchUserProfile(
+                                        SocialProvider.KAKAO, "kakao-code", "kakao-state"))
+                .isInstanceOf(CustomException.class)
+                .extracting(ex -> ((CustomException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.OAUTH_AUTHENTICATION_FAILED);
+    }
+
+    private void expectKakaoToken() {
+        mockServer
+                .expect(requestTo("https://kauth.kakao.com/oauth/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.allOf(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "client_id=kakao-client-id"),
+                                                org.hamcrest.Matchers.containsString(
+                                                        "client_secret=kakao-client-secret"),
+                                                org.hamcrest.Matchers.containsString(
+                                                        "code=kakao-code"),
+                                                org.hamcrest.Matchers.not(
+                                                        org.hamcrest.Matchers.containsString(
+                                                                "state=")))))
+                .andRespond(
+                        withSuccess(
+                                "{\"access_token\":\"kakao-access-token\"}",
+                                MediaType.APPLICATION_JSON));
+    }
+
+    private void expectKakaoUser(String body) {
+        mockServer
+                .expect(requestTo("https://kapi.kakao.com/v2/user/me"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer kakao-access-token"))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+    }
+
+    @Test
     @DisplayName("Google 외부 도메인은 email_verified가 true여도 현재 소유권의 권위 있는 증명으로 취급하지 않는다")
     void fetchUserProfile_GoogleExternalEmail_IsNotAuthoritative() {
         mockServer
@@ -239,7 +359,7 @@ class OAuth2ExternalClientTest {
     @DisplayName("클라이언트 설정이 비어 있는 공급자 호출 시 OAUTH_PROVIDER_NOT_CONFIGURED 예외가 발생한다")
     void buildAuthorizationUri_NotConfigured_ThrowsException() {
         OAuth2Properties emptyProperties =
-                new OAuth2Properties("http://localhost:3000", 3000, 5000, null, null);
+                new OAuth2Properties("http://localhost:3000", 3000, 5000, null, null, null);
         OAuth2ExternalClient unconfiguredClient =
                 new OAuth2ExternalClient(emptyProperties, RestClient.create());
 

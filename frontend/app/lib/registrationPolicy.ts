@@ -2,6 +2,7 @@ import current from "../../../shared/registration-policies/current.json";
 import draftV1 from "../../../shared/registration-policies/draft-2026-11-01-v1.json";
 import draftV2 from "../../../shared/registration-policies/draft-2026-11-07-v3.json";
 import officialV1 from "../../../shared/registration-policies/2026-11-10-v1.json";
+import officialV2 from "../../../shared/registration-policies/2026-11-10-v2.json";
 import termsDraftV1 from "../../../shared/registration-policies/terms-draft-2026-11-07-v2.json";
 import termsOfficialV1 from "../../../shared/registration-policies/terms-2026-11-10-v1.json";
 
@@ -10,6 +11,7 @@ export const registrationPolicies: Record<string, typeof draftV2> = {
   [draftV1.version]: draftV1,
   [draftV2.version]: draftV2,
   [officialV1.version]: officialV1,
+  [officialV2.version]: officialV2,
 };
 export const registrationPolicy = registrationPolicies[current.version];
 export const registrationPolicyUrl = `/privacy/${registrationPolicy.version}`;
