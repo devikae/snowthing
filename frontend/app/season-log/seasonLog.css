@@ -1,8 +1,7 @@
 .season-log .season-log-select { width: auto; min-height: 40px; padding: 8px 12px; }
 .season-log-loading { color: var(--snow-muted); }
 .season-log-login { border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 24px; }
-.season-log-login > div { display: flex; gap: 16px; margin-top: 12px; font-size: 14px; }
-.season-log-login a { text-decoration: underline; text-underline-offset: 4px; }
+.season-log-login > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 
 .season-log-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; align-items: start; }
 .season-log-layout > section { min-width: 0; border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 24px; }

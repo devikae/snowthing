@@ -8,15 +8,15 @@
 .tools-directory h2,.tools-directory p { margin: 0; }
 .tools-directory strong { margin-top: 16px; font-size: 14px; }
 .tools-community, .tool-explanation { margin-top: 48px; border-top: 1px solid var(--snow-border); padding-top: 32px; }
-.tools-community > div,.tools-related { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; font-size: 14px; }
-.tools-community a,.tools-related a { text-decoration: underline; text-underline-offset: 4px; }
+.tools-community > div,.tools-related { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; font-size: 14px; }
+.tools-community a,.tools-related a { display: inline-flex; min-height: 36px; align-items: center; text-decoration: underline; text-underline-offset: 4px; }
 .tool-workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 32px; align-items: start; }
 .tool-form,.tool-result { min-width: 0; border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 24px; }
 .tool-fields { display: grid; gap: 20px; }
 .rider-tools label { display: grid; min-width: 0; gap: 8px; font-size: 14px; font-weight: 500; }
 .rider-tools input,.rider-tools select,.rider-tools textarea { width: 100%; min-width: 0; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); padding: 12px; font: inherit; }
 .rider-tools :is(input,select,textarea,button,a,summary):focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
-.tool-unit-input { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; }
+.tool-unit-input { display: grid; grid-template-columns: minmax(0,1fr) 2.2em; align-items: center; gap: 8px; }
 .tool-unit-input > span { color: var(--snow-muted); font-size: 14px; }
 .rider-tools button { min-height: 44px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .rider-tools button:hover { background: var(--snow-surface-mid); }

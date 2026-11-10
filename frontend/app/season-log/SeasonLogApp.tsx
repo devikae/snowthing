@@ -99,7 +99,7 @@ export function SeasonLogApp() {
   if (loggedIn === false) {
     return <>
       <PageHeading title="내 시즌 기록" description="리조트를 다녀온 날을 남기면 시즌 결산을 볼 수 있어요." />
-      <section className="season-log-login"><p>시즌 기록은 로그인하면 쓸 수 있어요.</p><div><Link href={`/login?returnUrl=${encodeURIComponent("/season-log")}`}>로그인</Link><Link href="/signup">회원가입</Link></div></section>
+      <section className="season-log-login"><p>시즌 기록은 로그인하면 쓸 수 있어요.</p><div><Link href={`/login?returnUrl=${encodeURIComponent("/season-log")}`} className="snow-btn-primary">로그인</Link><Link href="/signup" className="snow-btn-secondary">회원가입</Link></div></section>
     </>;
   }
 
@@ -201,7 +201,7 @@ export function SeasonLogApp() {
       </select>} />
 
     {loadError && <p className="tool-error" role="alert">{loadError}</p>}
-    {!log && !loadError && <p className="season-log-loading">불러오는 중...</p>}
+    {!log && !loadError && <p className="season-log-loading">불러오는 중</p>}
 
     {log && summary && <div className="season-log-layout">
       <section className="season-log-record" aria-labelledby="season-log-record-title">
