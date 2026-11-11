@@ -370,8 +370,6 @@ def gear_geek():
     c.blob(12, 3, 16, 7, (252, 150, 60, 255), radius=1)
     c.rect(14, 4, 3, 1, WHITE)
     c.dot(14, 5, WHITE)
-    c.rect(19, 9, 2, 2, frame)
-    c.rect(18, 10, 4, 1, (72, 114, 94, 255))
     glass = (40, 44, 62, 255)
     for x in (11, 22):
         c.blob(x, 12, 8, 8, glass)
