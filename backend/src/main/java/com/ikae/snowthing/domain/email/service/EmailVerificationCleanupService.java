@@ -22,7 +22,9 @@ public class EmailVerificationCleanupService {
     private final Clock clock;
 
     @Transactional
-    @Scheduled(cron = "${snowthing.email.verification.cleanup-cron:0 20 4 * * *}")
+    @Scheduled(
+            cron = "${snowthing.email.verification.cleanup-cron:0 20 4 * * *}",
+            zone = "Asia/Seoul")
     public void deleteExpiredTerminalRecords() {
         repository.deleteExpiredBefore(LocalDateTime.now(clock).minus(TERMINAL_RETENTION));
     }

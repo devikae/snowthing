@@ -14,7 +14,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @Configuration
 public class SchedulingConfig {
 
-    private static final int POOL_SIZE = 3;
+    // 예약 작업이 20개 가까이 되고 S3, 외부 API를 부르는 작업도 있다. 하나가 느려져도 정리, 임시조치 해제 같은 작업이 밀리지 않게 여유를 둔다.
+    private static final int POOL_SIZE = 6;
 
     @Bean(name = "taskScheduler")
     public ThreadPoolTaskScheduler taskScheduler() {
