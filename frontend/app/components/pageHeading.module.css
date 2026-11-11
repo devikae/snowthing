@@ -51,3 +51,18 @@
   .heading { flex-direction: column; gap: 16px; }
   .actions { width: 100%; }
 }
+
+/* 타이틀: 경로, 제목, 설명, 버튼을 한 줄씩 차례로 보여 준다 (motion.css 규칙) */
+.breadcrumb,
+.titleRow,
+.description,
+.actions {
+  animation: pageHeadingLine var(--motion-slow) var(--ease-out) both;
+}
+.titleRow { animation-delay: var(--motion-stagger); }
+.description { animation-delay: calc(var(--motion-stagger) * 2); }
+.actions { animation-delay: calc(var(--motion-stagger) * 3); }
+
+@keyframes pageHeadingLine {
+  from { opacity: 0; transform: translateY(6px); }
+}

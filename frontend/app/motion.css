@@ -1,0 +1,148 @@
+/*
+ * UI별 움직임 규칙. 같은 종류의 UI는 같은 움직임과 속도를 쓴다.
+ *
+ * | UI        | 움직임                     | 속도            |
+ * |-----------|----------------------------|-----------------|
+ * | 스낵바    | 아래에서 올라옴, ease-out  | --motion-base   |
+ * | 토스트    | 서서히 나타남              | --motion-base   |
+ * | 팝업      | 커지며 나타남, ease-out    | --motion-fast   |
+ * | 바텀시트  | 아래에서 올라옴, 배경 fade | --motion-slow   |
+ * | 좋아요    | 커졌다 튕기며 돌아옴       | --motion-spring |
+ * | 체크박스  | 체크 선을 왼쪽부터 그림    | --motion-base   |
+ * | 로딩      | 회전, linear               | 0.8s            |
+ * | 타이틀    | 한 줄씩 차례로 나타남      | --motion-slow   |
+ *
+ * 나타날 때만 움직인다. 닫힐 때는 바로 사라진다(React가 요소를 바로 지우기 때문).
+ */
+:root {
+  --motion-fast: .16s;
+  --motion-base: .24s;
+  --motion-slow: .32s;
+  --motion-spring: .42s;
+  --motion-stagger: 70ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@keyframes motion-slide-up { from { opacity: 0; transform: translateY(8px); } }
+@keyframes motion-slide-down { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes motion-fade { from { opacity: 0; } }
+@keyframes motion-scale-in { from { opacity: 0; transform: scale(.95); } }
+@keyframes motion-sheet-up { from { transform: translateY(100%); } }
+@keyframes motion-like {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  70% { transform: scale(.92); }
+  100% { transform: scale(1); }
+}
+@keyframes motion-check-draw { from { background-size: 100% 100%, 100% 100%; } }
+@keyframes motion-spin { to { transform: rotate(360deg); } }
+
+/* 스낵바: 저장, 복사, 스크랩 같은 결과 문구 */
+[role="status"]:not(.sr-only):not(:empty) {
+  animation: motion-slide-up var(--motion-base) var(--ease-out) both;
+}
+
+/* 토스트: 오류 문구 */
+[role="alert"]:not(.sr-only):not(:empty) {
+  animation: motion-fade var(--motion-base) ease-out both;
+}
+
+/* 팝업: 드롭다운, 메뉴, 선택 목록, 확인 창 */
+.header-board-dropdown,
+.header-profile-dropdown,
+.header-notification-dropdown,
+.compact-select-list,
+[role="menu"],
+.delete-modal,
+.author-zoom-card {
+  transform-origin: top center;
+  animation: motion-scale-in var(--motion-fast) var(--ease-out) both;
+}
+.header-profile-dropdown,
+.header-notification-dropdown { transform-origin: top right; }
+.delete-modal,
+.author-zoom-card { transform-origin: center; }
+.delete-modal-backdrop,
+.author-zoom-backdrop {
+  animation: motion-fade var(--motion-base) ease-out both;
+}
+
+/* 모바일 메뉴: 위에서 내려옴 */
+.community-mobile-panel.open {
+  animation: motion-slide-down var(--motion-base) var(--ease-out) both;
+}
+
+/* 바텀시트: 모바일에서 확인 창은 아래에서 올라온다 */
+@media (max-width: 640px) {
+  .delete-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .delete-modal {
+    max-width: none;
+    border-width: 1px 0 0;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    animation: motion-sheet-up var(--motion-slow) var(--ease-out) both;
+  }
+  .delete-modal-actions button { flex: 1; }
+}
+
+/* 좋아요: 누른 순간 아이콘이 튕긴다 */
+.post-detail-reactions button[aria-pressed="true"] .material-symbols-outlined {
+  animation: motion-like var(--motion-spring) var(--ease-spring);
+}
+
+/* 체크박스: 체크 표시를 왼쪽부터 선을 긋듯 드러낸다 */
+input[type="checkbox"]:not([role="switch"]) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid var(--snow-border-strong);
+  border-radius: 5px;
+  background-color: var(--snow-canvas);
+  background-repeat: no-repeat;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+}
+input[type="checkbox"]:not([role="switch"]):checked {
+  border-color: #0369a1;
+  background-color: #0369a1;
+  /* 위층: 체크를 덮는 같은 색 막. 오른쪽으로 줄어들며 체크가 왼쪽부터 보인다 */
+  background-image:
+    linear-gradient(#0369a1, #0369a1),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5'/%3E%3C/svg%3E");
+  background-position: right center, center;
+  background-size: 0% 100%, 100% 100%;
+  animation: motion-check-draw var(--motion-base) var(--ease-in-out);
+}
+input[type="checkbox"]:not([role="switch"]):focus-visible {
+  outline: 2px solid #0369a1;
+  outline-offset: 2px;
+}
+input[type="checkbox"]:not([role="switch"]):disabled {
+  cursor: default;
+  opacity: .5;
+}
+
+/* 로딩: 일정한 속도로 회전 */
+.spin { animation: motion-spin .8s linear infinite; }
+
+/* 동작 줄이기 설정을 켠 사용자에게는 움직임을 끈다. 로딩 회전은 남긴다 */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.spin),
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
