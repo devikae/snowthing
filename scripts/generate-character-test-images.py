@@ -311,7 +311,7 @@ def grinder():
 
 
 def hot_pack():
-    """인간 핫팩: 겨자색 어부 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
+    """인간 핫팩: 초록 방울 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
     c = Canvas()
     jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
     mitten = (232, 84, 76, 255)
@@ -322,18 +322,17 @@ def hot_pack():
     c.rect(13, 31, 14, 1, dark)
     c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    # 머리 위에 짧게 얹은 겨자색 어부 비니. 이마와 옆머리가 보인다
-    brown, brown_dark = (122, 78, 52, 255), (92, 56, 38, 255)
-    c.blob(8, 5, 24, 10, brown, radius=4)
-    c.rect(8, 12, 3, 4, brown)
-    c.rect(29, 12, 3, 4, brown)
-    c.rect(11, 12, 18, 1, brown_dark)
-    hat, hat_dark, hat_light = (236, 178, 62, 255), (206, 146, 40, 255), (250, 210, 120, 255)
-    c.blob(10, 2, 20, 6, hat, radius=3)
-    c.rect(9, 6, 22, 3, hat_dark)
-    for x in range(10, 31, 2):
-        c.dot(x, 7, hat)
-    c.rect(13, 3, 4, 1, hat_light)
+    # 목도리와 같은 초록 니트 비니에 큰 크림색 방울. 접단은 한 톤 진하게
+    hat, hat_dark, hat_light = (62, 160, 146, 255), (44, 128, 116, 255), (110, 196, 182, 255)
+    pom, pom_dark = (255, 244, 226, 255), (230, 214, 190, 255)
+    c.blob(9, 3, 22, 9, hat, radius=5)
+    c.rect(9, 7, 22, 3, hat)
+    c.rect(13, 5, 4, 1, hat_light)
+    for x in range(11, 30, 3):
+        c.rect(x, 5, 1, 4, hat_dark)
+    c.rect(8, 10, 24, 3, hat_dark)
+    c.blob(16, 0, 8, 5, pom, radius=2)
+    c.rect(17, 3, 6, 1, pom_dark)
     # 발그레한 볼
     c.rect(11, 18, 4, 2, (250, 132, 120, 255))
     c.rect(25, 18, 4, 2, (250, 132, 120, 255))
@@ -471,26 +470,39 @@ def captain_board(x, y):
 
 
 def insider_board(x, y):
-    """파우더 보드: 뾰족한 코, 꼬리로 갈수록 좁아지다 갈라지는 제비꼬리. 분홍 옷을 낮춘 톤으로 위는 흐린 분홍, 아래는 짙은 자두색."""
+    """제비꼬리 파우더 보드: 앞이 가장 넓고 꼬리로 갈수록 좁아지다 끝이 V자로 갈라진다.
+    분홍 옷을 낮춘 톤으로, 위에서 아래로 흐린 분홍에서 짙은 자두색으로 짙어진다."""
     last = BOARD_LENGTH - 1
-    # 모양: 코 세 줄은 가운데만, 꼬리 쪽은 좁아지고 끝 세 줄은 가운데가 갈라진다. None은 칠하지 않는 칸이다.
-    if y == 0 and x != 3:
+    # 칸마다 칠할지 정하는 모양표. 앞코는 둥글게 뾰족하고, 꼬리 끝 두 갈래는 바깥으로 벌어진다.
+    rows = {0: (2, 4), 1: (1, 5)}
+    if y in rows:
+        lo, hi = rows[y]
+        if not lo <= x <= hi:
+            return None
+    elif y >= last - 12 and y < last - 5 and x in (0, 6):
         return None
-    if y == 1 and not 2 <= x <= 4:
-        return None
-    if y == 2 and x in (0, 6):
-        return None
-    # 허리는 좁히고, 꼬리 다섯 줄은 다시 넓어지며 가운데가 갈라진다
-    if last - 9 <= y <= last - 5 and x in (0, 6):
-        return None
-    if y >= last - 4 and x == 3:
-        return None
-    # 색: 위는 흐린 분홍 나뭇결, 가운데에서 자두색으로 짙어진다
-    if y < 13:
-        return (206, 150, 174, 255) if x % 2 == 0 else (182, 120, 150, 255)
-    if y < 22:
-        return (140, 86, 118, 255) if (x + y) % 3 else (166, 108, 140, 255)
-    return (70, 52, 82, 255) if x % 3 else (92, 70, 106, 255)
+    elif y >= last - 5:
+        tail = last - y
+        if tail >= 4:
+            keep = x in (1, 2, 4, 5)
+        elif tail >= 2:
+            keep = x in (1, 2, 4, 5)
+        elif tail == 1:
+            keep = x in (0, 1, 5, 6)
+        else:
+            keep = x in (0, 6)
+        if not keep:
+            return None
+    # 색: 위에서 아래로 세 단계로 짙어지고, 사선 무늬 하나가 판을 가로지른다
+    stripe = (x + y) % 9 == 0
+    if y < 12:
+        return (222, 176, 196, 255) if stripe else (196, 140, 166, 255)
+    if y < 24:
+        return (190, 132, 160, 255) if stripe else (150, 98, 128, 255)
+    return (128, 90, 120, 255) if stripe else (92, 66, 100, 255)
+
+
+insider_board.custom_shape = True
 
 
 def hype_board(x, y):
@@ -564,7 +576,8 @@ def board_gear(pattern):
     left, top = GEAR_WIDTH - 2 - BOARD_WIDTH, GRID - 2 - BOARD_LENGTH
     for y in range(BOARD_LENGTH):
         end = min(y, BOARD_LENGTH - 1 - y)
-        inset = (2, 1)[end] if end < 2 else 0
+        # 모양을 스스로 정하는 보드(custom_shape)는 양 끝을 깎지 않는다
+        inset = 0 if getattr(pattern, "custom_shape", False) else ((2, 1)[end] if end < 2 else 0)
         for x in range(inset, BOARD_WIDTH - inset):
             color = pattern(x, y)
             if color is not None:
