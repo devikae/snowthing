@@ -116,6 +116,9 @@ public enum ErrorCode {
             HttpStatus.FORBIDDEN,
             "POST_009",
             "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 manager@snowthing.org로 문의해 주세요."),
+    POST_SEARCH_KEYWORD_INVALID(HttpStatus.BAD_REQUEST, "POST_010", "검색어는 2자 이상 50자 이하로 입력해 주세요."),
+    POST_SEARCH_RATE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "POST_011", "검색이 너무 잦습니다. 잠시 후 다시 시도해 주세요."),
     CONTENT_REPORT_TARGET_NOT_FOUND(
             HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
     CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),

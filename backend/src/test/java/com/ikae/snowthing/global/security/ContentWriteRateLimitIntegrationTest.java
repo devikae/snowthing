@@ -124,6 +124,65 @@ class ContentWriteRateLimitIntegrationTest {
     }
 
     @Test
+    void loggedInMemberGuessingAnotherPostPasswordIsAlsoLimited() throws Exception {
+        // 로그인 회원이 남의 글에 비밀번호를 실어 보내도 비회원과 같은 횟수 제한을 받는다.
+        // 예전에는 로그인하면 제한을 건너뛰어 0000~9999를 끝없이 대입할 수 있었다.
+        // 다른 테스트, 이전 실행과 IP 버킷이 겹치지 않게 임의의 주소 하나를 정해 모든 시도에 쓴다(제한 횟수는 DB에 남는다).
+        String clientIp =
+                "203.0.113." + (1 + java.util.concurrent.ThreadLocalRandom.current().nextInt(254));
+        var request =
+                delete("/api/v1/posts/" + post.publicId())
+                        .with(csrf())
+                        .with(user(otherMember()))
+                        .with(
+                                mock -> {
+                                    mock.setRemoteAddr(clientIp);
+                                    return mock;
+                                })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"anonymousPassword\":\"0000\"}");
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mockMvc.perform(request)
+                    .andExpect(
+                            result ->
+                                    org.assertj.core.api.Assertions.assertThat(
+                                                    result.getResponse().getStatus())
+                                            .isBetween(400, 428));
+        }
+        mockMvc.perform(request)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("COMMON_003"));
+    }
+
+    @Test
+    void writerEditingOwnPostWithoutPasswordIsNotCountedAsGuessing() throws Exception {
+        // 본인 글은 비밀번호 없이 고치므로 비밀번호 제한을 쓰지 않는다. 연달아 고쳐도 429가 나지 않는다.
+        String body = "{\"title\":\"고친 제목\",\"content\":\"고친 내용\",\"categoryCode\":\"FREE\"}";
+        for (int attempt = 0; attempt < 5; attempt++) {
+            mockMvc.perform(
+                            put("/api/v1/posts/" + post.publicId())
+                                    .with(csrf())
+                                    .with(user(userDetails))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(body))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    private CustomUserDetails otherMember() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return new CustomUserDetails(
+                memberRepository.save(
+                        Member.builder()
+                                .email("guesser_" + suffix + "@example.com")
+                                .password("encoded")
+                                .nickname("대입" + suffix)
+                                .role(Role.ROLE_USER)
+                                .build()));
+    }
+
+    @Test
     void guestCannotPumpReactionsOnOnePostByDroppingCookies() throws Exception {
         // 비회원 추천은 익명게시판 글에서만 받는다(IKA-82).
         categoryRepository
