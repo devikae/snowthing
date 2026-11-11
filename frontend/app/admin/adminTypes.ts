@@ -101,6 +101,11 @@ export const MEMBER_STATUS_BADGE: Record<AdminMemberStatus, string> = {
   WITHDRAWN: "DRAFT",
 };
 
+export const MEMBER_ROLE_LABEL: Record<AdminMember["role"], string> = {
+  ROLE_USER: "일반 회원",
+  ROLE_ADMIN: "운영자",
+};
+
 export interface AdminMember {
   publicId: string;
   email: string;

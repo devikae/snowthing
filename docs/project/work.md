@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## 리조트 기온 수집 실패 수정, 곤지암과 웰리힐리 (2026-11-11, 티켓 없음)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
@@ -66,6 +67,22 @@
 - 남은 항목: 비밀번호 변경 API의 현재 비밀번호 확인은 아직 로그인 계정 한도를 쓰지 않는다(범위 밖).
 - 검증: 로컬에서 `spotlessApply`와 DB가 필요 없는 단위 테스트(LoginAttemptLimiterTest, SocialLinkReauthServiceTest, EmailRecipientRateLimiterTest, EmailVerificationIpRateLimiterTest, EmailVerificationRequestServiceTest, EmailVerificationServiceTest, PasswordResetServiceTest, OAuth2AuthControllerTest, EmailAvailabilityIpRateLimiterTest) 통과. 프론트 `tsc --noEmit`, eslint 통과. 로컬에 MySQL이 없어 DB가 필요한 통합 테스트(LoginAttemptLimitIntegrationTest, SocialAccountLinkSecurityIntegrationTest 등)는 CI에서 확인한다.
 >>>>>>> origin/ika-76-auth-abuse-guard
+=======
+## 관리자 화면에서 운영자 지정과 해제 (IKA-77, 2026-11-11)
+
+- 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 완료
+  - 백엔드: `POST /api/v1/admin/members/{publicId}/grant-admin`, `.../revoke-admin`. 활동 중인 일반 회원만 지정할 수 있고(정지, 탈퇴, AI 회원은 MEMBER_015), 자신은 해제할 수 없고(MEMBER_013), 마지막 활성 관리자는 해제할 수 없다(MEMBER_014). 봇 위임과 API 토큰 요청은 거부한다.
+  - 권한이 바뀌면 커밋 뒤 대상의 기존 세션을 모두 끊는다. 세션의 권한은 로그인 때 정해지는 스냅샷이라 끊지 않으면 해제된 관리자가 세션이 끝날 때까지 관리자 API를 쓴다.
+  - 감사 기록은 정지, 해제와 같은 `admin.audit` 로그에 남긴다(action=GRANT_ADMIN, REVOKE_ADMIN). 관리자 조치 테이블은 없어 새로 만들지 않았다.
+  - 프론트: 회원 관리 목록에 권한(일반 회원, 운영자)을 보이고 운영자 지정, 해제 버튼을 둔다. 본인 행은 해제 버튼을 막고 이유를 적는다.
+  - `compose.prod.yml`: `SNOWTHING_ADMIN_BOOTSTRAP_EMAILS`를 컨테이너에 넘긴다.
+- 결정
+  - 동시성: 활성 관리자 행을 ID 순서로 잠근 뒤 호출자가 아직 관리자인지 다시 확인한다. 두 관리자가 서로를 동시에 해제하면 뒤 요청은 거부된다. 잠금 대상 ID는 잠그지 않는 읽기로 먼저 고른다. role 인덱스가 없어 바로 `FOR UPDATE`로 찾으면 회원 표를 넓게 잠그기 때문이다. 다른 안: 관리자 수를 세는 별도 행을 잠그는 방법(새 테이블 필요).
+  - 마이그레이션은 필요 없다.
+- 남은 항목: 운영 `/etc/snowthing/prod.env`에 `SNOWTHING_ADMIN_BOOTSTRAP_EMAILS=<첫 관리자 이메일>` 추가(사용자 작업).
+- 검증: `AdminMemberRoleWriterTest` 로컬 통과. `AdminMemberIntegrationTest` 등 DB가 필요한 테스트는 CI에서 확인. 프론트는 변경 파일 eslint 통과, tsc는 변경 파일에서 오류 없음.
+>>>>>>> origin/ika-77-admin-role
 
 ## 시즌권 계산기 리조트 가격 채우기, 비로그인 응답 문구, 홈 탭과 달력 글자 다듬기 (2026-11-11, 티켓 없음)
 
