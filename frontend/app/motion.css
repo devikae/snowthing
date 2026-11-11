@@ -56,7 +56,9 @@
 .compact-select-list,
 [role="menu"],
 .delete-modal,
-.author-zoom-card {
+.author-zoom-card,
+.comment-delete-popover,
+[class*="recipientList"] {
   transform-origin: top center;
   animation: motion-scale-in var(--motion-fast) var(--ease-out) both;
 }
@@ -65,7 +67,8 @@
 .delete-modal,
 .author-zoom-card { transform-origin: center; }
 .delete-modal-backdrop,
-.author-zoom-backdrop {
+.author-zoom-backdrop,
+[class*="loadingOverlay"] {
   animation: motion-fade var(--motion-base) ease-out both;
 }
 
@@ -132,12 +135,47 @@ input[type="checkbox"]:not([role="switch"]):disabled {
   opacity: .5;
 }
 
+/* 타이틀: 페이지 제목 (PageHeading은 pageHeading.module.css에서 한 줄씩) */
+main h1:not(.sr-only):not([class*="titleRow"] h1),
+.ct-heading {
+  animation: motion-slide-up var(--motion-slow) var(--ease-out) both;
+}
+
+/* 캐릭터 테스트 */
+/* 패널은 위에서부터 차례로 올라온다 */
+.character-test .ct-panel {
+  animation: motion-slide-up var(--motion-slow) var(--ease-out) both;
+}
+.character-test .ct-panel:nth-of-type(2) { animation-delay: var(--motion-stagger); }
+.character-test .ct-panel:nth-of-type(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.character-test .ct-panel:nth-of-type(n + 4) { animation-delay: calc(var(--motion-stagger) * 3); }
+/* 질문: 번호, 질문, 보기가 한 줄씩. 질문이 바뀔 때마다 다시 */
+.character-test .ct-question { animation: none; }
+.ct-step-line { animation: motion-slide-up var(--motion-slow) var(--ease-out) both; }
+.ct-step-line + .ct-step-line { animation-delay: var(--motion-stagger); }
+.ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 2); }
+.ct-step-line + .ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 3); }
+.ct-progress span { transition: width var(--motion-slow) var(--ease-out); }
+.character-test .ct-choices button { transition: transform var(--motion-fast) var(--ease-out), background-color var(--motion-fast) ease, border-color var(--motion-fast) ease; }
+.character-test .ct-choices button:active { transform: scale(.98); }
+/* 결과 카드: 카드가 커지며 튕기듯 나타난다 */
+.ct-card img.ct-card-preview {
+  animation: motion-card-reveal var(--motion-spring) var(--ease-spring) both;
+}
+@keyframes motion-card-reveal { from { opacity: 0; transform: scale(.9) translateY(12px); } }
+/* 카드 만드는 중: 빛이 지나가는 로딩 */
+.ct-card-loading {
+  background: linear-gradient(100deg, var(--snow-surface-mid) 40%, var(--snow-surface-low) 50%, var(--snow-surface-mid) 60%) 0 0 / 300% 100%;
+  animation: motion-shimmer 1.2s linear infinite;
+}
+@keyframes motion-shimmer { to { background-position: -150% 0; } }
+
 /* 로딩: 일정한 속도로 회전 */
 .spin { animation: motion-spin .8s linear infinite; }
 
 /* 동작 줄이기 설정을 켠 사용자에게는 움직임을 끈다. 로딩 회전은 남긴다 */
 @media (prefers-reduced-motion: reduce) {
-  *:not(.spin),
+  *:not(.spin):not(.ct-card-loading),
   *::before,
   *::after {
     animation-duration: .01ms !important;
