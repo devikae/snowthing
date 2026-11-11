@@ -123,6 +123,12 @@ public class Post extends BaseTimeEntity {
         var copy = Set.copyOf(keys);
         contentImageKeys.clear();
         contentImageKeys.addAll(copy);
+        refreshImageStatus();
+    }
+
+    /** 목록의 사진 표시. 첨부 사진이나 본문에 넣은 사진(에디터에 붙여 넣은 사진 포함)이 하나라도 있으면 켠다. */
+    private void refreshImageStatus() {
+        updateImageStatus(!this.images.isEmpty() || !this.contentImageKeys.isEmpty());
     }
 
     @Builder
@@ -186,7 +192,7 @@ public class Post extends BaseTimeEntity {
         for (PostImage image : newImages) {
             addImage(image);
         }
-        updateImageStatus(!this.images.isEmpty());
+        refreshImageStatus();
     }
 
     public void softDelete(Long deleterMemberId) {
