@@ -552,22 +552,23 @@ def grinder_board(x, y):
 
 
 def hot_pack_board(x, y):
-    """크림색 판을 따라 주황 줄이 길게 지나고, 가운데 빨간 선이 있다."""
-    if x == 3:
-        return (226, 74, 58, 255)
-    return (250, 150, 56, 255) if x in (2, 4) else (255, 242, 218, 255)
+    """흰 판 가운데로 위에서 뾰족하게 시작해 꼬리로 갈수록 넓어지는 쐐기. 색은 검정에서 빨강, 분홍, 주황, 노랑으로 따뜻해진다."""
+    if y < 3 or abs(x - 3) > (y - 3) * 3.6 / 31:
+        return (248, 248, 250, 255)
+    if y < 12:
+        return (32, 32, 40, 255)
+    if y < 18:
+        return (196, 40, 72, 255)
+    if y < 24:
+        return (238, 72, 96, 255)
+    if y < 30:
+        return (250, 132, 72, 255)
+    return (252, 208, 84, 255)
 
 
 def gear_board(x, y):
-    """옆선이 곧고 앞코 모서리가 각진 보드, 꼬리 끝은 가운데가 살짝 오목하다. 남색 판에 가는 격자, 위쪽 하늘색 가로 막대, 양 끝 하늘색 띠."""
+    """남색 판에 가는 격자, 위쪽 하늘색 가로 막대, 양 끝 하늘색 띠."""
     last = BOARD_LENGTH - 1
-    # 옆선은 끝까지 곧게 둔다. 앞코는 모서리만 깎고, 꼬리는 모서리를 깎은 뒤 가운데를 한 칸 오목하게 판다.
-    if y == 0 and x in (0, 6):
-        return None
-    if y == last - 1 and x in (0, 6):
-        return None
-    if y == last and x not in (1, 2, 4, 5):
-        return None
     navy, grid, sky, white = (34, 52, 110, 255), (54, 78, 146, 255), (84, 152, 228, 255), (236, 242, 252, 255)
     if y <= 1 or y >= last - 1:
         return sky
@@ -579,8 +580,6 @@ def gear_board(x, y):
         return grid
     return navy
 
-
-gear_board.custom_shape = True
 
 
 def outsider_board(x, y):
