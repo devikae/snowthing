@@ -559,12 +559,28 @@ def hot_pack_board(x, y):
 
 
 def gear_board(x, y):
-    """조끼 색 판에 고글 주황 선과 눈금."""
-    if x == 1:
-        return (252, 160, 70, 255)
-    if x == 5 and y % 4 == 0:
-        return (226, 244, 252, 255)
-    return (70, 84, 68, 255) if 13 <= y <= 23 else (96, 110, 92, 255)
+    """앞이 넓고 모서리가 각진 코, 꼬리로 한 칸 좁아지는 보드. 남색 판에 가는 격자, 위쪽 하늘색 가로 막대, 양 끝 하늘색 띠."""
+    last = BOARD_LENGTH - 1
+    # 모양: 앞코는 평평하게 모서리만 깎고, 앞쪽 절반은 가장 넓고, 뒤쪽 절반은 한 칸씩 좁다. 꼬리 끝도 평평하다.
+    if y == 0 and x in (0, 6):
+        return None
+    if y >= 18 and x in (0, 6):
+        return None
+    if y == last and x in (0, 1, 5, 6):
+        return None
+    navy, grid, sky, white = (34, 52, 110, 255), (54, 78, 146, 255), (84, 152, 228, 255), (236, 242, 252, 255)
+    if y <= 1 or y >= last - 1:
+        return sky
+    if 3 <= y <= 14 and y % 2 == 1 and 1 <= x <= 5:
+        return sky
+    if (y in (9, 11) or y in (26, 28)) and x in (2, 4):
+        return white
+    if x % 2 == 0 or y % 3 == 0:
+        return grid
+    return navy
+
+
+gear_board.custom_shape = True
 
 
 def outsider_board(x, y):
