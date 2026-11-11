@@ -42,8 +42,12 @@ class CharacterGroupCleanupSchedulerTest {
         service.join(
                 expired.groupPublicId(),
                 new CharacterJoinRequest("두번째", CharacterSport.BOARD, ANSWERS));
-        setUpdatedAt(expired.groupPublicId(), now.minusDays(7).minusSeconds(1));
-        setUpdatedAt(boundary.groupPublicId(), now.minusDays(7));
+        setUpdatedAt(
+                expired.groupPublicId(),
+                now.minusDays(CharacterGroupCleanupScheduler.RETENTION_DAYS).minusSeconds(1));
+        setUpdatedAt(
+                boundary.groupPublicId(),
+                now.minusDays(CharacterGroupCleanupScheduler.RETENTION_DAYS));
         setUpdatedAt(fresh.groupPublicId(), now.minusDays(1));
 
         assertThat(scheduler.deleteInactiveBefore(now)).isEqualTo(1);

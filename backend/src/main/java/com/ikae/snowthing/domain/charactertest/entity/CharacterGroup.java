@@ -11,7 +11,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 캐릭터 테스트 모임 (036). updated_at은 새 참여 때만 저장소 쿼리로 바꾸며 7일 보관 판단 기준이다. */
+/** 캐릭터 테스트 모임 (036). updated_at은 새 참여 때만 저장소 쿼리로 바꾸며 30일 보관 판단 기준이다. */
 @Entity
 @Table(
         name = "character_group",

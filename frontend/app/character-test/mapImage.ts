@@ -1,4 +1,4 @@
-import { MAP_SNOW, RING_WHITE, faceImage, type CharacterLabel, type JobCode } from "./data";
+import { MAP_BAND_DOT, MAP_BAND_FILL, MAP_ME_RING, MAP_SNOW, faceImage, type CharacterLabel, type JobCode } from "./data";
 import { HEAD_CROP, HEAD_WIDTH, ME_HEAD_WIDTH, ME_RADIUS, layoutMap, treePaths, type MapInputLevel } from "./mapLayout";
 import { canvasToBlob, loadImage, pageFontFamily } from "./shareFile";
 
@@ -78,29 +78,44 @@ export async function renderMapImage({ title, levels, me, hideNames }: MapImageI
   ctx.fillStyle = "#ffffff";
   ctx.fill(new Path2D(trees.cap));
   [...layout.bands].reverse().forEach((band) => {
-    ctx.fillStyle = `rgba(255, 255, 255, ${RING_WHITE[band.code]})`;
+    ctx.fillStyle = MAP_BAND_FILL[band.code];
     ctx.beginPath();
     ctx.arc(center, center, band.outer, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = MAP_SNOW.ring;
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
     ctx.stroke();
   });
-  ctx.fillStyle = MAP_SNOW.muted;
-  ctx.font = font(700, 9);
-  layout.labels.forEach((label) => ctx.fillText(label.text, label.x, label.y + 3));
+  // 단계 이름표: 화면처럼 흰 바탕 둥근 이름표 위에 글자
+  ctx.font = font(700, 9.5);
+  layout.labels.forEach((label) => {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+    ctx.beginPath();
+    ctx.roundRect(label.x - label.width / 2 - 5, label.y - 7, label.width + 10, 14, 7);
+    ctx.fill();
+    ctx.fillStyle = "#3d5a72";
+    ctx.fillText(label.text, label.x, label.y + 3.5);
+  });
 
   layout.empties.forEach((node) => {
+    // 빈자리: 화면처럼 점선 원 안에 + 표시
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.strokeStyle = "#86abc6";
+    ctx.lineWidth = 1.5;
     ctx.setLineDash([3, 3]);
-    ctx.strokeStyle = MAP_SNOW.muted;
-    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(node.x, node.y, 16, 0, Math.PI * 2);
+    ctx.arc(node.x, node.y, 15, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = MAP_SNOW.muted;
-    ctx.font = font(500, 10);
-    ctx.fillText("빈자리", node.x, node.y + 30);
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(node.x - 5, node.y);
+    ctx.lineTo(node.x + 5, node.y);
+    ctx.moveTo(node.x, node.y - 5);
+    ctx.lineTo(node.x, node.y + 5);
+    ctx.stroke();
   });
 
   layout.people.forEach((node) => {
@@ -114,23 +129,33 @@ export async function renderMapImage({ title, levels, me, hideNames }: MapImageI
   });
 
   ctx.fillStyle = "#ffffff";
-  ctx.strokeStyle = MAP_SNOW.accent;
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = MAP_ME_RING;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(center, center, ME_RADIUS, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   drawHead(me.character.job, center, center - 6, ME_HEAD_WIDTH);
-  ctx.fillStyle = MAP_SNOW.accent;
+  ctx.fillStyle = MAP_SNOW.ink;
   ctx.font = font(800, 12);
   ctx.fillText("나", center, center + 25);
 
   // 단계별 인원수. 다섯 칸을 같은 폭으로 나눈다.
   ctx.translate(0, size);
   const cell = size / layout.bands.length;
-  ctx.fillStyle = MAP_SNOW.ink;
   ctx.font = font(700, 10);
-  layout.bands.forEach((band, index) => ctx.fillText(`${band.label} ${band.count}`, cell * index + cell / 2, 20));
+  layout.bands.forEach((band, index) => {
+    // 화면 범례처럼 단계 색 점을 앞에 둔다
+    const text = `${band.label} ${band.count}`;
+    const x = cell * index + cell / 2;
+    const half = ctx.measureText(text).width / 2;
+    ctx.fillStyle = MAP_BAND_DOT[band.code];
+    ctx.beginPath();
+    ctx.arc(x - half - 7, 16.5, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = MAP_SNOW.ink;
+    ctx.fillText(text, x + 3, 20);
+  });
 
   ctx.translate(0, LEGEND);
   ctx.fillStyle = MAP_SNOW.muted;
