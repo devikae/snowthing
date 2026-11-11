@@ -2332,6 +2332,12 @@ html[data-theme="dark"] .home-live-chat .live-chat-card {
   padding: 18px 18px;
 }
 
+/* PC 두 칸 화면: 채팅 목록을 고정 높이 대신 남는 높이만큼 늘려, 왼쪽 글 목록이 길어도 입력칸과 사이가 비지 않게 한다 */
+@media (min-width: 1025px) {
+  .home-live-chat .live-chat-card { flex: 1; height: auto; min-height: 0; }
+  .home-live-chat .live-chat-feed { flex: 1 1 0; height: auto; max-height: none; min-height: 420px; }
+}
+
 .home-live-chat .live-chat-compose.unified-capsule-form {
   margin-top: 4px;
 }
