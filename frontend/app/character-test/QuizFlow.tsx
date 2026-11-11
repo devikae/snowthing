@@ -21,10 +21,10 @@ export function QuizFlow({ onComplete }: { onComplete: (answers: string, sport: 
   if (!sport) {
     return (
       <section className="ct-panel ct-question">
-        <p className="ct-eyebrow">시작하기</p>
-        <h2>오늘은 뭘 타나요?</h2>
-        <p className="ct-fineprint">결과에는 영향을 주지 않고 지도에 표시만 돼요.</p>
-        <div className="ct-choices">
+        <p className="ct-eyebrow ct-step-line">시작하기</p>
+        <h2 className="ct-step-line">오늘은 뭘 타나요?</h2>
+        <p className="ct-fineprint ct-step-line">결과에는 영향을 주지 않고 지도에 표시만 돼요.</p>
+        <div className="ct-choices ct-step-line">
           <button type="button" onClick={() => setSport("SKI")}>스키</button>
           <button type="button" onClick={() => setSport("BOARD")}>보드</button>
         </div>
@@ -48,9 +48,10 @@ export function QuizFlow({ onComplete }: { onComplete: (answers: string, sport: 
   return (
     <section className="ct-panel ct-question">
       <div className="ct-progress" role="progressbar" aria-valuemin={0} aria-valuemax={order.length} aria-valuenow={step + 1} aria-label={`${order.length}개 중 ${step + 1}번째 질문`}><span style={{ width: `${((step + 1) / order.length) * 100}%` }} /></div>
-      <p className="ct-eyebrow">{step + 1} / {order.length}</p>
-      <h2>{question.situation}</h2>
-      <div className="ct-choices">
+      {/* 질문이 바뀔 때마다 key로 새로 그려 한 줄씩 나타나는 움직임을 다시 보여 준다 */}
+      <p key={`n${step}`} className="ct-eyebrow ct-step-line">{step + 1} / {order.length}</p>
+      <h2 key={`q${step}`} className="ct-step-line">{question.situation}</h2>
+      <div key={`c${step}`} className="ct-choices ct-step-line">
         <button type="button" onClick={() => choose("A")}>{question.a}</button>
         <button type="button" onClick={() => choose("B")}>{question.b}</button>
         {question.c && <button type="button" onClick={() => choose("C")}>{question.c}</button>}

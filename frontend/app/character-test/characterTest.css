@@ -43,33 +43,31 @@
 .ct-card-loading { background: var(--snow-surface-mid); }
 
 .ct-map-wrap { display: grid; gap: 8px; min-width: 0; }
-.ct-map-body { display: grid; gap: 10px; min-width: 0; }
-.ct-map { display: block; width: 100%; height: auto; border-radius: 16px; background: #e0f0fa; }
-.ct-map-legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12px; }
-.ct-map-legend li { display: grid; gap: 1px; text-align: center; }
+.ct-map-body { display: grid; gap: 12px; min-width: 0; }
+.ct-map { display: block; width: 100%; height: auto; border-radius: 16px; background: #dcecf7; box-shadow: inset 0 0 0 1px rgba(92, 122, 146, .12); }
+.ct-map-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 12px; }
+.ct-map-legend li { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--snow-border); border-radius: 999px; background: var(--snow-canvas); padding: 4px 10px 4px 8px; }
+.ct-map-legend i { width: 8px; height: 8px; border-radius: 50%; }
 .ct-map-legend span { font-weight: 600; }
 .ct-map-legend strong { color: var(--snow-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
-@media (min-width: 620px) {
-  .ct-map-body { grid-template-columns: minmax(0, 1fr) 84px; align-items: center; }
-  .ct-map-legend { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .ct-map-legend li { text-align: left; }
-}
 .ct-map text { font-family: var(--font-hanken); letter-spacing: -.02em; }
-/* 얼굴과 글자가 원의 경계에 걸려도 읽히도록 흰 테두리를 두른다. 저장 이미지(mapImage.ts)도 같게 그린다. */
 .ct-map :is(.ct-map-name, .ct-map-score) { paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
-.ct-map .ct-map-ring-label { fill: #5c7a92; font-size: 9px; font-weight: 700; }
+.ct-map .ct-map-ring-label rect { fill: rgba(255, 255, 255, .92); }
+.ct-map .ct-map-ring-label text { fill: #3d5a72; font-size: 9.5px; font-weight: 700; }
 .ct-map .ct-map-name { fill: #28384a; font-size: 10px; font-weight: 700; }
 .ct-map .ct-map-score { fill: #d2461f; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .ct-map image { image-rendering: pixelated; }
-.ct-map-line { stroke: #e2603f; stroke-width: 2; }
+.ct-map-line { stroke: #e2603f; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 4 4; }
 .ct-map-hit { fill: transparent; }
 .ct-map [role="button"] { cursor: pointer; outline: none; }
 .ct-map [role="button"]:focus-visible .ct-map-hit { stroke: #e2603f; stroke-width: 2; }
 .ct-map-person.is-selected .ct-map-hit { fill: rgba(255, 255, 255, .9); stroke: #e2603f; stroke-width: 2; }
-.ct-map-me-disc { fill: #fff; stroke: #e2603f; stroke-width: 3; }
+.ct-map-me-disc { fill: #fff; stroke: #e2603f; stroke-width: 3; filter: drop-shadow(0 2px 4px rgba(226, 96, 63, .25)); }
+.ct-map-me-pulse { fill: none; stroke: #e2603f; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: ct-map-pulse 2.4s ease-out infinite; }
+@keyframes ct-map-pulse { from { opacity: .5; transform: scale(1); } to { opacity: 0; transform: scale(1.45); } }
 .ct-map .ct-map-me-name { fill: #e2603f; font-size: 12px; font-weight: 800; }
-.ct-map-empty circle { fill: none; stroke: #5c7a92; stroke-dasharray: 3 3; }
-.ct-map .ct-map-empty text { fill: #5c7a92; font-size: 10px; }
+.ct-map-empty circle { fill: rgba(255, 255, 255, .7); stroke: #86abc6; stroke-width: 1.5; stroke-dasharray: 3 3; }
+.ct-map-empty path { stroke: #86abc6; stroke-width: 1.8; stroke-linecap: round; }
 .ct-map-detail { display: grid; gap: 2px; min-height: 44px; border-radius: 8px; background: var(--snow-surface-low); padding: 10px 12px; font-size: 13px; line-height: 1.55; }
 .ct-map-detail strong { font-weight: 700; }
 .ct-map-detail b { color: #e2603f; font-weight: 800; }
@@ -111,4 +109,35 @@
 .ct-gallery strong { font-size: 15px; font-weight: 700; }
 .ct-gallery span { color: var(--snow-muted); }
 .ct-gallery p { margin: 0; color: var(--snow-ink-soft); }
+
+/* 시작 화면 */
+.ct-intro { gap: 20px; overflow: hidden; padding: 0 0 24px; }
+.ct-intro > :not(.ct-intro-cast) { margin-inline: 24px; }
+.ct-intro-cast { display: flex; align-items: flex-end; justify-content: center; padding: 28px 16px 14px; background: linear-gradient(180deg, #cfe6f6 0%, #e9f4fb 70%, var(--snow-canvas) 100%); }
+html[data-theme="dark"] .ct-intro-cast { background: linear-gradient(180deg, #1c3448 0%, #182633 70%, var(--snow-canvas) 100%); }
+/* 원본은 40칸 그림. 40의 배수(80px, 40px)로만 그려야 칸이 고르게 선명하다 */
+.ct-intro-cast img { width: 80px; height: 80px; margin-inline: -4px; image-rendering: pixelated; animation: ct-bob 1.6s steps(4, jump-none) infinite; }
+.ct-intro-cast img:nth-child(2n) { animation-delay: -.8s; }
+.ct-intro-cast img:nth-child(3n) { animation-delay: -.4s; }
+/* 정수 픽셀로만 움직여 흔들릴 때도 흐려지지 않는다 */
+@keyframes ct-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.ct-intro-copy { display: grid; gap: 8px; text-align: center; }
+.ct-intro-copy h2 { font-size: 22px; letter-spacing: -.03em; text-wrap: balance; }
+.ct-intro-copy .ct-lead { text-wrap: pretty; }
+.ct-intro-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ct-intro-facts li { display: grid; gap: 2px; justify-items: center; border-radius: 10px; background: var(--snow-surface-low); padding: 12px 6px; }
+.ct-intro-facts strong { font-size: 15px; font-weight: 700; }
+.ct-intro-facts span { color: var(--snow-muted); font-size: 12px; }
+.ct-intro-actions { display: grid; gap: 4px; }
+.character-test .ct-intro .ct-primary { min-height: 52px; border-radius: 12px; font-size: 16px; }
+.ct-intro .ct-fineprint { text-align: center; }
+@media (max-width: 640px) {
+  .ct-intro > :not(.ct-intro-cast) { margin-inline: 16px; }
+  .ct-intro-cast img { width: 40px; height: 40px; margin-inline: 0; }
+}
+
+/* 모임 참여 안내: 한 줄에 하나씩, 지워지는 조건은 굵게 */
+.ct-join-notice { display: grid; gap: 4px; margin: 0; border-radius: 10px; background: var(--snow-surface-low); padding: 12px 14px 12px 30px; color: var(--snow-muted); font-size: 13px; line-height: 1.55; }
+.ct-join-notice li::marker { color: var(--snow-faint); }
+.ct-join-notice strong { color: var(--snow-ink); font-weight: 700; }
 .ct-kakao-share { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
