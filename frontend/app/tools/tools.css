@@ -85,3 +85,4 @@
   .rider-tools .pass-price-scroll-hint { display: block; }
   .pass-price-cta-link { width: 100%; text-align: center; }
 }
+.tool-share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

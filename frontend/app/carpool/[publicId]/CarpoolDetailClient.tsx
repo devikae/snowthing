@@ -10,6 +10,7 @@ import { Footer, TopNav } from "../../components/SiteChrome";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { ReportButton } from "../../components/ReportButton";
+import KakaoShareButton from "../../components/KakaoShareButton";
 import { carpoolCostLabel, formatCarpoolDateTime } from "../format";
 import { carpoolSummaryText, type CarpoolReviewSummary } from "../review";
 import { CarpoolParticipation } from "./CarpoolParticipation";
@@ -145,6 +146,14 @@ export default function CarpoolDetailClient() {
           <>
             <div className="post-detail-toolbar">
               <Link href="/carpool"><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
+              <div>
+                <KakaoShareButton
+                  title={item.title}
+                  description={`${item.departureRegion} 출발, ${item.destinationResortName}, ${formatCarpoolDateTime(item.departureAt)}`}
+                  url={`/carpool/${item.publicId}`}
+                  buttonTitle="카풀 보기"
+                />
+              </div>
             </div>
             <div className="carpool-view">
               <header className="carpool-view-head">

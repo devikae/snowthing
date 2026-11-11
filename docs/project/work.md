@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## 리조트 기온 수집 실패 수정, 곤지암과 웰리힐리 (2026-11-11, 티켓 없음)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
@@ -27,6 +28,21 @@
 - 남은 항목: 가격 재확인 11/15(비발디), 11/19(X6+), 11/30(휘닉스).
 - 검증: `npx tsc --noEmit -p .`, `npm run lint`, `npx next build --webpack` 통과(공유 node_modules가 비어 있어 같은 lockfile의 다른 node_modules로 임시 복사본에서 실행). 390, 1280px 화면과 계산기 미리 채우기 확인. 사이트맵은 API 없을 때 34개, 가짜 목록 API로 649개.
 >>>>>>> origin/season-pass-price-page
+=======
+## 카카오톡 공유 버튼 추가 (IKA-79, 2026-11-11)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 완료
+  - 공용 컴포넌트 `frontend/app/components/KakaoShareButton.tsx`: 카카오 JavaScript SDK 2.8.4(integrity 고정)를 버튼이 보일 때 한 번만 받고, `Kakao.Share.sendDefault`로 피드 카드(이미지, 제목, 설명, 버튼)를 보낸다.
+  - 붙인 곳: 게시글 상세(1:1 문의 제외), 카풀 상세, 캐릭터 테스트 결과 카드, 모임 링크 보내기, 시즌권과 데크 계산기 결과, 내 시즌 기록 결산 공유.
+  - 키가 없거나 SDK를 못 받거나 `Kakao.Share`가 없으면 각 화면의 기존 공유(공유 창, 링크 복사)로 넘어간다.
+- 결정
+  - 키는 지도와 같은 `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`(JavaScript 키)를 쓴다. 배포 설정을 바꾸지 않아도 된다. 지도 SDK는 `window.kakao`, 공유 SDK는 `window.Kakao`라 겹치지 않는다.
+  - 클릭 뒤에 스크립트를 받으면 데스크톱 팝업이 막힐 수 있어 버튼이 보일 때 미리 받는다. 버튼이 있는 화면에서만 받는다.
+  - 모임 공유에는 모임 주소만 싣고 복귀 토큰(#t=)은 싣지 않는다. 시즌 결산은 이미 공개한 공유 토큰 주소와 그 OG 이미지를 쓴다.
+- 사용자 확인 필요: 카카오 개발자 콘솔에서 JavaScript 키가 속한 앱의 플랫폼 > Web 사이트 도메인에 https://snowthing.org, https://www.snowthing.org가 있는지 확인.
+- 검증: `npx tsc --noEmit -p .`, `npm run lint`, `npx next build --webpack` 통과. 로컬 서버에서 Playwright로 키 없는 빌드는 대체 공유(링크 복사)로, 키 있는 빌드는 카카오 공유 팝업(accounts.kakao.com)이 열리는 것까지 확인. 실제 카카오톡 전송은 로컬 도메인이 등록되지 않아 확인하지 못했다.
+>>>>>>> origin/ika-79-kakao-share
 
 ## 시즌권 계산기 리조트 가격 채우기, 비로그인 응답 문구, 홈 탭과 달력 글자 다듬기 (2026-11-11, 티켓 없음)
 

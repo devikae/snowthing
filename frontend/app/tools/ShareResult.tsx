@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import KakaoShareButton from "../components/KakaoShareButton";
 
 export default function ShareResult({ path, search, text }: { path: string; search: string; text: string }) {
   const [url, setUrl] = useState("");
@@ -14,5 +15,5 @@ export default function ShareResult({ path, search, text }: { path: string; sear
       setNotice(error instanceof DOMException && error.name === "AbortError" ? "공유를 취소했습니다." : "아래 링크를 선택해서 복사해 주세요.");
     }
   };
-  return <div className="tool-share"><button type="button" onClick={() => void share()}>계산 결과 공유</button><p>공유 링크에는 계산에 사용한 입력값이 포함됩니다.</p>{url && <label>결과 링크<input readOnly value={url} onFocus={event => event.target.select()} /></label>}{notice && <p role="status">{notice}</p>}</div>;
+  return <div className="tool-share"><div className="tool-share-actions"><button type="button" onClick={() => void share()}>계산 결과 공유</button><KakaoShareButton title="Snowthing 계산 결과" description={text} url={`${path}#${search}`} buttonTitle="계산 결과 보기" onFallback={share} /></div><p>공유 링크에는 계산에 사용한 입력값이 포함됩니다.</p>{url && <label>결과 링크<input readOnly value={url} onFocus={event => event.target.select()} /></label>}{notice && <p role="status">{notice}</p>}</div>;
 }

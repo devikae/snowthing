@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { groupUrl, inviteText } from "./links";
+import KakaoShareButton from "../components/KakaoShareButton";
 import { shareLink } from "./shareFile";
 
 export const SEND_LINK_LABEL = "모임 링크도 같이 보내기";
@@ -22,6 +23,16 @@ export function ShareGroupLink({ groupPublicId, groupName }: { groupPublicId: st
   return (
     <>
       <button type="button" onClick={() => void send()}>{SEND_LINK_LABEL}</button>
+      {/* 모임 주소만 보낸다. 내 복귀 토큰(#t=)은 절대 싣지 않는다. */}
+      <KakaoShareButton
+        title={groupName}
+        description={inviteText(groupName)}
+        url={`/character-test/g/${encodeURIComponent(groupPublicId)}`}
+        imageUrl="/character-test/og-group.png"
+        buttonTitle="모임 들어가기"
+        label="카카오톡으로 모임 링크 보내기"
+        onFallback={send}
+      />
       {notice && <p className="ct-notice" role="status">{notice}</p>}
       {fallbackUrl && <label className="ct-fallback-link">링크<input readOnly value={fallbackUrl} onFocus={(event) => event.target.select()} /></label>}
     </>

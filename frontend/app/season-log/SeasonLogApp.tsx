@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import KakaoShareButton from "../components/KakaoShareButton";
 import { PageHeading } from "../components/PageHeading";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
@@ -248,6 +249,14 @@ export function SeasonLogApp() {
             <input readOnly aria-label="공유 링크" value={typeof window === "undefined" ? "" : shareUrl(window.location.origin, log.shareToken)} onFocus={(event) => event.target.select()} />
             <div className="season-log-share-actions">
               <button type="button" className="tool-primary" disabled={busy} onClick={() => void shareLink()}>링크 공유</button>
+              <KakaoShareButton
+                title={`${log.season.label} 결산`}
+                description="내 시즌 기록을 확인해 보세요."
+                url={`/season-log/s/${encodeURIComponent(log.shareToken)}`}
+                imageUrl={`/season-log/s/${encodeURIComponent(log.shareToken)}/opengraph-image`}
+                buttonTitle="결산 보기"
+                onFallback={shareLink}
+              />
               <Link href={`/season-log/s/${log.shareToken}`}>공유 화면 보기</Link>
               <button type="button" disabled={busy} onClick={() => void setShare(false)}>공유 끄기</button>
             </div>

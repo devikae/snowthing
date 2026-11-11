@@ -14,6 +14,8 @@ import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey"
 import { API_ENDPOINTS } from "../../lib/api";
 import { fetchViewer, isAdminViewer } from "../../lib/viewer";
 import { ReportButton } from "../../components/ReportButton";
+import KakaoShareButton from "../../components/KakaoShareButton";
+import { firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate, formatShortDateTime } from "../../lib/koreanDate";
 import { markdownToPlainText } from "../../lib/markdownText";
@@ -731,6 +733,14 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                   {post.scrapped ? "스크랩됨" : "스크랩"}
                 </button>
                 <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined" aria-hidden="true">share</span>공유</button>
+                <KakaoShareButton
+                  title={post.title}
+                  description={plainTextSummary(post.content, 80) || post.categoryName}
+                  url={`/posts/${post.publicId}`}
+                  imageUrl={firstImageUrl(post.images, post.content)}
+                  buttonTitle="글 보기"
+                  onFallback={handleShare}
+                />
                 <ReportButton targetType="POST" targetId={publicId} />
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
