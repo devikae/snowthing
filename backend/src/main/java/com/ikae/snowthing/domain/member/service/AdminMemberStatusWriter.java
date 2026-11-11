@@ -3,6 +3,9 @@ package com.ikae.snowthing.domain.member.service;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.member.dto.AdminMemberResponse;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
@@ -19,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminMemberStatusWriter {
 
     private final MemberRepository memberRepository;
+    private final AdminActionLogger actionLogger;
 
     public record Change(Long memberId, MemberStatus previous, AdminMemberResponse member) {
         boolean changed() {
@@ -38,6 +42,10 @@ public class AdminMemberStatusWriter {
         rejectWithdrawn(target);
         MemberStatus previous = target.getStatus();
         target.suspend();
+        if (previous != MemberStatus.SUSPENDED) {
+            actionLogger.record(
+                    AdminActionType.MEMBER_SUSPEND, AdminTargetType.MEMBER, targetPublicId, null);
+        }
         return new Change(target.getId(), previous, AdminMemberResponse.from(target));
     }
 
@@ -47,6 +55,10 @@ public class AdminMemberStatusWriter {
         rejectWithdrawn(target);
         MemberStatus previous = target.getStatus();
         target.reinstate();
+        if (previous != MemberStatus.ACTIVE) {
+            actionLogger.record(
+                    AdminActionType.MEMBER_REINSTATE, AdminTargetType.MEMBER, targetPublicId, null);
+        }
         return new Change(target.getId(), previous, AdminMemberResponse.from(target));
     }
 

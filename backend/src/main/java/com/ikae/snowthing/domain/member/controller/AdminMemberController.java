@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ikae.snowthing.domain.admin.dto.AdminMemberDetailResponse;
+import com.ikae.snowthing.domain.admin.service.AdminMemberDetailService;
 import com.ikae.snowthing.domain.member.dto.AdminMemberListResponse;
 import com.ikae.snowthing.domain.member.dto.AdminMemberResponse;
 import com.ikae.snowthing.domain.member.service.AdminMemberService;
@@ -31,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminMemberController {
 
     private final AdminMemberService adminMemberService;
+    private final AdminMemberDetailService adminMemberDetailService;
 
     @GetMapping
     public ResponseEntity<AdminMemberListResponse> search(
@@ -40,6 +43,15 @@ public class AdminMemberController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(adminMemberService.search(query, page, size));
+    }
+
+    /** 회원 상세 (IKA-78). 이메일은 일부 가리고 비밀번호와 토큰은 내보내지 않는다. */
+    @GetMapping("/{publicId}")
+    public ResponseEntity<AdminMemberDetailResponse> detail(
+            @PathVariable String publicId, @AuthenticationPrincipal CustomUserDetails admin) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(adminMemberDetailService.get(admin, publicId));
     }
 
     @PostMapping("/{publicId}/suspend")

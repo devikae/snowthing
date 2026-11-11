@@ -13,6 +13,9 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ikae.snowthing.domain.admin.dto.SystemConfigResponse;
 import com.ikae.snowthing.domain.admin.entity.SystemConfig;
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.admin.repository.SystemConfigRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -27,13 +30,17 @@ public class SystemConfigService {
 
     private final SystemConfigRepository repository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AdminActionLogger actionLogger;
     private final Cache<String, String> cache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).build();
 
     public SystemConfigService(
-            SystemConfigRepository repository, @Lazy SimpMessagingTemplate messagingTemplate) {
+            SystemConfigRepository repository,
+            @Lazy SimpMessagingTemplate messagingTemplate,
+            AdminActionLogger actionLogger) {
         this.repository = repository;
         this.messagingTemplate = messagingTemplate;
+        this.actionLogger = actionLogger;
     }
 
     public boolean isAnonymousChatEnabled() {
@@ -66,6 +73,7 @@ public class SystemConfigService {
                         .orElseThrow(() -> new CustomException(ErrorCode.CONFIG_NOT_FOUND));
 
         config.update(value, updatedBy);
+        actionLogger.record(AdminActionType.CONFIG_UPDATE, AdminTargetType.CONFIG, key, value);
         cache.put(key, value);
         log.info("System config updated: key={}, value={}, by={}", key, value, updatedBy);
 

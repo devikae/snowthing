@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
@@ -141,7 +142,7 @@ export default function AdminMembersPage() {
                 </span>
                 <span style={{ minWidth: 0 }}>
                   <p>
-                    {member.nickname}
+                    <Link href={`/admin/members/${member.publicId}`}>{member.nickname}</Link>
                     {isSelf ? " (나)" : ""}
                   </p>
                   <small style={{ overflowWrap: "anywhere" }}>

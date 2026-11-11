@@ -5,6 +5,9 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.aimember.persona.PersonaFileLoader;
 import com.ikae.snowthing.domain.member.dto.AdminMemberResponse;
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -29,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminMemberRoleWriter {
 
     private final MemberRepository memberRepository;
+    private final AdminActionLogger actionLogger;
 
     public record Change(Role previous, AdminMemberResponse member) {
         boolean changed() {
@@ -49,6 +53,8 @@ public class AdminMemberRoleWriter {
             throw new CustomException(ErrorCode.ADMIN_ROLE_INELIGIBLE_MEMBER);
         }
         target.changeRole(Role.ROLE_ADMIN);
+        actionLogger.record(
+                AdminActionType.ADMIN_GRANT, AdminTargetType.MEMBER, targetPublicId, null);
         return new Change(previous, AdminMemberResponse.from(target));
     }
 
@@ -70,6 +76,8 @@ public class AdminMemberRoleWriter {
             throw new CustomException(ErrorCode.ADMIN_ROLE_SELF_REVOKE_NOT_ALLOWED);
         }
         target.changeRole(Role.ROLE_USER);
+        actionLogger.record(
+                AdminActionType.ADMIN_REVOKE, AdminTargetType.MEMBER, targetPublicId, null);
         return new Change(previous, AdminMemberResponse.from(target));
     }
 
