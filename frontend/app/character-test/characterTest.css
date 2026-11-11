@@ -111,3 +111,57 @@
 .ct-gallery strong { font-size: 15px; font-weight: 700; }
 .ct-gallery span { color: var(--snow-muted); }
 .ct-gallery p { margin: 0; color: var(--snow-ink-soft); }
+
+/* 시작 화면 */
+.ct-intro { gap: 20px; overflow: hidden; padding: 0 0 24px; }
+.ct-intro > :not(.ct-intro-cast) { margin-inline: 24px; }
+.ct-intro-cast { display: flex; align-items: flex-end; justify-content: center; gap: 4px; padding: 28px 16px 14px; background: linear-gradient(180deg, #cfe6f6 0%, #e9f4fb 70%, #ffffff 100%); }
+html[data-theme="dark"] .ct-intro-cast { background: linear-gradient(180deg, #1c3448 0%, #182633 70%, var(--snow-canvas) 100%); }
+.ct-intro-cast img { width: 56px; height: 56px; image-rendering: pixelated; animation: ct-bob 2.4s var(--ease-in-out, ease-in-out) infinite; }
+.ct-intro-cast img:nth-child(2) { animation-delay: .3s; }
+.ct-intro-cast img:nth-child(3) { width: 72px; height: 72px; animation-delay: .6s; }
+.ct-intro-cast img:nth-child(4) { animation-delay: .9s; }
+.ct-intro-cast img:nth-child(5) { animation-delay: 1.2s; }
+@keyframes ct-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.ct-intro-copy { display: grid; gap: 8px; text-align: center; }
+.ct-intro-copy h2 { font-size: 22px; letter-spacing: -.03em; text-wrap: balance; }
+.ct-intro-copy .ct-lead { text-wrap: pretty; }
+.ct-intro-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ct-intro-facts li { display: grid; gap: 2px; justify-items: center; border-radius: 10px; background: var(--snow-surface-low); padding: 12px 6px; }
+.ct-intro-facts strong { font-size: 15px; font-weight: 700; }
+.ct-intro-facts span { color: var(--snow-muted); font-size: 12px; }
+.ct-intro-actions { display: grid; gap: 4px; }
+.character-test .ct-intro .ct-primary { min-height: 52px; border-radius: 12px; font-size: 16px; }
+.ct-intro .ct-fineprint { text-align: center; }
+@media (max-width: 420px) {
+  .ct-intro > :not(.ct-intro-cast) { margin-inline: 16px; }
+  .ct-intro-cast img { width: 44px; height: 44px; }
+  .ct-intro-cast img:nth-child(3) { width: 58px; height: 58px; }
+}
+
+/* 시작 화면 */
+.ct-intro { gap: 20px; overflow: hidden; padding: 0 0 24px; }
+.ct-intro > :not(.ct-intro-cast) { margin-inline: 24px; }
+.ct-intro-cast { display: flex; align-items: flex-end; justify-content: center; gap: 4px; padding: 28px 16px 14px; background: linear-gradient(180deg, #cfe6f6 0%, #e9f4fb 70%, var(--snow-canvas) 100%); }
+html[data-theme="dark"] .ct-intro-cast { background: linear-gradient(180deg, #1c3448 0%, #182633 70%, var(--snow-canvas) 100%); }
+.ct-intro-cast img { width: 56px; height: 56px; image-rendering: pixelated; animation: ct-bob 2.4s ease-in-out infinite; }
+.ct-intro-cast img:nth-child(2) { animation-delay: .3s; }
+.ct-intro-cast img:nth-child(3) { width: 72px; height: 72px; animation-delay: .6s; }
+.ct-intro-cast img:nth-child(4) { animation-delay: .9s; }
+.ct-intro-cast img:nth-child(5) { animation-delay: 1.2s; }
+@keyframes ct-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.ct-intro-copy { display: grid; gap: 8px; text-align: center; }
+.ct-intro-copy h2 { font-size: 22px; letter-spacing: -.03em; text-wrap: balance; }
+.ct-intro-copy .ct-lead { text-wrap: pretty; }
+.ct-intro-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ct-intro-facts li { display: grid; gap: 2px; justify-items: center; border-radius: 10px; background: var(--snow-surface-low); padding: 12px 6px; }
+.ct-intro-facts strong { font-size: 15px; font-weight: 700; }
+.ct-intro-facts span { color: var(--snow-muted); font-size: 12px; }
+.ct-intro-actions { display: grid; gap: 4px; }
+.character-test .ct-intro .ct-primary { min-height: 52px; border-radius: 12px; font-size: 16px; }
+.ct-intro .ct-fineprint { text-align: center; }
+@media (max-width: 420px) {
+  .ct-intro > :not(.ct-intro-cast) { margin-inline: 16px; }
+  .ct-intro-cast img { width: 44px; height: 44px; }
+  .ct-intro-cast img:nth-child(3) { width: 58px; height: 58px; }
+}

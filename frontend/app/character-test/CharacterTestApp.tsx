@@ -3,13 +3,15 @@
 import { useState, useSyncExternalStore } from "react";
 import { fetchResult, type CharacterResult } from "./api";
 import { CardPanel } from "./CardPanel";
-import type { Sport } from "./data";
+import { characterImage, type JobCode, type Sport } from "./data";
 import { InviteSection } from "./InviteSection";
 import { MyGroups } from "./MyGroups";
 import { getSavedAnswers, saveAnswers } from "./localStore";
 import { QuizFlow } from "./QuizFlow";
 import { SEND_LINK_LABEL } from "./ShareGroupLink";
 import { RelationshipMap } from "./RelationshipMap";
+
+const INTRO_CAST: JobCode[] = ["CAPTAIN", "HYPE", "HOT_PACK", "GEAR_GEEK", "MOOD_MAKER"];
 
 const EMPTY_LEVELS = (["BEST", "GOOD", "NEUTRAL", "BICKER", "APART"] as const).map((level) => ({ level, participants: [] }));
 const subscribeNothing = () => () => {};
@@ -59,11 +61,27 @@ export function CharacterTestApp() {
   return (
     <>
     <section className="ct-panel ct-intro">
-      <p className="ct-lead">스키장 상황 15개를 고르면 나의 캐릭터 카드가 나와요. 링크를 보내면 같이 타는 사람들과 어떤 사이인지 지도로 볼 수 있어요.</p>
-      <p className="ct-fineprint">가입 없이 할 수 있어요. 재미로 보는 테스트이고, 모임에 들어가기 전까지 답변을 저장하지 않아요.</p>
+      <div className="ct-intro-cast" aria-hidden="true">
+        {INTRO_CAST.map((job) => (
+          // eslint-disable-next-line @next/next/no-img-element -- 40칸 픽셀 그림이라 최적화 없이 그대로 키워 보여 준다.
+          <img key={job} src={characterImage(job)} width={56} height={56} alt="" />
+        ))}
+      </div>
+      <div className="ct-intro-copy">
+        <h2>나는 스키장에서 어떤 캐릭터일까?</h2>
+        <p className="ct-lead">스키장에서 겪는 상황 15개에 답하면 나의 캐릭터 카드가 나와요. 링크를 보내면 같이 타는 사람들과 어떤 사이인지 지도로 볼 수 있어요.</p>
+      </div>
+      <ul className="ct-intro-facts">
+        <li><strong>15개</strong><span>질문</span></li>
+        <li><strong>1분</strong><span>걸려요</span></li>
+        <li><strong>가입 없이</strong><span>바로 시작</span></li>
+      </ul>
       {error && <p className="ct-error" role="alert">{error}</p>}
-      <button type="button" className="ct-primary" onClick={() => setStage({ kind: "quiz" })}>테스트 시작</button>
-      {hasSaved && <button type="button" className="ct-text-button" onClick={showSaved}>지난 결과 다시 보기</button>}
+      <div className="ct-intro-actions">
+        <button type="button" className="ct-primary" onClick={() => setStage({ kind: "quiz" })}>테스트 시작</button>
+        {hasSaved && <button type="button" className="ct-text-button" onClick={showSaved}>지난 결과 다시 보기</button>}
+      </div>
+      <p className="ct-fineprint">재미로 보는 테스트예요. 모임에 들어가기 전까지 답변을 저장하지 않아요.</p>
     </section>
     <MyGroups />
     </>
