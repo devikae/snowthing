@@ -125,7 +125,28 @@ class ContentWriteRateLimitIntegrationTest {
 
     @Test
     void guestCannotPumpReactionsOnOnePostByDroppingCookies() throws Exception {
-        var request = put("/api/v1/posts/" + post.publicId() + "/reaction").with(csrf());
+        // 비회원 추천은 익명게시판 글에서만 받는다(IKA-82).
+        categoryRepository
+                .findByCode("ANONYMOUS")
+                .orElseGet(
+                        () ->
+                                categoryRepository.save(
+                                        PostCategory.builder()
+                                                .name("익명게시판")
+                                                .code("ANONYMOUS")
+                                                .build()));
+        PostResponse anonymousPost =
+                postService.createPost(
+                        PostCreateRequest.builder()
+                                .categoryCode("ANONYMOUS")
+                                .title("비회원 연타 제한 테스트")
+                                .content("내용")
+                                .isAnonymous(true)
+                                .anonymousPassword("Anon1234!")
+                                .build(),
+                        null,
+                        "127.0.0.1");
+        var request = put("/api/v1/posts/" + anonymousPost.publicId() + "/reaction").with(csrf());
 
         for (int attempt = 0; attempt < 4; attempt++) {
             mockMvc.perform(request).andExpect(status().isOk());
