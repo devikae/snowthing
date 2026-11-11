@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LEVELS, MAP_SNOW, RING_WHITE, SPORT_LABEL, characterImage, characterName, habitNote, type CharacterLabel, type JobCode } from "./data";
+import { LEVELS, MAP_SNOW, SPORT_LABEL, characterImage, characterName, habitNote, type CharacterLabel, type JobCode, type LevelCode } from "./data";
 import { HEAD_CROP, HEAD_WIDTH, ME_HEAD_WIDTH, ME_RADIUS, layoutMap, treePaths, type MapInputLevel } from "./mapLayout";
+
+// 화면 전용 색. 안쪽(잘 맞는 사이)일수록 따뜻한 색이다. 저장 이미지는 mapImage.ts가 따로 그린다.
+const BAND_FILL: Record<LevelCode, string> = { BEST: "#ffe6dc", GOOD: "#fff2e9", NEUTRAL: "#f8fbfd", BICKER: "#edf5fb", APART: "#e3eff8" };
+const BAND_DOT: Record<LevelCode, string> = { BEST: "#ef7f57", GOOD: "#f4ad83", NEUTRAL: "#b7cad8", BICKER: "#86abc6", APART: "#5c7a92" };
 
 // 캐릭터 그림에서 얼굴만 잘라 그린다.
 function Head({ x, y, width, job }: { x: number; y: number; width: number; job: JobCode }) {
@@ -25,18 +29,22 @@ export function RelationshipMap({ levels, me, hideNames }: { levels: MapInputLev
   const { center, size } = layout;
   return (
     <div className="ct-map-wrap">
-      <p className="ct-fineprint">나를 중심으로, 가까울수록 잘 맞는 사람이에요.</p>
       <div className="ct-map-body">
         <svg className="ct-map" viewBox={`0 0 ${size} ${size}`} role="group" aria-label={`내가 가운데 있는 관계 지도. ${summary}`}>
           <g aria-hidden="true">
             <path d={trees.trunk} fill={MAP_SNOW.trunk} />
             <path d={trees.pine} fill={MAP_SNOW.pine} />
             <path d={trees.cap} fill="#fff" />
-            {[...layout.bands].reverse().map((band) => <circle key={band.code} cx={center} cy={center} r={band.outer} fill={`rgba(255, 255, 255, ${RING_WHITE[band.code]})`} stroke={MAP_SNOW.ring} strokeWidth={1.2} />)}
-            {layout.labels.map((label) => <text key={label.code} className="ct-map-ring-label" x={label.x} y={label.y + 3} textAnchor="middle">{label.text}</text>)}
+            {[...layout.bands].reverse().map((band) => <circle key={band.code} cx={center} cy={center} r={band.outer} fill={BAND_FILL[band.code]} stroke="#fff" strokeWidth={2} />)}
+            {layout.labels.map((label) => (
+              <g key={label.code} className="ct-map-ring-label">
+                <rect x={label.x - label.width / 2 - 5} y={label.y - 7} width={label.width + 10} height={14} rx={7} />
+                <text x={label.x} y={label.y + 3.5} textAnchor="middle">{label.text}</text>
+              </g>
+            ))}
           </g>
           {selected && <line className="ct-map-line" x1={center} y1={center} x2={selected.x} y2={selected.y - 10} />}
-          {layout.empties.map((node) => <g key={node.id} className="ct-map-empty"><circle cx={node.x} cy={node.y} r={16} /><text x={node.x} y={node.y + 30} textAnchor="middle">빈자리</text></g>)}
+          {layout.empties.map((node) => <g key={node.id} className="ct-map-empty" aria-hidden="true"><circle cx={node.x} cy={node.y} r={15} /><path d={`M${node.x - 5} ${node.y}h10M${node.x} ${node.y - 5}v10`} /></g>)}
           {layout.people.map((node) => (
             <g
               key={node.id}
@@ -59,6 +67,7 @@ export function RelationshipMap({ levels, me, hideNames }: { levels: MapInputLev
             </g>
           ))}
           <g className="ct-map-me">
+            <circle className="ct-map-me-pulse" cx={center} cy={center} r={ME_RADIUS} />
             <circle className="ct-map-me-disc" cx={center} cy={center} r={ME_RADIUS} />
             <Head x={center} y={center - 6} width={ME_HEAD_WIDTH} job={me.character.job} />
             <text className="ct-map-me-name" x={center} y={center + 25} textAnchor="middle">나</text>
@@ -67,6 +76,7 @@ export function RelationshipMap({ levels, me, hideNames }: { levels: MapInputLev
         <ul className="ct-map-legend" aria-label="단계별 인원수">
           {layout.bands.map((band) => (
             <li key={band.code}>
+              <i style={{ background: BAND_DOT[band.code] }} aria-hidden="true" />
               <span>{band.label}</span>
               <strong>{band.count}명</strong>
             </li>
@@ -81,7 +91,7 @@ export function RelationshipMap({ levels, me, hideNames }: { levels: MapInputLev
             <p>{habitNote(selected.habitGaps)}</p>
             <p className="ct-fineprint">{selectedLevel.note}</p>
           </>
-        ) : <p className="ct-fineprint">{layout.people.length > 0 ? "얼굴을 누르면 어떤 사이인지 보여 줘요." : "링크를 보내면 같이 타는 사람이 여기에 들어와요."}</p>}
+        ) : <p className="ct-fineprint">{layout.people.length > 0 ? "가운데가 나예요. 안쪽 원일수록 잘 맞아요. 얼굴을 누르면 어떤 사이인지 보여 줘요." : "가운데가 나예요. 안쪽 원일수록 잘 맞는 사이예요."}</p>}
       </div>
       <p className="ct-fineprint">재미로 보는 궁합이에요. 널리 도는 경향과 타는 습관으로 매긴 점수이고, 정확한 궁합은 아닙니다.</p>
     </div>

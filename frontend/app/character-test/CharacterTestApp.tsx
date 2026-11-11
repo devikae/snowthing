@@ -10,7 +10,8 @@ import { getSavedAnswers, saveAnswers } from "./localStore";
 import { QuizFlow } from "./QuizFlow";
 import { RelationshipMap } from "./RelationshipMap";
 
-const INTRO_CAST: JobCode[] = ["CAPTAIN", "HYPE", "HOT_PACK", "GEAR_GEEK", "MOOD_MAKER"];
+// 캐릭터 여덟을 모두 같은 크기로 세운다.
+const INTRO_CAST: JobCode[] = ["CAPTAIN", "RESORT_INSIDER", "HYPE", "MOOD_MAKER", "GRINDER", "HOT_PACK", "GEAR_GEEK", "RESORT_OUTSIDER"];
 
 const EMPTY_LEVELS = (["BEST", "GOOD", "NEUTRAL", "BICKER", "APART"] as const).map((level) => ({ level, participants: [] }));
 const subscribeNothing = () => () => {};
@@ -61,7 +62,7 @@ export function CharacterTestApp() {
       <div className="ct-intro-cast" aria-hidden="true">
         {INTRO_CAST.map((job) => (
           // eslint-disable-next-line @next/next/no-img-element -- 40칸 픽셀 그림이라 최적화 없이 그대로 키워 보여 준다.
-          <img key={job} src={characterImage(job)} width={56} height={56} alt="" />
+          <img key={job} src={characterImage(job)} width={80} height={80} alt="" />
         ))}
       </div>
       <div className="ct-intro-copy">
