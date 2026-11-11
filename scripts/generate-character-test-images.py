@@ -482,9 +482,19 @@ def insider_board(x, y):
 
 
 def hype_board(x, y):
-    """주황 판에 검은 번개."""
-    bolt = 2 + abs((y % 12) - 6) // 2
-    return (58, 62, 82, 255) if bolt <= x <= bolt + 1 else (250, 140, 50, 255)
+    """짙은 회색 붓 자국 바탕에 청록 테두리, 가운데 검은 띠와 바인딩 나사 구멍."""
+    last = BOARD_LENGTH - 1
+    if x in (0, BOARD_WIDTH - 1) or y < 2 or y > last - 2:
+        return (34, 150, 140, 255)
+    if 2 <= x <= 4 and 9 <= y <= last - 9:
+        if x in (2, 4) and (11 <= y <= 14 or last - 14 <= y <= last - 11) and y % 2 == 1:
+            return (150, 156, 168, 255)
+        if x == 3 and y == last // 2:
+            return (34, 150, 140, 255)
+        return (26, 28, 34, 255)
+    if (x + y // 2) % 4 == 0:
+        return (88, 96, 110, 255)
+    return (50, 56, 66, 255)
 
 
 def mood_board(x, y):
