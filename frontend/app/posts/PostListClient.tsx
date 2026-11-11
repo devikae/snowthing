@@ -367,6 +367,8 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     value={searchKeyword}
                     onChange={(event) => setSearchKeyword(event.target.value)}
                     placeholder={`${config.name} 내 검색`}
+                    aria-label={`${config.name} 내 검색`}
+                    maxLength={100}
                   />
                   <button>검색</button>
                 </form>

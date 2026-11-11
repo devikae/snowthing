@@ -28,7 +28,7 @@ export function CharacterTestApp() {
     try {
       setStage({ kind: "result", result: await fetchResult(answers), answers, sport });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "결과를 불러오지 못했습니다.");
+      setError(reason instanceof Error ? reason.message : "결과를 불러오지 못했어요. 다시 시도해 주세요.");
       setStage({ kind: "intro" });
     }
   };

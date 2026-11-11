@@ -99,7 +99,7 @@ function CarpoolList() {
       <button type="submit">검색</button>
     </form>
     <section className="carpool-list">
-      <div className="carpool-list-toolbar"><strong>카풀 모집글</strong><span>총 {data.totalElements.toLocaleString("ko-KR")}건</span></div>
+      <div className="carpool-list-toolbar"><strong>카풀 모집글</strong>{!loading && !error && <span>총 {data.totalElements.toLocaleString("ko-KR")}건</span>}</div>
       {loading ? <div className="carpool-empty">카풀 모집글을 불러오는 중입니다.</div>
         : error ? <div className="carpool-empty"><p>카풀 모집글을 불러오지 못했습니다.</p><button type="button" onClick={() => window.location.reload()}>다시 시도</button></div>
           : data.content.length === 0 ? keyword ? <div className="carpool-empty"><p>검색 결과가 없습니다.</p></div> : <div className="carpool-empty"><span className="material-symbols-outlined" aria-hidden="true">directions_car</span><p>등록된 카풀 모집글이 없습니다.</p><Link href="/carpool/new">첫 모집글 등록하기</Link></div>

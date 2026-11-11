@@ -33,7 +33,7 @@ interface Detail {
   canEdit: boolean;
 }
 
-const conditions = [["NEW", "새 상품"], ["LIKE_NEW", "거의 새 상품"], ["GOOD", "사용감 적음"], ["USED", "사용감 있음"], ["DAMAGED", "수리·하자 있음"]] as const;
+const conditions = [["NEW", "새 상품"], ["LIKE_NEW", "거의 새 상품"], ["GOOD", "사용감 적음"], ["USED", "사용감 있음"], ["DAMAGED", "수리, 하자 있음"]] as const;
 const methods = [["DIRECT", "직거래"], ["DELIVERY", "택배"], ["BOTH", "모두 가능"]] as const;
 
 export default function MarketEditPage({ params }: { params: Promise<{ publicId: string }> }) {
@@ -196,7 +196,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />
             {images.length > 0 && <div className="market-image-previews">{images.map((imageUrl, index) => <div key={`${imageUrl}-${index}`}><Image src={imageUrl} alt={`상품 사진 ${index + 1}`} width={120} height={90} unoptimized /><button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`${index + 1}번 사진 제거`}><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div>)}</div>}
           </section>
-          <div className="market-compose-actions"><Link href={`/market/${publicId}`}>취소</Link><button type="submit" disabled={submitting || uploading}>{submitting ? "수정 중..." : "수정 완료"}</button></div>
+          <div className="market-compose-actions"><Link href={`/market/${publicId}`}>취소</Link><button type="submit" disabled={submitting || uploading}>{submitting ? "수정 중" : "수정 완료"}</button></div>
         </form>}
       </main>
       <Footer />

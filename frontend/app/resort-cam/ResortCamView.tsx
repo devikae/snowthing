@@ -62,7 +62,7 @@ export function ResortCamView({
 
   return (
     <main className={styles.page}>
-      <PageHeading title="스키장 웹캠" description="리조트에서 제공하는 웹캠·슬로프캠으로 현장 모습을 확인하세요." />
+      <PageHeading title="스키장 웹캠" description="리조트에서 제공하는 웹캠과 슬로프캠으로 현장 모습을 확인하세요." />
 
       {/* 리조트 선택 탭 */}
       <nav className={styles.resortNav} aria-label="리조트 선택">

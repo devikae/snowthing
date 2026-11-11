@@ -24,7 +24,7 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
         setCard({ blob, url: createdUrl });
       })
       .catch(() => {
-        if (!cancelled) setNotice("카드를 만들지 못했습니다. 새로고침해 주세요.");
+        if (!cancelled) setNotice("카드를 만들지 못했어요. 새로고침해 주세요.");
       });
     return () => {
       cancelled = true;
@@ -69,7 +69,7 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
             return <li key={number}><span>{question.situation}</span><strong>{answers[number - 1] === "A" ? question.a : question.b}</strong></li>;
           })}
         </ul>
-        <p className="ct-fineprint">재미로 보는 결과예요. 고른 답으로 정해질 뿐, 사람을 진단하지 않습니다.</p>
+        <p className="ct-fineprint">재미로 보는 결과예요. 고른 답으로 정해질 뿐, 사람을 진단하지 않아요.</p>
       </div>}
       {children && (
         <div className="ct-card-link">

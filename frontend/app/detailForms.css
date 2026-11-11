@@ -219,6 +219,11 @@ html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-deta
 html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents { color: var(--snow-ink-soft); font: 400 16px/1.8 var(--font-hanken); }
 html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(p,li) { color: inherit; font-size: 16px; line-height: 1.8; }
 
+/* 게시글 상세는 오른쪽 사이드바가 없으므로 빈 256px 칸을 두지 않고 본문을 가운데에 둔다. */
+@media(min-width:901px) {
+  html .content-detail-page.post-detail-page:not(:has(.post-detail-sidebar)) { width: min(100% - 48px, 896px); }
+  html .content-detail-page.post-detail-page:not(:has(.post-detail-sidebar)) .post-detail-layout { grid-template-columns: minmax(0,1fr); }
+}
 @media(max-width:900px) {
   html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-layout { grid-template-columns: minmax(0,1fr); }
   html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-sidebar { display: block; }

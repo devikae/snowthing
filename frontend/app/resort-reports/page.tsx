@@ -131,7 +131,7 @@ export default function ResortReportsPage() {
         <section className="panel resort-report-board" aria-label={`${koreanToday} 설질 제보 목록`}>
           <header>
             <strong>오늘 등록된 제보</strong>
-            <span>{loading ? "불러오는 중..." : `${pageInfo.totalElements}건`}</span>
+            {!loading && <span>{`${pageInfo.totalElements}건`}</span>}
           </header>
           <div>
             {loading ? (
@@ -140,7 +140,7 @@ export default function ResortReportsPage() {
                   <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                 </span>
                 <div className="snow-empty-copy">
-                  <strong>설질 제보 목록을 불러오는 중입니다...</strong>
+                  <strong>설질 제보 목록을 불러오는 중입니다.</strong>
                 </div>
               </div>
             ) : reports.length === 0 ? (
@@ -150,7 +150,7 @@ export default function ResortReportsPage() {
                 </span>
                 <div className="snow-empty-copy">
                   <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>
-                  <span>첫 번째 현장 설질·슬로프 대기열 소식을 남겨 보세요.</span>
+                  <span>첫 번째 현장 설질, 슬로프 대기열 소식을 남겨 보세요.</span>
                 </div>
               </div>
             ) : (

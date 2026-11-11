@@ -61,7 +61,7 @@
 
 .carpool-place-search button,
 .carpool-cost-button {
-  border: 1px solid #0284c7;
+  border: 1px solid #0275b3;
   border-radius: 8px;
   background: #fff;
   padding: 9px 13px;
@@ -101,7 +101,7 @@
 }
 
 .carpool-place-results button.selected {
-  border-color: #0284c7;
+  border-color: #0275b3;
   background: #f0f9ff;
   box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.08);
 }

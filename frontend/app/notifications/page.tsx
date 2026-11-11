@@ -129,7 +129,7 @@ export default function NotificationsPage() {
               ))}
             </ul>
           )}
-          {loading && <p className="notification-empty">불러오는 중...</p>}
+          {loading && <p className="notification-empty">불러오는 중</p>}
           {!loading && hasNext && (
             <button type="button" className="notifications-more" onClick={() => void load(tab, nextCursor)}>
               더 보기

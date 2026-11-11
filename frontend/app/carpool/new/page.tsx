@@ -745,7 +745,7 @@ export default function NewCarpoolPage() {
                   <option value="">리조트 선택</option>
                   {resorts.map((resort) => (
                     <option key={resort.id} value={resort.id}>
-                      {resort.name} · {resort.regionName}
+                      {resort.name}, {resort.regionName}
                     </option>
                   ))}
                 </select>
@@ -1014,7 +1014,7 @@ export default function NewCarpoolPage() {
                 disabled={working}
               >
                 {working
-                  ? "계산 중..."
+                  ? "계산 중"
                   : routeSource === "MANUAL" || manualFuelRequired
                     ? "입력값으로 예상 비용 계산"
                     : "다시 계산"}
@@ -1106,7 +1106,7 @@ export default function NewCarpoolPage() {
               type="submit"
               disabled={working}
             >
-              {working ? "등록 처리 중..." : `모집글 ${editPublicId ? "수정" : "등록"}`}
+              {working ? "등록 중" : `모집글 ${editPublicId ? "수정" : "등록"}`}
             </button>
           </footer>
         </form>}

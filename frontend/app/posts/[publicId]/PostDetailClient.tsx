@@ -182,8 +182,8 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
     if (res.ok) {
       setIsDeleteModalOpen(false);
-      alert("게시글이 성공적으로 삭제되었습니다.");
-      router.push("/posts");
+      alert("글을 삭제했습니다.");
+      router.push(post?.categoryCode ? `/posts?category=${encodeURIComponent(post.categoryCode)}` : "/posts");
     } else {
       const data = await res.json();
       throw new Error(data.message || "글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -861,7 +861,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                   className="post-comments-more-button"
                 >
                   {isLoadingMoreComments
-                    ? "댓글을 불러오는 중..."
+                    ? "댓글을 불러오는 중"
                     : loadMoreCommentError
                       ? "댓글 더보기 다시 시도"
                       : "댓글 더보기 (20개)"}
@@ -1087,7 +1087,7 @@ function CommentRow({
               onClick={() => void handleLoadMoreReplies(item.commentId)}
               className="text-black disabled:text-[var(--snow-muted)]"
             >
-              {isLoadingReplies ? "답글을 불러오는 중..." : `답글 더보기 (총 ${item.replyCount}개)`}
+              {isLoadingReplies ? "답글을 불러오는 중" : `답글 더보기 (총 ${item.replyCount}개)`}
             </button>
           </div>
       )}
@@ -1258,7 +1258,7 @@ function CommentEditForm({
           취소
         </button>
         <button type="button" disabled={submitting} onClick={onSubmit} className="snow-btn-primary">
-          {submitting ? "수정 중..." : "수정 완료"}
+          {submitting ? "수정 중" : "수정 완료"}
         </button>
       </div>
     </div>
@@ -1352,7 +1352,7 @@ function CommentDeleteInline({
               disabled={submitting}
               className="comment-delete-confirm"
             >
-              {submitting ? "..." : "확인"}
+              {submitting ? "삭제 중" : "확인"}
             </button>
             <button
               type="button"

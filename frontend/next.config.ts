@@ -20,6 +20,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // www로 들어온 요청은 경로와 쿼리를 유지한 채 대표 주소로 301 이동한다.
+  // Host가 www.snowthing.org일 때만 걸리므로 localhost 헬스 체크와 API 도메인에는 영향이 없다.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.snowthing.org" }],
+        destination: "https://snowthing.org/:path*",
+        statusCode: 301,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

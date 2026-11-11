@@ -158,7 +158,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
           {loading && (
             <div className={styles.loadingOverlay}>
               <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
-              <span>실시간 스트림 연결 중...</span>
+              <span>실시간 스트림 연결 중</span>
             </div>
           )}
         </>

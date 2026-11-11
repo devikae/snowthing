@@ -33,7 +33,7 @@ const productConditions = [
   ["LIKE_NEW", "거의 새 상품"],
   ["GOOD", "사용감 적음"],
   ["USED", "사용감 있음"],
-  ["DAMAGED", "수리·하자 있음"],
+  ["DAMAGED", "수리, 하자 있음"],
 ] as const;
 
 const transactionMethods = [
@@ -194,7 +194,7 @@ export default function MarketCreatePage() {
           <label className="market-form-field"><span>연락처 * <small>전화번호나 카카오톡 ID 등 자유 입력, 최대 30자</small></span><input value={contact} onChange={(event) => setContact(event.target.value)} maxLength={30} placeholder="구매 희망자가 연락할 수단을 입력해 주세요." required /></label>
           <section className="market-editor-field"><span>본문 *</span><p>상품 상태, 사용 기간, 하자 여부, 거래 조건은 판매자가 직접 확인해 작성해 주세요.</p><div className="compose-editor"><ToastEditor ref={editorRef} height="440px" /></div></section>
           <section className="market-image-field"><div><span>사진 <small>선택, 최대 10장</small></span><b>{images.length}/10</b></div><input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />{images.length > 0 && <div className="market-image-previews">{images.map((image, index) => <div key={image.imageKey}><Image src={image.imageUrl} alt={`첨부 이미지 ${index + 1}`} width={120} height={90} unoptimized /><button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`${index + 1}번째 이미지 제거`}><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div>)}</div>}</section>
-          <div className="market-compose-actions"><Link href="/market">취소</Link><button type="submit" disabled={submitting || uploading}>{submitting ? "등록 중..." : "판매글 등록"}</button></div>
+          <div className="market-compose-actions"><Link href="/market">취소</Link><button type="submit" disabled={submitting || uploading}>{submitting ? "등록 중" : "판매글 등록"}</button></div>
         </form>
       </main>
       <Footer />

@@ -17,7 +17,7 @@ import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } fro
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
-  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다...</div>,
+  loading: () => <div className="p-12 text-center text-sm text-[var(--snow-muted)]">에디터를 불러오는 중입니다.</div>,
 });
 
 interface MemberProfile {
@@ -220,7 +220,7 @@ function PostCreateForm() {
   if (checkingAuth) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-20 text-center text-xs text-[var(--snow-muted)]">
-        작성 권한 및 세션을 확인하는 중입니다...
+        작성 권한 및 세션을 확인하는 중입니다.
       </div>
     );
   }
@@ -317,7 +317,7 @@ function PostCreateForm() {
                 className={`compose-attach-btn ${!userProfile || uploadingImage || images.length >= 10 ? "disabled" : ""}`}
               >
                 <span className="material-symbols-outlined" aria-hidden="true">image</span>
-                <span>{uploadingImage ? "업로드 중..." : "사진 첨부"}</span>
+                <span>{uploadingImage ? "업로드 중" : "사진 첨부"}</span>
               </label>
               <input
                 id="post-image"
@@ -332,8 +332,8 @@ function PostCreateForm() {
                 {!userProfile
                   ? "이미지 첨부는 로그인한 회원만 사용할 수 있습니다."
                   : uploadingImage
-                    ? "이미지를 서버에 업로드하고 있습니다..."
-                    : `JPG, PNG, WebP · 장당 최대 5MB · ${images.length}/10장`}
+                    ? "이미지를 업로드하고 있습니다."
+                    : `JPG, PNG, WebP, 장당 최대 5MB, ${images.length}/10장`}
               </span>
             </div>
 
@@ -365,7 +365,7 @@ function PostCreateForm() {
           </Link>
           <button type="submit" disabled={submitting || uploadingImage} className="compose-submit-pill">
             <span className="material-symbols-outlined" aria-hidden="true">check</span>
-            {submitting ? "등록 처리 중..." : `${isAnonCategory ? "익명 " : ""}게시글 등록`}
+            {submitting ? "등록 중" : `${isAnonCategory ? "익명 " : ""}게시글 등록`}
           </button>
         </footer>
       </form>
@@ -377,7 +377,7 @@ export default function PostCreatePage() {
   return (
     <div className="community-page">
       <TopNav active="posts" />
-      <Suspense fallback={<div className="p-20 text-center text-xs text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다...</div>}>
+      <Suspense fallback={<div className="p-20 text-center text-xs text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다.</div>}>
         <PostCreateForm />
       </Suspense>
       <Footer />

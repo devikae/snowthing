@@ -53,7 +53,7 @@ export function GroupApp({ publicId }: { publicId: string }) {
       saveMembership(publicId, { token, nickname: map.me.nickname, groupName: map.groupName });
       setView({ kind: "map", map, token });
     } catch (reason) {
-      setView({ kind: "error", message: reason instanceof Error ? reason.message : "불러오지 못했습니다." });
+      setView({ kind: "error", message: reason instanceof Error ? reason.message : "불러오지 못했어요. 다시 시도해 주세요." });
     }
   }, [publicId, showPreview]);
 
@@ -68,7 +68,7 @@ export function GroupApp({ publicId }: { publicId: string }) {
     try {
       setView({ kind: "result", preview, result: await fetchResult(answers), answers, sport });
     } catch (reason) {
-      setView({ kind: "error", message: reason instanceof Error ? reason.message : "결과를 불러오지 못했습니다." });
+      setView({ kind: "error", message: reason instanceof Error ? reason.message : "결과를 불러오지 못했어요. 다시 시도해 주세요." });
     }
   };
 
@@ -160,7 +160,7 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
       const outcome = await shareOrSaveImage(blob, "snowthing-character-map.png", "우리 모임 관계 지도");
       setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "saved" ? "지도 이미지를 저장했어요." : "공유를 취소했어요.");
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "지도 이미지를 만들지 못했습니다.");
+      setNotice(reason instanceof Error ? reason.message : "지도 이미지를 만들지 못했어요. 다시 시도해 주세요.");
     } finally {
       setBusy(false);
     }
@@ -173,7 +173,7 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
       removeMembership(groupPublicId);
       await onLeft();
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "나가지 못했습니다.");
+      setNotice(reason instanceof Error ? reason.message : "나가지 못했어요. 다시 시도해 주세요.");
       setBusy(false);
     }
   };
