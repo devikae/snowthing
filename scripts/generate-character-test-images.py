@@ -271,85 +271,78 @@ def mood_maker():
 
 
 def grinder():
-    """연습벌레: 숨구멍 있는 헬멧과 고글, 턱끈, 훈련복, 손에 든 연습용 꼬깔."""
+    """연습벌레: 헬멧, 고글, 가슴 띠가 있는 훈련복, 땀."""
     c = Canvas()
     jacket, dark, light = (62, 156, 114, 255), (42, 122, 86, 255), (110, 200, 156, 255)
     mitten = (246, 246, 250, 255)
     body(c, jacket, dark, light, (50, 60, 84, 255), (36, 44, 66, 255), mitten)
+    # 가슴 띠
     c.rect(13, 28, 14, 2, (248, 248, 252, 255))
     head(c, "focus")
     helmet, helmet_dark, helmet_light = (72, 176, 208, 255), (46, 138, 172, 255), (140, 214, 236, 255)
-    c.blob(8, 1, 24, 12, helmet, radius=4)
+    c.blob(8, 2, 24, 11, helmet, radius=3)
     c.rect(8, 11, 24, 2, helmet_dark)
-    c.rect(12, 2, 5, 1, helmet_light)
-    # 헬멧 숨구멍
-    for x in (15, 19, 23):
-        c.rect(x, 2, 2, 2, helmet_dark)
+    c.rect(12, 3, 5, 1, helmet_light)
     strap = (42, 46, 64, 255)
-    c.rect(8, 6, 24, 4, strap)
-    c.blob(11, 6, 8, 4, (252, 192, 84, 255))
-    c.blob(21, 6, 8, 4, (252, 192, 84, 255))
-    c.rect(12, 7, 2, 1, WHITE)
-    c.rect(22, 7, 2, 1, WHITE)
-    # 턱끈: 헬멧 양옆에서 턱 아래로
-    c.rect(10, 13, 1, 8, strap)
-    c.rect(29, 13, 1, 8, strap)
-    c.rect(11, 21, 2, 1, strap)
-    c.rect(27, 21, 2, 1, strap)
+    c.rect(8, 7, 24, 4, strap)
+    c.blob(11, 7, 8, 4, (252, 192, 84, 255))
+    c.blob(21, 7, 8, 4, (252, 192, 84, 255))
+    c.rect(12, 8, 2, 1, WHITE)
+    c.rect(22, 8, 2, 1, WHITE)
+    c.rect(33, 7, 2, 3, (136, 206, 248, 255))
+    c.dot(33, 6, (136, 206, 248, 255))
+    c.rect(5, 12, 2, 3, (136, 206, 248, 255))
+    c.dot(5, 11, (136, 206, 248, 255))
     right_arm(c, jacket, mitten)
-    # 연습용 꼬깔: 주황 몸통에 흰 띠
-    cone, cone_dark = (250, 128, 44, 255), (214, 96, 28, 255)
-    c.rect(34, 25, 2, 2, cone)
-    c.rect(33, 27, 4, 2, WHITE)
-    c.rect(33, 29, 4, 2, cone)
-    c.rect(32, 31, 6, 2, cone)
-    c.rect(31, 33, 8, 2, cone_dark)
     c.outline()
     return c
 
 
 def hot_pack():
-    """인간 핫팩: 털 달린 모자를 뒤집어쓴 동그란 패딩, 두 손으로 든 따뜻한 컵."""
+    """인간 핫팩: 귤색 패딩, 줄무늬 목도리, 양손에 든 핫팩과 피어오르는 김."""
     c = Canvas()
-    puffer, puffer_dark, puffer_light = (244, 112, 96, 255), (212, 80, 72, 255), (255, 156, 136, 255)
-    fur, fur_dark = (255, 255, 255, 255), (214, 222, 234, 255)
-    mitten = (255, 214, 120, 255)
-    body(c, puffer, puffer_dark, puffer_light, (108, 84, 96, 255), (84, 64, 76, 255), mitten)
-    # 모자: 얼굴을 감싸는 후드와 하얀 털 테두리. 털은 바깥을 울퉁불퉁하게 해 복슬복슬해 보이게 한다.
-    c.blob(6, 2, 28, 22, puffer, radius=6)
-    c.rect(10, 3, 6, 1, puffer_light)
-    c.rect(8, 4, 3, 1, puffer_light)
-    c.blob(7, 5, 26, 21, fur, radius=5)
-    for x, y in ((7, 9), (7, 14), (7, 19), (32, 9), (32, 14), (32, 19), (12, 5), (18, 5), (24, 5)):
-        c.dot(x, y, puffer)
-    for x, y in ((9, 8), (9, 13), (9, 18), (30, 8), (30, 13), (30, 18), (14, 6), (20, 6), (26, 6)):
-        c.dot(x, y, fur_dark)
+    jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
+    mitten = (232, 84, 76, 255)
+    body(c, jacket, dark, light, (96, 84, 110, 255), (74, 64, 88, 255), mitten)
+    # 빵빵한 패딩: 누빔 줄 두 개와 밝은 면
+    c.blob(12, 25, 16, 8, jacket, radius=2)
+    c.rect(12, 28, 16, 1, dark)
+    c.rect(13, 31, 14, 1, dark)
+    c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    # 따뜻해서 발그레한 볼
-    c.rect(11, 18, 4, 2, (250, 130, 120, 255))
-    c.rect(25, 18, 4, 2, (250, 130, 120, 255))
-    # 동그랗고 빵빵한 패딩 몸통: 팔까지 덮고 누빔 줄 두 개
-    c.blob(7, 23, 26, 12, puffer, radius=4)
-    c.rect(8, 27, 24, 1, puffer_dark)
-    c.rect(8, 31, 24, 1, puffer_dark)
-    c.rect(10, 24, 4, 2, puffer_light)
-    c.rect(9, 28, 2, 2, puffer_light)
-    # 두 손으로 든 머그컵: 하얀 컵, 코코아, 작은 하트, 오른쪽 손잡이
-    cup, cup_dark, cocoa, heart = (255, 255, 255, 255), (214, 224, 236, 255), (150, 92, 64, 255), (240, 90, 90, 255)
-    c.rect(15, 25, 9, 7, cup)
-    c.rect(15, 25, 9, 1, cocoa)
-    c.rect(15, 31, 9, 1, cup_dark)
-    c.rect(24, 27, 2, 1, cup)
-    c.rect(25, 27, 1, 3, cup)
-    c.rect(24, 29, 2, 1, cup)
-    c.rect(17, 27, 2, 1, heart)
-    c.rect(20, 27, 2, 1, heart)
-    c.rect(17, 28, 5, 1, heart)
-    c.rect(18, 29, 3, 1, heart)
-    c.dot(19, 30, heart)
-    c.blob(12, 27, 4, 4, mitten, radius=1)
-    c.blob(25, 28, 4, 4, mitten, radius=1)
+    hair(c, (122, 78, 52, 255), (92, 56, 38, 255), (164, 112, 76, 255))
+    # 들쭉날쭉한 앞머리
+    hair_color = (122, 78, 52, 255)
+    c.rect(11, 12, 5, 2, hair_color)
+    c.rect(17, 12, 6, 3, hair_color)
+    c.rect(24, 12, 5, 2, hair_color)
+    c.dot(16, 12, hair_color)
+    c.dot(23, 12, hair_color)
+    # 발그레한 볼
+    c.rect(11, 18, 4, 2, (250, 132, 120, 255))
+    c.rect(25, 18, 4, 2, (250, 132, 120, 255))
+    # 빨강과 크림 줄무늬 목도리, 왼쪽으로 늘어진 끝
+    scarf, scarf_light = (226, 70, 70, 255), (255, 236, 214, 255)
+    c.blob(12, 23, 16, 3, scarf, radius=1)
+    for x in range(13, 28, 3):
+        c.rect(x, 23, 1, 3, scarf_light)
+    c.rect(13, 26, 3, 5, scarf)
+    c.rect(13, 27, 3, 1, scarf_light)
+    c.rect(13, 29, 3, 1, scarf_light)
+    # 오른팔도 내리고, 양손에 핫팩 주머니
+    c.rect(27, 26, 3, 4, jacket)
+    c.blob(27, 29, 4, 3, mitten)
+    pack, pack_dot = (255, 250, 240, 255), (240, 132, 70, 255)
+    for x in (6, 30):
+        c.blob(x, 27, 5, 6, pack, radius=1)
+        c.rect(x + 1, 29, 3, 1, pack_dot)
+        c.rect(x + 1, 31, 3, 1, pack_dot)
     c.outline()
+    # 핫팩 위로 피어오르는 김. 테두리 없이 한 칸 굵기 물결로 그린다.
+    steam = (250, 150, 110, 255)
+    for x in (8, 32):
+        for dx, y in ((0, 25), (0, 24), (1, 23), (1, 22), (0, 21), (0, 20)):
+            c.dot(x + dx, y, steam)
     return c
 
 
