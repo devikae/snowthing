@@ -324,6 +324,45 @@ class LoginAttemptLimitIntegrationTest {
     }
 
     @Test
+    @DisplayName("여러 IP로 나눠 한 계정에 10번 실패하면 새 IP의 맞는 비밀번호도 막고, 다른 계정은 막지 않는다")
+    void accountLimitBlocksDistributedFailures() throws Exception {
+        failAcrossIps(email, 10);
+
+        assertBlocked(login(email, PASSWORD, "198.51.100.200"));
+        String otherEmail = saveMember(MemberStatus.ACTIVE).getEmail();
+        assertThat(login(otherEmail, PASSWORD, "198.51.100.200").getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("계정 짧은 창이 끝나면 다시 로그인할 수 있고, 성공하면 계정 횟수가 초기화된다")
+    void accountShortWindowExpiresAndSuccessResets() throws Exception {
+        failAcrossIps(email, 10);
+        assertBlocked(login(email, PASSWORD, "198.51.100.200"));
+
+        jdbc.update(
+                "UPDATE request_budget_window SET expires_at_millis=1 WHERE budget_key LIKE 'snowthing:limits:login:account:short:%'");
+        assertThat(login(email, PASSWORD, "198.51.100.200").getStatus()).isEqualTo(200);
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM request_budget_window WHERE budget_key LIKE 'snowthing:limits:login:account:%'",
+                                Integer.class))
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("짧은 창을 거듭 넘겨 한 시간에 30번 실패하면 짧은 창이 끝나도 계속 막는다")
+    void accountLongWindowEscalates() throws Exception {
+        for (int round = 0; round < 3; round++) {
+            failAcrossIps(email, 10, round * 2);
+            jdbc.update(
+                    "UPDATE request_budget_window SET expires_at_millis=1 WHERE budget_key LIKE 'snowthing:limits:login:account:short:%'");
+        }
+
+        assertBlocked(login(email, PASSWORD, "198.51.100.200"));
+    }
+
+    @Test
     @DisplayName("이메일 원문과 비밀번호는 로그와 제한 키에 남지 않는다")
     void credentialsAreNotExposed(CapturedOutput output) throws Exception {
         failFiveTimes(email, IP);
@@ -336,6 +375,18 @@ class LoginAttemptLimitIntegrationTest {
                         String.class);
         assertThat(keys).isNotEmpty().noneMatch(key -> key.contains(email) || key.contains(IP));
         assertThat(keys).allMatch(key -> key.length() <= 100);
+    }
+
+    // IP마다 5번 미만으로 나눠 실패해 조합 제한에 걸리지 않고 계정 횟수만 쌓는다.
+    private void failAcrossIps(String targetEmail, int failures) throws Exception {
+        failAcrossIps(targetEmail, failures, 0);
+    }
+
+    private void failAcrossIps(String targetEmail, int failures, int ipOffset) throws Exception {
+        for (int i = 0; i < failures; i++) {
+            String ip = "198.51.100." + (10 + ipOffset * 3 + i / 4);
+            assertUnauthorized(login(targetEmail, WRONG_PASSWORD, ip));
+        }
     }
 
     private void failFiveTimes(String targetEmail, String ip) throws Exception {
@@ -394,7 +445,8 @@ class LoginAttemptLimitIntegrationTest {
     private void assertBlocked(MockHttpServletResponse response) throws Exception {
         assertThat(response.getStatus()).isEqualTo(429);
         assertThat(code(response)).isEqualTo("AUTH_013");
-        assertThat(objectMapper.readTree(body(response)).get("message").asText()).contains("15분");
+        assertThat(objectMapper.readTree(body(response)).get("message").asText())
+                .isEqualTo("로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.");
     }
 
     private void assertSameResponse(MockHttpServletResponse first, MockHttpServletResponse second)

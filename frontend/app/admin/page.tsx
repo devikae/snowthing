@@ -1,175 +1,167 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { PageHeading } from "../components/PageHeading";
 import { csrfFetch } from "../lib/csrfFetch";
-import {
-  API_ENDPOINTS,
-  AdminDashboardStats,
-} from "../lib/api";
+import { API_ENDPOINTS, type AdminDashboardStats } from "../lib/api";
+import { type AdminDailyCount, type AdminOverview, readErrorMessage } from "./adminTypes";
+import { useAdminFetch } from "./useAdminFetch";
 
+type Metric = "signups" | "posts" | "comments";
+
+const METRICS: { key: Metric; label: string }[] = [
+  { key: "signups", label: "가입" },
+  { key: "posts", label: "글" },
+  { key: "comments", label: "댓글" },
+];
+
+/** 일별 막대 그래프. 차트 라이브러리 없이 SVG로 그린다. 막대마다 날짜와 값을 title로 붙여 마우스를 올리면 보인다. */
+function DailyBars({ series, metric, label }: { series: AdminDailyCount[]; metric: Metric; label: string }) {
+  const max = Math.max(1, ...series.map((day) => day[metric]));
+  const width = 100 / series.length;
+  const total = series.reduce((sum, day) => sum + day[metric], 0);
+  return (
+    <figure className="admin-chart" style={{ margin: 0 }}>
+      <figcaption className="admin-meta">
+        {label} 합계 {total.toLocaleString()}건, 하루 최대 {max.toLocaleString()}건
+      </figcaption>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`일별 ${label} 수`}>
+        {series.map((day, index) => {
+          const height = (day[metric] / max) * 100;
+          return (
+            <rect key={day.date} x={index * width + width * 0.15} y={100 - height} width={width * 0.7} height={height}>
+              <title>{`${day.date}: ${day[metric]}건`}</title>
+            </rect>
+          );
+        })}
+      </svg>
+      <div className="admin-chart-axis">
+        <span>{series[0]?.date.slice(5)}</span>
+        <span>{series[series.length - 1]?.date.slice(5)}</span>
+      </div>
+    </figure>
+  );
+}
+
+/** 관리자 대시보드. 오늘 숫자, 처리 대기 건수, 최근 7일이나 30일 추이, 비회원 라이브톡 설정을 보여 준다. 날짜는 KST 기준이다. */
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState<7 | 30>(7);
+  const [metric, setMetric] = useState<Metric>("signups");
   const [updatingChat, setUpdatingChat] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const overview = useAdminFetch<AdminOverview>(API_ENDPOINTS.admin.overview(days), "운영 현황을 불러오지 못했습니다.");
+  const stats = useAdminFetch<AdminDashboardStats>(API_ENDPOINTS.admin.stats, "회원 현황을 불러오지 못했습니다.");
 
-  const fetchStats = useCallback((signal?: AbortSignal) => {
-    return csrfFetch(API_ENDPOINTS.admin.stats, {
-        credentials: "include",
-        signal,
-      })
-      .then((res) => {
-        if (!res.ok) throw new Error("통계 데이터를 불러오지 못했습니다.");
-        return res.json();
-      })
-      .then((data) => {
-        if (signal?.aborted) return;
-      setError(null);
-      setStats(data);
-      })
-      .catch((err: unknown) => {
-        if (signal?.aborted) return;
-      setError((err instanceof Error ? err.message : "오류가 발생했습니다."));
-      })
-      .finally(() => { if (!signal?.aborted) setLoading(false); });
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetchStats(controller.signal);
-    return () => controller.abort();
-  }, [fetchStats]);
-
-  async function handleToggleAnonymousChat() {
-    if (!stats || updatingChat) return;
-    const nextVal = !stats.anonymousChatEnabled;
-    const confirmMsg = nextVal
+  const toggleAnonymousChat = async () => {
+    if (!stats.data || updatingChat) return;
+    const next = !stats.data.anonymousChatEnabled;
+    const message = next
       ? "로그인하지 않은 사용자도 라이브톡에 메시지를 보낼 수 있게 할까요?"
       : "로그인하지 않은 사용자의 라이브톡 전송을 막고 로그인 회원만 보낼 수 있게 할까요?";
-
-    if (!window.confirm(confirmMsg)) return;
-
+    if (!window.confirm(message)) return;
+    setUpdatingChat(true);
     try {
-      setUpdatingChat(true);
-      const res = await csrfFetch(
-        API_ENDPOINTS.admin.updateConfig("CHAT_ANONYMOUS_ENABLED"),
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ value: String(nextVal) }),
-        }
-      );
-      if (!res.ok) throw new Error("설정을 바꾸지 못했습니다.");
-      setStats({ ...stats, anonymousChatEnabled: nextVal });
-    } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "설정을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig("CHAT_ANONYMOUS_ENABLED"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: String(next) }),
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, "설정을 바꾸지 못했습니다."));
+      stats.reload();
+    } catch (cause) {
+      stats.setError((cause as Error).message);
     } finally {
       setUpdatingChat(false);
     }
-  }
+  };
 
-  if (loading && !stats) {
-    return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <div className="w-8 h-8 border-4 border-sky-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !stats) {
-    return (
-      <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700">
-        <p className="font-semibold mb-2">데이터를 불러오지 못했습니다</p>
-        <p className="text-sm">{error}</p>
-        <button
-          onClick={() => { setLoading(true); void fetchStats(); }}
-          className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-medium hover:bg-rose-700 transition"
-        >
-          다시 시도
-        </button>
-      </div>
-    );
-  }
+  const today = overview.data?.today;
+  const metricLabel = METRICS.find((item) => item.key === metric)?.label ?? "";
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Page Title */}
-      <div>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-          시스템 현황
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          회원 현황과 실시간 핵심 시스템 제어
+    <>
+      <PageHeading title="운영 현황" description="오늘 숫자와 처리할 일, 최근 추이를 봅니다. 날짜는 한국 시간 기준입니다." />
+      {(overview.error || stats.error) && (
+        <p className="admin-error" role="alert">
+          {overview.error ?? stats.error}
         </p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {/* Members */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-            <span>전체 회원수</span>
-            <span className="text-base">🏂</span>
+      )}
+      <section className="panel admin-section" aria-label="오늘과 처리 대기">
+        <h2>오늘</h2>
+        <div className="admin-kpis">
+          <div className="admin-kpi">
+            <span className="admin-meta">신규 가입</span>
+            <strong>{today ? today.signups.toLocaleString() : "-"}</strong>
+            <span className="admin-meta">전체 회원 {stats.data ? stats.data.totalMembers.toLocaleString() : "-"}명</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900">
-              {stats.totalMembers.toLocaleString()}
-            </span>
-            <span className="text-xs text-slate-500 font-normal">명</span>
+          <div className="admin-kpi">
+            <span className="admin-meta">새 글</span>
+            <strong>{today ? today.posts.toLocaleString() : "-"}</strong>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>오늘 신규 가입</span>
-            <span className="font-semibold text-sky-600">
-              +{stats.todayNewMembers}명
-            </span>
+          <div className="admin-kpi">
+            <span className="admin-meta">새 댓글</span>
+            <strong>{today ? today.comments.toLocaleString() : "-"}</strong>
+          </div>
+          <div className="admin-kpi">
+            <span className="admin-meta">처리 대기 신고</span>
+            <strong>{overview.data ? overview.data.pendingReports.toLocaleString() : "-"}</strong>
+            <Link href="/admin/reports">신고 처리로 가기</Link>
+          </div>
+          <div className="admin-kpi">
+            <span className="admin-meta">답변 대기 1:1 문의</span>
+            <strong>{overview.data ? overview.data.unansweredInquiries.toLocaleString() : "-"}</strong>
+            <Link href="/admin/inquiries">1:1 문의로 가기</Link>
           </div>
         </div>
-
-        {/* Anonymous Chat Switch */}
-        <div
-          className={`p-5 rounded-2xl border shadow-sm transition ${
-            stats.anonymousChatEnabled
-              ? "bg-sky-50/60 border-sky-200"
-              : "bg-white border-slate-200/80"
-          }`}
-        >
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-            <span className="font-semibold text-slate-700">비로그인 라이브톡</span>
-            <span className="text-base">💬</span>
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <div>
-              <span
-                className={`text-xl font-black tracking-tight ${
-                  stats.anonymousChatEnabled ? "text-sky-600" : "text-slate-500"
-                }`}
+      </section>
+      <section className="panel admin-section" aria-label="일별 추이">
+        <div className="admin-toolbar">
+          <h2>일별 추이</h2>
+          <div className="admin-filter" role="group" aria-label="기간">
+            {([7, 30] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={days === value}
+                onClick={() => {
+                  if (days === value) return;
+                  overview.setLoading(true);
+                  setDays(value);
+                }}
               >
-                {stats.anonymousChatEnabled ? "허용 (ON)" : "차단 (OFF)"}
-              </span>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                {stats.anonymousChatEnabled
-                  ? "비회원 랜덤 닉네임 발신 가능"
-                  : "로그인 회원만 채팅 가능"}
-              </p>
-            </div>
-            {/* Toggle Switch */}
-            <button
-              onClick={handleToggleAnonymousChat}
-              disabled={updatingChat}
-              className={`relative inline-flex h-7 w-13 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                stats.anonymousChatEnabled ? "bg-sky-600" : "bg-slate-300"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                  stats.anonymousChatEnabled ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </button>
+                {value}일
+              </button>
+            ))}
           </div>
         </div>
-      </div>
-    </div>
+        <div className="admin-filter" role="group" aria-label="항목">
+          {METRICS.map((item) => (
+            <button key={item.key} type="button" aria-pressed={metric === item.key} onClick={() => setMetric(item.key)}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {overview.loading && !overview.data && <p className="admin-meta">불러오는 중...</p>}
+        {overview.data && <DailyBars series={overview.data.series} metric={metric} label={metricLabel} />}
+      </section>
+      <section className="panel admin-section" aria-label="비로그인 라이브톡">
+        <div className="admin-toolbar">
+          <span>
+            <h2>비로그인 라이브톡</h2>
+            <small className="admin-meta">
+              {stats.data?.anonymousChatEnabled ? "로그인하지 않은 사람도 메시지를 보낼 수 있습니다." : "로그인한 회원만 메시지를 보낼 수 있습니다."}
+            </small>
+          </span>
+          <button
+            className="admin-button"
+            type="button"
+            disabled={!stats.data || updatingChat}
+            onClick={() => void toggleAnonymousChat()}
+          >
+            {stats.data?.anonymousChatEnabled ? "회원만 허용하기" : "비회원도 허용하기"}
+          </button>
+        </div>
+      </section>
+    </>
   );
 }

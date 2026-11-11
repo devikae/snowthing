@@ -1,0 +1,23 @@
+/* 카카오 공식 색(#FEE500)과 검은 말풍선. 로그인 화면 카카오 버튼과 같은 색을 쓴다.
+   게시글 반응 줄, 캐릭터 테스트, 계산기는 영역 선택자(".영역 button")로 버튼 색을 정하고, 상세 화면은 그 우선순위가 (0,3,2)까지 높다.
+   브랜드 색과 아이콘 정렬만 !important로 지킨다. 크기와 여백은 놓인 곳의 버튼과 맞도록 덮이게 둔다. */
+.button {
+  display: inline-flex !important;
+  min-height: 40px;
+  align-items: center !important;
+  justify-content: center;
+  gap: 6px !important;
+  border: 1px solid #fee500 !important;
+  border-radius: 10px;
+  background: #fee500 !important;
+  padding: 0 13px;
+  color: rgba(0, 0, 0, 0.85) !important;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.button:hover { opacity: 0.9; }
+.button:focus-visible { outline: 2px solid #191919; outline-offset: 2px; }
+.symbol { width: 16px; height: 16px; flex: 0 0 auto; fill: #000; }
+.notice { color: var(--snow-muted); font-size: 12px; }

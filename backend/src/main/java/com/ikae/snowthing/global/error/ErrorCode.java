@@ -29,7 +29,7 @@ public enum ErrorCode {
     OAUTH_ACCOUNT_LINK_REQUIRED(
             HttpStatus.CONFLICT, "AUTH_012", "이미 가입된 이메일입니다. 기존 로그인 방법을 이용해 주세요."),
     LOGIN_ATTEMPT_LIMIT(
-            HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 최대 15분 뒤 다시 시도해 주세요."),
+            HttpStatus.TOO_MANY_REQUESTS, "AUTH_013", "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     OAUTH_SIGNUP_EXPIRED(HttpStatus.GONE, "AUTH_014", "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요."),
     SOCIAL_ACCOUNT_IN_USE(
             HttpStatus.CONFLICT,
@@ -44,10 +44,17 @@ public enum ErrorCode {
             HttpStatus.UNAUTHORIZED,
             "AUTH_019",
             "연결을 시작한 계정과 지금 로그인한 계정이 다릅니다. 다시 로그인한 뒤 시도해 주세요."),
+    // 비밀번호가 없는 소셜 전용 회원이 로그인한 지 오래되어 소셜 연결 전에 다시 로그인해야 할 때.
+    SOCIAL_LINK_REAUTH_REQUIRED(HttpStatus.FORBIDDEN, "AUTH_021", "보안을 위해 다시 로그인한 뒤 연결해 주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "존재하지 않는 회원입니다."),
     MEMBER_SELF_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_010", "자신의 계정은 정지할 수 없습니다."),
     MEMBER_ADMIN_SUSPEND_NOT_ALLOWED(HttpStatus.FORBIDDEN, "MEMBER_011", "관리자 계정은 정지할 수 없습니다."),
     MEMBER_WITHDRAWN_STATUS_LOCKED(HttpStatus.CONFLICT, "MEMBER_012", "탈퇴한 회원의 상태는 바꿀 수 없습니다."),
+    ADMIN_ROLE_SELF_REVOKE_NOT_ALLOWED(
+            HttpStatus.FORBIDDEN, "MEMBER_013", "자신의 관리자 권한은 해제할 수 없습니다."),
+    ADMIN_ROLE_LAST_ADMIN(HttpStatus.CONFLICT, "MEMBER_014", "마지막 남은 관리자는 해제할 수 없습니다."),
+    ADMIN_ROLE_INELIGIBLE_MEMBER(
+            HttpStatus.CONFLICT, "MEMBER_015", "활동 중인 일반 회원만 관리자로 지정할 수 있습니다."),
     PROFILE_LIMIT_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "MEMBER_007", "요청을 일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     PROFILE_CDN_NOT_CONFIGURED(

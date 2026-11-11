@@ -46,7 +46,7 @@ export function CardGallery() {
     // 개발 모드의 이중 실행이 겹치지 않도록 다음 틱에 시작한다.
     const timer = setTimeout(() => {
       build().catch((reason) => {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : "카드를 만들지 못했습니다.");
+        if (!cancelled) setError(reason instanceof Error ? reason.message : "카드를 만들지 못했어요. 다시 시도해 주세요.");
       });
     }, 0);
     return () => {

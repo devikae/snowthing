@@ -53,6 +53,7 @@ class EmailVerificationServiceTest {
                         hasher,
                         new EmailNormalizer(),
                         mock(EmailVerificationIpRateLimiter.class),
+                        mock(EmailRecipientRateLimiter.class),
                         mock(VerificationEmailSender.class),
                         CLOCK);
     }

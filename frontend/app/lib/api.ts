@@ -130,13 +130,42 @@ export const API_ENDPOINTS = {
       `${API_V1_URL}/admin/members?page=${page}&size=${size}${query ? `&query=${encodeURIComponent(query)}` : ""}`,
     memberStatusAction: (publicId: string, action: "suspend" | "reinstate") =>
       `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
+    memberRoleAction: (publicId: string, action: "grant-admin" | "revoke-admin") =>
+      `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
     searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
     searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
     stats: `${API_V1_URL}/admin/dashboard/stats`,
     configs: `${API_V1_URL}/admin/configs`,
     updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${encodeURIComponent(key)}`,
-    posts: (filter: AdminPostFilter, page = 0, size = 20) =>
-      `${API_V1_URL}/admin/posts?filter=${filter}&page=${page}&size=${size}`,
+    posts: (filter: AdminPostFilter, page = 0, size = 20, category?: string) =>
+      `${API_V1_URL}/admin/posts?filter=${filter}&page=${page}&size=${size}${category ? `&category=${encodeURIComponent(category)}` : ""}`,
+    overview: (days: 7 | 30) => `${API_V1_URL}/admin/dashboard/overview?days=${days}`,
+    memberDetail: (publicId: string) => `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}`,
+    comments: (params: { filter: string; query: string; author: string; page: number; size?: number }) =>
+      `${API_V1_URL}/admin/comments?${new URLSearchParams({
+        filter: params.filter,
+        page: String(params.page),
+        size: String(params.size ?? 20),
+        ...(params.query ? { query: params.query } : {}),
+        ...(params.author ? { author: params.author } : {}),
+      }).toString()}`,
+    blindComment: (commentId: number) => `${API_V1_URL}/admin/comments/${commentId}/blind`,
+    deleteComment: (commentId: number) => `${API_V1_URL}/admin/comments/${commentId}`,
+    inquiries: (status: string, page: number, size = 20) =>
+      `${API_V1_URL}/admin/inquiries?status=${status}&page=${page}&size=${size}`,
+    resortReports: (status: string, page: number, size = 20) =>
+      `${API_V1_URL}/admin/resort-reports?status=${status}&page=${page}&size=${size}`,
+    resortReportModeration: (reportId: number) => `${API_V1_URL}/admin/resort-reports/${reportId}/moderation-status`,
+    marketModeration: (publicId: string) =>
+      `${API_V1_URL}/admin/market-listings/${encodeURIComponent(publicId)}/moderation-status`,
+    actionLogs: (params: { action: string; targetType: string; targetId: string; page: number; size?: number }) =>
+      `${API_V1_URL}/admin/action-logs?${new URLSearchParams({
+        page: String(params.page),
+        size: String(params.size ?? 20),
+        ...(params.action ? { action: params.action } : {}),
+        ...(params.targetType ? { targetType: params.targetType } : {}),
+        ...(params.targetId ? { targetId: params.targetId } : {}),
+      }).toString()}`,
     blindPost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}/blind`,
     deletePost: (publicId: string) => `${API_V1_URL}/admin/posts/${encodeURIComponent(publicId)}`,
     bannedIps: `${API_V1_URL}/admin/chat/banned-ips`,
@@ -189,7 +218,7 @@ export interface SystemConfigItem {
   updatedBy: string;
 }
 
-export type AdminPostFilter = "ALL" | "DELETED" | "BLINDED";
+export type AdminPostFilter = "ALL" | "DELETED" | "BLINDED" | "HIDDEN" | "HELD";
 
 export interface AdminPostItem {
   publicId: string;

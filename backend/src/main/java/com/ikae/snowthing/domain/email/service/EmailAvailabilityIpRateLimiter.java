@@ -12,11 +12,10 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ikae.snowthing.domain.email.EmailVerificationPolicy;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 @Component
 public class EmailAvailabilityIpRateLimiter {
-
-    private static final String UNKNOWN_CLIENT = "unknown";
 
     private final Clock clock;
     private final Cache<String, RequestWindow> windows =
@@ -31,7 +30,7 @@ public class EmailAvailabilityIpRateLimiter {
     }
 
     public void check(String clientIp) {
-        String normalized = clientIp == null || clientIp.isBlank() ? UNKNOWN_CLIENT : clientIp;
+        String normalized = ClientIpResolver.normalizeForLimit(clientIp);
         RequestWindow window =
                 windows.asMap().computeIfAbsent(normalized, ignored -> new RequestWindow());
 

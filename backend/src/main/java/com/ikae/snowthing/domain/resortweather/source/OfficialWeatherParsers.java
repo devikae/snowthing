@@ -29,8 +29,7 @@ public final class OfficialWeatherParsers {
             Pattern.compile("관측시간\\s*:?\\s*(\\d{1,2})/(\\d{1,2})\\s+(\\d{1,2}):(\\d{2})");
     private static final Pattern O2_QUERIED_AT =
             Pattern.compile("(\\d{1,2})\\.(\\d{1,2})\\s+(\\d{1,2}):(\\d{2})\\s*조회");
-    private static final Pattern WELLI_NUXT_WEATHER =
-            Pattern.compile("weather:\\{status:\"([^\"]*)\"[^}]*?TEMP:\"(-?\\d+(?:\\.\\d+)?)\"");
+    private static final Pattern WELLI_NUXT_WEATHER = Pattern.compile("\\bweather:\\{([^{}]*)\\}");
     private static final DateTimeFormatter WEATHERI_NOW =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final BigDecimal MIN_TEMPERATURE = new BigDecimal("-40");
@@ -72,22 +71,65 @@ public final class OfficialWeatherParsers {
         throw new WeatherFetchException("무주 관측 행이 없습니다.");
     }
 
-    /** 웰리힐리: 서버 렌더 HTML 안 {@code window.__NUXT__}의 {@code weather} 객체 */
+    /**
+     * 웰리힐리: 서버 렌더 HTML 안 {@code window.__NUXT__}의 {@code weather} 객체. 값이 다른 곳과 겹치면 Nuxt가 인자 이름으로 바꿔
+     * 보내므로 {@link NuxtPayload}로 풀어 읽는다. 하늘 상태는 못 읽어도 기온만 있으면 쓴다.
+     */
     public static WeatherReading welliHilliNuxt(byte[] body, Instant now) {
-        Matcher matcher = WELLI_NUXT_WEATHER.matcher(text(body));
-        if (!matcher.find()) {
-            throw new WeatherFetchException("웰리힐리 weather 상태가 없습니다.");
+        String html = text(body);
+        NuxtPayload payload = NuxtPayload.find(html);
+        if (payload == null) {
+            throw new WeatherFetchException("웰리힐리 __NUXT__ 상태가 없습니다.");
         }
-        return official(temperature(matcher.group(2)), matcher.group(1), fallbackTime(now));
+        Matcher weather = WELLI_NUXT_WEATHER.matcher(html);
+        if (!weather.find(payload.bodyStart())) {
+            throw new WeatherFetchException("웰리힐리 weather 객체가 없습니다.");
+        }
+        String fields = weather.group(1);
+        String rawTemperature = field(fields, "TEMP");
+        String temperature = rawTemperature == null ? null : payload.resolve(rawTemperature);
+        if (temperature == null) {
+            throw new WeatherFetchException("웰리힐리 TEMP 값을 읽을 수 없습니다: " + rawTemperature);
+        }
+        String rawSky = field(fields, "status");
+        String sky = rawSky == null ? null : payload.resolve(rawSky);
+        return official(temperature(temperature), sky, fallbackTime(now));
     }
 
-    /** 곤지암: 메인 페이지의 숨겨진 날씨 블록 */
+    /** 객체 본문 {@code a:"x",b:c}에서 키 하나의 값 토큰(따옴표 포함)을 꺼낸다. */
+    private static String field(String fields, String key) {
+        Matcher matcher =
+                Pattern.compile(
+                                "(?:^|,)\\s*\"?"
+                                        + Pattern.quote(key)
+                                        + "\"?\\s*:\\s*(\"(?:[^\"\\\\]|\\\\.)*\"|[^,]+)")
+                        .matcher(fields);
+        return matcher.find() ? matcher.group(1).trim() : null;
+    }
+
+    /**
+     * 곤지암: 메인 페이지의 숨겨진 날씨 블록. 곤지암 서버는 장애 때도 HTTP 200으로 "ERROR 500" 안내 페이지를 보내서, 실패 이유를 로그에서 구분할 수
+     * 있게 나눠 둔다.
+     */
     public static WeatherReading konjiam(byte[] body, Instant now) {
         Document document = Jsoup.parse(text(body));
-        BigDecimal temperature =
-                temperature(textOf(document.selectFirst("#weather dd.temperature span")));
-        String sky = textOf(document.selectFirst("#weather dd.weather"));
-        return official(temperature, sky, fallbackTime(now));
+        Element block = document.selectFirst("#weather");
+        if (block == null) {
+            throw new WeatherFetchException(
+                    document.title().startsWith("ERROR")
+                            ? "곤지암 오류 안내 페이지 응답: " + document.title()
+                            : "곤지암 날씨 블록이 없습니다.");
+        }
+        Element value = block.selectFirst("dd.temperature span");
+        String rawTemperature = textOf(value == null ? block.selectFirst("dd.temperature") : value);
+        if (rawTemperature.isEmpty()) {
+            throw new WeatherFetchException("곤지암 기온 값이 비어 있습니다.");
+        }
+        String sky = textOf(block.selectFirst("dd.weather"));
+        if (sky.isEmpty()) {
+            sky = textOf(block.selectFirst("dd.icon"));
+        }
+        return official(temperature(rawTemperature), sky, fallbackTime(now));
     }
 
     /** 오투: 메인 페이지의 태백 날씨 위젯(기상청 관측값 보정) */

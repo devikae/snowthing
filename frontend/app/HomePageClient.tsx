@@ -398,7 +398,6 @@ export default function HomePageClient() {
         <section className="snow-report-widget home-tier-2">
           <div className="section-head">
             <div className="section-head-title">
-              <small className="section-eyebrow">라이더 현장 제보</small>
               <div className="section-title-inline">
                 <h2>오늘의 설질</h2>
                 <time className="snow-date-badge">{koreanToday}</time>
@@ -434,10 +433,10 @@ export default function HomePageClient() {
               maxLength={100}
               placeholder={
                 !reportSeasonOpen
-                  ? "설질 제보는 10월부터 4월까지 등록할 수 있습니다"
+                  ? "설질 제보는 10월부터 4월까지 받습니다"
                   : profile
-                    ? "지금 슬로프의 설질, 대기 시간, 정설 상태를 한 줄(100자 이내)로 공유해 주세요"
-                    : "로그인하고 오늘의 설질을 제보해 보세요"
+                    ? "지금 설질과 대기 시간을 한 줄로 알려 주세요"
+                    : "로그인하고 설질 제보하기"
               }
               aria-label="설질 제보 내용"
               className={!profile ? "cursor-pointer" : undefined}
@@ -461,7 +460,7 @@ export default function HomePageClient() {
               <div className="snow-empty-state">
                 <div className="snow-empty-copy">
                   <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>
-                  <span>위 입력창에서 리조트를 선택하고 첫 번째 현장 설질·대기열 소식을 공유해 보세요.</span>
+                  <span>위 입력창에서 리조트를 선택하고 첫 번째 현장 설질, 대기열 소식을 공유해 보세요.</span>
                 </div>
               </div>
             ) : (
@@ -489,7 +488,6 @@ export default function HomePageClient() {
           <section className="carpool-widget tier-3-left" id="carpool">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">리조트 같이 가기</small>
                 <h2>카풀과 동행</h2>
               </div>
               <div className="section-actions">
@@ -554,7 +552,6 @@ export default function HomePageClient() {
           <section className="market-widget tier-3-right" id="market">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">중고 장비 거래</small>
                 <h2>중고장터</h2>
               </div>
               <div className="section-actions">

@@ -21,7 +21,7 @@ export function DeleteConfirmModal({
   description = "이 게시글을 삭제할까요?",
   requirePassword = true,
   confirmLabel = "삭제",
-  submittingLabel = "삭제 중...",
+  submittingLabel = "삭제 중",
 }: DeleteConfirmModalProps) {
   const titleId = useId();
   const passwordId = useId();

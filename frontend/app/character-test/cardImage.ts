@@ -64,7 +64,7 @@ export async function renderCard(result: CharacterResult, sport: Sport): Promise
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("이 브라우저에서는 이미지를 만들 수 없습니다.");
+  if (!ctx) throw new Error("이 브라우저에서는 이미지를 만들 수 없어요.");
   const theme = THEMES[result.character.job];
   const [family, sprite, gear, bestSprite] = await Promise.all([
     pageFontFamily(),

@@ -32,6 +32,16 @@ snowthing:
   email:
     verification:
       secret: ${SNOWTHING_EMAIL_VERIFICATION_SECRET:local-development-email-verification-secret}
+      # 별칭(+태그, Gmail 점)을 한 메일함으로 묶어 가입과 재설정 메일을 합쳐 센다.
+      recipient-hourly-limit: 10
+      recipient-daily-limit: 20
+  # IP와 무관하게 한 계정의 비밀번호 실패를 센다. 짧은 창을 넘기면 짧게, 긴 창까지 넘기면 길게 잠긴다.
+  login-limit:
+    account:
+      short-max-failures: 10
+      short-window: 15m
+      long-max-failures: 30
+      long-window: 1h
   mail:
     provider: ${SNOWTHING_MAIL_PROVIDER:disabled}
     region: ${SNOWTHING_SES_REGION:ap-northeast-2}

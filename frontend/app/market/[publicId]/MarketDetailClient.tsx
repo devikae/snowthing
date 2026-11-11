@@ -66,13 +66,13 @@ const conditionLabels: Record<string, string> = {
   LIKE_NEW: "거의 새 상품",
   GOOD: "사용감 적음",
   USED: "사용감 있음",
-  DAMAGED: "수리·하자 있음",
+  DAMAGED: "수리, 하자 있음",
 };
 
 const transactionLabels: Record<string, string> = {
   DIRECT: "직거래",
   DELIVERY: "택배",
-  BOTH: "직거래·택배",
+  BOTH: "직거래, 택배",
 };
 
 const tradeLabels: Record<string, string> = {
@@ -275,7 +275,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             <div className="market-seller"><CommentProfileAvatar className="market-seller-avatar" nickname={listing.seller.nickname} profileImageUrl={listing.seller.profileImageUrl} size={36} /><div><small>판매자</small><AuthorMenu publicId={listing.seller.publicId} nickname={listing.seller.nickname} /></div></div>
             {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(listing.contact ?? "")}>복사</button></div>}
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />
-            {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중..." : "삭제"}</button>}</div>}
+            {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중" : "삭제"}</button>}</div>}
             <ReportButton targetType="POST" targetId={publicId} />
           </section>
         </article>

@@ -15,6 +15,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.contentreport.dto.AdminContentReportPageResponse;
 import com.ikae.snowthing.domain.contentreport.dto.AdminContentReportResponse;
@@ -65,6 +68,7 @@ public class ContentModerationService {
     private final SearchOutboxWriter searchOutbox;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+    private final AdminActionLogger actionLogger;
 
     @Transactional(readOnly = true)
     public AdminContentReportPageResponse list(ReportStatus status, int page) {
@@ -133,6 +137,12 @@ public class ContentModerationService {
                         admin,
                         expiresAt,
                         now));
+
+        actionLogger.record(
+                AdminActionType.CONTENT_REPORT_ACTION,
+                AdminTargetType.CONTENT_REPORT,
+                reportId,
+                action + " " + report.getTargetType() + ":" + report.getTargetId());
 
         List<ContentReport> pending =
                 reportRepository.findByTargetTypeAndTargetIdAndStatus(

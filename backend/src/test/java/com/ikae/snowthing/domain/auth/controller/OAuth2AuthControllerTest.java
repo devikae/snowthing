@@ -30,6 +30,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ikae.snowthing.domain.auth.dto.SocialLinkStartRequest;
 import com.ikae.snowthing.domain.auth.dto.SocialSignUpRequest;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2ExternalClient;
 import com.ikae.snowthing.domain.auth.oauth2.OAuth2Properties;
@@ -37,6 +38,7 @@ import com.ikae.snowthing.domain.auth.oauth2.OAuthUserProfile;
 import com.ikae.snowthing.domain.auth.service.AuthService;
 import com.ikae.snowthing.domain.auth.service.OAuthAuthorizationIpRateLimiter;
 import com.ikae.snowthing.domain.auth.service.SocialAuthService;
+import com.ikae.snowthing.domain.auth.service.SocialLinkReauthService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -45,6 +47,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.security.RecentAuthentication;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
 class OAuth2AuthControllerTest {
@@ -55,6 +58,7 @@ class OAuth2AuthControllerTest {
     private SecurityContextRepository securityContextRepository;
     private MemberSessionRegistry memberSessionRegistry;
     private OAuthAuthorizationIpRateLimiter authorizationIpRateLimiter;
+    private SocialLinkReauthService socialLinkReauthService;
     private ClientIpResolver clientIpResolver;
     private OAuth2AuthController controller;
 
@@ -66,6 +70,7 @@ class OAuth2AuthControllerTest {
         securityContextRepository = mock(SecurityContextRepository.class);
         memberSessionRegistry = mock(MemberSessionRegistry.class);
         authorizationIpRateLimiter = mock(OAuthAuthorizationIpRateLimiter.class);
+        socialLinkReauthService = mock(SocialLinkReauthService.class);
         clientIpResolver = mock(ClientIpResolver.class);
         given(clientIpResolver.resolve(any())).willReturn("203.0.113.10");
 
@@ -83,6 +88,7 @@ class OAuth2AuthControllerTest {
                         securityContextRepository,
                         memberSessionRegistry,
                         authorizationIpRateLimiter,
+                        socialLinkReauthService,
                         clientIpResolver,
                         fixedClock);
     }
@@ -125,7 +131,9 @@ class OAuth2AuthControllerTest {
         given(oauth2ExternalClient.buildAuthorizationUri(eq(SocialProvider.KAKAO), anyString()))
                 .willReturn(URI.create("https://kauth.kakao.com/oauth/authorize"));
         MockHttpServletRequest request = new MockHttpServletRequest();
-        var response = controller.startLink("kakao", user, request);
+        var response =
+                controller.startLink(
+                        "kakao", new SocialLinkStartRequest("current-password"), user, request);
         assertThat(response.getBody().authorizationUrl())
                 .isEqualTo("https://kauth.kakao.com/oauth/authorize");
         return (MockHttpSession) request.getSession(false);
@@ -167,7 +175,7 @@ class OAuth2AuthControllerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
 
         org.assertj.core.api.Assertions.assertThatThrownBy(
-                        () -> controller.startLink("kakao", null, request))
+                        () -> controller.startLink("kakao", null, null, request))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.LOGIN_REQUIRED);
@@ -185,11 +193,45 @@ class OAuth2AuthControllerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
 
         org.assertj.core.api.Assertions.assertThatThrownBy(
-                        () -> controller.startLink("kakao", user, request))
+                        () -> controller.startLink("kakao", null, user, request))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SOCIAL_PROVIDER_ALREADY_LINKED);
         assertThat(request.getSession(false)).isNull();
+    }
+
+    @Test
+    @DisplayName("연결을 시작하기 전에 받은 현재 비밀번호와 세션, IP로 본인을 다시 확인한다")
+    void startLink_ConfirmsIdentityWithPasswordSessionAndIp() {
+        CustomUserDetails user = member(7L, "member-7");
+
+        startLink(user);
+
+        verify(socialLinkReauthService)
+                .confirm(eq(7L), eq("current-password"), any(), eq("203.0.113.10"));
+    }
+
+    @Test
+    @DisplayName("다시 확인에 실패하면 state를 만들지 않고 소셜 로그인 화면으로 보내지 않는다")
+    void startLink_ReauthFailed_DoesNotStartAuthorization() {
+        CustomUserDetails user = member(7L, "member-7");
+        willThrow(new CustomException(ErrorCode.CURRENT_PASSWORD_MISMATCH))
+                .given(socialLinkReauthService)
+                .confirm(eq(7L), any(), any(), anyString());
+        MockHttpServletRequest request = new MockHttpServletRequest();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () ->
+                                controller.startLink(
+                                        "kakao",
+                                        new SocialLinkStartRequest("wrong"),
+                                        user,
+                                        request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CURRENT_PASSWORD_MISMATCH);
+        assertThat(request.getSession(false)).isNull();
+        verify(oauth2ExternalClient, never()).buildAuthorizationUri(any(), anyString());
     }
 
     @Test
@@ -442,6 +484,12 @@ class OAuth2AuthControllerTest {
                 .saveContext(
                         any(SecurityContext.class), eq(callbackRequest), eq(callbackHttpResponse));
         verify(memberSessionRegistry).register(eq(member.getPublicId()), eq(session));
+        assertThat(
+                        RecentAuthentication.isWithin(
+                                session,
+                                Instant.parse("2026-10-19T05:00:00Z"),
+                                java.time.Duration.ZERO))
+                .isTrue();
     }
 
     @Test

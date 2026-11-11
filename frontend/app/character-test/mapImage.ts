@@ -24,7 +24,7 @@ export async function renderMapImage({ title, levels, me, hideNames }: MapImageI
   canvas.width = IMAGE_WIDTH;
   canvas.height = Math.round(totalHeight * scale);
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("이 브라우저에서는 이미지를 만들 수 없습니다.");
+  if (!ctx) throw new Error("이 브라우저에서는 이미지를 만들 수 없어요.");
   const family = await pageFontFamily();
   const jobs = new Set<JobCode>([me.character.job]);
   layout.people.forEach((node) => jobs.add(node.jobLabel.job));

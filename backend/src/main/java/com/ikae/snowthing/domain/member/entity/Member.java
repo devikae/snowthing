@@ -181,4 +181,8 @@ public class Member extends BaseTimeEntity {
     public void reinstate() {
         this.status = MemberStatus.ACTIVE;
     }
+
+    public void changeRole(Role role) {
+        this.role = role;
+    }
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import {
   type AdminMember,
   type AdminMemberListResponse,
+  MEMBER_ROLE_LABEL,
   MEMBER_STATUS_BADGE,
   MEMBER_STATUS_LABEL,
   formatDateTime,
@@ -21,6 +23,20 @@ export default function AdminMembersPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [myPublicId, setMyPublicId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(API_ENDPOINTS.members.me, { credentials: "include" })
+      .then(async (response) => (response.ok ? ((await response.json()) as { publicId?: string }) : null))
+      .then((me) => {
+        if (!cancelled) setMyPublicId(me?.publicId ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,17 +70,29 @@ export default function AdminMembersPage() {
     setQuery(next);
   };
 
-  const changeStatus = async (member: AdminMember, action: "suspend" | "reinstate") => {
+  const changeStatus = (member: AdminMember, action: "suspend" | "reinstate") => {
     const message =
       action === "suspend"
         ? `${member.nickname} 회원을 정지할까요? 접속이 바로 끊기고 해제할 때까지 로그인할 수 없습니다.`
         : `${member.nickname} 회원의 정지를 해제할까요?`;
+    return runAction(member, message, API_ENDPOINTS.admin.memberStatusAction(member.publicId, action), "회원 상태를 바꾸지 못했습니다.");
+  };
+
+  const changeRole = (member: AdminMember, action: "grant-admin" | "revoke-admin") => {
+    const message =
+      action === "grant-admin"
+        ? `${member.nickname} 회원을 운영자로 지정할까요? 관리자 화면의 모든 기능을 쓸 수 있게 되고, 지금 접속은 끊겨 다시 로그인해야 합니다.`
+        : `${member.nickname} 회원의 운영자 권한을 해제할까요? 관리자 화면에서 바로 로그아웃됩니다.`;
+    return runAction(member, message, API_ENDPOINTS.admin.memberRoleAction(member.publicId, action), "운영자 권한을 바꾸지 못했습니다.");
+  };
+
+  const runAction = async (member: AdminMember, message: string, url: string, failure: string) => {
     if (!window.confirm(message)) return;
     setBusyId(member.publicId);
     setError(null);
     try {
-      const response = await csrfFetch(API_ENDPOINTS.admin.memberStatusAction(member.publicId, action), { method: "POST" });
-      if (!response.ok) throw new Error(await readErrorMessage(response, "회원 상태를 바꾸지 못했습니다."));
+      const response = await csrfFetch(url, { method: "POST" });
+      if (!response.ok) throw new Error(await readErrorMessage(response, failure));
       const updated = (await response.json()) as AdminMember;
       setData((current) =>
         current && {
@@ -81,7 +109,10 @@ export default function AdminMembersPage() {
 
   return (
     <>
-      <PageHeading title="회원 관리" description="닉네임이나 이메일로 회원을 찾아 정지하거나 해제합니다. 정지는 해제할 때까지 유지됩니다." />
+      <PageHeading
+        title="회원 관리"
+        description="닉네임이나 이메일로 회원을 찾아 정지하거나 해제하고, 운영자를 지정하거나 해제합니다. 정지는 해제할 때까지 유지됩니다."
+      />
       <section className="panel admin-section" aria-label="회원 목록">
         <form className="admin-actions" role="search" onSubmit={search}>
           <input
@@ -100,41 +131,70 @@ export default function AdminMembersPage() {
         <div className="admin-list">
           {loading && !data && <p className="admin-meta">불러오는 중...</p>}
           {!loading && data?.items.length === 0 && <p className="admin-meta">찾는 회원이 없습니다.</p>}
-          {data?.items.map((member) => (
-            <div className="admin-row" key={member.publicId}>
-              <span className="admin-status" data-status={MEMBER_STATUS_BADGE[member.status]}>
-                {MEMBER_STATUS_LABEL[member.status]}
-              </span>
-              <span style={{ minWidth: 0 }}>
-                <p>
-                  {member.nickname}
-                  {member.role === "ROLE_ADMIN" ? " (관리자)" : ""}
-                </p>
-                <small style={{ overflowWrap: "anywhere" }}>
-                  {member.email}, 가입 {formatDateTime(member.createdAt)}
-                </small>
-              </span>
-              {member.status === "SUSPENDED" ? (
-                <button
-                  className="admin-button"
-                  type="button"
-                  disabled={busyId === member.publicId}
-                  onClick={() => void changeStatus(member, "reinstate")}
-                >
-                  해제
-                </button>
-              ) : (
-                <button
-                  className="admin-button danger"
-                  type="button"
-                  disabled={busyId === member.publicId || member.status === "WITHDRAWN" || member.role === "ROLE_ADMIN"}
-                  onClick={() => void changeStatus(member, "suspend")}
-                >
-                  정지
-                </button>
-              )}
-            </div>
-          ))}
+          {data?.items.map((member) => {
+            const isSelf = member.publicId === myPublicId;
+            const isAdmin = member.role === "ROLE_ADMIN";
+            const busy = busyId === member.publicId;
+            return (
+              <div className="admin-row" key={member.publicId}>
+                <span className="admin-status" data-status={MEMBER_STATUS_BADGE[member.status]}>
+                  {MEMBER_STATUS_LABEL[member.status]}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <p>
+                    <Link href={`/admin/members/${member.publicId}`}>{member.nickname}</Link>
+                    {isSelf ? " (나)" : ""}
+                  </p>
+                  <small style={{ overflowWrap: "anywhere" }}>
+                    {MEMBER_ROLE_LABEL[member.role]}, {member.email}, 가입 {formatDateTime(member.createdAt)}
+                  </small>
+                  {isSelf && isAdmin && <small style={{ display: "block" }}>본인의 운영자 권한은 해제할 수 없습니다.</small>}
+                </span>
+                <span className="admin-actions" style={{ justifyContent: "flex-end" }}>
+                  {member.status === "SUSPENDED" ? (
+                    <button
+                      className="admin-button"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void changeStatus(member, "reinstate")}
+                    >
+                      해제
+                    </button>
+                  ) : (
+                    <button
+                      className="admin-button danger"
+                      type="button"
+                      disabled={busy || member.status === "WITHDRAWN" || isAdmin}
+                      onClick={() => void changeStatus(member, "suspend")}
+                    >
+                      정지
+                    </button>
+                  )}
+                  {isAdmin ? (
+                    <button
+                      className="admin-button"
+                      type="button"
+                      disabled={busy || isSelf}
+                      title={isSelf ? "본인의 운영자 권한은 해제할 수 없습니다." : undefined}
+                      onClick={() => void changeRole(member, "revoke-admin")}
+                    >
+                      운영자 해제
+                    </button>
+                  ) : (
+                    <button
+                      className="admin-button"
+                      type="button"
+                      disabled={busy || member.status !== "ACTIVE"}
+                      title={member.status !== "ACTIVE" ? "활동 중인 회원만 운영자로 지정할 수 있습니다." : undefined}
+                      onClick={() => void changeRole(member, "grant-admin")}
+                    >
+                      운영자 지정
+                    </button>
+                  )}
+                </span>
+              </div>
+            );
+          })}
         </div>
         <div className="admin-actions" style={{ justifyContent: "center" }}>
           <button

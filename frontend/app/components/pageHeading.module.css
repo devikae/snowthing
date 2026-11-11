@@ -27,7 +27,8 @@
   line-height: 20px;
   text-wrap: pretty;
 }
-.breadcrumb { margin-bottom: 12px; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
+.breadcrumb { margin-bottom: 6px; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
+.breadcrumb a { display: inline-flex; min-height: 32px; align-items: center; }
 .breadcrumb a:hover { color: var(--snow-ink); }
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
 .actions > a {
@@ -50,4 +51,19 @@
 @media (max-width: 640px) {
   .heading { flex-direction: column; gap: 16px; }
   .actions { width: 100%; }
+}
+
+/* 타이틀: 경로, 제목, 설명, 버튼을 한 줄씩 차례로 보여 준다 (motion.css 규칙) */
+.breadcrumb,
+.titleRow,
+.description,
+.actions {
+  animation: pageHeadingLine var(--motion-slow) var(--ease-out) both;
+}
+.titleRow { animation-delay: var(--motion-stagger); }
+.description { animation-delay: calc(var(--motion-stagger) * 2); }
+.actions { animation-delay: calc(var(--motion-stagger) * 3); }
+
+@keyframes pageHeadingLine {
+  from { opacity: 0; transform: translateY(6px); }
 }

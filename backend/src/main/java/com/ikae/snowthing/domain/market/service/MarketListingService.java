@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.image.service.ImageUrlResolver;
 import com.ikae.snowthing.domain.market.dto.*;
 import com.ikae.snowthing.domain.market.entity.*;
@@ -59,6 +62,7 @@ public class MarketListingService {
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
     private final com.ikae.snowthing.domain.image.service.MarketThumbnailService marketThumbnails;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
+    private final AdminActionLogger actionLogger;
 
     public MarketCategoryListResponse getCategories() {
         return new MarketCategoryListResponse(
@@ -278,8 +282,16 @@ public class MarketListingService {
         if (listing.getPost().getStatus() == PostStatus.TEMPORARY_HOLD) {
             throw new CustomException(ErrorCode.CONTENT_REPORT_ACTION_INVALID);
         }
+        PostStatus previous = listing.getPost().getStatus();
         listing.getPost().changeStatus(status);
         searchOutbox.postChanged(listing.getPost());
+        if (previous != status) {
+            actionLogger.record(
+                    AdminActionType.MARKET_MODERATION,
+                    AdminTargetType.POST,
+                    publicId,
+                    previous + " -> " + status);
+        }
     }
 
     private MarketListingSummaryResponse toSummary(

@@ -16,6 +16,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import com.ikae.snowthing.domain.admin.dto.SystemConfigResponse;
 import com.ikae.snowthing.domain.admin.entity.SystemConfig;
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
 import com.ikae.snowthing.domain.admin.repository.SystemConfigRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -27,11 +28,13 @@ class SystemConfigServiceTest {
 
     @Mock private SimpMessagingTemplate messagingTemplate;
 
+    @Mock private AdminActionLogger actionLogger;
+
     private SystemConfigService service;
 
     @BeforeEach
     void setUp() {
-        service = new SystemConfigService(repository, messagingTemplate);
+        service = new SystemConfigService(repository, messagingTemplate, actionLogger);
     }
 
     @Test

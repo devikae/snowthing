@@ -122,7 +122,7 @@ export function NotificationBell() {
         </div>
         <div className="notification-dropdown-body">
           {loadingList && items.length === 0 ? (
-            <p className="notification-empty">불러오는 중...</p>
+            <p className="notification-empty">불러오는 중</p>
           ) : listError ? (
             <p className="notification-empty">{listError}</p>
           ) : items.length === 0 ? (

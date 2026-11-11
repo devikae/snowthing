@@ -26,6 +26,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -51,6 +52,7 @@ class ResortReportServiceTest {
     @Mock private ResortReportRepository resortReportRepository;
     @Mock private ResortRepository resortRepository;
     @Mock private MemberRepository memberRepository;
+    @Mock private AdminActionLogger actionLogger;
 
     private ResortReportService resortReportService;
 
@@ -58,7 +60,11 @@ class ResortReportServiceTest {
     void setUp() {
         resortReportService =
                 new ResortReportService(
-                        resortReportRepository, resortRepository, memberRepository, WINTER_CLOCK);
+                        resortReportRepository,
+                        resortRepository,
+                        memberRepository,
+                        WINTER_CLOCK,
+                        actionLogger);
     }
 
     @Test
@@ -113,7 +119,8 @@ class ResortReportServiceTest {
                         resortReportRepository,
                         resortRepository,
                         memberRepository,
-                        Clock.fixed(Instant.parse("2026-07-01T00:00:00Z"), KST));
+                        Clock.fixed(Instant.parse("2026-07-01T00:00:00Z"), KST),
+                        actionLogger);
 
         assertThatThrownBy(() -> summerService.createReport(1L, request(10L)))
                 .isInstanceOf(CustomException.class)
@@ -129,7 +136,8 @@ class ResortReportServiceTest {
                         resortReportRepository,
                         resortRepository,
                         memberRepository,
-                        Clock.fixed(Instant.parse("2026-10-06T15:30:00Z"), KST));
+                        Clock.fixed(Instant.parse("2026-10-06T15:30:00Z"), KST),
+                        actionLogger);
         Member author = member(1L, "눈꽃보더", Role.ROLE_USER);
         Resort resort = resort(10L);
         given(memberRepository.findByIdForUpdate(author.getId())).willReturn(Optional.of(author));

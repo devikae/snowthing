@@ -73,6 +73,10 @@
 }
 
 .resortActive .countBadge {
+  color: #7dd3fc;
+}
+
+:global(html[data-theme="dark"]) .resortActive .countBadge {
   color: var(--community-accent, #60a5fa);
 }
 
@@ -596,7 +600,7 @@
 }
 
 .fallbackLink {
-  background: #0284c7;
+  background: #0275b3;
   color: #ffffff;
   text-decoration: none;
 }

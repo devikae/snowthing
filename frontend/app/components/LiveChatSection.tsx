@@ -326,7 +326,6 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       {/* 상단 헤더 바 */}
       <div className="live-chat-head">
         <div className="section-head-title">
-          <small className="section-eyebrow">실시간 채팅</small>
           <h2>라이브톡</h2>
         </div>
       </div>
@@ -338,7 +337,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           {(localHelp==="help"||localHelp==="season-pass")&&<Link href="/tools/season-pass">시즌권 본전 계산 <small>/시즌권</small></Link>}
           {(localHelp==="help"||localHelp==="deck-size")&&<Link href="/tools/deck-size">데크 사이즈 참고 <small>/데크</small></Link>}
         </nav>
-        <small>일반 대화와 봇 질문은 공개되므로 연락처·개인정보를 적지 마세요.</small>
+        <small>일반 대화와 봇 질문은 공개되므로 연락처, 개인정보를 적지 마세요.</small>
       </aside>}
 
       {/* 실시간 말풍선 피드 영역 */}
@@ -442,7 +441,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           }}
           placeholder={
             currentMember
-              ? "메세지를 입력하세요"
+              ? "메시지를 입력하세요"
               : anonymousChatEnabled
                 ? "로그인 없이 대화할 수 있어요 (닉네임 자동)"
                 : "로그인하고 라이브톡에 참여해 보세요"

@@ -60,6 +60,21 @@ function formatDisplay(key: keyof SeasonPassInput, digitsOnly: string): string {
   return isNaN(n) ? "" : n.toLocaleString("ko-KR");
 }
 
+// 고른 리조트의 대략 가격으로 시즌권과 리프트권 칸을 채운다. 채운 뒤에도 직접 고칠 수 있다.
+function resortFill(code: string) {
+  const resort = RESORT_PASS_PRICES.find((item) => item.code === code);
+  if (!resort) return null;
+  const pass = currentPass(resort, KST_TODAY.format(new Date()));
+  const fields: Partial<typeof initial> = {
+    ticketPrice: formatDisplay("ticketPrice", String(resort.ticketPrice)),
+  };
+  if (pass.price !== null) fields.passPrice = formatDisplay("passPrice", String(pass.price));
+  return {
+    fields,
+    note: `시즌권은 ${pass.label}, 리프트권은 ${resort.ticketLabel} 기준이에요. ${SEASON_PASS_PRICE_CHECKED_AT}에 조사한 대략값이라 실제와 다를 수 있어요. 고쳐 써도 돼요.`,
+  };
+}
+
 export default function SeasonPassCalculator() {
   const [fields, setFields] = useState(initial);
   const [input, setInput] = useState<SeasonPassInput | null>(null);
@@ -69,9 +84,22 @@ export default function SeasonPassCalculator() {
 
   useEffect(() => {
     const restore = () => {
+      // 공유 링크의 입력값이 먼저다. 입력값이 없고 ?resort=CODE만 있으면 그 리조트 가격을 채운다.
+      const search = window.location.search;
+      const params = new URLSearchParams(search);
       const sharedInputs =
-        window.location.hash.slice(1) || window.location.search;
-      if (!sharedInputs) return;
+        window.location.hash.slice(1) ||
+        (SEASON_PASS_FIELDS.some((key) => params.has(key)) ? search : "");
+      if (!sharedInputs) {
+        const code = params.get("resort");
+        const fill = code ? resortFill(code) : null;
+        if (code && fill) {
+          setResortCode(code);
+          setFields((prev) => ({ ...prev, ...fill.fields }));
+          setResortNote(fill.note);
+        }
+        return;
+      }
       const restored = parseSeasonPassSearch(sharedInputs);
       if (!restored) {
         setError(
@@ -106,23 +134,12 @@ export default function SeasonPassCalculator() {
     setInput(null);
   };
 
-  // 고른 리조트의 대략 가격으로 시즌권과 리프트권 칸을 채운다. 채운 뒤에도 직접 고칠 수 있다.
   const pickResort = (code: string) => {
     setResortCode(code);
-    const resort = RESORT_PASS_PRICES.find((item) => item.code === code);
-    if (!resort) {
-      setResortNote("");
-      return;
-    }
-    const pass = currentPass(resort, KST_TODAY.format(new Date()));
-    setFields((prev) => ({
-      ...prev,
-      passPrice: pass.price === null ? prev.passPrice : formatDisplay("passPrice", String(pass.price)),
-      ticketPrice: formatDisplay("ticketPrice", String(resort.ticketPrice)),
-    }));
-    setResortNote(
-      `시즌권은 ${pass.label}, 리프트권은 ${resort.ticketLabel} 기준이에요. ${SEASON_PASS_PRICE_CHECKED_AT}에 조사한 대략값이라 실제와 다를 수 있어요. 고쳐 써도 돼요.`,
-    );
+    const fill = resortFill(code);
+    setResortNote(fill?.note ?? "");
+    if (!fill) return;
+    setFields((prev) => ({ ...prev, ...fill.fields }));
     setInput(null);
     setError("");
   };
@@ -212,7 +229,7 @@ export default function SeasonPassCalculator() {
             ))}
           </div>
           <p className="tool-help">
-            부대비용에는 교통·주차·렌털 등 방문마다 드는 비용을 넣으세요. 시즌권
+            부대비용에는 교통, 주차, 렌털 등 방문마다 드는 비용을 넣으세요. 시즌권
             혜택으로 절약하는 비용이 없다면 양쪽에 같은 값을 입력하면 됩니다.
           </p>
           <button type="submit" className="tool-primary">
@@ -326,7 +343,7 @@ export default function SeasonPassCalculator() {
         <details>
           <summary>시즌권 종류나 사용 시간은 반영되나요?</summary>
           <p>
-            시간대·이용 가능 리조트·횟수 제한·환불 조건은 가격만으로 비교할 수
+            시간대, 이용 가능 리조트, 횟수 제한, 환불 조건은 가격만으로 비교할 수
             없습니다. 이용 가능한 날짜와 시간을 먼저 확인하고, 실제로 대체할 수
             있는 리프트권 가격을 입력해 주세요.
           </p>
@@ -339,6 +356,7 @@ export default function SeasonPassCalculator() {
           </p>
         </details>
         <div className="tools-related">
+          <Link href="/tools/season-pass-prices">리조트별 시즌권, 리프트권 가격 비교 →</Link>
           <Link href="/carpool">카풀과 동행에서 교통비 비교하기 →</Link>
           <Link href="/resort-reports">오늘의 설질 확인하기 →</Link>
         </div>

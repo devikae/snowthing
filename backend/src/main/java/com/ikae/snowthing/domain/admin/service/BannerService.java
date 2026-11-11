@@ -9,6 +9,9 @@ import com.ikae.snowthing.domain.admin.dto.BannerCreateRequest;
 import com.ikae.snowthing.domain.admin.dto.BannerResponse;
 import com.ikae.snowthing.domain.admin.dto.BannerUpdateRequest;
 import com.ikae.snowthing.domain.admin.entity.Banner;
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.admin.repository.BannerRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -22,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 public class BannerService {
 
     private final BannerRepository repository;
+    private final AdminActionLogger actionLogger;
 
     @Transactional(readOnly = true)
     public List<BannerResponse> getBanners(boolean publicOnly) {
@@ -46,6 +50,8 @@ public class BannerService {
                         .build();
 
         Banner saved = repository.save(banner);
+        actionLogger.record(
+                AdminActionType.BANNER_CREATE, AdminTargetType.BANNER, saved.getId(), null);
         log.info("Banner created: id={}, title={}", saved.getId(), saved.getTitle());
         return BannerResponse.from(saved);
     }
@@ -65,6 +71,7 @@ public class BannerService {
                 req.isActive(),
                 req.startAt(),
                 req.endAt());
+        actionLogger.record(AdminActionType.BANNER_UPDATE, AdminTargetType.BANNER, id, null);
         log.info("Banner updated: id={}, title={}", banner.getId(), banner.getTitle());
         return BannerResponse.from(banner);
     }
@@ -77,6 +84,7 @@ public class BannerService {
                         .orElseThrow(() -> new CustomException(ErrorCode.BANNER_NOT_FOUND));
 
         repository.delete(banner);
+        actionLogger.record(AdminActionType.BANNER_DELETE, AdminTargetType.BANNER, id, null);
         log.info("Banner deleted: id={}", id);
     }
 

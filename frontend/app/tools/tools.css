@@ -2,21 +2,21 @@
 .rider-tools h2 { margin: 0 0 16px; font-size: 20px; font-weight: 600; }
 .rider-tools p { color: var(--snow-ink-soft); font-size: 14px; line-height: 1.75; }
 .tools-directory { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
-.tools-directory > a { display: grid; gap: 12px; border: 1px solid var(--snow-border); border-radius: 12px; padding: 24px; background: var(--snow-canvas); }
+.tools-directory > a { display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px; border: 1px solid var(--snow-border); border-radius: 12px; padding: 24px; background: var(--snow-canvas); }
 .tools-directory > a:hover { border-color: var(--snow-ink-soft); }
 .tools-directory span { color: var(--snow-muted); font-size: 12px; }
 .tools-directory h2,.tools-directory p { margin: 0; }
-.tools-directory strong { margin-top: 16px; font-size: 14px; }
+.tools-directory strong { align-self: end; margin-top: 16px; font-size: 14px; }
 .tools-community, .tool-explanation { margin-top: 48px; border-top: 1px solid var(--snow-border); padding-top: 32px; }
-.tools-community > div,.tools-related { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; font-size: 14px; }
-.tools-community a,.tools-related a { text-decoration: underline; text-underline-offset: 4px; }
+.tools-community > div,.tools-related { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; font-size: 14px; }
+.tools-community a,.tools-related a { display: inline-flex; min-height: 36px; align-items: center; text-decoration: underline; text-underline-offset: 4px; }
 .tool-workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 32px; align-items: start; }
 .tool-form,.tool-result { min-width: 0; border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 24px; }
 .tool-fields { display: grid; gap: 20px; }
 .rider-tools label { display: grid; min-width: 0; gap: 8px; font-size: 14px; font-weight: 500; }
 .rider-tools input,.rider-tools select,.rider-tools textarea { width: 100%; min-width: 0; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); padding: 12px; font: inherit; }
 .rider-tools :is(input,select,textarea,button,a,summary):focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
-.tool-unit-input { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; }
+.tool-unit-input { display: grid; grid-template-columns: minmax(0,1fr) 2.2em; align-items: center; gap: 8px; }
 .tool-unit-input > span { color: var(--snow-muted); font-size: 14px; }
 .rider-tools button { min-height: 44px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .rider-tools button:hover { background: var(--snow-surface-mid); }
@@ -50,15 +50,39 @@
 .tool-share label { margin-top: 12px; }
 .tool-empty { display: grid; min-height: 240px; align-content: center; text-align: center; }
 .tool-explanation { max-width: 800px; }
-.tool-explanation details { border-bottom: 1px solid var(--snow-border); padding-block: 16px; }
-.tool-explanation summary { font-size: 14px; font-weight: 500; cursor: pointer; }
+.tool-explanation details { border-bottom: 1px solid var(--snow-border); padding-block: 8px; }
+.tool-explanation summary { padding-block: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
 .rider-tools small { color: var(--snow-muted); font-size: 12px; font-weight: 400; line-height: 1.65; }
 .tool-model-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-block: 24px; }
 .tool-question-draft { margin-top: 24px; }
 .tool-question-draft textarea { resize: vertical; font-size: 14px; line-height: 1.75; }
+.pass-price-intro { max-width: 800px; margin-bottom: 24px; }
+.pass-price-table { position: relative; border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); }
+.pass-price-table table { min-width: 860px; }
+.pass-price-table caption { padding: 16px 16px 0; }
+.pass-price-table :is(th,td) { vertical-align: top; text-align: left; white-space: normal; }
+.pass-price-table thead th { color: var(--snow-muted); font-size: 12.5px; font-weight: 500; }
+.pass-price-table th[scope="row"] { min-width: 112px; font-weight: 600; }
+.pass-price-table :is(th,td):first-child { position: sticky; left: 0; z-index: 1; padding-left: 16px; background: var(--snow-canvas); }
+.pass-price-table td:nth-child(2) { min-width: 200px; }
+.pass-price-table td:nth-child(4) { min-width: 180px; }
+.pass-price-table td small,.pass-price-table th small { display: block; margin-top: 4px; }
+.pass-price-table td small + .pass-price-next { display: block; margin-top: 8px; }
+.pass-price-table td:last-child { padding-right: 16px; white-space: nowrap; }
+.pass-price-table td a { text-decoration: underline; text-underline-offset: 4px; }
+.pass-price-table tbody tr:last-child :is(th,td) { border-bottom: 0; }
+.rider-tools .pass-price-scroll-hint { display: none; margin: 0 0 8px; font-size: 12.5px; color: var(--snow-muted); }
+.pass-price-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
+.pass-price-cta p { max-width: 640px; margin: 0; }
+.rider-tools .pass-price-cta-link { border-radius: 8px; background: var(--snow-ink); color: var(--snow-canvas); padding: 12px 20px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.rider-tools .pass-price-cta-link:hover { opacity: .85; }
 @media (max-width: 720px) {
   .rider-tools { padding-block: 24px 48px; }
   .tool-workspace,.tools-directory,.tool-model-fields { grid-template-columns: minmax(0,1fr); gap: 24px; }
   .tool-form,.tool-result { padding: 20px 16px; }
   .tool-key-result > strong { font-size: 36px; }
+  .pass-price-table th[scope="row"] { min-width: 96px; box-shadow: 1px 0 0 var(--snow-border); }
+  .rider-tools .pass-price-scroll-hint { display: block; }
+  .pass-price-cta-link { width: 100%; text-align: center; }
 }
+.tool-share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

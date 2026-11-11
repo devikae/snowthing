@@ -12,6 +12,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -44,6 +47,7 @@ public class ResortReportService {
     private final ResortRepository resortRepository;
     private final MemberRepository memberRepository;
     private final Clock clock;
+    private final AdminActionLogger actionLogger;
 
     @Transactional
     public ResortReportResponse createReport(Long memberId, ResortReportCreateRequest request) {
@@ -155,7 +159,15 @@ public class ResortReportService {
                         .findByIdWithAuthor(reportId)
                         .filter(candidate -> !candidate.isDeleted())
                         .orElseThrow(() -> new CustomException(ErrorCode.RESORT_REPORT_NOT_FOUND));
+        ResortReportStatus previous = report.getStatus();
         report.changeModerationStatus(status);
+        if (previous != status) {
+            actionLogger.record(
+                    AdminActionType.RESORT_REPORT_MODERATION,
+                    AdminTargetType.RESORT_REPORT,
+                    reportId,
+                    previous + " -> " + status);
+        }
     }
 
     private void validateSeason(LocalDate date) {

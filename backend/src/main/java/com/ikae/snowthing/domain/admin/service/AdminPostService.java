@@ -6,7 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.admin.dto.AdminPostResponse;
+import com.ikae.snowthing.domain.admin.log.AdminActionLogger;
+import com.ikae.snowthing.domain.admin.log.AdminActionType;
+import com.ikae.snowthing.domain.admin.log.AdminTargetType;
+import com.ikae.snowthing.domain.image.service.PostImageLifecycleService;
 import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.domain.post.service.PostService;
@@ -30,7 +35,9 @@ public class AdminPostService {
     public enum Filter {
         ALL,
         DELETED,
-        BLINDED
+        BLINDED,
+        HIDDEN,
+        HELD
     }
 
     private static final int MAX_PAGE_SIZE = 50;
@@ -38,17 +45,39 @@ public class AdminPostService {
     private final PostRepository postRepository;
     private final PostService postService;
     private final SearchOutboxWriter searchOutbox;
+    private final PostImageLifecycleService imageLifecycle;
+    private final AdminActionLogger actionLogger;
 
     @Transactional(readOnly = true)
-    public Page<AdminPostResponse> getPosts(Filter filter, int page, int size) {
+    public Page<AdminPostResponse> getPosts(Filter filter, String category, int page, int size) {
         PageRequest pageable =
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE));
-        return postRepository.findForAdmin(filter.name(), pageable).map(AdminPostResponse::from);
+        String categoryCode = category == null || category.isBlank() ? null : category.strip();
+        if (categoryCode != null && categoryCode.length() > 50) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        return postRepository
+                .findForAdmin(filter.name(), categoryCode, pageable)
+                .map(AdminPostResponse::from);
     }
 
     @Transactional
     public void deletePost(String publicId, CustomUserDetails admin) {
-        postService.deletePost(publicId, null, admin);
+        Post post =
+                postRepository
+                        .findIncludingDeletedForUpdate(publicId)
+                        .filter(found -> !found.isDeleted())
+                        .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        if (PostCategoryCodes.hasOwnScreen(post.getCategory().getCode())) {
+            // 시장과 카풀 글은 일반 삭제 흐름이 404로 막는다. 같은 정리(사진 해제, 검색 반영)를 여기서 한다 (IKA-78).
+            // 카풀 전용 삭제는 정상 상태 글만 받아 블라인드한 글을 지울 수 없어 쓰지 않는다.
+            post.softDelete(admin.getMemberId());
+            imageLifecycle.releasePostImages(post);
+            searchOutbox.postChanged(post);
+        } else {
+            postService.deletePost(publicId, null, admin);
+        }
+        actionLogger.record(AdminActionType.POST_DELETE, AdminTargetType.POST, publicId, null);
         log.info(
                 "Post soft-deleted by admin: publicId={}, admin={}", publicId, admin.getPublicId());
     }
@@ -70,6 +99,11 @@ public class AdminPostService {
         }
         post.changeStatus(to);
         searchOutbox.postChanged(post);
+        actionLogger.record(
+                blinded ? AdminActionType.POST_BLIND : AdminActionType.POST_UNBLIND,
+                AdminTargetType.POST,
+                publicId,
+                null);
         log.info("Post blind status updated by admin: publicId={}, blinded={}", publicId, blinded);
     }
 }

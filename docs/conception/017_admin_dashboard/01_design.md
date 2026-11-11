@@ -140,6 +140,11 @@ PR #48이 main보다 222커밋 뒤처진 사이 main에 신고 처리, 회원 �
 ### 6.3 API 변경
 
 - 회원 관리(3.3)는 main의 `GET /api/v1/admin/members`, `POST .../{publicId}/suspend`, `POST .../{publicId}/reinstate`를 쓴다. #48의 상태 변경, 닉네임 변경, 프로필 사진 삭제 API는 뺐다.
+- 운영자 지정과 해제 (IKA-77):
+  - `POST /api/v1/admin/members/{publicId}/grant-admin`: ROLE_ADMIN으로 바꾼다. 응답은 회원 목록 항목과 같은 `AdminMemberResponse`. 이미 관리자면 그대로 200.
+  - `POST /api/v1/admin/members/{publicId}/revoke-admin`: ROLE_USER로 바꾼다. 이미 일반 회원이면 그대로 200.
+  - 거부: 활동 중이 아니거나 AI 회원(`@snowthing.invalid`)이면 409 `MEMBER_015`, 자신을 해제하면 403 `MEMBER_013`, 마지막 활성 관리자를 해제하면 409 `MEMBER_014`, 호출자가 이미 관리자가 아니거나 봇 위임, API 토큰이면 403 `AUTH_002`, 없는 회원은 404 `MEMBER_001`.
+  - 활성 관리자 행을 ID 순서로 잠그고 호출자 권한을 다시 확인한다. 바뀌면 커밋 뒤 대상의 세션을 모두 끊고 `admin.audit` 로그에 GRANT_ADMIN, REVOKE_ADMIN을 남긴다.
 - `GET /api/v1/admin/posts?filter=ALL|DELETED|BLINDED&page=&size=`: 크기는 최대 50. 정렬은 글 ID 역순, DELETED는 삭제 시각 역순 다음 ID 역순.
   - 응답에 회원 내부 ID(`authorMemberId`, `deletedByMemberId`)를 내보내지 않는다. 작성자 삭제 여부는 `isDeletedByAuthor`로 준다.
 - `DELETE /api/v1/admin/posts/{publicId}`: 일반 삭제 흐름(`PostService.deletePost`)을 그대로 탄다. 첨부 사진 정리와 검색 반영이 함께 된다. 지운 회원은 `deleted_by_member_id`에 남는다 (작성자 삭제도 같다).
@@ -155,3 +160,38 @@ PR #48이 main보다 222커밋 뒤처진 사이 main에 신고 처리, 회원 �
 
 - 관리자 레이아웃은 main의 `AdminGate` 탭을 쓰고 대시보드, 게시글, 라이브톡 차단, 배너 탭을 더했다. #48의 사이드바 레이아웃과 회원 화면은 뺐다.
 - 게시글 화면은 main 관리자 화면 스타일(`admin.css`)로 다시 썼다. 대시보드, 라이브톡 차단, 배너 화면은 #48 그대로다.
+
+## 7. 운영 기능 확장 (IKA-78, 2026-11-11)
+
+### 7.1 마이그레이션 050
+
+- `admin_action_log`: 관리자 조치 기록. `actor_member_id`(FK 없음), `action`, `target_type`, `target_id`, `reason`, `created_at`. 글 본문은 넣지 않는다. 인덱스는 조치별, 대상별, 처리자별로 ID를 끝에 붙였다.
+- `member`, `post`, `comment`에 `created_at` 단일 인덱스. 대시보드 30일 일별 집계가 기간 범위만 읽게 한다. `post`의 기존 목록 인덱스는 `is_deleted`, `status`가 앞이라 삭제 글까지 세는 집계에 쓸 수 없다.
+
+### 7.2 조치 기록
+
+- `AdminActionLogger.record`는 조치와 같은 트랜잭션에서만 쓴다(`MANDATORY`). 조치가 롤백되면 기록도 없다.
+- 처리자는 현재 요청의 인증 정보에서 읽는다. 스케줄러처럼 인증 정보가 없으면 비어 있다.
+- 기록하는 조치: 회원 정지와 해제, 운영자 지정과 해제, 글 블라인드와 해제와 삭제, 댓글 블라인드와 해제와 삭제, 시장 글 상태 변경, 설질 제보 상태 변경, 신고 처리, 배너 추가와 수정과 삭제, 라이브톡 IP 차단과 해제, 운영 설정 변경. 상태 변경은 `reason`에 `이전 -> 이후`를 남긴다.
+- 기존 `admin.audit` 로그와 `content_moderation_action`은 그대로 둔다.
+
+### 7.3 API
+
+모두 `/api/v1/admin/**`라 ROLE_ADMIN 세션만 들어온다. 서비스에서도 `AdminAccess.require`로 관리자 세션인지 다시 확인한다(봇 위임, API 토큰 거부). 목록은 `{items, page, size, hasNext}`이고 크기는 최대 50이다. 잘못된 필터나 쪽 번호는 400.
+
+- `GET /dashboard/overview?days=7|30`: `today`, `series`(KST 날짜별 `signups`, `posts`, `comments`, 빈 날은 0), `pendingReports`(대기 신고), `unansweredInquiries`(관리자 댓글이 없는 문의). 글과 댓글은 지금 삭제된 것도 그날 작성 수에 넣는다.
+- `GET /members/{publicId}`: 가린 이메일(앞 두 글자), 상태, 권한, 가입일, 이메일 인증 여부, 비밀번호 유무, 연결된 소셜 제공자, 글과 댓글 수, 최근 글 10개와 댓글 10개(본문 200자), 이 회원 대상 조치 기록 20개. 비밀번호와 토큰 값은 넣지 않는다.
+- `GET /comments?filter=ALL|VISIBLE|HELD|DELETED&query=&author=&page=&size=`: 내용과 작성자 닉네임 부분 일치, 댓글 ID 역순.
+- `PATCH /comments/{commentId}/blind` `{blinded}`: 신고 임시조치와 같은 `moderation_held`를 쓴다. 이미 그 상태면 204. 신고 임시조치가 걸린 댓글의 해제는 409 `CONTENT_REPORT_004`(신고 처리 화면에서 해제). 삭제된 댓글은 404.
+- `DELETE /comments/{commentId}`: 보이는 댓글과 가린 댓글 모두 지운다. 걸린 신고 임시조치도 함께 해제한다.
+- `GET /inquiries?status=ALL|ANSWERED|UNANSWERED`: 문의 글 ID 역순. 답변은 기존처럼 글 상세에서 관리자 댓글로 단다.
+- `GET /resort-reports?status=ALL|NORMAL|HIDDEN|BLOCKED|DELETED`: 작성 시각 역순, ID 보조 정렬. 상태 변경은 기존 `PATCH /resort-reports/{id}/moderation-status`.
+- `GET /action-logs?action=&targetType=&targetId=&actor=`: 조치 기록 ID 역순. `actor`는 처리자 공개 ID.
+- `GET /posts`에 `category`(게시판 코드)와 `filter=HIDDEN|HELD`를 더했다. 시장과 카풀 화면이 쓴다. 시장 상태 변경은 기존 `PATCH /market-listings/{publicId}/moderation-status`.
+- `DELETE /posts/{publicId}`: 시장과 카풀 글은 일반 삭제 흐름이 404로 막아서 관리자 삭제가 같은 정리(사진 해제, 검색 반영, 지운 회원 기록)를 직접 한다.
+
+### 7.4 화면
+
+- 탭: 대시보드, 신고 처리, 1:1 문의, 회원, 게시글, 댓글, 중고장터, 카풀, 설질 제보, 답변 초안, API 토큰, 검색 인덱스, 라이브톡 차단, 배너, 조치 기록. 좁은 화면에서는 가로로 넘긴다.
+- 대시보드는 `admin.css`로 다시 썼다. 일별 그래프는 차트 라이브러리 없이 SVG 막대로 그린다.
+- 회원 목록의 닉네임을 누르면 회원 상세로 간다. 상세에서도 정지와 운영자 지정, 해제를 한다.
