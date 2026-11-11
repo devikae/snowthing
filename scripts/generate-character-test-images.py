@@ -311,7 +311,7 @@ def grinder():
 
 
 def hot_pack():
-    """인간 핫팩: 귀달이 털모자, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
+    """인간 핫팩: 겨자색 어부 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
     c = Canvas()
     jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
     mitten = (232, 84, 76, 255)
@@ -322,21 +322,18 @@ def hot_pack():
     c.rect(13, 31, 14, 1, dark)
     c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    # 귀달이 털모자: 갈색 모자 몸통, 크림색 털 안감이 이마와 양쪽 귀덮개에 보인다
-    hat, hat_dark, hat_light = (150, 96, 64, 255), (118, 72, 46, 255), (182, 126, 88, 255)
-    fur, fur_dark = (252, 240, 222, 255), (226, 208, 184, 255)
-    c.blob(8, 2, 24, 10, hat, radius=5)
-    c.rect(8, 7, 24, 3, hat)
-    c.rect(12, 4, 5, 1, hat_light)
-    c.rect(8, 9, 24, 3, fur)
-    for x in range(9, 31, 3):
-        c.dot(x, 10, fur_dark)
-    c.blob(5, 11, 6, 9, hat, radius=2)
-    c.blob(29, 11, 6, 9, hat, radius=2)
-    c.blob(6, 12, 4, 7, fur, radius=1)
-    c.blob(30, 12, 4, 7, fur, radius=1)
-    c.rect(7, 19, 1, 3, hat_dark)
-    c.rect(32, 19, 1, 3, hat_dark)
+    # 머리 위에 짧게 얹은 겨자색 어부 비니. 이마와 옆머리가 보인다
+    brown, brown_dark = (122, 78, 52, 255), (92, 56, 38, 255)
+    c.blob(8, 5, 24, 10, brown, radius=4)
+    c.rect(8, 12, 3, 4, brown)
+    c.rect(29, 12, 3, 4, brown)
+    c.rect(11, 12, 18, 1, brown_dark)
+    hat, hat_dark, hat_light = (236, 178, 62, 255), (206, 146, 40, 255), (250, 210, 120, 255)
+    c.blob(10, 2, 20, 6, hat, radius=3)
+    c.rect(9, 6, 22, 3, hat_dark)
+    for x in range(10, 31, 2):
+        c.dot(x, 7, hat)
+    c.rect(13, 3, 4, 1, hat_light)
     # 발그레한 볼
     c.rect(11, 18, 4, 2, (250, 132, 120, 255))
     c.rect(25, 18, 4, 2, (250, 132, 120, 255))
@@ -474,11 +471,26 @@ def captain_board(x, y):
 
 
 def insider_board(x, y):
-    """흰 판을 따라 흐르는 분홍 물결과 금색 선."""
-    wave = 3 + round(2 * math.sin(y / 3.2))
-    if abs(x - wave) <= 1:
-        return (236, 88, 150, 255)
-    return (252, 196, 72, 255) if x == 6 else (250, 250, 252, 255)
+    """파우더 보드: 뾰족한 코, 꼬리로 갈수록 좁아지다 갈라지는 제비꼬리. 분홍 옷을 낮춘 톤으로 위는 흐린 분홍, 아래는 짙은 자두색."""
+    last = BOARD_LENGTH - 1
+    # 모양: 코 세 줄은 가운데만, 꼬리 쪽은 좁아지고 끝 세 줄은 가운데가 갈라진다. None은 칠하지 않는 칸이다.
+    if y == 0 and x != 3:
+        return None
+    if y == 1 and not 2 <= x <= 4:
+        return None
+    if y == 2 and x in (0, 6):
+        return None
+    # 허리는 좁히고, 꼬리 다섯 줄은 다시 넓어지며 가운데가 갈라진다
+    if last - 9 <= y <= last - 5 and x in (0, 6):
+        return None
+    if y >= last - 4 and x == 3:
+        return None
+    # 색: 위는 흐린 분홍 나뭇결, 가운데에서 자두색으로 짙어진다
+    if y < 13:
+        return (206, 150, 174, 255) if x % 2 == 0 else (182, 120, 150, 255)
+    if y < 22:
+        return (140, 86, 118, 255) if (x + y) % 3 else (166, 108, 140, 255)
+    return (70, 52, 82, 255) if x % 3 else (92, 70, 106, 255)
 
 
 def hype_board(x, y):
@@ -554,7 +566,9 @@ def board_gear(pattern):
         end = min(y, BOARD_LENGTH - 1 - y)
         inset = (2, 1)[end] if end < 2 else 0
         for x in range(inset, BOARD_WIDTH - inset):
-            c.dot(left + x, top + y, pattern(x, y))
+            color = pattern(x, y)
+            if color is not None:
+                c.dot(left + x, top + y, color)
     c.outline()
     return c
 
