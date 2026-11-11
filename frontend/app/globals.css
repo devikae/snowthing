@@ -1470,11 +1470,10 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 }
 
 /* 게시글의 이미지 첨부 표시 */
-.post-type-icon { display: block; flex: none; width: 16px; height: 16px; color: #b6c2cf; }
-.post-type-icon.has-image { color: #0284c7; }
+/* 색은 말머리(.m-cat)와 같은 값을 쓴다: 사진 없음은 자유 말머리 회색, 사진 있음은 질문 말머리 강조색 */
+.post-type-icon { display: block; flex: none; width: 16px; height: 16px; color: var(--snow-muted); opacity: .75; }
+.post-type-icon.has-image { color: var(--community-accent); opacity: 1; }
 .compact-post, .board-post-row { grid-template-columns: minmax(0, 1fr); }
-html[data-theme="dark"] .post-type-icon { color: #4b5563; }
-html[data-theme="dark"] .post-type-icon.has-image { color: #38bdf8; }
 html[data-theme="dark"] .post-summary strong,
 html[data-theme="dark"] .board-post-title strong,
 html[data-theme="dark"] .mini-heading h2,

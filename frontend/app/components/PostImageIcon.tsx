@@ -1,4 +1,5 @@
-// 목록 제목 앞 아이콘. 사진이 있는 글은 색 있는 사진 아이콘, 없는 글은 회색 글 아이콘으로 구분한다.
+// 목록 제목 앞 아이콘. 두 아이콘은 같은 틀(18x15 둥근 사각형)을 써서 크기가 같아 보인다.
+// 사진이 있는 글은 강조색 사진 아이콘, 없는 글은 말머리와 같은 회색 글 아이콘이다.
 export function PostImageIcon({ hasImage }: { hasImage: boolean }) {
   if (hasImage) {
     return (
@@ -11,8 +12,8 @@ export function PostImageIcon({ hasImage }: { hasImage: boolean }) {
   }
   return (
     <svg className="post-type-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="3.5" width="16" height="17" rx="3" />
-      <path d="M8 9h8M8 12.5h8M8 16h5" />
+      <rect x="3" y="4.5" width="18" height="15" rx="3" />
+      <path d="M7.5 9.5h9M7.5 14.5h6" />
     </svg>
   );
 }
