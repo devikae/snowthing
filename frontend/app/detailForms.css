@@ -246,29 +246,43 @@ html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :i
 
 /* 글 상세 반응: 추천, 비추천은 가운데에 크게, 스크랩, 공유, 신고는 오른쪽 아래 작은 줄 */
 html .content-detail-page.post-detail-page .post-detail-reactions { display: grid; justify-content: stretch; justify-items: center; gap: 16px; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-vote { display: flex; justify-content: center; gap: 12px; margin: 0; }
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote { display: flex; justify-content: center; gap: 10px; margin: 0; }
+/* 추천, 비추천: 아이콘, 이름, 숫자를 한 줄에 둔 알약 모양 버튼 */
 html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button {
-  display: grid; justify-items: center; gap: 2px; min-width: 88px; min-height: 76px; border: 1px solid var(--snow-border-strong); border-radius: 16px; background: var(--snow-canvas); padding: 10px 14px; color: var(--snow-ink-soft); font: 600 13px/18px var(--font-hanken);
+  display: inline-flex; align-items: center; gap: 8px; min-width: 116px; height: 46px; justify-content: center; border: 1px solid var(--snow-border); border-radius: 999px; background: var(--snow-surface-low); padding: 0 18px 0 16px; color: var(--snow-ink-soft); font: 600 14px/1 var(--font-hanken); box-shadow: 0 1px 2px rgba(15, 23, 42, .04); transition: background-color var(--motion-fast, .16s) ease, border-color var(--motion-fast, .16s) ease, transform var(--motion-fast, .16s) ease;
 }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button .material-symbols-outlined { font-size: 22px; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button strong { color: var(--snow-ink); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button:hover { border-color: var(--snow-ink-soft); }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active { border-color: #0369a1; background: #f0f9ff; color: #0369a1; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active strong { color: #0369a1; }
-html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active { border-color: #38bdf8; background: #102b3d; color: #7dd3fc; }
-html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active strong { color: #7dd3fc; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; justify-self: stretch; gap: 2px; margin: 0; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button {
-  display: inline-flex; align-items: center; gap: 4px; min-height: 36px; border: 0; border-radius: 8px; background: transparent; padding: 6px 10px; color: var(--snow-muted); font: 500 13px/18px var(--font-hanken); box-shadow: none;
-}
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button .material-symbols-outlined { font-size: 17px; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button svg { width: 16px; height: 16px; border-radius: 50%; background: #fee500; padding: 2px; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button:hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button.active { background: transparent; color: #0369a1; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions .post-report-button { margin-left: 6px; border-left: 1px solid var(--snow-border); border-radius: 0 8px 8px 0; color: var(--snow-faint); }
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button .material-symbols-outlined { font-size: 20px; }
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button strong { min-width: 1ch; border-left: 1px solid var(--snow-border-strong); padding-left: 10px; color: var(--snow-ink); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button:hover { border-color: var(--snow-border-strong); background: var(--snow-canvas); }
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button:active { transform: scale(.97); }
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active { border-color: #0369a1; background: #0369a1; color: #fff; }
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active strong { border-color: rgba(255, 255, 255, .45); color: #fff; }
+/* 비추천을 누른 상태는 강조색 대신 차분한 회색 */
+html .content-detail-page.post-detail-page .post-detail-reactions .post-vote button:last-child.active { border-color: #475569; background: #475569; }
+html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active { border-color: #38bdf8; background: #0c4a6e; color: #e0f2fe; }
+html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active strong { color: #e0f2fe; }
+html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button:last-child.active { border-color: #64748b; background: #334155; color: #e2e8f0; }
 /* 카카오 공유는 브랜드 노란색을 지키되 작은 줄에 맞게 크기만 줄인다 */
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button[class*="kakaoShare"] { min-height: 30px; margin-inline: 4px; border-radius: 999px; padding: 0 10px; font-size: 12.5px; font-weight: 600; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button[class*="kakaoShare"] svg { width: 14px; height: 14px; background: transparent; padding: 0; }
 @media (max-width: 640px) {
-  html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions { justify-content: center; }
 }
+
+
+/* 글 상세 도구: 작성자 줄 오른쪽의 스크랩, 공유, 카톡 공유 아이콘과 신고 */
+html .content-detail-page.post-detail-page .post-detail-author > .post-detail-tools { display: flex; flex-direction: row; align-items: center; gap: 2px; margin-left: auto; }
+html .content-detail-page.post-detail-page .post-detail-tools > button:not([class*="kakaoShare"]) {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; min-height: 34px; border: 0; border-radius: 999px; background: transparent; padding: 0; color: var(--snow-muted); cursor: pointer;
+}
+html .content-detail-page.post-detail-page .post-detail-tools > button .material-symbols-outlined { font-size: 19px; }
+html .content-detail-page.post-detail-page .post-detail-tools > button:not([class*="kakaoShare"]):hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
+html .content-detail-page.post-detail-page .post-detail-tools > button.active { color: #0369a1; }
+html .content-detail-page.post-detail-page .post-detail-tools > button.active .material-symbols-outlined { font-variation-settings: "FILL" 1; }
+html .content-detail-page.post-detail-page .post-detail-tools button[class*="kakaoShare"] { margin: 0 4px; }
+html .content-detail-page.post-detail-page .post-detail-tools .post-report-button { width: auto; border-radius: 8px; padding: 0 8px; color: var(--snow-faint); font-size: 12px; }
+html .content-detail-page.post-detail-page .post-detail-tools + .post-detail-owner-actions { margin-left: 8px; }
+/* 본문 아래는 추천, 비추천만 남아 위아래 여백을 줄인다 */
+html .content-detail-page.post-detail-page .post-detail-reactions { padding-bottom: 4px; }
+@media (max-width: 640px) {
+  html .content-detail-page.post-detail-page .post-detail-author { flex-wrap: wrap; }
+}
+/* 글 카드 아래 32px 여백과 묶음 간격 18px이 겹쳐 댓글 위가 멀었다. 카드 여백을 없애 간격만 남긴다. */
+html .content-detail-page.post-detail-page .post-detail-card { margin-bottom: 0; }

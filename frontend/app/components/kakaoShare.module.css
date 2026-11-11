@@ -21,3 +21,7 @@
 .button:focus-visible { outline: 2px solid #191919; outline-offset: 2px; }
 .symbol { width: 16px; height: 16px; flex: 0 0 auto; fill: #000; }
 .notice { color: var(--snow-muted); font-size: 12px; }
+
+/* 아이콘만 보이는 작은 원형 버튼(글 상세 도구 줄) */
+.iconOnly { width: 32px; height: 32px; min-height: 32px; border-radius: 999px; padding: 0 !important; }
+.iconOnly .symbol { width: 15px; height: 15px; }

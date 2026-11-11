@@ -14,7 +14,7 @@ export function validateSeasonPass(input: SeasonPassInput): string | null {
   for (const visits of [input.visited, input.planned]) {
     if (!Number.isSafeInteger(visits) || visits < 0 || visits > 730) return "방문 횟수는 0~730회로 입력해 주세요.";
   }
-  if (input.visited > input.planned) return "예상 총 방문 횟수는 이미 방문한 횟수 이상이어야 합니다.";
+  if (input.visited > input.planned) return "예상 총 방문 횟수는 방문한 횟수 이상이어야 해요.";
   return null;
 }
 
