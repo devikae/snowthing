@@ -398,7 +398,6 @@ export default function HomePageClient() {
         <section className="snow-report-widget home-tier-2">
           <div className="section-head">
             <div className="section-head-title">
-              <small className="section-eyebrow">라이더 현장 제보</small>
               <div className="section-title-inline">
                 <h2>오늘의 설질</h2>
                 <time className="snow-date-badge">{koreanToday}</time>
@@ -489,7 +488,6 @@ export default function HomePageClient() {
           <section className="carpool-widget tier-3-left" id="carpool">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">리조트 같이 가기</small>
                 <h2>카풀과 동행</h2>
               </div>
               <div className="section-actions">
@@ -554,7 +552,6 @@ export default function HomePageClient() {
           <section className="market-widget tier-3-right" id="market">
             <div className="section-head">
               <div className="section-head-title">
-                <small className="section-eyebrow">중고 장비 거래</small>
                 <h2>중고장터</h2>
               </div>
               <div className="section-actions">
