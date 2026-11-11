@@ -266,8 +266,9 @@ def mood_maker():
     c.rect(8, 11, 24, 3, fur_dark)
     c.rect(12, 6, 5, 1, fur_light)
     # 곰 귀
+    # 곰 귀: 맨 윗줄은 테두리 자리로 비워 두려고 한 칸 아래에서 시작한다
     for x in (7, 27):
-        c.blob(x, 0, 6, 6, fur, radius=2)
+        c.blob(x, 1, 6, 5, fur, radius=2)
         c.blob(x + 2, 2, 2, 2, (250, 180, 170, 255), radius=0)
     c.blob(17, 20, 6, 3, MOUTH)
     right_arm(c, jacket, mitten, raised=True)
