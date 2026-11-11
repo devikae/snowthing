@@ -1,19 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LEVELS, MAP_SNOW, SPORT_LABEL, characterImage, characterName, habitNote, type CharacterLabel, type JobCode, type LevelCode } from "./data";
+import { LEVELS, MAP_BAND_DOT, MAP_BAND_FILL, MAP_SNOW, SPORT_LABEL, faceImage, characterName, habitNote, type CharacterLabel, type JobCode } from "./data";
 import { HEAD_CROP, HEAD_WIDTH, ME_HEAD_WIDTH, ME_RADIUS, layoutMap, treePaths, type MapInputLevel } from "./mapLayout";
-
-// 화면 전용 색. 안쪽(잘 맞는 사이)일수록 따뜻한 색이다. 저장 이미지는 mapImage.ts가 따로 그린다.
-const BAND_FILL: Record<LevelCode, string> = { BEST: "#ffe6dc", GOOD: "#fff2e9", NEUTRAL: "#f8fbfd", BICKER: "#edf5fb", APART: "#e3eff8" };
-const BAND_DOT: Record<LevelCode, string> = { BEST: "#ef7f57", GOOD: "#f4ad83", NEUTRAL: "#b7cad8", BICKER: "#86abc6", APART: "#5c7a92" };
 
 // 캐릭터 그림에서 얼굴만 잘라 그린다.
 function Head({ x, y, width, job }: { x: number; y: number; width: number; job: JobCode }) {
   const height = (width * HEAD_CROP.height) / HEAD_CROP.width;
   return (
     <svg x={x - width / 2} y={y - height / 2} width={width} height={height} viewBox={`${HEAD_CROP.x * 40} ${HEAD_CROP.y * 40} ${HEAD_CROP.width * 40} ${HEAD_CROP.height * 40}`}>
-      <image href={characterImage(job)} width={40} height={40} />
+      <image href={faceImage(job)} width={40} height={40} />
     </svg>
   );
 }
@@ -35,7 +31,7 @@ export function RelationshipMap({ levels, me, hideNames }: { levels: MapInputLev
             <path d={trees.trunk} fill={MAP_SNOW.trunk} />
             <path d={trees.pine} fill={MAP_SNOW.pine} />
             <path d={trees.cap} fill="#fff" />
-            {[...layout.bands].reverse().map((band) => <circle key={band.code} cx={center} cy={center} r={band.outer} fill={BAND_FILL[band.code]} stroke="#fff" strokeWidth={2} />)}
+            {[...layout.bands].reverse().map((band) => <circle key={band.code} cx={center} cy={center} r={band.outer} fill={MAP_BAND_FILL[band.code]} stroke="#fff" strokeWidth={2} />)}
             {layout.labels.map((label) => (
               <g key={label.code} className="ct-map-ring-label">
                 <rect x={label.x - label.width / 2 - 5} y={label.y - 7} width={label.width + 10} height={14} rx={7} />
@@ -76,7 +72,7 @@ export function RelationshipMap({ levels, me, hideNames }: { levels: MapInputLev
         <ul className="ct-map-legend" aria-label="단계별 인원수">
           {layout.bands.map((band) => (
             <li key={band.code}>
-              <i style={{ background: BAND_DOT[band.code] }} aria-hidden="true" />
+              <i style={{ background: MAP_BAND_DOT[band.code] }} aria-hidden="true" />
               <span>{band.label}</span>
               <strong>{band.count}명</strong>
             </li>

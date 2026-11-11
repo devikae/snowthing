@@ -130,6 +130,11 @@ export const LEVELS: readonly { code: LevelCode; label: string; note: string }[]
 // 관계 지도는 테마와 상관없이 설원 바탕이다. 색은 나를 표시하는 강조색 하나만 쓴다.
 export const MAP_SNOW = { sky: "#e0f0fa", pine: "#7fb5ac", trunk: "#9c8672", ink: "#28384a", muted: "#5c7a92", accent: "#e2603f", ring: "#a9cbe0" };
 // 원은 흰색을 겹쳐 그린다. 안쪽으로 갈수록 희고 밝아진다.
+// 관계 지도 단계 색. 화면(RelationshipMap)과 저장 그림(mapImage)이 같은 값을 쓴다. 안쪽(잘 맞는 사이)일수록 따뜻하다.
+export const MAP_BAND_FILL: Record<LevelCode, string> = { BEST: "#ffe6dc", GOOD: "#fff2e9", NEUTRAL: "#f8fbfd", BICKER: "#edf5fb", APART: "#e3eff8" };
+export const MAP_BAND_DOT: Record<LevelCode, string> = { BEST: "#ef7f57", GOOD: "#f4ad83", NEUTRAL: "#b7cad8", BICKER: "#86abc6", APART: "#5c7a92" };
+// 가운데 나: 찰떡 원과 같은 계열의 옅은 테두리
+export const MAP_ME_RING = "#f3b59f";
 export const RING_WHITE: Record<LevelCode, number> = { BEST: 0.75, GOOD: 0.5, NEUTRAL: 0.4, BICKER: 0.35, APART: 0.4 };
 
 export const SPORT_LABEL: Record<Sport, string> = { SKI: "스키", BOARD: "보드" };
@@ -141,6 +146,11 @@ export function characterName(label: CharacterLabel) {
 
 export function characterImage(job: JobCode) {
   return `/character-test/${job}.png`;
+}
+
+// 관계 지도용 얼굴 그림. 팔과 소품(메가폰, 음표, 엄지 척 등)을 빼고 그린 같은 크기의 그림이다.
+export function faceImage(job: JobCode) {
+  return `/character-test/face-${job}.png`;
 }
 
 // 스키는 하나를 같이 쓰고, 보드는 직업 의상에 맞춰 8가지다.

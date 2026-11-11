@@ -119,7 +119,7 @@ public class CharacterGroupService {
                 toLevels(me, everyone));
     }
 
-    /** 마지막 사람이 나가면 모임도 지운다. 아무도 볼 수 없는 행을 7일 동안 남길 이유가 없다. */
+    /** 마지막 사람이 나가면 모임도 지운다. 아무도 볼 수 없는 행을 30일 동안 남길 이유가 없다. */
     @Transactional
     public void leave(String accessToken) {
         CharacterParticipant me = requireParticipant(accessToken);

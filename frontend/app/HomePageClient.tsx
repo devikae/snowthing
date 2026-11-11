@@ -356,8 +356,8 @@ export default function HomePageClient() {
                               {formatShortCategory(post.categoryCode, post.categoryName)}
                             </span>
                           )}
+                          <PostImageIcon hasImage={post.hasImage} />
                           <strong className="m-title">{post.title}</strong>
-                          {post.hasImage && <PostImageIcon />}
                         </div>
                         <div className="m-row-right">
                           <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} publicId={post.writerPublicId} />
