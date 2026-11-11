@@ -53,6 +53,10 @@ class Canvas:
             inset = max(0, radius - min(row, h - 1 - row))
             self.rect(x + inset, y + row, w - inset * 2, 1, color)
 
+    def snapshot_face(self):
+        """관계 지도용 얼굴 그림. 팔과 소품을 그리기 직전 상태를 따로 남긴다."""
+        self.face = self.image.copy()
+
     def outline(self):
         """불투명한 칸 둘레의 빈 칸을 어두운 색으로 채운다."""
         source = self.image.copy().load()
@@ -132,8 +136,9 @@ def head(c, eyes="round"):
 
 def hair(c, color, shade, light):
     c.blob(8, 4, 24, 10, color, radius=3)
-    c.rect(8, 12, 3, 4, color)
-    c.rect(29, 12, 3, 4, color)
+    # 둥근 머리 아랫단이 옆머리와 만나는 칸을 메워 눈 옆이 파여 보이지 않게 한다
+    c.rect(8, 10, 3, 6, color)
+    c.rect(29, 10, 3, 6, color)
     c.rect(11, 12, 18, 1, shade)
     c.rect(12, 6, 5, 1, light)
     c.rect(11, 7, 2, 1, light)
@@ -163,6 +168,7 @@ def captain():
     # 왼팔 완장
     c.rect(9, 26, 5, 3, (255, 214, 64, 255))
     c.rect(9, 27, 5, 1, (58, 62, 82, 255))
+    c.snapshot_face()
     right_arm(c, jacket, mitten)
     c.outline()
     return c
@@ -195,6 +201,7 @@ def resort_insider():
     c.rect(13, 14, 2, 1, (130, 210, 245, 255))
     c.rect(23, 14, 2, 1, (130, 210, 245, 255))
     c.rect(18, 20, 4, 1, MOUTH)
+    c.snapshot_face()
     right_arm(c, jacket, mitten, raised=True)
     c.blob(30, 22, 7, 8, (255, 250, 240, 255))
     c.rect(31, 22, 5, 2, (150, 96, 60, 255))
@@ -209,22 +216,34 @@ def hype():
     jacket, dark, light = (176, 232, 64, 255), (130, 186, 40, 255), (216, 248, 130, 255)
     mitten = (58, 62, 82, 255)
     body(c, jacket, dark, light, (58, 62, 82, 255), (40, 44, 60, 255), mitten)
-    # 소매만 검은색으로 끊어 보드복 느낌을 낸다.
     c.rect(10, 26, 3, 3, (58, 62, 82, 255))
     head(c, "smile")
-    # 검은 니트 비니: 둥근 몸통의 격자 짜임, 머리 폭에 맞는 두꺼운 골지 밑단, 작은 갈색 라벨
     beanie, knit, rib = (44, 46, 58, 255), (66, 68, 82, 255), (70, 72, 86, 255)
     c.blob(9, 1, 22, 11, beanie, radius=5)
-    for y in range(2, 10):
+    # 몸통과 밑단 사이가 파이지 않게 메운다
+    c.rect(9, 6, 22, 3, beanie)
+    for y in range(2, 9):
         for x in range(10, 30):
             if (x + y) % 4 == 0 and c.pixels[x, y][3]:
                 c.dot(x, y, knit)
-    c.blob(8, 8, 24, 6, beanie, radius=1)
+    # 밑단은 모서리를 깎지 않은 꽉 찬 띠. 골지 줄은 위아래 한 칸씩 남겨 테두리가 고르게 보이게 한다.
+    c.rect(8, 8, 24, 6, beanie)
     for x in range(9, 31, 2):
         c.rect(x, 9, 1, 4, rib)
     c.rect(25, 9, 3, 3, (182, 122, 72, 255))
+    # 비니 위에 걸친 은색 테 스포츠 선글라스: 둥근 렌즈 두 개, 가운데 다리, 양옆으로 감기는 테
+    silver, silver_dark = (214, 220, 230, 255), (156, 164, 178, 255)
+    lens, lens_light, lens_shine = (72, 84, 108, 255), (104, 118, 146, 255), (220, 230, 244, 255)
+    c.rect(9, 5, 22, 1, silver_dark)
+    for x in (11, 21):
+        c.blob(x, 3, 8, 5, silver, radius=2)
+        c.blob(x + 1, 4, 6, 3, lens, radius=1)
+        c.rect(x + 1, 6, 6, 1, lens_light)
+        c.rect(x + 2, 4, 2, 1, lens_shine)
+    c.rect(19, 5, 2, 1, silver)
     c.blob(17, 19, 6, 4, MOUTH)
     c.rect(18, 19, 4, 1, WHITE)
+    c.snapshot_face()
     right_arm(c, (58, 62, 82, 255), mitten, raised=True)
     c.rect(29, 17, 2, 4, (240, 240, 246, 255))
     c.rect(31, 16, 2, 6, (240, 240, 246, 255))
@@ -253,11 +272,12 @@ def mood_maker():
     c.blob(8, 4, 24, 10, fur, radius=3)
     c.rect(8, 11, 24, 3, fur_dark)
     c.rect(12, 6, 5, 1, fur_light)
-    # 곰 귀
+    # 곰 귀: 맨 윗줄은 테두리 자리로 비워 두려고 한 칸 아래에서 시작한다
     for x in (7, 27):
-        c.blob(x, 0, 6, 6, fur, radius=2)
+        c.blob(x, 1, 6, 5, fur, radius=2)
         c.blob(x + 2, 2, 2, 2, (250, 180, 170, 255), radius=0)
     c.blob(17, 20, 6, 3, MOUTH)
+    c.snapshot_face()
     right_arm(c, jacket, mitten, raised=True)
     note = (60, 196, 176, 255)
     c.rect(33, 1, 6, 2, note)
@@ -288,38 +308,61 @@ def grinder():
     c.blob(21, 7, 8, 4, (252, 192, 84, 255))
     c.rect(12, 8, 2, 1, WHITE)
     c.rect(22, 8, 2, 1, WHITE)
+    # 땀방울: 헬멧 양옆에 같은 높이로 마주 보게 둔다(가운데 기준 대칭)
     c.rect(33, 7, 2, 3, (136, 206, 248, 255))
     c.dot(33, 6, (136, 206, 248, 255))
-    c.rect(5, 12, 2, 3, (136, 206, 248, 255))
-    c.dot(5, 11, (136, 206, 248, 255))
+    c.rect(5, 7, 2, 3, (136, 206, 248, 255))
+    c.dot(6, 6, (136, 206, 248, 255))
+    c.snapshot_face()
     right_arm(c, jacket, mitten)
     c.outline()
     return c
 
 
 def hot_pack():
-    """인간 핫팩: 빵빵한 솜 패딩, 방울 모자, 큰 목도리."""
+    """인간 핫팩: 초록 방울 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
     c = Canvas()
-    jacket, dark, light = (252, 186, 96, 255), (232, 152, 64, 255), (255, 216, 150, 255)
-    knit, knit_dark = (228, 88, 82, 255), (192, 62, 62, 255)
-    body(c, jacket, dark, light, (156, 104, 84, 255), (124, 80, 62, 255), knit)
-    # 몸통을 넓히고 누빔 선을 넣어 빵빵하게 한다.
-    c.blob(11, 25, 18, 9, jacket, radius=2)
-    c.rect(11, 28, 18, 1, dark)
-    c.rect(11, 31, 18, 1, dark)
-    c.rect(13, 26, 3, 2, light)
+    jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
+    mitten = (232, 84, 76, 255)
+    body(c, jacket, dark, light, (96, 84, 110, 255), (74, 64, 88, 255), mitten)
+    # 빵빵한 패딩: 누빔 줄 두 개와 밝은 면
+    c.blob(12, 25, 16, 8, jacket, radius=2)
+    c.rect(12, 28, 16, 1, dark)
+    c.rect(13, 31, 14, 1, dark)
+    c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    c.blob(8, 4, 24, 10, knit, radius=3)
-    c.rect(8, 11, 24, 3, knit_dark)
-    for x in range(9, 32, 3):
-        c.rect(x, 11, 1, 3, WHITE)
-    c.blob(16, 0, 8, 5, WHITE, radius=2)
-    c.rect(18, 1, 2, 1, (226, 232, 240, 255))
-    c.blob(11, 23, 18, 4, knit)
-    c.rect(12, 26, 16, 1, knit_dark)
-    c.rect(22, 26, 5, 6, knit)
-    c.rect(22, 30, 5, 2, knit_dark)
-    right_arm(c, jacket, knit)
+    # 목도리와 같은 초록 니트 비니. 방울 없이 머리보다 한 칸씩 넓게 둥글린 몸통과 두꺼운 접단.
+    hat, hat_dark, hat_light = (62, 160, 146, 255), (44, 128, 116, 255), (110, 196, 182, 255)
+    c.blob(8, 2, 24, 11, hat, radius=4)
+    c.rect(12, 3, 5, 1, hat_light)
+    c.rect(10, 4, 2, 1, hat_light)
+    for x in range(11, 30, 3):
+        c.rect(x, 4, 1, 5, hat_dark)
+    c.rect(7, 9, 26, 4, hat_dark)
+    for x in range(8, 32, 2):
+        c.rect(x, 10, 1, 2, hat)
+    # 발그레한 볼
+    c.rect(11, 18, 4, 2, (250, 132, 120, 255))
+    c.rect(25, 18, 4, 2, (250, 132, 120, 255))
+    # 초록과 민트 줄무늬 목도리, 왼쪽으로 늘어진 끝
+    scarf, scarf_light = (62, 160, 146, 255), (200, 240, 232, 255)
+    c.blob(12, 23, 16, 3, scarf, radius=1)
+    for x in range(13, 28, 3):
+        c.rect(x, 23, 1, 3, scarf_light)
+    c.rect(13, 26, 3, 5, scarf)
+    c.rect(13, 27, 3, 1, scarf_light)
+    c.rect(13, 29, 3, 1, scarf_light)
+    c.snapshot_face()
+    # 왼팔은 내리고 오른팔은 얼굴에서 떨어지게 옆으로 뻗어 엄지를 세운다
+    c.rect(27, 25, 3, 3, jacket)
+    c.rect(29, 23, 3, 3, jacket)
+    # 주먹은 가로로 넓게, 엄지는 주먹 왼쪽 끝에서 위로. 손가락 마디 선을 넣어 주먹으로 보이게 한다.
+    mitten_dark = (192, 58, 56, 255)
+    c.rect(31, 22, 3, 3, jacket)
+    c.blob(33, 19, 6, 5, mitten, radius=1)
+    c.rect(34, 17, 2, 2, mitten)
+    for y in (20, 22):
+        c.rect(36, y, 3, 1, mitten_dark)
     c.outline()
     return c
 
@@ -330,7 +373,6 @@ def gear_geek():
     jacket, dark, light = (72, 100, 156, 255), (52, 74, 124, 255), (112, 142, 198, 255)
     mitten = (246, 150, 60, 255)
     body(c, jacket, dark, light, (56, 60, 78, 255), (40, 44, 60, 255), mitten)
-    # 주머니 달린 조끼
     vest, vest_dark = (96, 110, 92, 255), (70, 84, 68, 255)
     c.rect(14, 26, 12, 6, vest)
     c.rect(19, 26, 2, 6, vest_dark)
@@ -338,16 +380,15 @@ def gear_geek():
     c.rect(22, 28, 3, 3, vest_dark)
     head(c, "round")
     hair(c, (72, 114, 94, 255), (54, 88, 72, 255), (108, 152, 130, 255))
-    # 이마 위로 올려 쓴 고글: 머리를 두르는 끈, 굵은 틀, 넓은 렌즈, 코 받침 홈
+    # 고글 뒤 정수리를 둥글게 채워 고글 양옆이 파여 보이지 않게 한다
+    c.blob(8, 3, 24, 8, (72, 114, 94, 255), radius=3)
     frame = (42, 46, 64, 255)
     c.rect(8, 6, 24, 2, (214, 92, 60, 255))
     c.blob(11, 2, 18, 9, frame, radius=2)
+    # 렌즈는 한 색으로 채우고 왼쪽 위에 빛 반사만 둔다
     c.blob(12, 3, 16, 7, (252, 150, 60, 255), radius=1)
-    c.rect(12, 7, 16, 2, (226, 104, 44, 255))
-    c.rect(14, 4, 4, 1, WHITE)
-    c.rect(14, 5, 2, 1, WHITE)
-    c.rect(19, 9, 2, 2, frame)
-    c.rect(18, 10, 4, 1, (72, 114, 94, 255))
+    c.rect(14, 4, 3, 1, WHITE)
+    c.dot(14, 5, WHITE)
     glass = (40, 44, 62, 255)
     for x in (11, 22):
         c.blob(x, 12, 8, 8, glass)
@@ -355,17 +396,15 @@ def gear_geek():
         c.rect(x + 2, 15, 3, 3, EYE)
         c.dot(x + 2, 15, WHITE)
     c.rect(19, 15, 3, 1, glass)
-    # 얼굴에서 떨어지도록 오른쪽 위로 뻗은 팔
+    c.snapshot_face()
     c.rect(27, 25, 3, 3, jacket)
     c.rect(29, 23, 3, 3, jacket)
     c.rect(31, 21, 3, 3, jacket)
     c.blob(33, 18, 4, 4, mitten)
-    # 드라이버: 빨간 손잡이와 가는 금속 날
     metal, handle, handle_dark = (206, 212, 222, 255), (232, 70, 88, 255), (186, 46, 66, 255)
     c.blob(33, 12, 5, 6, handle)
     c.rect(34, 13, 1, 4, handle_dark)
     c.rect(36, 13, 1, 4, handle_dark)
-    # 가는 금속 날. 끝은 그대로 한 칸으로 뾰족하게 끝난다.
     c.rect(35, 2, 1, 10, metal)
     c.outline()
     return c
@@ -399,6 +438,7 @@ def resort_outsider():
     c.rect(10, 26, 9, 1, wire)
     c.rect(21, 26, 9, 1, wire)
     c.rect(19, 26, 2, 4, wire)
+    c.snapshot_face()
     right_arm(c, jacket, mitten)
     c.outline()
     return c
@@ -434,54 +474,143 @@ BOARD_WIDTH = 7
 
 
 def captain_board(x, y):
-    """노란 판을 따라 굵은 검은 줄이 길게 지나고, 가운데 흰 선이 있다."""
-    if x == 3:
-        return (250, 250, 252, 255)
-    return (40, 44, 60, 255) if x in (2, 4) else (250, 200, 60, 255)
+    """밝은 회색 판, 양 끝은 짙은 회색이 번지고, 가운데로 긴 빨간 띠가 지난다(글자 대신 띠와 마디만)."""
+    last = BOARD_LENGTH - 1
+    end = min(y, last - y)
+    if end < 3:
+        return (104, 110, 122, 255)
+    if end < 5:
+        return (140, 146, 158, 255)
+    if end < 7 and x in (0, 6):
+        return (166, 172, 182, 255)
+    if 2 <= x <= 4 and 7 <= y <= last - 7:
+        # 글자 사이 틈처럼 네 줄마다 한 줄씩 밝게 끊는다
+        if (y - 7) % 4 == 3:
+            return (244, 132, 132, 255)
+        return (232, 66, 70, 255)
+    return (196, 200, 206, 255)
+
+
+# 제비꼬리 파우더 보드 모양표(7칸 폭). 줄마다 칠하는 구간 목록이다.
+# 앞코만 뾰족하고, 바깥 선은 끝까지 곧게 내려오며, 끝 여섯 줄은 가운데 V자 홈만 넓어진다.
+SWALLOW_ROWS = (
+    [[(3, 3)], [(2, 4)], [(1, 5)]]
+    + [[(0, 6)]] * 28
+    + [[(0, 2), (4, 6)]] * 2
+    + [[(0, 1), (5, 6)]] * 2
+    + [[(0, 0), (6, 6)]] * 2
+)
 
 
 def insider_board(x, y):
-    """흰 판을 따라 흐르는 분홍 물결과 금색 선."""
-    wave = 3 + round(2 * math.sin(y / 3.2))
-    if abs(x - wave) <= 1:
-        return (236, 88, 150, 255)
-    return (252, 196, 72, 255) if x == 6 else (250, 250, 252, 255)
+    """제비꼬리 파우더 보드. 리조트 인싸 옷(분홍 상의, 보라 바지)을 낮춘 톤: 남색 바탕에 앞쪽만 흐린 분홍에서 보라로 번진다."""
+    if not any(lo <= x <= hi for lo, hi in SWALLOW_ROWS[y]):
+        return None
+    if y < 7:
+        return (230, 176, 196, 255)
+    if y < 12:
+        return (204, 160, 196, 255)
+    if y < 17:
+        return (150, 132, 186, 255)
+    if y < 21:
+        return (102, 100, 150, 255)
+    return (92, 100, 140, 255) if x == 3 else (70, 76, 116, 255)
+
+
+insider_board.custom_shape = True
 
 
 def hype_board(x, y):
-    """주황 판에 검은 번개."""
-    bolt = 2 + abs((y % 12) - 6) // 2
-    return (58, 62, 82, 255) if bolt <= x <= bolt + 1 else (250, 140, 50, 255)
+    """짙은 회색 붓 자국 바탕에 청록 테두리, 가운데 검은 띠와 바인딩 나사 구멍."""
+    last = BOARD_LENGTH - 1
+    if x in (0, BOARD_WIDTH - 1) or y < 2 or y > last - 2:
+        return (34, 150, 140, 255)
+    if 2 <= x <= 4 and 9 <= y <= last - 9:
+        if x in (2, 4) and (11 <= y <= 14 or last - 14 <= y <= last - 11) and y % 2 == 1:
+            return (150, 156, 168, 255)
+        if x == 3 and y == last // 2:
+            return (34, 150, 140, 255)
+        return (26, 28, 34, 255)
+    if (x + y // 2) % 4 == 0:
+        return (88, 96, 110, 255)
+    return (50, 56, 66, 255)
+
+
+# 분위기 메이커 보드 무늬(줄마다 칸 목록). 위쪽에 빨간 꽃잎 세 송이, 가는 먹색 줄기, 아래쪽에 남색 먹 번짐.
+MOOD_RED = {
+    3: (2, 3, 4), 4: (1, 2, 3, 4, 5), 5: (2, 3, 4, 5), 6: (3, 4),
+    9: (0, 1, 2, 4, 5), 10: (0, 1, 2, 3, 4, 5, 6), 11: (1, 2, 4, 5, 6), 12: (1, 5),
+    15: (1, 2), 16: (0, 1, 2), 17: (1,),
+}
+MOOD_RED_DARK = {4: (3,), 10: (1, 5), 16: (1,)}
+MOOD_STEM = {7: (3,), 8: (3,), 12: (3,), 13: (3,), 14: (3,), 18: (2, 3), 19: (3,), 20: (3,), 21: (4,)}
+MOOD_INK = {
+    22: (4,), 23: (3, 4, 5), 24: (2, 3, 4), 25: (3, 4), 26: (1, 3, 4), 27: (2, 3), 28: (3, 5),
+    29: (2, 3, 4), 30: (3,), 31: (1,), 32: (3, 4),
+}
 
 
 def mood_board(x, y):
-    """노란 판에 굵은 보라 줄 두 개, 가운데 별 하나."""
-    if abs(x - 3) + abs(y - 18) <= 3:
-        return (255, 255, 255, 255)
-    return (122, 82, 200, 255) if x in (1, 5) else (252, 214, 84, 255)
+    """흰 바탕에 빨간 꽃 수채화와 남색 먹 번짐."""
+    if x in MOOD_RED_DARK.get(y, ()):
+        return (188, 34, 40, 255)
+    if x in MOOD_RED.get(y, ()):
+        return (226, 64, 54, 255)
+    if x in MOOD_STEM.get(y, ()):
+        return (74, 70, 72, 255)
+    if x in MOOD_INK.get(y, ()):
+        return (34, 40, 70, 255)
+    return (238, 236, 230, 255)
+
+
+# 연습벌레 보드의 남색 각진 무늬(줄마다 칠하는 칸). 위쪽 오른편에 글자 조각 같은 블록, 꼬리 왼편에 작은 블록.
+GRINDER_BLOCKS = {
+    3: (4, 5, 6), 4: (4, 5, 6), 5: (4, 5, 6), 6: (5, 6),
+    7: (3, 4, 5, 6), 8: (3, 5, 6), 9: (3, 4, 5, 6),
+    10: (4, 5, 6), 11: (4, 6), 12: (4, 5, 6),
+    13: (3, 4, 5), 14: (3, 4, 5), 15: (5, 6),
+    31: (2,), 32: (1, 2, 3), 33: (1, 2), 34: (1, 2, 3),
+}
 
 
 def grinder_board(x, y):
-    """번호 조끼 같은 흰 판에 초록 줄과 빨간 번호 칸."""
-    if 16 <= y <= 20:
-        return (224, 62, 72, 255)
-    return (62, 156, 114, 255) if 2 <= x <= 4 else (246, 248, 252, 255)
+    """연한 회녹색 판에 남색 각진 블록 무늬, 가운데 바인딩 나사 구멍 점."""
+    if x in GRINDER_BLOCKS.get(y, ()):
+        return (30, 44, 62, 255)
+    if (y in (17, 19) and x in (2, 3)) or (y in (26, 28) and x == 3):
+        return (244, 248, 248, 255)
+    return (200, 210, 208, 255)
 
 
 def hot_pack_board(x, y):
-    """크림색 판을 따라 주황 줄이 길게 지나고, 가운데 빨간 선이 있다."""
-    if x == 3:
-        return (226, 74, 58, 255)
-    return (250, 150, 56, 255) if x in (2, 4) else (255, 242, 218, 255)
+    """흰 판 가운데로 위에서 뾰족하게 시작해 꼬리로 갈수록 넓어지는 쐐기. 색은 검정에서 빨강, 분홍, 주황, 노랑으로 따뜻해진다."""
+    if y < 3 or abs(x - 3) > (y - 3) * 3.6 / 31:
+        return (248, 248, 250, 255)
+    if y < 12:
+        return (32, 32, 40, 255)
+    if y < 18:
+        return (196, 40, 72, 255)
+    if y < 24:
+        return (238, 72, 96, 255)
+    if y < 30:
+        return (250, 132, 72, 255)
+    return (252, 208, 84, 255)
 
 
 def gear_board(x, y):
-    """조끼 색 판에 고글 주황 선과 눈금."""
-    if x == 1:
-        return (252, 160, 70, 255)
-    if x == 5 and y % 4 == 0:
-        return (226, 244, 252, 255)
-    return (70, 84, 68, 255) if 13 <= y <= 23 else (96, 110, 92, 255)
+    """남색 판에 가는 격자, 위쪽 하늘색 가로 막대, 양 끝 하늘색 띠."""
+    last = BOARD_LENGTH - 1
+    navy, grid, sky, white = (34, 52, 110, 255), (54, 78, 146, 255), (84, 152, 228, 255), (236, 242, 252, 255)
+    if y <= 1 or y >= last - 1:
+        return sky
+    if 3 <= y <= 14 and y % 2 == 1 and 1 <= x <= 5:
+        return sky
+    if (y in (9, 11) or y in (26, 28)) and x in (2, 4):
+        return white
+    if x % 2 == 0 or y % 3 == 0:
+        return grid
+    return navy
+
 
 
 def outsider_board(x, y):
@@ -506,12 +635,16 @@ BOARD_PATTERNS = {
 def board_gear(pattern):
     """길고 납작한 스노보드를 일자로 세운다. 양 끝이 둥글고, 그래픽은 직업 의상에 맞춘다."""
     c = Canvas(GEAR_WIDTH, GRID)
-    left, top = GEAR_WIDTH - 2 - BOARD_WIDTH, GRID - 2 - BOARD_LENGTH
+    width = getattr(pattern, "board_width", BOARD_WIDTH)
+    left, top = GEAR_WIDTH - 2 - width, GRID - 2 - BOARD_LENGTH
     for y in range(BOARD_LENGTH):
         end = min(y, BOARD_LENGTH - 1 - y)
-        inset = (2, 1)[end] if end < 2 else 0
-        for x in range(inset, BOARD_WIDTH - inset):
-            c.dot(left + x, top + y, pattern(x, y))
+        # 모양을 스스로 정하는 보드(custom_shape)는 양 끝을 깎지 않는다
+        inset = 0 if getattr(pattern, "custom_shape", False) else ((2, 1)[end] if end < 2 else 0)
+        for x in range(inset, width - inset):
+            color = pattern(x, y)
+            if color is not None:
+                c.dot(left + x, top + y, color)
     c.outline()
     return c
 
@@ -625,7 +758,15 @@ def main():
     font_path(True)
     font_path(False)
     for name, draw in {**JOBS, **GEARS}.items():
-        draw().save(name)
+        canvas = draw()
+        canvas.save(name)
+        # 관계 지도용 얼굴: 팔과 소품을 그리기 전 그림에 테두리만 둘러 따로 저장한다
+        if name in JOBS:
+            face = Canvas()
+            face.image = canvas.face
+            face.pixels = face.image.load()
+            face.outline()
+            face.save(f"face-{name}")
     # 확인용 모음 그림은 저장소 밖 경로를 인자로 줄 때만 만든다.
     if len(sys.argv) > 1:
         cell = GRID * 6

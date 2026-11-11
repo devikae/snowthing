@@ -304,8 +304,8 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                           </span>
                         )}
                         {post.likeCount >= 50 && <em className="board-hot-badge">HOT</em>}
+                        <PostImageIcon hasImage={post.hasImage} />
                         <strong className="m-title">{title}</strong>
-                        {post.hasImage && <PostImageIcon />}
                       </div>
                       <div className="m-row-right">
                         <PostListAuthor nickname={post.writerNickname} profileImageUrl={post.writerProfileImageUrl} publicId={post.writerPublicId} />

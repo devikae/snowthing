@@ -734,17 +734,22 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
             {post.categoryCode !== "INQUIRY" && (
             <div className="post-detail-reactions">
-              <div>
-                  <button onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
-                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">thumb_up</span>
-                  추천 {post.likeCount}
+              {/* 추천과 비추천은 가운데에 크게, 나머지 동작은 오른쪽 아래 작은 줄로 나눈다 */}
+              <div className="post-vote">
+                <button type="button" onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
+                  <span className="material-symbols-outlined" aria-hidden="true">thumb_up</span>
+                  <span>추천</span>
+                  <strong>{post.likeCount}</strong>
                 </button>
-                  <button onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
-                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">thumb_down</span>
-                  비추천 {post.dislikeCount}
+                <button type="button" onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
+                  <span className="material-symbols-outlined" aria-hidden="true">thumb_down</span>
+                  <span>비추천</span>
+                  <strong>{post.dislikeCount}</strong>
                 </button>
+              </div>
+              <div className="post-detail-subactions">
                 <button type="button" onClick={() => void handleScrap()} disabled={scrapBusy} className={post.scrapped ? "active" : ""} aria-pressed={post.scrapped}>
-                  <span className="material-symbols-outlined text-[17px]" aria-hidden="true">bookmark</span>
+                  <span className="material-symbols-outlined" aria-hidden="true">bookmark</span>
                   {post.scrapped ? "스크랩됨" : "스크랩"}
                 </button>
                 <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined" aria-hidden="true">share</span>공유</button>
@@ -756,7 +761,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                   buttonTitle="글 보기"
                   onFallback={handleShare}
                 />
-                <ReportButton targetType="POST" targetId={publicId} />
+                <ReportButton targetType="POST" targetId={publicId} className="post-report-button" />
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
             </div>

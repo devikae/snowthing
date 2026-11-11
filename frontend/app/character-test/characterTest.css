@@ -62,10 +62,11 @@
 .ct-map [role="button"] { cursor: pointer; outline: none; }
 .ct-map [role="button"]:focus-visible .ct-map-hit { stroke: #e2603f; stroke-width: 2; }
 .ct-map-person.is-selected .ct-map-hit { fill: rgba(255, 255, 255, .9); stroke: #e2603f; stroke-width: 2; }
-.ct-map-me-disc { fill: #fff; stroke: #e2603f; stroke-width: 3; filter: drop-shadow(0 2px 4px rgba(226, 96, 63, .25)); }
-.ct-map-me-pulse { fill: none; stroke: #e2603f; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: ct-map-pulse 2.4s ease-out infinite; }
+/* 나: 찰떡 원과 같은 계열의 옅은 테두리로 지도에 녹아들게 한다 */
+.ct-map-me-disc { fill: #fff; stroke: #f3b59f; stroke-width: 2; filter: drop-shadow(0 2px 6px rgba(40, 56, 74, .12)); }
+.ct-map-me-pulse { fill: none; stroke: #f3b59f; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: ct-map-pulse 2.4s ease-out infinite; }
 @keyframes ct-map-pulse { from { opacity: .5; transform: scale(1); } to { opacity: 0; transform: scale(1.45); } }
-.ct-map .ct-map-me-name { fill: #e2603f; font-size: 12px; font-weight: 800; }
+.ct-map .ct-map-me-name { fill: #28384a; font-size: 12px; font-weight: 800; }
 .ct-map-empty circle { fill: rgba(255, 255, 255, .7); stroke: #86abc6; stroke-width: 1.5; stroke-dasharray: 3 3; }
 .ct-map-empty path { stroke: #86abc6; stroke-width: 1.8; stroke-linecap: round; }
 .ct-map-detail { display: grid; gap: 2px; min-height: 44px; border-radius: 8px; background: var(--snow-surface-low); padding: 10px 12px; font-size: 13px; line-height: 1.55; }
