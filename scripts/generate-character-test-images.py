@@ -298,28 +298,40 @@ def grinder():
 
 
 def hot_pack():
-    """인간 핫팩: 빵빵한 솜 패딩, 방울 모자, 큰 목도리."""
+    """인간 핫팩: 귤색 솜 패딩, 빨간 방울 모자, 초록 목도리, 손에 든 핫팩."""
     c = Canvas()
-    jacket, dark, light = (252, 186, 96, 255), (232, 152, 64, 255), (255, 216, 150, 255)
-    knit, knit_dark = (228, 88, 82, 255), (192, 62, 62, 255)
-    body(c, jacket, dark, light, (156, 104, 84, 255), (124, 80, 62, 255), knit)
-    # 몸통을 넓히고 누빔 선을 넣어 빵빵하게 한다.
-    c.blob(11, 25, 18, 9, jacket, radius=2)
-    c.rect(11, 28, 18, 1, dark)
-    c.rect(11, 31, 18, 1, dark)
-    c.rect(13, 26, 3, 2, light)
+    jacket, dark, light = (255, 196, 116, 255), (232, 156, 76, 255), (255, 226, 176, 255)
+    knit, knit_dark, knit_light = (232, 84, 76, 255), (196, 58, 56, 255), (250, 132, 120, 255)
+    scarf, scarf_dark = (70, 168, 150, 255), (48, 132, 118, 255)
+    body(c, jacket, dark, light, (120, 92, 80, 255), (96, 72, 62, 255), knit)
+    # 빵빵한 패딩: 몸통을 조금 넓히고 누빔 선 두 줄
+    c.blob(12, 25, 16, 8, jacket, radius=2)
+    c.rect(12, 28, 16, 1, dark)
+    c.rect(13, 31, 14, 1, dark)
+    c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    c.blob(8, 4, 24, 10, knit, radius=3)
-    c.rect(8, 11, 24, 3, knit_dark)
-    for x in range(9, 32, 3):
-        c.rect(x, 11, 1, 3, WHITE)
-    c.blob(16, 0, 8, 5, WHITE, radius=2)
-    c.rect(18, 1, 2, 1, (226, 232, 240, 255))
-    c.blob(11, 23, 18, 4, knit)
-    c.rect(12, 26, 16, 1, knit_dark)
-    c.rect(22, 26, 5, 6, knit)
-    c.rect(22, 30, 5, 2, knit_dark)
+    # 볼이 발그레한 핫팩: 볼 터치를 크게
+    c.rect(11, 18, 4, 3, (250, 140, 130, 255))
+    c.rect(25, 18, 4, 3, (250, 140, 130, 255))
+    c.rect(19, 20, 2, 1, MOUTH)
+    # 방울 모자: 머리 위만 덮고 접은 단은 이마 위에서 끝난다
+    c.blob(9, 4, 22, 8, knit, radius=3)
+    c.rect(9, 10, 22, 3, knit_dark)
+    for x in range(10, 31, 2):
+        c.dot(x, 11, knit)
+    c.rect(13, 6, 4, 1, knit_light)
+    c.blob(17, 0, 6, 5, WHITE, radius=2)
+    c.dot(18, 1, (226, 232, 240, 255))
+    # 목도리: 턱 아래로 한 번 감고 한쪽 끝을 늘어뜨린다
+    c.blob(12, 23, 16, 3, scarf, radius=1)
+    c.rect(13, 24, 14, 1, scarf_dark)
+    c.rect(14, 25, 3, 6, scarf)
+    c.rect(14, 30, 3, 1, scarf_dark)
+    # 오른손에 든 핫팩 주머니
     right_arm(c, jacket, knit)
+    c.blob(28, 26, 6, 6, (255, 248, 236, 255), radius=1)
+    c.rect(29, 28, 4, 1, (240, 120, 70, 255))
+    c.rect(29, 30, 4, 1, (240, 120, 70, 255))
     c.outline()
     return c
 
