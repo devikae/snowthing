@@ -143,6 +143,11 @@ export function characterImage(job: JobCode) {
   return `/character-test/${job}.png`;
 }
 
+// 관계 지도용 얼굴 그림. 팔과 소품(메가폰, 음표, 엄지 척 등)을 빼고 그린 같은 크기의 그림이다.
+export function faceImage(job: JobCode) {
+  return `/character-test/face-${job}.png`;
+}
+
 // 스키는 하나를 같이 쓰고, 보드는 직업 의상에 맞춰 8가지다.
 export function gearImage(sport: Sport, job: JobCode) {
   return sport === "SKI" ? "/character-test/gear-SKI.png" : `/character-test/gear-BOARD-${job}.png`;

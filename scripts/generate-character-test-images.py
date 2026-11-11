@@ -53,6 +53,10 @@ class Canvas:
             inset = max(0, radius - min(row, h - 1 - row))
             self.rect(x + inset, y + row, w - inset * 2, 1, color)
 
+    def snapshot_face(self):
+        """관계 지도용 얼굴 그림. 팔과 소품을 그리기 직전 상태를 따로 남긴다."""
+        self.face = self.image.copy()
+
     def outline(self):
         """불투명한 칸 둘레의 빈 칸을 어두운 색으로 채운다."""
         source = self.image.copy().load()
@@ -164,6 +168,7 @@ def captain():
     # 왼팔 완장
     c.rect(9, 26, 5, 3, (255, 214, 64, 255))
     c.rect(9, 27, 5, 1, (58, 62, 82, 255))
+    c.snapshot_face()
     right_arm(c, jacket, mitten)
     c.outline()
     return c
@@ -196,6 +201,7 @@ def resort_insider():
     c.rect(13, 14, 2, 1, (130, 210, 245, 255))
     c.rect(23, 14, 2, 1, (130, 210, 245, 255))
     c.rect(18, 20, 4, 1, MOUTH)
+    c.snapshot_face()
     right_arm(c, jacket, mitten, raised=True)
     c.blob(30, 22, 7, 8, (255, 250, 240, 255))
     c.rect(31, 22, 5, 2, (150, 96, 60, 255))
@@ -237,6 +243,7 @@ def hype():
     c.rect(19, 5, 2, 1, silver)
     c.blob(17, 19, 6, 4, MOUTH)
     c.rect(18, 19, 4, 1, WHITE)
+    c.snapshot_face()
     right_arm(c, (58, 62, 82, 255), mitten, raised=True)
     c.rect(29, 17, 2, 4, (240, 240, 246, 255))
     c.rect(31, 16, 2, 6, (240, 240, 246, 255))
@@ -265,12 +272,12 @@ def mood_maker():
     c.blob(8, 4, 24, 10, fur, radius=3)
     c.rect(8, 11, 24, 3, fur_dark)
     c.rect(12, 6, 5, 1, fur_light)
-    # 곰 귀
     # 곰 귀: 맨 윗줄은 테두리 자리로 비워 두려고 한 칸 아래에서 시작한다
     for x in (7, 27):
         c.blob(x, 1, 6, 5, fur, radius=2)
         c.blob(x + 2, 2, 2, 2, (250, 180, 170, 255), radius=0)
     c.blob(17, 20, 6, 3, MOUTH)
+    c.snapshot_face()
     right_arm(c, jacket, mitten, raised=True)
     note = (60, 196, 176, 255)
     c.rect(33, 1, 6, 2, note)
@@ -306,6 +313,7 @@ def grinder():
     c.dot(33, 6, (136, 206, 248, 255))
     c.rect(5, 7, 2, 3, (136, 206, 248, 255))
     c.dot(6, 6, (136, 206, 248, 255))
+    c.snapshot_face()
     right_arm(c, jacket, mitten)
     c.outline()
     return c
@@ -344,6 +352,7 @@ def hot_pack():
     c.rect(13, 26, 3, 5, scarf)
     c.rect(13, 27, 3, 1, scarf_light)
     c.rect(13, 29, 3, 1, scarf_light)
+    c.snapshot_face()
     # 왼팔은 내리고 오른팔은 얼굴에서 떨어지게 옆으로 뻗어 엄지를 세운다
     c.rect(27, 25, 3, 3, jacket)
     c.rect(29, 23, 3, 3, jacket)
@@ -387,6 +396,7 @@ def gear_geek():
         c.rect(x + 2, 15, 3, 3, EYE)
         c.dot(x + 2, 15, WHITE)
     c.rect(19, 15, 3, 1, glass)
+    c.snapshot_face()
     c.rect(27, 25, 3, 3, jacket)
     c.rect(29, 23, 3, 3, jacket)
     c.rect(31, 21, 3, 3, jacket)
@@ -428,6 +438,7 @@ def resort_outsider():
     c.rect(10, 26, 9, 1, wire)
     c.rect(21, 26, 9, 1, wire)
     c.rect(19, 26, 2, 4, wire)
+    c.snapshot_face()
     right_arm(c, jacket, mitten)
     c.outline()
     return c
@@ -747,7 +758,15 @@ def main():
     font_path(True)
     font_path(False)
     for name, draw in {**JOBS, **GEARS}.items():
-        draw().save(name)
+        canvas = draw()
+        canvas.save(name)
+        # 관계 지도용 얼굴: 팔과 소품을 그리기 전 그림에 테두리만 둘러 따로 저장한다
+        if name in JOBS:
+            face = Canvas()
+            face.image = canvas.face
+            face.pixels = face.image.load()
+            face.outline()
+            face.save(f"face-{name}")
     # 확인용 모음 그림은 저장소 밖 경로를 인자로 줄 때만 만든다.
     if len(sys.argv) > 1:
         cell = GRID * 6

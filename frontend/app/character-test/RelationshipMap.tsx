@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LEVELS, MAP_SNOW, SPORT_LABEL, characterImage, characterName, habitNote, type CharacterLabel, type JobCode, type LevelCode } from "./data";
+import { LEVELS, MAP_SNOW, SPORT_LABEL, faceImage, characterName, habitNote, type CharacterLabel, type JobCode, type LevelCode } from "./data";
 import { HEAD_CROP, HEAD_WIDTH, ME_HEAD_WIDTH, ME_RADIUS, layoutMap, treePaths, type MapInputLevel } from "./mapLayout";
 
 // 화면 전용 색. 안쪽(잘 맞는 사이)일수록 따뜻한 색이다. 저장 이미지는 mapImage.ts가 따로 그린다.
@@ -13,7 +13,7 @@ function Head({ x, y, width, job }: { x: number; y: number; width: number; job: 
   const height = (width * HEAD_CROP.height) / HEAD_CROP.width;
   return (
     <svg x={x - width / 2} y={y - height / 2} width={width} height={height} viewBox={`${HEAD_CROP.x * 40} ${HEAD_CROP.y * 40} ${HEAD_CROP.width * 40} ${HEAD_CROP.height * 40}`}>
-      <image href={characterImage(job)} width={40} height={40} />
+      <image href={faceImage(job)} width={40} height={40} />
     </svg>
   );
 }

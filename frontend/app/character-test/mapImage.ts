@@ -1,4 +1,4 @@
-import { MAP_SNOW, RING_WHITE, characterImage, type CharacterLabel, type JobCode } from "./data";
+import { MAP_SNOW, RING_WHITE, faceImage, type CharacterLabel, type JobCode } from "./data";
 import { HEAD_CROP, HEAD_WIDTH, ME_HEAD_WIDTH, ME_RADIUS, layoutMap, treePaths, type MapInputLevel } from "./mapLayout";
 import { canvasToBlob, loadImage, pageFontFamily } from "./shareFile";
 
@@ -28,7 +28,7 @@ export async function renderMapImage({ title, levels, me, hideNames }: MapImageI
   const family = await pageFontFamily();
   const jobs = new Set<JobCode>([me.character.job]);
   layout.people.forEach((node) => jobs.add(node.jobLabel.job));
-  const sprites = new Map(await Promise.all([...jobs].map(async (job) => [job, await loadImage(characterImage(job))] as const)));
+  const sprites = new Map(await Promise.all([...jobs].map(async (job) => [job, await loadImage(faceImage(job))] as const)));
 
   ctx.scale(scale, scale);
   ctx.imageSmoothingEnabled = false;
