@@ -311,19 +311,18 @@ def hot_pack():
     c.rect(13, 31, 14, 1, dark)
     c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    hair(c, (122, 78, 52, 255), (92, 56, 38, 255), (164, 112, 76, 255))
-    # 방울 하나 달린 빨간 비니: 둥근 몸통, 꽉 찬 크림색 골지 밑단, 흰 방울
+    # 방울 하나 달린 빨간 비니: 머리 폭 전체를 덮어 머리카락이 보이지 않게 한다. 둥근 몸통, 꽉 찬 크림색 골지 밑단, 흰 방울.
     beanie, beanie_dark, beanie_light = (226, 72, 68, 255), (192, 50, 52, 255), (246, 120, 110, 255)
     cuff, cuff_dark = (255, 238, 214, 255), (232, 208, 180, 255)
-    c.blob(9, 2, 22, 10, beanie, radius=5)
-    c.rect(9, 6, 22, 3, beanie)
+    c.blob(8, 2, 24, 11, beanie, radius=5)
+    c.rect(8, 7, 24, 3, beanie)
     c.rect(12, 4, 4, 1, beanie_light)
     c.rect(11, 5, 2, 1, beanie_light)
     for x in range(12, 29, 4):
         c.rect(x, 4, 1, 5, beanie_dark)
-    c.rect(8, 9, 24, 4, cuff)
+    c.rect(8, 9, 24, 5, cuff)
     for x in range(9, 31, 2):
-        c.rect(x, 10, 1, 2, cuff_dark)
+        c.rect(x, 10, 1, 3, cuff_dark)
     c.blob(17, 0, 6, 4, WHITE, radius=1)
     c.dot(18, 1, (226, 232, 240, 255))
     # 발그레한 볼
@@ -363,6 +362,8 @@ def gear_geek():
     c.rect(22, 28, 3, 3, vest_dark)
     head(c, "round")
     hair(c, (72, 114, 94, 255), (54, 88, 72, 255), (108, 152, 130, 255))
+    # 고글 뒤 정수리를 둥글게 채워 고글 양옆이 파여 보이지 않게 한다
+    c.blob(8, 3, 24, 8, (72, 114, 94, 255), radius=3)
     frame = (42, 46, 64, 255)
     c.rect(8, 6, 24, 2, (214, 92, 60, 255))
     c.blob(11, 2, 18, 9, frame, radius=2)
