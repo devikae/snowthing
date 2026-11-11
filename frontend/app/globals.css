@@ -2439,9 +2439,9 @@ html[data-theme="dark"] .live-chat-message.mine .live-chat-message-bubble {
   background: var(--snow-surface-mid);
   padding: 3px 10px;
   color: var(--snow-muted);
-  font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .snow-report-widget.home-tier-2 .snow-report-compose {
