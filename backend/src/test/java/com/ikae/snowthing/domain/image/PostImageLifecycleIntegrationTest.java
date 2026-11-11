@@ -192,16 +192,24 @@ class PostImageLifecycleIntegrationTest {
                                 Long.class,
                                 post.publicId()))
                 .isZero();
+        // 본문에만 넣은 사진도 목록 사진 표시를 켠다(IKA-84).
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT has_image FROM post WHERE public_id=?",
+                                Boolean.class,
+                                post.publicId()))
+                .isTrue();
+        posts.updatePost(
+                post.publicId(),
+                new PostUpdateRequest("FREE", "removed", "body", null, List.of()),
+                user);
+        // 본문에서 사진을 지우면 다시 꺼진다.
         assertThat(
                         jdbc.queryForObject(
                                 "SELECT has_image FROM post WHERE public_id=?",
                                 Boolean.class,
                                 post.publicId()))
                 .isFalse();
-        posts.updatePost(
-                post.publicId(),
-                new PostUpdateRequest("FREE", "removed", "body", null, List.of()),
-                user);
         expire(key);
         lifecycle.cleanOne(key);
         verify(s3).deleteObject(any(DeleteObjectRequest.class));
