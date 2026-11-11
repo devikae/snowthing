@@ -311,7 +311,7 @@ def grinder():
 
 
 def hot_pack():
-    """인간 핫팩: 노르딕 방울 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
+    """인간 핫팩: 귀달이 털모자, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
     c = Canvas()
     jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
     mitten = (232, 84, 76, 255)
@@ -322,23 +322,21 @@ def hot_pack():
     c.rect(13, 31, 14, 1, dark)
     c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    # 노르딕 방울 비니: 머리를 다 덮는다. 빨간 몸통에 흰 줄무늬와 하트 무늬, 빨간 골지 밑단, 크고 폭신한 방울
-    red, red_dark, red_light = (226, 72, 68, 255), (186, 46, 50, 255), (244, 112, 104, 255)
-    snow, snow_dark = (255, 255, 255, 255), (214, 222, 234, 255)
-    c.blob(9, 3, 22, 9, red, radius=5)
-    c.rect(9, 7, 22, 3, red)
-    c.rect(9, 6, 22, 2, snow)
-    for x in range(10, 30, 4):
-        c.dot(x + 1, 6, red)
-        c.dot(x + 2, 7, red)
-    c.rect(13, 4, 3, 1, red_light)
-    c.rect(8, 10, 24, 4, red_dark)
-    for x in range(9, 31, 2):
-        c.rect(x, 11, 1, 2, red)
-    c.blob(16, 0, 8, 5, snow, radius=2)
-    c.rect(17, 3, 6, 1, snow_dark)
-    c.dot(18, 1, snow_dark)
-    c.dot(21, 2, snow_dark)
+    # 귀달이 털모자: 갈색 모자 몸통, 크림색 털 안감이 이마와 양쪽 귀덮개에 보인다
+    hat, hat_dark, hat_light = (150, 96, 64, 255), (118, 72, 46, 255), (182, 126, 88, 255)
+    fur, fur_dark = (252, 240, 222, 255), (226, 208, 184, 255)
+    c.blob(8, 2, 24, 10, hat, radius=5)
+    c.rect(8, 7, 24, 3, hat)
+    c.rect(12, 4, 5, 1, hat_light)
+    c.rect(8, 9, 24, 3, fur)
+    for x in range(9, 31, 3):
+        c.dot(x, 10, fur_dark)
+    c.blob(5, 11, 6, 9, hat, radius=2)
+    c.blob(29, 11, 6, 9, hat, radius=2)
+    c.blob(6, 12, 4, 7, fur, radius=1)
+    c.blob(30, 12, 4, 7, fur, radius=1)
+    c.rect(7, 19, 1, 3, hat_dark)
+    c.rect(32, 19, 1, 3, hat_dark)
     # 발그레한 볼
     c.rect(11, 18, 4, 2, (250, 132, 120, 255))
     c.rect(25, 18, 4, 2, (250, 132, 120, 255))
