@@ -165,3 +165,8 @@ html[data-theme="dark"] .ct-intro-cast { background: linear-gradient(180deg, #1c
   .ct-intro-cast img { width: 44px; height: 44px; }
   .ct-intro-cast img:nth-child(3) { width: 58px; height: 58px; }
 }
+
+/* 모임 참여 안내: 한 줄에 하나씩, 지워지는 조건은 굵게 */
+.ct-join-notice { display: grid; gap: 4px; margin: 0; border-radius: 10px; background: var(--snow-surface-low); padding: 12px 14px 12px 30px; color: var(--snow-muted); font-size: 13px; line-height: 1.55; }
+.ct-join-notice li::marker { color: var(--snow-faint); }
+.ct-join-notice strong { color: var(--snow-ink); font-weight: 700; }
