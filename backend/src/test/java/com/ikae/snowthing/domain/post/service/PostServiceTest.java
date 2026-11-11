@@ -936,17 +936,18 @@ class PostServiceTest {
         }
 
         @Test
-        @DisplayName("비로그인 익명 사용자도 anonymousVoterId 기반으로 추천을 생성하고 취소한다.")
+        @DisplayName("익명게시판에서는 비로그인 사용자도 anonymousVoterId 기반으로 추천을 생성하고 취소한다.")
         void reactToPost_anonymousVoter_success() {
             PostResponse post =
                     postService.createPost(
                             PostCreateRequest.builder()
-                                    .categoryCode("FREE")
+                                    .categoryCode("ANONYMOUS")
                                     .title("익명 추천 테스트 글")
                                     .content("내용")
-                                    .isAnonymous(false)
+                                    .isAnonymous(true)
+                                    .anonymousPassword("Anon1234!")
                                     .build(),
-                            userDetails1,
+                            null,
                             "127.0.0.1");
 
             // 1. 비로그인 익명 사용자 추천 활성화
@@ -985,6 +986,55 @@ class PostServiceTest {
                                     .createNativeQuery(
                                             "SELECT count(*) FROM post_reaction WHERE anonymous_voter_id = :voterId")
                                     .setParameter("voterId", "anon-voter-1")
+                                    .getSingleResult();
+            assertThat(count.intValue()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("익명게시판이 아니면 비로그인 사용자의 추천, 비추천, 취소는 LOGIN_REQUIRED로 막고 수를 바꾸지 않는다.")
+        void reactToPost_anonymousVoter_outsideAnonymousBoard_loginRequired() {
+            PostResponse post =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("FREE")
+                                    .title("회원 추천 전용 글")
+                                    .content("내용")
+                                    .isAnonymous(false)
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
+
+            for (ReactionType type : ReactionType.values()) {
+                assertThatThrownBy(
+                                () ->
+                                        reactionService.apply(
+                                                post.publicId(),
+                                                type,
+                                                null,
+                                                "10.0.0.1",
+                                                "anon-voter-2"))
+                        .isInstanceOf(CustomAuthException.class)
+                        .extracting("errorCode")
+                        .isEqualTo(ErrorCode.LOGIN_REQUIRED);
+                assertThatThrownBy(
+                                () ->
+                                        reactionService.remove(
+                                                post.publicId(),
+                                                type,
+                                                null,
+                                                "10.0.0.1",
+                                                "anon-voter-2"))
+                        .isInstanceOf(CustomAuthException.class)
+                        .extracting("errorCode")
+                        .isEqualTo(ErrorCode.LOGIN_REQUIRED);
+            }
+
+            Number count =
+                    (Number)
+                            entityManager
+                                    .createNativeQuery(
+                                            "SELECT like_count + dislike_count FROM post WHERE public_id = :publicId")
+                                    .setParameter("publicId", post.publicId())
                                     .getSingleResult();
             assertThat(count.intValue()).isEqualTo(0);
         }

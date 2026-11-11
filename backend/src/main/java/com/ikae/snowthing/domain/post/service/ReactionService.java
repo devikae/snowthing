@@ -58,7 +58,7 @@ public class ReactionService {
             String clientIp,
             String anonymousVoterId) {
         Post post = findAvailablePost(publicId);
-        ReactionActor actor = resolveActor(userDetails, clientIp, anonymousVoterId);
+        ReactionActor actor = resolveActor(post, userDetails, clientIp, anonymousVoterId);
 
         increaseCount(post.getId(), type);
         int inserted = insertReaction(post.getId(), actor, type);
@@ -79,7 +79,7 @@ public class ReactionService {
             String clientIp,
             String anonymousVoterId) {
         Post post = findAvailablePost(publicId);
-        ReactionActor actor = resolveActor(userDetails, clientIp, anonymousVoterId);
+        ReactionActor actor = resolveActor(post, userDetails, clientIp, anonymousVoterId);
 
         lockReactionCounter(post.getId());
         int deleted = deleteReaction(post.getId(), actor, type);
@@ -174,10 +174,14 @@ public class ReactionService {
     }
 
     private ReactionActor resolveActor(
-            CustomUserDetails userDetails, String clientIp, String anonymousVoterId) {
+            Post post, CustomUserDetails userDetails, String clientIp, String anonymousVoterId) {
         String resolvedIp = clientIp != null && !clientIp.isBlank() ? clientIp : DEFAULT_WRITER_IP;
         if (userDetails != null) {
             return ReactionActor.member(findMember(userDetails).getId(), resolvedIp);
+        }
+        // 비회원 추천과 비추천은 익명게시판에서만 받는다. 다른 게시판은 로그인해야 한다.
+        if (!PostCategoryCodes.isAnonymousBoard(post)) {
+            throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
         }
         if (anonymousVoterId == null || anonymousVoterId.isBlank()) {
             throw new CustomAuthException(ErrorCode.INVALID_INPUT);

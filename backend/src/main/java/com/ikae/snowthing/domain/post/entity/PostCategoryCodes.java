@@ -17,6 +17,7 @@ public final class PostCategoryCodes {
     public static final String NOTICE = "NOTICE";
     public static final String INQUIRY = "INQUIRY";
     public static final String CARPOOL = "CARPOOL";
+    public static final String ANONYMOUS = "ANONYMOUS";
 
     public static final List<String> HIDDEN_FROM_PUBLIC = List.of(MARKET, INQUIRY);
     public static final List<String> HIDDEN_FROM_BOARD_LIST = List.of(MARKET, INQUIRY, CARPOOL);
@@ -33,5 +34,10 @@ public final class PostCategoryCodes {
 
     public static boolean isInquiry(Post post) {
         return isInquiry(post.getCategory().getCode());
+    }
+
+    /** 익명게시판 글. 비회원 추천과 비추천은 이 게시판에서만 받는다. */
+    public static boolean isAnonymousBoard(Post post) {
+        return ANONYMOUS.equalsIgnoreCase(post.getCategory().getCode());
     }
 }

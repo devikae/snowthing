@@ -340,7 +340,18 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     return () => window.clearTimeout(timer);
   }, [fetchComments, initialPost, publicId, router]);
 
+  const askLoginForReaction = () => {
+    if (confirm("추천과 비추천은 로그인해야 할 수 있어요. 로그인 화면으로 이동할까요?")) {
+      router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
+    }
+  };
+
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
+    // 비회원 추천과 비추천은 익명게시판에서만 받는다(서버도 같은 규칙으로 AUTH_020을 준다).
+    if (!currentUserPublicId && post?.categoryCode !== "ANONYMOUS") {
+      askLoginForReaction();
+      return;
+    }
     try {
       const isActive = post?.activeReactionTypes.includes(type) ?? false;
       const res = await csrfFetch(API_ENDPOINTS.posts.reaction(publicId, type), {
@@ -365,6 +376,10 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       }
 
       const errorData = await res.json();
+      if (errorData.code === "AUTH_020") {
+        askLoginForReaction();
+        return;
+      }
       setReactionMsg(errorData.message || "반응을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } catch {
       setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
