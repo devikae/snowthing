@@ -300,7 +300,7 @@ def grinder():
 
 
 def hot_pack():
-    """인간 핫팩: 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
+    """인간 핫팩: 방울 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
     c = Canvas()
     jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
     mitten = (232, 84, 76, 255)
@@ -312,18 +312,25 @@ def hot_pack():
     c.rect(14, 26, 3, 1, light)
     head(c, "smile")
     hair(c, (122, 78, 52, 255), (92, 56, 38, 255), (164, 112, 76, 255))
-    # 들쭉날쭉한 앞머리
-    hair_color = (122, 78, 52, 255)
-    c.rect(11, 12, 5, 2, hair_color)
-    c.rect(17, 12, 6, 3, hair_color)
-    c.rect(24, 12, 5, 2, hair_color)
-    c.dot(16, 12, hair_color)
-    c.dot(23, 12, hair_color)
+    # 방울 하나 달린 빨간 비니: 둥근 몸통, 꽉 찬 크림색 골지 밑단, 흰 방울
+    beanie, beanie_dark, beanie_light = (226, 72, 68, 255), (192, 50, 52, 255), (246, 120, 110, 255)
+    cuff, cuff_dark = (255, 238, 214, 255), (232, 208, 180, 255)
+    c.blob(9, 2, 22, 10, beanie, radius=5)
+    c.rect(9, 6, 22, 3, beanie)
+    c.rect(12, 4, 4, 1, beanie_light)
+    c.rect(11, 5, 2, 1, beanie_light)
+    for x in range(12, 29, 4):
+        c.rect(x, 4, 1, 5, beanie_dark)
+    c.rect(8, 9, 24, 4, cuff)
+    for x in range(9, 31, 2):
+        c.rect(x, 10, 1, 2, cuff_dark)
+    c.blob(17, 0, 6, 4, WHITE, radius=1)
+    c.dot(18, 1, (226, 232, 240, 255))
     # 발그레한 볼
     c.rect(11, 18, 4, 2, (250, 132, 120, 255))
     c.rect(25, 18, 4, 2, (250, 132, 120, 255))
-    # 빨강과 크림 줄무늬 목도리, 왼쪽으로 늘어진 끝
-    scarf, scarf_light = (226, 70, 70, 255), (255, 236, 214, 255)
+    # 초록과 민트 줄무늬 목도리, 왼쪽으로 늘어진 끝
+    scarf, scarf_light = (62, 160, 146, 255), (200, 240, 232, 255)
     c.blob(12, 23, 16, 3, scarf, radius=1)
     for x in range(13, 28, 3):
         c.rect(x, 23, 1, 3, scarf_light)
@@ -333,8 +340,12 @@ def hot_pack():
     # 왼팔은 내리고 오른팔은 얼굴에서 떨어지게 옆으로 뻗어 엄지를 세운다
     c.rect(27, 25, 3, 3, jacket)
     c.rect(29, 23, 3, 3, jacket)
-    c.blob(31, 20, 5, 4, mitten, radius=1)
-    c.rect(32, 17, 2, 3, mitten)
+    # 주먹은 가로로 넓게, 엄지는 주먹 왼쪽 끝에서 위로. 손가락 마디 선을 넣어 주먹으로 보이게 한다.
+    mitten_dark = (192, 58, 56, 255)
+    c.blob(31, 20, 6, 5, mitten, radius=1)
+    c.rect(31, 16, 2, 4, mitten)
+    for y in (21, 23):
+        c.rect(34, y, 3, 1, mitten_dark)
     c.outline()
     return c
 
