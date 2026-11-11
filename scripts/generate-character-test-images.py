@@ -469,31 +469,23 @@ def captain_board(x, y):
     return (40, 44, 60, 255) if x in (2, 4) else (250, 200, 60, 255)
 
 
+# 제비꼬리 파우더 보드 모양표(9칸 폭). 줄마다 칠하는 구간 목록이다.
+# 앞코는 뾰족하게 넓어지고, 앞쪽 4분의 1이 가장 넓고, 꼬리로 좁아지다 9줄 깊이 V자로 갈라져 두 갈래가 바깥으로 벌어진다.
+SWALLOW_ROWS = (
+    [[(4, 4)], [(3, 5)], [(2, 6)], [(1, 7)]]
+    + [[(0, 8)]] * 17
+    + [[(1, 7)]] * 9
+    + [[(1, 3), (5, 7)]] * 2
+    + [[(1, 2), (6, 7)]] * 2
+    + [[(0, 1), (7, 8)]] * 2
+    + [[(0, 0), (8, 8)]]
+)
+
+
 def insider_board(x, y):
-    """제비꼬리 파우더 보드: 앞이 가장 넓고 꼬리로 갈수록 좁아지다 끝이 V자로 갈라진다.
-    분홍 옷을 낮춘 톤으로, 위에서 아래로 흐린 분홍에서 짙은 자두색으로 짙어진다."""
-    last = BOARD_LENGTH - 1
-    # 칸마다 칠할지 정하는 모양표. 앞코는 둥글게 뾰족하고, 꼬리 끝 두 갈래는 바깥으로 벌어진다.
-    rows = {0: (2, 4), 1: (1, 5)}
-    if y in rows:
-        lo, hi = rows[y]
-        if not lo <= x <= hi:
-            return None
-    elif y >= last - 12 and y < last - 5 and x in (0, 6):
+    """제비꼬리 파우더 보드. 분홍 옷을 낮춘 톤으로, 위에서 아래로 흐린 분홍에서 짙은 자두색으로 짙어진다."""
+    if not any(lo <= x <= hi for lo, hi in SWALLOW_ROWS[y]):
         return None
-    elif y >= last - 5:
-        tail = last - y
-        if tail >= 4:
-            keep = x in (1, 2, 4, 5)
-        elif tail >= 2:
-            keep = x in (1, 2, 4, 5)
-        elif tail == 1:
-            keep = x in (0, 1, 5, 6)
-        else:
-            keep = x in (0, 6)
-        if not keep:
-            return None
-    # 색: 위에서 아래로 세 단계로 짙어지고, 사선 무늬 하나가 판을 가로지른다
     stripe = (x + y) % 9 == 0
     if y < 12:
         return (222, 176, 196, 255) if stripe else (196, 140, 166, 255)
@@ -503,6 +495,7 @@ def insider_board(x, y):
 
 
 insider_board.custom_shape = True
+insider_board.board_width = 9
 
 
 def hype_board(x, y):
@@ -573,12 +566,13 @@ BOARD_PATTERNS = {
 def board_gear(pattern):
     """길고 납작한 스노보드를 일자로 세운다. 양 끝이 둥글고, 그래픽은 직업 의상에 맞춘다."""
     c = Canvas(GEAR_WIDTH, GRID)
-    left, top = GEAR_WIDTH - 2 - BOARD_WIDTH, GRID - 2 - BOARD_LENGTH
+    width = getattr(pattern, "board_width", BOARD_WIDTH)
+    left, top = GEAR_WIDTH - 2 - width, GRID - 2 - BOARD_LENGTH
     for y in range(BOARD_LENGTH):
         end = min(y, BOARD_LENGTH - 1 - y)
         # 모양을 스스로 정하는 보드(custom_shape)는 양 끝을 깎지 않는다
         inset = 0 if getattr(pattern, "custom_shape", False) else ((2, 1)[end] if end < 2 else 0)
-        for x in range(inset, BOARD_WIDTH - inset):
+        for x in range(inset, width - inset):
             color = pattern(x, y)
             if color is not None:
                 c.dot(left + x, top + y, color)
