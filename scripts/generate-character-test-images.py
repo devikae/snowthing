@@ -132,8 +132,9 @@ def head(c, eyes="round"):
 
 def hair(c, color, shade, light):
     c.blob(8, 4, 24, 10, color, radius=3)
-    c.rect(8, 12, 3, 4, color)
-    c.rect(29, 12, 3, 4, color)
+    # 둥근 머리 아랫단이 옆머리와 만나는 칸을 메워 눈 옆이 파여 보이지 않게 한다
+    c.rect(8, 10, 3, 6, color)
+    c.rect(29, 10, 3, 6, color)
     c.rect(11, 12, 18, 1, shade)
     c.rect(12, 6, 5, 1, light)
     c.rect(11, 7, 2, 1, light)
