@@ -6,7 +6,7 @@ import { RESORT_PASS_PRICES, SEASON_PASS_PRICE_CHECKED_AT } from "../../lib/seas
 import { publicPageMetadata } from "../../lib/siteMetadata";
 
 export const metadata: Metadata = publicPageMetadata(
-  "2026/27 스키장 시즌권 가격 비교",
+  "26/27 스키장 시즌권 가격 비교",
   "26/27 시즌 하이원, 용평, 휘닉스, 비발디, 곤지암 등 13개 스키장의 시즌권 가격과 리프트권 가격, 할인가를 한 표로 비교하고 시즌권 본전 횟수를 확인하세요.",
   "/tools/season-pass-prices",
 );
@@ -50,14 +50,14 @@ export default function SeasonPassPricesPage() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData).replace(/</g, "\u003c") }} />
       <PageHeading
-        title="2026/27 스키장 시즌권, 리프트권 가격 비교"
+        title="26/27 스키장 시즌권, 리프트권 가격 비교"
         description="스키장 13곳의 시즌권 값과 리프트권 값을 한 표에 모았어요. 몇 번 가야 시즌권이 이득인지도 함께 볼 수 있어요."
         breadcrumb={<Link href="/tools">← 라이더 도구</Link>}
       />
       <section className="pass-price-intro">
         <p>
           {SEASON_PASS_PRICE_CHECKED_AT}에 공식 누리집과 판매처 자료로 조사한 대략값이에요. 시즌권은 판매 차수에 따라 값이 바뀌고,
-          리프트권은 6시간 안팎 평일 권종 기준이에요. 결제 전에는 리조트 공식 누리집에서 다시 확인해 주세요.
+          리프트권은 6시간 안팎 평일 권종 기준이에요.
         </p>
       </section>
       <p className="pass-price-scroll-hint">표를 옆으로 밀면 리프트권 값과 본전 횟수가 보여요.</p>
@@ -69,7 +69,7 @@ export default function SeasonPassPricesPage() {
               <th scope="col">리조트</th>
               <th scope="col">시즌권</th>
               <th scope="col">리프트권 정가</th>
-              <th scope="col">흔한 할인가</th>
+              <th scope="col">평균가</th>
               <th scope="col">본전 횟수</th>
               <th scope="col"><span className="sr-only">계산기</span></th>
             </tr>
@@ -113,7 +113,10 @@ export default function SeasonPassPricesPage() {
         </table>
       </div>
       <div className="pass-price-cta">
-        <p>교통비와 예상 방문 횟수까지 넣어 보면 내 조건의 본전을 알 수 있어요. 표의 리조트 줄에서 계산하기를 누르면 가격이 미리 채워져요.</p>
+        <p>
+          <span>교통비와 예상 방문 횟수까지 넣으면 내 조건의 본전을 알 수 있어요.</span>
+          <span>표에서 계산하기를 누르면 가격이 미리 채워져요.</span>
+        </p>
         <Link href="/tools/season-pass" className="pass-price-cta-link">시즌권 본전 계산기 열기 →</Link>
       </div>
       <section className="tool-explanation">

@@ -73,7 +73,8 @@
 .pass-price-table tbody tr:last-child :is(th,td) { border-bottom: 0; }
 .rider-tools .pass-price-scroll-hint { display: none; margin: 0 0 8px; font-size: 12.5px; color: var(--snow-muted); }
 .pass-price-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
-.pass-price-cta p { max-width: 640px; margin: 0; }
+.pass-price-cta p { display: grid; gap: 2px; max-width: 640px; margin: 0; }
+.pass-price-cta p span { text-wrap: pretty; }
 .rider-tools .pass-price-cta-link { border-radius: 8px; background: var(--snow-ink); color: var(--snow-canvas); padding: 12px 20px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .rider-tools .pass-price-cta-link:hover { opacity: .85; }
 @media (max-width: 720px) {
