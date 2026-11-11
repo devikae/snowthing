@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { API_ENDPOINTS, SocialLoginProvider } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { errorText } from "../lib/errorText";
@@ -37,6 +37,9 @@ export function SocialAccountsSection() {
   const [busy, setBusy] = useState<Provider | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  // 비밀번호가 있는 회원은 연결 전에 현재 비밀번호를 한 번 더 받는다. 소셜 전용 회원은 서버가 최근 로그인 여부로 확인한다.
+  const [confirming, setConfirming] = useState<Provider | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -66,16 +69,37 @@ export function SocialAccountsSection() {
   const linkedCount = data?.accounts.length ?? 0;
   const loginMethods = linkedCount + (data?.passwordLogin ? 1 : 0);
 
-  const link = async (provider: (typeof PROVIDERS)[number]) => {
+  const startLink = async (provider: (typeof PROVIDERS)[number], password?: string) => {
     if (busy) return;
     setBusy(provider.key); setNotice(""); setError("");
     try {
-      const response = await csrfFetch(API_ENDPOINTS.auth.oauth2Link(provider.path), { method: "POST" });
+      const response = await csrfFetch(API_ENDPOINTS.auth.oauth2Link(provider.path), password === undefined
+        ? { method: "POST" }
+        : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: password }) });
       if (!response.ok) throw new Error(await message(response, "소셜 계정 연결을 시작하지 못했습니다."));
       const { authorizationUrl }: { authorizationUrl: string } = await response.json();
+      setCurrentPassword("");
       window.location.assign(authorizationUrl);
     } catch (e) { setError(errorText(e, "소셜 계정 연결을 시작하지 못했습니다.")); setBusy(null); }
   };
+
+  const link = (provider: (typeof PROVIDERS)[number]) => {
+    if (busy) return;
+    if (data?.passwordLogin) {
+      setConfirming(provider.key); setCurrentPassword(""); setNotice(""); setError("");
+      return;
+    }
+    void startLink(provider);
+  };
+
+  const confirmLink = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const provider = PROVIDERS.find(x => x.key === confirming);
+    if (!provider || !currentPassword) return;
+    void startLink(provider, currentPassword);
+  };
+
+  const cancelConfirm = () => { setConfirming(null); setCurrentPassword(""); setError(""); };
 
   const unlink = async (provider: (typeof PROVIDERS)[number]) => {
     if (busy || !window.confirm(`${provider.label} 로그인 연결을 해제할까요?`)) return;
@@ -97,9 +121,19 @@ export function SocialAccountsSection() {
         <div><strong>{provider.label}</strong><small>{account ? `연결됨, ${account.connectedAt.slice(0, 10)}` : "연결 안 됨"}</small></div>
         {account
           ? <button type="button" disabled={!!busy || lastMethod} title={lastMethod ? "마지막 남은 로그인 방법은 해제할 수 없습니다." : undefined} onClick={() => void unlink(provider)}>{busy === provider.key ? "해제 중" : "해제"}</button>
-          : <button type="button" className="profile-button-primary" disabled={!!busy} onClick={() => void link(provider)}>{busy === provider.key ? "이동 중" : "연결"}</button>}
+          : <button type="button" className="profile-button-primary" disabled={!!busy || confirming === provider.key} onClick={() => link(provider)}>{busy === provider.key ? "이동 중" : "연결"}</button>}
       </li>;
     })}</ul>}
+    {confirming && <form className="profile-social-confirm" onSubmit={confirmLink}>
+      <label>
+        {labelOf(confirming)} 연결 전에 현재 비밀번호를 입력해 주세요.
+        <input type="password" autoComplete="current-password" maxLength={200} required autoFocus value={currentPassword} disabled={!!busy} onChange={event => setCurrentPassword(event.target.value)} />
+      </label>
+      <div className="profile-actions">
+        <button type="button" className="profile-button-cancel" disabled={!!busy} onClick={cancelConfirm}>취소</button>
+        <button type="submit" className="profile-button-primary" disabled={!!busy || !currentPassword}>{busy ? "확인 중" : "확인하고 연결"}</button>
+      </div>
+    </form>}
     <small role="status">{error || notice || (data && loginMethods <= 1 ? "마지막 남은 로그인 방법은 해제할 수 없습니다." : "")}</small>
   </div></section>;
 }

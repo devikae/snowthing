@@ -39,6 +39,13 @@ POST /api/v1/auth/email-verifications/sign-up
 
 중복 이메일은 `409`, 발송 제한은 `429`, SES 장애는 `503`을 반환합니다.
 
+발송 제한 순서 (IKA-76)
+
+1. IP 한도: 같은 IP(IPv6는 /64 단위)에서 한 시간에 20회. 가입 여부를 알려 주기 전에 먼저 센다. 가입 화면은 "이미 가입된 이메일" 안내가 필요해 `409` 응답은 유지하되, 이 한도 안에서만 답한다.
+2. 가입 여부, 탈퇴 이메일 확인.
+3. 메일함 한도: `+태그`를 지우고 Gmail은 점과 googlemail.com을 정리한 주소 기준으로 가입과 비밀번호 재설정을 합쳐 한 시간 10통, 하루 20통. 실제로 메일을 보낼 때만 센다. `snowthing.email.verification.recipient-hourly-limit`, `recipient-daily-limit`으로 바꾼다.
+4. 주소와 용도별 한도: 60초 재발송 대기, 한 시간 5통(기존).
+
 ## 3. 가입 인증번호 확인
 
 ```http

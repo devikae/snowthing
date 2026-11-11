@@ -30,6 +30,7 @@ class EmailVerificationRequestServiceTest {
     private MemberRepository memberRepository;
     private EmailVerificationWriter writer;
     private EmailVerificationIpRateLimiter rateLimiter;
+    private EmailRecipientRateLimiter recipientRateLimiter;
     private VerificationEmailSender emailSender;
     private EmailVerificationService service;
 
@@ -38,6 +39,7 @@ class EmailVerificationRequestServiceTest {
         memberRepository = mock(MemberRepository.class);
         writer = mock(EmailVerificationWriter.class);
         rateLimiter = mock(EmailVerificationIpRateLimiter.class);
+        recipientRateLimiter = mock(EmailRecipientRateLimiter.class);
         emailSender = mock(VerificationEmailSender.class);
         service =
                 new EmailVerificationService(
@@ -48,6 +50,7 @@ class EmailVerificationRequestServiceTest {
                         new EmailVerificationHasher("email-request-test-secret-at-least-32-bytes"),
                         new EmailNormalizer(),
                         rateLimiter,
+                        recipientRateLimiter,
                         emailSender,
                         Clock.fixed(
                                 Instant.parse("2026-10-06T03:00:00Z"), ZoneId.of("Asia/Seoul")));
@@ -70,6 +73,7 @@ class EmailVerificationRequestServiceTest {
         assertThat(response.expiresInSeconds()).isEqualTo(300);
         assertThat(response.resendAvailableInSeconds()).isEqualTo(60);
         verify(rateLimiter).check("203.0.113.10");
+        verify(recipientRateLimiter).check("member@snowthing.org");
         verify(writer)
                 .prepare(
                         eq(response.requestId()),
@@ -83,14 +87,56 @@ class EmailVerificationRequestServiceTest {
     }
 
     @Test
-    void registeredEmailUsesEmail001AndDoesNotCallRateLimiterOrSes() {
+    void registeredEmailIsReportedOnlyAfterIpLimitAndDoesNotSpendRecipientLimit() {
         given(memberRepository.existsByEmail("member@snowthing.org")).willReturn(true);
 
         assertThatThrownBy(() -> service.requestSignUp("member@snowthing.org", "203.0.113.10"))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.EMAIL_ALREADY_REGISTERED);
-        verifyNoInteractions(rateLimiter, writer, emailSender);
+        verify(rateLimiter).check("203.0.113.10");
+        verifyNoInteractions(recipientRateLimiter, writer, emailSender);
+    }
+
+    @Test
+    void ipLimitIsCheckedBeforeRevealingRegisteredEmail() {
+        doThrow(new CustomException(ErrorCode.EMAIL_SEND_LIMIT))
+                .when(rateLimiter)
+                .check("203.0.113.10");
+
+        assertThatThrownBy(() -> service.requestSignUp("member@snowthing.org", "203.0.113.10"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EMAIL_SEND_LIMIT);
+        verifyNoInteractions(memberRepository, recipientRateLimiter, writer, emailSender);
+    }
+
+    @Test
+    void recipientLimitStopsSignUpMailBeforePersisting() {
+        given(memberRepository.existsByEmail("member+1@snowthing.org")).willReturn(false);
+        doThrow(new CustomException(ErrorCode.EMAIL_SEND_LIMIT))
+                .when(recipientRateLimiter)
+                .check("member+1@snowthing.org");
+
+        assertThatThrownBy(() -> service.requestSignUp("member+1@snowthing.org", "203.0.113.10"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EMAIL_SEND_LIMIT);
+        verifyNoInteractions(writer, emailSender);
+    }
+
+    @Test
+    void recipientLimitOnPasswordResetKeepsOpaqueResponse() {
+        given(memberRepository.existsByEmail("member@snowthing.org")).willReturn(true);
+        doThrow(new CustomException(ErrorCode.EMAIL_SEND_LIMIT))
+                .when(recipientRateLimiter)
+                .check("member@snowthing.org");
+
+        EmailVerificationSendResponse response =
+                service.requestPasswordReset("member@snowthing.org", "203.0.113.10");
+
+        assertThat(response.requestId()).isNotBlank();
+        verifyNoInteractions(writer, emailSender);
     }
 
     @Test

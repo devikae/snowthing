@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.auth.service.LoginAttemptLimiter;
 import com.ikae.snowthing.domain.email.entity.EmailVerification;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationPurpose;
 import com.ikae.snowthing.domain.email.entity.EmailVerificationStatus;
@@ -27,6 +28,7 @@ public class PasswordResetService {
     private final EmailVerificationHasher hasher;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptLimiter loginAttemptLimiter;
     private final Clock clock;
 
     @Transactional
@@ -50,6 +52,8 @@ public class PasswordResetService {
         member.changePassword(passwordEncoder.encode(newPassword));
         member.verifyEmail(now);
         verification.consume(now);
+        // 메일함을 가진 본인이 확인됐으므로 남이 실패를 쌓아 걸어 둔 계정 로그인 잠금을 푼다.
+        loginAttemptLimiter.clearAccount(member.getEmail());
         return member.getPublicId();
     }
 }
