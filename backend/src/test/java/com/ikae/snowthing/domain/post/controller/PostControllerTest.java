@@ -558,17 +558,42 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("PUT과 DELETE 반응 API는 같은 익명 사용자 쿠키로 추천을 생성하고 취소한다")
-    void reactionCommands_anonymousUser_useSameAnonymousVoterCookie() throws Exception {
+    @DisplayName("익명게시판이 아닌 글에 비로그인으로 추천하면 401 AUTH_020을 준다")
+    void reactionCommands_anonymousUser_outsideAnonymousBoard_loginRequired() throws Exception {
         PostResponse post =
                 postService.createPost(
                         PostCreateRequest.builder()
                                 .categoryCode("FREE")
-                                .title("익명 추천 컨트롤러 테스트")
+                                .title("회원 추천 전용 컨트롤러 테스트")
                                 .content("본문")
                                 .isAnonymous(false)
                                 .build(),
                         userDetails,
+                        "127.0.0.1");
+        SecurityContextHolder.clearContext();
+
+        mockMvc.perform(
+                        put("/api/v1/posts/" + post.publicId() + "/reaction")
+                                .param("type", LIKE_REACTION_PARAM)
+                                .with(csrf())
+                                .with(anonymous()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_020"));
+    }
+
+    @Test
+    @DisplayName("익명게시판에서 PUT과 DELETE 반응 API는 같은 익명 사용자 쿠키로 추천을 생성하고 취소한다")
+    void reactionCommands_anonymousUser_useSameAnonymousVoterCookie() throws Exception {
+        PostResponse post =
+                postService.createPost(
+                        PostCreateRequest.builder()
+                                .categoryCode("ANONYMOUS")
+                                .title("익명 추천 컨트롤러 테스트")
+                                .content("본문")
+                                .isAnonymous(true)
+                                .anonymousPassword("Anon1234!")
+                                .build(),
+                        null,
                         "127.0.0.1");
         SecurityContextHolder.clearContext();
 

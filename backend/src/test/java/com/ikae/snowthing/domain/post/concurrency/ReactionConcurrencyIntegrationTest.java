@@ -58,7 +58,8 @@ class ReactionConcurrencyIntegrationTest {
     private static final int INVALID_NEGATIVE_COUNT = -1;
     private static final int FORCED_INCONSISTENT_COUNT = 7;
     private static final long AWAIT_TIMEOUT_SECONDS = 60L;
-    private static final String CATEGORY_CODE = "REACTION_CONCURRENCY";
+    // 비회원 동시 추천도 확인하므로 비회원 추천을 받는 익명게시판 코드로 만든다.
+    private static final String CATEGORY_CODE = "ANONYMOUS";
     private static final String CATEGORY_NAME = "추천 동시성 테스트";
     private static final String POST_TITLE = "추천 동시성 테스트 게시글";
     private static final String POST_CONTENT = "추천 동시성 테스트 본문";
