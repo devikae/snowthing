@@ -86,3 +86,15 @@
   .pass-price-cta-link { width: 100%; text-align: center; }
 }
 .tool-share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* 가격 비교 페이지 설명: 항목별로 한 줄씩 나눠 읽기 쉽게 */
+.pass-price-notes { display: grid; gap: 0; margin: 12px 0 0; border-top: 1px solid var(--snow-border); }
+.pass-price-notes > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; border-bottom: 1px solid var(--snow-border); padding: 12px 0; }
+.pass-price-notes dt { color: var(--snow-ink); font-size: 14px; font-weight: 700; line-height: 22px; }
+.pass-price-notes dd { display: grid; gap: 6px; margin: 0; color: var(--snow-ink-soft); font-size: 14px; line-height: 22px; }
+.pass-price-notes dd strong { color: var(--snow-ink); font-weight: 700; }
+.pass-price-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.pass-price-chips li { border-radius: 999px; background: var(--snow-surface-mid); padding: 2px 10px; color: var(--snow-ink); font-size: 13px; font-weight: 600; }
+@media (max-width: 560px) {
+  .pass-price-notes > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}

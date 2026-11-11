@@ -118,11 +118,33 @@ export default function SeasonPassPricesPage() {
       </div>
       <section className="tool-explanation">
         <h2>X6+ 통합 시즌권</h2>
-        <p>
-          X6+ 통합 시즌권은 여섯 곳의 리조트에서 함께 쓰는 시즌권이에요. 이 표에서는 용평, 웰리힐리, 지산, 엘리시안 강촌이 X6+ 값을 써요.
-          네 곳은 일반 성인이 따로 살 수 있는 단독 시즌권을 찾지 못해 통합권 값을 적었어요. 지금 값은 2차 판매가이고 11월 19일 이후 바뀔 수 있어요.
-        </p>
-        <p>알펜시아는 이번 시즌 값이 나오지 않아 지난 시즌 단독 시즌권 값을 적었고, 에덴밸리는 시즌권 값을 찾지 못했어요.</p>
+        <p>여섯 곳의 리조트에서 함께 쓰는 시즌권이에요.</p>
+        <dl className="pass-price-notes">
+          <div>
+            <dt>X6+ 값을 쓴 곳</dt>
+            <dd>
+              <ul className="pass-price-chips">
+                <li>용평</li>
+                <li>웰리힐리</li>
+                <li>지산</li>
+                <li>엘리시안 강촌</li>
+              </ul>
+              <span>일반 성인이 따로 살 수 있는 단독 시즌권이 없어 통합권 값을 적었어요.</span>
+            </dd>
+          </div>
+          <div>
+            <dt>가격 기준</dt>
+            <dd>지금 값은 2차 판매가예요. <strong>11월 19일 이후 바뀔 수 있어요.</strong></dd>
+          </div>
+          <div>
+            <dt>알펜시아</dt>
+            <dd>이번 시즌 값이 아직 나오지 않아 지난 시즌 단독 시즌권 값을 적었어요.</dd>
+          </div>
+          <div>
+            <dt>에덴밸리</dt>
+            <dd>시즌권 값을 찾지 못했어요.</dd>
+          </div>
+        </dl>
       </section>
       <section className="tool-explanation">
         <h2>자주 묻는 질문</h2>
