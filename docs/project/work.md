@@ -1,3 +1,14 @@
+## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
+
+- 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 완료
+  - `build.gradle`: `rds`, `s3`, `cloudfront`, `sesv2` 2.25.70 고정 버전을 `software.amazon.awssdk:bom:2.46.7` 하나로 묶었다. JDBC Wrapper가 끌어오는 `rds` 2.25.56도 BOM 버전 2.46.7로 맞춰진다.
+  - `S3Config`: 2.46에서 deprecated 된 `DefaultCredentialsProvider.create()`를 `builder().build()`로 바꿨다. `create()`는 앱 전체가 같은 인스턴스를 나눠 쓰는 싱글턴이라 한 클라이언트가 닫으면 다른 클라이언트의 자격 증명도 닫힌다.
+- 결정
+  - S3 체크섬 기본값(2.30부터 PutObject에 CRC32를 trailer로 붙이고, 체크섬이 필요한 API는 MD5 대신 CRC32를 보냄)은 그대로 둔다. 업로드는 모두 서버가 AWS S3로 직접 보내고(presigned URL 없음, endpointOverride 없음), AWS S3는 두 방식을 모두 받는다. 다른 안: `requestChecksumCalculation(WHEN_REQUIRED)`로 예전 동작 유지. S3 호환 저장소를 쓸 때만 필요해 지금은 넣지 않았다.
+  - `aws-advanced-jdbc-wrapper` 2.3.7은 그대로 둔다. 2.46.7 클래스패스에서 Wrapper의 IAM 토큰 생성(RegularRdsUtility, LightRdsUtility)이 정상 동작하는 것을 확인했다.
+- 검증: compileJava, compileTestJava(deprecation 경고 확인), spotlessCheck(전체 파일 대상), `ImageServiceTest`, `ImageServiceInvalidationTest`, `SesVerificationEmailSenderTest` 통과. DB가 필요한 테스트는 CI.
+
 ## 익명게시판 밖에서는 로그인 회원만 추천과 비추천 (IKA-82, 2026-11-11)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.

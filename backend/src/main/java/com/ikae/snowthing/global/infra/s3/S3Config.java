@@ -21,7 +21,7 @@ public class S3Config {
     public software.amazon.awssdk.services.cloudfront.CloudFrontClient cloudFrontClient() {
         return software.amazon.awssdk.services.cloudfront.CloudFrontClient.builder()
                 .region(Region.AWS_GLOBAL)
-                .credentialsProvider(DefaultCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.builder().build())
                 .overrideConfiguration(this::withTimeouts)
                 .build();
     }
@@ -29,11 +29,13 @@ public class S3Config {
     @Value("${cloud.aws.region.static:ap-northeast-2}")
     private String region;
 
+    // SDK 2.30부터 PutObject에 CRC32 체크섬을 기본으로 붙인다. 업로드는 모두 서버가 AWS S3로 직접 보내므로
+    // 기본값을 그대로 둔다. S3 호환 저장소(endpointOverride)로 바꿀 때는 WHEN_REQUIRED 설정을 검토한다.
     @Bean
     public S3Client s3Client() {
         return S3Client.builder()
                 .region(Region.of(region))
-                .credentialsProvider(DefaultCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.builder().build())
                 .overrideConfiguration(this::withTimeouts)
                 .build();
     }
