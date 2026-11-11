@@ -532,18 +532,30 @@ def mood_board(x, y):
     return (122, 82, 200, 255) if x in (1, 5) else (252, 214, 84, 255)
 
 
-# 연습벌레 보드의 흰 붓 획(줄마다 흰 칸). 위아래로 가늘게 흐르는 선 가운데에 굵게 휘감기는 획이 있다.
-GRINDER_STROKE = {
-    **{y: (2,) for y in range(3, 8)},
-    8: (1, 2), 9: (1, 2, 3, 4), 10: (2, 3, 4, 5), 11: (4, 5), 12: (3, 4, 5),
-    13: (1, 2, 3, 4), 14: (0, 1, 2), 15: (0, 1, 2, 3), 16: (1, 2, 3, 4), 17: (2, 3),
-    **{y: (2 + (y - 18) // 8,) for y in range(18, 34)},
-}
-
-
 def grinder_board(x, y):
-    """검은 판에 흰 붓 획 하나가 위에서 아래로 흐른다."""
-    return (240, 240, 244, 255) if x in GRINDER_STROKE.get(y, ()) else (30, 32, 40, 255)
+    """앞코는 둥글고 꼬리는 거의 각진 방향성 보드. 검은 판에 회색 파도 결이 크게 휘고, 위쪽 빨간 표식과 꼬리 쪽 빨간 줄이 있다."""
+    last = BOARD_LENGTH - 1
+    # 모양: 앞코 두 줄만 둥글게 깎고, 꼬리는 마지막 한 줄 모서리만 깎아 거의 각지게 한다
+    if (y == 0 and not 2 <= x <= 4) or (y == 1 and x in (0, 6)) or (y == last and x in (0, 6)):
+        return None
+    black, gray, light, red = (28, 30, 36, 255), (108, 112, 122, 255), (200, 204, 212, 255), (226, 44, 56, 255)
+    if 4 <= y <= 6 and 3 <= x <= 4:
+        return red
+    if y == last - 3 and 1 <= x <= 5:
+        return red
+    # 왼쪽 위에서 크게 휘는 파도 결
+    r = ((x + 4) ** 2 + ((y - 13) / 2.0) ** 2) ** 0.5
+    if 7.4 <= r <= 8.2:
+        return light
+    if 6.2 <= r <= 9.2:
+        return gray
+    # 아래쪽 비스듬한 결 두 줄
+    if 22 <= y <= 29 and x == 6 - (y - 22) // 2:
+        return gray
+    return black
+
+
+grinder_board.custom_shape = True
 
 
 def hot_pack_board(x, y):
