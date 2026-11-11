@@ -342,10 +342,11 @@ def hot_pack():
     c.rect(29, 23, 3, 3, jacket)
     # 주먹은 가로로 넓게, 엄지는 주먹 왼쪽 끝에서 위로. 손가락 마디 선을 넣어 주먹으로 보이게 한다.
     mitten_dark = (192, 58, 56, 255)
-    c.blob(31, 20, 6, 5, mitten, radius=1)
-    c.rect(31, 16, 2, 4, mitten)
-    for y in (21, 23):
-        c.rect(34, y, 3, 1, mitten_dark)
+    c.rect(31, 22, 3, 3, jacket)
+    c.blob(33, 19, 6, 5, mitten, radius=1)
+    c.rect(34, 17, 2, 2, mitten)
+    for y in (20, 22):
+        c.rect(36, y, 3, 1, mitten_dark)
     c.outline()
     return c
 
