@@ -78,7 +78,8 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
   const [searchType, setSearchType] = useState(searchTypeFromUrl);
   const [totalPages, setTotalPages] = useState(serverList?.totalPages ?? 1);
   const [loading, setLoading] = useState(!serverList);
-  const [error, setError] = useState(false);
+  // 실패 이유. 검색어 길이, 검색 횟수 제한처럼 사용자가 고칠 수 있는 경우는 서버 문구를 그대로 보여 준다.
+  const [error, setError] = useState<string | null>(null);
   // 공지는 서버 값이 있으면 그대로 쓰고, 없을 때만 브라우저가 받는다.
   const serverNotices = initial?.notices ?? null;
 
@@ -101,7 +102,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
   const fetchPosts = useCallback(
     async (signal?: AbortSignal) => {
       setLoading(true);
-      setError(false);
+      setError(null);
       try {
         const response = await fetch(`${API_ENDPOINTS.posts.list}?${listQuery}`, {
           credentials: "include",
@@ -109,6 +110,13 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
         });
         if (response.status === 401 && currentCategory === "INQUIRY") {
           router.replace(`/login?returnUrl=${encodeURIComponent("/posts?category=INQUIRY")}`);
+          return;
+        }
+        if (response.status === 400 || response.status === 429) {
+          const body = await response.json().catch(() => null);
+          if (signal?.aborted) return;
+          setPosts([]);
+          setError(typeof body?.message === "string" ? body.message : "게시글을 불러오지 못했습니다.");
           return;
         }
         if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
@@ -120,7 +128,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
         if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
         console.error("게시글 목록 로드 실패:", fetchError);
         setPosts([]);
-        setError(true);
+        setError("게시글을 불러오지 못했습니다.");
       } finally {
         if (!signal?.aborted) setLoading(false);
       }
@@ -135,7 +143,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
       if (serverList) {
         setPosts(serverList.posts);
         setTotalPages(serverList.totalPages);
-        setError(false);
+        setError(null);
         setLoading(false);
         return;
       }
@@ -175,6 +183,11 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
+    // 서버도 한 글자 검색을 거절한다. 요청을 보내기 전에 이유를 알려 준다.
+    if (Array.from(searchKeyword.trim()).length === 1) {
+      alert("검색어는 2자 이상 입력해 주세요.");
+      return;
+    }
     moveTo({ page: 0, keyword: searchKeyword, searchType });
   };
 
@@ -255,7 +268,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
               ) : error ? (
                 <div className="board-state error">
                   <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
-                  <strong>게시글을 불러오지 못했습니다.</strong>
+                  <strong>{error}</strong>
                   <button type="button" onClick={() => void fetchPosts()}>
                     다시 시도
                   </button>
@@ -368,7 +381,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     onChange={(event) => setSearchKeyword(event.target.value)}
                     placeholder={`${config.name} 내 검색`}
                     aria-label={`${config.name} 내 검색`}
-                    maxLength={100}
+                    maxLength={50}
                   />
                   <button>검색</button>
                 </form>

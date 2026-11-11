@@ -65,8 +65,11 @@ function Section({ title, count, more, children }: { title: string; count?: numb
 }
 
 function SearchContent() {
-  const keyword = (useSearchParams().get("q") ?? "").trim();
-  const [input, setInput] = useState(keyword);
+  const rawKeyword = (useSearchParams().get("q") ?? "").trim();
+  // 게시글 검색은 한 글자를 받지 않는다(본문 전체를 훑는 검색이라 서버가 거절한다). 요청 없이 안내만 한다.
+  const tooShort = Array.from(rawKeyword).length === 1;
+  const keyword = tooShort ? "" : rawKeyword;
+  const [input, setInput] = useState(rawKeyword);
   const [results, setResults] = useState<Results | null>(null);
   const q = encodeURIComponent(keyword);
 
@@ -84,6 +87,10 @@ function SearchContent() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const next = input.trim();
+    if (Array.from(next).length === 1) {
+      alert("검색어는 2자 이상 입력해 주세요.");
+      return;
+    }
     if (next) window.location.assign(`/search?q=${encodeURIComponent(next)}`);
   };
   const loading = Boolean(keyword) && results?.keyword !== keyword;
@@ -94,10 +101,10 @@ function SearchContent() {
     <>
       <h1 className={styles.title}>{keyword ? <><strong>{keyword}</strong> 검색 결과</> : "통합 검색"}</h1>
       <form className={styles.form} onSubmit={submit} role="search">
-        <input aria-label="통합 검색" placeholder="게시글, 카풀, 중고장터 검색" value={input} maxLength={100} onChange={(event) => setInput(event.target.value)} />
+        <input aria-label="통합 검색" placeholder="게시글, 카풀, 중고장터 검색" value={input} maxLength={50} onChange={(event) => setInput(event.target.value)} />
         <button type="submit">검색</button>
       </form>
-      {!keyword ? <p className={styles.state}>찾을 단어를 입력해 주세요.</p> : loading || !results ? <p className={styles.state} aria-busy="true">검색 중입니다.</p> : (
+      {!keyword ? <p className={styles.state}>{tooShort ? "검색어는 2자 이상 입력해 주세요." : "찾을 단어를 입력해 주세요."}</p> : loading || !results ? <p className={styles.state} aria-busy="true">검색 중입니다.</p> : (
         <>
           <Section title="게시글" more={`/posts?keyword=${q}`}>
             {results.posts === null ? <p className={styles.state}>{failed}</p> : results.posts.length === 0 ? <p className={styles.state}>{nothing}</p> : (
