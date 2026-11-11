@@ -349,6 +349,8 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
 .snow-report-tag { display: inline-flex; width: 64px; min-width: 64px; height: 26px; align-items: center; justify-content: center; overflow: hidden; border-radius: 5px; padding: 0 5px; color: white; font-size: 11px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .snow-report-content { display: block; overflow: hidden; min-width: 0; color: #1e293b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }.snow-report-author { overflow: hidden; color: #475569; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }.snow-report-time { color: #334155; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }.snow-report-delete { height: 26px; border: 1px solid #fecaca; border-radius: 5px; background: #fff7f7; padding: 0 7px; color: #b91c1c; font-size: 11px; font-weight: 750; cursor: pointer; }
 .resort-report-page { min-height: calc(100vh - 142px); padding-block: 24px 48px; }
+/* 다른 정보 페이지처럼 제목이 헤더에 붙지 않게 위아래 여백을 둔다. 현황을 불러오는 동안 푸터가 화면 안으로 올라왔다 밀려나지 않게 높이를 잡는다. */
+.slopes-page { min-height: calc(100vh - 142px); padding-block: 24px 48px; }
 .resort-report-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }.resort-report-page-heading > div { display: flex; align-items: baseline; gap: 10px; }.resort-report-page-heading h1 { margin: 0; color: #0f2942; font-size: 24px; font-weight: 850; letter-spacing: -.035em; }.resort-report-page-heading time { color: #475569; font-size: 16px; font-weight: 750; }.resort-report-page-heading > a { color: #64748b; font-size: 12px; font-weight: 700; }
 .resort-report-board { overflow: hidden; }.resort-report-board > header { display: flex; min-height: 46px; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding: 0 16px; }.resort-report-board > header strong { color: #334155; font-size: 13px; }.resort-report-board > header span { color: #64748b; font-size: 11px; }
 .resort-report-board article { min-height: 58px; grid-template-columns: 64px minmax(0,1fr) minmax(0,10em) 46px auto; gap: 12px; border-bottom: 1px solid #f1f5f9; padding: 10px 16px; }.resort-report-board article:last-child { border-bottom: 0; }.resort-report-board article .snow-report-content { font-size: 14px; font-weight: 650; line-height: 1.45; }.resort-report-board article .snow-report-author { font-size: 13px; }
@@ -1054,6 +1056,7 @@ html[data-theme="dark"] .resort-report-board article { border-color: var(--snow-
 
 @media (max-width: 640px) {
   .resort-report-page { padding-block: 24px 36px; }
+  .slopes-page { padding-block: 24px 36px; }
   .resort-report-page-heading { align-items: flex-start; }
   .resort-report-page-heading > div { align-items: flex-start; flex-direction: column; gap: 3px; }
   .resort-report-page-heading h1 { font-size: 21px; }

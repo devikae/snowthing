@@ -87,7 +87,7 @@ export default function SlopesPage() {
   return (
     <div className="community-page">
       <TopNav active="resort" />
-      <main className="community-container">
+      <main className="community-container slopes-page">
         <PageHeading
           title="슬로프 현황"
           description="리조트 공식 사이트에 공개된 운영 현황을 하루 몇 번 읽어 모았습니다. 현장 사정으로 바뀔 수 있으니 출발 전 공식 페이지에서 한 번 더 확인하세요."
