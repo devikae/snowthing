@@ -213,28 +213,28 @@ def hype():
     c.rect(10, 26, 3, 3, (58, 62, 82, 255))
     head(c, "smile")
     beanie, knit, rib = (44, 46, 58, 255), (66, 68, 82, 255), (70, 72, 86, 255)
-    # 머리보다 한 칸씩 넓고 높게 써서 푹 눌러쓴 비니로 보이게 한다
-    c.blob(8, 0, 24, 12, beanie, radius=6)
-    c.rect(8, 6, 24, 3, beanie)
-    for y in range(1, 9):
-        for x in range(9, 31):
+    c.blob(9, 1, 22, 11, beanie, radius=5)
+    # 몸통과 밑단 사이가 파이지 않게 메운다
+    c.rect(9, 6, 22, 3, beanie)
+    for y in range(2, 9):
+        for x in range(10, 30):
             if (x + y) % 4 == 0 and c.pixels[x, y][3]:
                 c.dot(x, y, knit)
     # 밑단은 모서리를 깎지 않은 꽉 찬 띠. 골지 줄은 위아래 한 칸씩 남겨 테두리가 고르게 보이게 한다.
-    c.rect(7, 8, 26, 6, beanie)
-    for x in range(8, 32, 2):
+    c.rect(8, 8, 24, 6, beanie)
+    for x in range(9, 31, 2):
         c.rect(x, 9, 1, 4, rib)
     c.rect(25, 9, 3, 3, (182, 122, 72, 255))
-    # 비니 정수리에 걸친 은색 테 스포츠 선글라스: 둥근 렌즈 두 개, 가운데 다리, 양옆으로 감기는 테
+    # 비니 위에 걸친 은색 테 스포츠 선글라스: 둥근 렌즈 두 개, 가운데 다리, 양옆으로 감기는 테
     silver, silver_dark = (214, 220, 230, 255), (156, 164, 178, 255)
     lens, lens_light, lens_shine = (72, 84, 108, 255), (104, 118, 146, 255), (220, 230, 244, 255)
-    c.rect(9, 3, 22, 1, silver_dark)
+    c.rect(9, 5, 22, 1, silver_dark)
     for x in (11, 21):
-        c.blob(x, 1, 8, 5, silver, radius=2)
-        c.blob(x + 1, 2, 6, 3, lens, radius=1)
-        c.rect(x + 1, 4, 6, 1, lens_light)
-        c.rect(x + 2, 2, 2, 1, lens_shine)
-    c.rect(19, 3, 2, 1, silver)
+        c.blob(x, 3, 8, 5, silver, radius=2)
+        c.blob(x + 1, 4, 6, 3, lens, radius=1)
+        c.rect(x + 1, 6, 6, 1, lens_light)
+        c.rect(x + 2, 4, 2, 1, lens_shine)
+    c.rect(19, 5, 2, 1, silver)
     c.blob(17, 19, 6, 4, MOUTH)
     c.rect(18, 19, 4, 1, WHITE)
     right_arm(c, (58, 62, 82, 255), mitten, raised=True)
@@ -311,7 +311,7 @@ def grinder():
 
 
 def hot_pack():
-    """인간 핫팩: 방울 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
+    """인간 핫팩: 노르딕 방울 비니, 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
     c = Canvas()
     jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
     mitten = (232, 84, 76, 255)
@@ -322,20 +322,23 @@ def hot_pack():
     c.rect(13, 31, 14, 1, dark)
     c.rect(14, 26, 3, 1, light)
     head(c, "smile")
-    # 방울 하나 달린 빨간 비니: 머리 폭 전체를 덮어 머리카락이 보이지 않게 한다. 둥근 몸통, 꽉 찬 크림색 골지 밑단, 흰 방울.
-    beanie, beanie_dark, beanie_light = (226, 72, 68, 255), (192, 50, 52, 255), (246, 120, 110, 255)
-    cuff, cuff_dark = (255, 238, 214, 255), (232, 208, 180, 255)
-    c.blob(8, 2, 24, 11, beanie, radius=5)
-    c.rect(8, 7, 24, 3, beanie)
-    c.rect(12, 4, 4, 1, beanie_light)
-    c.rect(11, 5, 2, 1, beanie_light)
-    for x in range(12, 29, 4):
-        c.rect(x, 4, 1, 5, beanie_dark)
-    c.rect(8, 9, 24, 5, cuff)
+    # 노르딕 방울 비니: 머리를 다 덮는다. 빨간 몸통에 흰 줄무늬와 하트 무늬, 빨간 골지 밑단, 크고 폭신한 방울
+    red, red_dark, red_light = (226, 72, 68, 255), (186, 46, 50, 255), (244, 112, 104, 255)
+    snow, snow_dark = (255, 255, 255, 255), (214, 222, 234, 255)
+    c.blob(9, 3, 22, 9, red, radius=5)
+    c.rect(9, 7, 22, 3, red)
+    c.rect(9, 6, 22, 2, snow)
+    for x in range(10, 30, 4):
+        c.dot(x + 1, 6, red)
+        c.dot(x + 2, 7, red)
+    c.rect(13, 4, 3, 1, red_light)
+    c.rect(8, 10, 24, 4, red_dark)
     for x in range(9, 31, 2):
-        c.rect(x, 10, 1, 3, cuff_dark)
-    c.blob(17, 0, 6, 4, WHITE, radius=1)
-    c.dot(18, 1, (226, 232, 240, 255))
+        c.rect(x, 11, 1, 2, red)
+    c.blob(16, 0, 8, 5, snow, radius=2)
+    c.rect(17, 3, 6, 1, snow_dark)
+    c.dot(18, 1, snow_dark)
+    c.dot(21, 2, snow_dark)
     # 발그레한 볼
     c.rect(11, 18, 4, 2, (250, 132, 120, 255))
     c.rect(25, 18, 4, 2, (250, 132, 120, 255))
