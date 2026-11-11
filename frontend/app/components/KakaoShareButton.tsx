@@ -87,13 +87,15 @@ type Props = {
   buttonTitle?: string;
   /** 한 화면에 공유 대상이 둘 이상이면 구분되는 글자를 준다. */
   label?: string;
+  /** 아이콘만 보이고 글자는 화면 읽기 프로그램에만 남긴다. */
+  iconOnly?: boolean;
   /** SDK를 못 쓸 때 부른다. 없으면 공유 창, 안 되면 링크 복사. */
   onFallback?: () => void | Promise<void>;
 };
 
 const FALLBACK_NOTICE = { shared: "", cancelled: "", copied: "링크를 복사했어요.", failed: "링크를 복사하지 못했어요." } as const;
 
-export default function KakaoShareButton({ title, description, url, imageUrl, buttonTitle = "자세히 보기", label = "카카오톡 공유", onFallback }: Props) {
+export default function KakaoShareButton({ title, description, url, imageUrl, buttonTitle = "자세히 보기", label = "카카오톡 공유", iconOnly = false, onFallback }: Props) {
   const [notice, setNotice] = useState("");
 
   // 데스크톱은 공유 창을 팝업으로 연다. 클릭 뒤에 스크립트를 받으면 팝업이 막힐 수 있어 버튼이 보일 때 미리 받는다.
@@ -129,11 +131,11 @@ export default function KakaoShareButton({ title, description, url, imageUrl, bu
 
   return (
     <>
-      <button type="button" className={styles.button} onClick={() => void share()}>
+      <button type="button" className={iconOnly ? `${styles.button} ${styles.iconOnly}` : styles.button} onClick={() => void share()} title={iconOnly ? label : undefined}>
         <svg className={styles.symbol} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M12 3C6.48 3 2 6.48 2 10.78c0 2.78 1.86 5.22 4.66 6.6l-.95 3.48c-.08.3.26.54.52.37l4.13-2.73c.54.07 1.09.11 1.64.11 5.52 0 10-3.48 10-7.83S17.52 3 12 3Z" />
         </svg>
-        {label}
+        {iconOnly ? <span className="sr-only">{label}</span> : label}
       </button>
       {notice && <span className={styles.notice} role="status">{notice}</span>}
     </>

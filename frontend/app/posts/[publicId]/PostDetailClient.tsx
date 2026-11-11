@@ -693,6 +693,28 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                 />
               )}
               <div><AuthorMenu publicId={isAnonymousPost ? null : post.writer.publicId} nickname={post.writer.nickname} /><small>{formatPostDateTime(post.createdAt)}</small></div>
+              {post.categoryCode !== "INQUIRY" && (
+                <div className="post-detail-tools">
+                  <button type="button" onClick={() => void handleScrap()} disabled={scrapBusy} className={post.scrapped ? "active" : ""} aria-pressed={post.scrapped} title={post.scrapped ? "스크랩됨" : "스크랩"}>
+                    <span className="material-symbols-outlined" aria-hidden="true">bookmark</span>
+                    <span className="sr-only">{post.scrapped ? "스크랩됨" : "스크랩"}</span>
+                  </button>
+                  <button type="button" onClick={() => void handleShare()} title="공유">
+                    <span className="material-symbols-outlined" aria-hidden="true">share</span>
+                    <span className="sr-only">공유</span>
+                  </button>
+                  <KakaoShareButton
+                    title={post.title}
+                    description={plainTextSummary(post.content, 80) || post.categoryName}
+                    url={`/posts/${post.publicId}`}
+                    imageUrl={firstImageUrl(post.images, post.content)}
+                    buttonTitle="글 보기"
+                    iconOnly
+                    onFallback={handleShare}
+                  />
+                  <ReportButton targetType="POST" targetId={publicId} className="post-report-button" />
+                </div>
+              )}
               {(() => {
                 const canEdit = post.isAuthor || post.requiresPassword;
                 const canDelete = Boolean(isAdmin || canEdit);
@@ -734,7 +756,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
             {post.categoryCode !== "INQUIRY" && (
             <div className="post-detail-reactions">
-              {/* 추천과 비추천은 가운데에 크게, 나머지 동작은 오른쪽 아래 작은 줄로 나눈다 */}
+              {/* 본문 아래에는 추천과 비추천만 둔다. 스크랩, 공유, 신고는 작성자 줄 오른쪽 도구에 있다. */}
               <div className="post-vote">
                 <button type="button" onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
                   <span className="material-symbols-outlined" aria-hidden="true">thumb_up</span>
@@ -746,22 +768,6 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                   <span>비추천</span>
                   <strong>{post.dislikeCount}</strong>
                 </button>
-              </div>
-              <div className="post-detail-subactions">
-                <button type="button" onClick={() => void handleScrap()} disabled={scrapBusy} className={post.scrapped ? "active" : ""} aria-pressed={post.scrapped}>
-                  <span className="material-symbols-outlined" aria-hidden="true">bookmark</span>
-                  {post.scrapped ? "스크랩됨" : "스크랩"}
-                </button>
-                <button type="button" onClick={() => void handleShare()}><span className="material-symbols-outlined" aria-hidden="true">share</span>공유</button>
-                <KakaoShareButton
-                  title={post.title}
-                  description={plainTextSummary(post.content, 80) || post.categoryName}
-                  url={`/posts/${post.publicId}`}
-                  imageUrl={firstImageUrl(post.images, post.content)}
-                  buttonTitle="글 보기"
-                  onFallback={handleShare}
-                />
-                <ReportButton targetType="POST" targetId={publicId} className="post-report-button" />
               </div>
               {reactionMsg && <p className="text-sm font-semibold text-[var(--snow-muted)]">{reactionMsg}</p>}
             </div>

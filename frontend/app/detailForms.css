@@ -262,18 +262,27 @@ html .content-detail-page.post-detail-page .post-detail-reactions .post-vote but
 html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active { border-color: #38bdf8; background: #0c4a6e; color: #e0f2fe; }
 html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active strong { color: #e0f2fe; }
 html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button:last-child.active { border-color: #64748b; background: #334155; color: #e2e8f0; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; justify-self: stretch; gap: 2px; margin: 0; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button {
-  display: inline-flex; align-items: center; gap: 4px; min-height: 36px; border: 0; border-radius: 8px; background: transparent; padding: 6px 10px; color: var(--snow-muted); font: 500 13px/18px var(--font-hanken); box-shadow: none;
-}
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button .material-symbols-outlined { font-size: 17px; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button svg { width: 16px; height: 16px; border-radius: 50%; background: #fee500; padding: 2px; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button:hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button.active { background: transparent; color: #0369a1; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions .post-report-button { margin-left: 6px; border-left: 1px solid var(--snow-border); border-radius: 0 8px 8px 0; color: var(--snow-faint); }
 /* 카카오 공유는 브랜드 노란색을 지키되 작은 줄에 맞게 크기만 줄인다 */
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button[class*="kakaoShare"] { min-height: 30px; margin-inline: 4px; border-radius: 999px; padding: 0 10px; font-size: 12.5px; font-weight: 600; }
-html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions button[class*="kakaoShare"] svg { width: 14px; height: 14px; background: transparent; padding: 0; }
 @media (max-width: 640px) {
-  html .content-detail-page.post-detail-page .post-detail-reactions .post-detail-subactions { justify-content: center; }
 }
+
+
+/* 글 상세 도구: 작성자 줄 오른쪽의 스크랩, 공유, 카톡 공유 아이콘과 신고 */
+html .content-detail-page.post-detail-page .post-detail-author > .post-detail-tools { display: flex; flex-direction: row; align-items: center; gap: 2px; margin-left: auto; }
+html .content-detail-page.post-detail-page .post-detail-tools > button:not([class*="kakaoShare"]) {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; min-height: 34px; border: 0; border-radius: 999px; background: transparent; padding: 0; color: var(--snow-muted); cursor: pointer;
+}
+html .content-detail-page.post-detail-page .post-detail-tools > button .material-symbols-outlined { font-size: 19px; }
+html .content-detail-page.post-detail-page .post-detail-tools > button:not([class*="kakaoShare"]):hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
+html .content-detail-page.post-detail-page .post-detail-tools > button.active { color: #0369a1; }
+html .content-detail-page.post-detail-page .post-detail-tools > button.active .material-symbols-outlined { font-variation-settings: "FILL" 1; }
+html .content-detail-page.post-detail-page .post-detail-tools button[class*="kakaoShare"] { margin: 0 4px; }
+html .content-detail-page.post-detail-page .post-detail-tools .post-report-button { width: auto; border-radius: 8px; padding: 0 8px; color: var(--snow-faint); font-size: 12px; }
+html .content-detail-page.post-detail-page .post-detail-tools + .post-detail-owner-actions { margin-left: 8px; }
+/* 본문 아래는 추천, 비추천만 남아 위아래 여백을 줄인다 */
+html .content-detail-page.post-detail-page .post-detail-reactions { padding-bottom: 4px; }
+@media (max-width: 640px) {
+  html .content-detail-page.post-detail-page .post-detail-author { flex-wrap: wrap; }
+}
+/* 글 카드 아래 32px 여백과 묶음 간격 18px이 겹쳐 댓글 위가 멀었다. 카드 여백을 없애 간격만 남긴다. */
+html .content-detail-page.post-detail-page .post-detail-card { margin-bottom: 0; }

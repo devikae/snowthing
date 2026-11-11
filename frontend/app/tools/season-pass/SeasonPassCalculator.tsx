@@ -18,16 +18,19 @@ const labels: Record<keyof SeasonPassInput, string> = {
   ticketPrice: "할인 리프트권 1회 가격",
   passTripCost: "시즌권 이용 시 1회 부대비용",
   ticketTripCost: "개별권 이용 시 1회 부대비용",
-  visited: "이미 방문한 횟수",
-  planned: "예상 총 방문 횟수",
+  visited: "방문한 횟수",
+  planned: "예상 총 방문 횟수 (선택)",
 };
+
+// 화면에 보이는 입력 칸. 부대비용 두 칸은 계산에서 0으로 두고 보이지 않는다(공유 주소 형식은 그대로).
+const VISIBLE_FIELDS = ["passPrice", "ticketPrice", "visited", "planned"] as const;
 
 const initial: Record<keyof SeasonPassInput, string> = {
   passPrice: "",
   ticketPrice: "",
   passTripCost: "",
   ticketTripCost: "",
-  visited: "",
+  visited: "0",
   planned: "",
 };
 
@@ -78,6 +81,8 @@ function resortFill(code: string) {
 export default function SeasonPassCalculator() {
   const [fields, setFields] = useState(initial);
   const [input, setInput] = useState<SeasonPassInput | null>(null);
+  // 예상 방문 횟수를 비우고 계산하면 예상 관련 결과는 숨긴다.
+  const [plannedGiven, setPlannedGiven] = useState(true);
   const [error, setError] = useState("");
   const [resortCode, setResortCode] = useState("");
   const [resortNote, setResortNote] = useState("");
@@ -149,17 +154,16 @@ export default function SeasonPassCalculator() {
     const next = Object.fromEntries(
       SEASON_PASS_FIELDS.map((key) => {
         const raw = fields[key].replace(/,/g, "").trim();
-        if (
-          raw === "" &&
-          (key === "passTripCost" ||
-            key === "ticketTripCost" ||
-            key === "visited")
-        ) {
-          return [key, 0];
-        }
+        if (key === "passTripCost" || key === "ticketTripCost") return [key, 0];
+        if (raw === "" && key === "visited") return [key, 0];
+        if (raw === "" && key === "planned") return [key, -1];
         return [key, /^\d+$/.test(raw) ? Number(raw) : NaN];
       }),
     ) as unknown as SeasonPassInput;
+    // 예상 방문 횟수가 없으면 방문한 횟수로 계산하고, 예상 결과는 보이지 않는다.
+    const hasPlanned = next.planned !== -1;
+    if (!hasPlanned) next.planned = next.visited;
+    setPlannedGiven(hasPlanned);
 
     const computed = calculateSeasonPass(next);
     if (!computed.valid) {
@@ -192,7 +196,7 @@ export default function SeasonPassCalculator() {
               </select>
               {resortNote && <small className="tool-resort-note">{resortNote}</small>}
             </label>
-            {SEASON_PASS_FIELDS.map((key) => (
+            {VISIBLE_FIELDS.map((key) => (
               <label key={key}>
                 {labels[key]}
                 <div className="tool-unit-input">
@@ -201,20 +205,8 @@ export default function SeasonPassCalculator() {
                     inputMode="numeric"
                     pattern="[0-9,]*"
                     maxLength={key === "visited" || key === "planned" ? 3 : 13}
-                    placeholder={
-                      key === "passTripCost" ||
-                      key === "ticketTripCost" ||
-                      key === "visited"
-                        ? "0"
-                        : key === "planned"
-                          ? "예: 15"
-                          : "0"
-                    }
-                    required={
-                      key === "passPrice" ||
-                      key === "ticketPrice" ||
-                      key === "planned"
-                    }
+                    placeholder={key === "planned" ? "비워도 돼요. 예: 15" : "0"}
+                    required={key === "passPrice" || key === "ticketPrice"}
                     value={fields[key]}
                     onFocus={(e) => e.target.select()}
                     onChange={(event) =>
@@ -228,10 +220,6 @@ export default function SeasonPassCalculator() {
               </label>
             ))}
           </div>
-          <p className="tool-help">
-            부대비용에는 교통, 주차, 렌털 등 방문마다 드는 비용을 넣으세요. 시즌권
-            혜택으로 절약하는 비용이 없다면 양쪽에 같은 값을 입력하면 됩니다.
-          </p>
           <button type="submit" className="tool-primary">
             본전과 방문 목표 계산
           </button>
@@ -271,6 +259,7 @@ export default function SeasonPassCalculator() {
                       : won(result.current.costPerVisit)}
                   </dd>
                 </div>
+                {plannedGiven && (<>
                 <div>
                   <dt>예상 {input.planned}회 방문 시 1회 비용</dt>
                   <dd>
@@ -286,6 +275,7 @@ export default function SeasonPassCalculator() {
                     {result.planned.saving >= 0 ? "절약" : "추가"}
                   </dd>
                 </div>
+                </>)}
               </dl>
               {result.breakEvenVisits !== null &&
                 result.breakEvenVisits > 730 && (
@@ -320,7 +310,9 @@ export default function SeasonPassCalculator() {
                 key={seasonPassSearch(input)}
                 path="/tools/season-pass"
                 search={seasonPassSearch(input)}
-                text={`예상 ${input.planned}회 방문, 시즌권 총비용 ${won(result.planned.passTotal)}. 내 조건으로 계산해 보세요.`}
+                text={plannedGiven
+                  ? `예상 ${input.planned}회 방문, 시즌권 총비용 ${won(result.planned.passTotal)}. 내 조건으로 계산해 보세요.`
+                  : `시즌권 본전은 ${result.breakEvenVisits === null ? "회수 불가" : `${result.breakEvenVisits}회`}. 내 조건으로 계산해 보세요.`}
               />
             </>
           ) : (
@@ -336,9 +328,9 @@ export default function SeasonPassCalculator() {
       <section className="tool-explanation">
         <h2>어떻게 계산하나요?</h2>
         <p>
-          시즌권 총비용은 결제액에 방문별 부대비용을 더합니다. 개별권 총비용은
-          방문 횟수에 리프트권과 부대비용을 곱합니다. 두 비용이 같아지거나
-          시즌권 쪽이 저렴해지는 첫 방문 횟수를 본전으로 표시합니다.
+          시즌권 총비용은 결제액 그대로이고, 개별권 총비용은 방문 횟수에 리프트권
+          가격을 곱합니다. 두 비용이 같아지거나 시즌권 쪽이 저렴해지는 첫 방문
+          횟수를 본전으로 표시합니다.
         </p>
         <details>
           <summary>시즌권 종류나 사용 시간은 반영되나요?</summary>
