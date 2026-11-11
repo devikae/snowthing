@@ -289,17 +289,18 @@ def grinder():
     c.blob(21, 7, 8, 4, (252, 192, 84, 255))
     c.rect(12, 8, 2, 1, WHITE)
     c.rect(22, 8, 2, 1, WHITE)
+    # 땀방울: 헬멧 양옆에 같은 높이로 마주 보게 둔다(가운데 기준 대칭)
     c.rect(33, 7, 2, 3, (136, 206, 248, 255))
     c.dot(33, 6, (136, 206, 248, 255))
-    c.rect(5, 12, 2, 3, (136, 206, 248, 255))
-    c.dot(5, 11, (136, 206, 248, 255))
+    c.rect(5, 7, 2, 3, (136, 206, 248, 255))
+    c.dot(6, 6, (136, 206, 248, 255))
     right_arm(c, jacket, mitten)
     c.outline()
     return c
 
 
 def hot_pack():
-    """인간 핫팩: 귤색 패딩, 줄무늬 목도리, 양손에 든 핫팩과 피어오르는 김."""
+    """인간 핫팩: 귤색 패딩, 줄무늬 목도리, 발그레한 볼, 엄지를 세운 손."""
     c = Canvas()
     jacket, dark, light = (255, 166, 77, 255), (230, 128, 52, 255), (255, 204, 140, 255)
     mitten = (232, 84, 76, 255)
@@ -329,20 +330,12 @@ def hot_pack():
     c.rect(13, 26, 3, 5, scarf)
     c.rect(13, 27, 3, 1, scarf_light)
     c.rect(13, 29, 3, 1, scarf_light)
-    # 오른팔도 내리고, 양손에 핫팩 주머니
-    c.rect(27, 26, 3, 4, jacket)
-    c.blob(27, 29, 4, 3, mitten)
-    pack, pack_dot = (255, 250, 240, 255), (240, 132, 70, 255)
-    for x in (6, 30):
-        c.blob(x, 27, 5, 6, pack, radius=1)
-        c.rect(x + 1, 29, 3, 1, pack_dot)
-        c.rect(x + 1, 31, 3, 1, pack_dot)
+    # 왼팔은 내리고 오른팔은 얼굴에서 떨어지게 옆으로 뻗어 엄지를 세운다
+    c.rect(27, 25, 3, 3, jacket)
+    c.rect(29, 23, 3, 3, jacket)
+    c.blob(31, 20, 5, 4, mitten, radius=1)
+    c.rect(32, 17, 2, 3, mitten)
     c.outline()
-    # 핫팩 위로 피어오르는 김. 테두리 없이 한 칸 굵기 물결로 그린다.
-    steam = (250, 150, 110, 255)
-    for x in (8, 32):
-        for dx, y in ((0, 25), (0, 24), (1, 23), (1, 22), (0, 21), (0, 20)):
-            c.dot(x + dx, y, steam)
     return c
 
 
