@@ -225,6 +225,17 @@ def hype():
     for x in range(9, 31, 2):
         c.rect(x, 9, 1, 4, rib)
     c.rect(25, 9, 3, 3, (182, 122, 72, 255))
+    # 비니 위에 걸친 은색 테 스포츠 선글라스: 크고 둥근 렌즈 두 개, 가운데 다리, 양옆으로 감기는 테
+    silver, silver_dark = (214, 220, 230, 255), (156, 164, 178, 255)
+    lens, lens_light, lens_shine = (72, 84, 108, 255), (104, 118, 146, 255), (220, 230, 244, 255)
+    c.rect(8, 5, 24, 2, silver_dark)
+    for x in (10, 21):
+        c.blob(x, 3, 9, 6, silver, radius=2)
+        c.blob(x + 1, 4, 7, 4, lens, radius=1)
+        c.rect(x + 1, 6, 7, 1, lens_light)
+        c.rect(x + 2, 4, 2, 1, lens_shine)
+        c.dot(x + 2, 5, lens_shine)
+    c.rect(19, 5, 2, 1, silver)
     c.blob(17, 19, 6, 4, MOUTH)
     c.rect(18, 19, 4, 1, WHITE)
     right_arm(c, (58, 62, 82, 255), mitten, raised=True)
