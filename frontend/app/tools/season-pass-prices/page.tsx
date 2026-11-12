@@ -48,7 +48,7 @@ const faqStructuredData = {
 export default function SeasonPassPricesPage() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData).replace(/</g, "\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData).replace(/</g, "\\u003c") }} />
       <PageHeading
         title="26/27 스키장 시즌권, 리프트권 가격 비교"
         description="스키장 13곳의 시즌권 값과 리프트권 값을 한 표에 모았어요. 몇 번 가야 시즌권이 이득인지도 함께 볼 수 있어요."

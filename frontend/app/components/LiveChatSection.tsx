@@ -447,6 +447,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
                 : "로그인하고 라이브톡에 참여해 보세요"
           }
           className="live-chat-compose-input capsule-input"
+          aria-label="라이브톡 메시지"
         />
 
         <button

@@ -35,7 +35,8 @@ public class SearchOutboxScheduler {
                 // 처리한 이벤트가 있으면 바로 다음 배치를 본다.
             }
         } catch (RuntimeException failure) {
-            log.warn("search outbox poll failed: error={}", failure.getClass().getSimpleName());
+            // 1초마다 도는 작업이라 실패가 반복되면 원인을 알아야 한다. 예외를 넘겨 메시지와 스택을 남긴다.
+            log.warn("search outbox poll failed", failure);
         }
     }
 }
