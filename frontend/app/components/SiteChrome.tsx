@@ -181,6 +181,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <SnowflakeMark />
               <RotatingWordmark />
             </Link>
+            <span className="alpine-logo-tagline">윈터스포츠 커뮤니티</span>
             <nav className="community-main-nav" aria-label="메인 메뉴">
               <details className="header-board-menu" ref={boardMenuRef}>
                 <summary className={boardActive ? "nav-active" : ""}>

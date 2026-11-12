@@ -4139,18 +4139,6 @@ html[data-theme="dark"] .snow-empty-copy strong {
   }
 }
 
-/* 홈 첫 줄 소개. 처음 온 사람이 어떤 사이트인지 바로 알 수 있게 한다. 서버에서 함께 그려 화면 밀림이 없다. */
-.home-intro {
-  margin: 14px 0 0;
-  color: var(--snow-muted);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
-}
-.home-intro strong { color: var(--snow-ink); font-weight: 700; }
-.home-intro + .opening-dday-banner { margin-top: 10px; }
-
 /* 게시판 한 글자 검색 안내. 입력칸 아래에 띄워 목록 배치를 밀지 않는다. */
 .board-search { position: relative; }
 .board-search button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -4163,3 +4151,7 @@ html[data-theme="dark"] .snow-empty-copy strong {
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* 헤더 로고 옆 한 줄 소개. 메뉴와 겹치지 않는 넓은 화면에서만 보인다. */
+.alpine-logo-tagline { display: inline-flex; align-items: center; margin-left: -6px; border-left: 1px solid var(--snow-border-strong); padding-left: 12px; color: var(--snow-muted); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+@media (max-width: 1100px) { .alpine-logo-tagline { display: none; } }

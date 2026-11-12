@@ -298,7 +298,8 @@ export default function HomePageClient() {
     <div className="community-page">
       <TopNav active="home" />
       <main className="community-container home-main">
-        <h1 className="home-intro">스키, 스노보드 타는 사람들의 <strong>윈터스포츠 커뮤니티</strong></h1>
+        {/* 소개 문구는 헤더 로고 옆에 보인다. 홈 제목은 화면 낭독기와 검색엔진용으로 둔다. */}
+        <h1 className="sr-only">윈터스포츠 커뮤니티 눈팅</h1>
         <OpeningDdayBanner />
         {/* TIER 1: Left Board Feed + Right Live Chat */}
         <div className="home-tier-1">
