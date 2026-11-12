@@ -284,6 +284,11 @@ public enum ErrorCode {
     CHARACTER_NICKNAME_DUPLICATED(
             HttpStatus.CONFLICT, "CHARACTER_003", "이 모임에서 이미 쓰는 이름입니다. 다른 이름을 입력해 주세요."),
     CHARACTER_NICKNAME_FORBIDDEN(HttpStatus.BAD_REQUEST, "CHARACTER_004", "쓸 수 없는 이름입니다."),
+    CHARACTER_GROUP_NAME_INVALID(
+            HttpStatus.BAD_REQUEST,
+            "CHARACTER_005",
+            "모임 이름은 2자 이상 20자 이하의 한글, 영문, 숫자, 띄어쓰기로 입력해 주세요."),
+    CHARACTER_GROUP_NAME_FORBIDDEN(HttpStatus.BAD_REQUEST, "CHARACTER_006", "쓸 수 없는 모임 이름입니다."),
 
     // 시즌 방문 기록과 결산 공유 (044)
     SEASON_VISIT_DUPLICATED(
