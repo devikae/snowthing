@@ -4109,6 +4109,9 @@ html[data-theme="dark"] .snow-empty-copy strong {
   .filter-pills button,
   .home-tier-1 .board-tabs button,
   html[data-theme="dark"] .home-tier-1 .board-tabs button { height: 36px; }
+  /* 홈 탭 8개가 390px 폰 한 줄에 다 보이게 여백을 줄이고 남는 폭은 나눠 갖는다. */
+  .home-tier-1 .board-tabs button,
+  html[data-theme="dark"] .home-tier-1 .board-tabs button { flex: 1 0 auto; padding-inline: 5px; }
   /* 댓글의 답글 버튼과 로그인 안내 링크 터치 영역 */
   .comment-youtube-actions button { min-height: 32px; padding-inline: 4px; }
   .comment-login-guide a { display: inline-flex; min-height: 32px; align-items: center; }
@@ -4134,4 +4137,29 @@ html[data-theme="dark"] .snow-empty-copy strong {
   textarea {
     font-size: 16px !important;
   }
+}
+
+/* 홈 첫 줄 소개. 처음 온 사람이 어떤 사이트인지 바로 알 수 있게 한다. 서버에서 함께 그려 화면 밀림이 없다. */
+.home-intro {
+  margin: 14px 0 0;
+  color: var(--snow-muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+.home-intro strong { color: var(--snow-ink); font-weight: 700; }
+.home-intro + .opening-dday-banner { margin-top: 10px; }
+
+/* 게시판 한 글자 검색 안내. 입력칸 아래에 띄워 목록 배치를 밀지 않는다. */
+.board-search { position: relative; }
+.board-search button:disabled { opacity: 0.45; cursor: not-allowed; }
+.board-search-hint {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  margin: 0;
+  color: var(--snow-error);
+  font-size: 12px;
+  white-space: nowrap;
 }

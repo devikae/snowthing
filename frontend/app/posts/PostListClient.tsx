@@ -181,13 +181,12 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
     else router.push(url);
   };
 
+  const keywordTooShort = Array.from(searchKeyword.trim()).length === 1;
+
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
-    // 서버도 한 글자 검색을 거절한다. 요청을 보내기 전에 이유를 알려 준다.
-    if (Array.from(searchKeyword.trim()).length === 1) {
-      alert("검색어는 2자 이상 입력해 주세요.");
-      return;
-    }
+    // 서버도 한 글자 검색을 거절한다. 입력칸 아래 안내가 이미 떠 있으므로 요청을 보내지 않는다.
+    if (keywordTooShort) return;
     moveTo({ page: 0, keyword: searchKeyword, searchType });
   };
 
@@ -381,9 +380,11 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     onChange={(event) => setSearchKeyword(event.target.value)}
                     placeholder={`${config.name} 내 검색`}
                     aria-label={`${config.name} 내 검색`}
+                    aria-describedby={keywordTooShort ? "board-search-hint" : undefined}
                     maxLength={50}
                   />
-                  <button>검색</button>
+                  <button disabled={keywordTooShort}>검색</button>
+                  {keywordTooShort && <p id="board-search-hint" className="board-search-hint" role="status">한 글자로는 검색할 수 없어요.</p>}
                 </form>
                 {(currentCategory !== "NOTICE" || isAdmin) && (
                   <Link
