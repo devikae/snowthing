@@ -44,8 +44,14 @@ public class CharacterGroup extends BaseTimeEntity {
     private Long ownerParticipantId;
 
     public CharacterGroup(String ownerNickname) {
+        this(ownerNickname, null);
+    }
+
+    /** 모임 이름을 주지 않으면 만든 사람 닉네임에 "의 모임"을 붙인다. 이름 검증은 서비스가 먼저 한다. */
+    public CharacterGroup(String ownerNickname, String groupName) {
         this.publicId = UUID.randomUUID().toString();
-        this.name = Objects.requireNonNull(ownerNickname) + NAME_SUFFIX;
+        this.name =
+                groupName != null ? groupName : Objects.requireNonNull(ownerNickname) + NAME_SUFFIX;
     }
 
     public void assignOwner(Long participantId) {

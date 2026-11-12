@@ -57,6 +57,8 @@ export interface JoinInput {
   nickname: string;
   sport: Sport;
   answers: string;
+  /** 모임을 만들 때만 보낸다. 없으면 서버가 "이름의 모임"을 붙인다. */
+  groupName?: string;
 }
 
 // 연결 실패의 브라우저 문구(Failed to fetch)를 화면에 그대로 보여 주지 않는다.
