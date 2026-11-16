@@ -12,7 +12,8 @@ import { renderMapImage } from "../../mapImage";
 import { NicknameForm } from "../../NicknameForm";
 import { QuizFlow } from "../../QuizFlow";
 import { RelationshipMap } from "../../RelationshipMap";
-import { shareLink, shareOrSaveImage } from "../../shareFile";
+import { SAVED_NOTICE, blobToDataUrl, shareLink, shareOrSaveImage } from "../../shareFile";
+import { InAppSaveSheet } from "../../InAppSaveSheet";
 import { ShareGroupLink } from "../../ShareGroupLink";
 
 type View =
@@ -123,6 +124,7 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
   const [hideNames, setHideNames] = useState(false);
   const [notice, setNotice] = useState("");
   const [fallbackUrl, setFallbackUrl] = useState("");
+  const [mapSheet, setMapSheet] = useState("");
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [busy, setBusy] = useState(false);
   const { me, groupPublicId, groupName } = map;
@@ -158,7 +160,11 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
         hideNames,
       });
       const outcome = await shareOrSaveImage(blob, "snowthing-character-map.png", "우리 모임 관계 지도");
-      setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "saved" ? "지도 이미지를 저장했어요." : "공유를 취소했어요.");
+      if (outcome === "inapp") {
+        setMapSheet(await blobToDataUrl(blob));
+        return;
+      }
+      setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "saved" ? SAVED_NOTICE : "공유를 취소했어요.");
     } catch (reason) {
       setNotice(reason instanceof Error ? reason.message : "지도 이미지를 만들지 못했어요. 다시 시도해 주세요.");
     } finally {
@@ -180,6 +186,8 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
 
   return (
     <>
+      {/* 다른 브라우저로 넘어가도 모임에 그대로 있게 접근 토큰을 fragment로 넘긴다. restoreUrl과 같은 방식이다. */}
+      {mapSheet && <InAppSaveSheet imageUrl={mapSheet} alt={`${groupName} 관계 지도`} externalUrl={restoreUrl(groupPublicId, token)} onClose={() => setMapSheet("")} />}
       <section className="ct-panel" aria-labelledby="ct-group-title">
         <div className="ct-group-head">
           <div>
