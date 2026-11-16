@@ -35,7 +35,7 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
   const share = async () => {
     if (!card) return;
     const outcome = await shareOrSaveImage(card.blob, `snowthing-character-${result.character.job}.png`, "내 스키장 캐릭터", {
-      text: `나는 스키장에서 ${name}래. 너는 어떤 캐릭터야?`,
+      text: `나는 스키장에서 ${name}. 너는 어떤 캐릭터야?`,
       url: new URL("/character-test", window.location.origin).toString(),
     });
     setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "saved" ? "카드 이미지를 저장했어요." : "공유를 취소했어요.");
@@ -54,9 +54,11 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
       <div className="ct-kakao-share">
         <KakaoShareButton
           title="나는 어떤 스키장 캐릭터일까"
-          description={`나는 스키장에서 ${name}래. 너는 어떤 캐릭터야?`}
+          description={`나는 스키장에서 ${name}. 너는 어떤 캐릭터야?`}
           url="/character-test"
-          imageUrl="/character-test/og-test.png"
+          imageUrl={`/character-test/share-${result.character.job}.png`}
+          imageWidth={800}
+          imageHeight={800}
           buttonTitle="테스트 하러 가기"
         />
       </div>
