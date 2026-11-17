@@ -18,7 +18,7 @@
   - main 브랜치 보호가 꺼져 있다(API 404). 그래서 경로 필터 때문에 필수 검사가 안 떠서 PR이 막히는 문제는 지금은 없다.
   - actionlint 1.7.7이 기존 워크플로의 `concurrency.queue` 키를 모른다고 표시한다(새 기능이라 도구가 아직 모름). 기존 SC2129 스타일 경고도 그대로다.
 - 사용자 결정 필요: 원격 `deploy/aws-ec2` 브랜치 삭제, main 브랜치 보호와 필수 검사 지정, `production-migration` environment 배포 브랜치 main 제한, 프론트 배포 job에 environment 추가 여부.
-- 검증: 워크플로 6개 python yaml 파싱 통과. actionlint(도커) 결과는 위 기존 경고만 남고 새 파일과 gradle.yml은 경고 없음. 프론트 로컬 lint, build는 아래 PR 본문 참고. PR CI 실행 결과는 PR 본문에 적는다.
+- 검증: 워크플로 6개 python yaml 파싱 통과. actionlint(도커) 결과는 위 기존 경고만 남고 새 파일과 gradle.yml은 경고 없음. 프론트 로컬 `npm ci --legacy-peer-deps`, lint, build(더미 공개값) 통과. PR #149 CI: Java CI with Gradle 성공(약 4분), Frontend CI 성공(약 1분 22초), Labeler 성공. 브랜치 push로 배포 워크플로는 돌지 않았다.
 
 ## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
 
