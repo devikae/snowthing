@@ -64,7 +64,7 @@ public class SeasonOpeningService {
     @Transactional
     public SeasonOpeningResponse update(SeasonOpeningUpdateRequest request, String updatedBy) {
         List<SeasonOpening> saved =
-                new ArrayList<>(repository.findAllByOrderByBannerOrderAscIdAsc());
+                new ArrayList<>(repository.findAllForUpdateByOrderByBannerOrderAscIdAsc());
         validate(request, saved);
 
         Map<String, SeasonOpening> byCode =

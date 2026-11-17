@@ -73,13 +73,14 @@ class SeasonOpeningControllerTest {
     }
 
     @Test
-    @DisplayName("저장 요청에서 순서가 0이거나 스위치가 없거나 목록이 비면 서비스를 부르지 않고 400")
+    @DisplayName("저장 요청에서 순서가 0이거나 스위치가 없거나 목록이 비거나 빈 원소가 있으면 서비스를 부르지 않고 400")
     void rejectsMalformedRequest() throws Exception {
         List<String> bodies =
                 List.of(
                         "{\"bannerEnabled\":true,\"resorts\":[{\"resortCode\":\"HIGH1\",\"openingDate\":\"2026-11-24\",\"bannerOrder\":0}]}",
                         "{\"resorts\":[{\"resortCode\":\"HIGH1\",\"bannerOrder\":1}]}",
                         "{\"bannerEnabled\":true,\"resorts\":[]}",
+                        "{\"bannerEnabled\":true,\"resorts\":[null]}",
                         "{\"bannerEnabled\":true,\"resorts\":[{\"resortCode\":\"\",\"bannerOrder\":1}]}",
                         "{\"bannerEnabled\":true,\"resorts\":[{\"resortCode\":\"HIGH1\",\"openingDate\":\"2026-13-40\",\"bannerOrder\":1}]}");
         for (String body : bodies) {

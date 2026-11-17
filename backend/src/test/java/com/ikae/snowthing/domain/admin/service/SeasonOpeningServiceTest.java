@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -64,7 +65,11 @@ class SeasonOpeningServiceTest {
                         "BOOLEAN",
                         "메인 개장 D-DAY 배너 표시 여부",
                         "SYSTEM");
-        when(repository.findAllByOrderByBannerOrderAscIdAsc())
+        lenient()
+                .when(repository.findAllByOrderByBannerOrderAscIdAsc())
+                .thenReturn(new ArrayList<>(List.of(yongpyong, high1)));
+        lenient()
+                .when(repository.findAllForUpdateByOrderByBannerOrderAscIdAsc())
                 .thenReturn(new ArrayList<>(List.of(yongpyong, high1)));
     }
 

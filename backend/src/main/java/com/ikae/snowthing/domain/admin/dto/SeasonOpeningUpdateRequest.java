@@ -16,7 +16,8 @@ import jakarta.validation.constraints.Size;
  * 확인한다.
  */
 public record SeasonOpeningUpdateRequest(
-        @NotNull Boolean bannerEnabled, @NotEmpty @Size(max = 50) List<@Valid Item> resorts) {
+        @NotNull Boolean bannerEnabled,
+        @NotEmpty @Size(max = 50) List<@NotNull @Valid Item> resorts) {
 
     public record Item(
             @NotBlank @Size(max = 30) String resortCode,
