@@ -1,3 +1,25 @@
+## 개장 D-DAY를 관리자 화면에서 관리하기 (IKA-87, 2026-11-17)
+
+- 상태: 구현 완료, PR 생성. 머지, 운영 마이그레이션(052), 배포는 사용자 확인 후.
+- 계획: 하드코딩 개장일 상수를 DB로 옮기고 관리자 화면에서 바꾸게 한다. 사용자는 새로고침하면 새 값을 본다. 설계: `docs/conception/032_season_opening_admin/01_design.md`
+- 완료
+  - DB: `052_migration_season_opening.sql`. `season_opening` 테이블과 26/27 시즌 9곳 초기값, `system_config`의 `SEASON_OPENING_BANNER_ENABLED`.
+  - 백엔드: `GET /api/v1/public/season-openings`(누구나, no-cache), `GET`, `PUT /api/v1/admin/season-openings`(관리자). 저장은 목록 전체를 한 번에 받고 리조트 목록, 순서 겹침, 배너 리조트 날짜, 날짜 범위를 확인한다. 값이 바뀐 저장만 조치 기록(SEASON_OPENING_UPDATE).
+  - 프론트: 관리자 `/admin/season-openings`와 메뉴 "개장일". 메인 개장 배너, 슬로프캠 D-DAY, 슬로프 현황, 시즌권 표가 `useSeasonOpenings` 요청 하나를 쓴다. 날짜 계산 함수는 `lib/seasonOpening.ts`에 남겼다.
+  - 닫힌 PR #147의 날짜 변경을 함께 반영: 용평 11/22, 하이원 11/24(초기값), AI 멤버 첫 개장일 기본값 11/22.
+- 결정
+  - 스위치는 `system_config` 한 줄에 둔다. 새 표를 만들지 않는다.
+  - 계획의 표에 `confirmed` 컬럼을 더했다. 배너 표시를 관리자 선택으로 떼면 "예상" 글자를 정할 값이 없어진다. 배너 표시 값으로 대신하면 확정됐지만 배너에서 뺀 리조트가 예상으로 보인다. 다른 안은 "예상" 글자를 없애는 것이었다.
+  - `banner_order`에 UNIQUE를 두지 않는다. 순서 맞바꾸기 저장이 중간에 충돌한다. 겹침은 서비스가 400으로 막는다.
+  - 설계 문서 번호는 025가 이미 두 개 있고 최신이 031이라 032로 했다.
+- 발견된 이슈: 워크트리에서는 spotless의 `ratchetFrom`이 git 저장소를 찾지 못해 실패한다. 임시 init 스크립트로 ratchet을 끄고 전체 파일 대상으로 돌렸다.
+- 검증
+  - spotlessCheck(전체 파일 대상) 통과.
+  - `SeasonOpeningServiceTest` 9개, `SeasonOpeningControllerTest` 2개 통과.
+  - `./gradlew test` 전체: 로컬 MySQL이 없어 Spring 컨텍스트를 띄우는 테스트 584개가 컨텍스트 로드 실패(새 `SeasonOpeningIntegrationTest` 포함). 그 밖의 실패는 없다. 통합 테스트는 CI에서 확인한다.
+  - 프론트 `npm run lint`, `npx next build --webpack` 통과. 브라우저 화면 확인은 하지 않았다.
+- 남은 항목: CI 통합 테스트 확인, 운영 052 적용 후 배포.
+
 ## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
