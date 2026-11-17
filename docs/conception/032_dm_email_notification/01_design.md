@@ -228,7 +228,7 @@ PUT /api/v1/members/me/notification-settings
 - 적재를 먼저 켜서 행이 쌓이는 것을 확인하고, 발송은 승인된 테스트 수신자로 별도 확인 후 켠다. 24시간 기한이 있어 발송을 켤 때 오래된 건이 한꺼번에 나가지 않는다.
 - 운영 env를 추가할 때 `compose.prod.yml`에도 넣는다.
 - 로그에는 eventId와 오류 분류만 남긴다. 이메일, 본문, 비밀값은 남기지 않는다.
-- 대기 건수, 가장 오래된 대기 시간, UNKNOWN과 FAILED 건수는 Sprint 7 모니터링 방식에 맞춰 노출한다.
+- 대기 건수, 가장 오래된 대기 시간, UNKNOWN과 FAILED 건수는 관리자 요약 `GET /api/v1/admin/dm-mail/outbox/summary`로 본다. 검색 outbox 요약과 같은 방식이다. 상태를 바꾸는 관리자 API는 두지 않는다.
 - ACCEPTED와 SKIPPED 행은 30일 뒤 매일 04:40에 1000행씩 지운다. UNKNOWN과 FAILED는 운영 확인용으로 남긴다.
 - 성능 비교용 `snowthing.dm-mail.delivery-mode=sync-baseline`이 있다. 쪽지 트랜잭션 안에서 SES를 바로 부르는 기준선이며, 벤치마크 테스트에서만 켠다.
 

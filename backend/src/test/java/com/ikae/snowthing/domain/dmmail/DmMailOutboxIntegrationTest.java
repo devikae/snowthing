@@ -485,6 +485,32 @@ class DmMailOutboxIntegrationTest {
         }
 
         @Test
+        @DisplayName("관리자 요약은 상태별 건수, 확인할 건수, 가장 오래 기다린 요청을 보여 주고 일반 회원은 볼 수 없다")
+        void adminSummary() throws Exception {
+            DmMailTestConfig.FAKE_SES.reset(Mode.SERVER_ERROR);
+            sendDm(alice, receiver, "UNKNOWN이 될 쪽지");
+            processor.processBatch(now());
+            Member other = member("pending", true);
+            settings.update(other.getId(), true);
+            sendDm(alice, other, "대기 중인 쪽지");
+            Member admin = member("admin", true, Role.ROLE_ADMIN);
+
+            mockMvc.perform(
+                            get("/api/v1/admin/dm-mail/outbox/summary")
+                                    .with(user(new CustomUserDetails(admin))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.counts.UNKNOWN").value(1))
+                    .andExpect(jsonPath("$.counts.PENDING").value(1))
+                    .andExpect(jsonPath("$.counts.ACCEPTED").value(0))
+                    .andExpect(jsonPath("$.attentionCount").value(1))
+                    .andExpect(jsonPath("$.oldestOpenAgeSeconds").isNumber());
+            mockMvc.perform(
+                            get("/api/v1/admin/dm-mail/outbox/summary")
+                                    .with(user(new CustomUserDetails(alice))))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
         @DisplayName("쪽지 생성 후 24시간이 지나면 보내지 않는다")
         void deadlineExpiredIsSkipped() {
             sendDm(alice, receiver, "오래된 쪽지");
@@ -618,11 +644,19 @@ class DmMailOutboxIntegrationTest {
     }
 
     private Member member(String tag, boolean verified) {
+        return member(tag, verified, Role.ROLE_USER);
+    }
+
+    private Member member(String tag, boolean verified, Role role) {
         String unique = UUID.randomUUID().toString().substring(0, 8);
-        return memberWithEmail(tag, tag + "-" + unique + "@test.snowthing.org", verified);
+        return memberWithEmail(tag, tag + "-" + unique + "@test.snowthing.org", verified, role);
     }
 
     private Member memberWithEmail(String tag, String email, boolean verified) {
+        return memberWithEmail(tag, email, verified, Role.ROLE_USER);
+    }
+
+    private Member memberWithEmail(String tag, String email, boolean verified, Role role) {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         Member saved =
                 transactions.execute(
@@ -633,7 +667,7 @@ class DmMailOutboxIntegrationTest {
                                                 .password("encoded")
                                                 .nickname(tag + unique)
                                                 .emailVerifiedAt(verified ? now() : null)
-                                                .role(Role.ROLE_USER)
+                                                .role(role)
                                                 .status(MemberStatus.ACTIVE)
                                                 .build()));
         memberIds.add(saved.getId());
