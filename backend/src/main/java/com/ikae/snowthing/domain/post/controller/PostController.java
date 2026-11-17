@@ -17,8 +17,6 @@ import com.ikae.snowthing.domain.post.service.PostScrapService;
 import com.ikae.snowthing.domain.post.service.PostSearchRateLimiter;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.domain.post.service.ReactionService;
-import com.ikae.snowthing.global.error.ErrorCode;
-import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
 import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
@@ -188,18 +186,10 @@ public class PostController {
                 reactionService.remove(publicId, type, userDetails, clientIp, anonymousVoterId));
     }
 
-    /**
-     * 검색어가 있으면 글 본문까지 LIKE로 훑어 글이 늘수록 비싸진다. 한 글자 검색은 거의 모든 글에 걸려 의미가 없으므로 막고, 같은 IP의 연속 검색을 묶는다.
-     * 검색어 없는 목록 조회는 인덱스를 타므로 제한하지 않는다.
-     */
+    /** 검색어가 있으면 글 본문까지 LIKE로 훑어 글이 늘수록 비싸진다. 검색어 길이와 IP 한도는 카풀, 중고장터 검색과 같은 규칙을 쓴다. */
     private void checkKeywordSearch(String keyword, HttpServletRequest httpRequest) {
         if (!StringUtils.hasText(keyword)) return;
-        int length = keyword.strip().codePointCount(0, keyword.strip().length());
-        if (length < PostSearchRateLimiter.MIN_KEYWORD_LENGTH
-                || length > PostSearchRateLimiter.MAX_KEYWORD_LENGTH) {
-            throw new CustomException(ErrorCode.POST_SEARCH_KEYWORD_INVALID);
-        }
-        postSearchRateLimiter.check(clientIpResolver.resolve(httpRequest));
+        postSearchRateLimiter.checkKeywordSearch(keyword, clientIpResolver.resolve(httpRequest));
     }
 
     /**

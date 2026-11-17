@@ -52,6 +52,47 @@ class PostSearchRateLimiterTest {
         limiter.check("203.0.113.10");
     }
 
+    @Test
+    void keywordSearchRejectsTooShortOrTooLongKeyword() {
+        assertThatThrownBy(() -> limiter.checkKeywordSearch(" 보 ", "203.0.113.10"))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception ->
+                                assertThat(exception.getErrorCode())
+                                        .isEqualTo(ErrorCode.POST_SEARCH_KEYWORD_INVALID));
+        assertThatThrownBy(() -> limiter.checkKeywordSearch("가".repeat(51), "203.0.113.10"))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception ->
+                                assertThat(exception.getErrorCode())
+                                        .isEqualTo(ErrorCode.POST_SEARCH_KEYWORD_INVALID));
+    }
+
+    @Test
+    void blankKeywordIsNotCounted() {
+        for (int count = 0; count < LIMIT + 5; count++) {
+            limiter.checkKeywordSearch("  ", "203.0.113.10");
+            limiter.checkKeywordSearch(null, "203.0.113.10");
+        }
+
+        limiter.checkKeywordSearch("보드", "203.0.113.10");
+    }
+
+    @Test
+    void keywordSearchesShareOneBudgetPerIp() {
+        // 게시판, 카풀, 중고장터 검색이 같은 한도를 나눠 쓰므로 어느 검색으로 채워도 다음 검색은 거절된다.
+        for (int count = 0; count < LIMIT; count++) {
+            limiter.checkKeywordSearch("보드", "203.0.113.10");
+        }
+
+        assertThatThrownBy(() -> limiter.checkKeywordSearch("강남", "203.0.113.10"))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception ->
+                                assertThat(exception.getErrorCode())
+                                        .isEqualTo(ErrorCode.POST_SEARCH_RATE_LIMIT));
+    }
+
     private static final class MutableClock extends Clock {
 
         private Instant instant;

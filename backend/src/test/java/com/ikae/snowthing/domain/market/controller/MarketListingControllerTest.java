@@ -95,6 +95,33 @@ class MarketListingControllerTest {
     }
 
     @Test
+    void 한_글자나_50자를_넘는_검색어는_게시판_검색과_같은_400() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/market-listings")
+                                .param("keyword", "보")
+                                .with(user(userDetails)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("POST_010"));
+        mockMvc.perform(
+                        get("/api/v1/market-listings")
+                                .param("keyword", "가".repeat(51))
+                                .with(user(userDetails)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("POST_010"));
+    }
+
+    @Test
+    void 두_글자_검색어와_검색어_없는_목록은_200() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/market-listings")
+                                .param("keyword", "보드")
+                                .with(user(userDetails)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/market-listings").with(user(userDetails)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void 공개_미리보기는_비로그인도_조회할_수_있다() throws Exception {
         mockMvc.perform(get("/api/v1/market-listings/preview").with(anonymous()))
                 .andExpect(status().isOk())
