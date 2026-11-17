@@ -1,3 +1,35 @@
+## 쪽지 도착 메일 알림을 Outbox로 발송 (IKA-88, 2026-11-17)
+
+- 상태: 구현과 검증 완료, 로컬 커밋. 화면 로컬 확인 후 PR. 머지, 운영 마이그레이션, 운영 발송 활성화는 사용자 확인 후.
+- 계획: Sprint 8 미션(이메일 알림과 분산 환경의 데이터 정합성)을 쪽지 기준으로 적용. 설계 `docs/conception/032_dm_email_notification/`.
+- 완료
+  - 052 마이그레이션: `member_notification_setting`, `dm_mail_outbox`, `dm_mail_recipient_state`. 새 테이블만 만든다.
+  - 알림 설정 API `GET/PUT /api/v1/members/me/notification-settings`. 행 없음은 꺼짐. 일반 가입과 소셜 가입에서 켜짐으로 만든다. 탈퇴 삭제 목록에 세 테이블 추가.
+  - 쪽지 트랜잭션에서 발송 요청 적재(MANDATORY). 실패하면 쪽지도 롤백.
+  - 워커: 받는 사람 상태 행 SKIP LOCKED로 선점, claim_token과 lease, 조건부 결과 기록. 첫 메일 즉시, 10분 쿨다운 동안 온 쪽지는 한 통으로 묶음. 발송 직전 확인(24시간, 회원 상태, 설정, 받을 수 있는 주소, 읽음).
+  - 결과 분류: 200 ACCEPTED, 연결 실패와 429 RETRY_WAIT(최대 5회, equal jitter), 400 FAILED, 타임아웃과 500과 lease 만료 UNKNOWN(자동 재발송 없음).
+  - 쪽지 메일 전용 SES 클라이언트(SDK 재시도 0회). 인증메일 클라이언트는 그대로.
+  - 프론트: 쪽지함 위 "쪽지 오면 메일로 알림" 스위치. 받을 수 있는 이메일이 없으면 막고 이유를 보인다.
+  - 기능 플래그 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED`(기본 false, `compose.prod.yml`에도 추가).
+  - 문서: 설계, ADR-3201, 검증 기록, 성능 비교.
+- 결정
+  - 받는 사람을 한 명씩 선점, 발송, 기록한다. 여러 명을 먼저 잡으면 뒤쪽 lease가 대기 중에 줄어든다.
+  - 메일이 나가지 않았음이 확실하면 받는 사람의 마지막 시도 시각을 되돌려 재시도가 쿨다운에 막히지 않게 한다.
+  - ACCEPTED, SKIPPED는 30일 뒤 삭제. UNKNOWN, FAILED는 남긴다.
+  - 공급자가 꺼져 있으면 워커가 작업을 잡지 않는다.
+  - 성능 비교용 `delivery-mode=sync-baseline`을 둔다. 벤치마크에서만 켠다.
+- 발견한 이슈
+  - 로컬 main이 원격보다 321커밋 뒤처져 있었다. 최신 main 기준 worktree에서 작업했고 폴더 번호를 025에서 032로 바꿨다.
+  - worktree에서는 spotless ratchet이 git을 찾지 못해 init 스크립트로 ratchet을 끄고 전체 파일을 검사했다.
+  - 워커 하나의 처리량은 1 / SES 응답 시간이다. 몰림이 잦아지면 받는 사람 처리 병렬화를 검토한다.
+- 남은 항목: 화면 로컬 확인, PR, 운영 마이그레이션 052 적용, 적재 플래그 켜기, 테스트 수신자로 발송 확인 후 발송 플래그 켜기, 원클릭 수신거부(후속).
+- 검증
+  - `./gradlew spotlessCheck test` 전체 통과(1304건, 실패 0). 이후 바꾼 부분은 관련 96건 다시 통과.
+  - 마이그레이션 052 두 번 적용 후 `ddl-auto=validate` 기동 성공.
+  - 프로세스 두 개 경합(받는 사람 40명, 중복 메일 0), 재기동 후 이어서 처리, 수락 직후 강제 종료 후 UNKNOWN 격리(재발송 0).
+  - 성능: 쪽지 응답 p95 1965ms에서 30ms, 알림 지연 p95 57.9초(SES 1초, 60건 동시).
+  - 프론트 `npm run lint`, `npm run build` 통과.
+
 ## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
