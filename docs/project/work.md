@@ -3,7 +3,7 @@
 - 상태: 구현과 검증 완료, 로컬 커밋. 화면 로컬 확인 후 PR. 머지, 운영 마이그레이션, 운영 발송 활성화는 사용자 확인 후.
 - 계획: Sprint 8 미션(이메일 알림과 분산 환경의 데이터 정합성)을 쪽지 기준으로 적용. 설계 `docs/conception/032_dm_email_notification/`.
 - 완료
-  - 052 마이그레이션: `member_notification_setting`, `dm_mail_outbox`, `dm_mail_recipient_state`. 새 테이블만 만든다.
+  - 053 마이그레이션(처음 052, 2026-11-18 변경): `member_notification_setting`, `dm_mail_outbox`, `dm_mail_recipient_state`. 새 테이블만 만든다.
   - 알림 설정 API `GET/PUT /api/v1/members/me/notification-settings`. 행 없음은 꺼짐. 일반 가입과 소셜 가입에서 켜짐으로 만든다. 탈퇴 삭제 목록에 세 테이블 추가.
   - 쪽지 트랜잭션에서 발송 요청 적재(MANDATORY). 실패하면 쪽지도 롤백.
   - 워커: 받는 사람 상태 행 SKIP LOCKED로 선점, claim_token과 lease, 조건부 결과 기록. 첫 메일 즉시, 10분 쿨다운 동안 온 쪽지는 한 통으로 묶음. 발송 직전 확인(24시간, 회원 상태, 설정, 받을 수 있는 주소, 읽음).
@@ -23,10 +23,15 @@
   - 로컬 main이 원격보다 321커밋 뒤처져 있었다. 최신 main 기준 worktree에서 작업했고 폴더 번호를 025에서 032로 바꿨다.
   - worktree에서는 spotless ratchet이 git을 찾지 못해 init 스크립트로 ratchet을 끄고 전체 파일을 검사했다.
   - 워커 하나의 처리량은 1 / SES 응답 시간이다. 몰림이 잦아지면 받는 사람 처리 병렬화를 검토한다.
-- 남은 항목: 화면 로컬 확인, PR, 운영 마이그레이션 052 적용, 적재 플래그 켜기, 테스트 수신자로 발송 확인 후 발송 플래그 켜기, 원클릭 수신거부(후속).
+- 2026-11-18 번호 변경과 main 동기화
+  - 마이그레이션 파일 이름을 `052_migration_dm_mail_notification.sql`에서 `053_...`으로 바꿨다. 열린 PR #148(IKA-87)이 `052_migration_season_opening.sql`을 쓰고 먼저 머지될 예정이다. 내용은 바꾸지 않았다. 설계 문서, ADR, 검증 기록, 엔티티 주석의 번호를 고쳤다. 증거 원본 출력과 그림에는 당시 이름 052가 남아 있어 증거 README와 검증 기록에 그 사실을 적었다.
+  - `origin/main`(3e4f70a) merge: 이미 최신이라 바뀐 것 없음(Already up to date).
+  - 미리보기 합치기 시험(`git merge-tree`, 실제 합치지 않음): IKA-89와는 `docs/project/work.md`만 충돌(맨 위 항목 추가 위치). IKA-87과는 `docs/project/work.md`만 충돌, `application.yml`은 자동 병합. `ika-card-save-inapp`과는 충돌 없음.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`으로 `./gradlew cleanTest test` 1305건 중 1304 통과, 1 건너뜀, 실패 0. 빈 임시 DB에 001부터 053까지 순서대로 적용 성공(파일 49개, 모두 종료 코드 0). IKA-87의 052를 끼워 001부터 052(season_opening), 053 순서로 적용해도 성공, 그 뒤 053 재적용도 성공. 임시 DB는 지웠다. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+- 남은 항목: 화면 로컬 확인, PR, 운영 마이그레이션 053 적용(IKA-87의 052 다음), 적재 플래그 켜기, 테스트 수신자로 발송 확인 후 발송 플래그 켜기, 원클릭 수신거부(후속).
 - 검증
   - `./gradlew spotlessCheck test` 전체 통과(1304건, 실패 0). 이후 바꾼 부분은 관련 96건 다시 통과.
-  - 마이그레이션 052 두 번 적용 후 `ddl-auto=validate` 기동 성공.
+  - 마이그레이션 053(당시 052) 두 번 적용 후 `ddl-auto=validate` 기동 성공.
   - 프로세스 두 개 경합(받는 사람 40명, 중복 메일 0), 재기동 후 이어서 처리, 수락 직후 강제 종료 후 UNKNOWN 격리(재발송 0).
   - 성능: 쪽지 응답 p95 1965ms에서 30ms, 알림 지연 p95 57.9초(SES 1초, 60건 동시).
   - 프론트 `npm run lint`, `npm run build` 통과.
