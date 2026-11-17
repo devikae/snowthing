@@ -13,6 +13,11 @@
   - 차단 기간은 쿼리 파라미터 대신 선택 JSON 본문으로 받는다. 기존 호출(본문 없음)이 그대로 동작한다. 허용 값은 화면과 같은 1, 7, 30일로 묶었다. 다른 안: 1~30 범위 허용(화면 밖 값이 들어올 여지).
   - 관리자 조치 기록은 기존 서비스(글 가리기 POST_BLIND/UNBLIND, 댓글 COMMENT_BLIND/UNBLIND, IP 차단 CHAT_IP_BAN, 회원 정지 MEMBER_SUSPEND)가 이미 남겨 따로 더하지 않았다.
   - AI 회원: 회원 정지와 IP 차단에 AI 회원 예외가 없다. 관리자가 AI 회원을 정지하면 일반 회원처럼 정지된다. 화면에도 AI 여부를 드러내는 표시는 없다.
+- 2026-11-18 main 동기화
+  - 마이그레이션 없음. IKA-87(052), IKA-88(053)과 번호가 겹칠 일이 없다.
+  - `origin/main`(3e4f70a) merge: 이미 최신이라 바뀐 것 없음(Already up to date).
+  - 미리보기 합치기 시험(`git merge-tree`, 실제 합치지 않음): IKA-88과는 `docs/project/work.md`만 충돌(맨 위 항목 추가 위치). IKA-87과는 `docs/project/work.md`만 충돌, 같이 고친 `frontend/app/lib/api.ts`는 자동 병합. `ika-card-save-inapp`과는 충돌 없음.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika89`으로 `./gradlew cleanTest test` 1279건 중 1278 통과, 1 건너뜀, 실패 0. 지난번 실패한 `ReactionConcurrencyIntegrationTest` 3건도 이번에는 통과했다(root 계정으로 실행). 프론트 node_modules junction을 지우고 `npm ci --legacy-peer-deps`로 실제 설치한 뒤 `npm run lint`, `npm run build` 통과.
 - 남은 항목: 사용자 localhost 확인, 푸시와 PR.
 - 검증
   - 백엔드 `./gradlew spotlessCheck test`(로컬 MySQL): spotlessCheck 통과. 1279개 중 1276개 통과, 1개 건너뜀, 3개 실패. 실패 3개는 `ReactionConcurrencyIntegrationTest`로, 로컬 DB 계정에 트리거 생성 권한(SUPER)이 없어 테스트 준비 단계에서 실패했다. 이번 변경과 관계없다.
