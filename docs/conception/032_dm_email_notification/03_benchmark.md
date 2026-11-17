@@ -3,7 +3,7 @@
 - 측정일: 2026-11-17
 - 환경: 로컬 Windows, Docker MySQL 8.0, 가짜 SES HTTP 서버. 운영 수치가 아니다.
 - 실행: `./gradlew test -PincludeBenchmark --tests '*DmMailSyncBaselineBenchmarkTest' --tests '*DmMailOutboxBenchmarkTest'`
-- 원본: `backend/build/benchmark/dm-mail-sync-baseline.json`, `dm-mail-outbox.json`
+- 원본: `evidence/benchmark/run2-sync-baseline.json`, `evidence/benchmark/run2-outbox.json` (제외한 첫 실행은 `run1-excluded-*.json`)
 
 ## 조건
 

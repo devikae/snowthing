@@ -1,0 +1,11 @@
+# 실험 2 | 가짜 SES: 요청 5, 수락 5
+# 실행 시각(KST): 2026-11-17 23:43:47
+# GET http://127.0.0.1:18599/_admin/stats -> 200
+{
+  "mode": "ACCEPT",
+  "delayMs": 300,
+  "requests": 5,
+  "accepted": 5,
+  "recipients": 5,
+  "recipientsWithMoreThanOneMail": 0
+}

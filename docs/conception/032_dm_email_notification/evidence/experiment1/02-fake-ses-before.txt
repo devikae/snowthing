@@ -1,0 +1,11 @@
+# 실험 1 | 시작 전 가짜 SES 통계 (수락 지연 300ms)
+# 실행 시각(KST): 2026-11-17 23:43:17
+# GET http://127.0.0.1:18599/_admin/stats -> 200
+{
+  "mode": "ACCEPT",
+  "delayMs": 300,
+  "requests": 0,
+  "accepted": 0,
+  "recipients": 0,
+  "recipientsWithMoreThanOneMail": 0
+}

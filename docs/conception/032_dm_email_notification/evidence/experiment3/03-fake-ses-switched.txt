@@ -1,0 +1,11 @@
+# 실험 3 | 재기동 전 가짜 SES를 정상 수락 모드로 전환 (재발송이 일어나면 요청 수가 늘어남)
+# 실행 시각(KST): 2026-11-17 23:44:02
+# GET http://127.0.0.1:18599/_admin/stats -> 200
+{
+  "mode": "ACCEPT",
+  "delayMs": 0,
+  "requests": 1,
+  "accepted": 1,
+  "recipients": 1,
+  "recipientsWithMoreThanOneMail": 0
+}

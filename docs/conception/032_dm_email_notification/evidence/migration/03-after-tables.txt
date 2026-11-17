@@ -1,0 +1,12 @@
+-- 마이그레이션 052 | 적용 후 테이블, 인덱스, 유니크 제약
+-- 실행 시각(KST): 2026-11-17 23:53:43
+-- DB: snowthing_ika88_mig
+SELECT table_name, index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns, IF(non_unique = 0, 'UNIQUE', '') AS uniq FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name <> 'member' GROUP BY table_name, index_name, non_unique ORDER BY table_name, index_name
+
+TABLE_NAME	INDEX_NAME	columns	uniq
+dm_mail_outbox	idx_dm_mail_outbox_due	status,due_at,event_id	
+dm_mail_outbox	idx_dm_mail_outbox_recipient	recipient_member_id,status	
+dm_mail_outbox	PRIMARY	event_id	UNIQUE
+dm_mail_outbox	uk_dm_mail_outbox_intent	direct_message_id,recipient_member_id,event_type,channel	UNIQUE
+dm_mail_recipient_state	PRIMARY	recipient_member_id	UNIQUE
+member_notification_setting	PRIMARY	member_id	UNIQUE

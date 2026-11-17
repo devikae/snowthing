@@ -154,14 +154,14 @@ ACCEPTED는 SES가 요청을 받았다는 뜻이지 수신함에 도착했다는
 
 ## 검증 결과
 
-- 백엔드 전체 테스트 1304건 통과. 쪽지 메일 테스트는 실제 MySQL과 가짜 SES로 31건이다.
+- 백엔드 전체 테스트 1305건 통과. 쪽지 메일 테스트는 실제 MySQL과 가짜 SES로 31건이다.
 - 쪽지 롤백: 쪽지 0, 발송 요청 0. 발송 요청 쓰기 강제 실패: 쪽지도 롤백. 트랜잭션 밖 호출: `IllegalTransactionStateException`. 같은 쪽지 중복 적재: 1행.
 - 타임아웃 A: HTTP 요청 1, 수락 0, UNKNOWN, 1시간 뒤 다시 폴링해도 요청 1.
 - 타임아웃 B: HTTP 요청 1, 수락 1, UNKNOWN, 1시간 뒤 다시 폴링해도 요청 1.
 - 500: UNKNOWN, HTTP 요청 정확히 1(SDK 재시도 꺼짐). 429: RETRY_WAIT 후 due_at에 재시도해 ACCEPTED. 연결 거부: RETRY_WAIT. 400: FAILED. 재시도 한도: FAILED.
 - lease 만료: UNKNOWN(LEASE_EXPIRED), 늦은 워커의 ACCEPTED 기록은 영향 행 0.
 - 쪽지 5개 연속: 메일 2통(1개, 4개). 쿨다운 중 읽은 쪽지는 빠지고, 전부 읽으면 SES를 부르지 않는다.
-- 프로세스 두 개가 같은 DB를 폴링: 받는 사람 40명, 발송 요청 120행, HTTP 요청 40, 수락 40, 두 통 받은 사람 0, 처리 분담 20명과 20명.
+- 프로세스 두 개가 같은 DB를 폴링: 받는 사람 40명, 발송 요청 120행, HTTP 요청 40, 수락 40, 두 통 받은 사람 0, 처리 분담 21명과 19명.
 - 앱을 모두 내린 동안 커밋된 15행: PENDING으로 남았다가 재기동 후 메일 5통, ACCEPTED 15.
 - SES 수락 직후 프로세스 강제 종료: 종료 직후 PROCESSING, 재기동 후 lease 만료로 UNKNOWN. 가짜 SES를 정상 수락 모드로 바꿔 두었지만 HTTP 요청 1, 수락 1에서 늘지 않았다.
 - 마이그레이션 052: 두 번 적용해도 오류 없음, `ddl-auto=validate` 기동 성공.
@@ -192,6 +192,12 @@ FAILED는 설정 오류(발신 주소, 계정 상태)인지 받는 주소 문제
 - 다른 서비스가 쪽지 이벤트를 소비해야 하는 경우
 
 이때는 받는 사람 처리를 작은 스레드 풀로 병렬화하는 방법(선점 단위가 받는 사람이라 정합성은 그대로다), Outbox 뒤에 SQS를 두는 방법, CDC를 비교한다. 결과 불명 정책을 최소 한 번으로 바꾸려면 공급자 멱등 키나 믿을 수 있는 결과 조회가 먼저 필요하다.
+
+## 재현 자료
+
+- 단계별 DB 조회 캡처, 가짜 SES 통계, 로그, 테스트 결과: `evidence/README.md`
+- 측정 원본: `evidence/benchmark/`
+- 측정 실행: `./gradlew test -PincludeBenchmark --tests '*DmMailSyncBaselineBenchmarkTest' --tests '*DmMailOutboxBenchmarkTest'`
 
 ## 알려진 한계
 
