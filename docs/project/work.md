@@ -1,3 +1,34 @@
+## 전역 CSS 분리와 홈 첫 화면 서버 렌더링 (IKA-95, 2026-11-18)
+
+- 상태: 구현 완료, 로컬 커밋만(push와 PR 없음). 사용자가 localhost에서 확인한 뒤 PR.
+- 계획: 루트 레이아웃이 모든 화면에 싣던 에디터 CSS와 카풀 CSS를 쓰는 곳으로 옮기고, 홈 첫 목록을 서버에서 받아 HTML에 넣는다. 오늘의 설질 위젯에 불러오는 중과 실패 상태를 둔다.
+- 완료
+  - `layout.tsx`: `toastui-editor.css`, `carpool.css` 전역 import를 뺐다.
+  - `ToastEditor`는 `toastui-editor.css`, `ToastViewer`는 뷰어 전용 `toastui-editor-viewer.css`(약 14KB)를 직접 불러온다. 두 컴포넌트는 모두 `next/dynamic`(ssr: false)으로만 쓰여 JS 조각을 받을 때 CSS도 같이 받는다.
+  - `carpool/layout.tsx`에서 `carpool.css`를 불러온다. carpool.css의 클래스 30여 개를 tsx, ts 전체에서 찾아 `app/carpool/` 밖에서 쓰는 곳이 없는 것을 확인했다(PostComments의 `carpool-form-error`는 carpool.css에 없는 다른 클래스). 홈 카풀 위젯 클래스(`carpool-widget`, `carpool-row`, `cp-*`)는 globals.css에 있어 영향이 없다.
+  - `page.tsx`(홈): "전체" 탭 글 15개, 카풀 4개, 장터 미리보기를 `fetchPublicJson`으로 함께 받아 `HomePageClient`에 `initial`로 넘긴다. 받은 위젯은 브라우저가 다시 부르지 않고, 못 받은 위젯(null)만 기존처럼 브라우저가 부른다.
+  - 타입과 요청 크기는 `lib/homeFeed.ts`로 옮겼다. "use client" 파일에서 내보낸 값은 서버 컴포넌트에서 클라이언트 참조가 되어 숫자로 읽을 수 없다.
+  - 오늘의 설질: 불러오는 중, 실패(다시 시도 버튼), 빈 목록을 나눴다. 같은 요청을 두 번 적던 `loadTodayReports`와 첫 로드 effect를 하나로 합쳤다. 제보 등록 뒤 새로 고침은 목록을 둔 채 조용히 바꾸고, 실패해도 보이던 목록을 지우지 않는다.
+- 결정
+  - `detailForms.css`는 전역에 둔다. 글, 장터, 카풀의 작성과 상세 화면, 댓글이 함께 쓰는 파일이라 옮기려면 여러 레이아웃에 나눠 넣어야 하고, 위치가 바뀌면 같은 우선순위 규칙의 순서가 바뀐다. 다른 안: 작성 화면과 상세 화면 레이아웃마다 import. 크기(288줄)에 비해 얻는 것이 작다.
+  - CSS 순서 변화 점검: 옮긴 CSS는 이제 globals.css, detailForms.css보다 뒤에 붙는다. 우선순위가 같은 규칙이 겹치면 승자가 바뀐다.
+    - toastui: globals.css, detailForms.css의 에디터 덮어쓰기 규칙과 같은 요소, 같은 속성을 칠하는 toastui 규칙 중 우선순위가 같거나 높은 것이 없음을 스크립트로 확인했다. toastui에는 `.auto-height` 말고 접두사 없는 전역 클래스가 없고, 앱에서 그 클래스를 쓰지 않는다.
+    - carpool.css: 다크 모드의 `.carpool-cost-button`, `.carpool-manual-fallback` 규칙이 detailForms.css의 작성 화면 규칙과 우선순위가 같았다. 두 요소는 항상 `.content-compose-page` 안에 있어 지금까지 detailForms.css가 이겨 쓰이지 않던 규칙이다. 순서가 바뀌면 이기게 되므로 carpool.css에서 두 선택자를 지웠다. 화면은 지금과 같다.
+  - 홈 서버 요청은 /posts와 같이 `cache: "no-store"`(publicApi 관례)를 쓴다. 쿠키를 넘기지 않아 사용자 간 데이터가 섞이지 않고, 글을 쓰고 돌아와도 바로 보인다. 대가로 홈이 정적 페이지(○)에서 요청마다 렌더링(ƒ)으로 바뀌고 홈 요청마다 백엔드 요청 3개가 늘어난다. 다른 안: `revalidate: 30`. 백엔드 부담은 줄지만 새 글이 최대 30초 늦게 보인다. 트래픽이 커지면 다시 본다.
+  - 오늘의 설질은 서버에서 받지 않는다. `formatReportTime`이 오프셋 없는 KST 문자열을 실행 환경 시간대로 읽어 서버(UTC)와 브라우저 글자가 달라질 수 있다.
+  - 글 목록 상대 시각(`m-time`)은 서버와 브라우저 시각 차이로 글자가 달라질 수 있어 /posts처럼 `suppressHydrationWarning`을 붙였다.
+- 발견된 이슈
+  - `formatReportTime`(lib/resortReports.ts)은 `new Date(문자열)`로 읽어 KST가 아닌 시간대의 브라우저에서 시각이 틀린다. `toDate`를 쓰면 고쳐진다. 이번 범위 밖이라 그대로 두었다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과.
+  - 첫 HTML의 CSS(build 산출물 기준): 홈 390,347B(gzip 145,961B)에서 215,798B(gzip 36,993B). 로그인 394,912B에서 220,363B, 장터 393,467B에서 218,918B, 글쓰기 390,347B에서 215,798B, 카풀 393,467B에서 226,827B. 홈, 로그인, 장터, 글쓰기, 카풀 모두 첫 HTML의 CSS에 toastui 본체가 없다.
+  - 에디터 CSS(166,614B)와 뷰어 CSS(11,936B)는 별도 CSS 파일로 나와 에디터, 뷰어 JS 조각이 참조하는 것을 산출물에서 확인했다.
+  - `next start` + 로컬 백엔드(8080)로 홈 HTML을 받아 글 제목이 들어 있고 "게시글을 불러오는 중" 문구가 없는 것을 확인했다. 장터는 매물 카드, 카풀은 빈 목록 문구가 서버 HTML에 있었다.
+  - 백엔드 주소를 닫힌 포트로 바꿔 빌드한 뒤 홈 HTML에 네 위젯 모두 불러오는 중 문구가 나오는 것을 확인했다(연결 거부 경로). 2초 시간 초과 경로는 확인하지 않았다.
+  - 브라우저에서 화면을 열어 스타일과 하이드레이션 경고를 보지는 않았다.
+- 남은 항목: 사용자 localhost 확인, PR.
+- 사용자 결정 필요: 홈을 요청마다 렌더링(no-store)으로 둘지, revalidate로 바꿀지.
+
 ## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
