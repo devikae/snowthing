@@ -1,3 +1,33 @@
+## 엔티티와 마이그레이션 스키마 일치 검사와 ddl.sql 갱신 (IKA-92, 2026-11-18)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지는 사용자 확인 후.
+- 계획: 운영은 `ddl-auto: validate`로 뜨는데 테스트는 `create-drop`이라 엔티티와 마이그레이션이 어긋나도 배포 전에 잡지 못한다. 마이그레이션 체인으로 만든 스키마에서 validate 기동을 CI에서 확인하고, 13개 표에 멈춰 있던 `database/ddl.sql`을 최신으로 맞추고, CI에서 흔들린 테스트 중 원인이 확인되는 것을 고친다.
+- 완료
+  - `MigrationSchemaValidationTest`(태그 `schema-validate`): `ddl-auto=validate`, `spring.sql.init.mode=never`로 컨텍스트만 띄운다. 운영 prod 프로필과 같은 `MySQLDialect`, 기본 이름 전략(Spring 기본 CamelCaseToUnderscores)이다. 운영 설정에 이름 전략 지정이 없어 따로 맞출 것은 없었다.
+  - `build.gradle`: `schemaValidate` 태스크를 새로 두고 일반 `test`에서는 이 태그를 뺀다.
+  - CI: `gradle.yml`과 `deploy-backend.yml`의 ci-backend에서 마이그레이션 검증 단계(001~최신 적용) 바로 뒤, 일반 test 앞에 `./gradlew schemaValidate` 단계를 넣었다.
+  - `database/ddl.sql`: 001, 002 다음 003~051을 적용한 로컬 임시 스키마에서 `mysqldump --no-data`로 다시 뽑았다. 55개 표. 머리 주석에 생성 방법과 기준 마이그레이션(051)을 적었다.
+  - `PostRepositoryCustomTest`: 시작할 때 테스트 트랜잭션 안에서 기존 글을 모두 숨긴다(끝나면 롤백).
+- 결정
+  - 검사 방식: 별도 태그 테스트 하나를 CI 마이그레이션 단계 뒤에 돌린다. 이미 CI가 `snowthing_test`에 001~최신을 적용하므로 스키마를 새로 만들 필요가 없고, 컨텍스트 한 번이라 10초 안팎이다. 다른 안: Flyway 도입(운영 실행기와 이중 관리가 되고 baseline 대조가 필요), Testcontainers(의존성과 실행 시간 증가). 부작용: 일반 `test`보다 먼저 돌아야 한다. `test`는 create-drop이라 마이그레이션 스키마를 지운다.
+  - ddl.sql은 mysqldump로 뽑는 쪽을 골랐다. docker-compose 초기화를 마이그레이션 디렉터리로 바꾸는 안은 `schema_migration` 기록이 남지 않아 나중에 실행기를 돌리면 모든 파일을 다시 적용하려 하고, 로컬 볼륨 초기화 방식도 바뀐다. `ddl.sql`을 쓰는 곳은 `docker-compose.yml:18` 하나뿐이다(grep 확인, 나머지는 work.md 과거 기록).
+  - ddl.sql에는 기준 데이터(002)와 `schema_migration` 표를 넣지 않았다. 예전 파일도 데이터가 없었다. 표 순서가 알파벳순이라 머리에 `SET FOREIGN_KEY_CHECKS = 0`을 둔다.
+  - PostRepositoryCustomTest는 `DELETE` 대신 `is_deleted = TRUE`로 숨긴다. 댓글, 사진 등 FK가 걸린 글도 지울 필요 없이 목록 쿼리에서 빠지고 롤백된다.
+- 발견된 이슈
+  - 현재 main은 마이그레이션 스키마에서 validate가 통과한다. 운영과 엔티티가 실제로 어긋난 곳은 없다.
+  - 흔들린 테스트 원인 확인 결과
+    - `PostRepositoryCustomTest`: 고침. 게시판 전체 건수(FREE 25건, 베스트 2건)를 검증하는데, 같은 Spring 컨텍스트를 쓰는 다른 테스트가 커밋한 글이 남으면 실행 순서에 따라 깨진다. 다른 트랜잭션으로 FREE 글 1건을 커밋해 두고 돌리면 `findPostsByOffset_firstPage` 1건이 실패하는 것을 재현했고, 수정 후 같은 조건에서 10건 모두 통과했다(재현 코드는 지웠다).
+    - `ProfileImageSecurityIntegrationTest` 503: main에서 이미 고쳐져 있다. `a3a3794`(11-07)부터 `test-schema.sql`이 `request_budget_window`를 항상 만든다. 빈 스키마에서 단독 실행 3건 통과로 확인했다.
+    - `PostImageLifecycleIntegrationTest:200`(run 43018314976), `ContentWriteRateLimitIntegrationTest`(43002757279), `MemberWithdrawalIntegrationTest`(42592897919): 흔들림이 아니었다. 각각 그 브랜치의 기대값 변경 전 상태(`has_image` 기대값을 다음 커밋 5c0e828에서 고침), 비회원 반응 정책 변경 전 테스트(c659b27에서 익명게시판 글로 옮김), `getDetail`의 `@Transactional`이 잘못 옮겨진 버그(552a443에서 되돌림)였고 다음 커밋에서 통과했다.
+- 검증
+  - 새 검사: 로컬 `snowthing_test_ika92_validate`에 001, 002와 003~051을 적용하고 `./gradlew schemaValidate` 통과(1건). 050에서 `admin_action_log.reason` 컬럼 줄을 지우고 다시 적용하면 `Schema validation: missing column [reason] in table [admin_action_log]`로 실패하는 것을 확인한 뒤 되돌리고 다시 통과를 확인했다.
+  - ddl.sql: 새 빈 스키마에 넣어 55개 표가 만들어지고, 마이그레이션 스키마와 컬럼(타입, NULL, 기본값, 문자셋, 콜레이션, 주석), 인덱스, CHECK, FK를 information_schema로 비교해 차이가 없었다.
+  - 백엔드 전체 `test`(전용 스키마 `snowthing_test_ika92`, 빈 스키마에서 시작): 1274건, 실패 0, skip 1.
+  - `spotlessApply`, `spotlessCheck` 통과(worktree라 임시 init script로 ratchetFrom을 끄고 전체 파일 대상).
+  - CI 결과는 PR에서 확인한다.
+- 남은 항목: PR 리뷰, 머지(사용자 확인 후). PR #148(052)과 IKA-88(053)이 머지되면 ddl.sql을 같은 방법으로 다시 뽑아야 한다.
+- 사용자 결정 필요: 없음.
+
 ## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
