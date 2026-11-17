@@ -9,8 +9,8 @@ export type SeasonOpening = {
 };
 
 export const SEASON_OPENINGS: SeasonOpening[] = [
-  { resortCode: "YONGPYONG", name: "모나용평", date: "2026-11-20", confirmed: true },
-  { resortCode: "HIGH1", name: "하이원", date: "2026-11-27", confirmed: true },
+  { resortCode: "YONGPYONG", name: "모나용평", date: "2026-11-22", confirmed: true },
+  { resortCode: "HIGH1", name: "하이원", date: "2026-11-24", confirmed: true },
   { resortCode: "PHOENIX", name: "휘닉스파크", date: "2026-11-27", confirmed: true },
   { resortCode: "O2_RESORT", name: "오투리조트", date: "2026-11-27", confirmed: false },
   { resortCode: "VIVALDI", name: "비발디파크", date: "2026-12-04", confirmed: false },
