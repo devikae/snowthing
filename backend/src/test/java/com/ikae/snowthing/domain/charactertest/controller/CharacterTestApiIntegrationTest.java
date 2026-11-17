@@ -236,6 +236,32 @@ class CharacterTestApiIntegrationTest {
     }
 
     @Test
+    void 모임_이름을_보내면_그_이름으로_만들고_틀린_이름은_400이다() throws Exception {
+        String named =
+                "{\"nickname\":\"모임장\",\"sport\":\"BOARD\",\"answers\":\""
+                        + ANSWERS
+                        + "\",\"groupName\":\"주말 하이원 크루\"}";
+        Map<?, ?> created =
+                read(
+                        mvc.perform(
+                                        post("/api/v1/character-groups")
+                                                .with(csrf())
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(named))
+                                .andExpect(status().isCreated()));
+        assertThat(created.get("groupName")).isEqualTo("주말 하이원 크루");
+
+        mvc.perform(
+                        post("/api/v1/character-groups")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(named.replace("주말 하이원 크루", "크루!!")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("CHARACTER_005"));
+        assertThat(count("character_group")).isEqualTo(1L);
+    }
+
+    @Test
     void 테이블에는_IP_컬럼이_없다() {
         assertThat(
                         jdbc.queryForObject(

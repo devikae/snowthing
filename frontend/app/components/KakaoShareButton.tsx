@@ -18,7 +18,7 @@ type KakaoJsSdk = {
   Share?: {
     sendDefault: (settings: {
       objectType: "feed";
-      content: { title: string; description: string; imageUrl: string; link: KakaoLink };
+      content: { title: string; description: string; imageUrl: string; imageWidth?: number; imageHeight?: number; link: KakaoLink };
       buttons: { title: string; link: KakaoLink }[];
     }) => void;
   };
@@ -84,6 +84,9 @@ type Props = {
   url: string;
   /** 공개 주소로 받을 수 있는 이미지. 경로를 주면 현재 출처로 바꾼다. 없으면 사이트 기본 OG 이미지. */
   imageUrl?: string | null;
+  /** 이미지 원본 크기. 주면 카카오가 그 비율대로 보여 줘서 잘리지 않는다. */
+  imageWidth?: number;
+  imageHeight?: number;
   buttonTitle?: string;
   /** 한 화면에 공유 대상이 둘 이상이면 구분되는 글자를 준다. */
   label?: string;
@@ -95,7 +98,7 @@ type Props = {
 
 const FALLBACK_NOTICE = { shared: "", cancelled: "", copied: "링크를 복사했어요.", failed: "링크를 복사하지 못했어요." } as const;
 
-export default function KakaoShareButton({ title, description, url, imageUrl, buttonTitle = "자세히 보기", label = "카카오톡 공유", iconOnly = false, onFallback }: Props) {
+export default function KakaoShareButton({ title, description, url, imageUrl, imageWidth, imageHeight, buttonTitle = "자세히 보기", label = "카카오톡 공유", iconOnly = false, onFallback }: Props) {
   const [notice, setNotice] = useState("");
 
   // 데스크톱은 공유 창을 팝업으로 연다. 클릭 뒤에 스크립트를 받으면 팝업이 막힐 수 있어 버튼이 보일 때 미리 받는다.
@@ -121,7 +124,7 @@ export default function KakaoShareButton({ title, description, url, imageUrl, bu
     try {
       sdk.Share.sendDefault({
         objectType: "feed",
-        content: { title, description: description || title, imageUrl: new URL(imageUrl || "/og-default.png", origin).toString(), link: linkObject },
+        content: { title, description: description || title, imageUrl: new URL(imageUrl || "/og-default.png", origin).toString(), ...(imageWidth && imageHeight ? { imageWidth, imageHeight } : {}), link: linkObject },
         buttons: [{ title: buttonTitle, link: linkObject }],
       });
     } catch {

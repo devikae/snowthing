@@ -142,3 +142,6 @@ html[data-theme="dark"] .ct-intro-cast { background: linear-gradient(180deg, #1c
 .ct-join-notice li::marker { color: var(--snow-faint); }
 .ct-join-notice strong { color: var(--snow-ink); font-weight: 700; }
 .ct-kakao-share { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+
+.ct-nickname label .ct-optional { color: var(--snow-muted); font-weight: 500; }
+.ct-nickname label:not(:first-child) { margin-top: 6px; }

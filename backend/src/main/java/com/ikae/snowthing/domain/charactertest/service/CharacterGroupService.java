@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,9 @@ import lombok.RequiredArgsConstructor;
 public class CharacterGroupService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final int GROUP_NAME_MIN = 2;
+    private static final int GROUP_NAME_MAX = 20;
+    private static final Pattern GROUP_NAME_CHARS = Pattern.compile("[가-힣a-zA-Z0-9 ]+");
 
     private final CharacterGroupRepository groupRepository;
     private final CharacterParticipantRepository participantRepository;
@@ -50,7 +54,9 @@ public class CharacterGroupService {
     @Transactional
     public CharacterJoinResponse create(CharacterJoinRequest request) {
         validateNickname(request.nickname());
-        CharacterGroup group = groupRepository.save(new CharacterGroup(request.nickname()));
+        CharacterGroup group =
+                groupRepository.save(
+                        new CharacterGroup(request.nickname(), groupName(request.groupName())));
         String token = CharacterAccessToken.generate();
         CharacterParticipant owner =
                 participantRepository.save(toParticipant(group, request, token));
@@ -181,6 +187,24 @@ public class CharacterGroupService {
         return groupRepository
                 .findLockedById(groupId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CHARACTER_GROUP_NOT_FOUND));
+    }
+
+    /** 비었으면 null(기본 이름을 쓴다). 앞뒤 공백을 빼고, 연속 공백은 하나로 줄여 길이와 글자, 금칙어를 본다. */
+    private static String groupName(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String name = raw.strip().replaceAll("\\s+", " ");
+        int length = name.codePointCount(0, name.length());
+        if (length < GROUP_NAME_MIN
+                || length > GROUP_NAME_MAX
+                || !GROUP_NAME_CHARS.matcher(name).matches()) {
+            throw new CustomException(ErrorCode.CHARACTER_GROUP_NAME_INVALID);
+        }
+        // 띄어 써서 금칙어를 피하지 못하게 공백을 빼고도 본다.
+        if (CharacterNicknameFilter.isForbidden(name)
+                || CharacterNicknameFilter.isForbidden(name.replace(" ", ""))) {
+            throw new CustomException(ErrorCode.CHARACTER_GROUP_NAME_FORBIDDEN);
+        }
+        return name;
     }
 
     private static void validateNickname(String nickname) {

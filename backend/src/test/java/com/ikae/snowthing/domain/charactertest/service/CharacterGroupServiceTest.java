@@ -125,6 +125,53 @@ class CharacterGroupServiceTest {
     }
 
     @Test
+    void 모임_이름을_넣으면_앞뒤와_겹친_공백을_정리한_그_이름으로_만든다() {
+        CharacterJoinResponse created = createNamed("설원대장", "  주말   하이원 크루 ");
+
+        assertThat(created.groupName()).isEqualTo("주말 하이원 크루");
+        assertThat(service.getPreview(created.groupPublicId()).name()).isEqualTo("주말 하이원 크루");
+    }
+
+    @Test
+    void 모임_이름을_비우면_닉네임의_모임이_붙는다() {
+        assertThat(createNamed("설원대장", "   ").groupName()).isEqualTo("설원대장의 모임");
+        assertThat(createNamed("보드킴", null).groupName()).isEqualTo("보드킴의 모임");
+    }
+
+    @Test
+    void 모임_이름이_짧거나_길거나_허용하지_않는_글자면_만들지_않는다() {
+        for (String name : List.of("가", "가".repeat(21), "하이원🏂크루", "<b>크루</b>")) {
+            assertThatErrorCode(
+                    () -> createNamed("설원대장", name), ErrorCode.CHARACTER_GROUP_NAME_INVALID);
+        }
+        assertThat(createNamed("설원대장", "가".repeat(20)).groupName()).hasSize(20);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM character_group", Long.class))
+                .isEqualTo(1L);
+    }
+
+    @Test
+    void 모임_이름의_금칙어는_띄어_써도_막는다() {
+        for (String name : List.of("시발 크루", "시 발 크루", "눈팅 공식 모임")) {
+            assertThatErrorCode(
+                    () -> createNamed("설원대장", name), ErrorCode.CHARACTER_GROUP_NAME_FORBIDDEN);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM character_group", Long.class))
+                .isZero();
+    }
+
+    @Test
+    void 참여할_때_보낸_모임_이름은_무시한다() {
+        CharacterJoinResponse owner = createNamed("주인장", "원래 이름");
+
+        CharacterJoinResponse joined =
+                service.join(
+                        owner.groupPublicId(),
+                        new CharacterJoinRequest("손님", CharacterSport.BOARD, INFJ, "바꾼 이름"));
+
+        assertThat(joined.groupName()).isEqualTo("원래 이름");
+    }
+
+    @Test
     void 없는_모임은_미리보기와_참여가_모두_404다() {
         String missing = UUID.randomUUID().toString();
 
@@ -271,6 +318,11 @@ class CharacterGroupServiceTest {
 
     private CharacterJoinResponse create(String nickname, String answers) {
         return service.create(new CharacterJoinRequest(nickname, CharacterSport.SKI, answers));
+    }
+
+    private CharacterJoinResponse createNamed(String nickname, String groupName) {
+        return service.create(
+                new CharacterJoinRequest(nickname, CharacterSport.SKI, ENTP, groupName));
     }
 
     private CharacterJoinResponse join(
