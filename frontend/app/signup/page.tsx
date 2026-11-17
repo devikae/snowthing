@@ -8,6 +8,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { clearViewerCache } from "../lib/viewer";
 import { API_ENDPOINTS } from "../lib/api";
 import { errorText } from "../lib/errorText";
+import { safeReturnUrl } from "../lib/safeReturnUrl";
 import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "./RegistrationConsentForm";
 
 interface ResortMaster { id: number; name: string; regionName: string; }
@@ -50,6 +51,15 @@ export default function SignUpPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [emailVerificationError, setEmailVerificationError] = useState("");
   const [loading, setLoading] = useState(false);
+  // 로그인 화면이나 다른 화면에서 넘어온 경우 가입을 마치고 그 화면으로 돌려보낸다. 같은 사이트 경로만 받는다.
+  const [returnUrl, setReturnUrl] = useState("/");
+  useEffect(() => {
+    const safe = safeReturnUrl(new URLSearchParams(window.location.search).get("returnUrl"));
+    if (safe === "/") return;
+    const timer = window.setTimeout(() => setReturnUrl(safe), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const loginHref = returnUrl === "/" ? "/login" : `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
 
   const isEmailVerified = emailVerificationToken.length > 0;
   const isPasswordValid = password.length >= 8 && password.length <= 20 && password.trim().length > 0;
@@ -145,7 +155,7 @@ export default function SignUpPage() {
       if (!response.ok) throw new Error(await readError(response, "가입하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
       clearViewerCache();
-      router.push(loginResponse.ok ? "/" : "/login");
+      router.push(loginResponse.ok ? returnUrl : loginHref);
     } catch (error) {
       setErrorMsg(errorText(error, "회원가입을 처리하지 못했습니다."));
     } finally { setLoading(false); }
@@ -178,7 +188,7 @@ export default function SignUpPage() {
     <div ref={emailSectionRef} className="grid gap-3"><RequiredLabel>이메일</RequiredLabel><div className="flex gap-2"><input ref={emailInputRef} type="email" autoComplete="email" value={email} onChange={(event) => changeEmail(event.target.value)} className="snow-input flex-1" placeholder="you@example.com" disabled={isEmailVerified} required aria-invalid={emailVerificationError ? true : undefined} aria-describedby={emailVerificationError ? "email-verification-error" : undefined} /><button type="button" className="snow-btn-secondary whitespace-nowrap" onClick={requestVerification} disabled={loading || isEmailVerified || resendSeconds > 0}>{isEmailVerified ? "인증 완료" : resendSeconds > 0 ? `${resendSeconds}초 후 재전송` : verificationRequestId ? "다시 받기" : "이메일 인증"}</button></div>{emailVerificationError && <p id="email-verification-error" role="alert" className="text-sm font-semibold text-rose-600">{emailVerificationError}</p>}{verificationRequestId && !isEmailVerified && <><div className="flex gap-2"><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))} className="snow-input flex-1" placeholder="인증번호 6자리" /><button type="button" className="snow-btn-primary whitespace-nowrap" onClick={confirmVerification} disabled={loading || verificationExpiresSeconds === 0}>인증 확인</button></div><p className="text-xs font-semibold text-[var(--snow-muted)]">{verificationExpiresSeconds > 0 ? `인증번호 유효 시간 ${Math.floor(verificationExpiresSeconds / 60)}:${String(verificationExpiresSeconds % 60).padStart(2, "0")}` : "인증번호가 만료되었습니다. 다시 받아 주세요."}</p></>}</div>
     <div className="grid gap-5 md:grid-cols-2"><label className="grid gap-2"><RequiredLabel>비밀번호</RequiredLabel><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="snow-input" autoComplete="new-password" minLength={8} maxLength={20} placeholder="8~20자 입력" required /></label><label className="grid gap-2"><RequiredLabel>비밀번호 확인</RequiredLabel><input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} className="snow-input" autoComplete="new-password" minLength={8} maxLength={20} required /></label><label className="grid gap-2 md:col-span-2"><RequiredLabel>닉네임</RequiredLabel><input value={nickname} onChange={(event) => setNickname(event.target.value)} className="snow-input" minLength={2} maxLength={10} pattern="[a-zA-Z0-9가-힣]{2,10}" aria-describedby="nickname-help" required /><small id="nickname-help" className="text-xs text-[var(--snow-muted)]">한글, 영문, 숫자 2~10자</small></label></div>
     <SelectionGrid title="선호 리조트" items={resorts.map((item) => ({ id: item.id, label: item.name }))} selectedIds={selectedResortIds} onToggle={(id) => toggle(id, selectedResortIds, setSelectedResortIds)} /><SelectionGrid title="라이딩 성향" items={ridingStyles.map((item) => ({ id: item.id, label: item.styleName }))} selectedIds={selectedStyleIds} onToggle={(id) => toggle(id, selectedStyleIds, setSelectedStyleIds)} /><button type="submit" className="snow-btn-primary w-full" disabled={loading}>{loading ? "처리 중" : "회원가입 완료"}</button>
-  </form><p className="mt-6 text-center text-sm text-[var(--snow-muted)]">이미 계정이 있나요? <Link href="/login" className="font-bold text-sky-700 underline">로그인</Link></p></section></main><Footer /></div>;
+  </form><p className="mt-6 text-center text-sm text-[var(--snow-muted)]">이미 계정이 있나요? <Link href={loginHref} className="font-bold text-sky-700 underline">로그인</Link></p></section></main><Footer /></div>;
 }
 
 function RequiredLabel({ children }: { children: React.ReactNode }) { return <span className="snow-label">{children}<b className="ml-1 text-rose-500">*</b></span>; }
