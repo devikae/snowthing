@@ -173,10 +173,12 @@ export const API_ENDPOINTS = {
     banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${encodeURIComponent(messageId)}/ban-ip`,
     banners: `${API_V1_URL}/admin/banners`,
     bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
+    seasonOpenings: `${API_V1_URL}/admin/season-openings`,
   },
   public: {
     configs: `${API_V1_URL}/public/configs`,
     banners: `${API_V1_URL}/public/banners`,
+    seasonOpenings: `${API_V1_URL}/public/season-openings`,
   },
 } as const;
 

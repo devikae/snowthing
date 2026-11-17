@@ -241,6 +241,7 @@ export const ACTION_LABEL: Record<string, string> = {
   CHAT_IP_BAN: "라이브톡 IP 차단",
   CHAT_IP_UNBAN: "라이브톡 IP 차단 해제",
   CONFIG_UPDATE: "운영 설정 변경",
+  SEASON_OPENING_UPDATE: "개장일 변경",
 };
 
 export const TARGET_LABEL: Record<string, string> = {
@@ -252,6 +253,7 @@ export const TARGET_LABEL: Record<string, string> = {
   BANNER: "배너",
   CHAT_BAN: "IP 차단",
   CONFIG: "설정",
+  SEASON_OPENING: "개장일",
 };
 
 /** 게시판 코드에 맞는 공개 상세 주소. 시장과 카풀은 전용 화면이 있다. */
