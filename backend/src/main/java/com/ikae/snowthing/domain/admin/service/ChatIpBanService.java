@@ -118,7 +118,7 @@ public class ChatIpBanService {
     }
 
     @Transactional
-    public void banIpByMessageId(String messageId, String createdBy) {
+    public void banIpByMessageId(String messageId, int days, String createdBy) {
         String ip = historyBuffer.getIpForMessage(messageId);
         if (ip == null || ip.isBlank()) {
             List<String> removed = historyBuffer.removeByMessageId(messageId);
@@ -127,7 +127,11 @@ public class ChatIpBanService {
             }
             return;
         }
-        banIp(ip, "관리자 메시지 신고 차단 (" + messageId + ")", LocalDateTime.now().plusDays(7), createdBy);
+        banIp(
+                ip,
+                "관리자 메시지 신고 차단 " + days + "일 (" + messageId + ")",
+                LocalDateTime.now().plusDays(days),
+                createdBy);
     }
 
     private void broadcastPurge(List<String> messageIds) {

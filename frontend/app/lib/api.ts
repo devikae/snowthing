@@ -149,7 +149,7 @@ export const API_ENDPOINTS = {
         ...(params.query ? { query: params.query } : {}),
         ...(params.author ? { author: params.author } : {}),
       }).toString()}`,
-    blindComment: (commentId: number) => `${API_V1_URL}/admin/comments/${commentId}/blind`,
+    blindComment: (commentId: number | string) => `${API_V1_URL}/admin/comments/${commentId}/blind`,
     deleteComment: (commentId: number) => `${API_V1_URL}/admin/comments/${commentId}`,
     inquiries: (status: string, page: number, size = 20) =>
       `${API_V1_URL}/admin/inquiries?status=${status}&page=${page}&size=${size}`,

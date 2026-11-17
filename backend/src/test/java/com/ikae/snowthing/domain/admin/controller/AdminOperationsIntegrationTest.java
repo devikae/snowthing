@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,12 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
+import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
+import com.ikae.snowthing.domain.chat.dto.SenderDto;
+import com.ikae.snowthing.domain.chat.service.ChatRecentHistoryBuffer;
+import com.ikae.snowthing.domain.comment.entity.Comment;
+import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -56,8 +63,12 @@ class AdminOperationsIntegrationTest {
     @Autowired private MemberRepository members;
     @Autowired private PostRepository posts;
     @Autowired private PostCategoryRepository categories;
+    @Autowired private CommentRepository comments;
+    @Autowired private ChatRecentHistoryBuffer chatHistory;
+    @Autowired private ChatIpBanService chatIpBanService;
 
     private final List<Long> memberIds = new ArrayList<>();
+    private final List<String> bannedIps = new ArrayList<>();
     private Member admin;
     private Member user;
     private MockHttpSession adminSession;
@@ -73,6 +84,13 @@ class AdminOperationsIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        for (String ip : bannedIps) {
+            for (Long id :
+                    jdbc.queryForList(
+                            "SELECT id FROM chat_banned_ip WHERE banned_ip = ?", Long.class, ip)) {
+                chatIpBanService.unbanIp(id);
+            }
+        }
         for (Long memberId : memberIds) {
             jdbc.update("DELETE FROM member WHERE member_id = ?", memberId);
         }
@@ -224,6 +242,128 @@ class AdminOperationsIntegrationTest {
                         .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
         assertThat(body.size()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("라이브톡 메시지 차단은 기간을 보내지 않으면 7일이다")
+    void banByMessageDefaultsToSevenDays() throws Exception {
+        String messageId = chatMessageFrom("198.51.100.71");
+
+        mockMvc.perform(banByMessage(messageId, null).session(adminSession).with(csrf()))
+                .andExpect(status().isNoContent());
+
+        assertBannedForDays("198.51.100.71", 7);
+    }
+
+    @Test
+    @DisplayName("라이브톡 메시지 차단은 고른 기간(30일)만큼 막는다")
+    void banByMessageUsesChosenDays() throws Exception {
+        String messageId = chatMessageFrom("198.51.100.72");
+
+        mockMvc.perform(banByMessage(messageId, "{\"days\":30}").session(adminSession).with(csrf()))
+                .andExpect(status().isNoContent());
+
+        assertBannedForDays("198.51.100.72", 30);
+    }
+
+    @Test
+    @DisplayName("라이브톡 메시지 차단 기간이 1, 7, 30일이 아니면 400이고 차단하지 않는다")
+    void banByMessageRejectsOtherDays() throws Exception {
+        String messageId = chatMessageFrom("198.51.100.73");
+
+        for (String body : List.of("{\"days\":5}", "{\"days\":0}", "{\"days\":-1}")) {
+            mockMvc.perform(banByMessage(messageId, body).session(adminSession).with(csrf()))
+                    .andExpect(status().isBadRequest());
+        }
+
+        assertThat(banCount("198.51.100.73")).isZero();
+    }
+
+    @Test
+    @DisplayName("일반 회원은 라이브톡 메시지 차단을 할 수 없다(403)")
+    void banByMessageIsClosedToNonAdmins() throws Exception {
+        String messageId = chatMessageFrom("198.51.100.74");
+
+        mockMvc.perform(banByMessage(messageId, "{\"days\":1}").session(userSession).with(csrf()))
+                .andExpect(status().isForbidden());
+
+        assertThat(banCount("198.51.100.74")).isZero();
+    }
+
+    @Test
+    @DisplayName("가린 댓글은 관리자에게만 blinded가 내려가고, 가린 글의 댓글도 관리자는 읽는다")
+    void blindedFlagIsAdminOnly() throws Exception {
+        Post post = savePost();
+        Comment comment =
+                comments.save(
+                        Comment.create(post, null, null, "가릴 댓글", "192.0.2.5", true, "encoded"));
+
+        mockMvc.perform(
+                        patch("/api/v1/admin/comments/" + comment.getId() + "/blind")
+                                .session(adminSession)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"blinded\":true}"))
+                .andExpect(status().isNoContent());
+
+        String url = "/api/v1/posts/" + post.getPublicId() + "/comments";
+        mockMvc.perform(get(url).session(adminSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comments[0].blinded").value(true));
+        mockMvc.perform(get(url).session(userSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comments[0].blinded").doesNotExist())
+                .andExpect(jsonPath("$.comments[0].moderationHeld").doesNotExist());
+        mockMvc.perform(get(url))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comments[0].blinded").doesNotExist());
+
+        mockMvc.perform(blind(post.getPublicId(), true).session(adminSession).with(csrf()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get(url).session(adminSession)).andExpect(status().isOk());
+        mockMvc.perform(get(url).session(userSession)).andExpect(status().isNotFound());
+    }
+
+    private String chatMessageFrom(String ip) {
+        bannedIps.add(ip);
+        String messageId = UUID.randomUUID().toString();
+        chatHistory.append(
+                new ChatMessageResponse(
+                        messageId,
+                        new SenderDto("anon-" + messageId, "손님#0001"),
+                        null,
+                        "테스트 메시지",
+                        LocalDateTime.now().toString()),
+                ip);
+        return messageId;
+    }
+
+    private MockHttpServletRequestBuilder banByMessage(String messageId, String body) {
+        MockHttpServletRequestBuilder request =
+                post("/api/v1/admin/chat/messages/" + messageId + "/ban-ip");
+        return body == null
+                ? request
+                : request.contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    private int banCount(String ip) {
+        Integer count =
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM chat_banned_ip WHERE banned_ip = ?",
+                        Integer.class,
+                        ip);
+        return count == null ? 0 : count;
+    }
+
+    private void assertBannedForDays(String ip, int days) {
+        LocalDateTime until =
+                jdbc.queryForObject(
+                        "SELECT banned_until FROM chat_banned_ip WHERE banned_ip = ?",
+                        LocalDateTime.class,
+                        ip);
+        LocalDateTime expected = LocalDateTime.now().plusDays(days);
+        assertThat(until).isBetween(expected.minusMinutes(5), expected.plusMinutes(1));
+        assertThat(chatIpBanService.isBanned(ip)).isTrue();
     }
 
     private MockHttpServletRequestBuilder blind(String publicId, boolean blinded) {
