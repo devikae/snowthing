@@ -7,14 +7,16 @@
 - 실험 데이터는 쪽지 트랜잭션이 커밋된 직후와 같은 상태(쪽지와 발송 요청)를 SQL 한 트랜잭션으로 넣어 만들었다.
 - 해석과 표는 `../02_verification.md`, `../03_benchmark.md`에 있다.
 
-## 1. 마이그레이션 052
+## 1. 마이그레이션 053
+
+촬영 당시 파일 번호는 052였다. 2026-11-18에 내용은 그대로 두고 이름만 053으로 바꿨다. 원본 출력과 그림에는 052가 남아 있다.
 
 | 단계 | 확인 |
 |---|---|
 | ![](migration/01-before-tables.png) | 적용 전에는 member 테이블만 있다 |
 | ![](migration/02-apply-twice.png) | 같은 파일을 두 번 적용해도 mysql 종료 코드 0 |
 | ![](migration/03-after-tables.png) | 테이블 3개, 인덱스, `uk_dm_mail_outbox_intent` 유니크 제약 |
-| ![](migration/04-validate-boot.png) | 052로 만든 테이블에서 `ddl-auto=validate`로 앱 기동 성공 |
+| ![](migration/04-validate-boot.png) | 053(당시 052)으로 만든 테이블에서 `ddl-auto=validate`로 앱 기동 성공 |
 
 ## 2. 실험 1: 같은 DB를 보는 워커 두 개
 

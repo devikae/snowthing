@@ -17,7 +17,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * 쪽지 도착 메일 발송 요청 (052). 쪽지 1개에 행 1개다. 읽기와 쓰기는 {@code DmMailOutboxRepository}가 JDBC로 한다. 이 엔티티는 테스트
+ * 쪽지 도착 메일 발송 요청 (053). 쪽지 1개에 행 1개다. 읽기와 쓰기는 {@code DmMailOutboxRepository}가 JDBC로 한다. 이 엔티티는 테스트
  * 스키마(create-drop)와 운영 validate용 스키마 정의다.
  */
 @Entity

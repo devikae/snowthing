@@ -11,7 +11,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * 받는 사람별 쪽지 메일 발송 상태 (052). 쿨다운의 기준 시각이자, 같은 받는 사람을 두 워커가 동시에 묶지 못하게 하는 잠금 지점이다. 읽기와 쓰기는 {@code
+ * 받는 사람별 쪽지 메일 발송 상태 (053). 쿨다운의 기준 시각이자, 같은 받는 사람을 두 워커가 동시에 묶지 못하게 하는 잠금 지점이다. 읽기와 쓰기는 {@code
  * DmMailOutboxRepository}가 JDBC로 한다.
  */
 @Entity

@@ -50,9 +50,11 @@
 
 증거: `evidence/migration/`
 
-1. member 테이블만 있는 빈 DB `snowthing_ika88_mig`에 `052_migration_dm_mail_notification.sql`을 두 번 적용했다. 두 번 모두 mysql 종료 코드 0이다.
+이 기록은 파일 번호가 052이던 2026-11-17에 만들었다. 2026-11-18에 IKA-87의 052와 겹치지 않도록 내용은 그대로 두고 파일 이름만 053으로 바꿨다. 증거 원본 출력에는 당시 이름 052가 남아 있다.
+
+1. member 테이블만 있는 빈 DB `snowthing_ika88_mig`에 `053_migration_dm_mail_notification.sql`(당시 052)을 두 번 적용했다. 두 번 모두 mysql 종료 코드 0이다.
 2. 테이블 3개, 인덱스 2개, 유니크 제약 `uk_dm_mail_outbox_intent`가 생겼다.
-3. 실험 DB `snowthing_ika88_exp`에서 새 테이블 3개를 지우고 052로 다시 만든 뒤 앱을 `ddl-auto=validate`로 띄웠다. 기동 성공. 마이그레이션이 엔티티 정의와 맞는다.
+3. 실험 DB `snowthing_ika88_exp`에서 새 테이블 3개를 지우고 053(당시 052)으로 다시 만든 뒤 앱을 `ddl-auto=validate`로 띄웠다. 기동 성공. 마이그레이션이 엔티티 정의와 맞는다.
 
 ## 3. 수동 실험 (프로세스 단위)
 

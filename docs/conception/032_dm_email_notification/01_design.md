@@ -47,7 +47,7 @@ Sprint 8 미션(댓글 이메일 알림과 분산 환경의 데이터 정합성)
 
 ## 데이터 모델
 
-마이그레이션 `database/production/052_migration_dm_mail_notification.sql`. 기존 테이블을 바꾸지 않고 새 테이블만 만든다.
+마이그레이션 `database/production/053_migration_dm_mail_notification.sql`. 기존 테이블을 바꾸지 않고 새 테이블만 만든다.
 
 ### member_notification_setting
 
