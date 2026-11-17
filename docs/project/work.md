@@ -10,6 +10,7 @@
   - 결과 분류: 200 ACCEPTED, 연결 실패와 429 RETRY_WAIT(최대 5회, equal jitter), 400 FAILED, 타임아웃과 500과 lease 만료 UNKNOWN(자동 재발송 없음).
   - 쪽지 메일 전용 SES 클라이언트(SDK 재시도 0회). 인증메일 클라이언트는 그대로.
   - 프론트: 쪽지함 위 "쪽지 오면 메일로 알림" 스위치. 받을 수 있는 이메일이 없으면 막고 이유를 보인다.
+  - 관리자 요약 `GET /api/v1/admin/dm-mail/outbox/summary`: 상태별 건수, UNKNOWN과 FAILED 합, 가장 오래 기다린 요청. 처음에 설계에만 적고 빠뜨렸다가 문서 점검 중 발견해 추가했다.
   - 기능 플래그 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED`(기본 false, `compose.prod.yml`에도 추가).
   - 문서: 설계, ADR-3201, 검증 기록, 성능 비교.
 - 결정
@@ -29,6 +30,7 @@
   - 프로세스 두 개 경합(받는 사람 40명, 중복 메일 0), 재기동 후 이어서 처리, 수락 직후 강제 종료 후 UNKNOWN 격리(재발송 0).
   - 성능: 쪽지 응답 p95 1965ms에서 30ms, 알림 지연 p95 57.9초(SES 1초, 60건 동시).
   - 프론트 `npm run lint`, `npm run build` 통과.
+  - 화면: 헤드리스 Chrome으로 신규, 기존, 소셜 내부 주소 계정을 데스크톱과 모바일에서 확인. 다크 모드는 미확인.
 
 ## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
 
