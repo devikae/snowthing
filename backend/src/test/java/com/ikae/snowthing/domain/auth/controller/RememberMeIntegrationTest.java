@@ -395,6 +395,28 @@ class RememberMeIntegrationTest {
                 .isZero();
     }
 
+    @Test
+    @DisplayName("예전 화면이 보내던 rememberMe 필드가 와도 로그인하고 세션은 1시간으로 둔다")
+    void legacyRememberMeField_IsIgnored() throws Exception {
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"email\":\""
+                                                        + EMAIL
+                                                        + "\",\"password\":\""
+                                                        + PASSWORD
+                                                        + "\",\"rememberMe\":true}"))
+                        .andExpect(status().isOk())
+                        .andReturn();
+
+        assertThat(result.getRequest().getSession(false).getMaxInactiveInterval())
+                .isEqualTo((int) Duration.ofHours(1).toSeconds());
+        assertThat(result.getResponse().getCookie(COOKIE)).isNotNull();
+    }
+
     private static String encode(String... parts) {
         return Base64.getEncoder()
                 .withoutPadding()

@@ -39,7 +39,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private static final int REMEMBER_ME_TIMEOUT_SECONDS = (int) Duration.ofDays(30).toSeconds();
     private static final int DEFAULT_SESSION_TIMEOUT_SECONDS =
             (int) Duration.ofHours(1).toSeconds();
 
@@ -78,9 +77,9 @@ public class AuthController {
         httpRequest.changeSessionId();
         securityContextRepository.saveContext(securityContext, httpRequest, httpResponse);
 
-        // 4. Remember-Me 세션 타임아웃 계산 및 적용 (별도 메서드 분리 및 상수 적용)
-        int timeoutSeconds = calculateSessionTimeoutSeconds(loginRequest.isRememberMe());
-        session.setMaxInactiveInterval(timeoutSeconds);
+        // 4. 세션 타임아웃 적용
+        // 30일 유지는 로그인 유지 쿠키가 맡는다. 서버 메모리 세션은 늘 1시간이다.
+        session.setMaxInactiveInterval(DEFAULT_SESSION_TIMEOUT_SECONDS);
         RecentAuthentication.mark(session, Instant.now(clock));
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -97,10 +96,5 @@ public class AuthController {
 
         MemberLoginResponse response = authService.getMemberProfileByEmail(loginRequest.getEmail());
         return ResponseEntity.ok(response);
-    }
-
-    /** Remember-Me 체크 여부에 따른 세션 타임아웃 계산 (초 단위) */
-    private int calculateSessionTimeoutSeconds(boolean rememberMe) {
-        return rememberMe ? REMEMBER_ME_TIMEOUT_SECONDS : DEFAULT_SESSION_TIMEOUT_SECONDS;
     }
 }

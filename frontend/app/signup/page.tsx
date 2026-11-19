@@ -153,7 +153,7 @@ export default function SignUpPage() {
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ...consentPayload(consent) }) });
       if (!response.ok) throw new Error(await readError(response, "가입하지 못했습니다. 잠시 후 다시 시도해 주세요."));
-      const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, rememberMe: true }) });
+      const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
       clearViewerCache();
       router.push(loginResponse.ok ? returnUrl : loginHref);
     } catch (error) {

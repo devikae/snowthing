@@ -43,7 +43,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [withdrawn, setWithdrawn] = useState(false);
   useEffect(() => {
@@ -120,7 +119,7 @@ export default function LoginPage() {
       const response = await csrfFetch(API_ENDPOINTS.auth.login, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
@@ -154,7 +153,6 @@ export default function LoginPage() {
             <label className={styles.field}>이메일<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" autoCapitalize="none" required disabled={loading} /></label>
             <label className={styles.field}>비밀번호<input name="password" type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="비밀번호를 입력해 주세요" autoComplete="current-password" required disabled={loading} /></label>
             <div className={styles.options}>
-              <label className={styles.remember}><input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} disabled={loading} />로그인 상태 유지</label>
               <Link href="/forgot-password">비밀번호 찾기</Link>
             </div>
             <button type="submit" className={`${styles.button} ${styles.primary}`} disabled={loading}>{loading ? "로그인 중" : "로그인"}</button>
