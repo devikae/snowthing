@@ -2,7 +2,7 @@ name: Deploy Backend
 
 on:
   push:
-    branches: [ "main", "deploy/aws-ec2" ]
+    branches: [ "main" ]
     paths: [ 'backend/**', 'database/**', 'shared/**', '.dockerignore', 'compose.prod.yml', 'scripts/deploy-ecr-service.sh', '.github/workflows/deploy-backend.yml' ]
   workflow_dispatch:
     inputs:
@@ -53,19 +53,19 @@ jobs:
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
-      - name: Allow test triggers in MySQL
+      - name: Allow test triggers and raise max_connections in MySQL
         env:
           MYSQL_ROOT_PASSWORD: snowthing_root_2026!
         run: |
           mysql --protocol=TCP -h 127.0.0.1 -P 3306 -uroot -p"$MYSQL_ROOT_PASSWORD" \
-            -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+            -e "SET GLOBAL log_bin_trust_function_creators = 1; SET GLOBAL max_connections = 500;"
       - name: Verify production migration 003 from the existing schema
         working-directory: ${{ github.workspace }}
         run: |
           chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-003.sh
           scripts/verify-production-migration-003.sh
 
-      - name: Verify production migration 004 used market schema
+      - name: Verify production migrations 005-006 schema
         working-directory: ${{ github.workspace }}
         run: |
           chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-005.sh scripts/verify-production-migration-006.sh
@@ -92,7 +92,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/aws-ec2') && (github.event_name == 'push' || inputs.stable_tag == '')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.stable_tag == '')
     steps:
       - uses: actions/checkout@v7
       - name: Configure AWS credentials with OIDC

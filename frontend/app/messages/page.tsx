@@ -7,6 +7,7 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { MESSAGE_ENDPOINTS, MessageBox, MessagePage, MessageSummary, formatMessageDate, readErrorMessage } from "../lib/messageApi";
 import styles from "../components/messages.module.css";
 import { errorText } from "../lib/errorText";
+import MessageMailToggle from "./MessageMailToggle";
 
 const boxLabels: Record<MessageBox, string> = { RECEIVED: "받은 쪽지", SENT: "보낸 쪽지" };
 
@@ -125,6 +126,7 @@ export default function MessagesPage() {
           </div>
           <Link href="/messages/new" className={styles.button}>쪽지 보내기</Link>
         </header>
+        <MessageMailToggle />
         <Suspense fallback={<div className={styles.state} aria-busy="true">쪽지함을 불러오는 중입니다.</div>}>
           <MessageList />
         </Suspense>

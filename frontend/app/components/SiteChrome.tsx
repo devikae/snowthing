@@ -181,6 +181,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <SnowflakeMark />
               <RotatingWordmark />
             </Link>
+            <span className="alpine-logo-tagline">윈터스포츠 커뮤니티</span>
             <nav className="community-main-nav" aria-label="메인 메뉴">
               <details className="header-board-menu" ref={boardMenuRef}>
                 <summary className={boardActive ? "nav-active" : ""}>
@@ -294,6 +295,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀과 동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
+              <Link href="/character-test" onClick={() => setMobileOpen(false)}>스키장 캐릭터 테스트</Link>
               {user && <Link href="/season-log" onClick={() => setMobileOpen(false)}>내 시즌 기록</Link>}
               {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}
             </nav>

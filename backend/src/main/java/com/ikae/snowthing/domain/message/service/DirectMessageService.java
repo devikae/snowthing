@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.ikae.snowthing.domain.dmmail.service.DmMailOutboxWriter;
 import com.ikae.snowthing.domain.market.entity.MarketListing;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -57,6 +58,7 @@ public class DirectMessageService {
     private final MemberRepository memberRepository;
     private final MemberBlockRepository memberBlockRepository;
     private final MarketListingRepository marketListingRepository;
+    private final DmMailOutboxWriter dmMailOutbox;
 
     @Transactional
     public DirectMessageSendResponse send(
@@ -90,6 +92,8 @@ public class DirectMessageService {
                                 receiver,
                                 marketListingId,
                                 content));
+        // 메일 발송 요청은 쪽지와 같은 트랜잭션에 쓴다. 실패하면 쪽지도 롤백된다(IKA-88).
+        dmMailOutbox.messageSent(saved);
         return new DirectMessageSendResponse(saved.getId().toString(), saved.getCreatedAt());
     }
 

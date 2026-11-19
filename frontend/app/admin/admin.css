@@ -376,3 +376,51 @@
   overflow-wrap: anywhere;
 }
 
+
+/* 개장일 관리 (IKA-87) */
+.admin-season-switch,
+.admin-season-fields label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-season-order {
+  display: flex;
+  gap: 4px;
+}
+
+.admin-season-order .admin-button {
+  padding: 0 8px;
+}
+
+.admin-season-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.admin-season-fields input[type="date"] {
+  min-height: 32px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 6px;
+  background: var(--snow-canvas);
+  padding: 0 8px;
+  color: var(--snow-ink);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .admin-season-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-season-fields {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

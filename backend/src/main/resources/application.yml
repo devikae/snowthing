@@ -48,6 +48,25 @@ snowthing:
     from-address: ${SNOWTHING_MAIL_FROM:help@snowthing.org}
     from-name: ${SNOWTHING_MAIL_FROM_NAME:SnowThing}
     configuration-set: ${SNOWTHING_SES_CONFIGURATION_SET:}
+  # IKA-88 쪽지 도착 메일. 적재와 발송을 따로 켠다. 운영은 둘 다 끈 채 배포하고 적재부터 확인한다.
+  # 발송을 켜도 mail.provider가 ses가 아니면 워커가 작업을 잡지 않는다.
+  dm-mail:
+    enqueue-enabled: ${SNOWTHING_DM_MAIL_ENQUEUE_ENABLED:false}
+    send-enabled: ${SNOWTHING_DM_MAIL_SEND_ENABLED:false}
+    cooldown: 10m
+    deadline: 24h
+    lease: 60s
+    max-attempts: 5
+    retry-base-delay: 30s
+    retry-max-delay: 10m
+    recipients-per-poll: 5
+    retention: 30d
+    poll-interval-ms: 1000
+    link-base-url: ${SNOWTHING_FRONTEND_BASE_URL:http://localhost:3000}
+    ses:
+      attempt-timeout: 3s
+      call-timeout: 5s
+      endpoint: ${SNOWTHING_DM_MAIL_SES_ENDPOINT:}
   chat:
     max-connections: ${SNOWTHING_CHAT_MAX_CONNECTIONS:500}
   bot:
@@ -62,7 +81,7 @@ snowthing:
     persona-file: ${SNOWTHING_AI_MEMBERS_PERSONA_FILE:}
     daily-call-limit: ${SNOWTHING_AI_MEMBERS_DAILY_CALL_LIMIT:100}
     topic-keywords: ${SNOWTHING_AI_MEMBERS_TOPIC_KEYWORDS:}
-    first-opening-date: ${SNOWTHING_AI_MEMBERS_FIRST_OPENING_DATE:2026-11-20}
+    first-opening-date: ${SNOWTHING_AI_MEMBERS_FIRST_OPENING_DATE:2026-11-22}
   carpool:
     external:
       connect-timeout-millis: ${SNOWTHING_CARPOOL_CONNECT_TIMEOUT_MILLIS:2000}

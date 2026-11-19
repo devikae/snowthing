@@ -1,0 +1,9 @@
+# 자동 테스트 | 백엔드 전체 (spotlessCheck, test): 1305건, 실패 0
+# 실행 시각(KST): 2026-11-17 23:54:45
+$ head -6 tests/summary.txt
+# 백엔드 전체 테스트 (./gradlew spotlessCheck test, 2026-11-17)
+> Task :spotlessCheck UP-TO-DATE
+BUILD SUCCESSFUL in 4m 36s
+exit=0
+
+테스트 클래스 결과 파일 225개, 테스트 1305건, 실패 0, 오류 0, 건너뜀 1

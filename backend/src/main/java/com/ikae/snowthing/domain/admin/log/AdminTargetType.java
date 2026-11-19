@@ -9,5 +9,6 @@ public enum AdminTargetType {
     CONTENT_REPORT,
     BANNER,
     CHAT_BAN,
-    CONFIG
+    CONFIG,
+    SEASON_OPENING
 }

@@ -77,6 +77,9 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
     PROFILE_ACTION_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "MEMBER_006", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    // 횟수 초과(429)가 아니라 서버가 잠시 바쁜 것이라 503이다. 프로필 화면은 429를 "변경 횟수 초과"로 보여 주므로 코드도 나눈다.
+    IMAGE_PROCESSING_BUSY(
+            HttpStatus.SERVICE_UNAVAILABLE, "FILE_009", "사진 처리 요청이 몰리고 있습니다. 잠시 뒤 다시 시도해 주세요."),
     IMAGE_GLOBAL_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS,
             "FILE_007",
@@ -116,6 +119,9 @@ public enum ErrorCode {
             HttpStatus.FORBIDDEN,
             "POST_009",
             "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 manager@snowthing.org로 문의해 주세요."),
+    POST_SEARCH_KEYWORD_INVALID(HttpStatus.BAD_REQUEST, "POST_010", "검색어는 2자 이상 50자 이하로 입력해 주세요."),
+    POST_SEARCH_RATE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "POST_011", "검색이 너무 잦습니다. 잠시 후 다시 시도해 주세요."),
     CONTENT_REPORT_TARGET_NOT_FOUND(
             HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
     CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),
@@ -314,6 +320,14 @@ public enum ErrorCode {
     CHAT_ANONYMOUS_DISABLED(HttpStatus.FORBIDDEN, "CHAT_009", "현재 비로그인 사용자의 라이브톡 발신이 제한되어 있습니다."),
     CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_001", "존재하지 않는 시스템 설정입니다."),
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_002", "존재하지 않는 배너입니다."),
+
+    // 개장일 관리 (052)
+    SEASON_OPENING_RESORT_MISMATCH(
+            HttpStatus.BAD_REQUEST, "ADMIN_003", "리조트 목록이 저장된 목록과 다릅니다. 새로고침한 뒤 다시 저장해 주세요."),
+    SEASON_OPENING_ORDER_DUPLICATED(HttpStatus.BAD_REQUEST, "ADMIN_004", "배너 순서가 겹칩니다."),
+    SEASON_OPENING_DATE_REQUIRED(HttpStatus.BAD_REQUEST, "ADMIN_005", "배너에 넣을 리조트는 개장일이 있어야 합니다."),
+    SEASON_OPENING_DATE_OUT_OF_RANGE(
+            HttpStatus.BAD_REQUEST, "ADMIN_006", "개장일은 2020년부터 2100년 사이로 입력해 주세요."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

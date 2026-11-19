@@ -1,0 +1,7 @@
+-- 실험 3 | 종료 직후: 결과 기록 없이 PROCESSING (lease 15초)
+-- 실행 시각(KST): 2026-11-17 23:44:01
+-- DB: snowthing_ika88_exp
+SELECT event_id, status, attempts, claim_token IS NOT NULL AS has_claim, lease_until, provider_message_id, last_error_code FROM dm_mail_outbox WHERE recipient_member_id IN (SELECT member_id FROM member WHERE email LIKE 'ev3-r%')
+
+event_id	status	attempts	has_claim	lease_until	provider_message_id	last_error_code
+143	PROCESSING	1	1	2026-11-17 23:44:14.201045	NULL	NULL

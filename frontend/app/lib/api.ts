@@ -149,7 +149,7 @@ export const API_ENDPOINTS = {
         ...(params.query ? { query: params.query } : {}),
         ...(params.author ? { author: params.author } : {}),
       }).toString()}`,
-    blindComment: (commentId: number) => `${API_V1_URL}/admin/comments/${commentId}/blind`,
+    blindComment: (commentId: number | string) => `${API_V1_URL}/admin/comments/${commentId}/blind`,
     deleteComment: (commentId: number) => `${API_V1_URL}/admin/comments/${commentId}`,
     inquiries: (status: string, page: number, size = 20) =>
       `${API_V1_URL}/admin/inquiries?status=${status}&page=${page}&size=${size}`,
@@ -173,10 +173,12 @@ export const API_ENDPOINTS = {
     banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${encodeURIComponent(messageId)}/ban-ip`,
     banners: `${API_V1_URL}/admin/banners`,
     bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
+    seasonOpenings: `${API_V1_URL}/admin/season-openings`,
   },
   public: {
     configs: `${API_V1_URL}/public/configs`,
     banners: `${API_V1_URL}/public/banners`,
+    seasonOpenings: `${API_V1_URL}/public/season-openings`,
   },
 } as const;
 

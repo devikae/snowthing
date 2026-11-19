@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 // @ts-expect-error -- Toast UI Editor 3.2.2의 타입 선언이 package.json exports를 통해 노출되지 않습니다.
 import Editor from "@toast-ui/editor";
+// 에디터 스타일은 이 컴포넌트를 쓰는 화면에서만 받는다. 루트 레이아웃에 두면 홈을 포함한 모든 화면 첫 CSS에 실린다.
+import "@toast-ui/editor/dist/toastui-editor.css";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { sanitizeHtml } from "../lib/sanitizeHtml";
