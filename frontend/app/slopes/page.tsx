@@ -10,6 +10,8 @@ import { useKstToday } from "../lib/useKstToday";
 import { useSeasonOpenings } from "../lib/useSeasonOpenings";
 import { resortSlug } from "../resort-cam/types";
 import styles from "./slopes.module.css";
+import specStyles from "./slopeSpecs.module.css";
+import { COUNTRY_LABEL, resortSlug as specSlug, type Country, type ResortSummary } from "./specs";
 
 type SessionStatus = "OPEN" | "CLOSED" | null;
 
@@ -61,6 +63,18 @@ function formatStamp(value: string): string {
 
 export default function SlopesPage() {
   const [board, setBoard] = useState<BoardState>({ status: "loading" });
+  const [specResorts, setSpecResorts] = useState<ResortSummary[]>([]);
+
+  // IKA-98 제원 페이지가 있는 리조트. 실패해도 현황판은 그대로 보여 준다.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(API_ENDPOINTS.slopeSpecs.resorts, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((data: { resorts?: ResortSummary[] }) => setSpecResorts(Array.isArray(data.resorts) ? data.resorts : []))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+  const specCodes = new Set(specResorts.map((resort) => resort.code));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -95,6 +109,8 @@ export default function SlopesPage() {
           actions={<Link href="/resort-cam">슬로프캠 보기</Link>}
         />
 
+        {specResorts.length > 0 && <SpecEntry resorts={specResorts} />}
+
         {board.status === "loading" && <p className={styles.notice}>현황을 불러오는 중입니다.</p>}
         {board.status === "error" && <p className={styles.notice}>현황을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>}
 
@@ -105,7 +121,7 @@ export default function SlopesPage() {
             ) : (
               <div className={styles.grid}>
                 {supported.map((resort) => (
-                  <ResortCard key={resort.resortCode} resort={resort} />
+                  <ResortCard key={resort.resortCode} resort={resort} hasSpec={specCodes.has(resort.resortCode)} />
                 ))}
               </div>
             )}
@@ -123,7 +139,31 @@ export default function SlopesPage() {
   );
 }
 
-function ResortCard({ resort }: { resort: ResortSlopes }) {
+function SpecEntry({ resorts }: { resorts: ResortSummary[] }) {
+  const countries: Country[] = ["KR", "JP"];
+  return (
+    <section className={specStyles.specEntry} aria-label="슬로프 제원과 코스 맵">
+      <strong>슬로프 제원과 코스 맵</strong>
+      <Link href="/slopes/compare">스키장 비교</Link>
+      <p>공식 길이와 경사, 코스별 맵, 경사가 비슷한 국내와 일본 슬로프를 봅니다.</p>
+      {countries.map((country) => {
+        const list = resorts.filter((resort) => resort.country === country);
+        return list.length === 0 ? null : (
+          <div key={country} className={specStyles.specLinks}>
+            <span className={specStyles.pickLabel}>{COUNTRY_LABEL[country]}</span>
+            {list.map((resort) => (
+              <Link key={resort.code} href={`/slopes/${specSlug(resort.code)}`}>
+                {resort.name}
+              </Link>
+            ))}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function ResortCard({ resort, hasSpec }: { resort: ResortSlopes; hasSpec: boolean }) {
   const today = useKstToday();
   const openings = useSeasonOpenings();
   const beforeOpening =
@@ -179,6 +219,12 @@ function ResortCard({ resort }: { resort: ResortSlopes }) {
             ))}
           </ul>
         </details>
+      )}
+
+      {hasSpec && (
+        <Link className={styles.specLink} href={`/slopes/${specSlug(resort.resortCode)}`}>
+          슬로프 제원과 코스 맵 보기
+        </Link>
       )}
 
       <footer className={styles.cardFooter}>
