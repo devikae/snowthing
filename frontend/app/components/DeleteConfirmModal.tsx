@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { errorText } from "../lib/errorText";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -44,11 +45,7 @@ export function DeleteConfirmModal({
       await onConfirm(password.trim());
       setPassword("");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message);
-      } else {
-        setErrorMsg("삭제하지 못했습니다. 비밀번호를 확인한 뒤 다시 시도해 주세요.");
-      }
+      setErrorMsg(errorText(err, "삭제하지 못했습니다. 비밀번호를 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setSubmitting(false);
     }
