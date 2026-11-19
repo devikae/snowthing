@@ -23,6 +23,7 @@ const ADMIN_TABS: { href: string; label: string }[] = [
   { href: "/admin/search", label: "검색 인덱스" },
   { href: "/admin/chat", label: "라이브톡 차단" },
   { href: "/admin/banners", label: "배너" },
+  { href: "/admin/season-openings", label: "개장일" },
   { href: "/admin/action-logs", label: "조치 기록" },
 ];
 

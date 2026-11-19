@@ -87,7 +87,7 @@ class ChatIpBanServiceTest {
         when(repository.save(any(ChatBannedIp.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        chatIpBanService.banIpByMessageId("msg-123", "admin");
+        chatIpBanService.banIpByMessageId("msg-123", 7, "admin");
 
         assertThat(chatIpBanService.isBanned("192.168.1.100")).isTrue();
     }
