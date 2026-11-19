@@ -22,6 +22,8 @@ export default function ResortReportsPage() {
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const [reports, setReports] = useState<ResortReportItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedResortId, setSelectedResortId] = useState<number | undefined>();
   const [resortList, setResortList] = useState<ResortMaster[]>([]);
   const [resortListError, setResortListError] = useState(false);
@@ -49,51 +51,56 @@ export default function ResortReportsPage() {
       .catch(() => setResortListError(true));
   }, []);
 
-  const loadReports = useCallback(async () => {
+  // 실패를 빈 목록으로 그리면 장애가 "제보 없음"으로 보인다. 실패는 따로 표시하고 다시 시도를 둔다.
+  // 필터나 페이지를 빠르게 바꾸면 늦게 온 이전 응답이 새 목록을 덮지 않게 signal로 끊는다.
+  const loadReports = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch(API_ENDPOINTS.resortReports.today(selectedResortId, page, PAGE_SIZE), { credentials: "include" });
+      const response = await fetch(API_ENDPOINTS.resortReports.today(selectedResortId, page, PAGE_SIZE), { credentials: "include", signal });
       if (!response.ok) throw new Error(String(response.status));
       const data: OffsetPage<ResortReportItem> = await response.json();
+      if (signal?.aborted) return;
       setReports(Array.isArray(data.content) ? data.content : []);
       setPageInfo(data.pageInfo);
+      setLoadFailed(false);
     } catch {
+      if (signal?.aborted) return;
       setReports([]);
-      setPageInfo({ page, totalPages: 0, totalElements: 0, hasNext: false, pageSize: PAGE_SIZE });
+      setLoadFailed(true);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [page, selectedResortId]);
 
   useEffect(() => {
-    let cancelled = false;
-    void fetch(API_ENDPOINTS.resortReports.today(selectedResortId, page, PAGE_SIZE), { credentials: "include" })
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((data: OffsetPage<ResortReportItem>) => {
-        if (cancelled) return;
-        setReports(Array.isArray(data.content) ? data.content : []);
-        setPageInfo(data.pageInfo);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setReports([]);
-        setPageInfo({ page, totalPages: 0, totalElements: 0, hasNext: false, pageSize: PAGE_SIZE });
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => void loadReports(controller.signal), 0);
     return () => {
-      cancelled = true;
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [page, selectedResortId]);
+  }, [loadReports]);
+
+  const retry = () => {
+    setLoading(true);
+    void loadReports();
+  };
 
   const deleteReport = async (reportId: number) => {
+    if (deletingId !== null) return;
     if (!window.confirm("이 설질 제보를 삭제할까요?")) return;
-    const response = await csrfFetch(API_ENDPOINTS.resortReports.delete(reportId), { method: "DELETE" });
-    if (response.ok) {
-      await loadReports();
-      return;
+    setDeletingId(reportId);
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.resortReports.delete(reportId), { method: "DELETE" });
+      if (response.ok) {
+        await loadReports();
+        return;
+      }
+      alert(await readErrorMessage(response, "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    } catch {
+      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
+    } finally {
+      setDeletingId(null);
     }
-    alert(await readErrorMessage(response, "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
   };
 
   return (
@@ -131,7 +138,7 @@ export default function ResortReportsPage() {
         <section className="panel resort-report-board" aria-label={`${koreanToday} 설질 제보 목록`}>
           <header>
             <strong>오늘 등록된 제보</strong>
-            {!loading && <span>{`${pageInfo.totalElements}건`}</span>}
+            {!loading && !loadFailed && <span>{`${pageInfo.totalElements}건`}</span>}
           </header>
           <div>
             {loading ? (
@@ -142,6 +149,19 @@ export default function ResortReportsPage() {
                 <div className="snow-empty-copy">
                   <strong>설질 제보 목록을 불러오는 중입니다.</strong>
                 </div>
+              </div>
+            ) : loadFailed ? (
+              <div className="snow-empty-state vertical" role="alert">
+                <span className="snow-empty-icon">
+                  <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                </span>
+                <div className="snow-empty-copy">
+                  <strong>설질 제보를 불러오지 못했습니다.</strong>
+                  <span>잠시 후 다시 시도해 주세요.</span>
+                </div>
+                <button type="button" className="home-widget-retry" onClick={retry}>
+                  다시 시도
+                </button>
               </div>
             ) : reports.length === 0 ? (
               <div className="snow-empty-state vertical">
@@ -165,8 +185,8 @@ export default function ResortReportsPage() {
                     <span className="snow-report-author">{report.authorNickname}</span>
                     <time className="snow-report-time">{formatReportTime(report.createdAt)}</time>
                     {report.canDelete && (
-                      <button className="snow-report-delete" type="button" onClick={() => void deleteReport(report.reportId)}>
-                        삭제
+                      <button className="snow-report-delete" type="button" disabled={deletingId !== null} onClick={() => void deleteReport(report.reportId)}>
+                        {deletingId === report.reportId ? "삭제 중" : "삭제"}
                       </button>
                     )}
                   </article>
@@ -174,7 +194,7 @@ export default function ResortReportsPage() {
               })
             )}
           </div>
-          {pageInfo.totalPages > 1 && (
+          {!loadFailed && pageInfo.totalPages > 1 && (
             <footer className="board-pagination" style={{ justifyContent: "center", padding: "16px" }}>
               <button
                 type="button"
