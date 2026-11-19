@@ -45,7 +45,7 @@ public class SlopeStatusQueryService {
 
     /** 쿼리 두 번: 활성 리조트 목록, 그 리조트들의 현황 줄. */
     public SlopeStatusBoardResponse getBoard() {
-        List<Resort> resorts = resortRepository.findAllByActiveTrueOrderByDisplayOrderAscIdAsc();
+        List<Resort> resorts = resortRepository.findServiceResorts();
         Map<Long, ResortSlopeStatus> statuses =
                 statusRepository
                         .findAllByResortIdIn(resorts.stream().map(Resort::getId).toList())

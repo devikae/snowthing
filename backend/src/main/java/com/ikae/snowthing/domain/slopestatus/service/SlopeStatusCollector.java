@@ -51,7 +51,8 @@ public class SlopeStatusCollector {
     /** 출처가 없거나 비활성 리조트면 시도하지 않고 false. */
     boolean collect(String resortCode) {
         Optional<SlopeSource> source = registry.sourceFor(resortCode);
-        Optional<Resort> resort = resortRepository.findByCode(resortCode).filter(Resort::isActive);
+        Optional<Resort> resort =
+                resortRepository.findByCode(resortCode).filter(Resort::isServiceTarget);
         if (source.isEmpty() || resort.isEmpty()) {
             log.warn("슬로프 현황 수집 대상이 아닙니다. resortCode={}", resortCode);
             return false;

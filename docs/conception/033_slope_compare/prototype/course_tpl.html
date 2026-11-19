@@ -1,0 +1,151 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>슬로프 코스 카드 예시</title>
+<style>
+body{margin:0;font-family:var(--font-sans,system-ui,sans-serif);background:var(--background,#fff);color:var(--foreground,#171717)}
+.wrap{padding:16px;max-width:960px;margin:0 auto}
+h1{font-size:17px;margin:0 0 4px}.sub{font-size:12.5px;color:var(--muted-foreground,#6b7280);margin:0 0 14px}
+.sl{--d-novice:#22c55e;--d-easy:#16a34a;--d-intermediate:#2563eb;--d-advanced:#111827;--d-expert:#dc2626;--d-none:#9ca3af;--ctx:#d3d7de;--lift:#9ca3af}
+@media (prefers-color-scheme:dark){.sl{--d-advanced:#e5e7eb;--ctx:#3f4652;--lift:#6b7280}}
+.bigbox{display:flex;align-items:center;justify-content:center;padding:6px}.bigbox svg{max-width:560px}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:14px;margin-bottom:18px}
+@media(max-width:680px){.bigbox{display:flex;align-items:center;justify-content:center;padding:6px}.bigbox svg{max-width:560px}
+.hero{grid-template-columns:1fr}}
+.box{border:1px solid var(--border,#e5e7eb);border-radius:var(--radius,10px);background:var(--card,#fff)}
+svg{display:block;width:100%;height:auto}
+.c{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.l{fill:none}
+.me{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.lab{font-size:12px;font-weight:600;fill:var(--foreground,#171717);paint-order:stroke;stroke:var(--card,#fff);stroke-width:3.5px}
+.ll{font-size:11px;fill:var(--muted-foreground,#6b7280);paint-order:stroke;stroke:var(--card,#fff);stroke-width:3px}
+.info{padding:12px;font-size:13px}.info h2{font-size:16px;margin:0 0 2px}
+.badge{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:999px;color:#fff;margin-bottom:8px}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border,#e5e7eb)}
+.row span:first-child{color:var(--muted-foreground,#6b7280)}
+.note{margin-top:10px;font-size:11.5px;color:var(--muted-foreground,#6b7280)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.card{cursor:pointer;padding:0;overflow:hidden;text-align:left;font:inherit;color:inherit}
+.card.on{outline:2px solid var(--ring,#2563eb)}
+.card:hover{border-color:var(--ring,#2563eb)}
+.cn{font-size:12.5px;font-weight:600;padding:6px 8px 0}.cm{font-size:11px;color:var(--muted-foreground,#6b7280);padding:0 8px 7px}
+.info h3{font-size:13px;margin:12px 0 4px}
+.nb{display:grid;grid-template-columns:14px 1fr;column-gap:6px;padding:4px 0;font-size:12.5px}
+.nb i{width:12px;height:4px;border-radius:2px;margin-top:7px}.nb span{grid-column:2;font-size:11.5px;color:var(--muted-foreground,#6b7280)}
+.src{font-size:11px;color:var(--muted-foreground,#6b7280);margin-top:12px}
+</style></head><body><div class="wrap sl">
+<h1>슬로프 코스 카드 (하이원 예시)</h1>
+<p class="sub">슬로프마다 해당 코스만 잘라서 보여 줍니다. 붙어 있는 코스는 자기 색과 이름으로, 나머지는 회색. 출발 ○ 도착 ●, 리프트는 점선.</p>
+<div class="hero"><div class="box bigbox"><svg id="big"></svg></div><div class="box info" id="info"></div></div>
+<div class="cards" id="cards"></div>
+<div class="src">© OpenStreetMap contributors (ODbL). 길이는 OSM 선으로 계산한 참고값이며, 실제 화면에서는 공식 수치를 씁니다.</div>
+</div>
+<script>
+const D=__DATA__,NS='http://www.w3.org/2000/svg';
+const KO={novice:'입문',easy:'초급',intermediate:'중급',advanced:'상급',expert:'최상급'};
+const order=['novice','easy','intermediate','advanced','expert'];
+const pistes=D.feats.filter(f=>f.kind==='piste'&&f.name).sort((a,b)=>order.indexOf(a.diff)-order.indexOf(b.diff)||a.name.localeCompare(b.name,'ko'));
+const lifts=D.feats.filter(f=>f.kind==='lift');
+const col=f=>`var(--d-${f.diff||'none'})`;
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+// 리프트: 상단 끝이 슬로프 출발점에 가장 가까운 것
+function liftFor(f){let best=null,bd=1e9;for(const l of lifts){const top=l.pts[0][1]<l.pts[l.pts.length-1][1]?l.pts[0]:l.pts[l.pts.length-1];const dd=dist(top,f.pts[0]);if(dd<bd){bd=dd;best=l}}return bd<60?best:null}
+// 점-선분 거리
+function segD(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;let t=L?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));const q=[a[0]+t*dx,a[1]+t*dy];return [dist(p,q),q]}
+function nearest(p,line){let best=[1e9,null];for(let i=0;i<line.length-1;i++){const r=segD(p,line[i],line[i+1]);if(r[0]<best[0])best=r}return best}
+function polyLen(pts){let s=0;for(let i=1;i<pts.length;i++)s+=dist(pts[i-1],pts[i]);return s}
+// 주변 슬로프 관계: 합류, 갈라짐, 교차, 나란히
+function relations(f){
+ const mpu=f.len/polyLen(f.pts),out=[];
+ D.feats.filter(g=>g.kind==='piste'&&g!==f).forEach(g=>{
+  let md=1e9,at=null;
+  g.pts.forEach(p=>{const [d,q]=nearest(p,f.pts);if(d<md){md=d;at=q}});
+  f.pts.forEach(p=>{const [d]=nearest(p,g.pts);if(d<md){md=d;at=p}});
+  const m=md*mpu;if(m>90)return;
+  const gs=g.pts[0],ge=g.pts[g.pts.length-1],fs=f.pts[0],fe=f.pts[f.pts.length-1],T=25/mpu;
+  let kind;
+  if(m<=25){
+   if(nearest(ge,f.pts)[0]<T){kind='이 코스로 합류';at=nearest(ge,f.pts)[1]}
+   else if(nearest(gs,f.pts)[0]<T){kind='이 코스에서 갈라짐';at=nearest(gs,f.pts)[1]}
+   else if(nearest(fe,g.pts)[0]<T){kind='도착 후 이어짐';at=fe}
+   else if(nearest(fs,g.pts)[0]<T){kind='출발점 공유';at=fs}
+   else kind='교차';
+  }else kind=`나란히 (약 ${Math.round(m/10)*10}m)`;
+  out.push({g,kind,at,touch:m<=25,m});
+ });
+ return out.sort((a,b)=>a.m-b.m);
+}
+function draw(svg,f,big){
+ svg.innerHTML='';
+ const lift=liftFor(f),rel=relations(f),relG=new Set(rel.map(r=>r.g));
+ const xs=f.pts.map(p=>p[0]),ys=f.pts.map(p=>p[1]);
+ const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+ const w=x1-x0,h=y1-y0,pad=Math.max(w,h)*.16+10;
+ let W=w+pad*2,H=h+pad*2;
+ const [rmin,rmax]=big?[0.8,1.35]:[0.85,0.85];
+ if(W/H<rmin)W=H*rmin;else if(W/H>rmax)H=W/rmax;
+ if(!big){if(W/H>rmin)H=W/rmin;else W=H*rmin}
+ const cx=(x0+x1)/2,cy=(y0+y1)/2,vx=cx-W/2,vy=cy-H/2;
+ svg.setAttribute('viewBox',`${vx} ${vy} ${W} ${H}`);
+ const s=W/(big?(svg.clientWidth||520):140);
+ const el=(t,a,p=svg)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e};
+ const pd=pts=>'M'+pts.map(p=>p.join(',')).join('L');
+ const others=D.feats.filter(g=>g.kind==='piste'&&g!==f);
+ // 1) 관계없는 코스: 진한 회색 실선
+ others.filter(g=>!relG.has(g)).forEach(g=>el('path',{d:pd(g.pts),class:'c',stroke:'var(--ctx)','stroke-width':(big?2.2:1.4)*s}));
+ // 2) 리프트
+ lifts.forEach(l=>el('path',{d:pd(l.pts),class:'l',stroke:l===lift?'var(--foreground,#171717)':'var(--lift)','stroke-width':(l===lift?1.8:1.2)*s,'stroke-dasharray':`${6*s} ${5*s}`}));
+ // 3) 붙어 있는 코스: 자기 난이도 색
+ rel.forEach(x=>el('path',{d:pd(x.g.pts),class:'c',stroke:col(x.g),'stroke-opacity':.8,'stroke-width':(big?3.6:2.4)*s}));
+ // 4) 본 코스: 흰 테두리 + 진한 선
+ el('path',{d:pd(f.pts),class:'me',stroke:'var(--card,#fff)','stroke-width':(big?11:7.5)*s});
+ el('path',{d:pd(f.pts),class:'me',stroke:col(f),'stroke-width':(big?6.5:4.5)*s});
+ const a=f.pts[0],b=f.pts[f.pts.length-1],r=(big?6:4.5)*s;
+ el('circle',{cx:a[0],cy:a[1],r,fill:'var(--card,#fff)',stroke:col(f),'stroke-width':2.5*s});
+ el('circle',{cx:b[0],cy:b[1],r,fill:col(f),stroke:'var(--card,#fff)','stroke-width':2*s});
+ if(!big)return {lift,rel};
+ // 합류, 갈라짐, 교차 지점
+ rel.filter(x=>x.touch&&x.at).forEach(x=>{el('circle',{cx:x.at[0],cy:x.at[1],r:4.5*s,fill:col(x.g),stroke:'var(--card,#fff)','stroke-width':2*s})});
+ // 라벨 배치 (pill), 충돌 회피
+ const boxes=[],fs=11.5*s,ph=fs*1.7;
+ const hit=(x,y,w,h)=>boxes.some(q=>x<q[0]+q[2]&&x+w>q[0]&&y<q[1]+q[3]&&y+h>q[1])||x<vx+2*s||y<vy+2*s||x+w>vx+W-2*s||y+h>vy+H-2*s;
+ const offMain=(x,y,w,h)=>[[x,y],[x+w,y],[x,y+h],[x+w,y+h],[x+w/2,y+h/2]].every(p=>nearest(p,f.pts)[0]>7*s);
+ function pill(text,p,color,fill,txt,strong){
+  const w=text.length*fs*.92+fs*1.1;
+  const tries=[[8,-ph/2],[-w-8,-ph/2],[-w/2,-ph-8],[-w/2,8],[12,-ph-4],[-w-12,4]];
+  for(const [dx,dy] of tries){
+   const X=p[0]+(Math.abs(dx)<20?dx*s:dx),Y=p[1]+(Math.abs(dy)<20?dy*s:dy);
+   if(!hit(X,Y,w,ph)&&(strong||offMain(X,Y,w,ph))){boxes.push([X,Y,w,ph]);
+    el('rect',{x:X,y:Y,width:w,height:ph,rx:ph/2,fill,stroke:color,'stroke-width':1.2*s});
+    const t=el('text',{x:X+w/2,y:Y+ph*.68,'text-anchor':'middle','font-size':fs,'font-weight':600,fill:txt});t.textContent=text;return true}}
+  return false;
+ }
+ pill('출발',a,col(f),col(f),'#fff',true);
+ pill('도착',b,col(f),col(f),'#fff',true);
+ rel.slice(0,8).forEach(x=>{
+  const g=x.g;if(!g.name)return;
+  const tc=g.diff==='advanced'?'var(--foreground,#171717)':col(g);
+  const cand=g.pts.filter(p=>p[0]>vx&&p[0]<vx+W&&p[1]>vy&&p[1]<vy+H).map(p=>({p,d:nearest(p,f.pts)[0]})).filter(c=>c.d>10*s).sort((u,v)=>u.d-v.d);
+  for(const c of cand)if(pill(g.name,c.p,col(g),'var(--card,#fff)',tc,false))break;
+ });
+ if(lift&&lift.name){const m=lift.pts[Math.floor(lift.pts.length/2)];if(m[0]>vx&&m[0]<vx+W&&m[1]>vy&&m[1]<vy+H)pill(lift.name+' 리프트',m,'var(--lift)','var(--card,#fff)','var(--muted-foreground,#6b7280)',false)}
+ return {lift,rel};
+}
+const big=document.getElementById('big'),cards=document.getElementById('cards');let cur=null;
+function show(f,card){
+ const {lift,rel}=draw(big,f,true);
+ const near=rel.length?rel.map(x=>`<div class="nb"><i style="background:${col(x.g)}"></i><b>${x.g.name||'(이름 없음)'}</b><span>${x.kind}</span></div>`).join(''):'<div class="note">가까운 코스 없음</div>';
+ document.querySelectorAll('.card').forEach(c=>c.classList.toggle('on',c===card));
+ document.getElementById('info').innerHTML=`<h2>${f.name}</h2><span class="badge" style="background:${col(f)};${f.diff==='advanced'?'color:var(--card,#fff)':''}">${KO[f.diff]||'미분류'}</span>
+ <div class="row"><span>선 길이 (OSM)</span><span>${f.len.toLocaleString()}m</span></div>
+ <div class="row"><span>공식 길이</span><span>수집 예정</span></div>
+ <div class="row"><span>평균 / 최대 경사</span><span>수집 예정</span></div>
+ <div class="row"><span>올라가는 리프트</span><span>${lift?lift.name||'(이름 없음)':'-'}</span></div>
+ <h3>주변 슬로프</h3>${near}
+ <div class="note">원은 합류, 갈라짐, 교차 지점입니다.</div>`;
+}
+pistes.forEach((f,i)=>{
+ const c=document.createElement('button');c.className='box card';
+ const s=document.createElementNS(NS,'svg');c.appendChild(s);draw(s,f,false);
+ c.insertAdjacentHTML('beforeend',`<div class="cn">${f.name}</div><div class="cm">${KO[f.diff]||'미분류'} / ${f.len.toLocaleString()}m</div>`);
+ c.onclick=()=>show(f,c);cards.appendChild(c);if(f.name==='제우스2')show(f,c);
+});
+</script></body></html>

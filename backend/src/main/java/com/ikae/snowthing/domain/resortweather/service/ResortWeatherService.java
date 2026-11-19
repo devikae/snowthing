@@ -139,9 +139,7 @@ public class ResortWeatherService {
                 activeResortCodes.get(
                         ACTIVE_CODES_KEY,
                         key ->
-                                resortRepository
-                                        .findAllByActiveTrueOrderByDisplayOrderAscIdAsc()
-                                        .stream()
+                                resortRepository.findServiceResorts().stream()
                                         .map(Resort::getCode)
                                         .collect(Collectors.toUnmodifiableSet()));
         if (!codes.contains(resortCode)) {

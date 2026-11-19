@@ -199,3 +199,9 @@
     padding: 14px;
   }
 }
+
+.specLink {
+  color: var(--snow-ink-soft, #475569);
+  font-size: 13px;
+  font-weight: 700;
+}

@@ -1,0 +1,549 @@
+/* IKA-98 슬로프 제원과 코스 맵. 난이도 색은 SVG와 목록이 같은 값을 쓴다. */
+:global(:root) {
+  --slope-beginner: #16a34a;
+  --slope-intermediate: #2563eb;
+  --slope-advanced: #111827;
+  --slope-expert: #dc2626;
+  --slope-none: #9ca3af;
+  --slope-context: #d3d7de;
+  --slope-lift: #9ca3af;
+  --slope-lift-strong: #1e293b;
+}
+
+:global(html[data-theme="dark"]) {
+  --slope-beginner: #22c55e;
+  --slope-intermediate: #60a5fa;
+  --slope-advanced: #e5e7eb;
+  --slope-expert: #f87171;
+  --slope-context: #3f4652;
+  --slope-lift: #6b7280;
+  --slope-lift-strong: #e5e7eb;
+}
+
+.section {
+  margin-top: 20px;
+}
+
+.breadcrumb {
+  margin: 4px 0 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+}
+
+.breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: var(--snow-ink, #1e293b);
+}
+
+.sectionTitle {
+  margin: 0 0 6px;
+  color: var(--snow-ink, #1e293b);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.notice {
+  margin: 20px 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 14px;
+}
+
+.muted {
+  margin: 0 0 12px;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.footnote {
+  margin: 24px 0 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+/* ---------- 전체 맵 ---------- */
+
+.mapFrame {
+  margin: 0;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #fff);
+  overflow: hidden;
+}
+
+.mapSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 640px;
+}
+
+.mapSvg a path:first-child {
+  transition: stroke-width 0.15s;
+}
+
+.mapSvg a:hover path:first-child,
+.mapSvg a:focus-visible path:first-child {
+  filter: drop-shadow(0 0 2px var(--snow-canvas, #fff));
+  opacity: 0.85;
+}
+
+.mapLabel {
+  fill: var(--snow-ink, #1e293b);
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--snow-canvas, #fff);
+  pointer-events: none;
+}
+
+.attribution {
+  padding: 6px 10px;
+  color: var(--snow-muted, #64748b);
+  font-size: 11px;
+}
+
+.mapEmpty {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  border: 1px dashed var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+}
+
+/* ---------- 코스 카드 ---------- */
+
+.courseSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--snow-canvas, #fff);
+}
+
+.courseEmpty,
+.courseEmptyBig {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 0.85;
+  background: var(--snow-surface-low, #f8fafc);
+  color: var(--snow-faint, #94a3b8);
+  font-size: 12px;
+}
+
+.courseEmptyBig {
+  aspect-ratio: 1;
+  border-radius: 12px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 999px;
+  background: var(--snow-canvas, #fff);
+  padding: 0 12px;
+  color: var(--snow-ink-soft, #475569);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chips button[aria-pressed="true"] {
+  border-color: var(--snow-ink, #1e293b);
+  background: var(--snow-ink, #1e293b);
+  color: var(--snow-canvas, #fff);
+}
+
+.chips button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+}
+
+.sort select {
+  min-height: 34px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--snow-canvas, #fff);
+  padding: 0 8px;
+  color: var(--snow-ink, #1e293b);
+  font-size: 13px;
+}
+
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--slope-none);
+}
+
+.dot[data-difficulty="BEGINNER"],
+.bar[data-difficulty="BEGINNER"],
+.badge[data-difficulty="BEGINNER"] {
+  background: var(--slope-beginner);
+}
+
+.dot[data-difficulty="INTERMEDIATE"],
+.bar[data-difficulty="INTERMEDIATE"],
+.badge[data-difficulty="INTERMEDIATE"] {
+  background: var(--slope-intermediate);
+}
+
+.dot[data-difficulty="ADVANCED"],
+.bar[data-difficulty="ADVANCED"],
+.badge[data-difficulty="ADVANCED"] {
+  background: var(--slope-advanced);
+}
+
+.dot[data-difficulty="EXPERT"],
+.bar[data-difficulty="EXPERT"],
+.badge[data-difficulty="EXPERT"] {
+  background: var(--slope-expert);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #fff);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: var(--snow-ink-soft, #475569);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px 10px;
+}
+
+.cardBody strong {
+  color: var(--snow-ink, #1e293b);
+  font-size: 14px;
+}
+
+.cardBody small {
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+.cardMeta b {
+  color: var(--snow-ink, #1e293b);
+}
+
+/* ---------- 슬로프 상세 ---------- */
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+.detailGrid > * {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.detailMap {
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #fff);
+  overflow: hidden;
+}
+
+.detailMap .courseSvg {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.panel {
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #fff);
+  padding: 16px;
+}
+
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--slope-none);
+  padding: 3px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge[data-difficulty="ADVANCED"] {
+  color: var(--snow-canvas, #fff);
+}
+
+.specs {
+  margin: 12px 0 0;
+}
+
+.specs div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--snow-border, #e2e8f0);
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.specs dt {
+  color: var(--snow-muted, #64748b);
+}
+
+.specs dd {
+  margin: 0;
+  color: var(--snow-ink, #1e293b);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.source {
+  margin: 10px 0 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+.source a {
+  color: var(--snow-ink-soft, #475569);
+  font-weight: 700;
+}
+
+.panelTitle {
+  margin: 18px 0 6px;
+  color: var(--snow-ink, #1e293b);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.neighbors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.neighbors li {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  column-gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.neighbors a {
+  color: var(--snow-ink, #1e293b);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.neighbors a:hover {
+  text-decoration: underline;
+}
+
+.neighbors span {
+  grid-column: 2;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+.bar {
+  width: 12px;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--slope-none);
+}
+
+/* ---------- 비교 ---------- */
+
+.pickGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pickLabel {
+  min-width: 36px;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tableWrap {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.compareTable {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.compareTable th,
+.compareTable td {
+  border-bottom: 1px solid var(--snow-border, #e2e8f0);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.compareTable thead th {
+  color: var(--snow-ink, #1e293b);
+  font-size: 15px;
+}
+
+.compareTable thead a {
+  color: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.compareTable thead small {
+  display: block;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.compareTable tbody th {
+  color: var(--snow-muted, #64748b);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.compareTable td {
+  color: var(--snow-ink, #1e293b);
+  font-variant-numeric: tabular-nums;
+}
+
+.distribution {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.distribution span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ---------- 현황판 진입점 ---------- */
+
+.specEntry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 4px 0 20px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #fff);
+  padding: 14px 16px;
+}
+
+.specEntry strong {
+  color: var(--snow-ink, #1e293b);
+  font-size: 15px;
+}
+
+.specEntry p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+}
+
+.specLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.specLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--snow-ink-soft, #475569);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.specLinks a:hover {
+  border-color: var(--snow-ink-soft, #475569);
+}
