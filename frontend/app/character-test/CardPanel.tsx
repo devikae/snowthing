@@ -5,13 +5,16 @@ import type { CharacterResult } from "./api";
 import { renderCard } from "./cardImage";
 import { QUESTIONS, characterName, descriptionSentences, type Sport } from "./data";
 import KakaoShareButton from "../components/KakaoShareButton";
-import { shareOrSaveImage } from "./shareFile";
+import { InAppSaveSheet } from "./InAppSaveSheet";
+import { resultFragment } from "./links";
+import { SAVED_NOTICE, blobToDataUrl, shareOrSaveImage } from "./shareFile";
 
 // 결과는 카드 한 장으로 보여 준다. 카드에 이름, 스탯, 설명, 찰떡 타입이 다 들어 있어 따로 그리지 않는다.
 // 공유 창은 클릭 직후에만 열리는 브라우저가 있어 카드를 미리 그려 둔다.
 export function CardPanel({ result, sport, answers, children }: { result: CharacterResult; sport: Sport; answers?: string; children?: ReactNode }) {
   const [card, setCard] = useState<{ blob: Blob; url: string } | null>(null);
   const [notice, setNotice] = useState("");
+  const [sheetImage, setSheetImage] = useState("");
   const name = characterName(result.character);
 
   useEffect(() => {
@@ -38,13 +41,25 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
       text: `나는 스키장에서 ${name}. 너는 어떤 캐릭터야?`,
       url: new URL("/character-test", window.location.origin).toString(),
     });
-    setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "saved" ? "카드 이미지를 저장했어요." : "공유를 취소했어요.");
+    if (outcome === "inapp") {
+      setSheetImage(await blobToDataUrl(card.blob));
+      return;
+    }
+    setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "saved" ? SAVED_NOTICE : "공유를 취소했어요.");
+  };
+
+  // 다른 브라우저로 넘어가도 같은 결과가 나오게 고른 답을 주소 fragment에 싣는다. fragment는 서버로 가지 않는다.
+  const externalUrl = () => {
+    const url = new URL("/character-test", window.location.origin);
+    if (answers) url.hash = resultFragment(answers, sport);
+    return url.toString();
   };
 
   const alt = [`${name} 캐릭터 카드.`, ...descriptionSentences(result.character), result.bestMatch ? `나와 찰떡인 타입은 ${characterName(result.bestMatch)}.` : ""].join(" ").trim();
 
   return (
     <section className="ct-panel ct-card" aria-labelledby="ct-card-title">
+      {sheetImage && <InAppSaveSheet imageUrl={sheetImage} alt={alt} externalUrl={externalUrl()} onClose={() => setSheetImage("")} />}
       <h2 id="ct-card-title">나의 스키장 캐릭터</h2>
       {card
         // eslint-disable-next-line @next/next/no-img-element -- 브라우저에서 만든 blob 주소라 이미지 최적화를 거칠 수 없다.
@@ -56,7 +71,7 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
           title="나는 어떤 스키장 캐릭터일까"
           description={`나는 스키장에서 ${name}. 너는 어떤 캐릭터야?`}
           url="/character-test"
-          imageUrl={`/character-test/share-${result.character.job}.png`}
+          imageUrl={`/character-test/share-${sport}-${result.character.job}.png`}
           imageWidth={800}
           imageHeight={800}
           buttonTitle="테스트 하러 가기"
