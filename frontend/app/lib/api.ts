@@ -209,6 +209,7 @@ export interface AdminDashboardStats {
   totalMembers: number;
   todayNewMembers: number;
   anonymousChatEnabled: boolean;
+  marketGuestAccessEnabled: boolean;
 }
 
 export interface SystemConfigItem {

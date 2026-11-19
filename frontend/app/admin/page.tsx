@@ -44,11 +44,12 @@ function DailyBars({ series, metric, label }: { series: AdminDailyCount[]; metri
   );
 }
 
-/** 관리자 대시보드. 오늘 숫자, 처리 대기 건수, 최근 7일이나 30일 추이, 비회원 라이브톡 설정을 보여 준다. 날짜는 KST 기준이다. */
+/** 관리자 대시보드. 오늘 숫자, 처리 대기 건수, 최근 7일이나 30일 추이, 비회원 라이브톡과 중고장터 설정을 보여 준다. 날짜는 KST 기준이다. */
 export default function AdminDashboardPage() {
   const [days, setDays] = useState<7 | 30>(7);
   const [metric, setMetric] = useState<Metric>("signups");
   const [updatingChat, setUpdatingChat] = useState(false);
+  const [updatingMarket, setUpdatingMarket] = useState(false);
   const overview = useAdminFetch<AdminOverview>(API_ENDPOINTS.admin.overview(days), "운영 현황을 불러오지 못했습니다.");
   const stats = useAdminFetch<AdminDashboardStats>(API_ENDPOINTS.admin.stats, "회원 현황을 불러오지 못했습니다.");
 
@@ -72,6 +73,29 @@ export default function AdminDashboardPage() {
       stats.setError((cause as Error).message);
     } finally {
       setUpdatingChat(false);
+    }
+  };
+
+  const toggleMarketGuestAccess = async () => {
+    if (!stats.data || updatingMarket) return;
+    const next = !stats.data.marketGuestAccessEnabled;
+    const message = next
+      ? "로그인하지 않은 사람도 중고장터 목록과 판매글을 볼 수 있게 할까요?"
+      : "중고장터를 로그인한 회원만 볼 수 있게 막을까요?";
+    if (!window.confirm(message)) return;
+    setUpdatingMarket(true);
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig("MARKET_GUEST_ACCESS_ENABLED"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: String(next) }),
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, "설정을 바꾸지 못했습니다."));
+      stats.reload();
+    } catch (cause) {
+      stats.setError((cause as Error).message);
+    } finally {
+      setUpdatingMarket(false);
     }
   };
 
@@ -159,6 +183,24 @@ export default function AdminDashboardPage() {
             onClick={() => void toggleAnonymousChat()}
           >
             {stats.data?.anonymousChatEnabled ? "회원만 허용하기" : "비회원도 허용하기"}
+          </button>
+        </div>
+      </section>
+      <section className="panel admin-section" aria-label="비로그인 중고장터">
+        <div className="admin-toolbar">
+          <span>
+            <h2>비로그인 중고장터</h2>
+            <small className="admin-meta">
+              {stats.data?.marketGuestAccessEnabled ? "로그인하지 않은 사람도 목록과 판매글을 볼 수 있습니다. 글쓰기는 회원만 됩니다." : "로그인한 회원만 중고장터를 볼 수 있습니다."}
+            </small>
+          </span>
+          <button
+            className="admin-button"
+            type="button"
+            disabled={!stats.data || updatingMarket}
+            onClick={() => void toggleMarketGuestAccess()}
+          >
+            {stats.data?.marketGuestAccessEnabled ? "회원만 보게 막기" : "비회원도 보게 열기"}
           </button>
         </div>
       </section>

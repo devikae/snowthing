@@ -233,15 +233,16 @@ class AdminOperationsIntegrationTest {
     }
 
     @Test
-    @DisplayName("공개 설정 API는 비로그인도 읽고, 비회원 라이브톡 여부만 내보낸다")
-    void publicConfigsExposeOnlyChatFlag() throws Exception {
+    @DisplayName("공개 설정 API는 비로그인도 읽고, 비회원 라이브톡과 중고장터 열람 여부만 내보낸다")
+    void publicConfigsExposeOnlyGuestFlags() throws Exception {
         MvcResult result =
                 mockMvc.perform(get("/api/v1/public/configs"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.anonymousChatEnabled").isBoolean())
+                        .andExpect(jsonPath("$.marketGuestAccessEnabled").isBoolean())
                         .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertThat(body.size()).isEqualTo(1);
+        assertThat(body.size()).isEqualTo(2);
     }
 
     @Test
