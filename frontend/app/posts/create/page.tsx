@@ -15,6 +15,7 @@ import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
 import { readApiError } from "../../lib/readApiError";
 import { LoginExpiredNotice } from "../../components/LoginExpiredNotice";
+import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
@@ -26,6 +27,7 @@ interface MemberProfile {
   publicId: string;
   nickname: string;
   role: string;
+  profileImageUrl?: string | null;
 }
 
 const COMPOSE_CATEGORIES = [
@@ -235,7 +237,6 @@ function PostCreateForm() {
     ? "1:1 문의"
     : (COMPOSE_CATEGORIES.find((item) => item.code === categoryCode)?.label ?? "자유게시판");
   const writerName = isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자";
-  const writerInitial = writerName.trim().charAt(0) || "익";
 
   return (
     <main className="compose-page community-container content-compose-page">
@@ -247,7 +248,7 @@ function PostCreateForm() {
         <div className="compose-meta-Cluster">
           <div className={`compose-author-pill${isAnonCategory ? " anonymous" : ""}`}>
             {isAnonCategory ? <strong>익명</strong> : <>
-              <span className="m-avatar" aria-hidden="true">{writerInitial}</span>
+              <CommentProfileAvatar className="m-avatar" nickname={writerName} profileImageUrl={userProfile?.profileImageUrl} size={18} />
               <span>작성자</span>
               <strong>{writerName}</strong>
             </>}
