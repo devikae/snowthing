@@ -8,11 +8,13 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.ReactionType;
 import com.ikae.snowthing.domain.post.service.PostScrapService;
+import com.ikae.snowthing.domain.post.service.PostSearchRateLimiter;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.domain.post.service.ReactionService;
 import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
@@ -41,6 +43,7 @@ public class PostController {
     private final AnonymousVoterCookieManager anonymousVoterCookieManager;
     private final ContentWriteRateLimiter contentWriteRateLimiter;
     private final IdempotentCreateHandler idempotentCreateHandler;
+    private final PostSearchRateLimiter postSearchRateLimiter;
 
     @PostMapping
     public ResponseEntity<Object> createPost(
@@ -91,7 +94,9 @@ public class PostController {
                     @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false, defaultValue = "1") Integer page,
                     @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size,
-                    @AuthenticationPrincipal CustomUserDetails userDetails) {
+                    @AuthenticationPrincipal CustomUserDetails userDetails,
+                    HttpServletRequest httpRequest) {
+        checkKeywordSearch(keyword, httpRequest);
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, page, null, size);
@@ -108,7 +113,9 @@ public class PostController {
                     @RequestParam(required = false) PostViewType viewType,
                     @RequestParam(required = false) String cursor,
                     @RequestParam(defaultValue = DEFAULT_PAGE_SIZE_PARAM) int size,
-                    @AuthenticationPrincipal CustomUserDetails userDetails) {
+                    @AuthenticationPrincipal CustomUserDetails userDetails,
+                    HttpServletRequest httpRequest) {
+        checkKeywordSearch(keyword, httpRequest);
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, null, cursor, size);
@@ -121,7 +128,7 @@ public class PostController {
             @Valid @RequestBody PostUpdateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
-        checkGuestPassword(userDetails, httpRequest);
+        checkGuestPassword(userDetails, request.anonymousPassword(), httpRequest);
         PostResponse response = postService.updatePost(publicId, request, userDetails);
         return ResponseEntity.ok(response);
     }
@@ -132,8 +139,8 @@ public class PostController {
             @RequestBody(required = false) PostDeleteRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
-        checkGuestPassword(userDetails, httpRequest);
         String password = request != null ? request.anonymousPassword() : null;
+        checkGuestPassword(userDetails, password, httpRequest);
         postService.deletePost(publicId, password, userDetails);
         return ResponseEntity.ok(
                 Map.of("message", "게시글이 정상적으로 삭제(Soft Delete) 처리되었습니다.", "publicId", publicId));
@@ -166,6 +173,11 @@ public class PostController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         String clientIp = clientIpResolver.resolve(httpRequest);
+        if (userDetails == null) {
+            // 취소는 한 글당 횟수를 쓰지 않게 IP 단위 상한만 추천과 함께 쓴다. 추천, 취소를 번갈아 연타해 DB 쓰기를 늘리지 못하게 한다.
+            contentWriteRateLimiter.check(
+                    null, clientIp, ContentWriteRateLimiter.Action.GUEST_REACTION);
+        }
         String anonymousVoterId =
                 userDetails == null
                         ? anonymousVoterCookieManager.getOrCreate(httpRequest, httpResponse)
@@ -174,9 +186,21 @@ public class PostController {
                 reactionService.remove(publicId, type, userDetails, clientIp, anonymousVoterId));
     }
 
-    /** 비회원 글은 비밀번호로 수정, 삭제하므로 대입과 BCrypt 연산 남용을 IP 단위로 묶는다. */
-    private void checkGuestPassword(CustomUserDetails userDetails, HttpServletRequest httpRequest) {
-        if (userDetails == null) {
+    /** 검색어가 있으면 글 본문까지 LIKE로 훑어 글이 늘수록 비싸진다. 검색어 길이와 IP 한도는 카풀, 중고장터 검색과 같은 규칙을 쓴다. */
+    private void checkKeywordSearch(String keyword, HttpServletRequest httpRequest) {
+        if (!StringUtils.hasText(keyword)) return;
+        postSearchRateLimiter.checkKeywordSearch(keyword, clientIpResolver.resolve(httpRequest));
+    }
+
+    /**
+     * 비회원 글은 비밀번호로 수정, 삭제하므로 대입과 BCrypt 연산 남용을 IP 단위로 묶는다. 로그인 회원도 남의 익명 글에 비밀번호를 보내 확인받을 수 있으므로,
+     * 비밀번호가 실려 오면 로그인 여부와 관계없이 같은 IP 제한을 건다.
+     */
+    private void checkGuestPassword(
+            CustomUserDetails userDetails,
+            String anonymousPassword,
+            HttpServletRequest httpRequest) {
+        if (userDetails == null || StringUtils.hasText(anonymousPassword)) {
             contentWriteRateLimiter.check(
                     null,
                     clientIpResolver.resolve(httpRequest),
