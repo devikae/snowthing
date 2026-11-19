@@ -7,6 +7,7 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { upcomingOpening } from "../lib/seasonOpening";
 import { useKstToday } from "../lib/useKstToday";
+import { useSeasonOpenings } from "../lib/useSeasonOpenings";
 import { resortSlug } from "../resort-cam/types";
 import styles from "./slopes.module.css";
 
@@ -124,7 +125,9 @@ export default function SlopesPage() {
 
 function ResortCard({ resort }: { resort: ResortSlopes }) {
   const today = useKstToday();
-  const beforeOpening = today ? upcomingOpening(resort.resortCode, today) !== null : false;
+  const openings = useSeasonOpenings();
+  const beforeOpening =
+    today && openings ? upcomingOpening(openings.resorts, resort.resortCode, today) !== null : false;
   const hasData = resort.collectedAt !== null;
   const openCount = resort.openSlopeCount ?? 0;
   const total = resort.totalSlopeCount ?? resort.slopes.length;

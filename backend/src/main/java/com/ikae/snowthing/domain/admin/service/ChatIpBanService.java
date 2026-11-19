@@ -49,9 +49,7 @@ public class ChatIpBanService {
     public void init() {
         List<ChatBannedIp> bans = repository.findAllActiveBans(LocalDateTime.now());
         for (ChatBannedIp ban : bans) {
-            activeBans.put(
-                    ban.getBannedIp(),
-                    ban.getBannedUntil() == null ? LocalDateTime.MAX : ban.getBannedUntil());
+            keepLaterExpiry(ban.getBannedIp(), ban.getBannedUntil());
         }
         log.info("Loaded {} active chat IP bans into memory", activeBans.size());
     }
@@ -89,7 +87,7 @@ public class ChatIpBanService {
         ChatBannedIp saved = repository.save(entity);
         actionLogger.record(
                 AdminActionType.CHAT_IP_BAN, AdminTargetType.CHAT_BAN, saved.getId(), reason);
-        activeBans.put(ip, until == null ? LocalDateTime.MAX : until);
+        keepLaterExpiry(ip, until);
         log.info("Chat IP banned: ip={}, until={}, by={}", ip, until, createdBy);
 
         List<String> purgedMessageIds = historyBuffer.removeByIp(ip);
@@ -112,13 +110,13 @@ public class ChatIpBanService {
                                     AdminTargetType.CHAT_BAN,
                                     id,
                                     null);
-                            activeBans.remove(ban.getBannedIp());
+                            reloadIp(ban.getBannedIp());
                             log.info("Chat IP unbanned: ip={}", ban.getBannedIp());
                         });
     }
 
     @Transactional
-    public void banIpByMessageId(String messageId, String createdBy) {
+    public void banIpByMessageId(String messageId, int days, String createdBy) {
         String ip = historyBuffer.getIpForMessage(messageId);
         if (ip == null || ip.isBlank()) {
             List<String> removed = historyBuffer.removeByMessageId(messageId);
@@ -127,7 +125,27 @@ public class ChatIpBanService {
             }
             return;
         }
-        banIp(ip, "관리자 메시지 신고 차단 (" + messageId + ")", LocalDateTime.now().plusDays(7), createdBy);
+        banIp(
+                ip,
+                "관리자 메시지 신고 차단 " + days + "일 (" + messageId + ")",
+                LocalDateTime.now().plusDays(days),
+                createdBy);
+    }
+
+    /** 같은 IP에 차단이 겹치면 더 늦게 끝나는 차단을 따른다. 짧은 기간으로 다시 차단해도 남아 있는 긴 차단이 줄어들지 않는다. null은 영구 차단이다. */
+    private void keepLaterExpiry(String ip, LocalDateTime until) {
+        LocalDateTime expiry = until == null ? LocalDateTime.MAX : until;
+        activeBans.merge(ip, expiry, (current, next) -> current.isAfter(next) ? current : next);
+    }
+
+    /** 차단 한 줄을 지운 뒤 같은 IP에 아직 유효한 다른 차단이 있으면 그 만료 시각으로 캐시를 다시 맞춘다. */
+    private void reloadIp(String ip) {
+        activeBans.remove(ip);
+        for (ChatBannedIp ban : repository.findAllActiveBans(LocalDateTime.now())) {
+            if (ip.equals(ban.getBannedIp())) {
+                keepLaterExpiry(ip, ban.getBannedUntil());
+            }
+        }
     }
 
     private void broadcastPurge(List<String> messageIds) {

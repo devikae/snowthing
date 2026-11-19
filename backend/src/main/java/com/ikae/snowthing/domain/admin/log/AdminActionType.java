@@ -20,5 +20,6 @@ public enum AdminActionType {
     BANNER_DELETE,
     CHAT_IP_BAN,
     CHAT_IP_UNBAN,
-    CONFIG_UPDATE
+    CONFIG_UPDATE,
+    SEASON_OPENING_UPDATE
 }
