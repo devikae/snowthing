@@ -1,0 +1,7 @@
+# 실험 1 | 같은 DB를 보는 앱 프로세스 두 개 (포트 18081, 18082)
+# 실행 시각(KST): 2026-11-17 23:54:06
+$ for f in ev1-app1 ev1-app2; do echo "[$f]"; grep 'Started SnowthingApplication' logs/$f.log; done
+[ev1-app1]
+2026-11-17T23:43:06.120+09:00  INFO [           main] c.ikae.snowthing.SnowthingApplication    : Started SnowthingApplication in 8.699 seconds (process running for 9.179)
+[ev1-app2]
+2026-11-17T23:43:15.663+09:00  INFO [           main] c.ikae.snowthing.SnowthingApplication    : Started SnowthingApplication in 8.6 seconds (process running for 9.088)

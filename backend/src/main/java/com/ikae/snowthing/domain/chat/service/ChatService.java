@@ -26,6 +26,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.util.ContactFilter;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
 
@@ -140,7 +141,11 @@ public class ChatService {
                         .replaceAll("")
                         .toLowerCase(Locale.ROOT);
         long now = clock.millis();
-        String abuseKey = member != null ? "member:" + member.getId() : "ip:" + clientIp;
+        // 비회원은 다른 제한기와 같은 정규화 키를 쓴다. IPv6 주소 끝자리를 바꿔도 같은 도배 기록에 걸린다.
+        String abuseKey =
+                member != null
+                        ? "member:" + member.getId()
+                        : "ip:" + ClientIpResolver.normalizeForLimit(clientIp);
         validateAbuseLimits(abuseKey, normalizedContent, now);
 
         // 5. Resort tag resolution

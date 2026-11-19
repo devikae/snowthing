@@ -52,6 +52,10 @@ class SocialAuthServiceTest {
     @Mock private RegistrationConsentService consentService;
     @Mock private WithdrawnEmailService withdrawnEmails;
 
+    @Mock
+    private com.ikae.snowthing.domain.notification.service.NotificationSettingService
+            notificationSettings;
+
     private static final SocialSignUpRequest CONSENT = SocialSignUpRequest.builder().build();
 
     private SocialAuthService socialAuthService;
@@ -69,7 +73,8 @@ class SocialAuthServiceTest {
                         fixedClock,
                         eventPublisher,
                         consentService,
-                        withdrawnEmails);
+                        withdrawnEmails,
+                        notificationSettings);
     }
 
     private Member completeSignUp(OAuthUserProfile profile) {
@@ -151,7 +156,7 @@ class SocialAuthServiceTest {
     }
 
     @Test
-    @DisplayName("가입을 마치면 새 회원의 동의 기록을 함께 저장한다")
+    @DisplayName("가입을 마치면 새 회원의 동의 기록과 쪽지 메일 알림 켜짐 설정을 함께 저장한다")
     void completeSignUp_NewUser_RecordsConsent() {
         OAuthUserProfile profile =
                 new OAuthUserProfile(
@@ -175,6 +180,8 @@ class SocialAuthServiceTest {
                         org.mockito.ArgumentMatchers.eq(11L),
                         org.mockito.ArgumentMatchers.eq(CONSENT),
                         any());
+        verify(notificationSettings)
+                .initializeForNewMember(org.mockito.ArgumentMatchers.eq(11L), any());
     }
 
     @Test

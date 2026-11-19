@@ -46,6 +46,8 @@ class VerifiedMemberRegistrationServiceTest {
     private EmailVerificationHasher hasher;
     private VerifiedMemberRegistrationService service;
     private MemberRegistrationConsentRepository consentRepository;
+    private com.ikae.snowthing.domain.notification.service.NotificationSettingService
+            notificationSettings;
 
     @BeforeEach
     void setUp() {
@@ -53,6 +55,10 @@ class VerifiedMemberRegistrationServiceTest {
         memberRepository = mock(MemberRepository.class);
         memberService = mock(MemberService.class);
         consentRepository = mock(MemberRegistrationConsentRepository.class);
+        notificationSettings =
+                mock(
+                        com.ikae.snowthing.domain.notification.service.NotificationSettingService
+                                .class);
         hasher = new EmailVerificationHasher("member-registration-test-secret-at-least-32-bytes");
         service =
                 new VerifiedMemberRegistrationService(
@@ -65,7 +71,8 @@ class VerifiedMemberRegistrationServiceTest {
                         new com.ikae.snowthing.domain.member.service.RegistrationConsentService(
                                 consentRepository,
                                 new com.ikae.snowthing.domain.member.service
-                                        .RegistrationPrivacyPolicy()));
+                                        .RegistrationPrivacyPolicy()),
+                        notificationSettings);
     }
 
     @Test
@@ -150,6 +157,9 @@ class VerifiedMemberRegistrationServiceTest {
                                 .termsVersion());
         assertThat(consent.getValue().isMarketingEmailAgreed()).isFalse();
         assertThat(consent.getValue().getConfirmedAt()).isEqualTo(LocalDateTime.now(CLOCK));
+        // 신규 가입 회원은 쪽지 메일 알림이 켜진 채로 시작한다(IKA-88).
+        verify(notificationSettings)
+                .initializeForNewMember(member.getId(), LocalDateTime.now(CLOCK));
 
         assertThatThrownBy(() -> service.register(request))
                 .isInstanceOf(CustomException.class)

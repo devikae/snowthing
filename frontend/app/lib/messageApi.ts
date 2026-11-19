@@ -15,6 +15,7 @@ export const MESSAGE_ENDPOINTS = {
   blocks: `${API_V1_URL}/members/blocks`,
   block: (memberPublicId: string) => `${API_V1_URL}/members/blocks/${encodeURIComponent(memberPublicId)}`,
   memberSearch: (nickname: string) => `${API_V1_URL}/members/search?nickname=${encodeURIComponent(nickname)}`,
+  notificationSettings: `${API_V1_URL}/members/me/notification-settings`,
 } as const;
 
 // 다른 화면에서 쪽지를 읽거나 지웠을 때 헤더 배지를 바로 다시 읽게 한다.

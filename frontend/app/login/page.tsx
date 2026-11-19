@@ -55,10 +55,15 @@ export default function LoginPage() {
   // 자식인 헤더의 effect가 이 페이지의 effect보다 먼저 돌기 때문에, 헤더가 그려지기 전인 첫 렌더에서 비운다.
   useState(() => clearViewerCache());
   const [fromMarket, setFromMarket] = useState(false);
+  // 회원가입으로 넘어가도 원래 보던 화면으로 돌아오게 returnUrl을 그대로 넘긴다.
+  const [signupHref, setSignupHref] = useState("/signup");
   useEffect(() => {
     const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") ?? "";
-    if (!returnUrl.startsWith("/market")) return;
-    const timer = window.setTimeout(() => setFromMarket(true), 0);
+    const safe = safeReturnUrl(returnUrl);
+    const timer = window.setTimeout(() => {
+      if (returnUrl.startsWith("/market")) setFromMarket(true);
+      if (safe !== "/") setSignupHref(`/signup?returnUrl=${encodeURIComponent(safe)}`);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
@@ -192,7 +197,7 @@ export default function LoginPage() {
               )}
             </div>
           )}
-          <p className={styles.signup}>아직 계정이 없나요?<Link href="/signup">회원가입</Link></p>
+          <p className={styles.signup}>아직 계정이 없나요?<Link href={signupHref}>회원가입</Link></p>
           <p className={styles.keepNotice}>로그인하면 30일 동안 유지돼요. 공용 PC에서는 꼭 로그아웃해 주세요.</p>
         </section>
       </main>

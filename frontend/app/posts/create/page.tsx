@@ -13,6 +13,8 @@ import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
+import { readApiError } from "../../lib/readApiError";
+import { LoginExpiredNotice } from "../../components/LoginExpiredNotice";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
@@ -54,6 +56,7 @@ function PostCreateForm() {
   const [userProfile, setUserProfile] = useState<MemberProfile | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [loginExpired, setLoginExpired] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
   const idempotencyKey = useIdempotencyKey();
@@ -144,8 +147,7 @@ function PostCreateForm() {
         body: formData,
       });
       if (!response.ok) {
-        const error = await response.json();
-        setErrorMsg(error.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setErrorMsg((await readApiError(response, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
         return;
       }
 
@@ -173,7 +175,7 @@ function PostCreateForm() {
       return;
     }
     if (!isAnonCategory && !userProfile) {
-      setErrorMsg("자유/질문/맛집 게시판은 로그인이 필요합니다.");
+      setErrorMsg("익명게시판이 아닌 게시판은 로그인해야 글을 쓸 수 있습니다.");
       return;
     }
     if (isAnonCategory && !userProfile && (anonymousPassword.trim().length < 4 || anonymousPassword.length > 20)) {
@@ -184,6 +186,7 @@ function PostCreateForm() {
     isSubmittingRef.current = true;
     setSubmitting(true);
     setErrorMsg("");
+    setLoginExpired(false);
 
     try {
       const body = JSON.stringify({
@@ -205,9 +208,12 @@ function PostCreateForm() {
         const data = await res.json();
         if (toolDraft) { try { sessionStorage.removeItem(DECK_QUESTION_KEY); } catch { /* Draft cleanup must not prevent navigation. */ } }
         router.push(`/posts/${data.publicId}`);
+      } else if (res.status === 401) {
+        // 로그인 화면으로 옮기면 쓴 글이 사라진다. 이 화면에 남아 새 창 로그인을 안내한다.
+        setLoginExpired(true);
       } else {
-        const err = await res.json();
-        setErrorMsg(err.message || "글을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        // 앞단이 HTML로 답하면 res.json()이 실패해 연결 오류로 잘못 안내하므로 상태 코드로 문구를 고른다.
+        setErrorMsg((await readApiError(res, "글을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
       }
     } catch {
       setErrorMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
@@ -280,10 +286,10 @@ function PostCreateForm() {
       )}
 
       <form onSubmit={handleSubmit} className="compose-editorial-form">
-        {errorMsg && (
+        {(errorMsg || loginExpired) && (
           <div className="compose-error" role="alert">
             <span className="material-symbols-outlined" aria-hidden="true">error</span>
-            {errorMsg}
+            {errorMsg || <LoginExpiredNotice returnUrl={`/posts/create?category=${encodeURIComponent(categoryCode)}`} />}
           </div>
         )}
 

@@ -24,6 +24,244 @@
   - 새 `RememberMeIntegrationTest` 8개: 로그인 쿠키 속성과 저장, 쿠키만으로 인증과 token 교체, 60초 안의 이전 쿠키 허용, 오래된 이전 쿠키면 토큰 전부 삭제, 30일 만료, 로그아웃 삭제, 정지 회원 거부, `invalidateAll` 삭제. 통과.
   - `MemberSessionRegistryTest`, `OAuth2AuthControllerTest`, `AuthControllerTest` 통과.
 
+## AI 회원 말투 예시 운영 설정 (IKA-99, 2026-11-20)
+
+- 상태: 설정 PR. 코드는 snowthing-mcp-server의 같은 브랜치. 머지와 운영 반영은 사용자 확인 후.
+- 계획: AI 회원 글이 AI 티가 나는 문제를 봇 서버 프롬프트에 실제 커뮤니티 말투 예시를 넣어 줄인다. 이 저장소는 운영 Compose 설정만 바꾼다.
+- 완료
+  - `compose.prod.yml` mcp-bot: `OPENAI_COMPOSE_REASONING_EFFORT`(기본 `low`, 기존과 같음), `SNOWTHING_AI_STYLE_EXAMPLES_FILE`, `/opt/snowthing-ai/style` 읽기 전용 마운트.
+  - 설계 문서 018 5절: 소재, 말투 예시, 추론 강도 갱신. "외부 사이트를 수집하지 않는다"를 "한 번 모은 공개 글을 결 참고용으로만 쓰고 주기적으로 수집하지 않는다"로 바꿨다.
+- 결정
+  - 봇에는 페르소나 파일이 있는 `/opt/snowthing-ai` 전체가 아니라 `style` 하위 디렉터리만 넘긴다. 봇은 페르소나를 읽을 필요가 없다. 파일 하나만 마운트하면 호스트에 파일이 없을 때 Docker가 같은 이름의 디렉터리를 만들어 버린다.
+  - 백엔드 코드는 바꾸지 않았다. 형식과 길이는 IKA-35부터 이미 실제 분포에 가깝게 보내고 있다.
+- 검증: 필수 변수를 임시값으로 채워 `docker compose -f compose.prod.yml config`로 설정이 해석되는지 확인했다.
+- 남은 항목
+  - 운영 호스트에 `/opt/snowthing-ai/style/style-examples.json` 업로드(컨테이너 사용자가 읽을 수 있게 권한 조정).
+  - 실제 모델로 바꾸기 전과 후 비교. 로컬에 OpenAI 키가 없다.
+
+## 엔티티와 마이그레이션 스키마 일치 검사와 ddl.sql 갱신 (IKA-92, 2026-11-18)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지는 사용자 확인 후.
+- 계획: 운영은 `ddl-auto: validate`로 뜨는데 테스트는 `create-drop`이라 엔티티와 마이그레이션이 어긋나도 배포 전에 잡지 못한다. 마이그레이션 체인으로 만든 스키마에서 validate 기동을 CI에서 확인하고, 13개 표에 멈춰 있던 `database/ddl.sql`을 최신으로 맞추고, CI에서 흔들린 테스트 중 원인이 확인되는 것을 고친다.
+- 완료
+  - `MigrationSchemaValidationTest`(태그 `schema-validate`): `ddl-auto=validate`, `spring.sql.init.mode=never`로 컨텍스트만 띄운다. 운영 prod 프로필과 같은 `MySQLDialect`, 기본 이름 전략(Spring 기본 CamelCaseToUnderscores)이다. 운영 설정에 이름 전략 지정이 없어 따로 맞출 것은 없었다.
+  - `build.gradle`: `schemaValidate` 태스크를 새로 두고 일반 `test`에서는 이 태그를 뺀다.
+  - CI: `gradle.yml`과 `deploy-backend.yml`의 ci-backend에서 마이그레이션 검증 단계(001~최신 적용) 바로 뒤, 일반 test 앞에 `./gradlew schemaValidate` 단계를 넣었다.
+  - `database/ddl.sql`: 001, 002 다음 003~051을 적용한 로컬 임시 스키마에서 `mysqldump --no-data`로 다시 뽑았다. 55개 표. 머리 주석에 생성 방법과 기준 마이그레이션(051)을 적었다.
+  - `PostRepositoryCustomTest`: 시작할 때 테스트 트랜잭션 안에서 기존 글을 모두 숨긴다(끝나면 롤백).
+- 결정
+  - 검사 방식: 별도 태그 테스트 하나를 CI 마이그레이션 단계 뒤에 돌린다. 이미 CI가 `snowthing_test`에 001~최신을 적용하므로 스키마를 새로 만들 필요가 없고, 컨텍스트 한 번이라 10초 안팎이다. 다른 안: Flyway 도입(운영 실행기와 이중 관리가 되고 baseline 대조가 필요), Testcontainers(의존성과 실행 시간 증가). 부작용: 일반 `test`보다 먼저 돌아야 한다. `test`는 create-drop이라 마이그레이션 스키마를 지운다.
+  - ddl.sql은 mysqldump로 뽑는 쪽을 골랐다. docker-compose 초기화를 마이그레이션 디렉터리로 바꾸는 안은 `schema_migration` 기록이 남지 않아 나중에 실행기를 돌리면 모든 파일을 다시 적용하려 하고, 로컬 볼륨 초기화 방식도 바뀐다. `ddl.sql`을 쓰는 곳은 `docker-compose.yml:18` 하나뿐이다(grep 확인, 나머지는 work.md 과거 기록).
+  - ddl.sql에는 기준 데이터(002)와 `schema_migration` 표를 넣지 않았다. 예전 파일도 데이터가 없었다. 표 순서가 알파벳순이라 머리에 `SET FOREIGN_KEY_CHECKS = 0`을 둔다.
+  - PostRepositoryCustomTest는 `DELETE` 대신 `is_deleted = TRUE`로 숨긴다. 댓글, 사진 등 FK가 걸린 글도 지울 필요 없이 목록 쿼리에서 빠지고 롤백된다.
+- 발견된 이슈
+  - 현재 main은 마이그레이션 스키마에서 validate가 통과한다. 운영과 엔티티가 실제로 어긋난 곳은 없다.
+  - 흔들린 테스트 원인 확인 결과
+    - `PostRepositoryCustomTest`: 고침. 게시판 전체 건수(FREE 25건, 베스트 2건)를 검증하는데, 같은 Spring 컨텍스트를 쓰는 다른 테스트가 커밋한 글이 남으면 실행 순서에 따라 깨진다. 다른 트랜잭션으로 FREE 글 1건을 커밋해 두고 돌리면 `findPostsByOffset_firstPage` 1건이 실패하는 것을 재현했고, 수정 후 같은 조건에서 10건 모두 통과했다(재현 코드는 지웠다).
+    - `ProfileImageSecurityIntegrationTest` 503: main에서 이미 고쳐져 있다. `a3a3794`(11-07)부터 `test-schema.sql`이 `request_budget_window`를 항상 만든다. 빈 스키마에서 단독 실행 3건 통과로 확인했다.
+    - `PostImageLifecycleIntegrationTest:200`(run 43018314976), `ContentWriteRateLimitIntegrationTest`(43002757279), `MemberWithdrawalIntegrationTest`(42592897919): 흔들림이 아니었다. 각각 그 브랜치의 기대값 변경 전 상태(`has_image` 기대값을 다음 커밋 5c0e828에서 고침), 비회원 반응 정책 변경 전 테스트(c659b27에서 익명게시판 글로 옮김), `getDetail`의 `@Transactional`이 잘못 옮겨진 버그(552a443에서 되돌림)였고 다음 커밋에서 통과했다.
+- 검증
+  - 새 검사: 로컬 `snowthing_test_ika92_validate`에 001, 002와 003~051을 적용하고 `./gradlew schemaValidate` 통과(1건). 050에서 `admin_action_log.reason` 컬럼 줄을 지우고 다시 적용하면 `Schema validation: missing column [reason] in table [admin_action_log]`로 실패하는 것을 확인한 뒤 되돌리고 다시 통과를 확인했다.
+  - ddl.sql: 새 빈 스키마에 넣어 55개 표가 만들어지고, 마이그레이션 스키마와 컬럼(타입, NULL, 기본값, 문자셋, 콜레이션, 주석), 인덱스, CHECK, FK를 information_schema로 비교해 차이가 없었다.
+  - 백엔드 전체 `test`(전용 스키마 `snowthing_test_ika92`, 빈 스키마에서 시작): 1274건, 실패 0, skip 1.
+  - `spotlessApply`, `spotlessCheck` 통과(worktree라 임시 init script로 ratchetFrom을 끄고 전체 파일 대상).
+  - CI 결과는 PR에서 확인한다.
+- 2026-11-20 머지 전 갱신: #148(052)과 #156(053)이 먼저 머지되어 ddl.sql을 같은 방법으로 다시 뽑았다(기준 053). 이전 파일과 비교해 추가된 것은 season_opening, member_notification_setting, dm_mail_outbox, dm_mail_recipient_state 네 표뿐이고 지워진 것은 없다. 빈 스키마에 넣어 오류 없이 표 59개, 마이그레이션 체인 스키마와 같은 수임을 확인했다.
+- 남은 항목: 없음(사용자가 머지를 위임함).
+- 사용자 결정 필요: 없음.
+
+## 쪽지 도착 메일 알림을 Outbox로 발송 (IKA-88, 2026-11-17)
+
+- 상태: 구현과 검증 완료, PR 생성(2026-11-20). 머지, 운영 마이그레이션, 운영 발송 활성화는 사용자 확인 후.
+- 계획: Sprint 8 미션(이메일 알림과 분산 환경의 데이터 정합성)을 쪽지 기준으로 적용. 설계 `docs/conception/032_dm_email_notification/`.
+- 완료
+  - 053 마이그레이션(처음 052, 2026-11-18 변경): `member_notification_setting`, `dm_mail_outbox`, `dm_mail_recipient_state`. 새 테이블만 만든다.
+  - 알림 설정 API `GET/PUT /api/v1/members/me/notification-settings`. 행 없음은 꺼짐. 일반 가입과 소셜 가입에서 켜짐으로 만든다. 탈퇴 삭제 목록에 세 테이블 추가.
+  - 쪽지 트랜잭션에서 발송 요청 적재(MANDATORY). 실패하면 쪽지도 롤백.
+  - 워커: 받는 사람 상태 행 SKIP LOCKED로 선점, claim_token과 lease, 조건부 결과 기록. 첫 메일 즉시, 10분 쿨다운 동안 온 쪽지는 한 통으로 묶음. 발송 직전 확인(24시간, 회원 상태, 설정, 받을 수 있는 주소, 읽음).
+  - 결과 분류: 200 ACCEPTED, 연결 실패와 429 RETRY_WAIT(최대 5회, equal jitter), 400 FAILED, 타임아웃과 500과 lease 만료 UNKNOWN(자동 재발송 없음).
+  - 쪽지 메일 전용 SES 클라이언트(SDK 재시도 0회). 인증메일 클라이언트는 그대로.
+  - 프론트: 쪽지함 위 "쪽지 오면 메일로 알림" 스위치. 받을 수 있는 이메일이 없으면 막고 이유를 보인다.
+  - 관리자 요약 `GET /api/v1/admin/dm-mail/outbox/summary`: 상태별 건수, UNKNOWN과 FAILED 합, 가장 오래 기다린 요청. 처음에 설계에만 적고 빠뜨렸다가 문서 점검 중 발견해 추가했다.
+  - 기능 플래그 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED`(기본 false, `compose.prod.yml`에도 추가).
+  - 문서: 설계, ADR-3201, 검증 기록, 성능 비교.
+- 결정
+  - 받는 사람을 한 명씩 선점, 발송, 기록한다. 여러 명을 먼저 잡으면 뒤쪽 lease가 대기 중에 줄어든다.
+  - 메일이 나가지 않았음이 확실하면 받는 사람의 마지막 시도 시각을 되돌려 재시도가 쿨다운에 막히지 않게 한다.
+  - ACCEPTED, SKIPPED는 30일 뒤 삭제. UNKNOWN, FAILED는 남긴다.
+  - 공급자가 꺼져 있으면 워커가 작업을 잡지 않는다.
+  - 성능 비교용 `delivery-mode=sync-baseline`을 둔다. 벤치마크에서만 켠다.
+- 발견한 이슈
+  - 로컬 main이 원격보다 321커밋 뒤처져 있었다. 최신 main 기준 worktree에서 작업했고 폴더 번호를 025에서 032로 바꿨다.
+  - worktree에서는 spotless ratchet이 git을 찾지 못해 init 스크립트로 ratchet을 끄고 전체 파일을 검사했다.
+  - 워커 하나의 처리량은 1 / SES 응답 시간이다. 몰림이 잦아지면 받는 사람 처리 병렬화를 검토한다.
+- 2026-11-18 번호 변경과 main 동기화
+  - 마이그레이션 파일 이름을 `052_migration_dm_mail_notification.sql`에서 `053_...`으로 바꿨다. 열린 PR #148(IKA-87)이 `052_migration_season_opening.sql`을 쓰고 먼저 머지될 예정이다. 내용은 바꾸지 않았다. 설계 문서, ADR, 검증 기록, 엔티티 주석의 번호를 고쳤다. 증거 원본 출력과 그림에는 당시 이름 052가 남아 있어 증거 README와 검증 기록에 그 사실을 적었다.
+  - `origin/main`(3e4f70a) merge: 이미 최신이라 바뀐 것 없음(Already up to date).
+  - 미리보기 합치기 시험(`git merge-tree`, 실제 합치지 않음): IKA-89와는 `docs/project/work.md`만 충돌(맨 위 항목 추가 위치). IKA-87과는 `docs/project/work.md`만 충돌, `application.yml`은 자동 병합. `ika-card-save-inapp`과는 충돌 없음.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`으로 `./gradlew cleanTest test` 1305건 중 1304 통과, 1 건너뜀, 실패 0. 빈 임시 DB에 001부터 053까지 순서대로 적용 성공(파일 49개, 모두 종료 코드 0). IKA-87의 052를 끼워 001부터 052(season_opening), 053 순서로 적용해도 성공, 그 뒤 053 재적용도 성공. 임시 DB는 지웠다. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+- 2026-11-20 main 동기화와 PR
+  - `origin/main` merge 두 번(리베이스 없음). 첫 번째는 #148(IKA-87, 052)과 #152(IKA-89)를 받았고 `docs/project/work.md`만 충돌해 두 항목을 모두 남겼다. 그 사이 #143(IKA-85)이 머지돼 한 번 더 merge했고 충돌은 없었다.
+  - 결정: 053에 `SET NAMES utf8mb4`를 넣었다. 052가 latin1 클라이언트에서 한글이 깨져 같은 방식으로 고친 일(15d2016)이 있었고, 053은 표와 컬럼 COMMENT에 한글이 있다. 다른 선택지는 실행기에 `--default-character-set=utf8mb4`를 넣는 것이었으나 이미 운영에 적용된 파일들의 동작까지 바뀌어 이번 범위에서 뺐다. 053은 운영 미적용이라 체크섬 문제는 없다.
+  - 마이그레이션: 053은 052 다음 번호. 배포 파이프라인과 CI(`verify-production-migration-007-015.sh`)가 `run-production-migrations.sh database/production`으로 모든 번호 파일을 차례로 적용하므로 053도 포함된다. latin1 클라이언트로 빈 임시 DB에 001부터 053까지(파일 50개) 적용 성공, 053 두 번째 적용도 오류 없음, 표와 컬럼 COMMENT가 한글로 남는 것 확인. 임시 DB는 지웠다.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`(001~053 적용 후)로 `./gradlew test` 1341건 중 1340 통과, 1 건너뜀, 실패 0. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+  - CI 첫 실행에서 `DmMailOutboxIntegrationTest` 묶음 메일 테스트 1건 실패. 원인: 저장소가 DATETIME을 `getTimestamp`로 읽어 JVM 기본 시간대(CI는 UTC)로 바뀌어 마지막 발송 시각이 9시간 앞당겨졌고, 쿨다운이 끝난 것으로 판단했다. 로컬은 JVM이 KST라 드러나지 않았다. 결정: `getObject(..., LocalDateTime.class)`로 바꿨다(다른 선택지는 테스트 JVM에 시간대를 고정하는 것이었으나 코드가 JVM 시간대에 기대는 문제가 남는다). 운영은 `TZ=Asia/Seoul`이라 운영 영향은 없었다. 확인: 고치기 전 코드를 `-Duser.timezone=UTC`로 돌려 같은 실패 재현, 고친 뒤 UTC로 dmmail 31건 통과, KST로 dmmail, notification, message 77건 통과.
+  - 운영 설정: 새 운영 env는 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED` 두 개이고 `compose.prod.yml`에 있다(기본 false). `SNOWTHING_DM_MAIL_SES_ENDPOINT`는 테스트용이라 운영 목록에 넣지 않았다.
+- 남은 항목: 화면 로컬 확인, PR, 운영 마이그레이션 053 적용(IKA-87의 052 다음), 적재 플래그 켜기, 테스트 수신자로 발송 확인 후 발송 플래그 켜기, 원클릭 수신거부(후속).
+- 검증
+  - `./gradlew spotlessCheck test` 전체 통과(1304건, 실패 0). 이후 바꾼 부분은 관련 96건 다시 통과.
+  - 마이그레이션 053(당시 052) 두 번 적용 후 `ddl-auto=validate` 기동 성공.
+  - 프로세스 두 개 경합(받는 사람 40명, 중복 메일 0), 재기동 후 이어서 처리, 수락 직후 강제 종료 후 UNKNOWN 격리(재발송 0).
+  - 성능: 쪽지 응답 p95 1965ms에서 30ms, 알림 지연 p95 57.9초(SES 1초, 60건 동시).
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 화면: 헤드리스 Chrome으로 신규, 기존, 소셜 내부 주소 계정을 데스크톱과 모바일에서 확인. 다크 모드는 미확인.
+
+## 시즌 트래픽 대비 이미지 처리와 라이브톡 제한 보강 (IKA-93, 2026-11-18)
+
+- 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 계획: 이미지 처리 자리를 짧게 기다리게 하고 혼잡 응답을 나눈다. 라이브톡 IP 차단과 비회원 도배 키를 정규화 IP로 바꾸고 메모리 차단 반영을 커밋 뒤로 옮긴다. JVM 힙 비율과 봇 연결 타임아웃을 정한다.
+- 완료
+  - `ImageProcessingGate`: 사용자 요청은 최대 5초 기다린 뒤 자리를 못 받으면 503 `FILE_009`(IMAGE_PROCESSING_BUSY, "사진 처리 요청이 몰리고 있습니다. 잠시 뒤 다시 시도해 주세요.")다. 예전에는 기다리지 않고 바로 429 `MEMBER_006`이었다. 세마포어는 공정 모드라 먼저 온 순서대로 받는다.
+  - 백그라운드 장터 썸네일은 `runInBackground`를 쓴다. 기다리지 않고, 기다리는 사용자가 있으면 끼어들지 않고, 동시에 한 자리까지만 쓴다. 자리가 없으면 `BusyException`으로 5초 뒤로 미루고 재시도 횟수(attempts)는 늘리지 않는다. 그 주기의 남은 작업도 멈춘다.
+  - `ImageController`: DB를 쓰는 횟수 검사(`checkImage`)를 처리 자리 밖, 자리 잡기 전으로 옮겼다.
+  - `ChatIpBanService`: 메모리 차단 키를 `ClientIpResolver.normalizeForLimit` 값으로 바꿨다. IPv6는 /64 대역으로 묶인다. DB에는 관리자가 입력한 원문을 그대로 저장하고 읽을 때 정규화하므로, 예전에 원문으로 저장된 행도 마이그레이션 없이 맞는다. 같은 대역에 차단이 여럿이면 가장 늦은 끝 시각을 쓴다.
+  - 차단의 메모리 반영과 최근 대화 삭제는 커밋 뒤(`TransactionSynchronization.afterCommit`)에 한다. 해제는 같은 대역의 다른 활성 차단을 DB에서 다시 찾아, 있으면 그 끝 시각으로 남기고 없을 때만 지운다. 이것도 커밋 뒤에 반영한다.
+  - IP가 아닌 값의 차단은 400 `COMMON_001`로 거절한다. 정규화하면 unknown 하나로 모여 엉뚱한 사용자를 함께 막기 때문이다.
+  - `ChatRecentHistoryBuffer.removeByIp`: 차단과 같은 정규화 기준으로 최근 대화를 지운다.
+  - `ChatService`: 비회원 도배 키를 `"ip:" + normalizeForLimit(clientIp)`로 바꿨다.
+  - `ChatBannedIpRepository`: 차단 목록 정렬에 ID 보조 정렬(`createdAt desc, id desc`).
+  - `compose.prod.yml`: `JAVA_TOOL_OPTIONS`에 `-XX:MaxRAMPercentage=50.0`.
+  - `BotConfig`: 봇 RestClient에 연결 타임아웃 2초(OAuth, 카풀 클라이언트와 같은 `HttpClient.connectTimeout` 방식).
+- 결정
+  - 혼잡 응답은 503으로 했다. 다른 안은 429에 새 코드였다. 프로필 화면이 429를 받으면 서버 문구 대신 "사진 변경 횟수를 넘었습니다"를 띄우므로 429로는 사용자에게 잘못 보인다. 503이면 프로필, 글쓰기, 장터 화면 모두 서버 문구를 그대로 보여 주어 프론트 변경이 없다.
+  - 동시 처리 수는 2로 유지했다. 근거: 사진은 최대 2,500만 화소라 디코딩하면 화소당 4바이트, 한 장 약 100MB이고 축소 중간 버퍼까지 치면 한 건 150MB 안팎이다. 2건이면 약 300MB로, 힙 약 1GB에서 라이브톡과 일반 요청 몫을 남긴다. 처리 시간은 측정하지 않은 추정이다.
+  - 대기 시간 5초: 기다리는 동안 Tomcat 요청 스레드를 쥐고 있으므로 길게 두지 않았다. 다른 안은 대기열 길이 제한이었다. 이미지 횟수 제한(전체 시간당 300건)이 앞에 있어 대기 스레드 수가 크게 늘지 않는다고 보고 넣지 않았다.
+  - 횟수 검사를 게이트 밖으로 옮긴 대가: 횟수를 쓴 뒤 혼잡(503)으로 실패하면 그 1회는 돌려받지 못한다. 예전에는 자리가 없으면 횟수를 쓰지 않았다. 대신 자리를 쥔 채 DB 잠금을 기다리지 않는다. 5초 대기로 혼잡 실패 자체가 드물 것으로 본다.
+  - JVM 힙 50%: EC2 메모리는 저장소 문서(`docs/conception/001_live_chat/ADR-101`)의 2GB RAM, 2GB swap을 기준으로 했다. 지금 인스턴스 크기는 확인하지 않았다(AWS 접근 금지). 같은 호스트에 frontend(Next.js, 제한 없음), mcp-bot(256MB 제한), 호스트 nginx가 있고, JVM 힙 밖 메모리(메타스페이스, 스레드 스택, Pinpoint 에이전트)도 수백 MB라 60%는 swap 의존이 커진다고 보고 50%로 했다. 힙은 필요할 때만 늘어나므로 평소 사용량은 그대로다. 비율이라 인스턴스를 키우면 힙도 따라 커진다. 새 환경변수는 만들지 않아 `prod.env` 변경은 없다.
+  - 봇 연결 타임아웃은 상수 2초로 두고 환경변수는 만들지 않았다. 같은 호스트 컨테이너라 연결은 금방 된다.
+  - 해제와 동시에 같은 대역을 새로 차단하는 경우, 해제 쪽 커밋 뒤 반영이 새 차단의 메모리 항목을 지울 수 있다(서버 재시작 시 DB에서 다시 올라옴). 관리자 둘이 같은 대역을 동시에 다루는 일은 드물어 잠금을 넣지 않았다.
+- 범위 밖으로 남긴 것
+  - 비회원 익명 닉네임은 IP 원문 해시로 정한다. /64로 바꾸면 기존 사용자 표시 닉네임이 바뀌므로 그대로 두었다.
+- 발견된 이슈
+  - 호스트 nginx 설정은 저장소에 없어 `proxy_intercept_errors`로 503 본문을 바꾸는지 확인하지 못했다. 바꾼다면 화면에는 서버 문구 대신 각 화면의 기본 실패 문구가 뜬다.
+- 검증
+  - 로컬 전용 스키마 `snowthing_test_ika93`에서 `./gradlew spotlessCheck test` 통과: 테스트 클래스 220개, 1,285건, 실패 0, 건너뜀 1(기존). Spotless는 worktree에서 `ratchetFrom`을 끈 임시 init script로 전체 파일 대상 실행.
+  - 새 테스트: 동시 업로드 3건이 기다렸다 모두 처리되고 동시 실행은 2건을 넘지 않음, 게이트가 꽉 차면 503 `FILE_009`, 백그라운드는 한 자리만 쓰고 기다리지 않음, 기다리는 사용자가 있으면 백그라운드가 양보, 게이트 혼잡 시 썸네일 작업이 attempts를 늘리지 않고 미뤄짐, 같은 /64의 다른 IPv6 주소 차단, 원문으로 저장된 기존 행을 시작 시 정규화, 해제 시 같은 대역의 다른 활성 차단 유지(단위와 실제 트랜잭션 둘 다), 롤백된 차단이 메모리에 남지 않음, IP가 아닌 값 차단 거절, 비회원 도배 제한이 같은 /64에서 함께 셈.
+  - 기존 `ImageProcessingGateTest`는 기다림 없이 바로 거절하는 동작을 확인하던 것이라, 대기 뒤 503을 확인하도록 기대를 바꿨다. 패키지 접근 생성자를 쓰려고 `image/service` 패키지로 옮겼다.
+  - 프론트 코드는 바꾸지 않아 lint와 build는 돌리지 않았다. 운영 메모리와 nginx 동작은 확인하지 않았다.
+- 2026-11-20 main 동기화(IKA-89 #152, IKA-87 #148 머지 뒤)
+  - `origin/main`을 merge했다(리베이스, force push 없음). 충돌은 `docs/project/work.md`(두 항목 모두 살림)와 `ChatIpBanService`.
+  - `ChatIpBanService` 합친 방식: IKA-93 쪽 구조(정규화 키, 커밋 뒤 반영, 해제 시 같은 대역의 다른 활성 차단 유지, IP가 아닌 값 400)를 바탕으로 두고, IKA-89의 `banIpByMessageId(messageId, days, createdBy)`(1, 7, 30일 선택, 사유에 기간 표시)를 그대로 가져왔다. IKA-89의 `keepLaterExpiry`, `reloadIp`는 원문 IP를 키로 썼기 때문에 지우고, 같은 일을 하는 IKA-93의 `merge(key, until, later)`와 해제 시 재계산으로 대신했다. 그래서 늦게 끝나는 기간을 따르는 규칙이 정규화 키 기준으로 동작한다(같은 /64의 다른 IPv6 주소 두 차단도 늦게 끝나는 쪽).
+  - 결정: 메시지 차단에서 버퍼에 남은 IP가 IP가 아닌 값(예: unknown)이면 차단하지 않고 그 메시지만 지운다. 예전에는 빈 값만 이렇게 했다. 그대로 두면 `banIp`의 400 거절로 관리자 화면 버튼이 실패한다. 다른 안은 400을 그대로 내보내는 것이었는데, 관리자가 그 메시지를 지울 방법이 없어 택하지 않았다.
+  - 자동 병합된 `AdminChatController`(선택 본문 `days`), `ChatService`(정규화 도배 키), `ChatRecentHistoryBuffer`, 저장소 정렬은 서로 다른 줄이라 의미 충돌이 없다. IKA-89 통합 테스트 `overlappingBanKeepsLaterExpiry`는 메모리 캐시를 원문 IP로 읽던 것을 정규화 키로 읽게 고쳤다.
+  - 새 테스트: 같은 /64의 다른 IPv6 주소로 30일, 1일 메시지 차단 뒤 30일을 따르고 30일을 풀면 1일이 남고 둘 다 풀면 풀림(통합), 같은 /64에서 뒤에 온 짧은 차단이 긴 차단을 줄이지 않음(단위), 메시지 IP가 unknown이면 저장 없이 메시지만 지움(단위).
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(임시 init script). 전용 스키마 `snowthing_test_ika93`으로 `./gradlew cleanTest test` 테스트 클래스 223개, 1,309건, 실패 0, 건너뜀 1. 프론트는 이번에 바꾸지 않았다(main에서 온 변경만 있음).
+  - push 뒤 main에 #143(IKA-85), #146, #149(IKA-91)가 더 머지돼 다시 merge했다. 충돌은 `docs/project/work.md`(항목 추가 위치)뿐이고, 코드에서 겹친 파일은 `ErrorCode`(서로 다른 줄, 코드 번호 겹침 없음)뿐이다.
+- 남은 항목: 배포 뒤 `docker exec snowthing-backend jcmd 1 VM.flags`로 MaxHeapSize가 약 1GB인지 확인.
+- 사용자 결정 필요: 없음.
+
+## 전역 CSS 분리와 홈 첫 화면 서버 렌더링 (IKA-95, 2026-11-18)
+
+- 상태: 구현 완료. 2026-11-20 origin/main을 merge하고 push, PR 생성(사용자 승인). 머지 전 사용자 브라우저 확인 필요.
+- 계획: 루트 레이아웃이 모든 화면에 싣던 에디터 CSS와 카풀 CSS를 쓰는 곳으로 옮기고, 홈 첫 목록을 서버에서 받아 HTML에 넣는다. 오늘의 설질 위젯에 불러오는 중과 실패 상태를 둔다.
+- 완료
+  - `layout.tsx`: `toastui-editor.css`, `carpool.css` 전역 import를 뺐다.
+  - `ToastEditor`는 `toastui-editor.css`, `ToastViewer`는 뷰어 전용 `toastui-editor-viewer.css`(약 14KB)를 직접 불러온다. 두 컴포넌트는 모두 `next/dynamic`(ssr: false)으로만 쓰여 JS 조각을 받을 때 CSS도 같이 받는다.
+  - `carpool/layout.tsx`에서 `carpool.css`를 불러온다. carpool.css의 클래스 30여 개를 tsx, ts 전체에서 찾아 `app/carpool/` 밖에서 쓰는 곳이 없는 것을 확인했다(PostComments의 `carpool-form-error`는 carpool.css에 없는 다른 클래스). 홈 카풀 위젯 클래스(`carpool-widget`, `carpool-row`, `cp-*`)는 globals.css에 있어 영향이 없다.
+  - `page.tsx`(홈): "전체" 탭 글 15개, 카풀 4개, 장터 미리보기를 `fetchPublicJson`으로 함께 받아 `HomePageClient`에 `initial`로 넘긴다. 받은 위젯은 브라우저가 다시 부르지 않고, 못 받은 위젯(null)만 기존처럼 브라우저가 부른다.
+  - 타입과 요청 크기는 `lib/homeFeed.ts`로 옮겼다. "use client" 파일에서 내보낸 값은 서버 컴포넌트에서 클라이언트 참조가 되어 숫자로 읽을 수 없다.
+  - 오늘의 설질: 불러오는 중, 실패(다시 시도 버튼), 빈 목록을 나눴다. 같은 요청을 두 번 적던 `loadTodayReports`와 첫 로드 effect를 하나로 합쳤다. 제보 등록 뒤 새로 고침은 목록을 둔 채 조용히 바꾸고, 실패해도 보이던 목록을 지우지 않는다.
+- 결정
+  - `detailForms.css`는 전역에 둔다. 글, 장터, 카풀의 작성과 상세 화면, 댓글이 함께 쓰는 파일이라 옮기려면 여러 레이아웃에 나눠 넣어야 하고, 위치가 바뀌면 같은 우선순위 규칙의 순서가 바뀐다. 다른 안: 작성 화면과 상세 화면 레이아웃마다 import. 크기(288줄)에 비해 얻는 것이 작다.
+  - CSS 순서 변화 점검: 옮긴 CSS는 이제 globals.css, detailForms.css보다 뒤에 붙는다. 우선순위가 같은 규칙이 겹치면 승자가 바뀐다.
+    - toastui: globals.css, detailForms.css의 에디터 덮어쓰기 규칙과 같은 요소, 같은 속성을 칠하는 toastui 규칙 중 우선순위가 같거나 높은 것이 없음을 스크립트로 확인했다. toastui에는 `.auto-height` 말고 접두사 없는 전역 클래스가 없고, 앱에서 그 클래스를 쓰지 않는다.
+    - carpool.css: 다크 모드의 `.carpool-cost-button`, `.carpool-manual-fallback` 규칙이 detailForms.css의 작성 화면 규칙과 우선순위가 같았다. 두 요소는 항상 `.content-compose-page` 안에 있어 지금까지 detailForms.css가 이겨 쓰이지 않던 규칙이다. 순서가 바뀌면 이기게 되므로 carpool.css에서 두 선택자를 지웠다. 화면은 지금과 같다.
+  - 홈 서버 요청은 /posts와 같이 `cache: "no-store"`(publicApi 관례)를 쓴다. 쿠키를 넘기지 않아 사용자 간 데이터가 섞이지 않고, 글을 쓰고 돌아와도 바로 보인다. 대가로 홈이 정적 페이지(○)에서 요청마다 렌더링(ƒ)으로 바뀌고 홈 요청마다 백엔드 요청 3개가 늘어난다. 다른 안: `revalidate: 30`. 백엔드 부담은 줄지만 새 글이 최대 30초 늦게 보인다. 트래픽이 커지면 다시 본다.
+  - 오늘의 설질은 서버에서 받지 않는다. `formatReportTime`이 오프셋 없는 KST 문자열을 실행 환경 시간대로 읽어 서버(UTC)와 브라우저 글자가 달라질 수 있다.
+  - 글 목록 상대 시각(`m-time`)은 서버와 브라우저 시각 차이로 글자가 달라질 수 있어 /posts처럼 `suppressHydrationWarning`을 붙였다.
+- 발견된 이슈
+  - `formatReportTime`(lib/resortReports.ts)은 `new Date(문자열)`로 읽어 KST가 아닌 시간대의 브라우저에서 시각이 틀린다. `toDate`를 쓰면 고쳐진다. 이번 범위 밖이라 그대로 두었다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과.
+  - 첫 HTML의 CSS(build 산출물 기준): 홈 390,347B(gzip 145,961B)에서 215,798B(gzip 36,993B). 로그인 394,912B에서 220,363B, 장터 393,467B에서 218,918B, 글쓰기 390,347B에서 215,798B, 카풀 393,467B에서 226,827B. 홈, 로그인, 장터, 글쓰기, 카풀 모두 첫 HTML의 CSS에 toastui 본체가 없다.
+  - 에디터 CSS(166,614B)와 뷰어 CSS(11,936B)는 별도 CSS 파일로 나와 에디터, 뷰어 JS 조각이 참조하는 것을 산출물에서 확인했다.
+  - `next start` + 로컬 백엔드(8080)로 홈 HTML을 받아 글 제목이 들어 있고 "게시글을 불러오는 중" 문구가 없는 것을 확인했다. 장터는 매물 카드, 카풀은 빈 목록 문구가 서버 HTML에 있었다.
+  - 백엔드 주소를 닫힌 포트로 바꿔 빌드한 뒤 홈 HTML에 네 위젯 모두 불러오는 중 문구가 나오는 것을 확인했다(연결 거부 경로). 2초 시간 초과 경로는 확인하지 않았다.
+  - 브라우저에서 화면을 열어 스타일과 하이드레이션 경고를 보지는 않았다.
+  - 2026-11-20 origin/main merge 뒤 다시 확인: 새로 들어온 개장 D-DAY 배너(#148), 관리자 가리기 UI(#152), 카풀과 장터 한 글자 검색 안내(#143)는 carpool.css나 toastui CSS에 기대지 않는다. carpool.css 클래스 38개를 `app/carpool/` 밖에서 찾았고, 겹치는 일반 이름(muted, outline, selected, start, total 등)은 carpool.css에서 모두 `.carpool-*` 아래로 묶여 있다. 새 검색 안내 규칙(`.carpool-search button:disabled`)과 D-DAY 배너 규칙은 globals.css에 있다. 에디터는 여전히 ToastEditor, ToastViewer 컴포넌트로만 쓰인다.
+- 남은 항목: 사용자 브라우저 확인, 머지.
+- 사용자 결정 필요: 홈을 요청마다 렌더링(no-store)으로 둘지, revalidate로 바꿀지.
+
+## 첫 방문자 흐름과 입력 보존 사용성 개선 (IKA-94, 2026-11-18)
+
+- 상태: 구현 완료. 2026-11-20 origin/main을 merge하고 push, PR 생성(사용자 승인). 머지 전 사용자 브라우저 확인 필요.
+- 계획: 글 등록 중 로그인이 풀려도 입력 유지, 로그인에서 회원가입으로 넘어갈 때 returnUrl 유지, 캐릭터 테스트 결과에서 사이트로 이어지는 길과 진행 중 답 보존, 연락처 복사 피드백, 게시글 작성 오류 문구 정리.
+- 완료
+  - 판매글 등록(`market/new`): 등록 요청이 401이면 로그인 화면으로 옮기지 않는다. 오류 칸에 "로그인이 풀렸습니다. 입력한 내용은 그대로 있습니다. 새 창에서 로그인한 뒤 이 화면에서 다시 등록해 주세요."를 띄운다. 공통 안내는 `components/LoginExpiredNotice.tsx`.
+  - 카풀 글쓰기(`carpool/new`)와 게시글 작성(`posts/create`)도 같은 원칙으로 맞췄다. 카풀은 원래 입력을 지켰지만 로그인 링크가 없었고, 게시글은 서버 문구만 보였다. 카풀 수정 화면은 "다시 수정해 주세요"로 나온다.
+  - `lib/readApiError.ts` 새로 만듦: 실패 응답이 JSON이 아니면 상태 코드로 문구를 고른다(401, 403, 413, 429, 그 밖은 화면별 기본 문구). 카풀 글쓰기에 있던 같은 이름의 함수를 이 파일로 옮겼다.
+  - 게시글 작성: 오류 응답이 HTML이면 `res.json()`이 던져 "서버에 연결하지 못했습니다"로 잘못 안내하던 것을 상태 코드 기반 문구로 바꿨다(413이면 용량 안내). 사진 올리기 실패도 같은 함수를 쓴다. 로그인 안내 문구를 실제 규칙(익명게시판만 비회원 작성)에 맞춰 "익명게시판이 아닌 게시판은 로그인해야 글을 쓸 수 있습니다."로 고쳤다.
+  - 로그인 → 회원가입: 로그인 화면의 회원가입 링크가 `returnUrl`을 넘긴다. 회원가입은 가입과 자동 로그인을 마치면 그 주소로, 자동 로그인이 실패하면 `returnUrl`을 단 로그인 화면으로 간다. 회원가입 화면 아래 로그인 링크도 `returnUrl`을 넘긴다. 검증은 기존 `safeReturnUrl`(같은 사이트 상대 경로만)을 재사용한다. 카풀 글쓰기 안내의 회원가입 링크도 `returnUrl=/carpool/new`를 단다.
+  - 소셜 가입은 이미 서버가 authorize 때 받은 returnUrl을 `/signup/social` 응답에 실어 `safeReturnUrl`로 이동해 고칠 것이 없었다. 회원가입 화면에는 소셜 버튼이 없다.
+  - 캐릭터 테스트: 결과 화면 맨 아래(관계 지도 다음, "처음부터 다시 하기" 위)에 "눈팅에서 더 보기"(오늘의 설질, 카풀과 동행, 게시판, 비로그인이면 회원가입)를 둔다(`SiteLinks.tsx`, 기존 `ct-my-groups` 스타일 재사용).
+  - 캐릭터 테스트 진행 중 답(종목, 질문 순서, 고른 답)을 `localStore.ts`의 기존 localStorage 방식으로 저장한다. 시작 화면에 "이어서 풀기 (15개 중 N개 답함)"와 "처음부터 시작"이 나온다. 마지막 답을 고르면 지운다. 값이 깨졌거나 질문 수가 다르면 버린다.
+  - 모바일 메뉴의 "라이더 도구" 아래에 "스키장 캐릭터 테스트" 링크를 하나 추가했다(`SiteChrome.tsx`). 데스크톱은 "라이더 도구" 화면에 이미 카드가 있다.
+  - 판매글 상세 연락처 복사: 성공하면 "연락처를 복사했습니다.", 실패하면 "복사하지 못했습니다. 연락처를 길게 눌러 복사해 주세요."를 role=status로 보인다.
+- 결정
+  - 로그인이 풀렸을 때 sessionStorage 초안 대신 새 창 로그인을 골랐다. 본문 에디터 내용, 업로드한 사진 목록, 카풀 지도 선택까지 직렬화해 되살리는 것보다 화면을 떠나지 않는 쪽이 단순하고 빠지는 값이 없다. 다른 안: sessionStorage 초안 저장 후 로그인 이동. 부작용: 새 창에서 로그인을 마치면 그 창에는 빈 작성 화면이 열린다. 안내 문구로 원래 창에서 다시 누르라고 적었다.
+  - 진행 중 답은 sessionStorage가 아니라 localStorage에 둔다. 카톡 안 브라우저에서 탭이 닫혔다 다시 열려도 남게 하려는 것이고, 이미 지난 결과도 localStorage에 둔다.
+  - 모임 화면(`g/[publicId]`)의 테스트도 같은 컴포넌트라 진행을 저장한다. 모임 화면에서 테스트를 새로 시작하면 저장된 진행을 지운다. 이어 풀기 버튼은 메인 시작 화면에만 뒀다.
+  - 전역 CSS는 다른 작업과 겹쳐 건드리지 않았다. 새 스타일 없이 기존 클래스와 Tailwind `underline`만 썼다.
+- 발견된 이슈
+  - 회원이 익명게시판에 쓰다가 로그인이 풀리면 화면은 비밀번호 칸 없이 회원으로 보내고, 서버는 비회원으로 받아 비밀번호 오류가 날 수 있다(이번 범위 밖, 기존 동작).
+  - 열린 PR #146(`ika-card-save-inapp`)과 같은 파일: `CharacterTestApp.tsx`(import 블록과 결과 화면), `characterTest.css`는 이번에 안 건드림. PR #146 import 블록 바로 아래 줄(QuizFlow, RelationshipMap import)과 결과 화면 JSX가 가깝다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과.
+  - `git merge-tree HEAD origin/ika-card-save-inapp`: 충돌 없이 합쳐진다(2026-11-18 기준).
+  - 브라우저 화면 확인과 로컬 백엔드 연동 확인은 하지 않았다. 401, 413 흐름은 코드로만 확인했다.
+  - 375px: 새 요소는 기존 세로 목록(`ct-my-groups`), 오류 칸, 연락처 칸의 전체 너비 줄(`.market-contact small`의 grid-column 1 / -1)을 써서 가로 넘침을 만드는 고정 폭이 없다. 실제 화면은 보지 않았다.
+- 남은 항목: 사용자 브라우저 확인(아래 확인 목록), 머지.
+- 사용자 결정 필요: 없음.
+
+## 헤더 쪽지 아이콘을 접은 쪽지 모양으로 바꾸기 (티켓 없음, 2026-11-20)
+
+- 상태: 구현 완료, push와 PR 생성(사용자 승인). 머지 전 사용자 화면 확인 필요.
+- 계획: 헤더 쪽지함과 장터 "쪽지 보내기" 버튼의 Material `sticky_note_2`(포스트잇처럼 보임)를 직접 그린 SVG 아이콘으로 바꾼다. 11/10에 `snowthing-note-icon` worktree에 커밋 없이 남아 있던 변경을 최신 main 위에 다시 적용했다.
+- 완료
+  - `components/NoteIcon.tsx` 새로 만듦: 24칸 viewBox, 선 굵기 1.8, `currentColor`.
+  - `MessageNavLink`(헤더, 20px), `MarketMessageButton`(장터, 18px)이 NoteIcon을 쓴다. `messages.module.css`에서 쓰지 않게 된 `.marketMessage` 안 Material 아이콘 크기 규칙을 지웠다.
+  - main에서 쪽지 아이콘을 쓰는 다른 곳을 찾았다(`git grep sticky_note_2`, `composeMessageHref`, "쪽지 보내기"). 아이콘이 붙은 곳은 위 두 곳뿐이고 작성자 메뉴, 쪽지함 화면 버튼은 글자만 있다.
+- 결정
+  - 옛 worktree의 그림(종이를 띠처럼 접어 묶은 모양)을 그대로 쓰지 않았다. 20px로 렌더해 보니 리본이나 X자처럼 읽혀 쪽지로 보이지 않았다. 문서 모양(포스트잇과 같은 문제), 반 접은 종이(책이나 지도처럼 보임), 덮개를 접어 넣은 쪽지(봉투형)를 같은 크기로 그려 비교했고, 20px과 18px에서 바로 "쪽지, 메시지"로 읽히는 봉투형을 골랐다. 대가: 이메일 아이콘과 비슷하다. 사이트에 이메일 기능 아이콘이 따로 없어 헷갈릴 곳은 없다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과.
+  - 아이콘을 headless Chrome으로 PNG 렌더해 20px(헤더 글자색 #64748b, 다크 #cbd5e1)과 18px 버튼(라이트 검정 바탕 흰 글자, 다크 밝은 바탕 검정 글자)에서 확인했다. 선 색이 글자색을 따라간다.
+  - next dev로 실제 헤더를 열어 보지는 않았다.
+- 남은 항목: 사용자 화면 확인, 머지.
+- 사용자 결정 필요: 봉투형이 괜찮은지(옛 띠 모양으로 돌리려면 NoteIcon의 path만 바꾸면 된다).
+
+## 승인 없는 배포 트리거 제거와 프론트 PR 검사 추가 (IKA-91, 2026-11-18)
+
+- 상태: 구현 완료, PR 생성. 머지는 사용자 확인 후.
+- 계획: 배포 워크플로를 main 전용으로 묶고, 프론트 PR 검사를 새로 두고, 백엔드 CI 중복과 MySQL 커넥션 고갈을 정리한다.
+- 완료
+  - `deploy-backend.yml`, `deploy-frontend.yml`: push 트리거에서 `deploy/aws-ec2`를 뺐다. 배포 job의 if 조건을 `github.ref == 'refs/heads/main'` 하나로 줄여 다른 브랜치에서 workflow_dispatch로 실행해도 배포 job은 건너뛴다.
+  - `frontend-ci.yml` 새로 추가: main 대상 PR에서 `frontend/**`, `shared/**`, 워크플로 파일 자체가 바뀌면 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build`. Node 20(frontend/Dockerfile의 node:20-alpine과 같음). 공개 환경변수는 더미값.
+  - `gradle.yml`: PR 전용으로 바꾸고 경로 필터(`backend/**`, `database/**`, `shared/**`, 마이그레이션 실행과 검증 스크립트, 워크플로 파일 자체)를 달았다.
+  - CI MySQL: 트리거 허용 단계에서 `SET GLOBAL max_connections = 500`도 실행한다(gradle.yml, deploy-backend.yml).
+  - 단계 이름 "Verify production migration 004 used market schema"를 실제 실행 내용대로 "Verify production migrations 005-006 schema"로 고쳤다.
+- 결정
+  - main push 중복 테스트는 gradle.yml에서 push 트리거를 빼서 정리했다. main push의 백엔드 검사는 deploy-backend.yml의 ci-backend가 맡는다. 다른 안: ci-backend를 지우고 gradle.yml 성공을 workflow_run으로 기다리기(배포 흐름이 두 워크플로로 갈라져 복잡해짐), 재사용 워크플로로 합치기(변경량이 큼). 부작용: 백엔드와 무관한 main push(문서만 등)는 아무 검사도 돌지 않는다. PR에서 이미 검사했으므로 받아들였다.
+  - 프론트 PR 검사는 deploy-frontend.yml에 pull_request를 붙이지 않고 따로 뒀다. deploy-frontend.yml은 concurrency 그룹 `ec2-production-deployment`를 써서 PR 검사가 운영 배포 대기열에 끼기 때문이다.
+  - MySQL 서비스 컨테이너는 GitHub Actions에서 command를 넘길 수 없어 설정 단계의 `SET GLOBAL`로 올렸다. 커넥션 풀 크기를 줄이는 안은 테스트 설정 변경이라 이번 범위에서 뺐다.
+  - 롤백과 stable 지정 job(deploy-frontend.yml의 rollback-frontend, mark-stable-*, manage-ecr-release.yml)은 동작을 바꾸지 않았다. 이 job들은 브랜치 조건이 없어 어느 브랜치에서든 실행할 수 있다.
+- 발견된 이슈
+  - 워크플로 파일 안의 브랜치 조건은 그 브랜치의 파일이 정한다. 다른 브랜치에서 조건을 지운 파일을 push하고 dispatch하면 우회된다. 진짜 막는 곳은 environment의 배포 브랜치 제한과 AWS OIDC 역할의 신뢰 조건이다. 프론트 배포 job은 environment가 없다.
+  - main 브랜치 보호가 꺼져 있다(API 404). 그래서 경로 필터 때문에 필수 검사가 안 떠서 PR이 막히는 문제는 지금은 없다.
+  - actionlint 1.7.7이 기존 워크플로의 `concurrency.queue` 키를 모른다고 표시한다(새 기능이라 도구가 아직 모름). 기존 SC2129 스타일 경고도 그대로다.
+- 사용자 결정 필요: 원격 `deploy/aws-ec2` 브랜치 삭제, main 브랜치 보호와 필수 검사 지정, `production-migration` environment 배포 브랜치 main 제한, 프론트 배포 job에 environment 추가 여부.
+- 검증: 워크플로 6개 python yaml 파싱 통과. actionlint(도커) 결과는 위 기존 경고만 남고 새 파일과 gradle.yml은 경고 없음. 프론트 로컬 `npm ci --legacy-peer-deps`, lint, build(더미 공개값) 통과. PR #149 CI: Java CI with Gradle 성공(약 4분), Frontend CI 성공(약 1분 22초), Labeler 성공. 브랜치 push로 배포 워크플로는 돌지 않았다.
+
 ## 관리자가 일반 화면에서 바로 가리기와 라이브톡 차단 (IKA-89, 2026-11-17)
 
 - 상태: 구현 완료, 로컬 커밋. 푸시와 PR은 사용자가 localhost에서 확인한 뒤.
@@ -3631,6 +3869,35 @@
 - 운영 페르소나 글감에서 이미 탄 것처럼 읽히는 소재를 지난 시즌 기억, 개장 준비 쪽으로 바꿨다(파일은 저장소 밖).
 - 검증: `spotlessCheck`, AI 멤버 테스트 통과(경계 날짜 테스트 추가).
 
+## 2026-11-12 IKA-85 출시 전 점검: 보안과 안정성 보강
+
+- 상태: PR 생성, 머지 대기 (머지는 사용자 확인 후)
+- 계획: 보안, 코드 품질, 기능과 운영, 디자인과 사용자 경험 네 영역을 점검하고, 출시 전에 꼭 고칠 코드 문제만 PR 하나로 고친다. AWS 설정은 사용자가 직접 한다.
+- 완료:
+  - 로그인 회원도 남의 익명 글, 댓글 비밀번호를 대입하면 IP 단위 제한(1초 3회, 1시간 30회)을 받는다. 예전에는 로그인하면 제한을 건너뛰었다.
+  - 비회원 반응 취소에도 IP 상한을 건다. 추천과 취소가 같은 IP 한도(1초 5회, 1시간 120회)를 나눠 쓴다. 추천에만 있는 한 글당 하루 4회 한도는 취소에 쓰지 않는다.
+  - 게시판 검색어는 2자 이상 50자 이하만 받고 IP마다 1분 30회로 묶는다. 화면은 한 글자를 입력하면 입력칸 아래에 "한 글자로는 검색할 수 없어요."를 띄우고 검색 버튼을 막는다(게시판, 통합 검색). 서버가 거절한 이유는 목록 자리에 보여 준다.
+  - 헤더 로고 옆에 "윈터스포츠 커뮤니티" 소개를 넣었다(1100px 넘는 화면). 홈 제목(h1)은 "윈터스포츠 커뮤니티 눈팅"으로 바꿨다. 홈 위 별도 한 줄, 아이콘형, 배지형, 개장 띠 합치기, 색 띠 안을 로컬에서 비교했고 사용자가 로고 옆을 골랐다.
+  - PC 홈 게시판 탭이 1100~1280px에서 잘리던 것을 탭 이름을 글 목록 분류 표시와 같은 짧은 이름으로 바꿔 한 줄에 들어가게 했다. 폰에서도 탭 8개가 한 줄에 다 보인다.
+  - 예약 작업 실패 로그에 예외를 남기고, 예약 작업 스레드를 3개에서 6개로, 이메일 인증 정리 작업 시간대를 Asia/Seoul로 맞췄다.
+  - 글 상세 메타데이터와 첫 화면이 같은 조회를 React cache로 한 번만 부른다.
+  - 슬로프 현황 위 여백, 라이브톡 입력칸 이름, 시즌권 가격표 JSON-LD 이스케이프를 고쳤다.
+- 결정:
+  - 검색 횟수는 공유 제한기(DB) 대신 메모리에 센다. 검색마다 DB에 쓰면 막으려는 부하가 늘어서다. 백엔드 한 대 전제다.
+  - 홈 글 목록이 불러온 뒤 라이브톡을 밀어내는 문제(운영 CLS 0.2)는 불러오는 동안 높이를 미리 잡는 방식으로 고쳐 봤지만, 로컬 비교에서 오히려 0.16 밀렸다. 되돌렸고, 첫 화면 글 목록을 서버에서 그리는 방식을 후속 작업으로 남긴다.
+  - 다른 사이트 사진 링크 막기, CSP 도입은 글쓰기 동작과 화면 전체에 영향이 커서 사용자 결정으로 남긴다.
+- 검증: 백엔드 `spotlessCheck test` 1276개 통과(실패 0, 건너뜀 1). 새 비밀번호 대입 테스트는 예전 코드에서 실패하는 것도 확인했다. 프론트 `lint`, `build` 통과. 로컬 미리보기에서 한 글자 검색 안내, 글 상세 제목과 설명, 슬로프 여백을 확인했다.
+- 남은 것: AWS 쪽(RDS 복구 시험, 디스크와 서버 상태 알림, 500 알림 운영 적용 확인, Nginx X-Real-IP 확인), 사용자 결정 두 건, 홈 첫 화면 서버 렌더링, 디자인 점검의 나머지 항목.
+- 추가 (2026-11-18):
+  - main 반영: origin/main을 merge했다(리베이스, force push 없음). 코드 충돌은 없었고 work.md만 IKA-86 항목과 겹쳐 두 항목을 모두 살렸다. IKA-82(익명게시판 밖 로그인 회원만 반응)는 이미 브랜치에 들어와 있어 비회원 반응 IP 상한과 함께 동작한다.
+  - 범위 추가: 카풀 검색(`GET /api/v1/carpools?keyword=`, 비로그인 가능)과 중고장터 검색(`GET /api/v1/market-listings?keyword=`, 로그인 필요)에도 게시판 검색과 같은 검색어 2~50자 검사와 IP당 1분 30회 제한을 건다. 검사는 `PostSearchRateLimiter.checkKeywordSearch`로 옮겨 세 곳이 같이 쓴다. 검색어가 없거나 공백뿐이면 세지 않는다.
+  - 화면: 카풀, 중고장터 검색칸도 한 글자를 입력하면 "한 글자로는 검색할 수 없어요."를 띄우고 검색 버튼을 막는다. 입력 최대 길이는 100에서 50으로 맞췄다. 서버가 400, 429로 거절하면 "불러오지 못했습니다" 대신 서버 문구를 목록 자리에 보여 준다. 예전에는 한 글자 검색 주소로 들어오면 카풀은 "불러오지 못했습니다, 다시 시도"가 떴다.
+- 결정 (2026-11-18):
+  - 에러 코드는 새로 만들지 않고 POST_010, POST_011을 그대로 쓴다. 화면은 서버 문구만 보여 주고 문구가 검색 일반이라 카풀, 중고장터에서도 맞다. 다른 안: SEARCH_001처럼 공통 코드를 새로 만들기(게시판 응답 코드가 바뀌어 기존 테스트와 화면 확인이 늘어난다).
+  - 세 검색은 IP당 한도 하나(1분 30회)를 나눠 쓴다. 막으려는 것은 DB 전체 부하라 검색마다 따로 30회를 주면 한 IP가 1분에 90번 LIKE를 돌릴 수 있다. 사람이 1분에 30번 넘게 검색할 일은 드물다. 부작용: 한 사람이 게시판과 장터를 번갈아 많이 검색하면 더 빨리 막힌다.
+  - 클래스 이름 `PostSearchRateLimiter`는 바꾸지 않았다. 이름을 바꾸면 이 PR의 다른 파일과 테스트까지 고쳐야 해서 주석에 세 검색이 같이 쓴다고 적었다.
+- 검증 (2026-11-18): main 반영 뒤 백엔드 `spotlessCheck test` 1289개 통과(실패 0, 건너뜀 1, 전용 스키마). 첫 실행에서 새 중고장터 테스트 2개가 401로 실패했다. 중고장터 목록은 로그인이 필요해서다. 테스트를 회원 요청으로 고친 뒤 전체를 다시 돌려 통과했다. 새 테스트: 검색어 길이 검사와 공백 검색어 미집계, 세 검색이 한도 하나를 나눠 쓰는지(제한기 단위), 카풀 검색어가 있을 때만 제한기를 부르는지, 중고장터 한 글자와 51자 검색 400 POST_010, 두 글자와 검색어 없는 목록 200. 프론트 `lint`, `build` 통과. 카풀, 중고장터 화면의 안내 문구는 브라우저로 직접 보지 못했다.
+
 ## 2026-11-12 IKA-86 캐릭터 테스트 모임 이름 받기
 - 상태: PR 생성, 사용자 머지 승인
 - 계획: 모임을 만들 때 모임 이름을 선택해서 받는다. 비우면 지금처럼 "닉네임의 모임".
@@ -3639,3 +3906,4 @@
   - 프론트: 모임 만들기 입력에 "모임 이름 (선택)" 칸. 칸 안 흐린 글씨로 "비우면 닉네임의 모임"을 보여 준다.
 - 결정: 생성과 참여가 같은 요청 DTO를 써서 groupName을 같은 DTO에 선택 칸으로 넣고 참여에서는 무시했다. 따로 DTO를 만들면 이름, 종목, 답변 검증을 두 번 써야 한다. DB name 컬럼(30자)이 이미 있어 마이그레이션은 없다.
 - 검증: 백엔드 `spotlessCheck test` 1274개 통과(실패 0, 건너뜀 1), 새 테스트 6개. 프론트 `lint`, `build` 통과. 가짜 API 로컬 화면에서 이모지 입력 시 안내, 공백 정리된 이름이 서버로 가는 것 확인.
+
