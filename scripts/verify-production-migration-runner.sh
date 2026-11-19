@@ -61,7 +61,7 @@ cleanup() {
 trap cleanup EXIT
 
 mysql_test --execute="DROP TABLE IF EXISTS ${PROBE_TABLE}"
-mysql_test --execute="CREATE TABLE ${PROBE_TABLE} (id BIGINT NOT NULL PRIMARY KEY, email VARCHAR(100) NOT NULL)"
+mysql_test --execute="CREATE TABLE ${PROBE_TABLE} (id BIGINT NOT NULL PRIMARY KEY, email VARCHAR(100) NOT NULL UNIQUE)"
 
 # 1. 다른 트랜잭션이 테이블을 잡고 있으면 ALTER는 오래 기다리지 않고 실패해야 한다.
 #    기다리는 동안 그 테이블의 다른 조회와 쓰기도 모두 막히기 때문이다.
@@ -91,5 +91,29 @@ grep -q 'ERROR 1205' <<< "$lock_output" || fail "Lock wait failure was not repor
 # 잠금이 풀리면 같은 파일이 정상 적용되고 이력에 남는다.
 run_runner "$WORK_DIRECTORY/lock" >/dev/null
 [[ "$(applied_count 990_migration_runner_probe_lock)" == "1" ]] || fail "Migration was not recorded after the lock was released."
+
+# 2. 실패한 SQL의 오류 원문은 공개 Actions 로그에 나가지 않고 서버의 운영자 전용 파일에만 남아야 한다.
+#    중복 키 오류 원문에는 실제 데이터 값(여기서는 이메일)이 들어간다.
+mkdir "$WORK_DIRECTORY/redact"
+cat > "$WORK_DIRECTORY/redact/991_migration_runner_probe_redact.sql" <<SQL
+INSERT INTO ${PROBE_TABLE} (id, email) VALUES (1, 'leak-check@example.test');
+INSERT INTO ${PROBE_TABLE} (id, email) VALUES (2, 'leak-check@example.test');
+SQL
+log_directory="$WORK_DIRECTORY/logs"
+if redact_output="$(SNOWTHING_MIGRATION_PRINT_FULL_ERROR=false SNOWTHING_MIGRATION_LOG_DIR="$log_directory" \
+  run_runner "$WORK_DIRECTORY/redact" 2>&1)"; then
+  fail "A failing migration exited successfully."
+fi
+grep -q 'MySQL failed during 991_migration_runner_probe_redact: ERROR 1062 (23000) at line 2' <<< "$redact_output" \
+  || fail "Failure summary is missing: ${redact_output}"
+if grep -q 'leak-check' <<< "$redact_output"; then
+  fail "Raw MySQL error with data values reached the console."
+fi
+saved_logs=("$log_directory"/migration-*.log)
+[[ -f "${saved_logs[0]}" ]] || fail "Full error was not saved for operators."
+grep -q "leak-check@example.test" "${saved_logs[0]}" || fail "Saved error does not contain the original message."
+[[ "$(stat -c '%a' "$log_directory")" == "700" ]] || fail "Error log directory is not operator-only."
+[[ "$(stat -c '%a' "${saved_logs[0]}")" == "600" ]] || fail "Error log file is not operator-only."
+[[ "$(applied_count 991_migration_runner_probe_redact)" == "0" ]] || fail "A failed migration was recorded as applied."
 
 echo "Migration runner safety checks passed."

@@ -63,6 +63,8 @@ jobs:
       SNOWTHING_TEST_DB_URL: jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&useAffectedRows=true
       SNOWTHING_TEST_DB_USERNAME: snowuser
       SNOWTHING_TEST_DB_PASSWORD: snowthing_pass_2026!
+      # 시험 DB라 마이그레이션 실패 원문을 로그에 그대로 보여 준다. 운영 배포(SSM)에서는 요약만 보인다.
+      SNOWTHING_MIGRATION_PRINT_FULL_ERROR: 'true'
 
     defaults:
       run:

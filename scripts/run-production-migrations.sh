@@ -103,12 +103,46 @@ if [[ "$DB_AUTH_MODE" == "iam" ]]; then
   MYSQL_OPTIONS+=(--enable-cleartext-plugin)
 fi
 
+# 이 스크립트의 출력은 SSM을 거쳐 공개 저장소의 GitHub Actions 로그에 그대로 찍힌다.
+# MySQL 오류 원문에는 중복 키 값(이메일 등), 내부 호스트와 계정 이름이 들어갈 수 있어
+# 화면에는 오류 번호와 줄 번호만 내보내고, 원문은 서버의 운영자 전용 디렉터리에 남긴다.
+# 시험 DB를 쓰는 CI는 SNOWTHING_MIGRATION_PRINT_FULL_ERROR=true로 원문을 바로 본다.
+MIGRATION_LOG_DIRECTORY="${SNOWTHING_MIGRATION_LOG_DIR:-/var/log/snowthing-deploy}"
+MIGRATION_STEP="connection check"
+
+report_mysql_failure() {
+  local error_file="$1" exit_status="$2" summary saved_path
+  summary="$(grep -m1 -oE '^ERROR [0-9]+ \([0-9A-Z]+\)( at line [0-9]+)?' "$error_file" || true)"
+  summary="${summary:-mysql exit ${exit_status}}"
+
+  if [[ "${SNOWTHING_MIGRATION_PRINT_FULL_ERROR:-false}" == "true" ]]; then
+    cat "$error_file" >&2
+  fi
+
+  saved_path="${MIGRATION_LOG_DIRECTORY}/migration-$(date -u +'%Y%m%dT%H%M%SZ')-$$.log"
+  if install -d -m 0700 "$MIGRATION_LOG_DIRECTORY" 2>/dev/null \
+    && install -m 0600 "$error_file" "$saved_path" 2>/dev/null; then
+    echo "MySQL failed during ${MIGRATION_STEP}: ${summary}. Full error saved on the host: ${saved_path}" >&2
+  else
+    echo "MySQL failed during ${MIGRATION_STEP}: ${summary}. Full error was not saved (log directory not writable)." >&2
+  fi
+}
+
 run_mysql() {
-  MYSQL_PWD="$DB_PASSWORD" mysql "${MYSQL_OPTIONS[@]}" "$@"
+  local error_file exit_status=0
+  error_file="$(mktemp)"
+  chmod 0600 "$error_file"
+  MYSQL_PWD="$DB_PASSWORD" mysql "${MYSQL_OPTIONS[@]}" "$@" 2>"$error_file" || exit_status=$?
+  if (( exit_status != 0 )); then
+    report_mysql_failure "$error_file" "$exit_status"
+  fi
+  rm -f "$error_file"
+  return "$exit_status"
 }
 
 run_mysql --execute="SELECT 1" >/dev/null
 echo "Migration database connection verified."
+MIGRATION_STEP="migration history setup"
 
 run_mysql <<'SQL'
 CREATE TABLE IF NOT EXISTS `schema_migration` (
@@ -134,6 +168,7 @@ for migration_file in "${migration_files[@]}"; do
     exit 1
   fi
   migration_checksum="$(sha256sum "$migration_file" | awk '{print $1}')"
+  MIGRATION_STEP="${migration_version}"
   applied_checksum="$(
     run_mysql --execute="SELECT checksum FROM schema_migration WHERE version = '${migration_version}'" \
       | tr -d '\r'
