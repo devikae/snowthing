@@ -2,7 +2,7 @@
 -- Snowthing 데이터베이스 스키마 (MySQL 8.0)
 --
 -- 이 파일은 손으로 고치지 않는다. database/production 마이그레이션 체인을 적용한 스키마에서 뽑은 결과다.
--- 기준 마이그레이션: 055_migration_slope_data (001_initial_schema, 002_reference_data 다음 003~055 적용. 054, 055는 이름이 다른 파일이 두 개씩 있고 모두 적용)
+-- 기준 마이그레이션: 058_migration_market_guest_access (001_initial_schema, 002_reference_data 다음 003~055, 057, 058 적용. 056은 아직 main에 없다)
 --
 -- 생성 방법
 --   1. 빈 스키마에 001_initial_schema.sql, 002_reference_data.sql을 넣는다.
