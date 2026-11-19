@@ -1,0 +1,13 @@
+{
+  "_source": "https://en.nozawaski.com/cms/wp-content/uploads/2026/11/Gerende2027-EN-web.pdf",
+  "_unresolved": {
+    "YAMABIKO - A": "no OSM line; OSM has no Yamabiko Quad (lift 3) area runs, only D and E",
+    "YAMABIKO - B": "no OSM line; OSM has no Yamabiko Quad (lift 3) area runs, only D and E",
+    "YAMABIKO - C": "no OSM line; OSM has no Yamabiko Quad (lift 3) area runs, only D and E",
+    "YUNOMINE": "no OSM line between Uenotaira and Bunabayashi/Mizunashi; unnamed 503280481 sits lower and does not match the map position",
+    "UTOPIA - B": "no separate OSM line; the lower end of the Challenge way 503404973 runs down to the Utopia pair base where Utopia B is drawn",
+    "NAGASAKA - LINK": "no OSM line along the base from Hikage to the Nagasaka triple base"
+  },
+  "CHALLENGE - 39°KABE": [503404972],
+  "HIKAGE - B": [503280485]
+}
