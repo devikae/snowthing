@@ -7,6 +7,7 @@
 화면 위가 정상, 아래가 베이스다. build_slope_data.py와 같은 회전을 쓴다.
 """
 
+import html
 import json
 import math
 import sys
@@ -57,7 +58,8 @@ def main(code, out):
     for way_id, kind, tags, pts in items:
         mid = pts[len(pts) // 2]
         name = tags.get("name") or ""
-        label = f"{way_id} {name}" if kind != "lift" else f"[lift] {name}"
+        # OSM 이름은 외부 데이터라 HTML에 넣기 전에 이스케이프한다.
+        label = html.escape(f"{way_id} {name}" if kind != "lift" else f"[lift] {name}")
         color = "#6b7280" if kind == "lift" else ("#7c3aed" if kind == "area" else "#b91c1c")
         svg.append(
             f'<text x="{mid[0] - x0 + 4 * unit:.1f}" y="{mid[1] - y0:.1f}" font-size="{10 * unit:.1f}" fill="{color}" '

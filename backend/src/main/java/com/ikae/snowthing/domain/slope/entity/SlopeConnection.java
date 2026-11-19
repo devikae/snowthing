@@ -20,7 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 슬로프 사이 관계 (054). 자동 계산 초안을 검수해 확정한 값만 저장한다. 방향이 있어 양쪽 줄을 따로 둔다. */
+/** 슬로프 사이 관계 (054). 코스 맵 선으로 자동 계산한 값이다. 방향이 있어 양쪽 줄을 따로 둔다. */
 @Entity
 @Table(
         name = "slope_connection",

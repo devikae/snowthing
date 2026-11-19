@@ -23,6 +23,8 @@ def load(path):
 
 
 def main(src, out, step=100, crop=None):
+    if step <= 0:
+        raise SystemExit("격자 간격은 1 이상이어야 한다")
     image = load(src)
     if src.lower().endswith(".pdf"):
         # PDF는 매번 같은 해상도로 바꿔 쓰도록 변환본을 옆에 저장한다. 좌표는 이 변환본 기준이다.

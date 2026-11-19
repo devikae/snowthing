@@ -35,6 +35,8 @@ NEAR_M = 90
 CLUSTER_RADIUS_M = {"NISEKO_HIRAFU": 2500}
 DEFAULT_CLUSTER_RADIUS_M = 6000
 MAP_MARGIN_M = 300
+# 이름에 있으면 본 코스와 다른 코스로 보는 말(괄호 안에 붙는 경우가 많다).
+SEPARATE_COURSE_WORDS = ("ショートカット", "short cut", "shortcut", "迂回", "bypass", "숏컷", "우회")
 # 직접 그린 선의 ID. OSM ID(양수)와 면 가운데 선(음수 OSM ID)과 겹치지 않게 큰 음수를 쓴다.
 DRAWN_ID_BASE = 10**12
 
@@ -162,7 +164,22 @@ def point_line_dist(p, lines):
     return min(seg_dist(p, line[i], line[i + 1]) for line in lines for i in range(len(line) - 1))
 
 
+def segments_cross(a, b, c, d):
+    """선분 ab와 cd가 만나는지. 꼭짓점이 멀어도 가운데에서 교차하는 경우를 잡는다."""
+
+    def orient(p, q, r):
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+    return orient(a, b, c) * orient(a, b, d) < 0 and orient(c, d, a) * orient(c, d, b) < 0
+
+
 def lines_dist(a_lines, b_lines):
+    for la in a_lines:
+        for lb in b_lines:
+            for i in range(len(la) - 1):
+                for j in range(len(lb) - 1):
+                    if segments_cross(la[i], la[i + 1], lb[j], lb[j + 1]):
+                        return 0.0
     best = min(point_line_dist(p, b_lines) for line in a_lines for p in line)
     return min(best, min(point_line_dist(p, a_lines) for line in b_lines for p in line))
 
@@ -241,8 +258,26 @@ def centerline(poly):
             if a[1] == b[1] or (a[1] - y) * (b[1] - y) > 0:
                 continue
             xs.append(a[0] + (y - a[1]) * (b[0] - a[0]) / (b[1] - a[1]))
-        if xs:
-            points.append(((min(xs) + max(xs)) / 2, y))
+        # 교차점을 짝지어 면 안쪽 구간을 만든다. U자 모양처럼 구간이 여러 개면 직전 점과 이어지는 구간만 쓴다.
+        xs.sort()
+        intervals = [(xs[i], xs[i + 1]) for i in range(0, len(xs) - 1, 2)]
+        if not intervals:
+            continue
+        if points:
+            prev = points[-1][0]
+            inside = [iv for iv in intervals if iv[0] <= prev <= iv[1]]
+            if len(inside) != 1:
+                if len(intervals) == 1:
+                    inside = intervals
+                else:
+                    # 어느 구간으로 이어지는지 알 수 없으면 거기서 멈춘다. 틈을 가로질러 잇지 않는다.
+                    break
+            lo, hi = inside[0]
+        elif len(intervals) == 1:
+            lo, hi = intervals[0]
+        else:
+            continue
+        points.append(((lo + hi) / 2, y))
     return points if len(points) >= 2 else None
 
 
@@ -287,6 +322,8 @@ def fit_anchors(anchors):
         m = [row[:] + [atv[i]] for i, row in enumerate(ata)]
         for col in range(3):
             pivot = max(range(col, 3), key=lambda r: abs(m[r][col]))
+            if abs(m[pivot][col]) < 1e-9:
+                raise ValueError("_anchors가 한 직선 위에 있다. 직선 밖의 기준점을 하나 이상 넣는다")
             m[col], m[pivot] = m[pivot], m[col]
             for r in range(3):
                 if r != col:
@@ -304,6 +341,8 @@ def build_map(code, slopes):
     if not path.exists():
         return None, {}
     raw = [e for e in json.loads(path.read_text(encoding="utf-8"))["elements"] if e.get("geometry")]
+    if not raw:
+        return None, {}
     is_piste = lambda e: e["tags"].get("piste:type") == "downhill"  # noqa: E731
     # 면(area)으로 그린 슬로프는 테두리가 두꺼운 띠처럼 보이므로 그대로 그리지 않고 가운데 선으로 바꿔 쓴다.
     areas = [e for e in raw if is_piste(e) and is_area(e)]
@@ -361,7 +400,10 @@ def build_map(code, slopes):
     matched: dict[str, list[int]] = {}
     for slope in slopes:
         if slope["name"] in manual:
-            matched[slope["name"]] = [w for w in manual[slope["name"]] if w in shifted]
+            missing = [w for w in manual[slope["name"]] if w not in shifted]
+            if missing:
+                raise ValueError(f"{code} {slope['name']}: OSM 데이터에 없는 way ID {missing}")
+            matched[slope["name"]] = list(manual[slope["name"]])
             continue
         keys = {
             norm(slope["name"]),
@@ -369,8 +411,17 @@ def build_map(code, slopes):
             norm(ALIASES.get((code, slope["name"]))),
         } - {""}
         # 선으로 그린 슬로프를 먼저 쓰고, 없을 때만 면 슬로프의 가운데 선을 쓴다.
-        ways = [w for w, names in line_names.items() if names & keys] or [
-            w for w, names in area_names.items() if names & keys
+        official_raw = f"{slope['name']} {slope.get('nameLocal') or ''}".lower()
+
+        def same_course(tags):
+            # 괄호를 지우면 "林間コース（ショートカット）"가 본 코스 "林間コース"와 같아진다.
+            # 숏컷, 우회처럼 다른 코스를 뜻하는 말이 OSM 이름에만 있으면 다른 코스로 본다.
+            osm_raw = " ".join(str(v) for k, v in tags.items() if k.startswith("name")).lower()
+            return not any(q in osm_raw and q not in official_raw for q in SEPARATE_COURSE_WORDS)
+
+        tags_of = {e["id"]: e["tags"] for e in pistes} | {i: item["tags"] for i, item in synthetic.items()}
+        ways = [w for w, names in line_names.items() if names & keys and same_course(tags_of[w])] or [
+            w for w, names in area_names.items() if names & keys and same_course(tags_of[w])
         ]
         if ways:
             matched[slope["name"]] = ways
@@ -402,6 +453,9 @@ def build_map(code, slopes):
             if (kept := [w for w in ways if math.dist(mids[w], center) <= radius])
         }
         kept_points = [p for ways in matched.values() for w in ways for p in shifted[w]]
+        if not kept_points:
+            print(f"{code}: 연결된 선이 모두 중심에서 멀어 맵을 만들지 않는다")
+            return None, {}
         box = (
             min(p[0] for p in kept_points) - MAP_MARGIN_M,
             min(p[1] for p in kept_points) - MAP_MARGIN_M,
@@ -457,7 +511,8 @@ def sql_str(value):
 
 def main():
     specs, _ = load_specs()
-    MAP_DIR.mkdir(parents=True, exist_ok=True)
+    # 모든 리조트를 다 만든 뒤에만 파일을 쓴다. 중간에 실패하면 기존 맵과 SQL을 그대로 둔다.
+    staged_maps: dict[str, str] = {}
     slope_rows = []
     connection_rows = []
     report = []
@@ -465,9 +520,8 @@ def main():
         map_json, match = build_map(code, slopes)
         matched, slope_lines = match if match else ({}, {})
         if map_json:
-            out = MAP_DIR / f"{code.lower().replace('_', '-')}.json"
-            out.write_text(
-                json.dumps(map_json, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+            staged_maps[f"{code.lower().replace('_', '-')}.json"] = json.dumps(
+                map_json, ensure_ascii=False, separators=(",", ":")
             )
         for order, slope in enumerate(slopes, start=1):
             lift = None if code in LIFT_NOT_STATED else slope.get("liftName")
@@ -514,7 +568,7 @@ def main():
         "-- scripts/slope-data/build_slope_data.py로 만든다. 직접 고치지 말고 스크립트나 specs를 고친 뒤 다시 만든다.",
         "-- 제원: 리조트 공식 사이트(출처는 source_url). 공식 값이 없으면 NULL이다.",
         "-- osm_way_ids: OpenStreetMap 선 ID. 코스 맵 파일은 frontend/public/slope-maps/에 있다.",
-        "-- slope_connection: OSM 선으로 자동 계산한 뒤 검수한 관계. 한 쌍은 양쪽 줄이 서로 맞물린다.",
+        "-- slope_connection: OSM 선과 그린 선으로 자동 계산한 관계. 한 쌍은 양쪽 줄이 서로 맞물린다. 검수는 후속 작업이다.",
         "-- 일본 리조트는 054에서 넣은 대로 비활성으로 둔다. 슬로프 제원 화면은 해외 리조트를 활성 여부와 상관없이 보여 준다.",
         "-- 실행 순서: 054 다음. 앱보다 먼저 적용해도 된다(새 표에 줄만 넣고 기존 표는 바꾸지 않는다).",
         "-- 여러 번 실행해도 안전하다 (INSERT IGNORE).",
@@ -542,6 +596,14 @@ def main():
             " JOIN `resort` r ON r.`resort_id` = a.`resort_id`"
             f" WHERE r.`code` = {sql_str(code)} AND a.`name` = {sql_str(a)} AND b.`name` = {sql_str(b)};"
         )
+    MAP_DIR.mkdir(parents=True, exist_ok=True)
+    for name, body in staged_maps.items():
+        (MAP_DIR / name).write_text(body, encoding="utf-8")
+    # 이번에 맵을 만들지 않은 리조트의 예전 파일은 지운다. 화면이 낡은 선을 그리지 않게 한다.
+    for stale in MAP_DIR.glob("*.json"):
+        if stale.name not in staged_maps:
+            stale.unlink()
+            print(f"낡은 맵 파일 삭제: {stale.name}")
     SQL_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     for code, total, matched_count, has_map in report:

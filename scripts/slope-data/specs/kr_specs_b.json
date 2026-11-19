@@ -4,84 +4,84 @@
     "name": "1-1 슬로프",
     "officialDifficulty": "초급",
     "lengthM": 300,
-    "avgGradient": 5,
+    "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
     "liftName": "LEMON, SUNKID",
     "sourceUrl": "https://www.jisanresort.co.kr/w/ski/slopes/map.asp",
-    "note": "공식 표는 단일 '경사도 5°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 42m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준"
+    "note": "공식 표는 단일 '경사도 5°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 42m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준 공식 '경사도 °' 값 5°는 평균인지 최대인지 표기가 없어 비교에 쓰지 않는다."
   },
   {
     "resortCode": "JISAN",
     "name": "1 슬로프",
     "officialDifficulty": "초급",
     "lengthM": 300,
-    "avgGradient": 7,
+    "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
     "liftName": "LEMON",
     "sourceUrl": "https://www.jisanresort.co.kr/w/ski/slopes/map.asp",
-    "note": "공식 표는 단일 '경사도 7°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 44m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준"
+    "note": "공식 표는 단일 '경사도 7°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 44m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준 공식 '경사도 °' 값 7°는 평균인지 최대인지 표기가 없어 비교에 쓰지 않는다."
   },
   {
     "resortCode": "JISAN",
     "name": "2 슬로프",
     "officialDifficulty": "중급",
     "lengthM": 700,
-    "avgGradient": 9,
+    "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
     "liftName": "ORANGE, NEW ORANGE",
     "sourceUrl": "https://www.jisanresort.co.kr/w/ski/slopes/map.asp",
-    "note": "공식 표는 단일 '경사도 9°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 145m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준"
+    "note": "공식 표는 단일 '경사도 9°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 145m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준 공식 '경사도 °' 값 9°는 평균인지 최대인지 표기가 없어 비교에 쓰지 않는다."
   },
   {
     "resortCode": "JISAN",
     "name": "3 슬로프",
     "officialDifficulty": "중급, 상급",
     "lengthM": 720,
-    "avgGradient": 9,
+    "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
     "liftName": "ORANGE, NEW ORANGE",
     "sourceUrl": "https://www.jisanresort.co.kr/w/ski/slopes/map.asp",
-    "note": "공식 표는 단일 '경사도 9°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 145m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준"
+    "note": "공식 표는 단일 '경사도 9°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 145m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준 공식 '경사도 °' 값 9°는 평균인지 최대인지 표기가 없어 비교에 쓰지 않는다."
   },
   {
     "resortCode": "JISAN",
     "name": "5 슬로프",
     "officialDifficulty": "상급, 최상급",
     "lengthM": 870,
-    "avgGradient": 21,
+    "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
     "liftName": "BLUE, SILVER",
     "sourceUrl": "https://www.jisanresort.co.kr/w/ski/slopes/map.asp",
-    "note": "공식 표는 단일 '경사도 21°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 209m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준"
+    "note": "공식 표는 단일 '경사도 21°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 209m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준 공식 '경사도 °' 값 21°는 평균인지 최대인지 표기가 없어 비교에 쓰지 않는다."
   },
   {
     "resortCode": "JISAN",
     "name": "6 슬로프",
     "officialDifficulty": "최상급",
     "lengthM": 900,
-    "avgGradient": 24,
+    "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
     "liftName": "BLUE, SILVER",
     "sourceUrl": "https://www.jisanresort.co.kr/w/ski/slopes/map.asp",
-    "note": "공식 표는 단일 '경사도 24°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 209m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준"
+    "note": "공식 표는 단일 '경사도 24°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 209m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준 공식 '경사도 °' 값 24°는 평균인지 최대인지 표기가 없어 비교에 쓰지 않는다."
   },
   {
     "resortCode": "JISAN",
     "name": "7 슬로프",
     "officialDifficulty": "중상급",
     "lengthM": 1200,
-    "avgGradient": 13,
+    "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
     "liftName": "BLUE, SILVER",
     "sourceUrl": "https://www.jisanresort.co.kr/w/ski/slopes/map.asp",
-    "note": "공식 표는 단일 '경사도 13°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 177m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준"
+    "note": "공식 표는 단일 '경사도 13°'만 표기(평균/최대 구분 없음)해 avgGradient에 넣음. 표고차 177m. 난이도는 '구간별 난이도' 행. 리프트는 리프트 표 '이용 슬로프' 행 기준 공식 '경사도 °' 값 13°는 평균인지 최대인지 표기가 없어 비교에 쓰지 않는다."
   },
   {
     "resortCode": "ELYSIAN",

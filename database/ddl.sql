@@ -945,7 +945,7 @@ CREATE TABLE `slope_connection` (
   CONSTRAINT `fk_slope_connection_slope` FOREIGN KEY (`slope_id`) REFERENCES `slope` (`slope_id`) ON DELETE CASCADE,
   CONSTRAINT `chk_slope_connection_relation` CHECK ((`relation` in (_utf8mb4'MERGE',_utf8mb4'BRANCH',_utf8mb4'CONTINUE',_utf8mb4'STARTS_FROM',_utf8mb4'SHARE_START',_utf8mb4'SHARE_END',_utf8mb4'CROSS',_utf8mb4'PARALLEL'))),
   CONSTRAINT `chk_slope_connection_self` CHECK ((`slope_id` <> `related_slope_id`))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='슬로프 사이 관계 (검수한 값)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='슬로프 사이 관계 (코스 맵 선으로 계산)';
 CREATE TABLE `system_config` (
   `config_key` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `config_value` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,

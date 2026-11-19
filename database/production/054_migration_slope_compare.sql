@@ -7,7 +7,7 @@
 --    운영 현황판(046 resort_slope_status)은 운영 여부 스냅샷이고, 이 테이블은 바뀌지 않는 제원이다.
 -- 4) slope_connection: 슬로프 사이 관계(합류, 갈라짐, 이어짐, 갈라져 시작, 출발점 공유, 도착점 공유, 교차, 나란히).
 --    방향이 있어 양쪽 줄을 따로 두고, 한 쌍의 두 줄은 서로 맞물리게 넣는다(MERGE와 CONTINUE, BRANCH와 STARTS_FROM).
---    OSM 선으로 자동 계산한 초안을 검수해 확정한 값만 넣는다.
+--    OSM 선과 공식 맵을 보고 그린 선으로 자동 계산한 값이다. 사람의 검수는 후속 작업이다.
 -- 실행 순서: 이 마이그레이션을 적용한 뒤 새 애플리케이션을 배포한다(ddl-auto validate).
 --   country는 기본값이 있어 이전 애플리케이션과 호환된다. 일본 리조트는 is_active=FALSE로 넣어
 --   country를 모르는 이전 애플리케이션의 활성 목록(프로필, 카풀 등)에 섞이지 않는다.
@@ -84,4 +84,4 @@ CREATE TABLE IF NOT EXISTS `slope_connection` (
     CONSTRAINT `fk_slope_connection_related` FOREIGN KEY (`related_slope_id`) REFERENCES `slope` (`slope_id`) ON DELETE CASCADE,
     CONSTRAINT `chk_slope_connection_relation` CHECK (`relation` IN ('MERGE', 'BRANCH', 'CONTINUE', 'STARTS_FROM', 'SHARE_START', 'SHARE_END', 'CROSS', 'PARALLEL')),
     CONSTRAINT `chk_slope_connection_self` CHECK (`slope_id` <> `related_slope_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='슬로프 사이 관계 (검수한 값)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='슬로프 사이 관계 (코스 맵 선으로 계산)';

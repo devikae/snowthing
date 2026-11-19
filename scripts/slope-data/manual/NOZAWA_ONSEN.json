@@ -8,6 +8,17 @@
     "UTOPIA - B": "no separate OSM line; the lower end of the Challenge way 503404973 runs down to the Utopia pair base where Utopia B is drawn",
     "NAGASAKA - LINK": "no OSM line along the base from Hikage to the Nagasaka triple base"
   },
-  "CHALLENGE - 39°KABE": [503404972],
-  "HIKAGE - B": [503280485]
+  "CHALLENGE - 39°KABE": [
+    503404972
+  ],
+  "HIKAGE - B": [
+    503280485
+  ],
+  "KANDAHAR - EAST": [
+    503404969
+  ],
+  "KANDAHAR - WEST": [
+    503404967
+  ],
+  "_kandahar_note": "OSM name:en이 일본어 이름과 반대(503404967은 西인데 name:en East). 일본어 공식 이름 기준으로 짝지음"
 }
