@@ -122,7 +122,7 @@ public class AiMemberQueryRepository {
 
     public List<String> findResortNames() {
         return jdbc.queryForList(
-                "SELECT name FROM resort ORDER BY resort_id LIMIT 30",
+                "SELECT name FROM resort WHERE is_active = TRUE AND country = 'KR' ORDER BY resort_id LIMIT 30",
                 new MapSqlParameterSource(),
                 String.class);
     }

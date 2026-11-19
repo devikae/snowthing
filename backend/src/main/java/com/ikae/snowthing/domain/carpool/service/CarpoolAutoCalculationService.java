@@ -167,7 +167,7 @@ public class CarpoolAutoCalculationService {
     private Resort findResort(Long resortId) {
         return resortRepository
                 .findById(resortId)
-                .filter(Resort::isActive)
+                .filter(Resort::isServiceTarget)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CARPOOL_VALUE));
     }
 

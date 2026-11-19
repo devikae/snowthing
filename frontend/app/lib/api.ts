@@ -73,6 +73,9 @@ export const API_ENDPOINTS = {
   slopeStatus: {
     board: `${API_V1_URL}/slope-status`,
   },
+  slopeSpecs: {
+    resorts: `${API_V1_URL}/slopes/resorts`,
+  },
   market: {
     categories: `${API_V1_URL}/market/categories`,
     preview: `${API_V1_URL}/market-listings/preview`,

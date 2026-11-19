@@ -2,7 +2,7 @@
 -- Snowthing 데이터베이스 스키마 (MySQL 8.0)
 --
 -- 이 파일은 손으로 고치지 않는다. database/production 마이그레이션 체인을 적용한 스키마에서 뽑은 결과다.
--- 기준 마이그레이션: 055_migration_market_guest_access (001_initial_schema, 002_reference_data 다음 003~055 적용)
+-- 기준 마이그레이션: 055_migration_slope_data (001_initial_schema, 002_reference_data 다음 003~055 적용. 054, 055는 이름이 다른 파일이 두 개씩 있고 모두 적용)
 --
 -- 생성 방법
 --   1. 빈 스키마에 001_initial_schema.sql, 002_reference_data.sql을 넣는다.
@@ -718,6 +718,7 @@ CREATE TABLE `resort` (
   `region` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '소재 지역',
   `display_order` int NOT NULL DEFAULT '0',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `country` varchar(2) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'KR' COMMENT '리조트가 있는 나라 (KR, JP). 커뮤니티 기능은 KR만 쓴다',
   `route_latitude` decimal(10,7) DEFAULT NULL,
   `route_longitude` decimal(10,7) DEFAULT NULL,
   PRIMARY KEY (`resort_id`),
@@ -906,6 +907,47 @@ CREATE TABLE `season_visit` (
   CONSTRAINT `fk_season_visit_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_season_visit_resort` FOREIGN KEY (`resort_id`) REFERENCES `resort` (`resort_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='시즌 방문 기록';
+CREATE TABLE `slope` (
+  `slope_id` bigint NOT NULL AUTO_INCREMENT,
+  `resort_id` bigint NOT NULL COMMENT '리조트 ID',
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '화면에 보이는 이름. 공식 한국어 이름이 있으면 그 이름',
+  `name_local` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '현지 공식 이름 (일본 리조트의 일본어, 영어 이름)',
+  `official_difficulty` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '리조트가 표기한 난이도 그대로',
+  `difficulty` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '색 표시용 난이도 묶음 (BEGINNER, INTERMEDIATE, ADVANCED, EXPERT)',
+  `length_m` int DEFAULT NULL COMMENT '공식 길이 (m). 미공개면 NULL',
+  `avg_gradient` decimal(4,1) DEFAULT NULL COMMENT '공식 평균 경사 (도). 미공개면 NULL',
+  `max_gradient` decimal(4,1) DEFAULT NULL COMMENT '공식 최대 경사 (도). 미공개면 NULL',
+  `width_m` int DEFAULT NULL COMMENT '공식 폭 (m). 미공개면 NULL',
+  `lift_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '이 슬로프로 올라가는 리프트 이름',
+  `osm_way_ids` varchar(300) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '코스 맵 선과 연결하는 OSM way ID 목록 (쉼표 구분). 선이 없으면 NULL',
+  `source_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '제원 출처 공식 페이지',
+  `checked_at` date NOT NULL COMMENT '출처를 확인한 날짜 (KST)',
+  `display_order` int NOT NULL COMMENT '리조트 안 표시 순서',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`slope_id`),
+  UNIQUE KEY `uk_slope_resort_name` (`resort_id`,`name`),
+  KEY `idx_slope_resort_order` (`resort_id`,`display_order`,`slope_id`),
+  CONSTRAINT `fk_slope_resort` FOREIGN KEY (`resort_id`) REFERENCES `resort` (`resort_id`),
+  CONSTRAINT `chk_slope_difficulty` CHECK ((`difficulty` in (_utf8mb4'BEGINNER',_utf8mb4'INTERMEDIATE',_utf8mb4'ADVANCED',_utf8mb4'EXPERT'))),
+  CONSTRAINT `chk_slope_gradient` CHECK ((((`avg_gradient` is null) or (`avg_gradient` between 0 and 60)) and ((`max_gradient` is null) or (`max_gradient` between 0 and 60))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='슬로프 공식 제원';
+CREATE TABLE `slope_connection` (
+  `slope_connection_id` bigint NOT NULL AUTO_INCREMENT,
+  `slope_id` bigint NOT NULL COMMENT '기준 슬로프 ID',
+  `related_slope_id` bigint NOT NULL COMMENT '관계가 있는 슬로프 ID',
+  `relation` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '기준 슬로프에서 본 관계 (MERGE, BRANCH, CONTINUE, STARTS_FROM, SHARE_START, SHARE_END, CROSS, PARALLEL)',
+  `distance_m` int DEFAULT NULL COMMENT 'PARALLEL일 때 두 코스 사이 최소 거리 (m)',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`slope_connection_id`),
+  UNIQUE KEY `uk_slope_connection_pair` (`slope_id`,`related_slope_id`),
+  KEY `idx_slope_connection_related` (`related_slope_id`),
+  CONSTRAINT `fk_slope_connection_related` FOREIGN KEY (`related_slope_id`) REFERENCES `slope` (`slope_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_slope_connection_slope` FOREIGN KEY (`slope_id`) REFERENCES `slope` (`slope_id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_slope_connection_relation` CHECK ((`relation` in (_utf8mb4'MERGE',_utf8mb4'BRANCH',_utf8mb4'CONTINUE',_utf8mb4'STARTS_FROM',_utf8mb4'SHARE_START',_utf8mb4'SHARE_END',_utf8mb4'CROSS',_utf8mb4'PARALLEL'))),
+  CONSTRAINT `chk_slope_connection_self` CHECK ((`slope_id` <> `related_slope_id`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='슬로프 사이 관계 (코스 맵 선으로 계산)';
 CREATE TABLE `system_config` (
   `config_key` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `config_value` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
