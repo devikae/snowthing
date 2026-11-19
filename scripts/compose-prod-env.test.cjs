@@ -77,3 +77,8 @@ test('코드 기본값 목록에는 실제로 쓰는 변수만 남긴다', () =>
 test('운영에서 켜는 슬로프 현황 리조트 목록은 컨테이너로 전달된다', () => {
   assert.ok(backendComposeVariables().has('SNOWTHING_SLOPE_STATUS_ENABLED_RESORTS'));
 });
+
+test('로컬 개발 DB 포트는 이 PC(127.0.0.1)에서만 연다', () => {
+  const ports = [...read('docker-compose.yml').matchAll(/^\s+- "([^"]*:3306)"$/gm)].map((match) => match[1]);
+  assert.deepEqual(ports, ['127.0.0.1:3306:3306']);
+});
