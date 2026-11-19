@@ -43,6 +43,28 @@
   - 프론트 `npm run lint`, `npm run build` 통과.
   - 화면: 헤드리스 Chrome으로 신규, 기존, 소셜 내부 주소 계정을 데스크톱과 모바일에서 확인. 다크 모드는 미확인.
 
+## 승인 없는 배포 트리거 제거와 프론트 PR 검사 추가 (IKA-91, 2026-11-18)
+
+- 상태: 구현 완료, PR 생성. 머지는 사용자 확인 후.
+- 계획: 배포 워크플로를 main 전용으로 묶고, 프론트 PR 검사를 새로 두고, 백엔드 CI 중복과 MySQL 커넥션 고갈을 정리한다.
+- 완료
+  - `deploy-backend.yml`, `deploy-frontend.yml`: push 트리거에서 `deploy/aws-ec2`를 뺐다. 배포 job의 if 조건을 `github.ref == 'refs/heads/main'` 하나로 줄여 다른 브랜치에서 workflow_dispatch로 실행해도 배포 job은 건너뛴다.
+  - `frontend-ci.yml` 새로 추가: main 대상 PR에서 `frontend/**`, `shared/**`, 워크플로 파일 자체가 바뀌면 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build`. Node 20(frontend/Dockerfile의 node:20-alpine과 같음). 공개 환경변수는 더미값.
+  - `gradle.yml`: PR 전용으로 바꾸고 경로 필터(`backend/**`, `database/**`, `shared/**`, 마이그레이션 실행과 검증 스크립트, 워크플로 파일 자체)를 달았다.
+  - CI MySQL: 트리거 허용 단계에서 `SET GLOBAL max_connections = 500`도 실행한다(gradle.yml, deploy-backend.yml).
+  - 단계 이름 "Verify production migration 004 used market schema"를 실제 실행 내용대로 "Verify production migrations 005-006 schema"로 고쳤다.
+- 결정
+  - main push 중복 테스트는 gradle.yml에서 push 트리거를 빼서 정리했다. main push의 백엔드 검사는 deploy-backend.yml의 ci-backend가 맡는다. 다른 안: ci-backend를 지우고 gradle.yml 성공을 workflow_run으로 기다리기(배포 흐름이 두 워크플로로 갈라져 복잡해짐), 재사용 워크플로로 합치기(변경량이 큼). 부작용: 백엔드와 무관한 main push(문서만 등)는 아무 검사도 돌지 않는다. PR에서 이미 검사했으므로 받아들였다.
+  - 프론트 PR 검사는 deploy-frontend.yml에 pull_request를 붙이지 않고 따로 뒀다. deploy-frontend.yml은 concurrency 그룹 `ec2-production-deployment`를 써서 PR 검사가 운영 배포 대기열에 끼기 때문이다.
+  - MySQL 서비스 컨테이너는 GitHub Actions에서 command를 넘길 수 없어 설정 단계의 `SET GLOBAL`로 올렸다. 커넥션 풀 크기를 줄이는 안은 테스트 설정 변경이라 이번 범위에서 뺐다.
+  - 롤백과 stable 지정 job(deploy-frontend.yml의 rollback-frontend, mark-stable-*, manage-ecr-release.yml)은 동작을 바꾸지 않았다. 이 job들은 브랜치 조건이 없어 어느 브랜치에서든 실행할 수 있다.
+- 발견된 이슈
+  - 워크플로 파일 안의 브랜치 조건은 그 브랜치의 파일이 정한다. 다른 브랜치에서 조건을 지운 파일을 push하고 dispatch하면 우회된다. 진짜 막는 곳은 environment의 배포 브랜치 제한과 AWS OIDC 역할의 신뢰 조건이다. 프론트 배포 job은 environment가 없다.
+  - main 브랜치 보호가 꺼져 있다(API 404). 그래서 경로 필터 때문에 필수 검사가 안 떠서 PR이 막히는 문제는 지금은 없다.
+  - actionlint 1.7.7이 기존 워크플로의 `concurrency.queue` 키를 모른다고 표시한다(새 기능이라 도구가 아직 모름). 기존 SC2129 스타일 경고도 그대로다.
+- 사용자 결정 필요: 원격 `deploy/aws-ec2` 브랜치 삭제, main 브랜치 보호와 필수 검사 지정, `production-migration` environment 배포 브랜치 main 제한, 프론트 배포 job에 environment 추가 여부.
+- 검증: 워크플로 6개 python yaml 파싱 통과. actionlint(도커) 결과는 위 기존 경고만 남고 새 파일과 gradle.yml은 경고 없음. 프론트 로컬 `npm ci --legacy-peer-deps`, lint, build(더미 공개값) 통과. PR #149 CI: Java CI with Gradle 성공(약 4분), Frontend CI 성공(약 1분 22초), Labeler 성공. 브랜치 push로 배포 워크플로는 돌지 않았다.
+
 ## 관리자가 일반 화면에서 바로 가리기와 라이브톡 차단 (IKA-89, 2026-11-17)
 
 - 상태: 구현 완료, 로컬 커밋. 푸시와 PR은 사용자가 localhost에서 확인한 뒤.
