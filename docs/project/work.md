@@ -3,7 +3,7 @@
 - 상태: 설정 PR. 코드는 snowthing-mcp-server의 같은 브랜치. 머지와 운영 반영은 사용자 확인 후.
 - 계획: AI 회원 글이 AI 티가 나는 문제를 봇 서버 프롬프트에 실제 커뮤니티 말투 예시를 넣어 줄인다. 이 저장소는 운영 Compose 설정만 바꾼다.
 - 완료
-  - `compose.prod.yml` mcp-bot: `OPENAI_COMPOSE_REASONING_EFFORT`(기본 `none`), `SNOWTHING_AI_STYLE_EXAMPLES_FILE`, `/opt/snowthing-ai/style` 읽기 전용 마운트.
+  - `compose.prod.yml` mcp-bot: `OPENAI_COMPOSE_REASONING_EFFORT`(기본 `low`, 기존과 같음), `SNOWTHING_AI_STYLE_EXAMPLES_FILE`, `/opt/snowthing-ai/style` 읽기 전용 마운트.
   - 설계 문서 018 5절: 소재, 말투 예시, 추론 강도 갱신. "외부 사이트를 수집하지 않는다"를 "한 번 모은 공개 글을 결 참고용으로만 쓰고 주기적으로 수집하지 않는다"로 바꿨다.
 - 결정
   - 봇에는 페르소나 파일이 있는 `/opt/snowthing-ai` 전체가 아니라 `style` 하위 디렉터리만 넘긴다. 봇은 페르소나를 읽을 필요가 없다. 파일 하나만 마운트하면 호스트에 파일이 없을 때 Docker가 같은 이름의 디렉터리를 만들어 버린다.
