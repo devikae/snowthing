@@ -2,7 +2,7 @@
 -- Snowthing 데이터베이스 스키마 (MySQL 8.0)
 --
 -- 이 파일은 손으로 고치지 않는다. database/production 마이그레이션 체인을 적용한 스키마에서 뽑은 결과다.
--- 기준 마이그레이션: 051_migration_post_has_image_backfill (001_initial_schema, 002_reference_data 다음 003~051 적용)
+-- 기준 마이그레이션: 053_migration_dm_mail_notification (001_initial_schema, 002_reference_data 다음 003~053 적용)
 --
 -- 생성 방법
 --   1. 빈 스키마에 001_initial_schema.sql, 002_reference_data.sql을 넣는다.
@@ -349,6 +349,32 @@ CREATE TABLE `direct_message` (
   CONSTRAINT `fk_direct_message_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `member` (`member_id`),
   CONSTRAINT `fk_direct_message_sender` FOREIGN KEY (`sender_id`) REFERENCES `member` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원 간 1:1 쪽지';
+CREATE TABLE `dm_mail_outbox` (
+  `event_id` bigint NOT NULL AUTO_INCREMENT,
+  `direct_message_id` bigint NOT NULL COMMENT '알릴 쪽지',
+  `recipient_member_id` bigint NOT NULL COMMENT '받는 회원',
+  `event_type` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'DM_RECEIVED',
+  `channel` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'EMAIL',
+  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `attempts` int NOT NULL,
+  `due_at` datetime(6) NOT NULL COMMENT '이 시각부터 선점 대상',
+  `lease_until` datetime(6) DEFAULT NULL COMMENT 'PROCESSING 소유 만료 시각',
+  `claim_token` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '선점 토큰(UUID)',
+  `provider_message_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'SES MessageId',
+  `skip_reason` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_error_code` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`event_id`),
+  UNIQUE KEY `uk_dm_mail_outbox_intent` (`direct_message_id`,`recipient_member_id`,`event_type`,`channel`),
+  KEY `idx_dm_mail_outbox_due` (`status`,`due_at`,`event_id`),
+  KEY `idx_dm_mail_outbox_recipient` (`recipient_member_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='쪽지 도착 메일 발송 요청';
+CREATE TABLE `dm_mail_recipient_state` (
+  `recipient_member_id` bigint NOT NULL,
+  `last_attempt_at` datetime(6) DEFAULT NULL COMMENT '마지막 SES 호출 시작 시각',
+  PRIMARY KEY (`recipient_member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='쪽지 메일 받는 사람별 발송 상태';
 CREATE TABLE `email_verification` (
   `verification_id` bigint NOT NULL AUTO_INCREMENT,
   `public_id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -490,6 +516,13 @@ CREATE TABLE `member_marketing_consent_history` (
   KEY `idx_marketing_consent_member_id` (`member_id`,`member_marketing_consent_history_id`),
   CONSTRAINT `fk_marketing_consent_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `member_notification_setting` (
+  `member_id` bigint NOT NULL,
+  `dm_email_enabled` tinyint(1) NOT NULL COMMENT '쪽지 도착 메일 알림',
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`member_id`),
+  CONSTRAINT `fk_member_notification_setting_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원 알림 설정';
 CREATE TABLE `member_registration_consent` (
   `member_id` bigint NOT NULL,
   `privacy_version` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -835,6 +868,19 @@ CREATE TABLE `search_reindex_checkpoint` (
   PRIMARY KEY (`job_name`),
   CONSTRAINT `chk_search_reindex_status` CHECK ((`status` in (_utf8mb4'RUNNING',_utf8mb4'DONE')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='근거 검색 재인덱싱 진행 위치';
+CREATE TABLE `season_opening` (
+  `season_opening_id` bigint NOT NULL AUTO_INCREMENT,
+  `resort_code` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '리조트 코드 (resort.code, 슬로프캠 코드와 같다)',
+  `resort_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '개장 배너에 보이는 짧은 이름',
+  `opening_date` date DEFAULT NULL COMMENT '개장일 (KST 달력 날짜). NULL이면 D-DAY를 보이지 않는다',
+  `confirmed` tinyint(1) NOT NULL DEFAULT '0' COMMENT '리조트가 공식 발표한 날짜인지. 아니면 화면에 예상으로 보인다',
+  `show_on_banner` tinyint(1) NOT NULL DEFAULT '0' COMMENT '메인 개장 배너에 넣을지',
+  `banner_order` int NOT NULL COMMENT '메인 개장 배너 순서 (작을수록 앞)',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`season_opening_id`),
+  UNIQUE KEY `uk_season_opening_resort_code` (`resort_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='리조트 시즌 개장일';
 CREATE TABLE `season_share` (
   `season_share_id` bigint NOT NULL AUTO_INCREMENT,
   `member_id` bigint NOT NULL,

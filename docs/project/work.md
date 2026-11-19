@@ -25,7 +25,8 @@
   - 백엔드 전체 `test`(전용 스키마 `snowthing_test_ika92`, 빈 스키마에서 시작): 1274건, 실패 0, skip 1.
   - `spotlessApply`, `spotlessCheck` 통과(worktree라 임시 init script로 ratchetFrom을 끄고 전체 파일 대상).
   - CI 결과는 PR에서 확인한다.
-- 남은 항목: PR 리뷰, 머지(사용자 확인 후). PR #148(052)과 IKA-88(053)이 머지되면 ddl.sql을 같은 방법으로 다시 뽑아야 한다.
+- 2026-11-20 머지 전 갱신: #148(052)과 #156(053)이 먼저 머지되어 ddl.sql을 같은 방법으로 다시 뽑았다(기준 053). 이전 파일과 비교해 추가된 것은 season_opening, member_notification_setting, dm_mail_outbox, dm_mail_recipient_state 네 표뿐이고 지워진 것은 없다. 빈 스키마에 넣어 오류 없이 표 59개, 마이그레이션 체인 스키마와 같은 수임을 확인했다.
+- 남은 항목: 없음(사용자가 머지를 위임함).
 - 사용자 결정 필요: 없음.
 
 ## 쪽지 도착 메일 알림을 Outbox로 발송 (IKA-88, 2026-11-17)
