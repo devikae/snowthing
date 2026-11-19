@@ -2,7 +2,7 @@
 -- Snowthing 데이터베이스 스키마 (MySQL 8.0)
 --
 -- 이 파일은 손으로 고치지 않는다. database/production 마이그레이션 체인을 적용한 스키마에서 뽑은 결과다.
--- 기준 마이그레이션: 053_migration_dm_mail_notification (001_initial_schema, 002_reference_data 다음 003~053 적용)
+-- 기준 마이그레이션: 055_migration_market_guest_access (001_initial_schema, 002_reference_data 다음 003~055 적용)
 --
 -- 생성 방법
 --   1. 빈 스키마에 001_initial_schema.sql, 002_reference_data.sql을 넣는다.
@@ -309,7 +309,8 @@ CREATE TABLE `content_report` (
   `content_report_id` bigint NOT NULL AUTO_INCREMENT,
   `target_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'POST, COMMENT',
   `target_id` bigint NOT NULL COMMENT 'post_id 또는 comment_id. 삭제되어도 이력이 남도록 FK를 두지 않는다',
-  `reporter_id` bigint NOT NULL,
+  `reporter_id` bigint DEFAULT NULL COMMENT '신고한 회원. 비회원 신고는 NULL',
+  `reporter_ip` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '비회원 신고자의 IP. 회원 신고는 NULL',
   `reason` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `detail` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'PENDING, RESOLVED',
@@ -319,6 +320,7 @@ CREATE TABLE `content_report` (
   UNIQUE KEY `uk_content_report_target_reporter` (`target_type`,`target_id`,`reporter_id`),
   KEY `idx_content_report_status_id` (`status`,`content_report_id`),
   KEY `fk_content_report_reporter` (`reporter_id`),
+  KEY `idx_content_report_target_ip` (`target_type`,`target_id`,`reporter_ip`),
   CONSTRAINT `fk_content_report_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `member` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `crew` (
