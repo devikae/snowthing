@@ -102,12 +102,18 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-6-luna}
       - OPENAI_REASONING_EFFORT=${OPENAI_REASONING_EFFORT:-low}
+      # AI 회원 말투(IKA-99). 예시 원문은 저장소 밖 호스트 디렉터리에 두고, 파일이 없으면 예시 없이 글을 쓴다.
+      - OPENAI_COMPOSE_REASONING_EFFORT=${OPENAI_COMPOSE_REASONING_EFFORT:-none}
+      - SNOWTHING_AI_STYLE_EXAMPLES_FILE=/etc/snowthing-ai-style/style-examples.json
       - SNOWTHING_API_BASE_URL=http://backend:8080
       - SNOWTHING_BOT_INTERNAL_SECRET=${SNOWTHING_BOT_INTERNAL_SECRET:-}
       - SNOWTHING_BOT_HOST=0.0.0.0
       - SNOWTHING_BOT_PORT=3100
       - SNOWTHING_BOT_TIMEOUT_MS=${SNOWTHING_BOT_TIMEOUT_MS:-15000}
       - TZ=Asia/Seoul
+    # 페르소나 파일이 있는 /opt/snowthing-ai 전체가 아니라 예시 디렉터리만 넘긴다.
+    volumes:
+      - /opt/snowthing-ai/style:/etc/snowthing-ai-style:ro
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777

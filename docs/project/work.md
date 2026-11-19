@@ -1,3 +1,18 @@
+## AI 회원 말투 예시 운영 설정 (IKA-99, 2026-11-20)
+
+- 상태: 설정 PR. 코드는 snowthing-mcp-server의 같은 브랜치. 머지와 운영 반영은 사용자 확인 후.
+- 계획: AI 회원 글이 AI 티가 나는 문제를 봇 서버 프롬프트에 실제 커뮤니티 말투 예시를 넣어 줄인다. 이 저장소는 운영 Compose 설정만 바꾼다.
+- 완료
+  - `compose.prod.yml` mcp-bot: `OPENAI_COMPOSE_REASONING_EFFORT`(기본 `none`), `SNOWTHING_AI_STYLE_EXAMPLES_FILE`, `/opt/snowthing-ai/style` 읽기 전용 마운트.
+  - 설계 문서 018 5절: 소재, 말투 예시, 추론 강도 갱신. "외부 사이트를 수집하지 않는다"를 "한 번 모은 공개 글을 결 참고용으로만 쓰고 주기적으로 수집하지 않는다"로 바꿨다.
+- 결정
+  - 봇에는 페르소나 파일이 있는 `/opt/snowthing-ai` 전체가 아니라 `style` 하위 디렉터리만 넘긴다. 봇은 페르소나를 읽을 필요가 없다. 파일 하나만 마운트하면 호스트에 파일이 없을 때 Docker가 같은 이름의 디렉터리를 만들어 버린다.
+  - 백엔드 코드는 바꾸지 않았다. 형식과 길이는 IKA-35부터 이미 실제 분포에 가깝게 보내고 있다.
+- 검증: 필수 변수를 임시값으로 채워 `docker compose -f compose.prod.yml config`로 설정이 해석되는지 확인했다.
+- 남은 항목
+  - 운영 호스트에 `/opt/snowthing-ai/style/style-examples.json` 업로드(컨테이너 사용자가 읽을 수 있게 권한 조정).
+  - 실제 모델로 바꾸기 전과 후 비교. 로컬에 OpenAI 키가 없다.
+
 ## 엔티티와 마이그레이션 스키마 일치 검사와 ddl.sql 갱신 (IKA-92, 2026-11-18)
 
 - 상태: 구현과 로컬 검증 완료, PR 생성. 머지는 사용자 확인 후.
