@@ -71,7 +71,7 @@ public class ResortReportService {
         Resort resort =
                 resortRepository
                         .findById(request.getResortId())
-                        .filter(Resort::isActive)
+                        .filter(Resort::isServiceTarget)
                         .orElseThrow(() -> new CustomException(ErrorCode.RESORT_NOT_FOUND));
 
         ResortReport report =

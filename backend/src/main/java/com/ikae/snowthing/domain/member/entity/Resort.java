@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -35,6 +37,12 @@ public class Resort {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
+    /** 054 마이그레이션과 같은 기본값. ddl-auto update로 컬럼이 생길 때 기존 행이 빈 값이 되지 않게 한다. */
+    @Enumerated(EnumType.STRING)
+    @ColumnDefault("'KR'")
+    @Column(name = "country", nullable = false, length = 2)
+    private ResortCountry country;
+
     @Column(name = "route_latitude", precision = 10, scale = 7)
     private BigDecimal routeLatitude;
 
@@ -48,6 +56,7 @@ public class Resort {
             String code,
             int displayOrder,
             boolean active,
+            ResortCountry country,
             BigDecimal routeLatitude,
             BigDecimal routeLongitude) {
         this.name = name;
@@ -55,8 +64,14 @@ public class Resort {
         this.code = code;
         this.displayOrder = displayOrder;
         this.active = active;
+        this.country = country == null ? ResortCountry.KR : country;
         this.routeLatitude = routeLatitude;
         this.routeLongitude = routeLongitude;
+    }
+
+    /** 커뮤니티 기능에서 고를 수 있는 리조트인지. 해외 리조트는 슬로프 제원 비교에만 쓴다. */
+    public boolean isServiceTarget() {
+        return active && country == ResortCountry.KR;
     }
 
     public void updateMetadata(String code, int displayOrder, boolean active) {

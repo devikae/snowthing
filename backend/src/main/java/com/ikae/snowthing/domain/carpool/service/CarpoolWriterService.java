@@ -61,7 +61,7 @@ public class CarpoolWriterService {
         Resort resort =
                 resortRepository
                         .findById(request.destinationResortId())
-                        .filter(Resort::isActive)
+                        .filter(Resort::isServiceTarget)
                         .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CARPOOL_VALUE));
 
         Post post =
@@ -133,7 +133,7 @@ public class CarpoolWriterService {
         Resort resort =
                 resortRepository
                         .findById(request.destinationResortId())
-                        .filter(Resort::isActive)
+                        .filter(Resort::isServiceTarget)
                         .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CARPOOL_VALUE));
 
         post.update(request.title(), request.content(), post.getCategory());
