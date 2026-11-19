@@ -29,6 +29,9 @@ logging:
     org.hibernate.orm.jdbc.bind: trace
 
 snowthing:
+  # 로그인 유지 쿠키(30일). 키를 비우면 이메일 인증 비밀값에 용도 접두사를 붙여 쓴다. 운영도 새 비밀값 없이 동작한다.
+  remember-me:
+    key: ${SNOWTHING_REMEMBER_ME_KEY:}
   email:
     verification:
       secret: ${SNOWTHING_EMAIL_VERIFICATION_SECRET:local-development-email-verification-secret}

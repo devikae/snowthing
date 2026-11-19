@@ -48,6 +48,7 @@ import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
 import com.ikae.snowthing.global.security.RecentAuthentication;
+import com.ikae.snowthing.global.security.SnowthingRememberMeServices;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
 class OAuth2AuthControllerTest {
@@ -60,6 +61,7 @@ class OAuth2AuthControllerTest {
     private OAuthAuthorizationIpRateLimiter authorizationIpRateLimiter;
     private SocialLinkReauthService socialLinkReauthService;
     private ClientIpResolver clientIpResolver;
+    private SnowthingRememberMeServices rememberMeServices;
     private OAuth2AuthController controller;
 
     @BeforeEach
@@ -72,6 +74,7 @@ class OAuth2AuthControllerTest {
         authorizationIpRateLimiter = mock(OAuthAuthorizationIpRateLimiter.class);
         socialLinkReauthService = mock(SocialLinkReauthService.class);
         clientIpResolver = mock(ClientIpResolver.class);
+        rememberMeServices = mock(SnowthingRememberMeServices.class);
         given(clientIpResolver.resolve(any())).willReturn("203.0.113.10");
 
         OAuth2Properties oauth2Properties =
@@ -90,6 +93,7 @@ class OAuth2AuthControllerTest {
                         authorizationIpRateLimiter,
                         socialLinkReauthService,
                         clientIpResolver,
+                        rememberMeServices,
                         fixedClock);
     }
 
@@ -354,6 +358,7 @@ class OAuth2AuthControllerTest {
         assertThat(session.getAttribute(OAuth2AuthController.SESSION_PENDING_SIGNUP_ATTRIBUTE))
                 .isNull();
         verify(securityContextRepository).saveContext(any(SecurityContext.class), any(), any());
+        verify(rememberMeServices).loginSuccess(any(), any(), any());
     }
 
     @Test
@@ -417,6 +422,7 @@ class OAuth2AuthControllerTest {
         assertThat(response.getHeaders().getLocation().getQuery())
                 .isEqualTo("error=ACCOUNT_SUSPENDED");
         verify(memberSessionRegistry).invalidateAll("member-1");
+        verify(rememberMeServices, never()).loginSuccess(any(), any(), any());
     }
 
     @Test

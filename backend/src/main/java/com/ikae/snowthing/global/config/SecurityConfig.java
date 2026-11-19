@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -31,6 +32,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ikae.snowthing.domain.apitoken.entity.ApiTokenScope;
 import com.ikae.snowthing.domain.apitoken.service.ApiTokenService;
+import com.ikae.snowthing.domain.auth.service.AuthService;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.config.websocket.ChatConnectionRegistry;
@@ -42,6 +44,8 @@ import com.ikae.snowthing.global.security.BotDelegationAuthenticationFilter;
 import com.ikae.snowthing.global.security.BotDelegationTokenService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.security.RememberMeSessionRegistrationFilter;
+import com.ikae.snowthing.global.security.SnowthingRememberMeServices;
 
 import lombok.RequiredArgsConstructor;
 
@@ -133,7 +137,9 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(
             HttpSecurity http,
             BotDelegationAuthenticationFilter botDelegationAuthenticationFilter,
-            ApiTokenAuthenticationFilter apiTokenAuthenticationFilter)
+            ApiTokenAuthenticationFilter apiTokenAuthenticationFilter,
+            SnowthingRememberMeServices rememberMeServices,
+            AuthService authService)
             throws Exception {
         http.addFilterBefore(
                         apiTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -157,6 +163,16 @@ public class SecurityConfig {
                                                                         .isAllowed(request)))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
+                // 세션이 없고 로그인 유지 쿠키만 있으면 쿠키로 다시 인증해 새 세션을 만든다.
+                // 로그아웃 처리기도 함께 붙어 이 기기의 토큰을 지우고 쿠키를 없앤다.
+                .rememberMe(
+                        rememberMe ->
+                                rememberMe
+                                        .rememberMeServices(rememberMeServices)
+                                        .key(rememberMeServices.getKey()))
+                .addFilterAfter(
+                        new RememberMeSessionRegistrationFilter(memberSessionRegistry, authService),
+                        RememberMeAuthenticationFilter.class)
                 .securityContext(
                         securityContext ->
                                 securityContext.securityContextRepository(

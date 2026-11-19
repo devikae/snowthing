@@ -1,3 +1,29 @@
+## 로그인 상태 30일 유지 (remember-me, 2026-11-20, 티켓 없음)
+
+- 상태: 구현 완료, 로컬 커밋. 푸시, PR, 운영 마이그레이션(056), 배포는 사용자 확인 후.
+- 배경: 세션이 서버 메모리(Tomcat)에 있어 60분 쉬거나 배포하면 로그아웃된다. JWT나 Redis 없이 MySQL에 로그인 유지 토큰을 둔다.
+- 완료
+  - DB: `056_migration_persistent_logins.sql`. `persistent_logins`(series PK, member_public_id, token_hash, previous_token_hash, last_used_at, created_at). 테스트용 `test-schema.sql`에도 추가.
+  - `SnowthingRememberMeServices`: Spring Security `AbstractRememberMeServices` 확장. 쿠키 `SNOWTHING_REMEMBER_ME`, 30일, HttpOnly, SameSite=Lax, Secure는 `snowthing.web.secure-cookies`(운영 true). 자동 로그인 때마다 token을 바꾸고 마지막 사용 시각부터 30일을 다시 센다.
+  - `SecurityConfig`에 `.rememberMe(...)`를 붙였다. 세션 없이 쿠키만 오면 다시 인증하고 세션 고정 방어(changeSessionId)를 거쳐 새 세션을 만든다. 로그아웃 처리기도 함께 붙는다.
+  - `RememberMeSessionRegistrationFilter`: 쿠키로 만든 세션을 `MemberSessionRegistry`에 올린다. 관리자 정지, 비밀번호 변경, 탈퇴 때 이 세션도 끊긴다.
+  - 로그인 API와 소셜 로그인(콜백, 소셜 가입 완료)에서 `loginSuccess`를 불러 쿠키를 내려준다. 체크박스 없이 항상 유지한다.
+  - `MemberSessionRegistry.invalidateAll`이 회원의 토큰도 모두 지운다. 정지, 관리자 지정과 해제, 비밀번호 변경과 재설정, 탈퇴, 로그인 중 정지 감지가 모두 이 메서드를 거친다.
+  - 매일 04:40(KST) 30일 넘게 쓰지 않은 토큰을 지운다.
+- 결정
+  - Spring 기본 `PersistentTokenBasedRememberMeServices`와 `JdbcTokenRepositoryImpl`을 그대로 쓰지 않았다. 기본 구현은 첫 요청이 token을 바꾸면 같은 쿠키로 동시에 들어온 나머지 요청을 도난으로 보고 회원의 토큰을 모두 지운다. 프론트는 화면 하나에서 API를 여러 개 동시에 부르므로 배포 직후 로그아웃이 생긴다. 바로 전 token을 바꾼 뒤 60초 동안 받아 주고, 바꾸기는 `WHERE token_hash = 읽은 값` 조건부 UPDATE로 한 요청만 하게 했다. 다른 안: token을 바꾸지 않기(도난 감지를 잃음).
+  - token 원문 대신 SHA-256 해시를 저장한다. 표나 백업이 새도 쿠키를 만들 수 없다.
+  - 회원을 이메일이 아니라 공개 ID로 묶는다. 탈퇴하면 이메일이 익명값으로 바뀌어 이메일로는 토큰을 지울 수 없다.
+  - 로그아웃은 이 기기의 토큰만 지운다. 다른 기기의 로그인 유지는 남는다. Spring 기본은 회원의 모든 토큰을 지운다. 강제 로그아웃 성격(정지, 비밀번호 변경 등)은 모두 지운다.
+  - 도난 의심(오래된 token)일 때 `CookieTheftException` 대신 일반 실패로 끝낸다. 기본 예외는 필터 밖으로 던져져 500이 된다. 회원 토큰은 모두 지우고 요청은 비로그인으로 이어간다.
+  - 쿠키로 만든 세션은 "최근 로그인"(`RecentAuthentication`)으로 표시하지 않는다. 민감한 작업의 재인증 요구는 그대로다.
+  - 키: `SNOWTHING_REMEMBER_ME_KEY`. 비우면 `SNOWTHING_EMAIL_VERIFICATION_SECRET`에 용도 접두사를 붙여 쓴다(멱등 키와 같은 방식). 이 키는 쿠키를 서명하지 않고 자동 로그인 인증 객체 확인에만 쓰여 운영에 새 비밀값이 꼭 필요하지 않다. `compose.prod.yml`에는 선택값으로 넣었다.
+  - 마이그레이션 번호: 054, 055는 병행 작업이 예약했고 052, 053은 브랜치 사이에 이미 두 번씩 쓰여 056으로 했다. `database/ddl.sql`은 초기 스키마만 담고 이후 마이그레이션을 반영하지 않아 고치지 않았다.
+- 남은 항목: 로그인 화면 "로그인 유지" 체크박스(지금은 항상 유지). 기존 `MemberLoginRequest.rememberMe`(세션 30일)는 프론트가 보내지 않아 그대로 두었다.
+- 검증
+  - 새 `RememberMeIntegrationTest` 8개: 로그인 쿠키 속성과 저장, 쿠키만으로 인증과 token 교체, 60초 안의 이전 쿠키 허용, 오래된 이전 쿠키면 토큰 전부 삭제, 30일 만료, 로그아웃 삭제, 정지 회원 거부, `invalidateAll` 삭제. 통과.
+  - `MemberSessionRegistryTest`, `OAuth2AuthControllerTest`, `AuthControllerTest` 통과.
+
 ## 관리자가 일반 화면에서 바로 가리기와 라이브톡 차단 (IKA-89, 2026-11-17)
 
 - 상태: 구현 완료, 로컬 커밋. 푸시와 PR은 사용자가 localhost에서 확인한 뒤.
