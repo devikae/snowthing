@@ -1,6 +1,5 @@
 package com.ikae.snowthing.domain.dmmail.repository;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -22,6 +21,9 @@ import com.ikae.snowthing.domain.dmmail.entity.DmMailStatus;
  *
  * <p>결과 기록 메서드는 모두 조건부 갱신(CAS)이다. {@code status = 'PROCESSING' AND claim_token = ?}이 맞는 행만 바꾸고, 바뀐
  * 행 수를 돌려준다. 선점이 만료돼 다른 판단이 내려진 뒤 늦게 돌아온 워커는 0을 받는다. 이 검사는 이미 시작한 SES 호출을 취소하지 못한다.
+ *
+ * <p>DATETIME은 {@code getObject(..., LocalDateTime.class)}로 읽는다. {@code getTimestamp}는 JVM 기본 시간대로
+ * 바꿔 읽어서 JVM 시간대가 KST가 아니면(CI는 UTC) 저장한 값과 9시간 어긋난다.
  */
 @Repository
 public class DmMailOutboxRepository {
@@ -110,9 +112,9 @@ public class DmMailOutboxRepository {
                         "SELECT last_attempt_at FROM dm_mail_recipient_state"
                                 + " WHERE recipient_member_id = ? FOR UPDATE SKIP LOCKED",
                         (rs, rowNum) -> {
-                            Timestamp last = rs.getTimestamp("last_attempt_at");
                             return new RecipientLock(
-                                    recipientId, last == null ? null : last.toLocalDateTime());
+                                    recipientId,
+                                    rs.getObject("last_attempt_at", LocalDateTime.class));
                         },
                         recipientId);
         return rows.stream().findFirst();
@@ -208,16 +210,14 @@ public class DmMailOutboxRepository {
                         + " WHERE o.event_id IN (:ids) ORDER BY o.event_id",
                 Map.of("ids", eventIds),
                 (rs, rowNum) -> {
-                    Timestamp readAt = rs.getTimestamp("read_at");
-                    Timestamp verifiedAt = rs.getTimestamp("receiver_verified_at");
                     return new MailTarget(
                             rs.getLong("event_id"),
-                            rs.getTimestamp("created_at").toLocalDateTime(),
-                            readAt != null,
+                            rs.getObject("created_at", LocalDateTime.class),
+                            rs.getObject("read_at", LocalDateTime.class) != null,
                             rs.getString("sender_nickname"),
                             rs.getString("sender_status"),
                             rs.getString("receiver_email"),
-                            verifiedAt == null ? null : verifiedAt.toLocalDateTime(),
+                            rs.getObject("receiver_verified_at", LocalDateTime.class),
                             rs.getString("receiver_status"),
                             rs.getBoolean("dm_email_enabled"));
                 });
