@@ -13,6 +13,8 @@
 -- 시각은 KST DATETIME(6)이다.
 -- 새 테이블만 만들어 이전 앱 이미지에는 영향이 없다. 앱 배포(ddl-auto validate) 전에 적용한다. 두 번 실행해도 안전하다.
 -- 설계: docs/conception/032_dm_email_notification/01_design.md
+-- 접속 클라이언트의 기본 문자셋과 관계없이 한글 COMMENT가 깨지지 않게 한다.
+SET NAMES utf8mb4;
 
 CREATE TABLE IF NOT EXISTS member_notification_setting (
     member_id BIGINT NOT NULL PRIMARY KEY,
