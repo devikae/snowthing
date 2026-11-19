@@ -1,3 +1,30 @@
+## 관리자가 일반 화면에서 바로 가리기와 라이브톡 차단 (IKA-89, 2026-11-17)
+
+- 상태: 구현 완료, 로컬 커밋. 푸시와 PR은 사용자가 localhost에서 확인한 뒤.
+- 완료
+  - 글 상세: 관리자에게 글의 "가리기"와 "가리기 해제" 버튼을 수정, 삭제 버튼 옆에 둔다. 기존 `PATCH /api/v1/admin/posts/{publicId}/blind`(`{"blinded": true|false}`)를 쓴다. 정상(NORMAL)과 가림(BLOCKED) 글에서만 보이고, 신고 임시조치 글은 안내 문구만 보인다. 가린 글은 관리자에게만 "가린 글입니다" 안내가 보인다.
+  - 댓글과 답글: 관리자에게 "가리기"와 "가리기 해제" 버튼. 기존 `PATCH /api/v1/admin/comments/{commentId}/blind`를 쓴다. 바꾼 뒤 댓글 목록을 다시 읽는다.
+  - 댓글 응답에 `blinded`를 더했다. 관리자 조회에서만 true, false가 오고 일반 사용자와 비로그인 응답에는 필드가 없다(`@JsonInclude(NON_NULL)`). 내부 판단용 `moderationHeld`는 내보내지 않는다.
+  - 관리자는 가린 글의 댓글도 읽는다. 글 상세가 관리자에게 가린 글을 보여 주는 기준과 맞췄다. 일반 사용자는 그대로 404.
+  - 라이브톡 "차단": `window.confirm` 대신 메시지 아래 작은 창에서 1일, 7일, 30일을 고른다. 로그인 회원이 보낸 메시지면 "회원 정지도 함께 하기"를 고를 수 있고, 기존 `POST /api/v1/admin/members/{publicId}/suspend`를 이어서 부른다.
+  - `POST /api/v1/admin/chat/messages/{messageId}/ban-ip`가 선택 본문 `{"days": 1|7|30}`을 받는다. 본문이 없거나 days가 비면 7일(예전과 같음). 다른 값은 400(COMMON_001).
+- 결정
+  - 회원 정지에 쓰는 발신자 식별자는 이미 모든 사용자에게 내려가는 `sender.publicId`를 쓴다. 비회원은 `anon-`로 시작하고 안내 봇은 `snowthing-ai`라 이 둘만 빼면 된다. 백엔드에 새 필드를 더하지 않았다.
+  - 차단 기간은 쿼리 파라미터 대신 선택 JSON 본문으로 받는다. 기존 호출(본문 없음)이 그대로 동작한다. 허용 값은 화면과 같은 1, 7, 30일로 묶었다. 다른 안: 1~30 범위 허용(화면 밖 값이 들어올 여지).
+  - 관리자 조치 기록은 기존 서비스(글 가리기 POST_BLIND/UNBLIND, 댓글 COMMENT_BLIND/UNBLIND, IP 차단 CHAT_IP_BAN, 회원 정지 MEMBER_SUSPEND)가 이미 남겨 따로 더하지 않았다.
+  - AI 회원: 회원 정지와 IP 차단에 AI 회원 예외가 없다. 관리자가 AI 회원을 정지하면 일반 회원처럼 정지된다. 화면에도 AI 여부를 드러내는 표시는 없다.
+- 2026-11-18 main 동기화
+  - 마이그레이션 없음. IKA-87(052), IKA-88(053)과 번호가 겹칠 일이 없다.
+  - `origin/main`(3e4f70a) merge: 이미 최신이라 바뀐 것 없음(Already up to date).
+  - 미리보기 합치기 시험(`git merge-tree`, 실제 합치지 않음): IKA-88과는 `docs/project/work.md`만 충돌(맨 위 항목 추가 위치). IKA-87과는 `docs/project/work.md`만 충돌, 같이 고친 `frontend/app/lib/api.ts`는 자동 병합. `ika-card-save-inapp`과는 충돌 없음.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika89`으로 `./gradlew cleanTest test` 1279건 중 1278 통과, 1 건너뜀, 실패 0. 지난번 실패한 `ReactionConcurrencyIntegrationTest` 3건도 이번에는 통과했다(root 계정으로 실행). 프론트 node_modules junction을 지우고 `npm ci --legacy-peer-deps`로 실제 설치한 뒤 `npm run lint`, `npm run build` 통과.
+- 남은 항목: 사용자 localhost 확인, 푸시와 PR.
+- 검증
+  - 백엔드 `./gradlew spotlessCheck test`(로컬 MySQL): spotlessCheck 통과. 1279개 중 1276개 통과, 1개 건너뜀, 3개 실패. 실패 3개는 `ReactionConcurrencyIntegrationTest`로, 로컬 DB 계정에 트리거 생성 권한(SUPER)이 없어 테스트 준비 단계에서 실패했다. 이번 변경과 관계없다.
+  - 새 테스트: `AdminOperationsIntegrationTest`에 차단 기간 기본 7일, 30일 선택, 1/7/30 밖의 값 400, 일반 회원 403, 댓글 `blinded` 관리자 전용과 가린 글 댓글 조회 5개 추가. 모두 통과.
+  - 프론트 `npm run lint`, `npx next build --webpack` 통과. 화면 동작은 아직 브라우저로 보지 않았다.
+  - 작업 트리에서 spotless의 `ratchetFrom`이 git 저장소를 찾지 못해 실행할 때만 그 줄을 주석 처리했다. 커밋에는 넣지 않았다.
+
 ## 개장 D-DAY를 관리자 화면에서 관리하기 (IKA-87, 2026-11-17)
 
 - 상태: 구현 완료, PR 생성. 머지, 운영 마이그레이션(052), 배포는 사용자 확인 후.

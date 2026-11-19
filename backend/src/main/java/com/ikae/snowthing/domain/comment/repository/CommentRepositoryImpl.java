@@ -201,6 +201,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
     private CommentResponse mapResponse(ResultSet rs, int rowNum) throws SQLException {
         boolean anonymous = rs.getBoolean("is_anonymous");
         boolean deleted = rs.getBoolean("is_deleted");
+        boolean held = rs.getBoolean("moderation_held");
         String memberPublicId = rs.getString("member_public_id");
         WriterResponse writer =
                 !anonymous
@@ -220,7 +221,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 writer,
                 anonymous,
                 anonymous ? WriterDisplayFormatter.maskIp(rs.getString("writer_ip")) : null,
-                rs.getBoolean("moderation_held")
+                held
                         ? CommentResponse.HELD_TEXT
                         : deleted ? CommentResponse.DELETED_TEXT : rs.getString("content"),
                 deleted,
@@ -232,7 +233,9 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 false,
                 false,
                 false,
-                rs.getObject("created_at", LocalDateTime.class));
+                rs.getObject("created_at", LocalDateTime.class),
+                held,
+                null);
     }
 
     private Long nullableLong(ResultSet rs, String column) throws SQLException {
