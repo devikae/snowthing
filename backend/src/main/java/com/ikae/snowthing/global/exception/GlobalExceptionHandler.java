@@ -2,6 +2,7 @@ package com.ikae.snowthing.global.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -64,9 +65,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException e) {
-        log.warn("데이터 무결성 제약조건 위반 발생: {}", e.getMessage());
+        // MySQL 원문에는 "Duplicate entry '입력값'"처럼 이메일, 닉네임 같은 입력값이 들어 있다. 제약 이름만 남긴다.
+        log.warn("데이터 무결성 제약조건 위반 발생: constraint={}", violatedConstraintName(e));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, "요청 데이터의 고유 제약조건 또는 무결성을 위반했습니다."));
+    }
+
+    private static String violatedConstraintName(DataIntegrityViolationException e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && violation.getConstraintName() != null) {
+                return violation.getConstraintName();
+            }
+        }
+        Throwable root = e.getMostSpecificCause();
+        return root.getClass().getSimpleName();
     }
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)

@@ -4,9 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.sql.SQLIntegrityConstraintViolationException;
+
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -17,6 +24,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.error.ErrorResponse;
 import com.ikae.snowthing.global.notification.ServerErrorAlerter;
 
+@ExtendWith(OutputCaptureExtension.class)
 class GlobalExceptionHandlerTest {
 
     private final ServerErrorAlerter alerter = mock(ServerErrorAlerter.class);
@@ -83,5 +91,25 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isEqualTo(ErrorResponse.from(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("무결성 위반 로그에 DB 원문의 입력값(이메일 등)을 남기지 않고 제약 이름만 남긴다")
+    void handleDataIntegrityViolation_logsConstraintNameOnly(CapturedOutput output) {
+        String email = "leak-check@example.com";
+        DataIntegrityViolationException exception =
+                new DataIntegrityViolationException(
+                        "could not execute statement [Duplicate entry '" + email + "']",
+                        new ConstraintViolationException(
+                                "Duplicate entry '" + email + "' for key 'member.uk_member_email'",
+                                new SQLIntegrityConstraintViolationException(
+                                        "Duplicate entry '" + email + "'"),
+                                "uk_member_email"));
+
+        ResponseEntity<ErrorResponse> response =
+                handler.handleDataIntegrityViolationException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(output.getAll()).contains("constraint=uk_member_email").doesNotContain(email);
     }
 }
