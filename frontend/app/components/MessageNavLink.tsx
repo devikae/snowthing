@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MESSAGE_ENDPOINTS, MESSAGES_UPDATED_EVENT } from "../lib/messageApi";
 import styles from "./messages.module.css";
+import { NoteIcon } from "./NoteIcon";
 
 const POLL_INTERVAL_MS = 60_000;
 
@@ -58,7 +59,7 @@ export function MessageNavLink() {
   const label = count > 0 ? `쪽지함, 안 읽은 쪽지 ${count}통` : "쪽지함";
   return (
     <Link href="/messages" className={`header-login ${styles.navLink}`} aria-label={label} title="쪽지함">
-      <span className="material-symbols-outlined" aria-hidden="true">sticky_note_2</span>
+      <NoteIcon size={20} />
       {count > 0 && <span className={styles.badge} aria-hidden="true">{count > 99 ? "99+" : count}</span>}
     </Link>
   );
