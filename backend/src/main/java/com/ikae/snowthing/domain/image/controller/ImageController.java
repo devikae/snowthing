@@ -54,16 +54,13 @@ public class ImageController {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
         memberService.getMySettings(userDetails.getUsername());
-        var prepared =
-                processingGate.run(
-                        () -> {
-                            profileActionRateLimiter.checkImage(
-                                    userDetails.getUsername(),
-                                    ProfileActionRateLimiter.Action.PHOTO,
-                                    userDetails.getMember().getCreatedAt(),
-                                    clientIpResolver.resolve(httpRequest));
-                            return imageService.prepareProfileImage(file);
-                        });
+        // 횟수 검사는 DB를 쓰므로 처리 자리를 잡기 전에 끝낸다. 자리를 쥔 채 DB를 기다리지 않게 하려는 것이다.
+        profileActionRateLimiter.checkImage(
+                userDetails.getUsername(),
+                ProfileActionRateLimiter.Action.PHOTO,
+                userDetails.getMember().getCreatedAt(),
+                clientIpResolver.resolve(httpRequest));
+        var prepared = processingGate.run(() -> imageService.prepareProfileImage(file));
         ImageUploadResponse response =
                 profileImages.uploadPrepared(userDetails.getUsername(), prepared);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -78,16 +75,12 @@ public class ImageController {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
 
-        var prepared =
-                processingGate.run(
-                        () -> {
-                            profileActionRateLimiter.checkImage(
-                                    userDetails.getUsername(),
-                                    ProfileActionRateLimiter.Action.POST_IMAGE,
-                                    userDetails.getMember().getCreatedAt(),
-                                    clientIpResolver.resolve(httpRequest));
-                            return imageService.preparePostImage(file);
-                        });
+        profileActionRateLimiter.checkImage(
+                userDetails.getUsername(),
+                ProfileActionRateLimiter.Action.POST_IMAGE,
+                userDetails.getMember().getCreatedAt(),
+                clientIpResolver.resolve(httpRequest));
+        var prepared = processingGate.run(() -> imageService.preparePostImage(file));
         ImageUploadResponse response = postImages.upload(prepared, userDetails.getUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

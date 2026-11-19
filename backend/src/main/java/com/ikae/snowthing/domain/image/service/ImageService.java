@@ -168,7 +168,8 @@ public class ImageService {
             byte[] source, String targetKey, ImageProcessingGate gate) {
         if (!targetKey.matches("public/posts/thumbnails/market-[0-9a-f-]{36}\\.jpg"))
             throw new com.ikae.snowthing.global.exception.CustomException(ErrorCode.INVALID_INPUT);
-        byte[] thumbnail = gate.run(() -> createThumbnail(source));
+        // 백그라운드 작업이라 기다리지 않는다. 자리가 없으면 BusyException으로 다음 주기에 미룬다.
+        byte[] thumbnail = gate.runInBackground(() -> createThumbnail(source));
         s3Client.putObject(
                 PutObjectRequest.builder()
                         .bucket(bucketName)
