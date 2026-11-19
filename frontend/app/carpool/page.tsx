@@ -44,6 +44,9 @@ function CarpoolList() {
   // 페이지마다 결과를 따로 기록해, 한 번 실패해도 다른 페이지로 옮기면 오류 화면이 남지 않게 한다.
   const [loadedPage, setLoadedPage] = useState<number | null>(null);
   const [failedPage, setFailedPage] = useState<number | null>(null);
+  // 검색어 길이, 검색 횟수 제한처럼 사용자가 고칠 수 있는 실패는 서버 문구를 목록 자리에 보여 준다.
+  const [rejection, setRejection] = useState<{ page: number; message: string } | null>(null);
+  const rejectedMessage = rejection?.page === page ? rejection.message : null;
   const error = failedPage === page;
   const loading = loadedPage !== page && !error;
   const cappedTotalPages = Math.min(data.totalPages, MAX_PAGE);
@@ -59,12 +62,22 @@ function CarpoolList() {
   useEffect(() => {
     let stale = false;
     void fetch(`${API_ENDPOINTS.carpool.list}?page=${page - 1}&size=${PAGE_SIZE}${keywordQuery}`, { credentials: "include" })
-      .then((response) => {
+      .then(async (response) => {
+        if (response.status === 400 || response.status === 429) {
+          const body = await response.json().catch(() => null);
+          return { rejected: typeof body?.message === "string" ? body.message : "카풀 모집글을 불러오지 못했습니다." };
+        }
         if (!response.ok) throw new Error();
         return response.json();
       })
-      .then((response: CarpoolPageResponse) => {
+      .then((response: CarpoolPageResponse | { rejected: string }) => {
         if (stale) return;
+        if ("rejected" in response) {
+          setRejection({ page, message: response.rejected });
+          setFailedPage(page);
+          return;
+        }
+        setRejection(null);
         setData({
           content: Array.isArray(response.content) ? response.content : [],
           totalElements: response.totalElements || 0,
@@ -81,8 +94,12 @@ function CarpoolList() {
     };
   }, [keywordQuery, page]);
 
+  const keywordTooShort = Array.from(searchKeyword.trim()).length === 1;
+
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
+    // 서버도 한 글자 검색을 거절한다. 입력칸 아래 안내가 이미 떠 있으므로 요청을 보내지 않는다.
+    if (keywordTooShort) return;
     const next = searchKeyword.trim();
     window.location.assign(next ? `/carpool?keyword=${encodeURIComponent(next)}` : "/carpool");
   };
@@ -93,14 +110,17 @@ function CarpoolList() {
         aria-label="카풀 검색"
         placeholder="제목, 출발지, 집결지, 리조트 검색"
         value={searchKeyword}
-        maxLength={100}
+        maxLength={50}
+        aria-describedby={keywordTooShort ? "carpool-search-hint" : undefined}
         onChange={(event) => setSearchKeyword(event.target.value)}
       />
-      <button type="submit">검색</button>
+      <button type="submit" disabled={keywordTooShort}>검색</button>
+      {keywordTooShort && <p id="carpool-search-hint" className="search-length-hint" role="status">한 글자로는 검색할 수 없어요.</p>}
     </form>
     <section className="carpool-list">
       <div className="carpool-list-toolbar"><strong>카풀 모집글</strong>{!loading && !error && <span>총 {data.totalElements.toLocaleString("ko-KR")}건</span>}</div>
       {loading ? <div className="carpool-empty">카풀 모집글을 불러오는 중입니다.</div>
+        : rejectedMessage ? <div className="carpool-empty"><p>{rejectedMessage}</p></div>
         : error ? <div className="carpool-empty"><p>카풀 모집글을 불러오지 못했습니다.</p><button type="button" onClick={() => window.location.reload()}>다시 시도</button></div>
           : data.content.length === 0 ? keyword ? <div className="carpool-empty"><p>검색 결과가 없습니다.</p></div> : <div className="carpool-empty"><span className="material-symbols-outlined" aria-hidden="true">directions_car</span><p>등록된 카풀 모집글이 없습니다.</p><Link href="/carpool/new">첫 모집글 등록하기</Link></div>
             : data.content.map((item) => <Link className="carpool-card" href={`/carpool/${item.publicId}`} key={item.publicId}>
