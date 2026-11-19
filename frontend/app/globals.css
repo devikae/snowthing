@@ -1934,6 +1934,8 @@ html[data-theme="dark"] .home-tier-1 .board-tabs {
 }
 /* 홈: 탭 묶음은 줄어들 수 있고 넘치면 옆으로 넘긴다 */
 .home-tier-1 .board-tabs > .filter-pills { flex: 0 1 auto; min-width: 0; }
+/* 홈: 더보기는 탭 묶음 바로 옆에 붙이고, 남는 자리는 글쓰기 앞에 둔다(글쓰기 margin-left: auto). */
+.home-tier-1 .board-tabs > .board-tabs-actions { flex: 1 0 auto; justify-content: flex-start; }
 
 .filter-pills button,
 .home-tier-1 .board-tabs button,
@@ -4141,5 +4143,4 @@ html[data-theme="dark"] .snow-empty-copy strong {
 .support-coffee-button { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid var(--snow-border); border-radius: 999px; background: var(--snow-panel); color: var(--snow-ink); box-shadow: 0 4px 14px rgba(15, 23, 42, .12); cursor: pointer; transition: transform .15s ease; }
 .support-coffee-button:hover, .support-coffee-button:focus-visible { transform: translateY(-2px); }
 .support-coffee-button .material-symbols-outlined { font-size: 24px; }
-.support-coffee-notice { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--snow-ink); color: var(--snow-canvas); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .support-coffee-button { transition: none; } }
