@@ -34,3 +34,40 @@ test('errorText는 브라우저가 만든 영어 오류 문구를 화면에 내�
   // 화면 코드가 서버 문구로 던진 오류는 그대로 보여 준다
   assert.equal(run(`exports.errorText(new Error('비밀번호가 일치하지 않습니다.'), fb)`), '비밀번호가 일치하지 않습니다.');
 });
+
+test('사이트 데이터가 막힌 브라우저에서도 저장소 읽기와 쓰기가 예외를 던지지 않는다', () => {
+  const blocked = {};
+  Object.defineProperty(blocked, 'localStorage', { get() { throw new Error('SecurityError: The operation is insecure.'); } });
+  const { exports: storage } = loadLib('safeStorage.ts', { window: blocked });
+  assert.equal(storage.readLocal('snowthing-theme'), null);
+  assert.doesNotThrow(() => storage.writeLocal('snowthing-theme', 'dark'));
+
+  const saved = new Map();
+  const working = { localStorage: { getItem: (key) => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) } };
+  const { exports: ok } = loadLib('safeStorage.ts', { window: working });
+  ok.writeLocal('snowthing-theme', 'dark');
+  assert.equal(ok.readLocal('snowthing-theme'), 'dark');
+});
+
+test('localStorage를 직접 만지는 화면 코드는 예외 처리가 확인된 파일뿐이다', () => {
+  // 새 파일이 localStorage를 직접 쓰면 이 목록에 넣기 전에 try/catch 또는 lib/safeStorage를 쓰는지 확인한다.
+  const allowed = new Set([
+    'app/layout.tsx', // 테마 부트 스크립트, try 안에서 읽는다
+    'app/lib/safeStorage.ts',
+    'app/components/LiveChatSection.tsx', // try 안에서 읽고 쓴다
+    'app/character-test/localStore.ts', // try 안에서 읽고 쓴다
+    'app/character-test/QuizFlow.tsx', // 주석에만 나온다. 실제 저장은 localStore.ts
+  ]);
+  const found = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(tsx?|jsx?)$/.test(entry.name) && /\blocalStorage\b/.test(fs.readFileSync(full, 'utf8'))) {
+        found.push(path.relative(frontend, full).split(path.sep).join('/'));
+      }
+    }
+  };
+  walk(path.join(frontend, 'app'));
+  assert.deepEqual(found.filter((file) => !allowed.has(file)), []);
+});

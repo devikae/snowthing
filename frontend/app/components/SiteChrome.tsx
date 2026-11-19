@@ -7,6 +7,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 import { disablePushBeforeLogout } from "../lib/push";
 import { clearViewerCache, fetchViewer, peekViewer } from "../lib/viewer";
+import { readLocal, writeLocal } from "../lib/safeStorage";
 import { RotatingWordmark } from "./RotatingWordmark";
 import { SnowflakeMark } from "./SnowflakeMark";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
@@ -29,7 +30,7 @@ function ThemeToggle() {
   const [setting, setSetting] = useState<ThemeSetting>("light");
 
   useEffect(() => {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    const saved = readLocal(THEME_STORAGE_KEY);
     const initialSetting: ThemeSetting = saved === "light" || saved === "dark"
       ? saved
       : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -42,7 +43,7 @@ function ThemeToggle() {
     const nextSetting: ThemeSetting = setting === "light" ? "dark" : "light";
     setSetting(nextSetting);
     applyTheme(nextSetting);
-    localStorage.setItem(THEME_STORAGE_KEY, nextSetting);
+    writeLocal(THEME_STORAGE_KEY, nextSetting);
   };
 
   const nextSetting: ThemeSetting = setting === "light" ? "dark" : "light";

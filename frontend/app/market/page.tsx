@@ -9,6 +9,7 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { formatKoreanDate } from "../lib/koreanDate";
 import { PRODUCT_CONDITION_LABELS } from "./marketOptions";
+import { readLocal, writeLocal } from "../lib/safeStorage";
 
 type ViewMode = "list" | "album";
 
@@ -62,7 +63,7 @@ function MarketPageContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState(keyword);
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    typeof window !== "undefined" && localStorage.getItem("snowthing:market:view") === "album"
+    typeof window !== "undefined" && readLocal("snowthing:market:view") === "album"
       ? "album"
       : "list",
   );
@@ -146,7 +147,7 @@ function MarketPageContent() {
 
   const changeView = (next: ViewMode) => {
     setViewMode(next);
-    localStorage.setItem("snowthing:market:view", next);
+    writeLocal("snowthing:market:view", next);
   };
 
   const visiblePages = useMemo(() => {
