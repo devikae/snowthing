@@ -63,3 +63,36 @@ export function getSavedAnswers(): SavedAnswers | null {
 export function saveAnswers(saved: SavedAnswers) {
   write(SAVED_ANSWERS_KEY, saved);
 }
+
+// 푸는 중인 테스트. 카톡 링크를 오가다 화면이 새로 열려도 이어서 풀게 한다. 결과가 나오면 지운다.
+const QUIZ_PROGRESS_KEY = "snowthing-character-progress";
+
+export type Choice = "A" | "B" | "C";
+
+export interface QuizProgress {
+  sport: Sport;
+  order: number[];
+  picked: Choice[];
+}
+
+export function getQuizProgress(questionCount: number): QuizProgress | null {
+  const saved = read<QuizProgress>(QUIZ_PROGRESS_KEY);
+  if (!saved || (saved.sport !== "SKI" && saved.sport !== "BOARD")) return null;
+  const { order, picked } = saved;
+  // 질문 수가 바뀌었거나 값이 깨졌으면 버린다. 순서는 0부터 질문 수까지 한 번씩 있어야 한다.
+  const validOrder = Array.isArray(order) && order.length === questionCount && [...order].sort((a, b) => a - b).every((value, index) => value === index);
+  const validPicked = Array.isArray(picked) && picked.length < questionCount && picked.every((choice) => choice === "A" || choice === "B" || choice === "C");
+  return validOrder && validPicked ? saved : null;
+}
+
+export function saveQuizProgress(progress: QuizProgress) {
+  write(QUIZ_PROGRESS_KEY, progress);
+}
+
+export function clearQuizProgress() {
+  try {
+    window.localStorage.removeItem(QUIZ_PROGRESS_KEY);
+  } catch {
+    // 저장이 막힌 브라우저면 지울 것도 없다.
+  }
+}

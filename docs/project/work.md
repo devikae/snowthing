@@ -42,6 +42,86 @@
 - 남은 항목: 배포 뒤 `docker exec snowthing-backend jcmd 1 VM.flags`로 MaxHeapSize가 약 1GB인지 확인.
 - 사용자 결정 필요: 없음.
 
+## 전역 CSS 분리와 홈 첫 화면 서버 렌더링 (IKA-95, 2026-11-18)
+
+- 상태: 구현 완료. 2026-11-20 origin/main을 merge하고 push, PR 생성(사용자 승인). 머지 전 사용자 브라우저 확인 필요.
+- 계획: 루트 레이아웃이 모든 화면에 싣던 에디터 CSS와 카풀 CSS를 쓰는 곳으로 옮기고, 홈 첫 목록을 서버에서 받아 HTML에 넣는다. 오늘의 설질 위젯에 불러오는 중과 실패 상태를 둔다.
+- 완료
+  - `layout.tsx`: `toastui-editor.css`, `carpool.css` 전역 import를 뺐다.
+  - `ToastEditor`는 `toastui-editor.css`, `ToastViewer`는 뷰어 전용 `toastui-editor-viewer.css`(약 14KB)를 직접 불러온다. 두 컴포넌트는 모두 `next/dynamic`(ssr: false)으로만 쓰여 JS 조각을 받을 때 CSS도 같이 받는다.
+  - `carpool/layout.tsx`에서 `carpool.css`를 불러온다. carpool.css의 클래스 30여 개를 tsx, ts 전체에서 찾아 `app/carpool/` 밖에서 쓰는 곳이 없는 것을 확인했다(PostComments의 `carpool-form-error`는 carpool.css에 없는 다른 클래스). 홈 카풀 위젯 클래스(`carpool-widget`, `carpool-row`, `cp-*`)는 globals.css에 있어 영향이 없다.
+  - `page.tsx`(홈): "전체" 탭 글 15개, 카풀 4개, 장터 미리보기를 `fetchPublicJson`으로 함께 받아 `HomePageClient`에 `initial`로 넘긴다. 받은 위젯은 브라우저가 다시 부르지 않고, 못 받은 위젯(null)만 기존처럼 브라우저가 부른다.
+  - 타입과 요청 크기는 `lib/homeFeed.ts`로 옮겼다. "use client" 파일에서 내보낸 값은 서버 컴포넌트에서 클라이언트 참조가 되어 숫자로 읽을 수 없다.
+  - 오늘의 설질: 불러오는 중, 실패(다시 시도 버튼), 빈 목록을 나눴다. 같은 요청을 두 번 적던 `loadTodayReports`와 첫 로드 effect를 하나로 합쳤다. 제보 등록 뒤 새로 고침은 목록을 둔 채 조용히 바꾸고, 실패해도 보이던 목록을 지우지 않는다.
+- 결정
+  - `detailForms.css`는 전역에 둔다. 글, 장터, 카풀의 작성과 상세 화면, 댓글이 함께 쓰는 파일이라 옮기려면 여러 레이아웃에 나눠 넣어야 하고, 위치가 바뀌면 같은 우선순위 규칙의 순서가 바뀐다. 다른 안: 작성 화면과 상세 화면 레이아웃마다 import. 크기(288줄)에 비해 얻는 것이 작다.
+  - CSS 순서 변화 점검: 옮긴 CSS는 이제 globals.css, detailForms.css보다 뒤에 붙는다. 우선순위가 같은 규칙이 겹치면 승자가 바뀐다.
+    - toastui: globals.css, detailForms.css의 에디터 덮어쓰기 규칙과 같은 요소, 같은 속성을 칠하는 toastui 규칙 중 우선순위가 같거나 높은 것이 없음을 스크립트로 확인했다. toastui에는 `.auto-height` 말고 접두사 없는 전역 클래스가 없고, 앱에서 그 클래스를 쓰지 않는다.
+    - carpool.css: 다크 모드의 `.carpool-cost-button`, `.carpool-manual-fallback` 규칙이 detailForms.css의 작성 화면 규칙과 우선순위가 같았다. 두 요소는 항상 `.content-compose-page` 안에 있어 지금까지 detailForms.css가 이겨 쓰이지 않던 규칙이다. 순서가 바뀌면 이기게 되므로 carpool.css에서 두 선택자를 지웠다. 화면은 지금과 같다.
+  - 홈 서버 요청은 /posts와 같이 `cache: "no-store"`(publicApi 관례)를 쓴다. 쿠키를 넘기지 않아 사용자 간 데이터가 섞이지 않고, 글을 쓰고 돌아와도 바로 보인다. 대가로 홈이 정적 페이지(○)에서 요청마다 렌더링(ƒ)으로 바뀌고 홈 요청마다 백엔드 요청 3개가 늘어난다. 다른 안: `revalidate: 30`. 백엔드 부담은 줄지만 새 글이 최대 30초 늦게 보인다. 트래픽이 커지면 다시 본다.
+  - 오늘의 설질은 서버에서 받지 않는다. `formatReportTime`이 오프셋 없는 KST 문자열을 실행 환경 시간대로 읽어 서버(UTC)와 브라우저 글자가 달라질 수 있다.
+  - 글 목록 상대 시각(`m-time`)은 서버와 브라우저 시각 차이로 글자가 달라질 수 있어 /posts처럼 `suppressHydrationWarning`을 붙였다.
+- 발견된 이슈
+  - `formatReportTime`(lib/resortReports.ts)은 `new Date(문자열)`로 읽어 KST가 아닌 시간대의 브라우저에서 시각이 틀린다. `toDate`를 쓰면 고쳐진다. 이번 범위 밖이라 그대로 두었다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과.
+  - 첫 HTML의 CSS(build 산출물 기준): 홈 390,347B(gzip 145,961B)에서 215,798B(gzip 36,993B). 로그인 394,912B에서 220,363B, 장터 393,467B에서 218,918B, 글쓰기 390,347B에서 215,798B, 카풀 393,467B에서 226,827B. 홈, 로그인, 장터, 글쓰기, 카풀 모두 첫 HTML의 CSS에 toastui 본체가 없다.
+  - 에디터 CSS(166,614B)와 뷰어 CSS(11,936B)는 별도 CSS 파일로 나와 에디터, 뷰어 JS 조각이 참조하는 것을 산출물에서 확인했다.
+  - `next start` + 로컬 백엔드(8080)로 홈 HTML을 받아 글 제목이 들어 있고 "게시글을 불러오는 중" 문구가 없는 것을 확인했다. 장터는 매물 카드, 카풀은 빈 목록 문구가 서버 HTML에 있었다.
+  - 백엔드 주소를 닫힌 포트로 바꿔 빌드한 뒤 홈 HTML에 네 위젯 모두 불러오는 중 문구가 나오는 것을 확인했다(연결 거부 경로). 2초 시간 초과 경로는 확인하지 않았다.
+  - 브라우저에서 화면을 열어 스타일과 하이드레이션 경고를 보지는 않았다.
+  - 2026-11-20 origin/main merge 뒤 다시 확인: 새로 들어온 개장 D-DAY 배너(#148), 관리자 가리기 UI(#152), 카풀과 장터 한 글자 검색 안내(#143)는 carpool.css나 toastui CSS에 기대지 않는다. carpool.css 클래스 38개를 `app/carpool/` 밖에서 찾았고, 겹치는 일반 이름(muted, outline, selected, start, total 등)은 carpool.css에서 모두 `.carpool-*` 아래로 묶여 있다. 새 검색 안내 규칙(`.carpool-search button:disabled`)과 D-DAY 배너 규칙은 globals.css에 있다. 에디터는 여전히 ToastEditor, ToastViewer 컴포넌트로만 쓰인다.
+- 남은 항목: 사용자 브라우저 확인, 머지.
+- 사용자 결정 필요: 홈을 요청마다 렌더링(no-store)으로 둘지, revalidate로 바꿀지.
+
+## 첫 방문자 흐름과 입력 보존 사용성 개선 (IKA-94, 2026-11-18)
+
+- 상태: 구현 완료. 2026-11-20 origin/main을 merge하고 push, PR 생성(사용자 승인). 머지 전 사용자 브라우저 확인 필요.
+- 계획: 글 등록 중 로그인이 풀려도 입력 유지, 로그인에서 회원가입으로 넘어갈 때 returnUrl 유지, 캐릭터 테스트 결과에서 사이트로 이어지는 길과 진행 중 답 보존, 연락처 복사 피드백, 게시글 작성 오류 문구 정리.
+- 완료
+  - 판매글 등록(`market/new`): 등록 요청이 401이면 로그인 화면으로 옮기지 않는다. 오류 칸에 "로그인이 풀렸습니다. 입력한 내용은 그대로 있습니다. 새 창에서 로그인한 뒤 이 화면에서 다시 등록해 주세요."를 띄운다. 공통 안내는 `components/LoginExpiredNotice.tsx`.
+  - 카풀 글쓰기(`carpool/new`)와 게시글 작성(`posts/create`)도 같은 원칙으로 맞췄다. 카풀은 원래 입력을 지켰지만 로그인 링크가 없었고, 게시글은 서버 문구만 보였다. 카풀 수정 화면은 "다시 수정해 주세요"로 나온다.
+  - `lib/readApiError.ts` 새로 만듦: 실패 응답이 JSON이 아니면 상태 코드로 문구를 고른다(401, 403, 413, 429, 그 밖은 화면별 기본 문구). 카풀 글쓰기에 있던 같은 이름의 함수를 이 파일로 옮겼다.
+  - 게시글 작성: 오류 응답이 HTML이면 `res.json()`이 던져 "서버에 연결하지 못했습니다"로 잘못 안내하던 것을 상태 코드 기반 문구로 바꿨다(413이면 용량 안내). 사진 올리기 실패도 같은 함수를 쓴다. 로그인 안내 문구를 실제 규칙(익명게시판만 비회원 작성)에 맞춰 "익명게시판이 아닌 게시판은 로그인해야 글을 쓸 수 있습니다."로 고쳤다.
+  - 로그인 → 회원가입: 로그인 화면의 회원가입 링크가 `returnUrl`을 넘긴다. 회원가입은 가입과 자동 로그인을 마치면 그 주소로, 자동 로그인이 실패하면 `returnUrl`을 단 로그인 화면으로 간다. 회원가입 화면 아래 로그인 링크도 `returnUrl`을 넘긴다. 검증은 기존 `safeReturnUrl`(같은 사이트 상대 경로만)을 재사용한다. 카풀 글쓰기 안내의 회원가입 링크도 `returnUrl=/carpool/new`를 단다.
+  - 소셜 가입은 이미 서버가 authorize 때 받은 returnUrl을 `/signup/social` 응답에 실어 `safeReturnUrl`로 이동해 고칠 것이 없었다. 회원가입 화면에는 소셜 버튼이 없다.
+  - 캐릭터 테스트: 결과 화면 맨 아래(관계 지도 다음, "처음부터 다시 하기" 위)에 "눈팅에서 더 보기"(오늘의 설질, 카풀과 동행, 게시판, 비로그인이면 회원가입)를 둔다(`SiteLinks.tsx`, 기존 `ct-my-groups` 스타일 재사용).
+  - 캐릭터 테스트 진행 중 답(종목, 질문 순서, 고른 답)을 `localStore.ts`의 기존 localStorage 방식으로 저장한다. 시작 화면에 "이어서 풀기 (15개 중 N개 답함)"와 "처음부터 시작"이 나온다. 마지막 답을 고르면 지운다. 값이 깨졌거나 질문 수가 다르면 버린다.
+  - 모바일 메뉴의 "라이더 도구" 아래에 "스키장 캐릭터 테스트" 링크를 하나 추가했다(`SiteChrome.tsx`). 데스크톱은 "라이더 도구" 화면에 이미 카드가 있다.
+  - 판매글 상세 연락처 복사: 성공하면 "연락처를 복사했습니다.", 실패하면 "복사하지 못했습니다. 연락처를 길게 눌러 복사해 주세요."를 role=status로 보인다.
+- 결정
+  - 로그인이 풀렸을 때 sessionStorage 초안 대신 새 창 로그인을 골랐다. 본문 에디터 내용, 업로드한 사진 목록, 카풀 지도 선택까지 직렬화해 되살리는 것보다 화면을 떠나지 않는 쪽이 단순하고 빠지는 값이 없다. 다른 안: sessionStorage 초안 저장 후 로그인 이동. 부작용: 새 창에서 로그인을 마치면 그 창에는 빈 작성 화면이 열린다. 안내 문구로 원래 창에서 다시 누르라고 적었다.
+  - 진행 중 답은 sessionStorage가 아니라 localStorage에 둔다. 카톡 안 브라우저에서 탭이 닫혔다 다시 열려도 남게 하려는 것이고, 이미 지난 결과도 localStorage에 둔다.
+  - 모임 화면(`g/[publicId]`)의 테스트도 같은 컴포넌트라 진행을 저장한다. 모임 화면에서 테스트를 새로 시작하면 저장된 진행을 지운다. 이어 풀기 버튼은 메인 시작 화면에만 뒀다.
+  - 전역 CSS는 다른 작업과 겹쳐 건드리지 않았다. 새 스타일 없이 기존 클래스와 Tailwind `underline`만 썼다.
+- 발견된 이슈
+  - 회원이 익명게시판에 쓰다가 로그인이 풀리면 화면은 비밀번호 칸 없이 회원으로 보내고, 서버는 비회원으로 받아 비밀번호 오류가 날 수 있다(이번 범위 밖, 기존 동작).
+  - 열린 PR #146(`ika-card-save-inapp`)과 같은 파일: `CharacterTestApp.tsx`(import 블록과 결과 화면), `characterTest.css`는 이번에 안 건드림. PR #146 import 블록 바로 아래 줄(QuizFlow, RelationshipMap import)과 결과 화면 JSX가 가깝다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과.
+  - `git merge-tree HEAD origin/ika-card-save-inapp`: 충돌 없이 합쳐진다(2026-11-18 기준).
+  - 브라우저 화면 확인과 로컬 백엔드 연동 확인은 하지 않았다. 401, 413 흐름은 코드로만 확인했다.
+  - 375px: 새 요소는 기존 세로 목록(`ct-my-groups`), 오류 칸, 연락처 칸의 전체 너비 줄(`.market-contact small`의 grid-column 1 / -1)을 써서 가로 넘침을 만드는 고정 폭이 없다. 실제 화면은 보지 않았다.
+- 남은 항목: 사용자 브라우저 확인(아래 확인 목록), 머지.
+- 사용자 결정 필요: 없음.
+
+## 헤더 쪽지 아이콘을 접은 쪽지 모양으로 바꾸기 (티켓 없음, 2026-11-20)
+
+- 상태: 구현 완료, push와 PR 생성(사용자 승인). 머지 전 사용자 화면 확인 필요.
+- 계획: 헤더 쪽지함과 장터 "쪽지 보내기" 버튼의 Material `sticky_note_2`(포스트잇처럼 보임)를 직접 그린 SVG 아이콘으로 바꾼다. 11/10에 `snowthing-note-icon` worktree에 커밋 없이 남아 있던 변경을 최신 main 위에 다시 적용했다.
+- 완료
+  - `components/NoteIcon.tsx` 새로 만듦: 24칸 viewBox, 선 굵기 1.8, `currentColor`.
+  - `MessageNavLink`(헤더, 20px), `MarketMessageButton`(장터, 18px)이 NoteIcon을 쓴다. `messages.module.css`에서 쓰지 않게 된 `.marketMessage` 안 Material 아이콘 크기 규칙을 지웠다.
+  - main에서 쪽지 아이콘을 쓰는 다른 곳을 찾았다(`git grep sticky_note_2`, `composeMessageHref`, "쪽지 보내기"). 아이콘이 붙은 곳은 위 두 곳뿐이고 작성자 메뉴, 쪽지함 화면 버튼은 글자만 있다.
+- 결정
+  - 옛 worktree의 그림(종이를 띠처럼 접어 묶은 모양)을 그대로 쓰지 않았다. 20px로 렌더해 보니 리본이나 X자처럼 읽혀 쪽지로 보이지 않았다. 문서 모양(포스트잇과 같은 문제), 반 접은 종이(책이나 지도처럼 보임), 덮개를 접어 넣은 쪽지(봉투형)를 같은 크기로 그려 비교했고, 20px과 18px에서 바로 "쪽지, 메시지"로 읽히는 봉투형을 골랐다. 대가: 이메일 아이콘과 비슷하다. 사이트에 이메일 기능 아이콘이 따로 없어 헷갈릴 곳은 없다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과.
+  - 아이콘을 headless Chrome으로 PNG 렌더해 20px(헤더 글자색 #64748b, 다크 #cbd5e1)과 18px 버튼(라이트 검정 바탕 흰 글자, 다크 밝은 바탕 검정 글자)에서 확인했다. 선 색이 글자색을 따라간다.
+  - next dev로 실제 헤더를 열어 보지는 않았다.
+- 남은 항목: 사용자 화면 확인, 머지.
+- 사용자 결정 필요: 봉투형이 괜찮은지(옛 띠 모양으로 돌리려면 NoteIcon의 path만 바꾸면 된다).
+
 ## 승인 없는 배포 트리거 제거와 프론트 PR 검사 추가 (IKA-91, 2026-11-18)
 
 - 상태: 구현 완료, PR 생성. 머지는 사용자 확인 후.
