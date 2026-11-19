@@ -12,6 +12,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -188,6 +189,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMalformedRequest(Exception e) {
         return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(ErrorResponse.from(ErrorCode.INVALID_INPUT));
+    }
+
+    /**
+     * Accept 헤더로 JSON을 받지 않겠다는 요청(스캐너, 잘못 만든 클라이언트)이다. 공통 처리기로 넘기면 500 장애 알림을 보낸 뒤 오류 본문도 JSON이라 다시
+     * 못 쓴다. 본문 없이 406으로 끝낸다.
+     */
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<Void> handleMediaTypeNotAcceptable(
+            HttpMediaTypeNotAcceptableException e) {
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
     }
 
     @ExceptionHandler(Exception.class)

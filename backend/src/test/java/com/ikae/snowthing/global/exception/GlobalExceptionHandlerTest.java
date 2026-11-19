@@ -3,6 +3,9 @@ package com.ikae.snowthing.global.exception;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.sql.SQLIntegrityConstraintViolationException;
 
@@ -15,8 +18,13 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 
@@ -111,5 +119,33 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(output.getAll()).contains("constraint=uk_member_email").doesNotContain(email);
+    }
+
+    @Test
+    @DisplayName("JSON을 받지 않는 Accept 요청은 500 알림 없이 406으로 끝낸다")
+    void notAcceptableRequest_returns406WithoutAlert() throws Exception {
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("serverErrorAlerter", alerter);
+        MockMvc mockMvc =
+                MockMvcBuilders.standaloneSetup(new JsonOnlyController())
+                        .setControllerAdvice(
+                                new GlobalExceptionHandler(
+                                        beanFactory.getBeanProvider(ServerErrorAlerter.class)))
+                        .build();
+
+        mockMvc.perform(get("/json-only").accept(MediaType.TEXT_HTML))
+                .andExpect(status().isNotAcceptable());
+
+        verifyNoInteractions(alerter);
+    }
+
+    @RestController
+    static class JsonOnlyController {
+        record Body(String value) {}
+
+        @GetMapping("/json-only")
+        Body get() {
+            return new Body("ok");
+        }
     }
 }
