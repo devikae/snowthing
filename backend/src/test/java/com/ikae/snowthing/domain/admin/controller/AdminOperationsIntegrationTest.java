@@ -267,6 +267,38 @@ class AdminOperationsIntegrationTest {
     }
 
     @Test
+    @DisplayName("이미 30일 차단된 IP를 1일로 다시 차단해도 30일 차단이 남고, 30일 차단을 풀면 1일 차단이 남는다")
+    void overlappingBanKeepsLaterExpiry() throws Exception {
+        String ip = "198.51.100.74";
+        mockMvc.perform(
+                        banByMessage(chatMessageFrom(ip), "{\"days\":30}")
+                                .session(adminSession)
+                                .with(csrf()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(
+                        banByMessage(chatMessageFrom(ip), "{\"days\":1}")
+                                .session(adminSession)
+                                .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        assertThat(chatIpBanService.isBanned(ip)).isTrue();
+        assertThat(cachedUntil(ip)).isAfter(LocalDateTime.now().plusDays(29));
+
+        chatIpBanService.unbanIp(banId(ip, "30일"));
+
+        assertThat(chatIpBanService.isBanned(ip)).isTrue();
+        assertThat(cachedUntil(ip)).isBefore(LocalDateTime.now().plusDays(2));
+    }
+
+    @SuppressWarnings("unchecked")
+    private LocalDateTime cachedUntil(String ip) {
+        return ((java.util.Map<String, LocalDateTime>)
+                        org.springframework.test.util.ReflectionTestUtils.getField(
+                                chatIpBanService, "activeBans"))
+                .get(ip);
+    }
+
+    @Test
     @DisplayName("라이브톡 메시지 차단 기간이 1, 7, 30일이 아니면 400이고 차단하지 않는다")
     void banByMessageRejectsOtherDays() throws Exception {
         String messageId = chatMessageFrom("198.51.100.73");
@@ -355,15 +387,24 @@ class AdminOperationsIntegrationTest {
         return count == null ? 0 : count;
     }
 
+    // created_at과 banned_until은 같은 JVM 시계로 함께 저장된다. 둘의 차이로 기간을 보면 JVM과 DB 시간대가 달라도 흔들리지 않는다.
     private void assertBannedForDays(String ip, int days) {
-        LocalDateTime until =
+        Long minutes =
                 jdbc.queryForObject(
-                        "SELECT banned_until FROM chat_banned_ip WHERE banned_ip = ?",
-                        LocalDateTime.class,
+                        "SELECT TIMESTAMPDIFF(MINUTE, created_at, banned_until)"
+                                + " FROM chat_banned_ip WHERE banned_ip = ?",
+                        Long.class,
                         ip);
-        LocalDateTime expected = LocalDateTime.now().plusDays(days);
-        assertThat(until).isBetween(expected.minusMinutes(5), expected.plusMinutes(1));
+        assertThat(minutes).isBetween(days * 1440L - 5, days * 1440L + 5);
         assertThat(chatIpBanService.isBanned(ip)).isTrue();
+    }
+
+    private Long banId(String ip, String reasonPart) {
+        return jdbc.queryForObject(
+                "SELECT id FROM chat_banned_ip WHERE banned_ip = ? AND reason LIKE ?",
+                Long.class,
+                ip,
+                "%" + reasonPart + "%");
     }
 
     private MockHttpServletRequestBuilder blind(String publicId, boolean blinded) {
