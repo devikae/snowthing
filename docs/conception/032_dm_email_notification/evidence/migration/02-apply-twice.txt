@@ -1,0 +1,7 @@
+# 마이그레이션 052 | 같은 파일을 두 번 적용, mysql 종료 코드 0 (두 번째도 오류 없음)
+# 실행 시각(KST): 2026-11-17 23:53:42
+$ for i in 1 2; do echo "[적용 $i회차] 052_migration_dm_mail_notification.sql -> snowthing_ika88_mig"; bash apply-052.sh snowthing_ika88_mig; done
+[적용 1회차] 052_migration_dm_mail_notification.sql -> snowthing_ika88_mig
+mysql exit=0
+[적용 2회차] 052_migration_dm_mail_notification.sql -> snowthing_ika88_mig
+mysql exit=0

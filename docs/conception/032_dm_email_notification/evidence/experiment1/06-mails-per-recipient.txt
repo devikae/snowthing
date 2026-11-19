@@ -1,0 +1,7 @@
+-- 실험 1 | 받는 사람별 메일 수: 모두 1통
+-- 실행 시각(KST): 2026-11-17 23:43:28
+-- DB: snowthing_ika88_exp
+SELECT mails_per_recipient, COUNT(*) AS recipients FROM (SELECT recipient_member_id, COUNT(DISTINCT provider_message_id) AS mails_per_recipient FROM dm_mail_outbox WHERE recipient_member_id IN (SELECT member_id FROM member WHERE email LIKE 'ev1-r%') GROUP BY recipient_member_id) t GROUP BY mails_per_recipient
+
+mails_per_recipient	recipients
+1	40

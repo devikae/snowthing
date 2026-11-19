@@ -1,0 +1,4 @@
+# 마이그레이션 052 | 052로 만든 테이블에서 ddl-auto=validate 기동 성공 (엔티티와 스키마 일치)
+# 실행 시각(KST): 2026-11-17 23:54:05
+$ grep -E 'Started SnowthingApplication|Schema-validation|APPLICATION FAILED' logs/ev-validate.log
+2026-11-17T23:42:54.935+09:00  INFO [           main] c.ikae.snowthing.SnowthingApplication    : Started SnowthingApplication in 8.628 seconds (process running for 9.135)

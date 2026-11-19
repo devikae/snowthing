@@ -39,6 +39,10 @@ public class MemberWithdrawalRepository {
                     "DELETE FROM member_block WHERE blocker_id = :memberId",
                     "DELETE FROM notification WHERE receiver_id = :memberId",
                     "DELETE FROM push_subscription WHERE member_id = :memberId",
+                    // 쪽지 도착 메일(IKA-88). 처리 중이던 행이 지워지면 워커의 결과 기록은 영향 행 0으로 끝난다.
+                    "DELETE FROM member_notification_setting WHERE member_id = :memberId",
+                    "DELETE FROM dm_mail_outbox WHERE recipient_member_id = :memberId",
+                    "DELETE FROM dm_mail_recipient_state WHERE recipient_member_id = :memberId",
                     // 방문 기록은 언제 어디 있었는지 알려 주는 정보다. 공유 링크도 함께 닫는다.
                     "DELETE FROM season_share WHERE member_id = :memberId",
                     "DELETE FROM season_visit WHERE member_id = :memberId",

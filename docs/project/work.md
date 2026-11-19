@@ -1,3 +1,49 @@
+## 쪽지 도착 메일 알림을 Outbox로 발송 (IKA-88, 2026-11-17)
+
+- 상태: 구현과 검증 완료, PR 생성(2026-11-20). 머지, 운영 마이그레이션, 운영 발송 활성화는 사용자 확인 후.
+- 계획: Sprint 8 미션(이메일 알림과 분산 환경의 데이터 정합성)을 쪽지 기준으로 적용. 설계 `docs/conception/032_dm_email_notification/`.
+- 완료
+  - 053 마이그레이션(처음 052, 2026-11-18 변경): `member_notification_setting`, `dm_mail_outbox`, `dm_mail_recipient_state`. 새 테이블만 만든다.
+  - 알림 설정 API `GET/PUT /api/v1/members/me/notification-settings`. 행 없음은 꺼짐. 일반 가입과 소셜 가입에서 켜짐으로 만든다. 탈퇴 삭제 목록에 세 테이블 추가.
+  - 쪽지 트랜잭션에서 발송 요청 적재(MANDATORY). 실패하면 쪽지도 롤백.
+  - 워커: 받는 사람 상태 행 SKIP LOCKED로 선점, claim_token과 lease, 조건부 결과 기록. 첫 메일 즉시, 10분 쿨다운 동안 온 쪽지는 한 통으로 묶음. 발송 직전 확인(24시간, 회원 상태, 설정, 받을 수 있는 주소, 읽음).
+  - 결과 분류: 200 ACCEPTED, 연결 실패와 429 RETRY_WAIT(최대 5회, equal jitter), 400 FAILED, 타임아웃과 500과 lease 만료 UNKNOWN(자동 재발송 없음).
+  - 쪽지 메일 전용 SES 클라이언트(SDK 재시도 0회). 인증메일 클라이언트는 그대로.
+  - 프론트: 쪽지함 위 "쪽지 오면 메일로 알림" 스위치. 받을 수 있는 이메일이 없으면 막고 이유를 보인다.
+  - 관리자 요약 `GET /api/v1/admin/dm-mail/outbox/summary`: 상태별 건수, UNKNOWN과 FAILED 합, 가장 오래 기다린 요청. 처음에 설계에만 적고 빠뜨렸다가 문서 점검 중 발견해 추가했다.
+  - 기능 플래그 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED`(기본 false, `compose.prod.yml`에도 추가).
+  - 문서: 설계, ADR-3201, 검증 기록, 성능 비교.
+- 결정
+  - 받는 사람을 한 명씩 선점, 발송, 기록한다. 여러 명을 먼저 잡으면 뒤쪽 lease가 대기 중에 줄어든다.
+  - 메일이 나가지 않았음이 확실하면 받는 사람의 마지막 시도 시각을 되돌려 재시도가 쿨다운에 막히지 않게 한다.
+  - ACCEPTED, SKIPPED는 30일 뒤 삭제. UNKNOWN, FAILED는 남긴다.
+  - 공급자가 꺼져 있으면 워커가 작업을 잡지 않는다.
+  - 성능 비교용 `delivery-mode=sync-baseline`을 둔다. 벤치마크에서만 켠다.
+- 발견한 이슈
+  - 로컬 main이 원격보다 321커밋 뒤처져 있었다. 최신 main 기준 worktree에서 작업했고 폴더 번호를 025에서 032로 바꿨다.
+  - worktree에서는 spotless ratchet이 git을 찾지 못해 init 스크립트로 ratchet을 끄고 전체 파일을 검사했다.
+  - 워커 하나의 처리량은 1 / SES 응답 시간이다. 몰림이 잦아지면 받는 사람 처리 병렬화를 검토한다.
+- 2026-11-18 번호 변경과 main 동기화
+  - 마이그레이션 파일 이름을 `052_migration_dm_mail_notification.sql`에서 `053_...`으로 바꿨다. 열린 PR #148(IKA-87)이 `052_migration_season_opening.sql`을 쓰고 먼저 머지될 예정이다. 내용은 바꾸지 않았다. 설계 문서, ADR, 검증 기록, 엔티티 주석의 번호를 고쳤다. 증거 원본 출력과 그림에는 당시 이름 052가 남아 있어 증거 README와 검증 기록에 그 사실을 적었다.
+  - `origin/main`(3e4f70a) merge: 이미 최신이라 바뀐 것 없음(Already up to date).
+  - 미리보기 합치기 시험(`git merge-tree`, 실제 합치지 않음): IKA-89와는 `docs/project/work.md`만 충돌(맨 위 항목 추가 위치). IKA-87과는 `docs/project/work.md`만 충돌, `application.yml`은 자동 병합. `ika-card-save-inapp`과는 충돌 없음.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`으로 `./gradlew cleanTest test` 1305건 중 1304 통과, 1 건너뜀, 실패 0. 빈 임시 DB에 001부터 053까지 순서대로 적용 성공(파일 49개, 모두 종료 코드 0). IKA-87의 052를 끼워 001부터 052(season_opening), 053 순서로 적용해도 성공, 그 뒤 053 재적용도 성공. 임시 DB는 지웠다. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+- 2026-11-20 main 동기화와 PR
+  - `origin/main` merge 두 번(리베이스 없음). 첫 번째는 #148(IKA-87, 052)과 #152(IKA-89)를 받았고 `docs/project/work.md`만 충돌해 두 항목을 모두 남겼다. 그 사이 #143(IKA-85)이 머지돼 한 번 더 merge했고 충돌은 없었다.
+  - 결정: 053에 `SET NAMES utf8mb4`를 넣었다. 052가 latin1 클라이언트에서 한글이 깨져 같은 방식으로 고친 일(15d2016)이 있었고, 053은 표와 컬럼 COMMENT에 한글이 있다. 다른 선택지는 실행기에 `--default-character-set=utf8mb4`를 넣는 것이었으나 이미 운영에 적용된 파일들의 동작까지 바뀌어 이번 범위에서 뺐다. 053은 운영 미적용이라 체크섬 문제는 없다.
+  - 마이그레이션: 053은 052 다음 번호. 배포 파이프라인과 CI(`verify-production-migration-007-015.sh`)가 `run-production-migrations.sh database/production`으로 모든 번호 파일을 차례로 적용하므로 053도 포함된다. latin1 클라이언트로 빈 임시 DB에 001부터 053까지(파일 50개) 적용 성공, 053 두 번째 적용도 오류 없음, 표와 컬럼 COMMENT가 한글로 남는 것 확인. 임시 DB는 지웠다.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`(001~053 적용 후)로 `./gradlew test` 1341건 중 1340 통과, 1 건너뜀, 실패 0. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+  - CI 첫 실행에서 `DmMailOutboxIntegrationTest` 묶음 메일 테스트 1건 실패. 원인: 저장소가 DATETIME을 `getTimestamp`로 읽어 JVM 기본 시간대(CI는 UTC)로 바뀌어 마지막 발송 시각이 9시간 앞당겨졌고, 쿨다운이 끝난 것으로 판단했다. 로컬은 JVM이 KST라 드러나지 않았다. 결정: `getObject(..., LocalDateTime.class)`로 바꿨다(다른 선택지는 테스트 JVM에 시간대를 고정하는 것이었으나 코드가 JVM 시간대에 기대는 문제가 남는다). 운영은 `TZ=Asia/Seoul`이라 운영 영향은 없었다. 확인: 고치기 전 코드를 `-Duser.timezone=UTC`로 돌려 같은 실패 재현, 고친 뒤 UTC로 dmmail 31건 통과, KST로 dmmail, notification, message 77건 통과.
+  - 운영 설정: 새 운영 env는 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED` 두 개이고 `compose.prod.yml`에 있다(기본 false). `SNOWTHING_DM_MAIL_SES_ENDPOINT`는 테스트용이라 운영 목록에 넣지 않았다.
+- 남은 항목: 화면 로컬 확인, PR, 운영 마이그레이션 053 적용(IKA-87의 052 다음), 적재 플래그 켜기, 테스트 수신자로 발송 확인 후 발송 플래그 켜기, 원클릭 수신거부(후속).
+- 검증
+  - `./gradlew spotlessCheck test` 전체 통과(1304건, 실패 0). 이후 바꾼 부분은 관련 96건 다시 통과.
+  - 마이그레이션 053(당시 052) 두 번 적용 후 `ddl-auto=validate` 기동 성공.
+  - 프로세스 두 개 경합(받는 사람 40명, 중복 메일 0), 재기동 후 이어서 처리, 수락 직후 강제 종료 후 UNKNOWN 격리(재발송 0).
+  - 성능: 쪽지 응답 p95 1965ms에서 30ms, 알림 지연 p95 57.9초(SES 1초, 60건 동시).
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 화면: 헤드리스 Chrome으로 신규, 기존, 소셜 내부 주소 계정을 데스크톱과 모바일에서 확인. 다크 모드는 미확인.
+
 ## 시즌 트래픽 대비 이미지 처리와 라이브톡 제한 보강 (IKA-93, 2026-11-18)
 
 - 상태: 구현 완료, PR 생성. 머지와 배포는 사용자 확인 후.

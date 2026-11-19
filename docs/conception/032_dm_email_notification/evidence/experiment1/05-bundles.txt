@@ -1,0 +1,7 @@
+-- 실험 1 | 메일 한 통(MessageId)에 묶인 행 수: 모두 3 (묶음이 쪼개지지 않음)
+-- 실행 시각(KST): 2026-11-17 23:43:28
+-- DB: snowthing_ika88_exp
+SELECT rows_per_mail, COUNT(*) AS mails FROM (SELECT provider_message_id, COUNT(*) AS rows_per_mail, COUNT(DISTINCT recipient_member_id) AS recipients FROM dm_mail_outbox WHERE recipient_member_id IN (SELECT member_id FROM member WHERE email LIKE 'ev1-r%') GROUP BY provider_message_id) t GROUP BY rows_per_mail
+
+rows_per_mail	mails
+3	40

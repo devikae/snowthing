@@ -1,0 +1,7 @@
+-- 실험 1 | 처리 후 상태: 120행 모두 ACCEPTED
+-- 실행 시각(KST): 2026-11-17 23:43:27
+-- DB: snowthing_ika88_exp
+SELECT status, COUNT(*) AS rows_cnt, COUNT(DISTINCT recipient_member_id) AS recipients, COUNT(DISTINCT provider_message_id) AS mails FROM dm_mail_outbox WHERE recipient_member_id IN (SELECT member_id FROM member WHERE email LIKE 'ev1-r%') GROUP BY status
+
+status	rows_cnt	recipients	mails
+ACCEPTED	120	40	40

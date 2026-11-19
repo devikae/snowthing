@@ -1,0 +1,61 @@
+# 성능 비교 | 같은 조건(SES 1초, 60건, 동시 6, 풀 5)의 쪽지 응답 지연과 알림 지연
+# 실행 시각(KST): 2026-11-17 23:54:47
+$ for f in run2-sync-baseline run2-outbox; do echo "[$f.json]"; cat benchmark/$f.json; echo; done
+[run2-sync-baseline.json]
+{
+  "mode" : "sync-baseline",
+  "measuredAt" : "2026-11-17T23:24:06.127896400",
+  "requests" : 60,
+  "concurrency" : 6,
+  "sesDelayMs" : 1000,
+  "dbPoolSize" : 5,
+  "errors" : 0,
+  "errorTypes" : [ ],
+  "sendWallMs" : 12321,
+  "sendLatencyMs" : {
+    "count" : 60,
+    "p50" : 1038,
+    "p95" : 1965,
+    "max" : 2049,
+    "min" : 1012
+  },
+  "fakeSesRequests" : 60,
+  "fakeSesAccepted" : 60,
+  "outboxRows" : 0
+}
+[run2-outbox.json]
+{
+  "mode" : "outbox",
+  "measuredAt" : "2026-11-17T23:22:40.559040700",
+  "requests" : 60,
+  "concurrency" : 6,
+  "sesDelayMs" : 1000,
+  "dbPoolSize" : 5,
+  "errors" : 0,
+  "errorTypes" : [ ],
+  "sendWallMs" : 185,
+  "sendLatencyMs" : {
+    "count" : 60,
+    "p50" : 14,
+    "p95" : 30,
+    "max" : 46,
+    "min" : 10
+  },
+  "delivery" : {
+    "accepted" : 60,
+    "statusCounts" : [ {
+      "status" : "ACCEPTED",
+      "cnt" : 60
+    } ],
+    "maxBacklogObserved" : 60,
+    "enqueueToAcceptedMs" : {
+      "count" : 60,
+      "p50" : 26898,
+      "p95" : 57934,
+      "max" : 57938,
+      "min" : 792
+    },
+    "fakeSesRequests" : 60,
+    "fakeSesAccepted" : 60
+  }
+}
