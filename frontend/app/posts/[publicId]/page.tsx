@@ -35,7 +35,7 @@ export default async function PostDetailPage({ params }: Props) {
   if (!isPublicId(publicId)) notFound();
   const { data: initialPost, missing } = await loadPost(publicId);
   // 비로그인 조회가 404면 삭제됐거나 없는 글이라 404 페이지로 답한다. 공유 미리보기와 검색엔진이 빈 글을 담지 않게 한다.
-  // 1:1 문의는 작성자에게도 비로그인 조회가 404라서, 로그인 세션 쿠키가 있으면 기존처럼 브라우저가 다시 부르게 둔다.
+  // 1:1 문의는 작성자에게도 비로그인 조회가 404라서, 로그인 세션 쿠키나 로그인 유지 쿠키가 있으면 기존처럼 브라우저가 다시 부르게 둔다.
   if (missing && !(await hasSessionCookie())) notFound();
   if (initialPost?.categoryCode === "CARPOOL") redirect(`/carpool/${publicId}`);
   return <PostDetailClient params={params} initialPost={initialPost} />;
@@ -43,5 +43,6 @@ export default async function PostDetailPage({ params }: Props) {
 
 async function hasSessionCookie() {
   const store = await cookies();
-  return store.has("JSESSIONID") || store.has("SESSION");
+  // 세션이 끝나도 로그인 유지 쿠키가 있으면 브라우저 요청은 다시 로그인된 채로 간다.
+  return store.has("JSESSIONID") || store.has("SESSION") || store.has("SNOWTHING_REMEMBER_ME");
 }
