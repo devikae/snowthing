@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { composeMessageHref, fetchViewerPublicId } from "../lib/messageApi";
 import styles from "./messages.module.css";
+import { NoteIcon } from "./NoteIcon";
 
 interface MarketMessageButtonProps {
   seller: { publicId: string | null; nickname: string };
@@ -27,7 +28,7 @@ export function MarketMessageButton({ seller, listing }: MarketMessageButtonProp
   if (!viewer || !seller.publicId || viewer === seller.publicId) return null;
   return (
     <Link className={`${styles.buttonPrimary} ${styles.marketMessage}`} href={composeMessageHref({ publicId: seller.publicId, nickname: seller.nickname }, listing)}>
-      <span className="material-symbols-outlined" aria-hidden="true">sticky_note_2</span>
+      <NoteIcon size={18} />
       쪽지 보내기
     </Link>
   );

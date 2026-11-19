@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { fetchResult, type CharacterResult } from "./api";
 import { CardPanel } from "./CardPanel";
 import { characterImage, type JobCode, type Sport } from "./data";
 import { InviteSection } from "./InviteSection";
 import { MyGroups } from "./MyGroups";
+import { clearFragment, readResultFragment } from "./links";
 import { getSavedAnswers, saveAnswers } from "./localStore";
 import { QuizFlow, savedProgressCount } from "./QuizFlow";
 import { RelationshipMap } from "./RelationshipMap";
@@ -36,6 +37,18 @@ export function CharacterTestApp() {
       setStage({ kind: "intro" });
     }
   };
+
+  // 카톡 안 브라우저에서 "다른 브라우저로 열기"로 넘어오면 주소에 실린 답으로 결과를 바로 보여 준다.
+  useEffect(() => {
+    const restored = readResultFragment();
+    if (!restored) return;
+    // 렌더 중에 상태를 바꾸지 않게 다음 틱에 시작한다. 개발 모드의 effect 두 번 실행에도 한 번만 돌게 주소는 타이머 안에서 지운다.
+    const timer = setTimeout(() => {
+      clearFragment();
+      void finish(restored.answers, restored.sport);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   const showSaved = () => {
     const saved = getSavedAnswers();
