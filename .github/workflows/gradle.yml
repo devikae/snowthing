@@ -1,10 +1,10 @@
 name: Java CI with Gradle
 
+# PR 검사 전용이다. main push 때는 deploy-backend.yml의 ci-backend가 같은 검사를 돌린다.
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    paths: [ 'backend/**', 'database/**', 'shared/**', 'scripts/run-production-migrations.sh', 'scripts/verify-production-migration-*.sh', '.github/workflows/gradle.yml' ]
 
 permissions:
   contents: read
@@ -87,12 +87,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Allow test triggers in MySQL
+      - name: Allow test triggers and raise max_connections in MySQL
         env:
           MYSQL_ROOT_PASSWORD: snowthing_root_2026!
         run: |
           mysql --protocol=TCP -h 127.0.0.1 -P 3306 -uroot -p"$MYSQL_ROOT_PASSWORD" \
-            -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+            -e "SET GLOBAL log_bin_trust_function_creators = 1; SET GLOBAL max_connections = 500;"
 
       - name: Verify production migration 003 from the existing schema
         working-directory: ${{ github.workspace }}
@@ -100,7 +100,7 @@ jobs:
           chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-003.sh
           scripts/verify-production-migration-003.sh
 
-      - name: Verify production migration 004 used market schema
+      - name: Verify production migrations 005-006 schema
         working-directory: ${{ github.workspace }}
         run: |
           chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-005.sh scripts/verify-production-migration-006.sh

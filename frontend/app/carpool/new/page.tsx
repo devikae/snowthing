@@ -5,10 +5,12 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { PageHeading } from "../../components/PageHeading";
+import { LoginExpiredNotice } from "../../components/LoginExpiredNotice";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
+import { readApiError } from "../../lib/readApiError";
 import KakaoMapPicker, { MapPlace } from "../KakaoMapPicker";
 
 type TripType = "ONE_WAY" | "ROUND_TRIP";
@@ -59,17 +61,6 @@ type CarpoolEditDetail = {
   canManage: boolean;
   routeSource: RouteSource | null;
 };
-
-type ApiErrorResponse = { code?: string; message?: string };
-
-async function readApiError(response: Response, fallback: string) {
-  try {
-    const body = (await response.json()) as ApiErrorResponse;
-    return { code: body.code, message: body.message?.trim() || fallback };
-  } catch {
-    return { code: undefined, message: fallback };
-  }
-}
 
 const initial = {
   title: "",
@@ -161,6 +152,7 @@ export default function NewCarpoolPage() {
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [calculation, setCalculation] = useState<Calculation | null>(null);
   const [error, setError] = useState("");
+  const [loginExpired, setLoginExpired] = useState(false);
   const [working, setWorking] = useState(false);
   const isSubmittingRef = useRef(false);
   const idempotencyKey = useIdempotencyKey();
@@ -513,6 +505,7 @@ export default function NewCarpoolPage() {
     isSubmittingRef.current = true;
     setWorking(true);
     setError("");
+    setLoginExpired(false);
     try {
       const body = JSON.stringify({
           ...form,
@@ -561,12 +554,15 @@ export default function NewCarpoolPage() {
           : API_ENDPOINTS.carpool.create,
         { method: editPublicId ? "PUT" : "POST", headers, body },
       );
+      // 판매글 등록과 같은 원칙이다. 로그인이 풀려도 입력은 그대로 두고 새 창 로그인을 안내한다.
+      if (response.status === 401) {
+        setLoginExpired(true);
+        return;
+      }
       if (!response.ok) {
         const apiError = await readApiError(
           response,
-          response.status === 401
-            ? "로그인이 필요합니다."
-            : "모집글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "모집글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         );
         if (["CARPOOL_004", "CARPOOL_006"].includes(apiError.code ?? "")) {
           setRouteSource("MANUAL");
@@ -605,7 +601,7 @@ export default function NewCarpoolPage() {
             <span className="material-symbols-outlined" aria-hidden="true">lock</span>
             <h2>카풀 모집글은 회원만 작성할 수 있습니다.</h2>
             <p>회원가입 후 출발지와 예상 비용을 계산해 모집글을 등록해 보세요.</p>
-            <div><Link className="carpool-primary-button" href="/signup">회원가입</Link><Link href="/login?returnUrl=/carpool/new">이미 회원이라면 로그인</Link></div>
+            <div><Link className="carpool-primary-button" href="/signup?returnUrl=%2Fcarpool%2Fnew">회원가입</Link><Link href="/login?returnUrl=/carpool/new">이미 회원이라면 로그인</Link></div>
           </section>
         ) : <form className="carpool-form" onSubmit={submit}>
           <section>
@@ -1094,9 +1090,14 @@ export default function NewCarpoolPage() {
               관리자만 볼 수 있습니다. 전화번호처럼 민감한 정보는 주의해 주세요.
             </small>
           </section>
-          {error && (
+          {(error || loginExpired) && (
             <p className="carpool-form-error" role="alert">
-              {error}
+              {error || (
+                <LoginExpiredNotice
+                  returnUrl={editPublicId ? `/carpool/new?edit=${encodeURIComponent(editPublicId)}` : "/carpool/new"}
+                  action={editPublicId ? "수정" : "등록"}
+                />
+              )}
             </p>
           )}
           <footer>
