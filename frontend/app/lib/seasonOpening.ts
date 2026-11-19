@@ -1,24 +1,22 @@
-// 26/27 시즌 리조트별 개장일. 공개 API가 없어 직접 넣는다(docs/conception/019_resort_weather_dday).
-// 공식 발표 전 날짜는 작년 개장일과 같은 주의 금요일로 잡은 예상일이다. 확정되면 confirmed를 true로 바꾼다.
+// 리조트별 개장일 D-DAY 계산. 개장일 값은 관리자 화면(/admin/season-openings)에서 바꾸고
+// 공개 API(/api/v1/public/season-openings)로 받는다(IKA-87, docs/conception/032_season_opening_admin).
 // 날짜가 없는 리조트는 D-DAY를 표시하지 않는다.
 export type SeasonOpening = {
   resortCode: string;
   name: string;
-  date: string;
+  /** YYYY-MM-DD, KST 달력 날짜. 없으면 null. */
+  openingDate: string | null;
+  /** 리조트가 공식 발표한 날짜인지. 아니면 화면에 "예상"을 붙인다. */
   confirmed: boolean;
+  showOnBanner: boolean;
+  bannerOrder: number;
 };
 
-export const SEASON_OPENINGS: SeasonOpening[] = [
-  { resortCode: "YONGPYONG", name: "모나용평", date: "2026-11-20", confirmed: true },
-  { resortCode: "HIGH1", name: "하이원", date: "2026-11-27", confirmed: true },
-  { resortCode: "PHOENIX", name: "휘닉스파크", date: "2026-11-27", confirmed: true },
-  { resortCode: "O2_RESORT", name: "오투리조트", date: "2026-11-27", confirmed: false },
-  { resortCode: "VIVALDI", name: "비발디파크", date: "2026-12-04", confirmed: false },
-  { resortCode: "WELLI_HILLI", name: "웰리힐리파크", date: "2026-12-04", confirmed: false },
-  { resortCode: "MUJU", name: "무주덕유산", date: "2026-12-04", confirmed: false },
-  { resortCode: "OAK_VALLEY", name: "오크밸리", date: "2026-12-11", confirmed: false },
-  { resortCode: "KONJIAM", name: "곤지암", date: "2026-12-11", confirmed: false },
-];
+export type SeasonOpenings = {
+  bannerEnabled: boolean;
+  /** 배너 순서, 같으면 등록 순. */
+  resorts: SeasonOpening[];
+};
 
 const DAY_MILLIS = 24 * 60 * 60 * 1000;
 
@@ -42,20 +40,29 @@ export function formatDday(days: number): string {
   return days === 0 ? "D-DAY" : `D-${days}`;
 }
 
-export type UpcomingOpening = { opening: SeasonOpening; days: number };
+export type UpcomingOpening = { opening: SeasonOpening; date: string; days: number };
 
-/** 아직 개장하지 않은 리조트의 D-DAY. 개장일이 지났거나 날짜가 없으면 null. */
-export function upcomingOpening(resortCode: string, today: string): UpcomingOpening | null {
-  const opening = SEASON_OPENINGS.find((item) => item.resortCode === resortCode);
-  if (!opening) return null;
-  const days = daysUntil(opening.date, today);
-  return days >= 0 ? { opening, days } : null;
+function toUpcoming(opening: SeasonOpening, today: string): UpcomingOpening | null {
+  if (!opening.openingDate) return null;
+  const days = daysUntil(opening.openingDate, today);
+  return days >= 0 ? { opening, date: opening.openingDate, days } : null;
 }
 
-/** 개장일이 확정됐고 아직 개장 전인 리조트 전부, 개장일 순. 메인 배너에는 예상일을 걸지 않는다. */
-export function confirmedUpcomingOpenings(today: string): UpcomingOpening[] {
-  return SEASON_OPENINGS.filter((opening) => opening.confirmed)
-    .map((opening) => ({ opening, days: daysUntil(opening.date, today) }))
-    .filter((item) => item.days >= 0)
-    .sort((a, b) => a.days - b.days || a.opening.name.localeCompare(b.opening.name, "ko"));
+/** 아직 개장하지 않은 리조트의 D-DAY. 개장일이 지났거나 날짜가 없으면 null. */
+export function upcomingOpening(
+  openings: SeasonOpening[],
+  resortCode: string,
+  today: string,
+): UpcomingOpening | null {
+  const opening = openings.find((item) => item.resortCode === resortCode);
+  return opening ? toUpcoming(opening, today) : null;
+}
+
+/** 메인 배너에 걸 리조트. 스위치가 꺼졌으면 빈 목록, 켜졌으면 배너에 넣기로 한 리조트 중 아직 개장 전인 것을 관리자가 정한 순서대로. */
+export function bannerOpenings(data: SeasonOpenings, today: string): UpcomingOpening[] {
+  if (!data.bannerEnabled) return [];
+  return data.resorts
+    .filter((opening) => opening.showOnBanner)
+    .map((opening) => toUpcoming(opening, today))
+    .filter((item): item is UpcomingOpening => item !== null);
 }

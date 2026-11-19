@@ -109,7 +109,7 @@ public class CommentService {
                         .findByPublicId(postPublicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        validatePostVisibility(post);
+        validatePostVisibility(post, userDetails);
         validateMarketAccess(post, userDetails, false);
         InquiryAccess.requireReadable(post, userDetails);
 
@@ -166,7 +166,7 @@ public class CommentService {
                 postRepository
                         .findById(root.getPost().getId())
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
-        validatePostVisibility(post);
+        validatePostVisibility(post, userDetails);
         validateMarketAccess(post, userDetails, false);
         InquiryAccess.requireReadable(post, userDetails);
 
@@ -195,8 +195,11 @@ public class CommentService {
                 commentId, commentRepository.countReplies(commentId), replies, nextCursor, hasNext);
     }
 
-    private void validatePostVisibility(Post post) {
-        if (post == null || post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+    /** 관리자는 가린 글도 상세에서 보므로 댓글도 함께 읽는다. 글 상세 조회와 같은 기준이다 (IKA-89). */
+    private void validatePostVisibility(Post post, CustomUserDetails userDetails) {
+        if (post == null
+                || post.isDeleted()
+                || (post.getStatus() != PostStatus.NORMAL && !isAdmin(userDetails))) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
     }

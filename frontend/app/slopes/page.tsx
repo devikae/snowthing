@@ -7,6 +7,7 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { upcomingOpening } from "../lib/seasonOpening";
 import { useKstToday } from "../lib/useKstToday";
+import { useSeasonOpenings } from "../lib/useSeasonOpenings";
 import { resortSlug } from "../resort-cam/types";
 import styles from "./slopes.module.css";
 
@@ -87,7 +88,7 @@ export default function SlopesPage() {
   return (
     <div className="community-page">
       <TopNav active="resort" />
-      <main className="community-container">
+      <main className="community-container slopes-page">
         <PageHeading
           title="슬로프 현황"
           description="리조트 공식 사이트에 공개된 운영 현황을 하루 몇 번 읽어 모았습니다. 현장 사정으로 바뀔 수 있으니 출발 전 공식 페이지에서 한 번 더 확인하세요."
@@ -124,7 +125,9 @@ export default function SlopesPage() {
 
 function ResortCard({ resort }: { resort: ResortSlopes }) {
   const today = useKstToday();
-  const beforeOpening = today ? upcomingOpening(resort.resortCode, today) !== null : false;
+  const openings = useSeasonOpenings();
+  const beforeOpening =
+    today && openings ? upcomingOpening(openings.resorts, resort.resortCode, today) !== null : false;
   const hasData = resort.collectedAt !== null;
   const openCount = resort.openSlopeCount ?? 0;
   const total = resort.totalSlopeCount ?? resort.slopes.length;

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ikae.snowthing.domain.admin.dto.ChatBannedIpCreateRequest;
 import com.ikae.snowthing.domain.admin.dto.ChatBannedIpResponse;
+import com.ikae.snowthing.domain.admin.dto.ChatMessageBanRequest;
 import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 
@@ -57,12 +58,14 @@ public class AdminChatController {
     @PostMapping("/messages/{messageId}/ban-ip")
     public ResponseEntity<Void> banByMessageId(
             @PathVariable("messageId") String messageId,
+            @RequestBody(required = false) ChatMessageBanRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
+        int days = ChatMessageBanRequest.resolveDays(request);
         String createdBy =
                 (userDetails != null && userDetails.getUsername() != null)
                         ? userDetails.getUsername()
                         : "ADMIN";
-        chatIpBanService.banIpByMessageId(messageId, createdBy);
+        chatIpBanService.banIpByMessageId(messageId, days, createdBy);
         return ResponseEntity.noContent().build();
     }
 }

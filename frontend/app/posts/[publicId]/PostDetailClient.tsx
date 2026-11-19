@@ -69,6 +69,8 @@ interface CommentItem {
   canDelete: boolean;
   requiresDeletePassword: boolean;
   createdAt: string;
+  // 관리자 응답에만 온다. 일반 사용자 응답에는 없다.
+  blinded?: boolean;
 }
 
 interface CommentListResponse {
@@ -142,6 +144,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [blindBusy, setBlindBusy] = useState(false);
   const [deleteModalConfig, setDeleteModalConfig] = useState({
     title: "게시글 삭제 확인",
     description: "이 게시글을 삭제할까요?",
@@ -339,6 +342,50 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
     return () => window.clearTimeout(timer);
   }, [fetchComments, initialPost, publicId, router]);
+
+  // 관리자가 글 화면에서 바로 가리거나 가리기를 푼다. 권한은 서버의 관리자 API가 다시 확인한다.
+  const handleTogglePostBlind = async () => {
+    if (!post || blindBusy) return;
+    const blinded = post.status !== "BLOCKED";
+    if (!confirm(blinded ? "이 글을 가릴까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." : "이 글의 가리기를 해제할까요?")) return;
+    setBlindBusy(true);
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.admin.blindPost(post.publicId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blinded }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || "가리기 상태를 바꾸지 못했습니다.");
+      }
+      setPost((current) => (current ? { ...current, status: blinded ? "BLOCKED" : "NORMAL" } : current));
+    } catch (error) {
+      alert(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+    } finally {
+      setBlindBusy(false);
+    }
+  };
+
+  const handleToggleCommentBlind = async (comment: CommentItem) => {
+    const blinded = !comment.blinded;
+    if (!confirm(blinded ? "이 댓글을 가릴까요? 일반 사용자에게는 내용이 보이지 않게 됩니다." : "이 댓글의 가리기를 해제할까요? 신고로 가린 댓글이면 신고 처리 화면에서 해제해야 합니다.")) return;
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.admin.blindComment(comment.commentId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blinded }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || "댓글 가리기 상태를 바꾸지 못했습니다.");
+      }
+      setReplyPagingByRootId({});
+      await fetchComments();
+    } catch (error) {
+      alert(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+    }
+  };
 
   const askLoginForReaction = () => {
     if (confirm("추천과 비추천은 로그인해야 할 수 있어요. 로그인 화면으로 이동할까요?")) {
@@ -681,6 +728,17 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
               <div><span className="material-symbols-outlined" aria-hidden="true">visibility</span><span className="sr-only">조회</span>{post.viewCount}<span className="material-symbols-outlined" aria-hidden="true">chat_bubble</span><span className="sr-only">댓글</span>{post.commentCount}<span className="material-symbols-outlined" aria-hidden="true">thumb_up</span><span className="sr-only">추천</span>{post.likeCount}</div>
             </div>
 
+            {isAdmin && post.status === "BLOCKED" && (
+              <p role="status" className="mt-3 rounded border border-[var(--snow-border)] px-3 py-2 text-sm text-[var(--snow-muted)]">
+                가린 글입니다. 일반 사용자에게는 보이지 않고 관리자에게만 보입니다.
+              </p>
+            )}
+            {isAdmin && post.status === "TEMPORARY_HOLD" && (
+              <p role="status" className="mt-3 rounded border border-[var(--snow-border)] px-3 py-2 text-sm text-[var(--snow-muted)]">
+                신고로 임시조치된 글입니다. 해제는 신고 처리 화면에서 합니다.
+              </p>
+            )}
+
             <h1>{post.title}</h1>
 
             <div className="post-detail-author">
@@ -726,6 +784,11 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                       <Link href={`/posts/${publicId}/edit`}>
                         수정
                       </Link>
+                    )}
+                    {isAdmin && (post.status === "NORMAL" || post.status === "BLOCKED") && (
+                      <button type="button" disabled={blindBusy} onClick={() => void handleTogglePostBlind()}>
+                        {post.status === "BLOCKED" ? "가리기 해제" : "가리기"}
+                      </button>
                     )}
                     {canDelete && (
                       <button onClick={handleOpenDeleteModal}>
@@ -868,6 +931,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                     submittingComment={submittingComment}
                     handleLoadMoreReplies={handleLoadMoreReplies}
                     isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
+                    onToggleBlind={isAdmin ? (target) => void handleToggleCommentBlind(target) : undefined}
                   />
                 ))
               )}
@@ -944,6 +1008,7 @@ function CommentRow({
   handleConfirmDeleteComment,
   handleLoadMoreReplies,
   isLoadingReplies,
+  onToggleBlind,
 }: {
   item: CommentItem;
   isAnonymousPost: boolean;
@@ -976,6 +1041,7 @@ function CommentRow({
   handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
   handleLoadMoreReplies: (rootCommentId: string) => Promise<void>;
   isLoadingReplies: boolean;
+  onToggleBlind?: (comment: CommentItem) => void;
 }) {
   const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
@@ -1030,6 +1096,7 @@ function CommentRow({
                 <button type="button" onClick={toggleReplyEditor}>{activeReplyParentId === item.commentId ? "답글 취소" : "답글"}</button>
                 {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
                 {!item.isDeleted && <ReportButton targetType="COMMENT" targetId={item.commentId} />}
+                <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />
               </div>
             </>
           )}
@@ -1100,6 +1167,7 @@ function CommentRow({
                 handleStartDeleteComment={handleStartDeleteComment}
                 handleCancelDeleteComment={handleCancelDeleteComment}
                 handleConfirmDeleteComment={handleConfirmDeleteComment}
+                onToggleBlind={onToggleBlind}
               />
             ))}
           </div>
@@ -1143,6 +1211,7 @@ function ReplyRow({
   handleStartDeleteComment,
   handleCancelDeleteComment,
   handleConfirmDeleteComment,
+  onToggleBlind,
 }: {
   item: CommentItem;
   isAnonymousPost: boolean;
@@ -1165,6 +1234,7 @@ function ReplyRow({
   handleStartDeleteComment: (commentId: string) => void;
   handleCancelDeleteComment: () => void;
   handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
+  onToggleBlind?: (comment: CommentItem) => void;
 }) {
   const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
@@ -1214,6 +1284,10 @@ function ReplyRow({
             <button type="button" onClick={onReply}>답글</button>
             {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
             <ReportButton targetType="COMMENT" targetId={item.commentId} />
+            <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />
+          </div>}
+          {item.isDeleted && item.blinded && !isEditing && <div className="comment-youtube-actions">
+            <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />
           </div>}
         </div>
       </div>
@@ -1288,6 +1362,16 @@ function CommentEditForm({
         </button>
       </div>
     </div>
+  );
+}
+
+/** 관리자에게만 넘기는 onToggleBlind가 있을 때만 그린다. 그냥 지운 댓글은 되살릴 수 없어 버튼을 두지 않는다. */
+function CommentBlindButton({ comment, onToggleBlind }: { comment: CommentItem; onToggleBlind?: (comment: CommentItem) => void }) {
+  if (!onToggleBlind || (comment.isDeleted && !comment.blinded)) return null;
+  return (
+    <button type="button" onClick={() => onToggleBlind(comment)}>
+      {comment.blinded ? "가리기 해제" : "가리기"}
+    </button>
   );
 }
 
