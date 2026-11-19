@@ -189,7 +189,7 @@ function MarketPageContent() {
             </Link>)}
         </section>
 
-        {!loading && !error && totalPages > 1 && <nav className="board-pagination market-pagination" aria-label="페이지 이동"><button disabled={page === 1} onClick={() => move({ page: page - 1 })} aria-label="이전 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_left</span></button>{visiblePages.map((number) => <button key={number} className={number === page ? "current" : ""} onClick={() => move({ page: number })}>{number}</button>)}<button disabled={page === totalPages} onClick={() => move({ page: page + 1 })} aria-label="다음 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></nav>}
+        {!loading && !error && totalPages > 1 && <nav className="board-pagination market-pagination" aria-label="페이지 이동"><button disabled={page === 1} onClick={() => move({ page: page - 1 })} aria-label="이전 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_left</span></button>{visiblePages.map((number) => <button key={number} className={number === page ? "current" : ""} aria-current={number === page ? "page" : undefined} onClick={() => move({ page: number })}>{number}</button>)}<button disabled={page === totalPages} onClick={() => move({ page: page + 1 })} aria-label="다음 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></nav>}
       </main>
       <Footer />
     </div>

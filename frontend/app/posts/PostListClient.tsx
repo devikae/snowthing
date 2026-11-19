@@ -222,6 +222,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     key={category.code}
                     type="button"
                     className={currentCategory === category.code && !currentView ? "active" : ""}
+                    aria-pressed={currentCategory === category.code && !currentView}
                     onClick={() => moveTo({ category: category.code, page: 0, keyword: "", view: "" })}
                   >
                     {category.name}
@@ -356,6 +357,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                   <button
                     key={pageNumber}
                     className={page === pageNumber ? "current" : ""}
+                    aria-current={page === pageNumber ? "page" : undefined}
                     onClick={() => moveTo({ page: pageNumber })}
                   >
                     {pageNumber + 1}

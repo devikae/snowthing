@@ -107,6 +107,17 @@ server.listen(MOCK_PORT, '127.0.0.1', () => {
     await pause(300);
     assert.equal(state.reactionCalls, 1, 'Double click on like should send one request');
 
+    // 7. 게시판 탭은 색만이 아니라 aria-pressed로도 선택 상태를 알린다.
+    await navigate('/posts?category=FREE');
+    await waitFor('!!document.querySelector(".board-category-tabs button[aria-pressed=true]")');
+    assert.equal(await evaluate('document.querySelector(".board-category-tabs button[aria-pressed=true]").textContent.trim()'), '자유게시판');
+    assert.equal(await evaluate('document.querySelectorAll(".board-category-tabs button[aria-pressed=true]").length'), 1);
+    await navigate('/');
+    await waitFor('!!document.querySelector(".board-tabs button[aria-pressed=true]")');
+    assert.equal(await evaluate('document.querySelector(".board-tabs button[aria-pressed=true]").textContent.trim()'), '전체글');
+    await navigate(`/posts/${POST_ID}`);
+    await waitFor('!!document.querySelector(".post-comment-compose textarea")');
+
     // 6. 댓글 등록이 HTML 413으로 거절되면 연결 오류가 아니라 크기 안내를 보여 준다.
     await evaluate('window.__alerts = []; window.alert = (message) => window.__alerts.push(String(message));');
     const setValue = (selector, value) => `(() => { const el = document.querySelector(${JSON.stringify(selector)}); const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })); })()`;
