@@ -3952,6 +3952,11 @@ html[data-theme="dark"] .snow-empty-copy strong {
   cursor: pointer;
 }
 
+.snow-empty-state .home-widget-retry {
+  flex: none;
+  margin-left: auto;
+}
+
 .carpool-compact-list:has(.carpool-widget-empty) {
   border-top: none;
 }
