@@ -262,6 +262,145 @@ class RememberMeIntegrationTest {
         assertThat(tokenCount()).isZero();
     }
 
+    @Test
+    @DisplayName("표에 없는 series로 만든 쿠키는 인증하지 않고 다른 토큰을 건드리지 않는다")
+    void forgedCookieWithUnknownSeries_IsRejected() throws Exception {
+        login();
+        Cookie forged = new Cookie(COOKIE, encode("unknown-series", "unknown-token"));
+
+        mockMvc.perform(get(ME).cookie(forged)).andExpect(status().isUnauthorized());
+        assertThat(tokenCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("형식이 깨진 쿠키는 500 없이 비로그인으로 이어간다")
+    void malformedCookie_IsRejectedWithoutServerError() throws Exception {
+        login();
+
+        mockMvc.perform(get(ME).cookie(new Cookie(COOKIE, "not-base64...")))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ME).cookie(new Cookie(COOKIE, encode("only-one-part"))))
+                .andExpect(status().isUnauthorized());
+        assertThat(tokenCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("series는 맞고 token이 틀린 쿠키는 도난으로 보고 그 회원의 토큰을 모두 지운다")
+    void forgedTokenForKnownSeries_DeletesAllTokens() throws Exception {
+        Cookie issued = login().getResponse().getCookie(COOKIE);
+        String series =
+                new String(Base64.getDecoder().decode(issued.getValue()), StandardCharsets.UTF_8)
+                        .split(":")[0];
+
+        mockMvc.perform(get(ME).cookie(new Cookie(COOKIE, encode(series, "guessed-token"))))
+                .andExpect(status().isUnauthorized());
+        assertThat(tokenCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("같은 쿠키로 요청 여러 개가 동시에 와도 모두 인증되고 token은 한 번만 바뀐다")
+    void concurrentAutoLogins_AllSucceedAndRotateOnce() throws Exception {
+        Cookie issued = login().getResponse().getCookie(COOKIE);
+        int requests = 8;
+        ExecutorService executor = Executors.newFixedThreadPool(requests);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<MockHttpServletResponse>> responses = new ArrayList<>();
+        List<Authentication> authentications = new ArrayList<>();
+        try {
+            for (int i = 0; i < requests; i++) {
+                responses.add(
+                        executor.submit(
+                                () -> {
+                                    MockHttpServletRequest request = new MockHttpServletRequest();
+                                    request.setCookies(issued);
+                                    MockHttpServletResponse response =
+                                            new MockHttpServletResponse();
+                                    start.await();
+                                    Authentication authentication =
+                                            rememberMeServices.autoLogin(request, response);
+                                    synchronized (authentications) {
+                                        authentications.add(authentication);
+                                    }
+                                    return response;
+                                }));
+            }
+            start.countDown();
+            int rotatedCookies = 0;
+            for (Future<MockHttpServletResponse> response : responses) {
+                Cookie cookie = response.get(10, TimeUnit.SECONDS).getCookie(COOKIE);
+                if (cookie != null) {
+                    assertThat(cookie.getMaxAge()).isPositive();
+                    rotatedCookies++;
+                }
+            }
+            assertThat(authentications).hasSize(requests).doesNotContainNull();
+            assertThat(rotatedCookies).isEqualTo(1);
+            assertThat(tokenCount()).isEqualTo(1);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("운영처럼 secure-cookies가 켜지면 쿠키에 Secure를 붙인다")
+    void secureCookiesEnabled_SetsSecureFlag() {
+        Member member = memberRepository.findByEmail(EMAIL).orElseThrow();
+        SnowthingRememberMeServices secureServices =
+                new SnowthingRememberMeServices(
+                        "",
+                        "test-secret",
+                        true,
+                        memberRepository,
+                        rememberMeTokenRepository,
+                        memberSessionRegistry,
+                        clock);
+        CustomUserDetails user = new CustomUserDetails(member);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        secureServices.loginSuccess(
+                new MockHttpServletRequest(),
+                response,
+                UsernamePasswordAuthenticationToken.authenticated(
+                        user, null, user.getAuthorities()));
+
+        Cookie cookie = response.getCookie(COOKIE);
+        assertThat(cookie).isNotNull();
+        assertThat(cookie.getSecure()).isTrue();
+        assertThat(cookie.isHttpOnly()).isTrue();
+        assertThat(cookie.getPath()).isEqualTo("/");
+    }
+
+    @Test
+    @DisplayName("매일 정리 작업은 30일 넘게 쓰지 않은 토큰만 지운다")
+    void cleanup_DeletesOnlyTokensUnusedFor30Days() throws Exception {
+        login();
+        login();
+        String oldSeries =
+                jdbc.queryForObject(
+                        "SELECT series FROM persistent_logins ORDER BY series LIMIT 1",
+                        String.class);
+        jdbc.update(
+                "UPDATE persistent_logins SET last_used_at = ? WHERE series = ?",
+                LocalDateTime.now().minusDays(31),
+                oldSeries);
+
+        rememberMeServices.deleteExpiredTokens();
+
+        assertThat(tokenCount()).isEqualTo(1);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM persistent_logins WHERE series = ?",
+                                Integer.class,
+                                oldSeries))
+                .isZero();
+    }
+
+    private static String encode(String... parts) {
+        return Base64.getEncoder()
+                .withoutPadding()
+                .encodeToString(String.join(":", parts).getBytes(StandardCharsets.UTF_8));
+    }
+
     private MvcResult login() throws Exception {
         MemberLoginRequest request =
                 MemberLoginRequest.builder().email(EMAIL).password(PASSWORD).build();
