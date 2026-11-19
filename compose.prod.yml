@@ -68,7 +68,9 @@ services:
       - WEB_PUSH_VAPID_PRIVATE_KEY=${WEB_PUSH_VAPID_PRIVATE_KEY:-}
       - WEB_PUSH_VAPID_SUBJECT=${WEB_PUSH_VAPID_SUBJECT:-}
       # OOM 뒤 멈춘 채 남지 않고 종료되어 restart 정책으로 다시 뜨게 한다.
-      - JAVA_TOOL_OPTIONS=-XX:+ExitOnOutOfMemoryError -javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
+      # 힙 상한은 호스트 RAM(2GB)의 50%, 약 1GB다. 지정하지 않으면 JVM 기본값 25%(약 512MB)라 사진 디코딩 2건(약 300MB)과 라이브톡이 겹칠 때 빠듯하다.
+      # 나머지 절반은 JVM 힙 밖 메모리(메타스페이스, 스레드 스택, Pinpoint), frontend, mcp-bot(256MB 제한), nginx, OS 몫이다.
+      - JAVA_TOOL_OPTIONS=-XX:+ExitOnOutOfMemoryError -XX:MaxRAMPercentage=50.0 -javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
       - TZ=Asia/Seoul
     volumes:
       - /var/log/snowthing-chat:/var/log/snowthing-chat

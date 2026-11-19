@@ -568,5 +568,23 @@ class ChatServiceTest {
                                     .content())
                     .isEqualTo("같은 말");
         }
+
+        @Test
+        @DisplayName("비회원 도배 제한은 IPv6 주소 끝자리가 바뀌어도 같은 /64 대역이면 함께 센다")
+        void anonymousAbuseLimit_groupsIpv6By64() {
+            given(systemConfigService.isAnonymousChatEnabled()).willReturn(true);
+            chatService.processMessage(
+                    new ChatMessageRequest(null, "같은 말"), null, "2001:db8:5:6::1");
+
+            assertThatThrownBy(
+                            () ->
+                                    chatService.processMessage(
+                                            new ChatMessageRequest(null, "같은 말"),
+                                            null,
+                                            "2001:db8:5:6:aaaa:bbbb:cccc:dddd"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHAT_DUPLICATE_MESSAGE);
+        }
     }
 }
