@@ -1057,7 +1057,8 @@ function CommentRow({
     }
     const isRoot = target.commentId === item.commentId;
     setReplyTarget({ commentId: targetId, name: displayName(target), isRoot });
-    setReplyText(isRoot ? "" : mentionPrefix(displayName(target)));
+    // 익명 글은 모두 "익명 (IP 일부)"로 보여 호출 문구가 누구인지 구분해 주지 못하므로 넣지 않는다.
+    setReplyText(isRoot || isAnonymousPost ? "" : mentionPrefix(displayName(target)));
     setActiveReplyParentId(item.commentId);
   };
   const closeReply = () => {
