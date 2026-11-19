@@ -1,6 +1,6 @@
 ## 쪽지 도착 메일 알림을 Outbox로 발송 (IKA-88, 2026-11-17)
 
-- 상태: 구현과 검증 완료, 로컬 커밋. 화면 로컬 확인 후 PR. 머지, 운영 마이그레이션, 운영 발송 활성화는 사용자 확인 후.
+- 상태: 구현과 검증 완료, PR 생성(2026-11-20). 머지, 운영 마이그레이션, 운영 발송 활성화는 사용자 확인 후.
 - 계획: Sprint 8 미션(이메일 알림과 분산 환경의 데이터 정합성)을 쪽지 기준으로 적용. 설계 `docs/conception/032_dm_email_notification/`.
 - 완료
   - 053 마이그레이션(처음 052, 2026-11-18 변경): `member_notification_setting`, `dm_mail_outbox`, `dm_mail_recipient_state`. 새 테이블만 만든다.
@@ -28,6 +28,12 @@
   - `origin/main`(3e4f70a) merge: 이미 최신이라 바뀐 것 없음(Already up to date).
   - 미리보기 합치기 시험(`git merge-tree`, 실제 합치지 않음): IKA-89와는 `docs/project/work.md`만 충돌(맨 위 항목 추가 위치). IKA-87과는 `docs/project/work.md`만 충돌, `application.yml`은 자동 병합. `ika-card-save-inapp`과는 충돌 없음.
   - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`으로 `./gradlew cleanTest test` 1305건 중 1304 통과, 1 건너뜀, 실패 0. 빈 임시 DB에 001부터 053까지 순서대로 적용 성공(파일 49개, 모두 종료 코드 0). IKA-87의 052를 끼워 001부터 052(season_opening), 053 순서로 적용해도 성공, 그 뒤 053 재적용도 성공. 임시 DB는 지웠다. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+- 2026-11-20 main 동기화와 PR
+  - `origin/main` merge 두 번(리베이스 없음). 첫 번째는 #148(IKA-87, 052)과 #152(IKA-89)를 받았고 `docs/project/work.md`만 충돌해 두 항목을 모두 남겼다. 그 사이 #143(IKA-85)이 머지돼 한 번 더 merge했고 충돌은 없었다.
+  - 결정: 053에 `SET NAMES utf8mb4`를 넣었다. 052가 latin1 클라이언트에서 한글이 깨져 같은 방식으로 고친 일(15d2016)이 있었고, 053은 표와 컬럼 COMMENT에 한글이 있다. 다른 선택지는 실행기에 `--default-character-set=utf8mb4`를 넣는 것이었으나 이미 운영에 적용된 파일들의 동작까지 바뀌어 이번 범위에서 뺐다. 053은 운영 미적용이라 체크섬 문제는 없다.
+  - 마이그레이션: 053은 052 다음 번호. 배포 파이프라인과 CI(`verify-production-migration-007-015.sh`)가 `run-production-migrations.sh database/production`으로 모든 번호 파일을 차례로 적용하므로 053도 포함된다. latin1 클라이언트로 빈 임시 DB에 001부터 053까지(파일 50개) 적용 성공, 053 두 번째 적용도 오류 없음, 표와 컬럼 COMMENT가 한글로 남는 것 확인. 임시 DB는 지웠다.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`(001~053 적용 후)로 `./gradlew test` 1341건 중 1340 통과, 1 건너뜀, 실패 0. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+  - 운영 설정: 새 운영 env는 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED` 두 개이고 `compose.prod.yml`에 있다(기본 false). `SNOWTHING_DM_MAIL_SES_ENDPOINT`는 테스트용이라 운영 목록에 넣지 않았다.
 - 남은 항목: 화면 로컬 확인, PR, 운영 마이그레이션 053 적용(IKA-87의 052 다음), 적재 플래그 켜기, 테스트 수신자로 발송 확인 후 발송 플래그 켜기, 원클릭 수신거부(후속).
 - 검증
   - `./gradlew spotlessCheck test` 전체 통과(1304건, 실패 0). 이후 바꾼 부분은 관련 96건 다시 통과.
