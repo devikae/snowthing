@@ -14,21 +14,23 @@ import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
+import com.ikae.snowthing.domain.member.entity.QMember;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.post.dto.PostListResponse;
 import com.ikae.snowthing.domain.post.dto.PostSearchRequest;
 import com.ikae.snowthing.domain.post.dto.PostViewType;
 import com.ikae.snowthing.domain.post.dto.SearchType;
-import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse.PageInfo;
 import com.ikae.snowthing.global.util.CursorUtils;
 import com.ikae.snowthing.global.util.CursorUtils.CursorValue;
+import com.querydsl.core.Tuple;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.StringExpression;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 public class PostRepositoryCustomImpl implements PostRepositoryCustom {
 
     private static final int BEST_MINIMUM_LIKE_COUNT = 30;
+    private static final QMember writer = new QMember("writer");
 
     private final JPAQueryFactory queryFactory;
 
@@ -92,23 +95,19 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .limit(size)
                         .fetch();
 
-        // 3. PK 리스트 기반 본문 데이터 Fetch
-        List<Post> posts =
-                queryFactory
-                        .selectFrom(post)
-                        .join(post.category, postCategory)
-                        .fetchJoin()
-                        .leftJoin(post.member)
-                        .fetchJoin()
+        // 3. PK 리스트 기반 목록 컬럼 조회. 본문(LOB)은 목록에 쓰지 않으므로 읽지 않는다.
+        List<PostListResponse> content =
+                selectListRows()
                         .where(
                                 post.id.in(postIds),
                                 post.status.eq(
                                         com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL),
                                 post.isDeleted.isFalse())
                         .orderBy(getLatestSortOrders())
-                        .fetch();
-
-        List<PostListResponse> content = posts.stream().map(PostListResponse::from).toList();
+                        .fetch()
+                        .stream()
+                        .map(PostRepositoryCustomImpl::toListResponse)
+                        .toList();
 
         boolean hasNext = page < totalPages;
 
@@ -122,13 +121,8 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         CursorValue cursorValue = CursorUtils.decode(request.cursor());
 
         // 1. Keyset Cursor 쿼리 (size + 1 개 요청)
-        List<Post> posts =
-                queryFactory
-                        .selectFrom(post)
-                        .join(post.category, postCategory)
-                        .fetchJoin()
-                        .leftJoin(post.member)
-                        .fetchJoin()
+        List<Tuple> rows =
+                selectListRows()
                         .where(
                                 categoryEq(request.categoryCode()),
                                 visibleCategory(request),
@@ -143,19 +137,20 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                         .limit(size + 1)
                         .fetch();
 
-        boolean hasNext = posts.size() > size;
-        List<Post> resultPosts = hasNext ? posts.subList(0, size) : posts;
+        boolean hasNext = rows.size() > size;
+        List<Tuple> resultRows = hasNext ? rows.subList(0, size) : rows;
 
-        List<PostListResponse> content = resultPosts.stream().map(PostListResponse::from).toList();
+        List<PostListResponse> content =
+                resultRows.stream().map(PostRepositoryCustomImpl::toListResponse).toList();
 
         String nextCursor = null;
-        if (hasNext && !resultPosts.isEmpty()) {
-            Post lastPost = resultPosts.get(resultPosts.size() - 1);
+        if (hasNext && !resultRows.isEmpty()) {
+            PostListResponse last = content.get(content.size() - 1);
             nextCursor =
                     CursorUtils.encode(
-                            (long) lastPost.getLikeCount(),
-                            lastPost.getCreatedAt(),
-                            lastPost.getId());
+                            (long) last.likeCount(),
+                            last.createdAt(),
+                            resultRows.get(resultRows.size() - 1).get(post.id));
         }
 
         return new CursorPageResponse<>(content, PageInfo.ofCursor(nextCursor, hasNext, size));
@@ -258,6 +253,57 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                                         })
                         .limit(1)
                         .fetchFirst());
+    }
+
+    /**
+     * 목록에 필요한 컬럼만 고른다. 엔티티 전체를 읽으면 본문(LOB, 최대 10만 자, 예전 글은 base64 사진 포함)이 한 페이지 글 수만큼 함께 실려 와 목록마다
+     * 메모리와 DB 전송량을 쓴다.
+     */
+    private JPAQuery<Tuple> selectListRows() {
+        return queryFactory
+                .select(
+                        post.id,
+                        post.publicId,
+                        postCategory.name,
+                        postCategory.code,
+                        post.title,
+                        post.isAnonymous,
+                        writer,
+                        post.writerIp,
+                        post.hasImage,
+                        post.viewCount,
+                        post.commentCount,
+                        post.likeCount,
+                        post.dislikeCount,
+                        post.status,
+                        post.isDeleted,
+                        post.createdAt)
+                .from(post)
+                .join(post.category, postCategory)
+                .leftJoin(post.member, writer);
+    }
+
+    private static PostListResponse toListResponse(Tuple row) {
+        return PostListResponse.of(
+                row.get(post.publicId),
+                row.get(postCategory.name),
+                row.get(postCategory.code),
+                row.get(post.title),
+                Boolean.TRUE.equals(row.get(post.isAnonymous)),
+                row.get(writer),
+                row.get(post.writerIp),
+                Boolean.TRUE.equals(row.get(post.hasImage)),
+                intValue(row.get(post.viewCount)),
+                intValue(row.get(post.commentCount)),
+                intValue(row.get(post.likeCount)),
+                intValue(row.get(post.dislikeCount)),
+                row.get(post.status),
+                Boolean.TRUE.equals(row.get(post.isDeleted)),
+                row.get(post.createdAt));
+    }
+
+    private static int intValue(Integer value) {
+        return value != null ? value : 0;
     }
 
     private OrderSpecifier<?>[] getLatestSortOrders() {

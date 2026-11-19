@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import jakarta.persistence.EntityManager;
 
+import org.hibernate.engine.spi.SessionImplementor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -399,6 +400,51 @@ class PostRepositoryCustomTest {
                         seeded.get(0).getPublicId());
         entityManager.clear();
         return expected;
+    }
+
+    @Test
+    @DisplayName("목록 조회는 글 엔티티(본문 LOB 포함)를 읽지 않고 목록 컬럼만 골라 같은 응답을 만든다")
+    void listQueriesSelectListColumnsOnly() {
+        Post anonymous =
+                postRepository.save(
+                        Post.builder()
+                                .member(testMember)
+                                .category(freeCategory)
+                                .title("익명 글")
+                                .content("본문".repeat(1000))
+                                .writerIp("203.0.113.7")
+                                .isAnonymous(true)
+                                .build());
+        entityManager.flush();
+        entityManager.clear();
+
+        CursorPageResponse<PostListResponse> offset =
+                postRepository.findPostsByOffset(
+                        new PostSearchRequest(
+                                "FREE", null, null, null, PostViewType.DEFAULT, 1, null, 30));
+        CursorPageResponse<PostListResponse> cursor =
+                postRepository.findPostsByCursor(
+                        new PostSearchRequest(
+                                "FREE", null, null, null, PostViewType.DEFAULT, null, null, 30));
+
+        assertThat(
+                        entityManager
+                                .unwrap(SessionImplementor.class)
+                                .getPersistenceContextInternal()
+                                .getEntitiesByKey()
+                                .keySet())
+                .noneMatch(key -> key.getEntityName().equals(Post.class.getName()));
+        assertThat(offset.content()).hasSize(26).isEqualTo(cursor.content());
+        PostListResponse anonymousItem = offset.content().get(0);
+        assertThat(anonymousItem.publicId()).isEqualTo(anonymous.getPublicId());
+        assertThat(anonymousItem.writerNickname()).isEqualTo("익명 (203.0.***.***)");
+        assertThat(anonymousItem.writerPublicId()).isNull();
+        assertThat(anonymousItem.writerProfileImageUrl()).isNull();
+        assertThat(anonymousItem.categoryCode()).isEqualTo("FREE");
+        PostListResponse namedItem = offset.content().get(1);
+        assertThat(namedItem.writerNickname()).isEqualTo("카빙마스터");
+        assertThat(namedItem.writerPublicId()).isEqualTo(testMember.getPublicId());
+        assertThat(namedItem.title()).isEqualTo("휘닉스파크 설질 제보 25");
     }
 
     private void increaseLikeCount(Post post, int count) {
