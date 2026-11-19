@@ -8,6 +8,9 @@
 -- banner_order는 개장일 순, 같은 날이면 이름 순이다.
 -- 실행 순서: 이 마이그레이션을 적용한 뒤 새 애플리케이션을 배포한다. 추가만 하므로 이전 애플리케이션과도 호환된다.
 -- 여러 번 실행해도 안전하다 (IF NOT EXISTS, INSERT IGNORE, 설정 존재 확인). 이미 있는 줄의 날짜는 덮어쓰지 않는다.
+-- 접속 클라이언트의 기본 문자셋과 관계없이 한글 초기값이 깨지지 않게 한다.
+SET NAMES utf8mb4;
+
 
 CREATE TABLE IF NOT EXISTS `season_opening` (
     `season_opening_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
