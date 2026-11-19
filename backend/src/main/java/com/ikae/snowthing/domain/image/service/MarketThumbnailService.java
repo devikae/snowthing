@@ -144,6 +144,9 @@ public class MarketThumbnailService {
                         Timestamp.from(clock.instant()))) {
             try {
                 processOne(id);
+            } catch (ImageProcessingGate.BusyException busy) {
+                // 남은 작업도 같은 자리를 기다리게 되므로 이번 주기는 여기서 멈춘다.
+                break;
             } catch (RuntimeException failure) {
                 org.slf4j.LoggerFactory.getLogger(getClass())
                         .warn("Market thumbnail deferred: {}", failure.getClass().getSimpleName());
@@ -247,6 +250,10 @@ public class MarketThumbnailService {
                                     Timestamp.from(clock.instant()),
                                     id);
                     });
+        } catch (ImageProcessingGate.BusyException busy) {
+            // 사용자 업로드가 처리 자리를 쓰는 중이다. 실패가 아니므로 횟수를 늘리지 않고 다음 주기에 다시 한다.
+            defer(id, job, Duration.ofSeconds(5), false);
+            throw busy;
         } catch (RuntimeException failure) {
             boolean permanent =
                     failure instanceof S3Exception s3Failure && s3Failure.statusCode() == 404

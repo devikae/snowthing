@@ -18,6 +18,7 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.MemberService;
 import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
+import com.ikae.snowthing.domain.notification.service.NotificationSettingService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -34,6 +35,7 @@ public class VerifiedMemberRegistrationService {
     private final MemberService memberService;
     private final Clock clock;
     private final RegistrationConsentService consentService;
+    private final NotificationSettingService notificationSettings;
 
     @Transactional
     public MemberSignUpResponse register(MemberSignUpRequest request) {
@@ -51,6 +53,7 @@ public class VerifiedMemberRegistrationService {
                         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         LocalDateTime now = LocalDateTime.now(clock);
         consentService.record(member.getId(), request, now);
+        notificationSettings.initializeForNewMember(member.getId(), now);
         member.verifyEmail(now);
         verification.consume(now);
         return response;

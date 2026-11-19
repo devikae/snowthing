@@ -1,0 +1,14 @@
+# 실험 1 | 워커별 처리한 받는 사람 수 (로그 'dm mail accepted')
+# 실행 시각(KST): 2026-11-17 23:54:07
+$ for f in ev1-app1 ev1-app2; do echo "$f: $(grep -c 'dm mail accepted' logs/$f.log)명"; done; echo; for f in ev1-app1 ev1-app2; do echo "[$f 처음 3줄]"; grep 'dm mail accepted' logs/$f.log | head -3; done
+ev1-app1: 21명
+ev1-app2: 19명
+
+[ev1-app1 처음 3줄]
+2026-11-17T23:43:19.179+09:00  INFO [    scheduled-1] c.i.s.d.dmmail.service.DmMailProcessor   : dm mail accepted: recipientId=82, events=[34, 35, 36]
+2026-11-17T23:43:19.526+09:00  INFO [    scheduled-1] c.i.s.d.dmmail.service.DmMailProcessor   : dm mail accepted: recipientId=84, events=[100, 101, 102]
+2026-11-17T23:43:19.861+09:00  INFO [    scheduled-1] c.i.s.d.dmmail.service.DmMailProcessor   : dm mail accepted: recipientId=86, events=[109, 110, 111]
+[ev1-app2 처음 3줄]
+2026-11-17T23:43:19.159+09:00  INFO [    scheduled-2] c.i.s.d.dmmail.service.DmMailProcessor   : dm mail accepted: recipientId=81, events=[1, 2, 3]
+2026-11-17T23:43:19.504+09:00  INFO [    scheduled-2] c.i.s.d.dmmail.service.DmMailProcessor   : dm mail accepted: recipientId=83, events=[67, 68, 69]
+2026-11-17T23:43:19.831+09:00  INFO [    scheduled-2] c.i.s.d.dmmail.service.DmMailProcessor   : dm mail accepted: recipientId=85, events=[106, 107, 108]

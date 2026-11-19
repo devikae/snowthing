@@ -1,0 +1,5 @@
+# 실험 3 | 재기동한 앱 로그: lease 만료로 UNKNOWN, 발송 로그 0
+# 실행 시각(KST): 2026-11-17 23:54:08
+$ grep -E 'lease expired|dm mail accepted|outcome unknown' logs/ev3-restart.log; echo "dm mail accepted 로그 수: $(grep -c 'dm mail accepted' logs/ev3-restart.log)"
+2026-11-17T23:44:14.382+09:00  WARN [    scheduled-2] c.i.s.d.dmmail.service.DmMailProcessor   : dm mail lease expired, moved to UNKNOWN: count=1
+dm mail accepted 로그 수: 0

@@ -16,6 +16,7 @@ import com.ikae.snowthing.domain.market.dto.*;
 import com.ikae.snowthing.domain.market.entity.ProductCondition;
 import com.ikae.snowthing.domain.market.entity.TradeStatus;
 import com.ikae.snowthing.domain.market.service.MarketListingService;
+import com.ikae.snowthing.domain.post.service.PostSearchRateLimiter;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -41,6 +42,7 @@ public class MarketListingController {
     private final ViewCountCookieManager viewCountCookieManager;
     private final ContentWriteRateLimiter contentWriteRateLimiter;
     private final IdempotentCreateHandler idempotentCreateHandler;
+    private final PostSearchRateLimiter postSearchRateLimiter;
     private final SystemConfigService systemConfigService;
 
     @GetMapping("/preview")
@@ -58,8 +60,14 @@ public class MarketListingController {
             @RequestParam(required = false) String categoryCode,
             @RequestParam(required = false) ProductCondition productCondition,
             @RequestParam(required = false) TradeStatus tradeStatus,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
         requireGuestAccess(userDetails);
+        // 검색어는 LIKE로 글 전체를 훑으므로 게시판 검색과 같은 길이 규칙과 IP 한도를 쓴다.
+        if (keyword != null && !keyword.isBlank()) {
+            postSearchRateLimiter.checkKeywordSearch(
+                    keyword, clientIpResolver.resolve(httpRequest));
+        }
         return ResponseEntity.ok(
                 marketListingService.search(
                         page, size, keyword, categoryCode, productCondition, tradeStatus));

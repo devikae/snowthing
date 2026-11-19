@@ -390,6 +390,28 @@ class MarketThumbnailIntegrationTest {
     }
 
     @Test
+    void busyGateDefersWithoutCountingAttempt() {
+        queue(first);
+        doThrow(new ImageProcessingGate.BusyException())
+                .when(images)
+                .createMarketThumbnail(anyString(), anyString(), any(ImageProcessingGate.class));
+        assertThatThrownBy(() -> thumbnails.processOne(id))
+                .isInstanceOf(ImageProcessingGate.BusyException.class);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT attempts FROM market_thumbnail WHERE post_public_id=?",
+                                Integer.class,
+                                id))
+                .isZero();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT due_at IS NOT NULL AND lease_until IS NULL FROM market_thumbnail WHERE post_public_id=?",
+                                Boolean.class,
+                                id))
+                .isTrue();
+    }
+
+    @Test
     void newerRevisionQueuedDuringGenerationIsGeneratedNext() {
         queue(first);
         doAnswer(

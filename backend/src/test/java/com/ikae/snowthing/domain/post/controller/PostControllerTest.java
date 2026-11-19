@@ -232,6 +232,30 @@ class PostControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/posts - 한 글자 검색어는 글 전체를 훑으므로 400")
+    void getPostList_oneCharKeyword_badRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/posts").param("keyword", "보"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("POST_010"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/posts - 50자를 넘는 검색어는 400")
+    void getPostList_tooLongKeyword_badRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/posts/scroll").param("keyword", "가".repeat(51)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("POST_010"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/posts - 두 글자 검색어와 검색어 없는 목록은 그대로 200")
+    void getPostList_validKeywordOrNone_ok() throws Exception {
+        mockMvc.perform(get("/api/v1/posts").param("keyword", "보드")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/posts").param("keyword", "  ")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/posts")).andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("GET /api/v1/posts - 없는 검색 종류는 400 Bad Request")
     void getPostList_invalidSearchType_badRequest() throws Exception {
         mockMvc.perform(get("/api/v1/posts").param("searchType", "ALL").param("keyword", "보드"))

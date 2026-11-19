@@ -1,0 +1,7 @@
+-- 마이그레이션 052 | 적용 전 (빈 DB, member 테이블만 있음)
+-- 실행 시각(KST): 2026-11-17 23:53:41
+-- DB: snowthing_ika88_mig
+SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name
+
+TABLE_NAME
+member

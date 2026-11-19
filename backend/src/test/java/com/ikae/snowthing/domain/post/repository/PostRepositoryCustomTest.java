@@ -48,6 +48,10 @@ class PostRepositoryCustomTest {
 
     @BeforeEach
     void setUp() {
+        // 같은 Spring 컨텍스트를 쓰는 다른 테스트가 커밋하고 남긴 글이 있으면 게시판 전체 건수 검증이 실행 순서에 따라 흔들린다.
+        // 이 테스트의 트랜잭션 안에서만 숨기고 끝나면 롤백된다.
+        jdbcTemplate.update("UPDATE post SET is_deleted = TRUE WHERE is_deleted = FALSE");
+
         freeCategory =
                 categoryRepository
                         .findByCode("FREE")
