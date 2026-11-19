@@ -19,7 +19,4 @@ public interface ResortRepository extends JpaRepository<Resort, Long> {
     default List<Resort> findServiceResorts() {
         return findAllByActiveTrueAndCountryOrderByDisplayOrderAscIdAsc(ResortCountry.KR);
     }
-
-    /** 슬로프 제원 비교용. 나라와 상관없이 활성 리조트를 준다. 정렬은 쓰는 쪽에서 한다. */
-    List<Resort> findAllByActiveTrue();
 }

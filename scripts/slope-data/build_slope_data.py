@@ -456,7 +456,7 @@ def sql_str(value):
 
 
 def main():
-    specs, jp_resorts = load_specs()
+    specs, _ = load_specs()
     MAP_DIR.mkdir(parents=True, exist_ok=True)
     slope_rows = []
     connection_rows = []
@@ -515,9 +515,9 @@ def main():
         "-- 제원: 리조트 공식 사이트(출처는 source_url). 공식 값이 없으면 NULL이다.",
         "-- osm_way_ids: OpenStreetMap 선 ID. 코스 맵 파일은 frontend/public/slope-maps/에 있다.",
         "-- slope_connection: OSM 선으로 자동 계산한 뒤 검수한 관계. 한 쌍은 양쪽 줄이 서로 맞물린다.",
-        "-- 일본 리조트는 054에서 비활성으로 넣었다. 제원이 들어간 리조트만 여기서 활성으로 바꾼다.",
-        "-- 실행 순서: 054를 적용하고 새 애플리케이션을 배포한 뒤 적용한다.",
-        "-- 여러 번 실행해도 안전하다 (INSERT IGNORE, 같은 값 UPDATE).",
+        "-- 일본 리조트는 054에서 넣은 대로 비활성으로 둔다. 슬로프 제원 화면은 해외 리조트를 활성 여부와 상관없이 보여 준다.",
+        "-- 실행 순서: 054 다음. 앱보다 먼저 적용해도 된다(새 표에 줄만 넣고 기존 표는 바꾸지 않는다).",
+        "-- 여러 번 실행해도 안전하다 (INSERT IGNORE).",
         "SET NAMES utf8mb4;",
         "",
     ]
@@ -542,13 +542,6 @@ def main():
             " JOIN `resort` r ON r.`resort_id` = a.`resort_id`"
             f" WHERE r.`code` = {sql_str(code)} AND a.`name` = {sql_str(a)} AND b.`name` = {sql_str(b)};"
         )
-    jp_codes = sorted({row[0] for row in slope_rows} & jp_resorts)
-    lines.append("")
-    lines.append(
-        "UPDATE `resort` SET `is_active` = TRUE WHERE `country` = 'JP' AND `code` IN ("
-        + ", ".join(sql_str(c) for c in jp_codes)
-        + ");"
-    )
     SQL_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     for code, total, matched_count, has_map in report:

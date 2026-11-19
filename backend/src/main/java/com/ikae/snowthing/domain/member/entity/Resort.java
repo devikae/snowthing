@@ -74,6 +74,16 @@ public class Resort {
         return active && country == ResortCountry.KR;
     }
 
+    /**
+     * 슬로프 제원 화면에 보일 리조트인지. 국내는 활성 리조트만, 해외는 항상 보인다.
+     *
+     * <p>해외 리조트는 is_active=FALSE로 둔다. country를 모르는 이전 애플리케이션이 활성 목록을 읽어도 해외 리조트가 커뮤니티 목록에 섞이지 않게 하기
+     * 위해서다(배포는 마이그레이션을 먼저 적용하고 앱을 바꾼다).
+     */
+    public boolean isSlopeSpecVisible() {
+        return country != ResortCountry.KR || active;
+    }
+
     public void updateMetadata(String code, int displayOrder, boolean active) {
         this.code = code;
         this.displayOrder = displayOrder;

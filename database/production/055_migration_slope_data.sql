@@ -3,9 +3,9 @@
 -- 제원: 리조트 공식 사이트(출처는 source_url). 공식 값이 없으면 NULL이다.
 -- osm_way_ids: OpenStreetMap 선 ID. 코스 맵 파일은 frontend/public/slope-maps/에 있다.
 -- slope_connection: OSM 선으로 자동 계산한 뒤 검수한 관계. 한 쌍은 양쪽 줄이 서로 맞물린다.
--- 일본 리조트는 054에서 비활성으로 넣었다. 제원이 들어간 리조트만 여기서 활성으로 바꾼다.
--- 실행 순서: 054를 적용하고 새 애플리케이션을 배포한 뒤 적용한다.
--- 여러 번 실행해도 안전하다 (INSERT IGNORE, 같은 값 UPDATE).
+-- 일본 리조트는 054에서 넣은 대로 비활성으로 둔다. 슬로프 제원 화면은 해외 리조트를 활성 여부와 상관없이 보여 준다.
+-- 실행 순서: 054 다음. 앱보다 먼저 적용해도 된다(새 표에 줄만 넣고 기존 표는 바꾸지 않는다).
+-- 여러 번 실행해도 안전하다 (INSERT IGNORE).
 SET NAMES utf8mb4;
 
 INSERT IGNORE INTO `slope` (`resort_id`, `name`, `name_local`, `official_difficulty`, `difficulty`, `length_m`, `avg_gradient`, `max_gradient`, `width_m`, `lift_name`, `osm_way_ids`, `source_url`, `checked_at`, `display_order`, `created_at`, `updated_at`) SELECT r.`resort_id`, 'Beginners access', '初級者迂回路', '初級', 'BEGINNER', 342, 14.0, 20.0, NULL, NULL, '213573381', 'https://www.grand-hirafu.jp/datas/files/2026/10/26/0d915af57aee2e71fb199905daecf53f22856e95.pdf', '2026-11-20', 1, NOW(6), NOW(6) FROM `resort` r WHERE r.`code` = 'NISEKO_HIRAFU';
@@ -1774,5 +1774,3 @@ INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation
 INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'SHARE_START', NULL, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'OAK_VALLEY' AND a.`name` = 'B' AND b.`name` = 'A';
 INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'SHARE_START', NULL, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'OAK_VALLEY' AND a.`name` = 'D' AND b.`name` = 'B';
 INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'SHARE_START', NULL, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'OAK_VALLEY' AND a.`name` = 'B' AND b.`name` = 'D';
-
-UPDATE `resort` SET `is_active` = TRUE WHERE `country` = 'JP' AND `code` IN ('FURANO', 'GALA_YUZAWA', 'HAKUBA_HAPPO', 'KIRORO', 'NAEBA', 'NISEKO_HIRAFU', 'NOZAWA_ONSEN', 'RUSUTSU', 'SAPPORO_TEINE', 'TOMAMU');

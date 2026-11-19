@@ -50,8 +50,8 @@ class SlopeApiIntegrationTest {
 
     private static final String KR = "SLOPE_SPEC_KR";
     private static final String JP = "SLOPE_SPEC_JP";
-    private static final String JP_OFF = "SLOPE_SPEC_JP_OFF";
-    private static final List<String> CODES = List.of(KR, JP, JP_OFF);
+    private static final String KR_OFF = "SLOPE_SPEC_KR_OFF";
+    private static final List<String> CODES = List.of(KR, JP, KR_OFF);
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ResortRepository resortRepository;
@@ -65,15 +65,16 @@ class SlopeApiIntegrationTest {
     void setUp() {
         cleanUp();
         Resort kr = resortRepository.save(resort(KR, "제원테스트국내", ResortCountry.KR, true));
-        Resort jp = resortRepository.save(resort(JP, "제원테스트일본", ResortCountry.JP, true));
-        Resort jpOff = resortRepository.save(resort(JP_OFF, "제원테스트일본비활성", ResortCountry.JP, false));
+        // 운영과 같이 일본 리조트는 비활성으로 둔다. 슬로프 제원 화면에는 보여야 한다.
+        Resort jp = resortRepository.save(resort(JP, "제원테스트일본", ResortCountry.JP, false));
+        Resort krOff = resortRepository.save(resort(KR_OFF, "제원테스트국내비활성", ResortCountry.KR, false));
 
         base = slopeRepository.save(slope(kr, "기준", 10.0, 20.0, 1000, 1));
         merging = slopeRepository.save(slope(kr, "합류", 8.0, null, 500, 2));
         slopeRepository.save(slope(jp, "비슷한 코스", 10.5, null, 900, 1));
         slopeRepository.save(slope(jp, "먼 코스", 20.0, null, 900, 2));
         slopeRepository.save(slope(jp, "최대만 공개", null, 21.0, 900, 3));
-        slopeRepository.save(slope(jpOff, "비활성 리조트 코스", 10.0, null, 1000, 1));
+        slopeRepository.save(slope(krOff, "비활성 리조트 코스", 10.0, null, 1000, 1));
         connectionRepository.save(
                 SlopeConnection.builder()
                         .slope(base)
@@ -136,7 +137,7 @@ class SlopeApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("리조트 목록은 로그인 없이 볼 수 있고, 제원이 있는 활성 리조트만 나라와 함께 준다")
+    @DisplayName("리조트 목록은 로그인 없이 볼 수 있고, 제원이 있는 국내 활성 리조트와 해외 리조트를 나라와 함께 준다")
     void listsActiveResortsWithSlopes() throws Exception {
         mockMvc.perform(get("/api/v1/slopes/resorts"))
                 .andExpect(status().isOk())
@@ -144,7 +145,7 @@ class SlopeApiIntegrationTest {
                 .andExpect(jsonPath("$.resorts[?(@.code == '" + KR + "')].country").value("KR"))
                 .andExpect(jsonPath("$.resorts[?(@.code == '" + KR + "')].slopeCount").value(2))
                 .andExpect(jsonPath("$.resorts[?(@.code == '" + JP + "')].country").value("JP"))
-                .andExpect(jsonPath("$.resorts[*].code", not(hasItem(JP_OFF))));
+                .andExpect(jsonPath("$.resorts[*].code", not(hasItem(KR_OFF))));
     }
 
     @Test
@@ -174,9 +175,9 @@ class SlopeApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("없는 리조트, 비활성 리조트, 형식이 틀린 코드는 404, 비교 대상이 2곳 미만이면 400")
+    @DisplayName("없는 리조트, 비활성 국내 리조트, 형식이 틀린 코드는 404, 비교 대상이 2곳 미만이면 400")
     void rejectsUnknownResortsAndBadCompare() throws Exception {
-        mockMvc.perform(get("/api/v1/slopes/resorts/" + JP_OFF)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/slopes/resorts/" + KR_OFF)).andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/slopes/resorts/bad-code")).andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/slopes/999999999")).andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/slopes/compare").param("codes", KR))

@@ -58,14 +58,14 @@ public class SlopeQueryService {
     private final SlopeRepository slopeRepository;
     private final SlopeConnectionRepository connectionRepository;
 
-    /** 쿼리 세 번: 활성 리조트, 리조트별 슬로프 수, 그 리조트들의 슬로프. */
+    /** 쿼리 세 번: 보이는 리조트별 슬로프 수, 그 리조트, 그 리조트들의 슬로프. */
     public ResortList getResorts() {
         Map<Long, Long> counts =
                 slopeRepository.countByActiveResort().stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
         List<Resort> resorts =
-                resortRepository.findAllByActiveTrue().stream()
-                        .filter(resort -> counts.containsKey(resort.getId()))
+                resortRepository.findAllById(counts.keySet()).stream()
+                        .filter(Resort::isSlopeSpecVisible)
                         .sorted(RESORT_ORDER)
                         .toList();
         Map<Long, List<Slope>> slopesByResort =
@@ -164,7 +164,7 @@ public class SlopeQueryService {
     private Resort requireResort(String resortCode) {
         return resortRepository
                 .findByCode(resortCode)
-                .filter(Resort::isActive)
+                .filter(Resort::isSlopeSpecVisible)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESORT_NOT_FOUND));
     }
 
