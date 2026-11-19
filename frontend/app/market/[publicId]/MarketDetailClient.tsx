@@ -102,6 +102,17 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   const commentIdempotencyKey = useIdempotencyKey();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [copyNotice, setCopyNotice] = useState("");
+
+  // 복사는 권한이 없거나 오래된 브라우저에서 실패할 수 있어, 결과를 문구로 알려 준다.
+  const copyContact = async (contact: string) => {
+    try {
+      await navigator.clipboard.writeText(contact);
+      setCopyNotice("연락처를 복사했습니다.");
+    } catch {
+      setCopyNotice("복사하지 못했습니다. 연락처를 길게 눌러 복사해 주세요.");
+    }
+  };
 
   const redirectToLogin = useCallback(() => {
     router.replace(`/login?returnUrl=${encodeURIComponent(`/market/${publicId}`)}`);
@@ -273,7 +284,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             <strong className="market-detail-price">{listing.free ? "무료 나눔" : `${listing.price.toLocaleString()}원`}{listing.negotiable && <small>가격 협의 가능</small>}</strong>
             <dl><div><dt>상품 상태</dt><dd>{conditionLabels[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회 / 댓글</dt><dd>{listing.viewCount} / {listing.commentCount}</dd></div></dl>
             <div className="market-seller"><CommentProfileAvatar className="market-seller-avatar" nickname={listing.seller.nickname} profileImageUrl={listing.seller.profileImageUrl} size={36} /><div><small>판매자</small><AuthorMenu publicId={listing.seller.publicId} nickname={listing.seller.nickname} /></div></div>
-            {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(listing.contact ?? "")}>복사</button></div>}
+            {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void copyContact(listing.contact ?? "")}>복사</button>{copyNotice && <small role="status">{copyNotice}</small>}</div>}
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />
             {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중" : "삭제"}</button>}</div>}
             <ReportButton targetType="POST" targetId={publicId} />
