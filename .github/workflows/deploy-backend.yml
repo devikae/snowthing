@@ -85,6 +85,12 @@ jobs:
         run: |
           chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-runner.sh
           scripts/verify-production-migration-runner.sh
+
+      - name: Verify new production migrations are safe to run twice
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/verify-production-migration-rerun.sh
+          scripts/verify-production-migration-rerun.sh
       # 마이그레이션 스키마에서 ddl-auto=validate로 기동해 엔티티와 대조한다. 일반 test는 create-drop이라 먼저 돌린다.
       - name: Validate JPA entities against migrated schema
         run: ./gradlew schemaValidate -x spotlessCheck
