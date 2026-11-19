@@ -85,9 +85,8 @@ public class AiActivityScheduler {
                     try {
                         runDue(LocalDateTime.now(clock.withZone(KST)));
                     } catch (Exception exception) {
-                        log.warn(
-                                "AI member tick failed: type={}",
-                                exception.getClass().getSimpleName());
+                        // 1분마다 도는 작업이라 실패가 반복되면 원인을 알아야 한다. 서버 로그에만 남는다.
+                        log.warn("AI member tick failed", exception);
                     } finally {
                         running.set(false);
                     }
