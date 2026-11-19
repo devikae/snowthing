@@ -290,12 +290,43 @@ class AdminOperationsIntegrationTest {
         assertThat(cachedUntil(ip)).isBefore(LocalDateTime.now().plusDays(2));
     }
 
+    @Test
+    @DisplayName("같은 /64의 다른 IPv6 주소로 30일, 1일 차단하면 30일을 따르고, 30일 차단을 풀면 1일 차단이 남는다")
+    void overlappingBanOfSame64KeepsLaterExpiry() throws Exception {
+        String longBanIp = "2001:db8:89:93::1";
+        String shortBanIp = "2001:db8:89:93::2";
+        mockMvc.perform(
+                        banByMessage(chatMessageFrom(longBanIp), "{\"days\":30}")
+                                .session(adminSession)
+                                .with(csrf()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(
+                        banByMessage(chatMessageFrom(shortBanIp), "{\"days\":1}")
+                                .session(adminSession)
+                                .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        String sameBlockIp = "2001:db8:89:93:aaaa:bbbb:cccc:dddd";
+        assertThat(chatIpBanService.isBanned(sameBlockIp)).isTrue();
+        assertThat(cachedUntil(sameBlockIp)).isAfter(LocalDateTime.now().plusDays(29));
+
+        chatIpBanService.unbanIp(banId(longBanIp, "30일"));
+
+        assertThat(chatIpBanService.isBanned(sameBlockIp)).isTrue();
+        assertThat(cachedUntil(sameBlockIp)).isBefore(LocalDateTime.now().plusDays(2));
+
+        chatIpBanService.unbanIp(banId(shortBanIp, "1일"));
+
+        assertThat(chatIpBanService.isBanned(sameBlockIp)).isFalse();
+    }
+
+    // 메모리 캐시 키는 정규화한 IP다(IPv6는 /64).
     @SuppressWarnings("unchecked")
     private LocalDateTime cachedUntil(String ip) {
         return ((java.util.Map<String, LocalDateTime>)
                         org.springframework.test.util.ReflectionTestUtils.getField(
                                 chatIpBanService, "activeBans"))
-                .get(ip);
+                .get(com.ikae.snowthing.global.web.ClientIpResolver.normalizeForLimit(ip));
     }
 
     @Test

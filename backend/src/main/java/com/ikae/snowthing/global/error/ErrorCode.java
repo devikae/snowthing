@@ -77,6 +77,9 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
     PROFILE_ACTION_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "MEMBER_006", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    // 횟수 초과(429)가 아니라 서버가 잠시 바쁜 것이라 503이다. 프로필 화면은 429를 "변경 횟수 초과"로 보여 주므로 코드도 나눈다.
+    IMAGE_PROCESSING_BUSY(
+            HttpStatus.SERVICE_UNAVAILABLE, "FILE_009", "사진 처리 요청이 몰리고 있습니다. 잠시 뒤 다시 시도해 주세요."),
     IMAGE_GLOBAL_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS,
             "FILE_007",
@@ -116,6 +119,9 @@ public enum ErrorCode {
             HttpStatus.FORBIDDEN,
             "POST_009",
             "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 manager@snowthing.org로 문의해 주세요."),
+    POST_SEARCH_KEYWORD_INVALID(HttpStatus.BAD_REQUEST, "POST_010", "검색어는 2자 이상 50자 이하로 입력해 주세요."),
+    POST_SEARCH_RATE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "POST_011", "검색이 너무 잦습니다. 잠시 후 다시 시도해 주세요."),
     CONTENT_REPORT_TARGET_NOT_FOUND(
             HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
     CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),

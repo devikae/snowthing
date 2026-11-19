@@ -144,17 +144,16 @@
   line-height: 1.55;
 }
 
+/* 비용 직접 입력 버튼과 수동 입력 안내의 다크 색은 detailForms.css가 정한다. 이 파일이 detailForms.css보다 늦게 불리므로 여기서 다시 칠하지 않는다. */
 html[data-theme="dark"] .carpool-form select,
 html[data-theme="dark"] .carpool-place-results button,
-html[data-theme="dark"] .carpool-place-search button,
-html[data-theme="dark"] .carpool-cost-button {
+html[data-theme="dark"] .carpool-place-search button {
   border-color: var(--snow-border);
   background: var(--snow-background);
   color: var(--snow-ink);
 }
 
-html[data-theme="dark"] .carpool-place-results button.selected,
-html[data-theme="dark"] .carpool-manual-fallback {
+html[data-theme="dark"] .carpool-place-results button.selected {
   border-color: #075985;
   background: #082f49;
 }

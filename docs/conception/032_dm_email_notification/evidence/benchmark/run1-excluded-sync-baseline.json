@@ -1,0 +1,21 @@
+{
+  "mode" : "sync-baseline",
+  "measuredAt" : "2026-11-17T23:21:51.767097300",
+  "requests" : 60,
+  "concurrency" : 6,
+  "sesDelayMs" : 1000,
+  "dbPoolSize" : 5,
+  "errors" : 0,
+  "errorTypes" : [ ],
+  "sendWallMs" : 7543,
+  "sendLatencyMs" : {
+    "count" : 60,
+    "p50" : 637,
+    "p95" : 1249,
+    "max" : 1272,
+    "min" : 612
+  },
+  "fakeSesRequests" : 60,
+  "fakeSesAccepted" : 55,
+  "outboxRows" : 0
+}

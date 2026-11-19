@@ -17,21 +17,7 @@ import { formatKoreanCalendarDate, formatReportTime, getResortReportDisplayName,
 import { csrfFetch } from "./lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
 import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
-
-interface HomePost {
-  publicId: string;
-  categoryName: string;
-  categoryCode: string;
-  title: string;
-  writerNickname: string;
-  writerProfileImageUrl?: string | null;
-  writerPublicId?: string | null;
-  thumbnailImageUrl: string | null;
-  hasImage: boolean;
-  viewCount: number;
-  commentCount: number;
-  createdAt: string;
-}
+import { HOME_CARPOOL_SIZE, HOME_FEED_SIZE, HOME_MARKET_SIZE, type HomeCarpoolItem, type HomeInitialData, type HomePost, type MarketPreviewItem } from "./lib/homeFeed";
 
 type HomeFeedKey = "all" | "notice" | "free" | "anonymous" | "qna" | "food" | "crew" | "season_room";
 
@@ -42,15 +28,16 @@ interface HomeFeedTab {
   query: Record<string, string>;
 }
 
+// PC 홈 왼쪽 칸에 탭 8개와 더보기, 글쓰기가 한 줄에 들어가도록 글 목록의 분류 표시와 같은 짧은 이름을 쓴다.
 const HOME_FEED_TABS: HomeFeedTab[] = [
   { key: "all", label: "전체글", moreHref: "/posts", query: {} },
-  { key: "notice", label: "공지사항", moreHref: "/posts?category=NOTICE", query: { categoryCode: "NOTICE" } },
-  { key: "free", label: "자유게시판", moreHref: "/posts?category=FREE", query: { categoryCode: "FREE" } },
-  { key: "anonymous", label: "익명게시판", moreHref: "/posts?category=ANONYMOUS", query: { categoryCode: "ANONYMOUS" } },
-  { key: "qna", label: "질문게시판", moreHref: "/posts?category=QNA", query: { categoryCode: "QNA" } },
-  { key: "food", label: "리조트 맛집", moreHref: "/posts?category=FOOD", query: { categoryCode: "FOOD" } },
-  { key: "crew", label: "동호회 모집", moreHref: "/posts?category=CREW", query: { categoryCode: "CREW" } },
-  { key: "season_room", label: "시즌방 모집", moreHref: "/posts?category=SEASON_ROOM", query: { categoryCode: "SEASON_ROOM" } },
+  { key: "notice", label: "공지", moreHref: "/posts?category=NOTICE", query: { categoryCode: "NOTICE" } },
+  { key: "free", label: "자유", moreHref: "/posts?category=FREE", query: { categoryCode: "FREE" } },
+  { key: "anonymous", label: "익명", moreHref: "/posts?category=ANONYMOUS", query: { categoryCode: "ANONYMOUS" } },
+  { key: "qna", label: "질문", moreHref: "/posts?category=QNA", query: { categoryCode: "QNA" } },
+  { key: "food", label: "맛집", moreHref: "/posts?category=FOOD", query: { categoryCode: "FOOD" } },
+  { key: "crew", label: "동호회", moreHref: "/posts?category=CREW", query: { categoryCode: "CREW" } },
+  { key: "season_room", label: "시즌방", moreHref: "/posts?category=SEASON_ROOM", query: { categoryCode: "SEASON_ROOM" } },
 ];
 
 const emptyFeeds: Record<HomeFeedKey, HomePost[]> = {
@@ -76,22 +63,6 @@ const emptyFeedErrors: Record<HomeFeedKey, boolean> = {
 
 type WidgetStatus = "loading" | "error" | "ready";
 
-interface HomeCarpoolItem {
-  publicId: string;
-  departureRegion: string;
-  destinationResortName: string;
-  departureAt: string;
-  passengerCapacity: number;
-  estimatedCostPerPerson: number;
-  equipmentLoadAvailable: boolean;
-}
-
-interface MarketPreviewItem {
-  publicId: string;
-  thumbnailImageUrl: string | null;
-}
-
-
 function formatShortCategory(categoryCode: string, categoryName: string): string {
   switch (categoryCode) {
     case "NOTICE":
@@ -114,23 +85,24 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
 }
 
 
-export default function HomePageClient() {
+export default function HomePageClient({ initial }: { initial: HomeInitialData }) {
   const router = useRouter();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [activeFeed, setActiveFeed] = useState<HomeFeedKey>("all");
-  const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(emptyFeeds);
+  const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(() => (initial.posts ? { ...emptyFeeds, all: initial.posts } : emptyFeeds));
   const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
-  // 탭마다 처음 열 때 한 번만 요청한다. 홈 첫 화면은 "전체" 탭만 받는다.
-  const [feedLoading, setFeedLoading] = useState<Record<HomeFeedKey, boolean>>(() => ({ ...emptyFeedErrors, all: true }));
-  const requestedFeeds = useRef(new Set<HomeFeedKey>());
-  const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>([]);
-  const [marketStatus, setMarketStatus] = useState<WidgetStatus>("loading");
+  // 탭마다 처음 열 때 한 번만 요청한다. 홈 첫 화면은 "전체" 탭만 받고, 서버가 받아 왔으면 다시 부르지 않는다.
+  const [feedLoading, setFeedLoading] = useState<Record<HomeFeedKey, boolean>>(() => ({ ...emptyFeedErrors, all: !initial.posts }));
+  const requestedFeeds = useRef(new Set<HomeFeedKey>(initial.posts ? ["all"] : []));
+  const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>(initial.marketPreviews ?? []);
+  const [marketStatus, setMarketStatus] = useState<WidgetStatus>(initial.marketPreviews ? "ready" : "loading");
 
-  const [carpools, setCarpools] = useState<HomeCarpoolItem[]>([]);
-  const [carpoolStatus, setCarpoolStatus] = useState<WidgetStatus>("loading");
+  const [carpools, setCarpools] = useState<HomeCarpoolItem[]>(initial.carpools ?? []);
+  const [carpoolStatus, setCarpoolStatus] = useState<WidgetStatus>(initial.carpools ? "ready" : "loading");
   const [snowReportResort, setSnowReportResort] = useState("1");
   const [snowReportContent, setSnowReportContent] = useState("");
   const [todayReports, setTodayReports] = useState<ResortReportItem[]>([]);
+  const [reportStatus, setReportStatus] = useState<WidgetStatus>("loading");
   const [resortMasterList, setResortMasterList] = useState<{ id: number; name: string }[]>([]);
   const [resortMasterError, setResortMasterError] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
@@ -143,24 +115,25 @@ export default function HomePageClient() {
   const writeCategory = activeFeedConfig.query.categoryCode;
   const writeHref = writeCategory && writeCategory !== "NOTICE" ? `/posts/create?category=${writeCategory}` : "/posts/create";
 
-  const loadTodayReports = async () => {
+  // 첫 로드와 다시 시도는 불러오는 중을 보여 준다. 제보 등록 뒤 새로 고칠 때는 목록을 둔 채 조용히 바꾸고,
+  // 그 요청이 실패해도 이미 보이는 목록을 지우지 않는다.
+  const loadTodayReports = useCallback(async ({ quiet = false }: { quiet?: boolean } = {}) => {
+    if (!quiet) setReportStatus("loading");
     try {
       const response = await fetch(API_ENDPOINTS.resortReports.today(undefined, 1, 10), { credentials: "include" });
-      if (response.ok) {
-        const data: OffsetPage<ResortReportItem> = await response.json();
-        setTodayReports(Array.isArray(data.content) ? data.content : []);
-      }
+      if (!response.ok) throw new Error(`설질 제보 응답 오류: ${response.status}`);
+      const data: OffsetPage<ResortReportItem> = await response.json();
+      setTodayReports(Array.isArray(data.content) ? data.content : []);
+      setReportStatus("ready");
     } catch {
-      setTodayReports([]);
+      if (!quiet) setReportStatus("error");
     }
-  };
+  }, []);
 
   useEffect(() => {
-    void fetch(API_ENDPOINTS.resortReports.today(undefined, 1, 10), { credentials: "include" })
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((data: OffsetPage<ResortReportItem>) => setTodayReports(Array.isArray(data.content) ? data.content : []))
-      .catch(() => setTodayReports([]));
-  }, []);
+    const timer = window.setTimeout(() => void loadTodayReports(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadTodayReports]);
 
   useEffect(() => {
     void fetch(API_ENDPOINTS.master.resorts, { credentials: "include" })
@@ -209,7 +182,7 @@ export default function HomePageClient() {
       if (res.ok) {
         reportIdempotencyKey.reset();
         setSnowReportContent("");
-        await loadTodayReports();
+        await loadTodayReports({ quiet: true });
       } else {
         const data = await res.json().catch(() => ({}));
         alert(data.message || "설질 제보를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -230,7 +203,7 @@ export default function HomePageClient() {
   const loadCarpools = useCallback(async () => {
     setCarpoolStatus("loading");
     try {
-      const response = await fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=4`, { credentials: "include" });
+      const response = await fetch(`${API_ENDPOINTS.carpool.list}?page=0&size=${HOME_CARPOOL_SIZE}`, { credentials: "include" });
       if (!response.ok) throw new Error();
       const data = await response.json();
       setCarpools(Array.isArray(data.content) ? data.content : []);
@@ -246,20 +219,22 @@ export default function HomePageClient() {
       const response = await fetch(API_ENDPOINTS.market.preview, { credentials: "include" });
       if (!response.ok) throw new Error();
       const data: { items?: MarketPreviewItem[] } = await response.json();
-      setMarketPreviews(Array.isArray(data.items) ? data.items.slice(0, 4) : []);
+      setMarketPreviews(Array.isArray(data.items) ? data.items.slice(0, HOME_MARKET_SIZE) : []);
       setMarketStatus("ready");
     } catch {
       setMarketStatus("error");
     }
   }, []);
 
+  const hasInitialCarpools = initial.carpools !== null;
+  const hasInitialMarket = initial.marketPreviews !== null;
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void loadCarpools();
-      void loadMarketPreviews();
+      if (!hasInitialCarpools) void loadCarpools();
+      if (!hasInitialMarket) void loadMarketPreviews();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadCarpools, loadMarketPreviews]);
+  }, [hasInitialCarpools, hasInitialMarket, loadCarpools, loadMarketPreviews]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setKoreanToday(formatKoreanCalendarDate(new Date())), 60_000);
@@ -270,12 +245,12 @@ export default function HomePageClient() {
     requestedFeeds.current.add(tab.key);
     setFeedErrors((current) => ({ ...current, [tab.key]: false }));
     setFeedLoading((current) => ({ ...current, [tab.key]: true }));
-    const params = new URLSearchParams({ page: "1", size: "15", ...tab.query });
+    const params = new URLSearchParams({ page: "1", size: String(HOME_FEED_SIZE), ...tab.query });
     try {
       const response = await fetch(`${API_ENDPOINTS.posts.list}?${params}`, { credentials: "include" });
       if (!response.ok) throw new Error(`${tab.key} 게시글 목록 응답 오류: ${response.status}`);
       const data = await response.json();
-      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, 15) : [] }));
+      setFeeds((current) => ({ ...current, [tab.key]: Array.isArray(data.content) ? data.content.slice(0, HOME_FEED_SIZE) : [] }));
     } catch {
       setFeedErrors((current) => ({ ...current, [tab.key]: true }));
     } finally {
@@ -284,6 +259,7 @@ export default function HomePageClient() {
   }, []);
 
   useEffect(() => {
+    if (requestedFeeds.current.has("all")) return;
     const timer = window.setTimeout(() => void loadFeed(HOME_FEED_TABS[0]), 0);
     return () => window.clearTimeout(timer);
   }, [loadFeed]);
@@ -297,12 +273,13 @@ export default function HomePageClient() {
     <div className="community-page">
       <TopNav active="home" />
       <main className="community-container home-main">
+        {/* 소개 문구는 헤더 로고 옆에 보인다. 홈 제목은 화면 낭독기와 검색엔진용으로 둔다. */}
+        <h1 className="sr-only">윈터스포츠 커뮤니티 눈팅</h1>
         <OpeningDdayBanner />
         {/* TIER 1: Left Board Feed + Right Live Chat */}
         <div className="home-tier-1">
           <section className="home-feed tier-1-left">
             <div className="post-board">
-              <h1 className="sr-only">눈팅 SnowThing</h1>
               <nav className="board-tabs" aria-label="홈 게시판 선택">
                 <div className="filter-pills">
                   {HOME_FEED_TABS.map((tab) => (
@@ -379,7 +356,7 @@ export default function HomePageClient() {
                               {post.viewCount.toLocaleString()}
                             </span>
                           </span>
-                          <time className="m-time">{formatCompactTime(post.createdAt)}</time>
+                          <time className="m-time" suppressHydrationWarning>{formatCompactTime(post.createdAt)}</time>
                         </div>
                       </Link>
                     );
@@ -456,7 +433,28 @@ export default function HomePageClient() {
           )}
 
           <div className="snow-report-list snow-wide-list">
-            {todayReports.length === 0 ? (
+            {reportStatus === "loading" ? (
+              <div className="snow-empty-state" role="status">
+                <span className="snow-empty-icon">
+                  <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
+                </span>
+                <div className="snow-empty-copy">
+                  <strong>오늘의 설질 제보를 불러오는 중입니다.</strong>
+                </div>
+              </div>
+            ) : reportStatus === "error" ? (
+              <div className="snow-empty-state">
+                <span className="snow-empty-icon">
+                  <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                </span>
+                <div className="snow-empty-copy">
+                  <strong>설질 제보를 불러오지 못했습니다.</strong>
+                </div>
+                <button type="button" className="home-widget-retry" onClick={() => void loadTodayReports()}>
+                  다시 시도
+                </button>
+              </div>
+            ) : todayReports.length === 0 ? (
               <div className="snow-empty-state">
                 <div className="snow-empty-copy">
                   <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>

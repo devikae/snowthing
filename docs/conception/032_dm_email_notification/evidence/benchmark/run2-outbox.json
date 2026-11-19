@@ -1,0 +1,35 @@
+{
+  "mode" : "outbox",
+  "measuredAt" : "2026-11-17T23:22:40.559040700",
+  "requests" : 60,
+  "concurrency" : 6,
+  "sesDelayMs" : 1000,
+  "dbPoolSize" : 5,
+  "errors" : 0,
+  "errorTypes" : [ ],
+  "sendWallMs" : 185,
+  "sendLatencyMs" : {
+    "count" : 60,
+    "p50" : 14,
+    "p95" : 30,
+    "max" : 46,
+    "min" : 10
+  },
+  "delivery" : {
+    "accepted" : 60,
+    "statusCounts" : [ {
+      "status" : "ACCEPTED",
+      "cnt" : 60
+    } ],
+    "maxBacklogObserved" : 60,
+    "enqueueToAcceptedMs" : {
+      "count" : 60,
+      "p50" : 26898,
+      "p95" : 57934,
+      "max" : 57938,
+      "min" : 792
+    },
+    "fakeSesRequests" : 60,
+    "fakeSesAccepted" : 60
+  }
+}

@@ -1,0 +1,72 @@
+# 백엔드 전체 테스트 (./gradlew spotlessCheck test, 2026-11-17)
+> Task :spotlessCheck UP-TO-DATE
+BUILD SUCCESSFUL in 4m 36s
+exit=0
+
+테스트 클래스 결과 파일 225개, 테스트 1305건, 실패 0, 오류 0, 건너뜀 1
+
+## 이번 작업 관련 테스트 (결과, 시간, 클래스, 이름)
+PASSED	0.239s	SocialAuthServiceTest	권위 있는 Google 이메일로 신규 가입하면 SnowThing 이메일 인증 시각을 기록한다
+PASSED	0.001s	SocialAuthServiceTest	가입을 마치면 새 회원의 동의 기록과 쪽지 메일 알림 켜짐 설정을 함께 저장한다
+PASSED	0.002s	SocialAuthServiceTest	연결하면 지금 회원에게 소셜 계정을 저장한다
+PASSED	0.063s	SocialAuthServiceTest	신규 가입 중 소셜 계정 유니크 제약이 충돌하면 OAuth 인증 오류로 변환한다
+PASSED	0.002s	SocialAuthServiceTest	미연결 소셜 프로필에 이메일이 누락되면 가입이 거부된다
+PASSED	0.002s	SocialAuthServiceTest	비권위 프로필의 내부 이메일 유니크 제약 충돌은 계정 연결 안내로 오분류하지 않는다
+PASSED	0.001s	SocialAuthServiceTest	탈퇴 후 30일이 지나지 않은 이메일은 동의 화면으로 보내기 전에 거부한다
+PASSED	0.001s	SocialAuthServiceTest	이미 내 계정에 연결된 소셜 계정을 다시 연결하면 거부한다
+PASSED	0.001s	SocialAuthServiceTest	소셜로 가입한 회원도 다른 소셜 연결이 남으면 해제할 수 있다
+PASSED	0.002s	SocialAuthServiceTest	미연결 소셜 이메일이 기존 회원과 같으면 자동 연결하지 않는다
+PASSED	0.003s	SocialAuthServiceTest	동시 가입으로 닉네임 유니크 제약이 충돌하면 같은 트랜잭션에서 재시도하지 않는다
+PASSED	0.001s	SocialAuthServiceTest	마지막 남은 로그인 방법은 해제할 수 없다
+PASSED	0.002s	SocialAuthServiceTest	알 수 없는 회원 무결성 오류는 닉네임 충돌로 오분류하지 않는다
+PASSED	0.003s	SocialAuthServiceTest	동시 가입으로 이메일 유니크 제약이 충돌하면 자동 연결 대신 계정 연결 필요 오류를 반환한다
+PASSED	0.001s	SocialAuthServiceTest	이미 연결된 소셜 계정은 현재 프로필 이메일이 없어도 제공자 고유 ID로 로그인한다
+PASSED	0.002s	SocialAuthServiceTest	동시에 다른 회원이 먼저 저장하면 사용 중인 계정으로 거부한다
+PASSED	0.001s	SocialAuthServiceTest	비밀번호가 있는 회원은 하나뿐인 소셜 연결도 해제할 수 있다
+PASSED	0.001s	SocialAuthServiceTest	정지된 회원은 소셜 계정을 연결할 수 없다
+PASSED	0.002s	SocialAuthServiceTest	정지되었거나 탈퇴한 회원은 소셜 로그인이 차단된다
+PASSED	0.002s	SocialAuthServiceTest	소셜 닉네임이 이미 사용 중이면 난수 접미사가 붙은 고유 닉네임으로 가입된다
+PASSED	0.056s	SocialAuthServiceTest	이미 가입된 이메일이면 동의 화면으로 보내기 전에 거부한다
+PASSED	0.001s	SocialAuthServiceTest	동의 검증에 실패하면 회원을 만들지 않는다
+PASSED	0.001s	SocialAuthServiceTest	다른 회원이 쓰는 소셜 계정은 합치지 않고 거부한다
+PASSED	0.001s	SocialAuthServiceTest	신규 소셜 로그인 시 비밀번호 없는 활성 회원이 자동 생성되고 소셜 계정이 연결된다
+PASSED	0.001s	SocialAuthServiceTest	처음 온 소셜 사용자는 콜백에서 회원을 만들지 않는다
+PASSED	0.002s	SocialAuthServiceTest	같은 제공자를 두 번 연결할 수 없다
+PASSED	0.003s	SocialAuthServiceTest	로그인 방법 목록은 비밀번호 여부와 연결된 제공자를 돌려준다
+PASSED	0.001s	SocialAuthServiceTest	연결되지 않은 제공자는 해제할 수 없다
+PASSED	0.002s	DmMailComposerTest	같은 사람이 여러 개 보내면 이름은 한 번, 개수를 쓴다
+PASSED	0.0s	DmMailComposerTest	쪽지 한 개면 보낸 사람과 도착 문구만 쓴다
+PASSED	0.0s	DmMailComposerTest	HTML 본문은 닉네임을 이스케이프한다
+PASSED	0.0s	DmMailComposerTest	탈퇴한 보낸 사람은 쪽지함과 같이 탈퇴한 회원으로 쓴다
+PASSED	0.084s	DmMailOutboxIntegrationTest$Atomicity	쪽지가 커밋되면 발송 요청이 PENDING 한 행으로 남는다
+PASSED	0.048s	DmMailOutboxIntegrationTest$Atomicity	쪽지 트랜잭션이 롤백되면 쪽지도 발송 요청도 남지 않는다
+PASSED	0.096s	DmMailOutboxIntegrationTest$Atomicity	발송 요청 쓰기는 트랜잭션 밖에서 부르면 바로 실패한다
+PASSED	0.049s	DmMailOutboxIntegrationTest$Atomicity	같은 쪽지의 발송 요청을 다시 쓰면 유니크 제약으로 한 행만 남는다
+PASSED	0.037s	DmMailOutboxIntegrationTest$Atomicity	발송 요청 쓰기가 실패하면 쪽지도 롤백된다
+PASSED	0.345s	DmMailOutboxIntegrationTest$Bundling	첫 쪽지는 바로 보내고, 쿨다운 동안 온 쪽지 4개는 쿨다운이 끝난 뒤 한 통으로 보낸다
+PASSED	0.098s	DmMailOutboxIntegrationTest$Bundling	보낸 사람이 여럿이면 두 명까지 이름을 쓰고 나머지는 외 N명으로 줄인다
+PASSED	0.069s	DmMailOutboxIntegrationTest$Bundling	전부 읽었으면 SES를 부르지 않고, 쿨다운 기준 시각도 되돌린다
+PASSED	0.111s	DmMailOutboxIntegrationTest$Bundling	쿨다운 동안 읽은 쪽지는 묶음에서 빠진다
+PASSED	0.065s	DmMailOutboxIntegrationTest$Claiming	커밋된 발송 요청은 워커가 아직 돌지 않았어도 남아 있다가 나중에 처리된다
+PASSED	0.421s	DmMailOutboxIntegrationTest$Claiming	워커 두 개가 같은 받는 사람을 동시에 처리해도 메일은 한 통이고 묶음이 쪼개지지 않는다
+PASSED	0.061s	DmMailOutboxIntegrationTest$Claiming	lease가 끝난 PROCESSING은 UNKNOWN이 되고, 늦게 돌아온 워커의 결과 기록은 영향 행 0으로 거부된다
+PASSED	0.401s	DmMailOutboxIntegrationTest$Claiming	워커 두 개가 동시에 폴링해도 받는 사람마다 메일은 정확히 한 통이다
+PASSED	0.113s	DmMailOutboxIntegrationTest$Outcomes	429는 요청이 처리되지 않은 거절이라 RETRY_WAIT로 미루고, 다음 시도는 쿨다운에 막히지 않는다
+PASSED	0.088s	DmMailOutboxIntegrationTest$Outcomes	재시도 한도를 다 쓰면 FAILED다
+PASSED	0.066s	DmMailOutboxIntegrationTest$Outcomes	쪽지 생성 후 24시간이 지나면 보내지 않는다
+PASSED	0.692s	DmMailOutboxIntegrationTest$Outcomes	타임아웃 A: 수락 전에 끊겨도 앱은 구분할 수 없어 UNKNOWN이고, 자동 재발송은 0회다 (수락 0건)
+PASSED	0.071s	DmMailOutboxIntegrationTest$Outcomes	500은 처리 중 실패인지 알 수 없어 UNKNOWN이고, SDK 재시도가 꺼져 요청은 정확히 한 번 나간다
+PASSED	0.086s	DmMailOutboxIntegrationTest$Outcomes	400 영구 거절은 반복하지 않고 FAILED다
+PASSED	0.079s	DmMailOutboxIntegrationTest$Outcomes	연결 거부는 요청이 나가지 않았음이 확실해 RETRY_WAIT다
+PASSED	0.684s	DmMailOutboxIntegrationTest$Outcomes	타임아웃 B: 수락 후 응답이 사라져도 UNKNOWN이고, 자동 재발송은 0회다 (수락 1건)
+PASSED	0.113s	DmMailOutboxIntegrationTest$Outcomes	관리자 요약은 상태별 건수, 확인할 건수, 가장 오래 기다린 요청을 보여 주고 일반 회원은 볼 수 없다
+PASSED	0.118s	DmMailOutboxIntegrationTest$Settings	소셜 내부 대체 주소와 미인증 이메일은 받을 수 없는 주소로 보고 건너뛴다
+PASSED	0.087s	DmMailOutboxIntegrationTest$Settings	적재 뒤 알림을 끄면 발송 직전 확인에서 SKIPPED가 되고 SES를 부르지 않는다
+PASSED	0.08s	DmMailOutboxIntegrationTest$Settings	탈퇴하면 설정, 받은 발송 요청, 받는 사람 상태 행을 지운다
+PASSED	0.074s	DmMailOutboxIntegrationTest$Settings	설정 API는 행이 없으면 꺼짐을, 받을 수 없는 주소면 emailDeliverable=false를 돌려준다
+PASSED	0.045s	DmMailOutboxIntegrationTest$Settings	설정 행이 없는 기존 회원에게는 발송 요청을 만들지 않는다
+PASSED	0.127s	VerifiedMemberRegistrationServiceTest	rejectsMissingRequiredConsentBeforeLookingUpEmail()
+PASSED	0.006s	VerifiedMemberRegistrationServiceTest	verifiedTokenCreatesVerifiedMemberAndIsConsumedOnce()
+PASSED	0.002s	VerifiedMemberRegistrationServiceTest	rejectsMissingTermsAgreement()
+PASSED	0.004s	VerifiedMemberRegistrationServiceTest	tokenForAnotherEmailOrPurposeIsRejectedBeforeMemberCreation()
+PASSED	0.001s	VerifiedMemberRegistrationServiceTest	rejectsStalePolicyBeforeConsumingAnyVerificationToken()

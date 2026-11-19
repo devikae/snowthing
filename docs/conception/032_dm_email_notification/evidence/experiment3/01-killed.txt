@@ -1,0 +1,9 @@
+# 실험 3 | 가짜 SES가 수락을 기록한 즉시 앱 프로세스 강제 종료
+# 실행 시각(KST): 2026-11-17 23:44:00
+$ echo 'stopped 38796 on 18081'; echo; echo '가짜 SES 통계:'; curl -s http://127.0.0.1:18599/_admin/stats; echo; echo; netstat -ano | grep -E ':18081 .*LISTEN' || echo '18081 리슨 없음 (종료됨)'
+stopped 38796 on 18081
+
+가짜 SES 통계:
+{"mode":"ACCEPT_THEN_HANG","delayMs":2500,"requests":1,"accepted":1,"recipients":1,"recipientsWithMoreThanOneMail":0}
+
+18081 리슨 없음 (종료됨)

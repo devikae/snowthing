@@ -31,6 +31,7 @@ import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
 import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
+import com.ikae.snowthing.domain.notification.service.NotificationSettingService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -50,6 +51,7 @@ public class SocialAuthService {
     private final ApplicationEventPublisher eventPublisher;
     private final RegistrationConsentService consentService;
     private final WithdrawnEmailService withdrawnEmails;
+    private final NotificationSettingService notificationSettings;
 
     /**
      * 콜백에서 호출한다. 연결된 회원이 있으면 돌려주고, 처음 온 사용자면 비어 있는 값을 돌려준다. 이때 회원을 만들지 않는다. 가입할 수 없는 사용자는 동의 화면까지
@@ -85,6 +87,7 @@ public class SocialAuthService {
                 createSocialMember(
                         memberEmail, profile.nickname(), profile.emailAuthoritative(), now);
         consentService.record(newMember.getId(), consent, now);
+        notificationSettings.initializeForNewMember(newMember.getId(), now);
         saveSocialAccount(
                 MemberSocialAccount.builder()
                         .member(newMember)

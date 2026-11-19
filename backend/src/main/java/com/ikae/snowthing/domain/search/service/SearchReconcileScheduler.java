@@ -28,13 +28,13 @@ public class SearchReconcileScheduler {
         try {
             consistency.reconcile();
         } catch (RuntimeException failure) {
-            log.warn("search reconcile failed: error={}", failure.getClass().getSimpleName());
+            log.warn("search reconcile failed", failure);
         }
         try {
             int purged = consistency.purgeDoneEvents();
             log.info("search outbox done events purged: count={}", purged);
         } catch (RuntimeException failure) {
-            log.warn("search outbox purge failed: error={}", failure.getClass().getSimpleName());
+            log.warn("search outbox purge failed", failure);
         }
     }
 }
