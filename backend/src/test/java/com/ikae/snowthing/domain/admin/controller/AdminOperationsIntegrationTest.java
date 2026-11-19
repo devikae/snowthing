@@ -124,6 +124,13 @@ class AdminOperationsIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"value\":\"true\"}"))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(
+                        patch("/api/v1/admin/configs/MARKET_GUEST_ACCESS_ENABLED")
+                                .session(userSession)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"value\":\"false\"}"))
+                .andExpect(status().isForbidden());
         assertThat(statusOf(publicId)).isEqualTo("NORMAL");
     }
 
