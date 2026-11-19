@@ -35,6 +35,10 @@ const server = http.createServer((req, res) => {
     if (state.reportsFail) { res.writeHead(502, { 'Content-Type': 'text/html' }); return res.end('<html>502 Bad Gateway</html>'); }
     return json(200, { content: reports, pageInfo: { page: 1, totalPages: 1, totalElements: reports.length, hasNext: false, pageSize: 20 } });
   }
+  if (pathname === `/api/v1/posts/${POST_ID}/comments` && req.method === 'POST') {
+    // 앞단이 본문 크기 제한으로 HTML 413을 돌려주는 경우
+    res.writeHead(413, { 'Content-Type': 'text/html' }); return res.end('<html>413 Request Entity Too Large</html>');
+  }
   if (pathname === `/api/v1/posts/${POST_ID}/comments`) return json(200, { publicId: POST_ID, totalCommentCount: 0, comments: [], nextCursor: null, hasNext: false });
   if (pathname === `/api/v1/posts/${POST_ID}`) {
     // 삭제는 앞단 장애처럼 HTML로 답한다. 화면에 영어 파싱 문구가 나오면 안 된다.
@@ -92,6 +96,16 @@ server.listen(MOCK_PORT, '127.0.0.1', () => {
     await evaluate(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
     await waitFor('!document.querySelector(".delete-modal")');
     assert.equal(await evaluate(`document.activeElement === ${deleteButton}`), true, 'Focus should return to the delete button');
+
+    // 5. 댓글 등록이 HTML 413으로 거절되면 연결 오류가 아니라 크기 안내를 보여 준다.
+    await evaluate('window.__alerts = []; window.alert = (message) => window.__alerts.push(String(message));');
+    const setValue = (selector, value) => `(() => { const el = document.querySelector(${JSON.stringify(selector)}); const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })); })()`;
+    await evaluate(setValue('.post-comment-compose textarea', '점검용 댓글'));
+    await evaluate(setValue('.post-comment-password input', '1234'));
+    await evaluate('document.querySelector(".post-comment-submit-button").click()');
+    await waitFor('window.__alerts.length > 0');
+    const alertText = await evaluate('window.__alerts[0]');
+    assert.ok(alertText.includes('너무 큽니다'), alertText);
   })
     .then(() => { console.log('frontend audit browser check passed'); })
     .catch((error) => { console.error(error); process.exitCode = 1; })
