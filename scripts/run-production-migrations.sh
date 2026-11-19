@@ -161,12 +161,25 @@ if (( ${#migration_files[@]} == 0 )); then
   exit 0
 fi
 
+# 여러 PR이 같은 번호를 쓰면 파일 이름 순서로 둘 다 적용되어, 실행 순서가 작성자가 의도한 것과 달라질 수 있다.
+# 하나라도 적용하기 전에 이름과 번호를 모두 검사한다.
+declare -A migration_number_owner=()
 for migration_file in "${migration_files[@]}"; do
   migration_version="$(basename "$migration_file" .sql)"
   if [[ ! "$migration_version" =~ ^[0-9]{3}_migration_[a-z0-9_]+$ ]]; then
     echo "Invalid migration file name: ${migration_version}" >&2
     exit 1
   fi
+  migration_number="${migration_version:0:3}"
+  if [[ -n "${migration_number_owner[$migration_number]:-}" ]]; then
+    echo "Duplicate migration number ${migration_number}: ${migration_number_owner[$migration_number]} and ${migration_version}" >&2
+    exit 1
+  fi
+  migration_number_owner[$migration_number]="$migration_version"
+done
+
+for migration_file in "${migration_files[@]}"; do
+  migration_version="$(basename "$migration_file" .sql)"
   migration_checksum="$(sha256sum "$migration_file" | awk '{print $1}')"
   MIGRATION_STEP="${migration_version}"
   applied_checksum="$(

@@ -116,4 +116,18 @@ grep -q "leak-check@example.test" "${saved_logs[0]}" || fail "Saved error does n
 [[ "$(stat -c '%a' "${saved_logs[0]}")" == "600" ]] || fail "Error log file is not operator-only."
 [[ "$(applied_count 991_migration_runner_probe_redact)" == "0" ]] || fail "A failed migration was recorded as applied."
 
+# 3. 두 PR이 같은 번호를 쓰면 하나도 적용하지 않고 멈춰야 한다.
+mkdir "$WORK_DIRECTORY/duplicate"
+echo "ALTER TABLE ${PROBE_TABLE} ADD COLUMN duplicate_a INT NULL;" \
+  > "$WORK_DIRECTORY/duplicate/992_migration_runner_probe_a.sql"
+echo "ALTER TABLE ${PROBE_TABLE} ADD COLUMN duplicate_b INT NULL;" \
+  > "$WORK_DIRECTORY/duplicate/992_migration_runner_probe_b.sql"
+if duplicate_output="$(run_runner "$WORK_DIRECTORY/duplicate" 2>&1)"; then
+  fail "Migrations with the same number were applied."
+fi
+grep -q 'Duplicate migration number 992' <<< "$duplicate_output" \
+  || fail "Duplicate number was not reported: ${duplicate_output}"
+[[ "$(mysql_test --execute="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '${PROBE_TABLE}' AND column_name LIKE 'duplicate_%'")" == "0" ]] \
+  || fail "A migration ran before the duplicate number check."
+
 echo "Migration runner safety checks passed."
