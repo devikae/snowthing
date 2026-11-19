@@ -315,6 +315,14 @@ public enum ErrorCode {
     CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_001", "존재하지 않는 시스템 설정입니다."),
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_002", "존재하지 않는 배너입니다."),
 
+    // 개장일 관리 (052)
+    SEASON_OPENING_RESORT_MISMATCH(
+            HttpStatus.BAD_REQUEST, "ADMIN_003", "리조트 목록이 저장된 목록과 다릅니다. 새로고침한 뒤 다시 저장해 주세요."),
+    SEASON_OPENING_ORDER_DUPLICATED(HttpStatus.BAD_REQUEST, "ADMIN_004", "배너 순서가 겹칩니다."),
+    SEASON_OPENING_DATE_REQUIRED(HttpStatus.BAD_REQUEST, "ADMIN_005", "배너에 넣을 리조트는 개장일이 있어야 합니다."),
+    SEASON_OPENING_DATE_OUT_OF_RANGE(
+            HttpStatus.BAD_REQUEST, "ADMIN_006", "개장일은 2020년부터 2100년 사이로 입력해 주세요."),
+
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
 import { formatDday, upcomingOpening } from "../lib/seasonOpening";
 import { useKstToday } from "../lib/useKstToday";
+import { useSeasonOpenings } from "../lib/useSeasonOpenings";
 import styles from "./resortCam.module.css";
 
 type ResortWeather = {
@@ -26,14 +27,15 @@ const KST_TIME = new Intl.DateTimeFormat("ko-KR", {
   hourCycle: "h23",
 });
 
-/** 리조트 이름 옆 개장 D-DAY 배지. 확정일은 D-n만, 예상일은 "예상"을 붙인다. 브라우저에서만 계산한다. */
+/** 리조트 이름 옆 개장 D-DAY 배지. 확정일은 D-n만, 예상일은 "예상"을 붙인다. 브라우저에서만 계산하고, 개장일을 받지 못하면 그리지 않는다. */
 export function OpeningDdayTag({ resortCode }: { resortCode: string }) {
   const today = useKstToday();
-  const upcoming = today ? upcomingOpening(resortCode, today) : null;
+  const data = useSeasonOpenings();
+  const upcoming = today && data ? upcomingOpening(data.resorts, resortCode, today) : null;
 
   if (!upcoming) return null;
   return (
-    <span className={styles.ddayBadge} title={`개장일 ${upcoming.opening.date}`}>
+    <span className={styles.ddayBadge} title={`개장일 ${upcoming.date}`}>
       {formatDday(upcoming.days)}
       {upcoming.opening.confirmed ? null : <small>예상</small>}
     </span>
