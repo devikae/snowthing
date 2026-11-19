@@ -12,6 +12,13 @@ const reports = [
   { reportId: 12, resortId: 2, resortName: '비발디파크', resortCode: 'VIVALDI', authorNickname: '스키러', content: '정설 잘 되어 있음', createdAt: '2026-11-20T08:40:00+09:00', canDelete: false },
 ];
 
+const POST_ID = '00000000-0000-4000-8000-000000000001';
+const post = {
+  publicId: POST_ID, categoryName: '익명게시판', categoryCode: 'ANONYMOUS', title: '점검용 익명글', content: '본문입니다.', status: 'NORMAL',
+  isAnonymous: true, isAuthor: false, requiresPassword: true, viewCount: 1, commentCount: 0, likeCount: 0, dislikeCount: 0,
+  activeReactionTypes: [], scrapped: false, writer: { publicId: null, nickname: '익명', profileImageUrl: null }, images: [], createdAt: '2026-11-20T09:00:00+09:00',
+};
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -27,6 +34,12 @@ const server = http.createServer((req, res) => {
     // 앞단 장애처럼 HTML로 답한다.
     if (state.reportsFail) { res.writeHead(502, { 'Content-Type': 'text/html' }); return res.end('<html>502 Bad Gateway</html>'); }
     return json(200, { content: reports, pageInfo: { page: 1, totalPages: 1, totalElements: reports.length, hasNext: false, pageSize: 20 } });
+  }
+  if (pathname === `/api/v1/posts/${POST_ID}/comments`) return json(200, { publicId: POST_ID, totalCommentCount: 0, comments: [], nextCursor: null, hasNext: false });
+  if (pathname === `/api/v1/posts/${POST_ID}`) {
+    // 삭제는 앞단 장애처럼 HTML로 답한다. 화면에 영어 파싱 문구가 나오면 안 된다.
+    if (req.method === 'DELETE') { res.writeHead(502, { 'Content-Type': 'text/html' }); return res.end('<html>502 Bad Gateway</html>'); }
+    return json(200, post);
   }
   if (pathname.startsWith('/api/v1/resort-reports/') && req.method === 'DELETE') {
     state.deleteCalls += 1;
@@ -62,6 +75,23 @@ server.listen(MOCK_PORT, '127.0.0.1', () => {
     assert.equal(state.deleteCalls, 1, 'Double click should send one DELETE');
 
     assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
+
+    // 4. 삭제 확인 창: 열리면 초점이 창 안으로 가고, 서버가 HTML로 답해도 한국어 안내가 보이고, Esc로 닫으면 초점이 돌아온다.
+    await navigate(`/posts/${POST_ID}`);
+    const deleteButton = '[...document.querySelectorAll(".post-detail-owner-actions button")].find(b => b.textContent.trim() === "삭제")';
+    await waitFor(`!!${deleteButton}`);
+    await evaluate(`(() => { const b = ${deleteButton}; b.focus(); b.click(); })()`);
+    await waitFor('!!document.querySelector(".delete-modal")');
+    await waitFor('document.activeElement?.matches(".delete-modal input[type=password]")');
+    await evaluate(`(() => { const input = document.activeElement; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '1234'); input.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await evaluate('document.querySelector(".delete-modal-confirm").click()');
+    await waitFor('!!document.querySelector(".delete-modal-error")');
+    const modalError = await evaluate('document.querySelector(".delete-modal-error").textContent');
+    assert.ok(!/Unexpected|JSON|token/i.test(modalError), modalError);
+    assert.ok(/[가-힣]/.test(modalError), modalError);
+    await evaluate(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+    await waitFor('!document.querySelector(".delete-modal")');
+    assert.equal(await evaluate(`document.activeElement === ${deleteButton}`), true, 'Focus should return to the delete button');
   })
     .then(() => { console.log('frontend audit browser check passed'); })
     .catch((error) => { console.error(error); process.exitCode = 1; })
