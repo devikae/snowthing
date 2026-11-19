@@ -184,8 +184,14 @@ export default function KakaoMapPicker({
 
     const existing = document.getElementById(KAKAO_SDK_SCRIPT_ID);
     if (existing) {
-      initialize();
-      return;
+      // 스크립트를 받는 중에 화면을 나갔다 돌아오면 태그는 있지만 window.kakao가 아직 없다.
+      // 그때 바로 initialize()만 부르면 아무것도 하지 않고 끝나 지도가 영영 뜨지 않으므로 load를 기다린다.
+      if (window.kakao?.maps) {
+        initialize();
+        return;
+      }
+      existing.addEventListener("load", initialize);
+      return () => existing.removeEventListener("load", initialize);
     }
     const appKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY;
     if (!appKey) {
@@ -197,10 +203,13 @@ export default function KakaoMapPicker({
     script.async = true;
     script.src = `${KAKAO_SDK_URL}?appkey=${encodeURIComponent(appKey)}&autoload=false&libraries=services`;
     script.onload = initialize;
-    script.onerror = () =>
+    script.onerror = () => {
+      // 실패한 태그가 남으면 다음 방문도 load를 기다리기만 한다. 지워서 다음에 다시 받게 한다.
+      script.remove();
       reportError(
         "카카오 지도를 불러오지 못했습니다. Web 플랫폼 도메인을 확인해 주세요.",
       );
+    };
     document.head.appendChild(script);
   }, [initialPlace, reportError, selectCoordinate]);
 
