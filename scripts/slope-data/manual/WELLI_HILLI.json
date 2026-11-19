@@ -1,0 +1,136 @@
+{
+  "_source": "https://www.wellihillipark.com/image/snowpark/slope_map01.jpg (also slope_map03.jpg, slope_map04.jpg; page https://www.wellihillipark.com/snowpark/snowpark/slope-guide)",
+  "델타 D2 (하프파이프)": [
+    -1036240365
+  ],
+  "델타 D+": [
+    -1036240371
+  ],
+  "_drawn_source": "https://www.wellihillipark.com/image/snowpark/slope_map03.jpg (A1 drawPx, D3 positioned between OSM Delta lift and gondola from the same map; lifts read on slope_map01.jpg, same 1192x670 base)",
+  "_anchors": [
+    {
+      "px": [
+        208,
+        260
+      ],
+      "lat": 37.48697,
+      "lon": 128.25394,
+      "what": "Alpha lift top"
+    },
+    {
+      "px": [
+        346,
+        388
+      ],
+      "lat": 37.49013,
+      "lon": 128.25021,
+      "what": "Alpha lift bottom"
+    },
+    {
+      "px": [
+        482,
+        237
+      ],
+      "lat": 37.48518,
+      "lon": 128.24692,
+      "what": "Delta lift top"
+    },
+    {
+      "px": [
+        400,
+        420
+      ],
+      "lat": 37.49004,
+      "lon": 128.24918,
+      "what": "Delta lift bottom"
+    },
+    {
+      "px": [
+        417,
+        225
+      ],
+      "lat": 37.48565,
+      "lon": 128.24882,
+      "what": "Challenge lift bottom"
+    },
+    {
+      "px": [
+        615,
+        280
+      ],
+      "lat": 37.48556,
+      "lon": 128.24361,
+      "what": "Family lift top"
+    },
+    {
+      "px": [
+        342,
+        335
+      ],
+      "lat": 37.48874,
+      "lon": 128.25028,
+      "what": "Bravo lift bottom"
+    }
+  ],
+  "알파 A1 (펀파크)": {
+    "drawPx": [
+      [
+        200,
+        284
+      ],
+      [
+        219,
+        300
+      ],
+      [
+        240,
+        320
+      ],
+      [
+        261,
+        340
+      ],
+      [
+        280,
+        357
+      ],
+      [
+        286,
+        362
+      ]
+    ]
+  },
+  "델타 D3 (상급모글코스)": {
+    "draw": [
+      [
+        37.485812,
+        128.246878
+      ],
+      [
+        37.48629,
+        128.247058
+      ],
+      [
+        37.486768,
+        128.247261
+      ],
+      [
+        37.487246,
+        128.247514
+      ],
+      [
+        37.487723,
+        128.247796
+      ],
+      [
+        37.488201,
+        128.248059
+      ],
+      [
+        37.488679,
+        128.248306
+      ]
+    ],
+    "_how": "traced on slope_map03.jpg px (488,264)->(443,370); placed between the OSM Delta lift and gondola lines at the same fractions the official map shows (about 0.6 of the gap from the Delta lift toward the gondola), since the global anchor fit is about 35 m off here"
+  }
+}
