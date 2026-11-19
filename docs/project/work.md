@@ -33,6 +33,7 @@
   - 결정: 053에 `SET NAMES utf8mb4`를 넣었다. 052가 latin1 클라이언트에서 한글이 깨져 같은 방식으로 고친 일(15d2016)이 있었고, 053은 표와 컬럼 COMMENT에 한글이 있다. 다른 선택지는 실행기에 `--default-character-set=utf8mb4`를 넣는 것이었으나 이미 운영에 적용된 파일들의 동작까지 바뀌어 이번 범위에서 뺐다. 053은 운영 미적용이라 체크섬 문제는 없다.
   - 마이그레이션: 053은 052 다음 번호. 배포 파이프라인과 CI(`verify-production-migration-007-015.sh`)가 `run-production-migrations.sh database/production`으로 모든 번호 파일을 차례로 적용하므로 053도 포함된다. latin1 클라이언트로 빈 임시 DB에 001부터 053까지(파일 50개) 적용 성공, 053 두 번째 적용도 오류 없음, 표와 컬럼 COMMENT가 한글로 남는 것 확인. 임시 DB는 지웠다.
   - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika88`(001~053 적용 후)로 `./gradlew test` 1341건 중 1340 통과, 1 건너뜀, 실패 0. 프론트 `npm ci --legacy-peer-deps`, `npm run lint`, `npm run build` 통과.
+  - CI 첫 실행에서 `DmMailOutboxIntegrationTest` 묶음 메일 테스트 1건 실패. 원인: 저장소가 DATETIME을 `getTimestamp`로 읽어 JVM 기본 시간대(CI는 UTC)로 바뀌어 마지막 발송 시각이 9시간 앞당겨졌고, 쿨다운이 끝난 것으로 판단했다. 로컬은 JVM이 KST라 드러나지 않았다. 결정: `getObject(..., LocalDateTime.class)`로 바꿨다(다른 선택지는 테스트 JVM에 시간대를 고정하는 것이었으나 코드가 JVM 시간대에 기대는 문제가 남는다). 운영은 `TZ=Asia/Seoul`이라 운영 영향은 없었다. 확인: 고치기 전 코드를 `-Duser.timezone=UTC`로 돌려 같은 실패 재현, 고친 뒤 UTC로 dmmail 31건 통과, KST로 dmmail, notification, message 77건 통과.
   - 운영 설정: 새 운영 env는 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED`, `SNOWTHING_DM_MAIL_SEND_ENABLED` 두 개이고 `compose.prod.yml`에 있다(기본 false). `SNOWTHING_DM_MAIL_SES_ENDPOINT`는 테스트용이라 운영 목록에 넣지 않았다.
 - 남은 항목: 화면 로컬 확인, PR, 운영 마이그레이션 053 적용(IKA-87의 052 다음), 적재 플래그 켜기, 테스트 수신자로 발송 확인 후 발송 플래그 켜기, 원클릭 수신거부(후속).
 - 검증
