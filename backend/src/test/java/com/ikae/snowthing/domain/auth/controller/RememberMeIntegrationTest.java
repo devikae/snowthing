@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ikae.snowthing.domain.auth.dto.MemberLoginRequest;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberResortRepository;
 import com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository;
@@ -188,6 +189,33 @@ class RememberMeIntegrationTest {
 
         assertThat(tokenCount()).isZero();
         mockMvc.perform(get(ME).cookie(issued)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("관리자는 로그인해도 로그인 유지 쿠키와 토큰을 만들지 않는다")
+    void adminLogin_DoesNotIssueRememberMe() throws Exception {
+        Member member = memberRepository.findByEmail(EMAIL).orElseThrow();
+        member.changeRole(Role.ROLE_ADMIN);
+        memberRepository.save(member);
+
+        MvcResult result = login();
+
+        Cookie cookie = result.getResponse().getCookie(COOKIE);
+        assertThat(cookie == null || cookie.getMaxAge() == 0).isTrue();
+        assertThat(tokenCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("일반 회원 때 받은 토큰이 남아 있어도 관리자가 되면 쿠키로 다시 로그인하지 못한다")
+    void tokenIssuedBeforeAdmin_IsRejected() throws Exception {
+        Cookie issued = login().getResponse().getCookie(COOKIE);
+        // 권한 변경 경로는 토큰을 지우므로, 지우지 못한 경우를 흉내 내려고 엔티티만 바꾼다.
+        Member member = memberRepository.findByEmail(EMAIL).orElseThrow();
+        member.changeRole(Role.ROLE_ADMIN);
+        memberRepository.save(member);
+
+        mockMvc.perform(get(ME).cookie(issued)).andExpect(status().isUnauthorized());
+        assertThat(tokenCount()).isZero();
     }
 
     private MvcResult login() throws Exception {

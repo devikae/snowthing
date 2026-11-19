@@ -24,6 +24,7 @@ import org.springframework.security.web.authentication.rememberme.InvalidCookieE
 import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationException;
 import org.springframework.stereotype.Component;
 
+import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.error.ErrorCode;
 
@@ -110,6 +111,12 @@ public class SnowthingRememberMeServices extends AbstractRememberMeServices {
         if (!(successfulAuthentication.getPrincipal() instanceof CustomUserDetails user)) {
             return;
         }
+        // 관리자는 로그인 유지를 하지 않는다. 쿠키가 털렸을 때 피해가 가장 크다.
+        if (isAdmin(user)) {
+            deletePresentedSeries(request);
+            cancelCookie(request, response);
+            return;
+        }
         String series = randomValue();
         String token = randomValue();
         try {
@@ -161,8 +168,19 @@ public class SnowthingRememberMeServices extends AbstractRememberMeServices {
             throw new RememberMeAuthenticationException("로그인 유지 토큰이 맞지 않습니다.");
         }
 
+        UserDetails user = getUserDetailsService().loadUserByUsername(stored.memberPublicId());
+        // 권한이 바뀌면 토큰을 지우지만, 그 전에 남은 토큰이 있어도 관리자는 자동 로그인하지 않는다.
+        if (isAdmin(user)) {
+            tokenRepository.deleteSeries(series);
+            throw new RememberMeAuthenticationException("관리자는 로그인 유지를 쓰지 않습니다.");
+        }
         request.setAttribute(AUTO_LOGIN_ATTRIBUTE, Boolean.TRUE);
-        return getUserDetailsService().loadUserByUsername(stored.memberPublicId());
+        return user;
+    }
+
+    private static boolean isAdmin(UserDetails user) {
+        return user.getAuthorities().stream()
+                .anyMatch(authority -> Role.ROLE_ADMIN.getKey().equals(authority.getAuthority()));
     }
 
     private boolean isPreviousTokenInGrace(

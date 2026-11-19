@@ -193,6 +193,7 @@ export default function LoginPage() {
             </div>
           )}
           <p className={styles.signup}>아직 계정이 없나요?<Link href="/signup">회원가입</Link></p>
+          <p className={styles.keepNotice}>로그인하면 30일 동안 유지돼요. 공용 PC에서는 꼭 로그아웃해 주세요.</p>
         </section>
       </main>
       <Footer />

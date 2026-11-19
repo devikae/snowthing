@@ -30,6 +30,7 @@
 .kakao .providerIcon { color: #000; }
 .signup { margin: 32px 0 0; text-align: center; color: var(--snow-muted); font-size: 14px; line-height: 20px; }
 .signup a { margin-left: 8px; color: var(--snow-ink); font-weight: 500; }
+.keepNotice { margin: 12px 0 0; text-align: center; color: var(--snow-muted); font-size: 12px; line-height: 18px; }
 .notice { margin-bottom: 24px; border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-canvas); padding: 12px 16px; font-size: 14px; line-height: 20px; }
 .error { margin-bottom: 24px; border: 1px solid var(--snow-error); border-radius: 8px; background: var(--snow-canvas); padding: 12px 16px; color: var(--snow-error); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
 :global(html[data-theme="dark"]) .error { border-color: #fb7185; color: #fb7185; }
