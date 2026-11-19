@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION, DEFAULT_OG_IMAGE } from "./lib/siteMetadata";
-import "@toast-ui/editor/dist/toastui-editor.css";
 import "./globals.css";
-import "./carpool.css";
 import "./detailForms.css";
 import "./motion.css";
 
