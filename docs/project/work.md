@@ -1,6 +1,6 @@
 ## 국내와 일본 슬로프 제원 비교와 코스 맵 (IKA-98, 2026-11-20)
 
-- 상태: 구현 완료, 로컬 커밋. 푸시와 PR은 사용자가 나중에 진행하기로 함.
+- 상태: PR 진행 중. 사용자가 PR과 머지(문제 없을 때)를 위임함.
 - 계획: `docs/conception/033_slope_compare/01_design.md`. 국내 4곳과 일본 3곳 데이터로 화면을 먼저 확인받고 나머지 리조트를 채운다.
 - 완료
   - DB: `054_migration_slope_compare.sql`(resort.country, 일본 리조트 10곳 비활성 추가, slope, slope_connection), `055_migration_slope_data.sql`(슬로프 137개, 관계 322줄, 제원이 들어간 일본 3곳 활성화). 로컬 DB에 두 번씩 적용해 결과가 같은지 확인.
@@ -18,7 +18,7 @@
 - 결정
   - 관계 종류에 `STARTS_FROM`, `SHARE_END`를 더했다. 한 쌍의 양쪽 줄이 서로 맞물리게(MERGE와 CONTINUE, BRANCH와 STARTS_FROM) 한 번에 판정한다. 다른 안: 기존 6종으로 양쪽을 따로 판정(프로토타입에서 어긋남 확인).
   - 맵 파일은 GeoJSON 대신 미리 회전한 미터 좌표 JSON으로 저장했다. 화면에서 투영 계산을 하지 않는다. 다른 안: GeoJSON을 받아 화면에서 투영.
-  - 일본 리조트는 054에서 비활성으로 넣고 055에서 활성화한다. 이전 애플리케이션이 country 조건 없이 활성 목록을 읽어도 일본 리조트가 섞이지 않는다.
+  - 일본 리조트는 054에서 비활성으로 넣고 계속 비활성으로 둔다(처음에는 055에서 활성화했으나, 배포가 마이그레이션을 모두 먼저 적용하므로 이전 앱이 도는 몇 분 동안 커뮤니티 목록에 섞일 수 있어 바꿨다). 슬로프 제원 화면은 `isSlopeSpecVisible()`(국내는 활성, 해외는 항상)로 본다.
   - 프로필 저장: 해외나 비활성 리조트 ID를 걸러 낸다. 수정은 개수가 맞지 않아 INVALID_INPUT, 가입은 기존처럼 조용히 건너뛴다. Side effect: 비활성 리조트 ID를 보내던 수정 요청이 이제 400이 된다.
   - 니세코 하나조노 쪽 코스 9개와 연결 통로 1개는 그랑히라후에서 뺐다. 곤지암 리프트는 이름 추정이라 비웠다. 휘닉스 최대 경사 "1"은 자리 채움 값으로 보고 비웠다.
   - 니세코 평균과 최대 경사는 공식 코스맵 `X°/Y°/Zm`의 순서를 해석한 값이다(범례에 순서 표기 없음). 설계 문서에 남겼다.
@@ -35,6 +35,7 @@
   - 백엔드 새 테스트: `SimilarSlopeFinderTest` 5개, `SlopeApiIntegrationTest` 6개 통과. 리조트를 쓰는 기존 테스트(마스터, 프로필, 운영 현황판, 날씨, 슬로프캠, 카풀, 설질 제보, 시즌 로그, AI 멤버) 통과. `CarpoolWriterServiceTest`는 목 객체가 `isActive`를 흉내 내던 것을 `isServiceTarget`으로 바꿨다.
   - 전체 `./gradlew test`(테스트 DB URL만 지정): 1306개 중 1261 통과, 1 건너뜀, 44 실패. 실패는 모두 댓글 테스트 3개 클래스로, URL을 주면 계정과 비밀번호도 함께 요구하는 설정 때문에 컨텍스트가 뜨지 않았다. 세 값을 함께 주고 다시 돌려 모두 통과.
   - 마무리 검증(2026-11-20): `spotlessCheck`(바꾼 파일 대상) 통과, 컴파일 통과, `SimilarSlopeFinderTest` 통과. 프론트 `npm run lint`, `npx tsc --noEmit`, `npx next build` 통과. `scripts/seo-validation.test.cjs` 3개, `rider-tools.test.cjs` 17개 통과.
+  - main(f36d336) 합친 뒤: IKA-92 방식으로 `database/ddl.sql`을 055 기준으로 다시 뽑았다(표 61개, slope, slope_connection, resort.country만 추가). 001, 002, 003~055를 적용한 스키마에서 `./gradlew schemaValidate` 통과(1건).
   - `scripts/seo-check.cjs`는 사이트맵에 `/market`이 있다는 단정에서 실패한다. main의 sitemap.ts에 이미 `/market`이 있어 이번 변경과 관계없다.
   - 마무리 시점에 로컬 Docker Desktop이 꺼져 MySQL을 쓰는 통합 테스트와 사이트맵 슬로프 주소 확인은 다시 돌리지 못했다. 통합 테스트는 그 전 전체 실행에서 통과했다.
   - 프론트 `npm run lint`, `npx tsc --noEmit` 통과. 로컬 화면(백엔드 8091, 프론트 3091)에서 리조트, 슬로프 상세, 비교, 현황판, 없는 리조트 404 확인.
