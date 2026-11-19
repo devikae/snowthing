@@ -57,8 +57,8 @@ public record CommentResponse(
                 comment.isAnonymous() ? WriterDisplayFormatter.maskIp(comment.getWriterIp()) : null,
                 comment.isModerationHeld()
                         ? HELD_TEXT
-                        : comment.isDeleted() ? DELETED_TEXT : comment.getContent(),
-                comment.isDeleted(),
+                        : isHiddenDeleted(comment) ? DELETED_TEXT : comment.getContent(),
+                isHiddenDeleted(comment),
                 0,
                 List.of(),
                 false,
@@ -68,6 +68,11 @@ public record CommentResponse(
                 false,
                 false,
                 comment.getCreatedAt());
+    }
+
+    /** 금칙어 보류 댓글은 작성자 본인에게만 응답하므로 평소 댓글처럼 보낸다 (IKA-96). */
+    private static boolean isHiddenDeleted(Comment comment) {
+        return comment.isDeleted() && !comment.isFilterHeld();
     }
 
     public CommentResponse withPreviewReplies(List<CommentResponse> replies) {

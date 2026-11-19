@@ -44,7 +44,7 @@ export default function AdminChatPage() {
   async function handleUnban(item: ChatBannedIpItem) {
     if (
       !window.confirm(
-        `[${item.bannedIp}] IP 차단을 해제할까요?\n이 IP에서 다시 채팅을 보낼 수 있게 됩니다.`
+        `[${item.bannedIp}] IP 차단을 해제할까요?\n이 IP(대역)에서 다시 글, 댓글, 라이브톡을 쓸 수 있게 됩니다.`
       )
     )
       return;
@@ -109,10 +109,10 @@ export default function AdminChatPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            채팅 IP 차단 관리
+            IP 차단 관리
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            악성 유저, 광고/도배 계정의 IP 실시간 차단 목록 및 해제 관리
+            차단한 IP와 대역은 게시글, 댓글, 라이브톡 작성이 모두 막힙니다. 차단된 사람에게는 차단 내용을 알려 주지 않습니다.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export default function AdminChatPage() {
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 border-b border-slate-200/80 text-xs uppercase font-semibold text-slate-500">
               <tr>
-                <th className="py-3.5 px-4">차단된 IP</th>
+                <th className="py-3.5 px-4">차단된 IP, 대역</th>
                 <th className="py-3.5 px-4">차단 사유</th>
                 <th className="py-3.5 px-4">차단 만료일</th>
                 <th className="py-3.5 px-4">등록자</th>
@@ -194,17 +194,17 @@ export default function AdminChatPage() {
               IP 수동 차단 추가
             </h3>
             <p className="text-xs text-slate-500 mb-4">
-              차단된 IP는 실시간 라이브톡에 메시지를 전송할 수 없습니다.
+              차단된 IP나 대역에서는 게시글, 댓글, 라이브톡을 쓸 수 없습니다. IPv6은 주소가 자주 바뀌므로 /64 대역으로 막는 것을 권합니다.
             </p>
             <form onSubmit={handleCreateBan} className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  IP 주소 (IPv4 / IPv6)
+                  IP 주소 또는 대역 (IPv4, IPv6, CIDR)
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="예: 123.45.67.89"
+                  placeholder="예: 123.45.67.89, 2001:db8:1:2::/64"
                   value={ipInput}
                   onChange={(e) => setIpInput(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500"

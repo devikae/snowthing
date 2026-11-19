@@ -238,10 +238,14 @@ export const ACTION_LABEL: Record<string, string> = {
   BANNER_CREATE: "배너 추가",
   BANNER_UPDATE: "배너 수정",
   BANNER_DELETE: "배너 삭제",
-  CHAT_IP_BAN: "라이브톡 IP 차단",
-  CHAT_IP_UNBAN: "라이브톡 IP 차단 해제",
+  CHAT_IP_BAN: "IP 차단",
+  CHAT_IP_UNBAN: "IP 차단 해제",
   CONFIG_UPDATE: "운영 설정 변경",
   SEASON_OPENING_UPDATE: "개장일 변경",
+  BANNED_WORD_CREATE: "금칙어 추가",
+  BANNED_WORD_DELETE: "금칙어 삭제",
+  FILTER_HOLD_RELEASE: "금칙어 보류 공개 전환",
+  FILTER_HOLD_DELETE: "금칙어 보류 삭제",
 };
 
 export const TARGET_LABEL: Record<string, string> = {
@@ -254,7 +258,31 @@ export const TARGET_LABEL: Record<string, string> = {
   CHAT_BAN: "IP 차단",
   CONFIG: "설정",
   SEASON_OPENING: "개장일",
+  BANNED_WORD: "금칙어",
 };
+
+/** 금칙어 보류 검토 항목 (IKA-96). 관리자 화면 전용이라 작성자 IP를 그대로 받는다. */
+export interface FilterHoldItem {
+  id: string;
+  targetType: "POST" | "COMMENT";
+  postPublicId: string;
+  commentId: string | null;
+  categoryCode: string;
+  postTitle: string;
+  excerpt: string;
+  matchedWord: string;
+  writerNickname: string | null;
+  writerPublicId: string | null;
+  anonymous: boolean;
+  writerIp: string;
+  heldAt: string;
+}
+
+export interface BannedWordItem {
+  id: number;
+  word: string;
+  createdAt: string;
+}
 
 /** 게시판 코드에 맞는 공개 상세 주소. 시장과 카풀은 전용 화면이 있다. */
 export function postHref(categoryCode: string, publicId: string) {

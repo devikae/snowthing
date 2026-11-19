@@ -323,6 +323,22 @@ public enum ErrorCode {
     SEASON_OPENING_DATE_OUT_OF_RANGE(
             HttpStatus.BAD_REQUEST, "ADMIN_006", "개장일은 2020년부터 2100년 사이로 입력해 주세요."),
 
+    // 금칙어 보류와 IP 대역 차단 (053, IKA-96). 차단된 작성은 차단 여부나 대역을 알려 주지 않는다.
+    WRITE_NOT_ALLOWED(HttpStatus.FORBIDDEN, "COMMON_007", "지금은 글을 쓸 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    IP_BAN_INVALID_RANGE(
+            HttpStatus.BAD_REQUEST,
+            "ADMIN_007",
+            "IP 주소나 대역 형식이 맞지 않습니다. 예: 1.2.3.4, 1.2.3.0/24, 2001:db8:1:2::/64"),
+    IP_BAN_RANGE_TOO_WIDE(
+            HttpStatus.BAD_REQUEST,
+            "ADMIN_008",
+            "대역이 너무 넓습니다. IPv4는 /16 이상, IPv6은 /32 이상으로 입력해 주세요."),
+    BANNED_WORD_INVALID(
+            HttpStatus.BAD_REQUEST, "ADMIN_009", "금칙어는 기호와 공백을 뺀 글자가 2자 이상 50자 이하여야 합니다."),
+    BANNED_WORD_DUPLICATED(HttpStatus.CONFLICT, "ADMIN_010", "이미 등록된 금칙어입니다."),
+    BANNED_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_011", "존재하지 않는 금칙어입니다."),
+    FILTER_HOLD_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_012", "이미 처리했거나 존재하지 않는 보류 항목입니다."),
+
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

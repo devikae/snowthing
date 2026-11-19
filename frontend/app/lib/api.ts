@@ -174,6 +174,12 @@ export const API_ENDPOINTS = {
     banners: `${API_V1_URL}/admin/banners`,
     bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
     seasonOpenings: `${API_V1_URL}/admin/season-openings`,
+    bannedWords: `${API_V1_URL}/admin/banned-words`,
+    bannedWord: (id: number) => `${API_V1_URL}/admin/banned-words/${id}`,
+    filterHolds: (page: number, size = 20) => `${API_V1_URL}/admin/filter-holds?page=${page}&size=${size}`,
+    filterHold: (id: string) => `${API_V1_URL}/admin/filter-holds/${encodeURIComponent(id)}`,
+    filterHoldAction: (id: string, action: "release" | "ban-ip") =>
+      `${API_V1_URL}/admin/filter-holds/${encodeURIComponent(id)}/${action}`,
   },
   public: {
     configs: `${API_V1_URL}/public/configs`,

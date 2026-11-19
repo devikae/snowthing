@@ -10,5 +10,6 @@ public enum AdminTargetType {
     BANNER,
     CHAT_BAN,
     CONFIG,
-    SEASON_OPENING
+    SEASON_OPENING,
+    BANNED_WORD
 }

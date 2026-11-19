@@ -1,3 +1,35 @@
+## 금칙어 조용한 보류와 IP 대역 차단 (IKA-96, 2026-11-19)
+
+- 상태: 구현 완료, 로컬 커밋. 사용자 localhost 확인 뒤 push와 PR. 운영 마이그레이션(053)과 배포는 사용자 확인 후.
+- 계획: 익명게시판 카지노 광고(같은 IPv6 /64에서 반복)를 막는다. 금칙어가 든 글과 댓글은 저장은 되지만 작성자 말고는 안 보이게 보류하고, IP 차단을 CIDR 대역으로 넓혀 글, 댓글, 라이브톡에 공통 적용한다. 설계: `docs/conception/033_spam_filter/01_design.md`
+- 완료
+  - DB: `053_migration_spam_filter.sql`. `banned_word`(초기 8개), `content_filter_hold`, `comment.filter_state`(INSTANT 추가), `chat_banned_ip` 표 설명 변경. 로컬 DB에 utf8mb4로 적용하고 한글 초기값 HEX를 확인했다. 두 번 실행해도 그대로다.
+  - 백엔드: `BannedWordMatcher`(HTML 제거, NFKC, 소문자, 글자와 숫자만), `BannedWordService`(메모리 캐시, 커밋 뒤 다시 읽기), `ContentFilterService`(검사, 보류 기록, 작성자 확인), `FilterHoldAdminService`(공개 전환, 삭제, IP 대역 차단), `IpRange`(IPv4, IPv6 CIDR), `ChatIpBanService`를 대역 목록 비교로 바꿈. 글 작성과 수정, 댓글 작성과 수정, 삭제, 상세, 목록, 댓글 목록에 적용.
+  - API: `/api/v1/admin/banned-words`, `/api/v1/admin/filter-holds`(목록, release, DELETE, ban-ip). 기존 `/api/v1/admin/chat/banned-ips`가 대역을 받는다. 차단된 글, 댓글 작성은 403 COMMON_007.
+  - 프론트: 관리자 `/admin/spam`(보류 검토, 금칙어), `/admin/chat`을 "IP 차단"으로 바꿈, 글 상태 "금칙어 보류" 표시, 조치 기록 이름. 글 작성과 수정 뒤 `snowthing_recent_write` 쿠키로 상세와 목록을 브라우저가 다시 받게 함.
+- 결정
+  - 글은 새 상태 `FILTER_HOLD`. 공개 경로가 모두 `status = NORMAL`만 받아 한 곳만 바꾸면 된다. 신고 임시조치(`TEMPORARY_HOLD`)는 작성자에게 알리는 흐름이라 섞지 않았다. 응답 status는 NORMAL로 내보낸다.
+  - 댓글은 `filter_state = HELD`와 `is_deleted = true`를 함께 쓴다. 놓친 조회가 있어도 숨는 쪽으로 실패한다. 댓글 목록 쿼리만 작성자에게 돌려준다. 다른 사람에게는 삭제 자리도 남기지 않는다.
+  - 비회원 작성자 확인은 같은 IP이고 보류 뒤 1시간 안. 다른 선택지는 서명 쿠키 토큰이었지만 쿠키 발급과 검증이 늘고, 요청이 제시한 IP 방식으로도 충분하다고 봤다.
+  - 상세 첫 화면을 Next 서버가 비로그인으로 받아 비회원 작성자가 404 페이지를 보는 문제는 `snowthing_recent_write` 쿠키(모든 작성에 똑같이 남김)로 브라우저 재조회를 허용해 풀었다. 권한 판단은 백엔드가 한다.
+  - 보류 글을 깨끗하게 고치면 다시 공개한다. 고친 내용도 매번 검사하므로 우회가 되지 않는다.
+  - 초기 금칙어에서 카지노, 토토, 먹튀 단독은 뺐다(하이원 카지노, 토토로, 카풀비 먹튀). 띄어쓰기를 무시해 짧은 말은 오탐이 크다. 관리자 화면에서 더할 수 있다.
+  - IP 차단은 `chat_banned_ip` 표와 `ChatIpBanService` 이름을 그대로 쓴다. 표 이름 변경은 배포 중 옛 애플리케이션을 깨고, 서비스 이름 변경은 진행 중인 PR #152와 충돌한다. #152의 규칙(겹친 차단은 가장 늦은 만료, 해제하면 남은 줄로 다시 계산)은 줄마다 비교하는 방식으로 그대로 지켜지고, `banIpByMessageId(messageId, days, createdBy)`도 미리 넣었다.
+  - 차단 관리 화면은 새로 만들지 않고 `/admin/chat`을 "IP 차단" 화면으로 바꿨다. 너무 넓은 대역(IPv4 /16 미만, IPv6 /32 미만)은 막는다.
+  - 보류 항목의 IP 차단 단축은 IPv6 /64, IPv4 주소 하나, 30일.
+  - 중고장터와 카풀 글은 범위에서 뺐다. 로그인 전용이고 각자 작성 흐름과 상태 의미가 있다.
+- 발견된 이슈
+  - 관리자 댓글 목록(`/admin/comments`)에서 보류 댓글은 "삭제됨"으로 보인다. 검토는 `/admin/spam`에서 한다.
+  - 보류 글에 작성자가 추천이나 스크랩을 누르면 기존 공개 글 검사로 실패한다. 드문 경우라 두었다.
+  - 회원 작성자도 1시간 뒤에는 게시판 목록에서 자기 보류 글이 빠진다(상세 링크는 계속 보인다).
+  - 워크트리에서 spotless `ratchetFrom`이 동작하지 않아 build.gradle을 잠시 바꿔 바뀐 파일만 대상으로 돌리고 되돌렸다(커밋하지 않음).
+- 검증
+  - spotlessApply와 spotlessCheck(바뀐 Java 파일 대상) 통과.
+  - 새 테스트: `IpRangeTest` 14개, `BannedWordMatcherTest` 21개, `ChatIpBanServiceTest` 8개(다시 씀), `SpamFilterIntegrationTest` 9개 통과.
+  - `./gradlew test` 전체 1338개 중 3개 실패: `ReactionConcurrencyIntegrationTest` 3개(로컬 DB 트리거 권한, 기존에 알려진 실패). 그 밖은 통과.
+  - 프론트 `npm run lint`, `npx next build --webpack` 통과. 브라우저 화면 확인은 하지 않았다.
+- 남은 항목: 사용자 localhost 확인, push와 PR, 운영 053 적용 후 배포, PR #152와 머지 순서 맞추기.
+
 ## 개장 D-DAY를 관리자 화면에서 관리하기 (IKA-87, 2026-11-17)
 
 - 상태: 구현 완료, PR 생성. 머지, 운영 마이그레이션(052), 배포는 사용자 확인 후.

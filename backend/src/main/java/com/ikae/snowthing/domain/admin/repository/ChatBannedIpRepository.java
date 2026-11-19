@@ -12,7 +12,7 @@ import com.ikae.snowthing.domain.admin.entity.ChatBannedIp;
 
 public interface ChatBannedIpRepository extends JpaRepository<ChatBannedIp, Long> {
 
-    List<ChatBannedIp> findAllByOrderByCreatedAtDesc();
+    List<ChatBannedIp> findAllByOrderByCreatedAtDescIdDesc();
 
     Optional<ChatBannedIp> findByBannedIp(String bannedIp);
 

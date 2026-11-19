@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { markRecentWrite } from "../../lib/recentWrite";
 import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
@@ -204,6 +205,7 @@ function PostCreateForm() {
         idempotencyKey.reset();
         const data = await res.json();
         if (toolDraft) { try { sessionStorage.removeItem(DECK_QUESTION_KEY); } catch { /* Draft cleanup must not prevent navigation. */ } }
+        markRecentWrite(data.publicId);
         router.push(`/posts/${data.publicId}`);
       } else {
         const err = await res.json();

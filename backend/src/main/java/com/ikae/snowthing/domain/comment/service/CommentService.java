@@ -7,10 +7,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.comment.repository.CommentRepositoryCustom.ReplyStats;
+import com.ikae.snowthing.domain.contentfilter.entity.FilterTargetType;
+import com.ikae.snowthing.domain.contentfilter.service.ContentFilterService;
+import com.ikae.snowthing.domain.contentfilter.service.ContentFilterService.CommentViewer;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -41,12 +45,17 @@ public class CommentService {
     private final PasswordEncoder passwordEncoder;
     private final CommentCommandService commentCommandService;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
+    private final ChatIpBanService chatIpBanService;
+    private final ContentFilterService contentFilter;
 
     public CommentResponse createComment(
             String postPublicId,
             CommentCreateRequest request,
             CustomUserDetails userDetails,
             String clientIp) {
+        if (!isAdmin(userDetails)) {
+            chatIpBanService.requireWritable(clientIp);
+        }
         // 트랜잭션 밖이라 카테고리와 작성자를 함께 읽어 둔다. 작성 트랜잭션에서 한 번 더 검사한다.
         Post targetPost =
                 postRepository
@@ -103,26 +112,41 @@ public class CommentService {
     @Transactional(readOnly = true)
     public PostCommentListResponse getCommentsByPost(
             String postPublicId, Long cursor, int size, CustomUserDetails userDetails) {
+        return getCommentsByPost(postPublicId, cursor, size, userDetails, null);
+    }
+
+    /**
+     * @param viewerIp 금칙어 보류 댓글의 비회원 작성자를 알아볼 때 쓴다 (IKA-96)
+     */
+    @Transactional(readOnly = true)
+    public PostCommentListResponse getCommentsByPost(
+            String postPublicId,
+            Long cursor,
+            int size,
+            CustomUserDetails userDetails,
+            String viewerIp) {
         validateReadSize(size);
         Post post =
                 postRepository
                         .findByPublicId(postPublicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        validatePostVisibility(post);
+        validatePostVisibility(post, userDetails, viewerIp);
         validateMarketAccess(post, userDetails, false);
         InquiryAccess.requireReadable(post, userDetails);
 
         if (cursor != null && !commentRepository.existsRootCursor(post.getId(), cursor)) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
+        CommentViewer viewer = contentFilter.commentViewer(userDetails, viewerIp);
         List<CommentResponse> fetched =
-                commentRepository.findRootComments(post.getId(), cursor, size + 1);
+                commentRepository.findRootComments(post.getId(), cursor, size + 1, viewer);
         boolean hasNext = fetched.size() > size;
         List<CommentResponse> roots = new ArrayList<>(hasNext ? fetched.subList(0, size) : fetched);
         List<Long> rootIds = roots.stream().map(CommentResponse::commentId).toList();
-        Map<Long, ReplyStats> replyStats = commentRepository.findReplyStats(rootIds);
-        Map<Long, List<CommentResponse>> previews = commentRepository.findTopReplyPreviews(rootIds);
+        Map<Long, ReplyStats> replyStats = commentRepository.findReplyStats(rootIds, viewer);
+        Map<Long, List<CommentResponse>> previews =
+                commentRepository.findTopReplyPreviews(rootIds, viewer);
         List<CommentResponse> comments =
                 roots.stream()
                         .map(
@@ -156,6 +180,12 @@ public class CommentService {
     @Transactional(readOnly = true)
     public CommentReplyListResponse getCommentReplies(
             Long commentId, Long cursor, int size, CustomUserDetails userDetails) {
+        return getCommentReplies(commentId, cursor, size, userDetails, null);
+    }
+
+    @Transactional(readOnly = true)
+    public CommentReplyListResponse getCommentReplies(
+            Long commentId, Long cursor, int size, CustomUserDetails userDetails, String viewerIp) {
         validateReadSize(size);
         Comment root =
                 commentRepository
@@ -166,7 +196,7 @@ public class CommentService {
                 postRepository
                         .findById(root.getPost().getId())
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
-        validatePostVisibility(post);
+        validatePostVisibility(post, userDetails, viewerIp);
         validateMarketAccess(post, userDetails, false);
         InquiryAccess.requireReadable(post, userDetails);
 
@@ -177,7 +207,9 @@ public class CommentService {
         if (cursor != null && !commentRepository.existsReplyCursor(commentId, cursor)) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
-        List<CommentResponse> fetched = commentRepository.findReplies(commentId, cursor, size + 1);
+        CommentViewer viewer = contentFilter.commentViewer(userDetails, viewerIp);
+        List<CommentResponse> fetched =
+                commentRepository.findReplies(commentId, cursor, size + 1, viewer);
         boolean hasNext = fetched.size() > size;
         List<CommentResponse> replies =
                 (hasNext ? fetched.subList(0, size) : fetched)
@@ -192,11 +224,20 @@ public class CommentService {
                                 .toList();
         Long nextCursor = hasNext && !replies.isEmpty() ? replies.getLast().commentId() : null;
         return new CommentReplyListResponse(
-                commentId, commentRepository.countReplies(commentId), replies, nextCursor, hasNext);
+                commentId,
+                commentRepository.countReplies(commentId, viewer),
+                replies,
+                nextCursor,
+                hasNext);
     }
 
-    private void validatePostVisibility(Post post) {
-        if (post == null || post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+    /** 금칙어 보류 글은 작성자 본인과 관리자에게만 공개 글처럼 댓글을 보여 준다 (IKA-96). */
+    private void validatePostVisibility(Post post, CustomUserDetails viewer, String viewerIp) {
+        if (post == null || post.isDeleted()) {
+            throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+        }
+        if (post.getStatus() != PostStatus.NORMAL
+                && !contentFilter.canSeeHeldPost(post, viewer, viewerIp)) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
     }
@@ -215,7 +256,7 @@ public class CommentService {
                         .findById(commentId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
 
-        if (comment.isDeleted()) {
+        if (comment.isDeleted() && !comment.isFilterHeld()) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
         validateMarketAccess(comment.getPost(), userDetails, false);
@@ -223,11 +264,37 @@ public class CommentService {
         validateUpdatePermission(comment, request.anonymousPassword(), userDetails);
 
         comment.updateContent(request.content());
+        applyFilterAfterEdit(comment, userDetails);
         commentRepository.flush();
-        searchOutbox.commentChanged(comment, false);
+        searchOutbox.commentChanged(comment, comment.isFilterHeld());
 
         return new CommentUpdateResponse(
                 comment.getId(), comment.getContent(), comment.getUpdatedAt());
+    }
+
+    /**
+     * 고친 내용을 다시 검사한다 (IKA-96). 금칙어가 새로 들어가면 보류하고, 보류 댓글을 깨끗하게 고치면 다시 공개한다. 공개할 때 보류 중에 세지 않았던 댓글 수를
+     * 하나 올린다.
+     */
+    private void applyFilterAfterEdit(Comment comment, CustomUserDetails editor) {
+        Optional<String> matched = contentFilter.inspect(editor, comment.getContent());
+        if (matched.isPresent()) {
+            boolean newlyHeld = !comment.isFilterHeld();
+            if (newlyHeld) {
+                comment.holdByFilter(contentFilter.now());
+            }
+            contentFilter.recordCommentHold(comment, matched.get());
+            if (newlyHeld) {
+                // 영속성 컨텍스트를 비우는 벌크 갱신이라 마지막에 둔다.
+                postRepository.decreaseCommentCount(comment.getPost().getId());
+            }
+            return;
+        }
+        if (comment.isFilterHeld()) {
+            comment.releaseFilterHold();
+            contentFilter.clearHold(FilterTargetType.COMMENT, comment.getId());
+            postRepository.increaseCommentCount(comment.getPost().getId());
+        }
     }
 
     private void validateUpdatePermission(
@@ -258,13 +325,19 @@ public class CommentService {
                         .findById(commentId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND));
 
-        if (comment.isDeleted()) {
+        if (comment.isDeleted() && !comment.isFilterHeld()) {
             throw new CustomAuthException(ErrorCode.COMMENT_NOT_FOUND);
         }
         validateMarketAccess(comment.getPost(), userDetails, false);
 
         validateDeletePermission(comment, anonymousPassword, userDetails);
 
+        if (comment.isFilterHeld()) {
+            // 이미 삭제 상태로 숨겨 둔 댓글이라 보류만 끝낸다. 검색에는 처음부터 없다.
+            comment.rejectFilterHold();
+            contentFilter.clearHold(FilterTargetType.COMMENT, comment.getId());
+            return;
+        }
         if (commentRepository.softDeleteIfActive(commentId, LocalDateTime.now()) > 0) {
             searchOutbox.commentChanged(comment, true);
         }

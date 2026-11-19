@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { fetchPublicResult, isPublicId } from "../../lib/publicApi";
+import { RECENT_WRITE_COOKIE } from "../../lib/recentWrite";
 import { detailMetadata, fetchPreview, firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
 import PostDetailClient, { type PostDetail } from "./PostDetailClient";
 
@@ -34,9 +35,15 @@ export default async function PostDetailPage({ params }: Props) {
   const { data: initialPost, missing } = await fetchPublicResult<PostDetail>(`/posts/${publicId}`, { Cookie: `viewed_posts=[${publicId}]` });
   // 비로그인 조회가 404면 삭제됐거나 없는 글이라 404 페이지로 답한다. 공유 미리보기와 검색엔진이 빈 글을 담지 않게 한다.
   // 1:1 문의는 작성자에게도 비로그인 조회가 404라서, 로그인 세션 쿠키가 있으면 기존처럼 브라우저가 다시 부르게 둔다.
-  if (missing && !(await hasSessionCookie())) notFound();
+  // 방금 이 글을 쓴 브라우저도 브라우저가 다시 부르게 둔다. 비회원 작성자는 세션이 없지만 작성자 기준 응답을 받아야 한다 (IKA-96).
+  if (missing && !(await hasSessionCookie()) && !(await wroteRecently(publicId))) notFound();
   if (initialPost?.categoryCode === "CARPOOL") redirect(`/carpool/${publicId}`);
   return <PostDetailClient params={params} initialPost={initialPost} />;
+}
+
+async function wroteRecently(publicId: string) {
+  const store = await cookies();
+  return store.get(RECENT_WRITE_COOKIE)?.value === publicId;
 }
 
 async function hasSessionCookie() {

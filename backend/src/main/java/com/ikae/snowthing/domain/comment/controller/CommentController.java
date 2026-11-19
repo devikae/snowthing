@@ -56,9 +56,11 @@ public class CommentController {
             @PathVariable String publicId,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
         PostCommentListResponse response =
-                commentService.getCommentsByPost(publicId, cursor, size, userDetails);
+                commentService.getCommentsByPost(
+                        publicId, cursor, size, userDetails, clientIpResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
 
@@ -67,9 +69,15 @@ public class CommentController {
             @PathVariable Long commentId,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
         return ResponseEntity.ok(
-                commentService.getCommentReplies(commentId, cursor, size, userDetails));
+                commentService.getCommentReplies(
+                        commentId,
+                        cursor,
+                        size,
+                        userDetails,
+                        clientIpResolver.resolve(httpRequest)));
     }
 
     @PutMapping("/comments/{commentId}")
