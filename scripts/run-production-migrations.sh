@@ -12,6 +12,15 @@ SNOWTHING_MIGRATION_DB_PASSWORD="${SNOWTHING_MIGRATION_DB_PASSWORD:-${DB_PASSWOR
 SNOWTHING_MIGRATION_DB_AUTH_MODE="${SNOWTHING_MIGRATION_DB_AUTH_MODE:-${DB_AUTH_MODE:-iam}}"
 SNOWTHING_MIGRATION_DB_SSL_MODE="${SNOWTHING_MIGRATION_DB_SSL_MODE:-${DB_SSL_MODE:-VERIFY_IDENTITY}}"
 SNOWTHING_MIGRATION_DB_SSL_CA="${SNOWTHING_MIGRATION_DB_SSL_CA:-${DB_SSL_CA:-}}"
+# ALTER TABLE은 시작과 끝에 테이블 메타데이터 잠금을 잡는다. MySQL 기본 대기 시간은 1년이라
+# 긴 트랜잭션이 테이블을 잡고 있으면 ALTER가 계속 기다리고, 그 뒤에 온 일반 조회와 쓰기까지 줄을 서서 사이트가 멈춘다.
+# 짧게 기다리다 실패하게 해서 배포만 멈추고 서비스는 계속 돌게 한다. 실패하면 한가한 시간에 다시 배포한다.
+SNOWTHING_MIGRATION_LOCK_WAIT_TIMEOUT_SECONDS="${SNOWTHING_MIGRATION_LOCK_WAIT_TIMEOUT_SECONDS:-10}"
+
+if [[ ! "$SNOWTHING_MIGRATION_LOCK_WAIT_TIMEOUT_SECONDS" =~ ^[1-9][0-9]{0,3}$ ]]; then
+  echo "SNOWTHING_MIGRATION_LOCK_WAIT_TIMEOUT_SECONDS must be an integer between 1 and 9999." >&2
+  exit 1
+fi
 
 required_variables=(
   SNOWTHING_MIGRATION_DB_HOST
@@ -83,6 +92,7 @@ MYSQL_OPTIONS=(
   --ssl-mode="$DB_SSL_MODE"
   --batch
   --skip-column-names
+  --init-command="SET SESSION lock_wait_timeout = ${SNOWTHING_MIGRATION_LOCK_WAIT_TIMEOUT_SECONDS}"
 )
 
 if [[ -n "${SNOWTHING_MIGRATION_DB_SSL_CA:-}" ]]; then
