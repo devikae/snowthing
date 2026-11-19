@@ -19,6 +19,7 @@ import com.ikae.snowthing.domain.carpool.dto.CarpoolSummaryResponse;
 import com.ikae.snowthing.domain.carpool.service.CarpoolAutoCalculationService;
 import com.ikae.snowthing.domain.carpool.service.CarpoolExternalApiRateLimiter;
 import com.ikae.snowthing.domain.carpool.service.CarpoolService;
+import com.ikae.snowthing.domain.post.service.PostSearchRateLimiter;
 import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
 import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
@@ -38,6 +39,7 @@ public class CarpoolController {
     private final ClientIpResolver clientIpResolver;
     private final ContentWriteRateLimiter contentWriteRateLimiter;
     private final IdempotentCreateHandler idempotentCreateHandler;
+    private final PostSearchRateLimiter postSearchRateLimiter;
 
     @GetMapping("/places")
     public ResponseEntity<List<CarpoolPlaceResponse>> searchPlaces(
@@ -96,7 +98,13 @@ public class CarpoolController {
     public ResponseEntity<Page<CarpoolSummaryResponse>> findPage(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            HttpServletRequest httpRequest) {
+        // 제목, 출발지, 집결지, 리조트 이름을 LIKE로 훑으므로 게시판 검색과 같은 길이 규칙과 IP 한도를 쓴다.
+        if (keyword != null && !keyword.isBlank()) {
+            postSearchRateLimiter.checkKeywordSearch(
+                    keyword, clientIpResolver.resolve(httpRequest));
+        }
         return ResponseEntity.ok(carpoolService.findPage(page, size, keyword));
     }
 
