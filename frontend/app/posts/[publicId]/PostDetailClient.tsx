@@ -139,6 +139,7 @@ export default function PostDetailClient({
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
   const [scrapBusy, setScrapBusy] = useState(false);
+  const reactionBusyRef = useRef(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -404,6 +405,9 @@ export default function PostDetailClient({
       askLoginForReaction();
       return;
     }
+    // 응답 전에 다시 누르면 같은 상태(isActive)로 요청이 한 번 더 나간다. 응답이 올 때까지 받지 않는다.
+    if (reactionBusyRef.current) return;
+    reactionBusyRef.current = true;
     try {
       const isActive = post?.activeReactionTypes.includes(type) ?? false;
       const res = await csrfFetch(API_ENDPOINTS.posts.reaction(publicId, type), {
@@ -435,6 +439,8 @@ export default function PostDetailClient({
       setReactionMsg(errorData.message);
     } catch {
       setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
+    } finally {
+      reactionBusyRef.current = false;
     }
   };
 

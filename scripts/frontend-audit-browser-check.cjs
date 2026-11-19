@@ -6,7 +6,7 @@ const http = require('node:http');
 const { withLocalBrowser } = require('./lib/local-browser.cjs');
 
 const MOCK_PORT = Number(process.env.MOCK_API_PORT || 8130);
-const state = { reportsFail: true, deleteCalls: 0, deleteDelayMs: 600 };
+const state = { reportsFail: true, deleteCalls: 0, deleteDelayMs: 600, reactionCalls: 0 };
 const reports = [
   { reportId: 11, resortId: 1, resortName: '휘닉스파크', resortCode: 'PHOENIX', authorNickname: '보드타는곰', content: '오전 설질 좋아요', createdAt: '2026-11-20T09:10:00+09:00', canDelete: true },
   { reportId: 12, resortId: 2, resortName: '비발디파크', resortCode: 'VIVALDI', authorNickname: '스키러', content: '정설 잘 되어 있음', createdAt: '2026-11-20T08:40:00+09:00', canDelete: false },
@@ -34,6 +34,10 @@ const server = http.createServer((req, res) => {
     // 앞단 장애처럼 HTML로 답한다.
     if (state.reportsFail) { res.writeHead(502, { 'Content-Type': 'text/html' }); return res.end('<html>502 Bad Gateway</html>'); }
     return json(200, { content: reports, pageInfo: { page: 1, totalPages: 1, totalElements: reports.length, hasNext: false, pageSize: 20 } });
+  }
+  if (pathname === `/api/v1/posts/${POST_ID}/reaction`) {
+    state.reactionCalls += 1;
+    return setTimeout(() => json(200, { message: '추천했습니다.', likeCount: 1, dislikeCount: 0, active: true }), 500);
   }
   if (pathname === `/api/v1/posts/${POST_ID}/comments` && req.method === 'POST') {
     // 앞단이 본문 크기 제한으로 HTML 413을 돌려주는 경우
@@ -97,7 +101,13 @@ server.listen(MOCK_PORT, '127.0.0.1', () => {
     await waitFor('!document.querySelector(".delete-modal")');
     assert.equal(await evaluate(`document.activeElement === ${deleteButton}`), true, 'Focus should return to the delete button');
 
-    // 5. 댓글 등록이 HTML 413으로 거절되면 연결 오류가 아니라 크기 안내를 보여 준다.
+    // 5. 추천을 빠르게 두 번 눌러도 요청은 한 번만 나간다.
+    await evaluate('(() => { const b = document.querySelector(".post-vote button"); b.click(); b.click(); })()');
+    await waitFor('document.querySelector(".post-vote button strong")?.textContent === "1"');
+    await pause(300);
+    assert.equal(state.reactionCalls, 1, 'Double click on like should send one request');
+
+    // 6. 댓글 등록이 HTML 413으로 거절되면 연결 오류가 아니라 크기 안내를 보여 준다.
     await evaluate('window.__alerts = []; window.alert = (message) => window.__alerts.push(String(message));');
     const setValue = (selector, value) => `(() => { const el = document.querySelector(${JSON.stringify(selector)}); const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })); })()`;
     await evaluate(setValue('.post-comment-compose textarea', '점검용 댓글'));
