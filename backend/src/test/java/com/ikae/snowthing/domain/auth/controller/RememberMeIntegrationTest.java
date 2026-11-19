@@ -6,8 +6,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import jakarta.servlet.http.Cookie;
 
@@ -20,6 +30,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -32,7 +47,9 @@ import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.MemberResortRepository;
 import com.ikae.snowthing.domain.member.repository.MemberRidingStyleRepository;
 import com.ikae.snowthing.domain.member.service.MemberService;
+import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.security.RememberMeTokenRepository;
 import com.ikae.snowthing.global.security.SnowthingRememberMeServices;
 
 /** 세션이 사라져도 로그인 유지 쿠키로 다시 인증되는지, 끝낼 때 토큰이 지워지는지 확인한다. */
@@ -53,6 +70,9 @@ class RememberMeIntegrationTest {
     @Autowired private MemberRidingStyleRepository memberRidingStyleRepository;
     @Autowired private MemberSessionRegistry memberSessionRegistry;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private SnowthingRememberMeServices rememberMeServices;
+    @Autowired private RememberMeTokenRepository rememberMeTokenRepository;
+    @Autowired private Clock clock;
 
     @BeforeEach
     void setUp() {
@@ -215,6 +235,30 @@ class RememberMeIntegrationTest {
         memberRepository.save(member);
 
         mockMvc.perform(get(ME).cookie(issued)).andExpect(status().isUnauthorized());
+        assertThat(tokenCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("도난으로 보면 훔친 쿠키로 이미 만든 세션도 함께 끊는다")
+    void theftDetection_InvalidatesSessionsMadeFromStolenCookie() throws Exception {
+        Cookie issued = login().getResponse().getCookie(COOKIE);
+        // 공격자가 먼저 쿠키를 써서 세션을 얻고 token을 바꾼다.
+        MockHttpSession attackerSession =
+                (MockHttpSession)
+                        mockMvc.perform(get(ME).cookie(issued))
+                                .andExpect(status().isOk())
+                                .andReturn()
+                                .getRequest()
+                                .getSession(false);
+        jdbc.update(
+                "UPDATE persistent_logins SET last_used_at = ?",
+                LocalDateTime.now().minusMinutes(5));
+
+        // 원래 주인이 바뀌기 전 쿠키로 돌아온다.
+        mockMvc.perform(get(ME).cookie(issued)).andExpect(status().isUnauthorized());
+
+        assertThat(attackerSession).isNotNull();
+        assertThat(attackerSession.isInvalid()).isTrue();
         assertThat(tokenCount()).isZero();
     }
 

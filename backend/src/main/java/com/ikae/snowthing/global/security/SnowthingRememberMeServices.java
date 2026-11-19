@@ -62,6 +62,7 @@ public class SnowthingRememberMeServices extends AbstractRememberMeServices {
     private static final int RANDOM_BYTES = 32;
 
     private final RememberMeTokenRepository tokenRepository;
+    private final MemberSessionRegistry memberSessionRegistry;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -71,6 +72,7 @@ public class SnowthingRememberMeServices extends AbstractRememberMeServices {
             @Value("${snowthing.web.secure-cookies:false}") boolean secureCookies,
             MemberRepository memberRepository,
             RememberMeTokenRepository tokenRepository,
+            MemberSessionRegistry memberSessionRegistry,
             Clock clock) {
         super(
                 resolveKey(key, fallbackSecret),
@@ -83,6 +85,7 @@ public class SnowthingRememberMeServices extends AbstractRememberMeServices {
                                                 new UsernameNotFoundException(
                                                         ErrorCode.MEMBER_NOT_FOUND.getMessage())));
         this.tokenRepository = tokenRepository;
+        this.memberSessionRegistry = memberSessionRegistry;
         this.clock = clock;
         setCookieName(COOKIE_NAME);
         // 로그인 화면에 체크박스가 없어 로그인하면 항상 유지한다.
@@ -162,8 +165,9 @@ public class SnowthingRememberMeServices extends AbstractRememberMeServices {
             }
             // 바꾸지 못했으면 같이 출발한 다른 요청이 먼저 바꿨다. 새 쿠키는 그 요청의 응답이 내려준다.
         } else if (!isPreviousTokenInGrace(stored, presentedHash, now)) {
-            tokenRepository.deleteByMember(stored.memberPublicId());
-            log.warn("로그인 유지 토큰 불일치로 회원의 토큰을 모두 지움 member={}", stored.memberPublicId());
+            // 토큰만 지우면 훔친 쿠키로 이미 만든 세션이 60분 동안 살아 있다. 세션도 함께 끊는다.
+            memberSessionRegistry.invalidateAll(stored.memberPublicId());
+            log.warn("로그인 유지 토큰 불일치로 회원의 세션과 토큰을 모두 끊음 member={}", stored.memberPublicId());
             // CookieTheftException은 필터 밖으로 던져져 500이 된다. 비로그인으로 이어가게 일반 실패로 끝낸다.
             throw new RememberMeAuthenticationException("로그인 유지 토큰이 맞지 않습니다.");
         }
