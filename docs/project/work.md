@@ -31,8 +31,65 @@
   - 새 테스트: 동시 업로드 3건이 기다렸다 모두 처리되고 동시 실행은 2건을 넘지 않음, 게이트가 꽉 차면 503 `FILE_009`, 백그라운드는 한 자리만 쓰고 기다리지 않음, 기다리는 사용자가 있으면 백그라운드가 양보, 게이트 혼잡 시 썸네일 작업이 attempts를 늘리지 않고 미뤄짐, 같은 /64의 다른 IPv6 주소 차단, 원문으로 저장된 기존 행을 시작 시 정규화, 해제 시 같은 대역의 다른 활성 차단 유지(단위와 실제 트랜잭션 둘 다), 롤백된 차단이 메모리에 남지 않음, IP가 아닌 값 차단 거절, 비회원 도배 제한이 같은 /64에서 함께 셈.
   - 기존 `ImageProcessingGateTest`는 기다림 없이 바로 거절하는 동작을 확인하던 것이라, 대기 뒤 503을 확인하도록 기대를 바꿨다. 패키지 접근 생성자를 쓰려고 `image/service` 패키지로 옮겼다.
   - 프론트 코드는 바꾸지 않아 lint와 build는 돌리지 않았다. 운영 메모리와 nginx 동작은 확인하지 않았다.
+- 2026-11-20 main 동기화(IKA-89 #152, IKA-87 #148 머지 뒤)
+  - `origin/main`을 merge했다(리베이스, force push 없음). 충돌은 `docs/project/work.md`(두 항목 모두 살림)와 `ChatIpBanService`.
+  - `ChatIpBanService` 합친 방식: IKA-93 쪽 구조(정규화 키, 커밋 뒤 반영, 해제 시 같은 대역의 다른 활성 차단 유지, IP가 아닌 값 400)를 바탕으로 두고, IKA-89의 `banIpByMessageId(messageId, days, createdBy)`(1, 7, 30일 선택, 사유에 기간 표시)를 그대로 가져왔다. IKA-89의 `keepLaterExpiry`, `reloadIp`는 원문 IP를 키로 썼기 때문에 지우고, 같은 일을 하는 IKA-93의 `merge(key, until, later)`와 해제 시 재계산으로 대신했다. 그래서 늦게 끝나는 기간을 따르는 규칙이 정규화 키 기준으로 동작한다(같은 /64의 다른 IPv6 주소 두 차단도 늦게 끝나는 쪽).
+  - 결정: 메시지 차단에서 버퍼에 남은 IP가 IP가 아닌 값(예: unknown)이면 차단하지 않고 그 메시지만 지운다. 예전에는 빈 값만 이렇게 했다. 그대로 두면 `banIp`의 400 거절로 관리자 화면 버튼이 실패한다. 다른 안은 400을 그대로 내보내는 것이었는데, 관리자가 그 메시지를 지울 방법이 없어 택하지 않았다.
+  - 자동 병합된 `AdminChatController`(선택 본문 `days`), `ChatService`(정규화 도배 키), `ChatRecentHistoryBuffer`, 저장소 정렬은 서로 다른 줄이라 의미 충돌이 없다. IKA-89 통합 테스트 `overlappingBanKeepsLaterExpiry`는 메모리 캐시를 원문 IP로 읽던 것을 정규화 키로 읽게 고쳤다.
+  - 새 테스트: 같은 /64의 다른 IPv6 주소로 30일, 1일 메시지 차단 뒤 30일을 따르고 30일을 풀면 1일이 남고 둘 다 풀면 풀림(통합), 같은 /64에서 뒤에 온 짧은 차단이 긴 차단을 줄이지 않음(단위), 메시지 IP가 unknown이면 저장 없이 메시지만 지움(단위).
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(임시 init script). 전용 스키마 `snowthing_test_ika93`으로 `./gradlew cleanTest test` 테스트 클래스 223개, 1,309건, 실패 0, 건너뜀 1. 프론트는 이번에 바꾸지 않았다(main에서 온 변경만 있음).
 - 남은 항목: 배포 뒤 `docker exec snowthing-backend jcmd 1 VM.flags`로 MaxHeapSize가 약 1GB인지 확인.
 - 사용자 결정 필요: 없음.
+
+## 관리자가 일반 화면에서 바로 가리기와 라이브톡 차단 (IKA-89, 2026-11-17)
+
+- 상태: 구현 완료, 로컬 커밋. 푸시와 PR은 사용자가 localhost에서 확인한 뒤.
+- 완료
+  - 글 상세: 관리자에게 글의 "가리기"와 "가리기 해제" 버튼을 수정, 삭제 버튼 옆에 둔다. 기존 `PATCH /api/v1/admin/posts/{publicId}/blind`(`{"blinded": true|false}`)를 쓴다. 정상(NORMAL)과 가림(BLOCKED) 글에서만 보이고, 신고 임시조치 글은 안내 문구만 보인다. 가린 글은 관리자에게만 "가린 글입니다" 안내가 보인다.
+  - 댓글과 답글: 관리자에게 "가리기"와 "가리기 해제" 버튼. 기존 `PATCH /api/v1/admin/comments/{commentId}/blind`를 쓴다. 바꾼 뒤 댓글 목록을 다시 읽는다.
+  - 댓글 응답에 `blinded`를 더했다. 관리자 조회에서만 true, false가 오고 일반 사용자와 비로그인 응답에는 필드가 없다(`@JsonInclude(NON_NULL)`). 내부 판단용 `moderationHeld`는 내보내지 않는다.
+  - 관리자는 가린 글의 댓글도 읽는다. 글 상세가 관리자에게 가린 글을 보여 주는 기준과 맞췄다. 일반 사용자는 그대로 404.
+  - 라이브톡 "차단": `window.confirm` 대신 메시지 아래 작은 창에서 1일, 7일, 30일을 고른다. 로그인 회원이 보낸 메시지면 "회원 정지도 함께 하기"를 고를 수 있고, 기존 `POST /api/v1/admin/members/{publicId}/suspend`를 이어서 부른다.
+  - `POST /api/v1/admin/chat/messages/{messageId}/ban-ip`가 선택 본문 `{"days": 1|7|30}`을 받는다. 본문이 없거나 days가 비면 7일(예전과 같음). 다른 값은 400(COMMON_001).
+- 결정
+  - 회원 정지에 쓰는 발신자 식별자는 이미 모든 사용자에게 내려가는 `sender.publicId`를 쓴다. 비회원은 `anon-`로 시작하고 안내 봇은 `snowthing-ai`라 이 둘만 빼면 된다. 백엔드에 새 필드를 더하지 않았다.
+  - 차단 기간은 쿼리 파라미터 대신 선택 JSON 본문으로 받는다. 기존 호출(본문 없음)이 그대로 동작한다. 허용 값은 화면과 같은 1, 7, 30일로 묶었다. 다른 안: 1~30 범위 허용(화면 밖 값이 들어올 여지).
+  - 관리자 조치 기록은 기존 서비스(글 가리기 POST_BLIND/UNBLIND, 댓글 COMMENT_BLIND/UNBLIND, IP 차단 CHAT_IP_BAN, 회원 정지 MEMBER_SUSPEND)가 이미 남겨 따로 더하지 않았다.
+  - AI 회원: 회원 정지와 IP 차단에 AI 회원 예외가 없다. 관리자가 AI 회원을 정지하면 일반 회원처럼 정지된다. 화면에도 AI 여부를 드러내는 표시는 없다.
+- 2026-11-18 main 동기화
+  - 마이그레이션 없음. IKA-87(052), IKA-88(053)과 번호가 겹칠 일이 없다.
+  - `origin/main`(3e4f70a) merge: 이미 최신이라 바뀐 것 없음(Already up to date).
+  - 미리보기 합치기 시험(`git merge-tree`, 실제 합치지 않음): IKA-88과는 `docs/project/work.md`만 충돌(맨 위 항목 추가 위치). IKA-87과는 `docs/project/work.md`만 충돌, 같이 고친 `frontend/app/lib/api.ts`는 자동 병합. `ika-card-save-inapp`과는 충돌 없음.
+  - 검증: `spotlessApply` 후 `spotlessCheck` 통과(변경 없음). 전용 스키마 `snowthing_test_ika89`으로 `./gradlew cleanTest test` 1279건 중 1278 통과, 1 건너뜀, 실패 0. 지난번 실패한 `ReactionConcurrencyIntegrationTest` 3건도 이번에는 통과했다(root 계정으로 실행). 프론트 node_modules junction을 지우고 `npm ci --legacy-peer-deps`로 실제 설치한 뒤 `npm run lint`, `npm run build` 통과.
+- 남은 항목: 사용자 localhost 확인, 푸시와 PR.
+- 검증
+  - 백엔드 `./gradlew spotlessCheck test`(로컬 MySQL): spotlessCheck 통과. 1279개 중 1276개 통과, 1개 건너뜀, 3개 실패. 실패 3개는 `ReactionConcurrencyIntegrationTest`로, 로컬 DB 계정에 트리거 생성 권한(SUPER)이 없어 테스트 준비 단계에서 실패했다. 이번 변경과 관계없다.
+  - 새 테스트: `AdminOperationsIntegrationTest`에 차단 기간 기본 7일, 30일 선택, 1/7/30 밖의 값 400, 일반 회원 403, 댓글 `blinded` 관리자 전용과 가린 글 댓글 조회 5개 추가. 모두 통과.
+  - 프론트 `npm run lint`, `npx next build --webpack` 통과. 화면 동작은 아직 브라우저로 보지 않았다.
+  - 작업 트리에서 spotless의 `ratchetFrom`이 git 저장소를 찾지 못해 실행할 때만 그 줄을 주석 처리했다. 커밋에는 넣지 않았다.
+
+## 개장 D-DAY를 관리자 화면에서 관리하기 (IKA-87, 2026-11-17)
+
+- 상태: 구현 완료, PR 생성. 머지, 운영 마이그레이션(052), 배포는 사용자 확인 후.
+- 계획: 하드코딩 개장일 상수를 DB로 옮기고 관리자 화면에서 바꾸게 한다. 사용자는 새로고침하면 새 값을 본다. 설계: `docs/conception/032_season_opening_admin/01_design.md`
+- 완료
+  - DB: `052_migration_season_opening.sql`. `season_opening` 테이블과 26/27 시즌 9곳 초기값, `system_config`의 `SEASON_OPENING_BANNER_ENABLED`.
+  - 백엔드: `GET /api/v1/public/season-openings`(누구나, no-cache), `GET`, `PUT /api/v1/admin/season-openings`(관리자). 저장은 목록 전체를 한 번에 받고 리조트 목록, 순서 겹침, 배너 리조트 날짜, 날짜 범위를 확인한다. 값이 바뀐 저장만 조치 기록(SEASON_OPENING_UPDATE).
+  - 프론트: 관리자 `/admin/season-openings`와 메뉴 "개장일". 메인 개장 배너, 슬로프캠 D-DAY, 슬로프 현황, 시즌권 표가 `useSeasonOpenings` 요청 하나를 쓴다. 날짜 계산 함수는 `lib/seasonOpening.ts`에 남겼다.
+  - 닫힌 PR #147의 날짜 변경을 함께 반영: 용평 11/22, 하이원 11/24(초기값), AI 멤버 첫 개장일 기본값 11/22.
+- 결정
+  - 스위치는 `system_config` 한 줄에 둔다. 새 표를 만들지 않는다.
+  - 계획의 표에 `confirmed` 컬럼을 더했다. 배너 표시를 관리자 선택으로 떼면 "예상" 글자를 정할 값이 없어진다. 배너 표시 값으로 대신하면 확정됐지만 배너에서 뺀 리조트가 예상으로 보인다. 다른 안은 "예상" 글자를 없애는 것이었다.
+  - `banner_order`에 UNIQUE를 두지 않는다. 순서 맞바꾸기 저장이 중간에 충돌한다. 겹침은 서비스가 400으로 막는다.
+  - 설계 문서 번호는 025가 이미 두 개 있고 최신이 031이라 032로 했다.
+  - CodeRabbit 반영: 저장 요청 목록의 null 원소를 400으로 막고, 저장할 때 개장일 줄을 쓰기 잠금으로 읽어 동시 저장이 섞이지 않게 했다.
+- 발견된 이슈: 워크트리에서는 spotless의 `ratchetFrom`이 git 저장소를 찾지 못해 실패한다. 임시 init 스크립트로 ratchet을 끄고 전체 파일 대상으로 돌렸다.
+- 검증
+  - spotlessCheck(전체 파일 대상) 통과.
+  - `SeasonOpeningServiceTest` 9개, `SeasonOpeningControllerTest` 2개 통과.
+  - `./gradlew test` 전체: 로컬 MySQL이 없어 Spring 컨텍스트를 띄우는 테스트 584개가 컨텍스트 로드 실패(새 `SeasonOpeningIntegrationTest` 포함). 그 밖의 실패는 없다. 통합 테스트는 CI에서 확인한다.
+  - 프론트 `npm run lint`, `npx next build --webpack` 통과. 브라우저 화면 확인은 하지 않았다.
+- 남은 항목: CI 통합 테스트 확인, 운영 052 적용 후 배포.
 
 ## AWS SDK 2.46으로 올리기 (IKA-83, 2026-11-11)
 

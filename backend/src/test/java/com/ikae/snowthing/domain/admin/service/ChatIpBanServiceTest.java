@@ -91,7 +91,7 @@ class ChatIpBanServiceTest {
         when(repository.save(any(ChatBannedIp.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        chatIpBanService.banIpByMessageId("msg-123", "admin");
+        chatIpBanService.banIpByMessageId("msg-123", 7, "admin");
 
         assertThat(chatIpBanService.isBanned("192.168.1.100")).isTrue();
     }
@@ -166,6 +166,31 @@ class ChatIpBanServiceTest {
         chatIpBanService.unbanIp(2L);
 
         assertThat(chatIpBanService.isBanned("2001:db8:1:2::99")).isFalse();
+    }
+
+    @Test
+    @DisplayName("메시지의 IP가 IP가 아닌 값이면 차단하지 않고 그 메시지만 지운다")
+    void banByMessageWithNonIpOnlyRemovesMessage() {
+        when(recentHistoryBuffer.getIpForMessage("msg-9")).thenReturn("unknown");
+        when(recentHistoryBuffer.removeByMessageId("msg-9")).thenReturn(List.of("msg-9"));
+
+        chatIpBanService.banIpByMessageId("msg-9", 7, "admin");
+
+        verify(repository, never()).save(any());
+        verify(recentHistoryBuffer).removeByMessageId("msg-9");
+    }
+
+    @Test
+    @DisplayName("같은 /64에 짧은 차단이 뒤에 와도 긴 차단을 따른다")
+    void laterExpiryWinsWithinSame64() {
+        when(repository.save(any(ChatBannedIp.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        chatIpBanService.banIp("2001:db8:5:6::1", "도배", LocalDateTime.now().plusDays(30), "admin");
+        chatIpBanService.banIp(
+                "2001:db8:5:6::2", "도배", LocalDateTime.now().minusMinutes(1), "admin");
+
+        assertThat(chatIpBanService.isBanned("2001:db8:5:6::99")).isTrue();
     }
 
     @Test

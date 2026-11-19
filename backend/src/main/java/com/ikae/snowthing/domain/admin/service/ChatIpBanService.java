@@ -153,16 +153,21 @@ public class ChatIpBanService {
     }
 
     @Transactional
-    public void banIpByMessageId(String messageId, String createdBy) {
+    public void banIpByMessageId(String messageId, int days, String createdBy) {
         String ip = historyBuffer.getIpForMessage(messageId);
-        if (ip == null || ip.isBlank()) {
+        // IP를 모르거나 IP가 아닌 값이면 차단 대신 그 메시지만 지운다. banIp는 이런 값을 400으로 거절한다.
+        if (banKey(ip) == null) {
             List<String> removed = historyBuffer.removeByMessageId(messageId);
             if (!removed.isEmpty()) {
                 broadcastPurge(removed);
             }
             return;
         }
-        banIp(ip, "관리자 메시지 신고 차단 (" + messageId + ")", LocalDateTime.now().plusDays(7), createdBy);
+        banIp(
+                ip,
+                "관리자 메시지 신고 차단 " + days + "일 (" + messageId + ")",
+                LocalDateTime.now().plusDays(days),
+                createdBy);
     }
 
     /** 차단 비교에 쓰는 키. IP가 아니면 null이다. */
@@ -175,6 +180,7 @@ public class ChatIpBanService {
         return ban.getBannedUntil() == null ? LocalDateTime.MAX : ban.getBannedUntil();
     }
 
+    /** 같은 키(IPv6는 같은 /64)에 차단이 겹치면 더 늦게 끝나는 차단을 따른다. 짧은 기간으로 다시 차단해도 남아 있는 긴 차단이 줄어들지 않는다. */
     private static LocalDateTime later(LocalDateTime left, LocalDateTime right) {
         return left.isAfter(right) ? left : right;
     }

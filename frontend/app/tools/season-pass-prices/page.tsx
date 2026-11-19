@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
-import { SEASON_OPENINGS } from "../../lib/seasonOpening";
 import { RESORT_PASS_PRICES, SEASON_PASS_PRICE_CHECKED_AT } from "../../lib/seasonPassPrices";
 import { publicPageMetadata } from "../../lib/siteMetadata";
+import { OpeningDateNote } from "./OpeningDateNote";
 
 export const metadata: Metadata = publicPageMetadata(
   "26/27 스키장 시즌권 가격 비교",
@@ -14,15 +14,6 @@ export const metadata: Metadata = publicPageMetadata(
 const won = (value: number) => `${value.toLocaleString("ko-KR")}원`;
 // 시즌권 값을 할인 리프트권 1회 값으로 나눠 올림한 횟수. 교통비 같은 부대비용은 뺀다.
 const breakEven = (pass: number, ticket: number) => Math.ceil(pass / ticket);
-
-// 개장일 데이터는 리조트 코드 표기가 조금 다르다(WELLI_HILLI). 밑줄을 빼고 맞춘다.
-const plainCode = (code: string) => code.replace(/_/g, "");
-function openingText(code: string): string | null {
-  const opening = SEASON_OPENINGS.find((item) => plainCode(item.resortCode) === plainCode(code));
-  if (!opening) return null;
-  const [, month, day] = opening.date.split("-").map(Number);
-  return `${opening.confirmed ? "개장" : "개장 예상"} ${month}월 ${day}일`;
-}
 
 const FAQ = [
   {
@@ -76,13 +67,12 @@ export default function SeasonPassPricesPage() {
           </thead>
           <tbody>
             {RESORT_PASS_PRICES.map((resort) => {
-              const opening = openingText(resort.code);
               const change = resort.passChange;
               return (
                 <tr key={resort.code}>
                   <th scope="row">
                     {resort.name}
-                    {opening && <small>{opening}</small>}
+                    <OpeningDateNote resortCode={resort.code} />
                   </th>
                   <td>
                     {resort.passPrice === null ? "확인 안 됨" : won(resort.passPrice)}
