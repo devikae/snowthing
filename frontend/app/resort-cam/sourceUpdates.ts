@@ -49,14 +49,42 @@ export function updateOfficialCameraSource(resortCode: string, camera: ResortCam
       sourceIssue: "provider-restricted", availabilityCheckedAt: "2026-11-01",
     };
   }
-  const checkedUnavailable =
-    (resortCode === "JISAN" && /^https:\/\/ant\.livecity\.co\.kr:5443\/jisancam\/streams\/jisan[1-5]\.m3u8$/.test(camera.sourceUrl)) ||
-    (resortCode === "MUJU" && /^\/stream-proxy\/muju\/(02|03)\/playlist\.m3u8$/.test(camera.sourceUrl)) ||
-    (resortCode === "OAK_VALLEY" && /^https:\/\/cctv-oak9\.ktcdn\.co\.kr\/cctv\/ch(2|6|7|9)\.stream\/(chunklist|playlist)\.m3u8$/.test(camera.sourceUrl));
-  if (checkedUnavailable) return {
+  return updateOffAirCamera(resortCode, updateOfficialPage(resortCode, camera));
+}
+
+// 공식 웹캠 페이지 주소가 바뀐 리조트. 확인한 옛 주소만 바꾼다. (2026-11-20 확인)
+const officialPageMoves: Record<string, { from: string; to: string }> = {
+  OAK_VALLEY: { from: "https://app.oakvalley.co.kr/mobileapp/reserve/ski/webcam.do", to: "https://oakvalley.co.kr/ski/introduction/realtime" },
+  WELLI_HILLI: { from: "https://m.wellihillipark.com/customer/webcam", to: "https://www.wellihillipark.com/home/customer/webcam" },
+  VIVALDI: { from: "https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S", to: "https://www.sonohotelsresorts.com/skiboard" },
+};
+
+function updateOfficialPage(resortCode: string, camera: ResortCameraItem): ResortCameraItem {
+  const move = Object.hasOwn(officialPageMoves, resortCode) ? officialPageMoves[resortCode] : undefined;
+  return move && camera.externalPageUrl === move.from ? { ...camera, externalPageUrl: move.to } : camera;
+}
+
+// 리조트 공식 페이지가 쓰는 원본에서도 영상이 나오지 않는 카메라. (2026-11-20 확인)
+// 재생기를 띄워도 영상이 오지 않으므로 공식 페이지에서 보기로 돌린다. 원본이 다시 나오면 여기서 빼면 된다.
+const offAirSources: Record<string, RegExp> = {
+  // 공식 사이트 스크립트와 같은 주소. HTTP와 HTTPS 모두 502.
+  OAK_VALLEY: /^https:\/\/cctv-oak9\.ktcdn\.co\.kr\/cctv\/ch(2|6|7|9)\.stream\/(chunklist|playlist)\.m3u8$/,
+  // 공식 플레이어(ant.livecity)가 쓰는 주소. 404.
+  JISAN: /^https:\/\/ant\.livecity\.co\.kr:5443\/jisancam\/streams\/jisan(1|4|5)\.m3u8$/,
+  // 공식 웹캠 목록 API에는 있지만 원본 404.
+  WELLI_HILLI: /^https:\/\/live\.wellihillipark\.com\/wellihillipark\/_definst_\/cam05\.stream\/playlist\.m3u8$/,
+  // 영상 서버가 이 채널은 어떤 형식으로 요청해도 영상을 보내지 않는다.
+  VIVALDI: /^\/vivaldi\.html\?channel=(8|10|5|9)&serial=TW0014A15451(&|$)/,
+};
+
+function updateOffAirCamera(resortCode: string, camera: ResortCameraItem): ResortCameraItem {
+  const pattern = Object.hasOwn(offAirSources, resortCode) ? offAirSources[resortCode] : undefined;
+  if (!pattern || camera.sourceType === "EXTERNAL_LINK" || !pattern.test(camera.sourceUrl)) return camera;
+  return {
     ...camera,
-    sourceIssue: "upstream-unavailable", availabilityCheckedAt: "2026-11-01",
-    availabilityNote: "리조트 원본 영상에서도 연결 오류가 확인됐습니다. 잠시 후 다시 연결하거나 공식 페이지를 확인해 주세요.",
+    sourceType: "EXTERNAL_LINK",
+    sourceIssue: "upstream-unavailable",
+    availabilityCheckedAt: "2026-11-20",
+    availabilityNote: "리조트 원본 영상이 지금 송출되지 않습니다. 리조트 공식 페이지에서 확인해 주세요.",
   };
-  return camera;
 }

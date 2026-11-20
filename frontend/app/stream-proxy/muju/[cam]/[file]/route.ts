@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { toPublicWowzaManifest, toUpstreamWowzaFile } from "../../../wowzaSession";
+import { fetchWowzaFile, rememberWowzaSession, toPublicWowzaManifest, type WowzaSource } from "../../../wowzaSession";
 
 interface CacheEntry {
   url: string;
@@ -64,7 +64,9 @@ export async function GET(
         return new NextResponse(`Upstream error: ${res.status}`, { status: res.status });
       }
 
-      const content = toPublicWowzaManifest(await res.text());
+      const manifest = await res.text();
+      rememberWowzaSession(`muju:${paddedCam}`, manifest);
+      const content = toPublicWowzaManifest(manifest);
       return new NextResponse(content, {
         headers: {
           "Content-Type": "application/vnd.apple.mpegurl",
@@ -73,14 +75,19 @@ export async function GET(
       });
     }
 
-    // chunklist 또는 조각. 시청자 주소에는 토큰이 없으므로 서버가 가진 토큰을 붙인다.
-    const token = new URL(await getMujuM3u8Url(paddedCam)).search;
-    const targetUrl = `http://muju.cache.cdn.cloudn.co.kr/mujuresort/_definst_/cam${paddedCam}.stream/${toUpstreamWowzaFile(file)}${token}`;
-
-    const res = await fetch(targetUrl, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000),
-    });
+    // chunklist 또는 조각. 시청자 주소에는 토큰과 접속 번호가 없으므로 서버가 가진 값을 붙인다.
+    const source: WowzaSource = {
+      key: `muju:${paddedCam}`,
+      playlistUrl: () => getMujuM3u8Url(paddedCam),
+      fileUrl: async (upstreamFile) => {
+        const token = new URL(await getMujuM3u8Url(paddedCam)).search;
+        return `http://muju.cache.cdn.cloudn.co.kr/mujuresort/_definst_/cam${paddedCam}.stream/${upstreamFile}${token}`;
+      },
+      init: { signal: AbortSignal.timeout(10000) },
+      // 토큰이 만료돼도 403이 오므로 토큰도 함께 새로 받는다.
+      onForbidden: () => tokenCache.delete(paddedCam),
+    };
+    const res = await fetchWowzaFile(source, file);
 
     if (!res.ok) {
       if (res.status === 400 || res.status === 403) {
