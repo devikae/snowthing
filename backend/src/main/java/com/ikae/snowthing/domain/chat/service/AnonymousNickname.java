@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
 
 /**
  * 라이브톡 비회원 닉네임. "형용사 + 명사 + #네 자리 번호"로 만든다(예: 졸린펭귄#4821).
@@ -33,7 +34,8 @@ final class AnonymousNickname {
         String adjective = ADJECTIVES[Math.floorMod(digest.getInt(0), ADJECTIVES.length)];
         String noun = NOUNS[Math.floorMod(digest.getInt(4), NOUNS.length)];
         int number = Math.floorMod(digest.getInt(8), 10_000);
-        return adjective + noun + "#" + String.format("%04d", number);
+        // 서버 기본 로케일에 따라 다른 숫자 문자가 나오지 않게 ROOT로 고정한다.
+        return adjective + noun + "#" + String.format(Locale.ROOT, "%04d", number);
     }
 
     private static byte[] sha256(String value) {
