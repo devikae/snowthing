@@ -110,6 +110,8 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   // 관리자가 비회원 발신을 켜면 로그인 없이도 보낼 수 있다. 서버가 같은 설정으로 다시 확인한다.
   const [anonymousChatEnabled, setAnonymousChatEnabled] = useState(false);
   const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => new Set());
+  // 비회원 닉네임은 서버가 IP로 정한다. 내가 보낸 메시지가 돌아왔을 때 그 이름을 받아 둬야 본인이 자기 이름을 안다.
+  const [myGuestNickname, setMyGuestNickname] = useState<string | null>(null);
   const pendingGuestSendsRef = useRef<{ content: string; time: number }[]>([]);
   const canSend = Boolean(currentMember) || anonymousChatEnabled;
   const isAdmin = currentMember?.role === "ROLE_ADMIN";
@@ -205,6 +207,8 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             if (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-")) {
               pendingGuestSendsRef.current.splice(pendingIndex, 1);
               setMyGuestMessageIds((previous) => new Set(previous).add(newMsg.messageId));
+              // IP가 바뀌면(휴대폰 등) 이름도 바뀌므로 가장 최근 이름으로 둔다.
+              setMyGuestNickname(newMsg.sender.nickname);
             }
             setMessages((previous) => mergeMessages(previous, [newMsg]));
 
@@ -404,6 +408,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
                 <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
                   <div className="live-chat-message-meta">
                     {!isMine && <strong>{msg.sender.nickname}</strong>}
+                    {isMine && !currentMember && <strong>{msg.sender.nickname} (나)</strong>}
                     <span className="live-chat-message-tag">
                       <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
                       {resort ? resort.koreanName : "일반"}
@@ -499,7 +504,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             currentMember
               ? "메시지를 입력하세요"
               : anonymousChatEnabled
-                ? "로그인 없이 대화할 수 있어요 (닉네임 자동)"
+                ? myGuestNickname
+                  ? `${myGuestNickname}(으)로 대화 중이에요`
+                  : "로그인 없이 대화할 수 있어요 (닉네임 자동)"
                 : "로그인하고 라이브톡에 참여해 보세요"
           }
           className="live-chat-compose-input capsule-input"

@@ -160,40 +160,29 @@ class SlopeApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("슬로프 상세는 주변 관계와, 같은 지표로 3도 안에 드는 반대 나라 슬로프만 비슷한 슬로프로 준다")
-    void returnsSimilarSlopesFromOtherCountry() throws Exception {
+    @DisplayName("슬로프 상세는 주변 관계와, 같은 지표로 3도 안에 드는 국내, 일본 슬로프를 나눠 준다")
+    void returnsSimilarSlopesByCountry() throws Exception {
         mockMvc.perform(get("/api/v1/slopes/" + base.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.neighbors[0].name").value("합류"))
                 .andExpect(jsonPath("$.neighbors[0].relation").value("MERGE"))
-                .andExpect(jsonPath("$.similar[*].slope.name", hasItem("비슷한 코스")))
-                .andExpect(jsonPath("$.similar[*].slope.name", not(hasItem("먼 코스"))))
-                .andExpect(jsonPath("$.similar[*].slope.name", not(hasItem("비활성 리조트 코스"))))
-                .andExpect(jsonPath("$.similar[*].slope.name", not(hasItem("합류"))))
-                .andExpect(jsonPath("$.similar[?(@.slope.name == '비슷한 코스')].metric").value("AVG"))
-                .andExpect(jsonPath("$.similar[?(@.slope.name == '최대만 공개')].metric").value("MAX"));
+                // 일본: 평균끼리 0.5도, 최대끼리 1도는 들어가고 평균 10도 차이는 빠진다.
+                .andExpect(jsonPath("$.similarJp[*].slope.name", hasItem("비슷한 코스")))
+                .andExpect(jsonPath("$.similarJp[*].slope.name", not(hasItem("먼 코스"))))
+                .andExpect(jsonPath("$.similarJp[?(@.slope.name == '비슷한 코스')].metric").value("AVG"))
+                .andExpect(jsonPath("$.similarJp[?(@.slope.name == '최대만 공개')].metric").value("MAX"))
+                // 국내: 같은 리조트 슬로프도 후보다. 자기 자신과 비활성 국내 리조트는 빠진다.
+                .andExpect(jsonPath("$.similarKr[*].slope.name", hasItem("합류")))
+                .andExpect(jsonPath("$.similarKr[*].slope.name", not(hasItem("기준"))))
+                .andExpect(jsonPath("$.similarKr[*].slope.name", not(hasItem("비활성 리조트 코스"))));
     }
 
     @Test
-    @DisplayName("없는 리조트, 비활성 국내 리조트, 형식이 틀린 코드는 404, 비교 대상이 2곳 미만이면 400")
-    void rejectsUnknownResortsAndBadCompare() throws Exception {
+    @DisplayName("없는 리조트, 비활성 국내 리조트, 형식이 틀린 코드, 없는 슬로프는 404")
+    void rejectsUnknownResorts() throws Exception {
         mockMvc.perform(get("/api/v1/slopes/resorts/" + KR_OFF)).andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/slopes/resorts/bad-code")).andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/slopes/999999999")).andExpect(status().isNotFound());
-        mockMvc.perform(get("/api/v1/slopes/compare").param("codes", KR))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("비교는 고른 순서대로 슬로프 수, 최장 길이, 난이도 분포를 준다")
-    void comparesResorts() throws Exception {
-        mockMvc.perform(get("/api/v1/slopes/compare").param("codes", KR + "," + JP))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.resorts[0].resort.code").value(KR))
-                .andExpect(jsonPath("$.resorts[0].slopeCount").value(2))
-                .andExpect(jsonPath("$.resorts[0].longestLengthM").value(1000))
-                .andExpect(jsonPath("$.resorts[0].meanAvgGradient").value(9.0))
-                .andExpect(jsonPath("$.resorts[1].difficultyCounts.INTERMEDIATE").value(3));
     }
 
     @Test
