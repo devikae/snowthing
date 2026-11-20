@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.comment.dto.*;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
@@ -38,6 +39,7 @@ public class CommentService {
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
     private final MarketListingRepository marketListingRepository;
+    private final SystemConfigService systemConfigService;
     private final PasswordEncoder passwordEncoder;
     private final CommentCommandService commentCommandService;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
@@ -110,7 +112,7 @@ public class CommentService {
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
         validatePostVisibility(post, userDetails);
-        validateMarketAccess(post, userDetails, false);
+        validateMarketRead(post, userDetails);
         InquiryAccess.requireReadable(post, userDetails);
 
         if (cursor != null && !commentRepository.existsRootCursor(post.getId(), cursor)) {
@@ -167,7 +169,7 @@ public class CommentService {
                         .findById(root.getPost().getId())
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
         validatePostVisibility(post, userDetails);
-        validateMarketAccess(post, userDetails, false);
+        validateMarketRead(post, userDetails);
         InquiryAccess.requireReadable(post, userDetails);
 
         if (root.getParent() != null) {
@@ -300,6 +302,16 @@ public class CommentService {
     private boolean isWriter(Comment comment, CustomUserDetails userDetails) {
         return userDetails != null
                 && comment.getMember().getPublicId().equals(userDetails.getPublicId());
+    }
+
+    /** 판매글 댓글 조회는 관리자가 비회원 열람을 허용했을 때만 비회원에게 연다. */
+    private void validateMarketRead(Post post, CustomUserDetails userDetails) {
+        if (userDetails != null || systemConfigService.isMarketGuestAccessEnabled()) {
+            return;
+        }
+        if (marketListingRepository.existsByPostId(post.getId())) {
+            throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
+        }
     }
 
     private void validateMarketAccess(

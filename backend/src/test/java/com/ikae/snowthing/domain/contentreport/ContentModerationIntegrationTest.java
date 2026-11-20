@@ -53,6 +53,8 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 @Transactional
 class ContentModerationIntegrationTest {
 
+    private static final String REPORTER_IP = "203.0.113.10";
+
     @Autowired private ContentReportService reportService;
     @Autowired private ContentModerationService moderationService;
     @Autowired private PostService postService;
@@ -112,7 +114,8 @@ class ContentModerationIntegrationTest {
                         postPublicId,
                         ReportReason.RIGHTS_INFRINGEMENT,
                         "명예훼손입니다"),
-                user);
+                user,
+                REPORTER_IP);
     }
 
     private AdminContentReportResponse pendingReport() {
@@ -138,6 +141,58 @@ class ContentModerationIntegrationTest {
     }
 
     @Test
+    @DisplayName("비회원도 신고할 수 있고 같은 IP로 같은 글을 다시 신고하면 거부한다")
+    void report_Guest_AllowedOncePerIp() {
+        reportPost(null);
+
+        AdminContentReportResponse report = pendingReport();
+        assertThat(report.reporterNickname()).startsWith("비회원 (");
+        assertThatThrownBy(() -> reportPost(null))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONTENT_REPORT_DUPLICATE);
+    }
+
+    @Test
+    @DisplayName("비회원 신고는 IP가 다르면 같은 글이라도 따로 접수한다")
+    void report_GuestFromOtherIp_AcceptedSeparately() {
+        reportPost(null);
+        reportService.create(
+                new ContentReportCreateRequest(
+                        ReportTargetType.POST, postPublicId, ReportReason.SPAM, null),
+                null,
+                "198.51.100.20");
+
+        assertThat(moderationService.list(ReportStatus.PENDING, 0).reports())
+                .hasSize(2)
+                .allSatisfy(report -> assertThat(report.reporterNickname()).startsWith("비회원 ("));
+    }
+
+    @Test
+    @DisplayName("임시조치로 가린 글은 비회원도 신고할 수 없다")
+    void report_GuestOnHeldPost_Rejected() {
+        reportPost(reporterUser);
+        apply(pendingReport().reportId(), ModerationActionType.TEMPORARY_HOLD);
+
+        assertThatThrownBy(() -> reportPost(null))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("비회원 신고를 처리해도 알림을 받을 계정이 없어 작성자에게만 알린다")
+    void hold_GuestReport_NotifiesAuthorOnly() {
+        reportPost(null);
+
+        apply(pendingReport().reportId(), ModerationActionType.TEMPORARY_HOLD);
+
+        assertThat(notificationRepository.findAll())
+                .extracting(notification -> notification.getReceiver().getId())
+                .containsExactly(author.getId());
+    }
+
+    @Test
     @DisplayName("없는 글은 신고할 수 없다")
     void report_MissingTarget_Rejected() {
         assertThatThrownBy(
@@ -148,7 +203,8 @@ class ContentModerationIntegrationTest {
                                                 "missing",
                                                 ReportReason.OTHER,
                                                 null),
-                                        reporterUser))
+                                        reporterUser,
+                                        REPORTER_IP))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND);
@@ -241,7 +297,8 @@ class ContentModerationIntegrationTest {
                         String.valueOf(comment.commentId()),
                         ReportReason.RIGHTS_INFRINGEMENT,
                         null),
-                reporterUser);
+                reporterUser,
+                REPORTER_IP);
         AdminContentReportResponse report = pendingReport();
         assertThat(report.targetState()).isEqualTo(TargetState.NORMAL);
 
@@ -336,7 +393,8 @@ class ContentModerationIntegrationTest {
                                                 String.valueOf(comment.commentId()),
                                                 ReportReason.OTHER,
                                                 null),
-                                        reporterUser))
+                                        reporterUser,
+                                        REPORTER_IP))
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND);
     }

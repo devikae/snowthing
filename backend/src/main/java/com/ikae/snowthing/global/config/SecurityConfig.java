@@ -232,6 +232,10 @@ public class SecurityConfig {
                                                 HttpMethod.GET,
                                                 "/api/v1/market-listings/preview",
                                                 "/api/v1/market-listings/*/share-preview",
+                                                // 비회원 열람은 관리자 설정으로 컨트롤러에서 다시 확인한다.
+                                                "/api/v1/market-listings",
+                                                "/api/v1/market-listings/*",
+                                                "/api/v1/market/categories",
                                                 "/api/v1/carpools/**",
                                                 "/api/carpools/**",
                                                 "/api/v1/resort-reports/**")
@@ -240,6 +244,9 @@ public class SecurityConfig {
                                                 HttpMethod.POST,
                                                 "/api/v1/carpools/auto-preview",
                                                 "/api/carpools/auto-preview")
+                                        .permitAll()
+                                        // 비회원 신고. IP 기준 횟수 제한과 중복 차단은 컨트롤러와 서비스에서 한다.
+                                        .requestMatchers(HttpMethod.POST, "/api/v1/reports")
                                         .permitAll()
                                         // IKA-27 비회원 캐릭터 테스트. 메서드와 경로를 정확히 적고 CSRF 검사는 그대로 받는다.
                                         .requestMatchers(

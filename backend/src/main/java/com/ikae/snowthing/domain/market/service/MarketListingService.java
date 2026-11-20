@@ -177,7 +177,10 @@ public class MarketListingService {
     @Transactional
     public MarketListingDetailResponse getDetail(
             String publicId, CustomUserDetails userDetails, boolean increaseViewCount) {
-        requireMember(userDetails);
+        // 비회원 열람 허용 여부는 컨트롤러에서 관리자 설정으로 확인한다.
+        if (userDetails != null) {
+            requireMember(userDetails);
+        }
         MarketListing listing = findVisible(publicId);
         Post post = listing.getPost();
         List<String> images =

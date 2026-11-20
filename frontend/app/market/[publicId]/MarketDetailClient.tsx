@@ -11,6 +11,8 @@ import { AuthorMenu } from "../../components/AuthorMenu";
 import { MarketMessageButton } from "../../components/MarketMessageButton";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { mergeReplies, replyCursor } from "../../lib/commentReplies";
+import { useReplyTarget } from "../../components/useReplyTarget";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
@@ -94,8 +96,10 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   const [hasNext, setHasNext] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [comment, setComment] = useState("");
-  const [replyParentId, setReplyParentId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const replyTarget = useReplyTarget(setReply);
+  // 방금 단 답글 id. 더보기 커서로 쓰면 사이 답글을 건너뛰므로 구분해 둔다.
+  const localReplyIdsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const isSubmittingCommentRef = useRef(false);
@@ -165,7 +169,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   }, [load]);
 
   const loadMoreReplies = async (item: CommentItem) => {
-    const cursor = item.previewReplies.at(-1)?.commentId ?? null;
+    const cursor = replyCursor(item.previewReplies, localReplyIdsRef.current);
     const response = await fetch(API_ENDPOINTS.comments.replies(item.commentId, cursor), {
       credentials: "include",
     });
@@ -175,7 +179,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
     }
     const data: { replies: CommentItem[]; hasNext: boolean } = await response.json();
     setComments((current) => current.map((commentItem) => commentItem.commentId === item.commentId
-      ? { ...commentItem, previewReplies: [...commentItem.previewReplies, ...data.replies], hasMoreReplies: data.hasNext }
+      ? { ...commentItem, previewReplies: mergeReplies(commentItem.previewReplies, data.replies), hasMoreReplies: data.hasNext }
       : commentItem));
   };
 
@@ -201,12 +205,18 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
       }
       commentIdempotencyKey.reset();
       if (parentId) {
+        // 답글은 다시 불러오지 않고 붙인다. 다시 불러오면 미리보기 5개 밖의 새 답글이 안 보인다.
+        const created: CommentItem = await response.json();
+        localReplyIdsRef.current.add(String(created.commentId));
+        setComments((current) => current.map((item) => item.commentId === parentId
+          ? { ...item, replyCount: item.replyCount + 1, previewReplies: mergeReplies(item.previewReplies, [created]) }
+          : item));
         setReply("");
-        setReplyParentId(null);
+        replyTarget.close();
       } else {
         setComment("");
+        await loadComments();
       }
-      await loadComments();
       setListing((current) => current ? { ...current, commentCount: current.commentCount + 1 } : current);
     } catch (submitError) {
       setError(errorText(submitError, "댓글을 등록하지 못했습니다."));
@@ -299,10 +309,10 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
           <div className="market-comment-list post-comment-list">
             {comments.length === 0 && <p className="market-comment-empty">아직 댓글이 없습니다.</p>}
             {comments.map((item) => <div className="market-comment post-comment-item" key={item.commentId}>
-              <div className="comment-youtube-row"><MarketCommentAvatar item={item} /><div className="comment-youtube-body"><header><AuthorMenu publicId={item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(item.createdAt)}</time></header><p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>{!item.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button><ReportButton targetType="COMMENT" targetId={item.commentId} /></div>}</div></div>
-              <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><AuthorMenu publicId={child.isDeleted ? null : child.writer?.publicId} nickname={child.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p>{!child.isDeleted && <div className="comment-youtube-actions"><ReportButton targetType="COMMENT" targetId={child.commentId} /></div>}</div></div></div>)}</div>
+              <div className="comment-youtube-row"><MarketCommentAvatar item={item} /><div className="comment-youtube-body"><header><AuthorMenu publicId={item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(item.createdAt)}</time></header><p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>{!item.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => replyTarget.toggle(item.commentId, item.commentId, item.writer?.nickname ?? "탈퇴한 회원")}>{replyTarget.isReplyingTo(item.commentId) ? "답글 취소" : "답글"}</button><ReportButton targetType="COMMENT" targetId={item.commentId} /></div>}</div></div>
+              <div className="comment-reply-list">{item.previewReplies.map((child) => <div className="market-comment-reply post-comment-reply" key={child.commentId}><div className="comment-youtube-row"><span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span><MarketCommentAvatar item={child} /><div className="comment-youtube-body"><header><AuthorMenu publicId={child.isDeleted ? null : child.writer?.publicId} nickname={child.writer?.nickname ?? "탈퇴한 회원"} /><time>{formatDate(child.createdAt)}</time></header><p>{child.content}</p>{!child.isDeleted && <div className="comment-youtube-actions"><button type="button" onClick={() => replyTarget.toggle(item.commentId, child.commentId, child.writer?.nickname ?? "탈퇴한 회원")}>{replyTarget.isReplyingTo(child.commentId) ? "답글 취소" : "답글"}</button><ReportButton targetType="COMMENT" targetId={child.commentId} /></div>}</div></div></div>)}</div>
               {item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
-              {replyParentId === item.commentId && <div className="post-reply-compose"><textarea className="post-comment-textarea" aria-label="답글 입력" value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div></div>}
+              {replyTarget.target && replyTarget.isOpenFor(item.commentId) && <div className="post-reply-compose"><div className="post-reply-target"><span>{replyTarget.label(replyTarget.target)}</span><button type="button" onClick={replyTarget.close}>취소</button></div><textarea ref={replyTarget.inputRef} className="post-comment-textarea" aria-label="답글 입력" value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} placeholder="답글을 입력하세요." /><div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={submitting || !reply.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div></div>}
             </div>)}
           </div>
           {hasNext && nextCursor && <button className="market-comments-more" type="button" onClick={() => void loadComments(nextCursor, true)}>댓글 더보기</button>}
