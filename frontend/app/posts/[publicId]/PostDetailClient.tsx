@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { ReplyComposer } from "../../components/ReplyComposer";
+import { PostAdjacentNav } from "./PostAdjacentNav";
 import { AuthorMenu } from "../../components/AuthorMenu";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import dynamic from "next/dynamic";
@@ -835,6 +836,9 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
             )}
           </article>
 
+          {/* 댓글이 길어도 바로 넘어갈 수 있게 본문 바로 아래에 둔다. */}
+          {post.categoryCode !== "INQUIRY" && <PostAdjacentNav publicId={post.publicId} />}
+
           <section id="comments" className="post-comments-card">
             <header><h2>댓글 <span>{totalCommentCount}</span></h2></header>
 
@@ -957,6 +961,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
               </div>
             )}
           </section>
+
           </div>
         </div>
       </main>

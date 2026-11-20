@@ -139,6 +139,34 @@ public class PostService {
         return PostResponse.from(saved);
     }
 
+    /**
+     * 상세 아래 이전글, 다음글. 게시판 목록에 나오는 글만 대상이다. 1:1 문의, 중고장터, 카풀은 목록 화면이 따로라 빈 값을 준다. 기준 글이 지워졌거나 숨김이어도
+     * 빈 값이라 글이 있는지 드러나지 않는다.
+     */
+    public PostAdjacentResponse getAdjacentPosts(String publicId) {
+        Post base = postRepository.findWithMemberAndCategoryByPublicId(publicId).orElse(null);
+        if (base == null
+                || base.isDeleted()
+                || base.getStatus() != PostStatus.NORMAL
+                || PostCategoryCodes.HIDDEN_FROM_BOARD_LIST.contains(
+                        base.getCategory().getCode())) {
+            return PostAdjacentResponse.NONE;
+        }
+        return new PostAdjacentResponse(
+                postRepository
+                        .findAdjacentInCategory(base, true)
+                        .map(this::adjacentItem)
+                        .orElse(null),
+                postRepository
+                        .findAdjacentInCategory(base, false)
+                        .map(this::adjacentItem)
+                        .orElse(null));
+    }
+
+    private PostAdjacentResponse.Item adjacentItem(Post post) {
+        return new PostAdjacentResponse.Item(post.getPublicId(), post.getTitle());
+    }
+
     @Transactional
     public PostDetailResponse getPostDetail(String publicId, CustomUserDetails userDetails) {
         return getPostDetail(publicId, userDetails, true);

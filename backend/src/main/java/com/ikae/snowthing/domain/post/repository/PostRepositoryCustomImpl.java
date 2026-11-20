@@ -7,6 +7,7 @@ import static com.ikae.snowthing.domain.post.entity.QPostCategory.postCategory;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.stereotype.Repository;
@@ -221,6 +222,42 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         return post.createdAt
                 .lt(cursor.createdAt())
                 .or(post.createdAt.eq(cursor.createdAt()).and(post.id.lt(cursor.id())));
+    }
+
+    @Override
+    public Optional<Post> findAdjacentInCategory(Post base, boolean older) {
+        // 목록과 같은 (작성 시각, ID) 순서다. idx_post_category_list 인덱스를 그대로 탄다.
+        BooleanExpression position =
+                older
+                        ? post.createdAt
+                                .lt(base.getCreatedAt())
+                                .or(
+                                        post.createdAt
+                                                .eq(base.getCreatedAt())
+                                                .and(post.id.lt(base.getId())))
+                        : post.createdAt
+                                .gt(base.getCreatedAt())
+                                .or(
+                                        post.createdAt
+                                                .eq(base.getCreatedAt())
+                                                .and(post.id.gt(base.getId())));
+        return Optional.ofNullable(
+                queryFactory
+                        .selectFrom(post)
+                        .where(
+                                post.category.id.eq(base.getCategory().getId()),
+                                post.isDeleted.isFalse(),
+                                post.status.eq(
+                                        com.ikae.snowthing.domain.post.entity.PostStatus.NORMAL),
+                                position)
+                        .orderBy(
+                                older
+                                        ? getLatestSortOrders()
+                                        : new OrderSpecifier<?>[] {
+                                            post.createdAt.asc(), post.id.asc()
+                                        })
+                        .limit(1)
+                        .fetchFirst());
     }
 
     private OrderSpecifier<?>[] getLatestSortOrders() {
