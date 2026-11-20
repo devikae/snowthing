@@ -217,7 +217,8 @@ html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-deta
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-description { padding: 24px 0; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(a,button,textarea):focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
 /* 댓글 입력창은 바깥 상자가 :focus-within으로 포커스를 보여 준다. 안쪽 outline은 아래 글자 수와 겹치므로 끈다. */
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-comment-compose,.post-reply-compose) .post-comment-textarea:focus-visible { outline: none; }
+/* globals.css의 .post-comment-textarea:focus 파란 그림자(box-shadow)도 끈다. 상자가 overflow:hidden이라 좌우가 잘리고 위아래 파란 줄만 남는다. */
+html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-comment-compose,.post-reply-compose) .post-comment-textarea:is(:focus,:focus-visible) { outline: none; box-shadow: none; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.post-comment-compose,.post-reply-compose):focus-within { border-color: var(--snow-ink-soft); }
 html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents { color: var(--snow-ink-soft); font: 400 16px/1.8 var(--font-hanken); }
 html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(p,li) { color: inherit; font-size: 16px; line-height: 1.8; }
