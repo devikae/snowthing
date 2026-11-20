@@ -51,6 +51,12 @@ a {
   text-decoration: none;
 }
 
+/* 위 규칙이 레이어 밖에 있어 Tailwind의 underline이 링크에는 먹지 않는다. 밑줄을 달라고 한 링크에는 밑줄을 긋는다. */
+a.underline {
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+}
+
 button,
 input,
 select,

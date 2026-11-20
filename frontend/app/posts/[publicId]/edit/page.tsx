@@ -57,6 +57,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   useImageUploadLease(images);
   const [canUploadImages, setCanUploadImages] = useState(false);
@@ -72,6 +73,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
             if (meRes.ok) {
               const meData = await meRes.json();
               currentUserPublicId = meData.publicId || null;
+              setIsAdmin(meData.role === "ROLE_ADMIN");
             }
           } catch {
             currentUserPublicId = null;
@@ -227,7 +229,8 @@ function PostEditForm({ publicId }: { publicId: string }) {
       {categoryCode !== "INQUIRY" && (
       <nav className="compose-category-bar" aria-label="게시판 변경">
         <div className="filter-pills">
-          {categoryOptions.map((option) => (
+          {/* 공지사항은 관리자만 고를 수 있다. 일반 회원에게 보이면 눌러도 서버가 403으로 거부한다. */}
+          {categoryOptions.filter((option) => option.value !== "NOTICE" || isAdmin || categoryCode === "NOTICE").map((option) => (
             <button
               key={option.value}
               type="button"
