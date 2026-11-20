@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { fetchPublicJson } from "../lib/publicApi";
-import { PRIVATE_PAGE_ROBOTS, sectionOpenGraph } from "../lib/siteMetadata";
+import { POSTS_DESCRIPTION, PRIVATE_PAGE_ROBOTS, publicPageMetadata, sectionOpenGraph } from "../lib/siteMetadata";
 import PostListClient from "./PostListClient";
 import { NOTICE_QUERY, boardConfigs, postListApiQuery, readPostListParams, type InitialPostList, type PostListPage } from "./postListQuery";
 
@@ -17,15 +17,17 @@ const BOARD_DESCRIPTIONS: Record<string, string> = {
   INQUIRY: "운영진에게 1:1로 문의하고 답변을 확인합니다.",
 };
 
-// 게시판마다 탭 제목과 설명을 따로 둔다. 레이아웃의 공통 값은 전체 게시판에 쓴다.
+// 게시판마다 탭 제목, 설명, canonical을 따로 둔다. canonical은 게시판 주소(/posts?category=코드)로 고정해
+// 쪽 번호나 검색어가 붙은 주소가 따로 색인되지 않게 한다. 레이아웃에 두지 않는 이유는 posts/layout.tsx 주석 참고.
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const raw = await searchParams;
   const value = raw.category;
   const category = (Array.isArray(value) ? value[0] : value) ?? "";
   const board = boardConfigs[category];
-  if (!category || !board) return {};
-  const metadata = sectionOpenGraph(`${board.name} | 눈팅 SnowThing`, BOARD_DESCRIPTIONS[category] ?? "");
-  return category === "INQUIRY" ? { ...metadata, robots: PRIVATE_PAGE_ROBOTS } : metadata;
+  if (!category || !board) return publicPageMetadata("게시판", POSTS_DESCRIPTION, "/posts");
+  // 1:1 문의는 noindex라 canonical을 두지 않는다.
+  if (category === "INQUIRY") return { ...sectionOpenGraph(`${board.name} | 눈팅 SnowThing`, BOARD_DESCRIPTIONS[category] ?? ""), robots: PRIVATE_PAGE_ROBOTS };
+  return publicPageMetadata(board.name, BOARD_DESCRIPTIONS[category] ?? "", `/posts?category=${encodeURIComponent(category)}`);
 }
 
 // 검색엔진과 JS를 끈 방문자도 목록을 볼 수 있게 첫 목록과 공지를 서버에서 받아 HTML에 넣는다.
