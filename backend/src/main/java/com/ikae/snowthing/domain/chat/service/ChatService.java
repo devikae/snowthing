@@ -152,7 +152,10 @@ public class ChatService {
         String sentAt = LocalDateTime.now().format(ISO_FORMATTER);
         SenderDto sender =
                 member != null
-                        ? new SenderDto(member.getPublicId(), member.getNickname())
+                        ? new SenderDto(
+                                member.getPublicId(),
+                                member.getNickname(),
+                                member.getProfileImageUrl())
                         : new SenderDto("anon-" + UUID.randomUUID(), anonymousNickname(clientIp));
 
         ChatMessageResponse response =

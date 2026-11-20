@@ -17,6 +17,7 @@ import com.ikae.snowthing.domain.chat.dto.ChatErrorResponse;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.service.ChatService;
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.global.config.websocket.ChatHandshakeInterceptor;
@@ -60,12 +61,15 @@ public class ChatController {
             clientIp = (String) sessionAttributes.get(ChatHandshakeInterceptor.ATTR_CLIENT_IP);
         }
 
-        // 연결의 Principal은 접속 때 회원 스냅샷이다. 끊기 전에 도착한 메시지도 현재 상태로 막는다.
-        if (userDetails != null
-                && userDetails.getMember() != null
-                && memberRepository.findStatusById(userDetails.getMember().getId()).orElse(null)
-                        != MemberStatus.ACTIVE) {
-            throw new CustomException(ErrorCode.CHAT_UNAUTHORIZED);
+        // 연결의 Principal은 로그인 때 회원 스냅샷이다. 정지 여부와 닉네임은 메시지마다 현재 값으로 읽는다.
+        // 접속 뒤 닉네임을 바꿨는데 예전 닉네임으로 나가면 다른 사람이 알아보지 못한다.
+        if (userDetails != null && userDetails.getMember() != null) {
+            Member current =
+                    memberRepository
+                            .findById(userDetails.getMember().getId())
+                            .filter(member -> member.getStatus() == MemberStatus.ACTIVE)
+                            .orElseThrow(() -> new CustomException(ErrorCode.CHAT_UNAUTHORIZED));
+            userDetails = new CustomUserDetails(current);
         }
 
         ChatMessageResponse response = chatService.processMessage(request, userDetails, clientIp);
