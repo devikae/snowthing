@@ -456,7 +456,16 @@
 
 
 /* 개장일 관리 (IKA-87) */
+.admin-season-title input {
+  width: 9em;
+  border: 1px solid var(--snow-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
 .admin-season-switch,
+.admin-season-title,
 .admin-season-fields label {
   display: inline-flex;
   align-items: center;
