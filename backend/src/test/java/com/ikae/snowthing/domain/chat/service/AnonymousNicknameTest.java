@@ -21,6 +21,13 @@ class AnonymousNicknameTest {
     }
 
     @Test
+    @DisplayName("단어 목록이나 해시 자리가 바뀌면 기존 사용자 닉네임이 모두 바뀌므로 고정값으로 지킨다")
+    void keepsExistingMapping() {
+        assertThat(AnonymousNickname.of("203.0.113.7")).isEqualTo("용감한모굴러#1115");
+        assertThat(AnonymousNickname.of("")).isEqualTo("느긋한리프트#6168");
+    }
+
+    @Test
     @DisplayName("닉네임은 형용사, 명사, #네 자리 번호로 이루어진다. IP가 없어도 만든다")
     void formatIsAdjectiveNounNumber() {
         for (String ip : List.of("203.0.113.7", "2001:db8::1", "")) {
