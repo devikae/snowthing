@@ -3,7 +3,6 @@ package com.ikae.snowthing.domain.slope.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.entity.ResortCountry;
@@ -78,9 +77,13 @@ public final class SlopeResponses {
     public record Connection(
             Long slopeId, Long relatedSlopeId, SlopeRelation relation, Integer distanceM) {}
 
-    /** 슬로프 한 곳. similar는 반대 나라 슬로프 중 경사가 비슷한 후보다. */
+    /** 슬로프 한 곳. similarKr, similarJp는 나라별로 경사가 비슷한 후보다(자기 자신 제외). */
     public record SlopeDetail(
-            ResortInfo resort, SlopeItem slope, List<Neighbor> neighbors, List<Similar> similar) {}
+            ResortInfo resort,
+            SlopeItem slope,
+            List<Neighbor> neighbors,
+            List<Similar> similarKr,
+            List<Similar> similarJp) {}
 
     public record Neighbor(
             Long id,
@@ -108,21 +111,4 @@ public final class SlopeResponses {
                     match.lengthDiff());
         }
     }
-
-    public record Compare(List<CompareItem> resorts) {}
-
-    /**
-     * 리조트 비교 한 줄. 평균 경사 평균은 값이 있는 슬로프만으로 계산하고, 몇 개로 계산했는지 함께 준다.
-     *
-     * @param difficultyCounts 색 표시용 난이도 묶음별 슬로프 수
-     */
-    public record CompareItem(
-            ResortInfo resort,
-            int slopeCount,
-            Integer totalLengthM,
-            Integer longestLengthM,
-            BigDecimal steepestMaxGradient,
-            BigDecimal meanAvgGradient,
-            int avgGradientCount,
-            Map<SlopeDifficulty, Integer> difficultyCounts) {}
 }

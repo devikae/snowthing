@@ -8,8 +8,8 @@ import { CompareView } from "../CompareView";
 import styles from "../slopeSpecs.module.css";
 
 export const metadata = publicPageMetadata(
-  "스키장 슬로프 비교",
-  "국내와 일본 스키장 2~3곳의 슬로프 수, 최장 길이, 최대 경사, 난이도 분포를 공식 제원으로 나란히 비교합니다.",
+  "슬로프 비교",
+  "국내와 일본 슬로프 2~3개의 길이, 평균 경사, 최대 경사, 폭, 코스 맵을 공식 제원으로 나란히 비교합니다.",
   "/slopes/compare",
 );
 
@@ -21,8 +21,8 @@ export default async function SlopeComparePage() {
       <main className="community-container">
         <PageHeading
           breadcrumb={<Link href="/slopes">슬로프</Link>}
-          title="스키장 비교"
-          description="리조트를 2~3곳 고르면 공식 제원으로 나란히 비교합니다."
+          title="슬로프 비교"
+          description="슬로프를 2~3개 고르면 코스 맵과 공식 제원을 나란히 비교합니다. 국내와 일본 슬로프를 섞어 고를 수 있습니다."
         />
         {resorts === null ? (
           <p className={styles.notice}>리조트 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>

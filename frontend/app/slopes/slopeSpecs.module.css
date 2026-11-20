@@ -423,13 +423,6 @@
 
 /* ---------- 비교 ---------- */
 
-.pickGroup {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-}
 
 .pickLabel {
   min-width: 36px;
@@ -487,17 +480,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.distribution {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-}
-
-.distribution span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
 
 /* ---------- 현황판 진입점 ---------- */
 
@@ -546,4 +528,171 @@
 
 .specLinks a:hover {
   border-color: var(--snow-ink-soft, #475569);
+}
+
+/* ---------- 슬로프 비교, 비슷한 슬로프 (IKA-103) ---------- */
+
+.compareLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  border: 1px solid var(--snow-border-strong, #cbd5e1);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--snow-ink, #1e293b);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.compareLink:hover {
+  background: var(--snow-surface-mid, #f1f5f9);
+}
+
+.compareLink span {
+  font-size: 18px;
+}
+
+.similarGroup + .similarGroup {
+  margin-top: 22px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 14px 0 10px;
+  color: var(--snow-ink, #1e293b);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.groupTitle small {
+  color: var(--snow-muted, #64748b);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+}
+
+.cardStack .card {
+  flex: 1;
+}
+
+.cardAction {
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 6px 0;
+  color: var(--snow-ink-soft, #475569);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.cardAction:hover {
+  border-color: var(--snow-ink-soft, #475569);
+  color: var(--snow-ink, #1e293b);
+}
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.picker select {
+  min-width: 180px;
+  min-height: 38px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--snow-canvas, #fff);
+  padding: 0 10px;
+  color: var(--snow-ink, #1e293b);
+  font-size: 14px;
+}
+
+.picker button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--snow-ink, #1e293b);
+  padding: 0 16px;
+  color: var(--snow-canvas, #fff);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.picker button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.compareHead {
+  min-width: 200px;
+}
+
+.compareHead > small {
+  display: block;
+}
+
+.compareHead a {
+  display: block;
+  margin: 2px 0 8px;
+}
+
+.compareCourse {
+  max-width: 200px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.removeButton {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.diff {
+  display: block;
+  margin-top: 2px;
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compareTable td a {
+  color: var(--snow-ink-soft, #475569);
+  font-weight: 700;
+}
+
+.compareTable td a small {
+  display: block;
+  color: var(--snow-muted, #64748b);
+  font-weight: 500;
 }
