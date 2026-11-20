@@ -1,3 +1,35 @@
+## 배포 중 종료 대기와 실행 이미지 기록, 프론트 Node 22 (IKA-105, 2026-11-20)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 운영 반영은 사용자 확인 후.
+- 계획: 배포 때 처리 중인 요청이 끊기지 않게 종료 대기를 맞추고, 서버에 실행 중인 digest를 남겨 손으로 다시 띄워도 같은 이미지로 뜨게 한다. 프론트 실행 이미지를 Node 22(digest 고정)와 standalone 출력으로 바꾼다.
+- 완료
+  - 백엔드 `application.yml`: `server.shutdown: graceful`(Spring Boot 4.1은 이미 기본값이지만 명시), `spring.lifecycle.timeout-per-shutdown-phase: 20s`.
+  - `compose.prod.yml`: 백엔드 `stop_grace_period: 30s`, 프론트 `15s`. 이미지 기본값을 `latest`에서 `not-recorded-pass-etc-snowthing-images-env` 태그로 바꿔 기록 파일을 빼먹은 실수가 pull 오류 메시지로 바로 드러나게 했다.
+  - `scripts/deploy-ecr-service.sh`: 배포 성공 때 `/etc/snowthing/images.env`의 해당 서비스 줄(`BACKEND_IMAGE_URI` 등)을 새 digest로 바꾼다. 롤백 때는 이전 digest로 맞춘다. 파일이 없거나 줄이 없으면 배포 전에 실행 중인 컨테이너의 digest로 채운다. compose 실행은 `--env-file prod.env --env-file images.env`에 대상 서비스만 셸 환경변수로 덮는다. 승인, 헬스체크, 실패 시 이전 이미지 복구, 이미지 정리(current, previous 보호) 흐름은 그대로다.
+  - `frontend/Dockerfile`: `node:22-alpine@sha256:1314fb30...`로 빌드와 실행 단계 고정. `next.config.ts`에 `output: "standalone"`을 켜고 실행 단계는 `.next/standalone`, `.next/static`, `public`만 복사한다. `npm run start` 대신 `node server.js`, `HOSTNAME=0.0.0.0`.
+  - CI(`frontend-ci.yml`, `deploy-frontend.yml`)의 Node를 22로 맞췄다.
+- 결정
+  - 종료 대기 20초: 일반 API는 수 초 안에 끝나고, 라이브톡 WebSocket은 종료 단계에서 서버가 닫고 클라이언트가 다시 붙는다. 사진 업로드(최대 6MB)도 이 안에 끝난다. 더 길면 배포 때 헬스체크 전 공백이 길어진다. compose 대기는 그보다 10초 길게 30초.
+  - 기록 위치는 `prod.env`와 같은 `/etc/snowthing/`. `prod.env`에 넣지 않고 따로 둔 이유는 비밀값 파일을 스크립트가 다시 쓰지 않게 하려는 것. 다른 안: compose 파일의 `env_file`(컨테이너 환경변수일 뿐 이미지 주소 치환에 안 쓰임), `${VAR:?}` 필수값(기록이 없는 서비스가 하나라도 있으면 다른 서비스 배포까지 실패해 버림).
+  - 기록 갱신은 `flock`으로 잠근다. 백엔드와 프론트 배포가 겹쳐도 서로의 줄을 지우지 않는다.
+  - standalone 출력을 택했다. 다른 안 `npm ci --omit=dev`는 next 전체와 런타임 의존성이 그대로 남아 줄어드는 폭이 작다. standalone 서버 파일에는 next.config가 함께 들어가 IKA-58(`poweredByHeader`가 빠진 문제)과 같은 누락이 없다. 컨테이너 응답에 `X-Powered-By`가 없는 것으로 확인했다.
+- 발견된 이슈
+  - Node 20 이미지는 `Intl.DateTimeFormat("ko-KR", { timeStyle: "short" })`가 `AM 3:36`, Node 22는 `오전 3:36`을 낸다(브라우저와 같음). `formatKoreanDate(값, KOREAN_DATE_TIME)`를 서버에서 그리던 화면은 오히려 브라우저와 같아진다. 날짜만 쓰는 형식, `11월 6일 (금)`, 24시간 형식은 두 버전이 같다.
+  - 예전 커밋으로 되돌리는 롤백(rollback_tag)은 그 커밋의 배포 스크립트를 쓰므로 기록 파일을 갱신하지 않는다. 이 PR 이후 커밋으로의 롤백부터 기록된다.
+- 검증
+  - 프론트 이미지 로컬 빌드(`NEXT_PUBLIC_API_BASE_URL=https://snowthing.org`): 이전(origin/main) 1.12GB(내용 240.7MB) → 이후 339MB(내용 83.9MB).
+  - 두 이미지를 3240, 3241로 띄워 홈, 글 상세 모두 200, 보안 헤더 같음, `X-Powered-By` 없음, `/og-default.png`와 `/_next/image` 200. 1280x900 스크린샷 비교: 글 상세는 바이트까지 같고, 홈은 상대 시각(46분, 47분)만 다르다. `docker stop`은 둘 다 1초 안에 종료(코드 143).
+  - `docker compose config`: 두 env 파일을 넘기면 세 서비스가 기록된 digest로, 셸에서 백엔드만 덮으면 백엔드만 새 digest로, 기록 파일 없이는 not-recorded 태그로 해석된다. stop_grace_period 30s, 15s 확인.
+  - 기록 함수: ubuntu 24.04 컨테이너에서 가짜 docker로 처음 채우기(mcp-bot 컨테이너가 없으면 그 줄은 비움), 성공 기록, 다시 채우기가 기존 줄을 덮지 않음, 롤백 되돌림, digest 아닌 값 거부, 동시 기록 20건 뒤 줄 2개 유지를 확인했다.
+  - `bash -n`, shellcheck(기존 SC2016 정보 4건만, 새 경고 없음), 워크플로와 compose YAML 파싱, 프론트 lint, build.
+  - 백엔드 spotlessCheck test 통과(테스트 1412건, 실패 0, 건너뜀 1, 스키마 snowthing_test_ika105).
+- 운영 반영 때 사용자 확인
+  - 첫 배포 뒤 EC2에서 `cat /etc/snowthing/images.env`로 세 줄(백엔드, 프론트, 봇)이 지금 `docker inspect --format '{{.Config.Image}}' snowthing-backend` 등과 같은지 본다. 봇 줄은 봇 컨테이너가 떠 있을 때만 생긴다.
+  - 손으로 다시 띄울 때: 저장소 디렉터리에서 `docker compose --env-file /etc/snowthing/prod.env --env-file /etc/snowthing/images.env -f compose.prod.yml up -d`. 기록 파일을 빼면 not-recorded 태그 pull 오류가 나고 기존 컨테이너는 그대로다.
+  - 배포 직후 라이브톡이 다시 붙는지, 백엔드 종료 로그에 `Graceful shutdown complete`가 찍히는지.
+- 남은 항목: 실제 배포에서의 종료 시간과 기록 파일 생성은 운영 배포 때만 확인할 수 있다.
+- 사용자 결정 필요: 없음.
+
 ## 슬로프끼리 비교, 비슷한 슬로프 국내 일본 모두, 답글 입력칸과 라이브톡 닉네임 정리 (디자인 수정 묶음, 2026-11-20)
 
 - 상태: 구현 완료, PR #163 갱신. 사용자 요청으로 슬로프 기능 후속, 답글 입력칸(파란 줄, 유튜브식 답글), 라이브톡 비회원 닉네임 표시를 PR 하나로 묶는다. 티켓 없이 진행(디자인 수정 묶음).
