@@ -223,7 +223,9 @@ function PostCreateForm() {
         const data = await res.json();
         if (toolDraft) { try { sessionStorage.removeItem(DECK_QUESTION_KEY); } catch { /* Draft cleanup must not prevent navigation. */ } }
         router.push(`/posts/${data.publicId}`);
-      } else if (res.status === 401) {
+      } else if (res.status === 401 || (isAnonCategory && member && res.status === 400 && !(await isStillLoggedIn()))) {
+        // 익명게시판은 비회원 글쓰기가 열려 있어, 로그인이 풀린 회원의 요청에 서버가 401이 아니라
+        // 비밀번호 누락 400을 준다. 회원으로 보낸 요청이 400이면 로그인 상태를 다시 확인해 구분한다.
         // 로그인 화면으로 옮기면 쓴 글이 사라진다. 이 화면에 남아 새 창 로그인을 안내한다.
         // 익명게시판은 비회원도 쓸 수 있으므로 비회원 상태로 바꿔 비밀번호 칸을 보여 준다.
         // 회원 상태로 두면 다시 눌러도 비밀번호 없이 보내 서버가 거부한다.
@@ -240,6 +242,12 @@ function PostCreateForm() {
       setSubmitting(false);
     }
   };
+
+  async function isStillLoggedIn() {
+    return fetch(API_ENDPOINTS.members.me, { credentials: "include" })
+      .then((res) => res.ok)
+      .catch(() => true);
+  }
 
   if (checkingAuth) {
     return (
