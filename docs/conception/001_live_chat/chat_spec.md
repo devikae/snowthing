@@ -247,7 +247,7 @@ content-type:application/json
 - 재연결은 1초부터 최대 30초까지 지수 백오프와 최대 1초 지터를 적용해 장애 직후 동시 재접속을 분산한다.
 - 로그아웃 시 HTTP 세션 ID를 폐기 목록에 넣는다. 이미 연결된 WebSocket이 메시지를 보내더라도 폐기된 세션이면 `CHAT_006`으로 거부한다.
 - 현재 폐기 목록은 단일 인스턴스 Caffeine 캐시다. 다중 서버 전환 시 모든 서버가 같은 폐기 상태를 보도록 Redis 저장소로 교체한다.
-- EC2 보안 그룹의 80·443은 고객 관리형 접두사 목록 `cloudflare-ipv4`만 허용한다. Nginx는 공식 Cloudflare IPv4 15개, IPv6 7개 대역만 trusted proxy로 등록하고 `CF-Connecting-IP`를 `$remote_addr`로 복원한다.
+- EC2 보안 그룹의 80, 443은 고객 관리형 접두사 목록 `cloudflare-ipv4`만 허용한다. Nginx는 공식 Cloudflare IPv4 15개, IPv6 7개 대역만 trusted proxy로 등록하고 `CF-Connecting-IP`를 `$remote_addr`로 복원한다.
 - `/ws-chat`은 복원한 사용자 IP 기준 동시 연결 5개, 초당 신규 요청 3개와 burst 6개로 제한한다. 다른 HTTP 경로는 빈 제한 키를 사용해 이 제한에서 제외한다.
 - 백엔드는 직접 연결 주소가 로컬 루프백이나 사설 대역(호스트 Nginx, Docker 게이트웨이)인 경우에만 전달 헤더를 신뢰한다. 외부 주소에서 백엔드로 직접 들어온 요청은 전달 헤더를 무시해 IP 위조를 막는다. 먼저 `X-Forwarded-For`를 오른쪽부터 검사해 신뢰 프록시 구간을 제외한 첫 주소를 실제 사용자 IP로 선택한다. 맨 오른쪽 값은 Cloudflare나 Nginx가 직접 붙이므로 클라이언트가 바꿀 수 없다. `X-Real-IP`는 Nginx location이 덮어쓰지 않으면 클라이언트 값이 그대로 오므로 전달 체인에 쓸 주소가 없을 때만 쓴다.
 - 감사 로그는 비동기 큐가 가득 차더라도 채팅 요청 스레드를 기다리게 하지 않는다. 서비스 가용성을 우선하는 대신 폭주 구간의 감사 로그 일부가 버려질 수 있으므로 큐 사용량과 파일 수집 상태를 운영 지표로 감시한다.
