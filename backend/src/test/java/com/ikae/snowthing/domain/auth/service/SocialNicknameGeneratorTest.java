@@ -2,6 +2,11 @@ package com.ikae.snowthing.domain.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.IntStream;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -12,39 +17,37 @@ class SocialNicknameGeneratorTest {
     private final SocialNicknameGenerator generator = new SocialNicknameGenerator();
 
     @Test
-    @DisplayName("소셜 이름에 운영자나 관리자가 있으면 그 이름을 쓰지 않는다")
-    void reservedNickname_IsNotUsed() {
-        assertThat(generator.initialCandidate("눈팅운영자")).startsWith("보더");
-        assertThat(generator.generateWithSuffix("관리자")).startsWith("보더");
+    @DisplayName("가장 긴 단어끼리 붙어도 닉네임 규칙(2~10자 한글, 영문, 숫자) 안이다")
+    void longestCombinationFitsPolicy() {
+        int longestAdjective =
+                Arrays.stream(SocialNicknameGenerator.ADJECTIVES)
+                        .mapToInt(String::length)
+                        .max()
+                        .orElseThrow();
+        int longestNoun =
+                Arrays.stream(SocialNicknameGenerator.NOUNS)
+                        .mapToInt(String::length)
+                        .max()
+                        .orElseThrow();
+        assertThat(longestAdjective + longestNoun + 2)
+                .isLessThanOrEqualTo(NicknamePolicy.MAX_LENGTH);
+        IntStream.range(0, 1_000)
+                .forEach(i -> assertThat(generator.generate()).matches(NicknamePolicy.REGEXP));
     }
 
     @Test
-    @DisplayName("유효한 2~10자 한글/영문/숫자 닉네임은 그대로 첫 후보로 사용한다")
-    void initialCandidate_ValidNickname_ReturnsSanitized() {
-        String candidate = generator.initialCandidate("설원보더123");
-
-        assertThat(candidate).isEqualTo("설원보더123");
-        assertThat(candidate).matches(NicknamePolicy.REGEXP);
+    @DisplayName("운영진처럼 보이는 말은 쓰지 않는다")
+    void noReservedWords() {
+        IntStream.range(0, 1_000)
+                .forEach(
+                        i -> assertThat(NicknamePolicy.isReserved(generator.generate())).isFalse());
     }
 
     @Test
-    @DisplayName("특수문자나 공백이 섞인 소셜 닉네임은 허용 문자만 남기며 정책을 만족한다")
-    void initialCandidate_SpecialChars_SanitizesAndMatchesPolicy() {
-        String candidate = generator.initialCandidate("❄️ 스노우_보더!@# ");
-
-        assertThat(candidate).isEqualTo("스노우보더");
-        assertThat(candidate).matches(NicknamePolicy.REGEXP);
-    }
-
-    @Test
-    @DisplayName("닉네임이 비어있거나 1자 이하이거나 10자를 초과하면 접두사 + 4자리 난수 닉네임을 생성한다")
-    void initialCandidate_InvalidLength_GeneratesFallbackMatchingPolicy() {
-        String fromBlank = generator.initialCandidate("   ");
-        String fromSingleChar = generator.initialCandidate("김");
-        String fromTooLong = generator.initialCandidate("열글자를초과하는아주긴소셜닉네임입니다");
-
-        assertThat(fromBlank).startsWith("보더").hasSize(6).matches(NicknamePolicy.REGEXP);
-        assertThat(fromSingleChar).startsWith("보더").hasSize(6).matches(NicknamePolicy.REGEXP);
-        assertThat(fromTooLong).startsWith("열글자를초과").hasSize(10).matches(NicknamePolicy.REGEXP);
+    @DisplayName("여러 번 만들면 서로 다른 닉네임이 고르게 나온다")
+    void nicknamesAreDiverse() {
+        Set<String> nicknames = new HashSet<>();
+        IntStream.range(0, 200).forEach(i -> nicknames.add(generator.generate()));
+        assertThat(nicknames.size()).isGreaterThan(190);
     }
 }
