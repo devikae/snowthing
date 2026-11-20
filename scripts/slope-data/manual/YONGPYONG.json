@@ -1,0 +1,62 @@
+{
+  "_source": "https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png (page https://www.yongpyong.co.kr/kor/skiNboard/slope/slopeMap.do)",
+  "_drawn_source": "https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png",
+  "_anchors_note": "Only 3 local anchors (exact affine). The stylized map does not fit a 4-anchor affine: adding Silver peak left 90-120 m residuals at the base. The 3 points sit right around Dragon Park.",
+  "_anchors": [
+    {
+      "px": [
+        505,
+        445
+      ],
+      "lat": 37.64398,
+      "lon": 128.67877,
+      "what": "Rainbow gondola bottom station"
+    },
+    {
+      "px": [
+        640,
+        370
+      ],
+      "lat": 37.63888,
+      "lon": 128.67821,
+      "what": "Silver slope end (red arrow tip), next to Silver lift bottom and Rainbow Paradise end"
+    },
+    {
+      "px": [
+        615,
+        462
+      ],
+      "lat": 37.64077,
+      "lon": 128.67767,
+      "what": "Mega Green slope end (blue arrow tip)"
+    }
+  ],
+  "드래곤파크": {
+    "drawPx": [
+      [
+        626,
+        379
+      ],
+      [
+        617,
+        384
+      ],
+      [
+        596,
+        395
+      ],
+      [
+        574,
+        406
+      ],
+      [
+        552,
+        417
+      ],
+      [
+        530,
+        428
+      ]
+    ]
+  }
+}

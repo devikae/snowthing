@@ -36,16 +36,50 @@ test('requested resort order comes first without mutating the API data or losing
   assert.equal(input.map(resort=>resort.code).join(','),original);
 });
 
-test('known upstream failures keep the HLS player so a resumed stream can play again',()=>{
-  for(const [resort,sourceUrl] of [
-    ['JISAN','https://ant.livecity.co.kr:5443/jisancam/streams/jisan1.m3u8'],
-    ['MUJU','/stream-proxy/muju/02/playlist.m3u8'],
-    ['OAK_VALLEY','https://cctv-oak9.ktcdn.co.kr/cctv/ch2.stream/chunklist.m3u8'],
+// IKA-100 (2026-11-20): 공식 페이지가 쓰는 원본에서도 영상이 나오지 않는 카메라는 공식 페이지에서 보기로 돌린다.
+// 이전에는 재생기를 유지했지만, 무주 02/03은 프록시 수정으로 다시 나오고 나머지는 원본이 꺼져 있다.
+test('off-air cameras confirmed on the official source open the official page instead of an empty player',()=>{
+  for(const [resort,sourceType,sourceUrl] of [
+    ['JISAN','HLS','https://ant.livecity.co.kr:5443/jisancam/streams/jisan1.m3u8'],
+    ['JISAN','HLS','https://ant.livecity.co.kr:5443/jisancam/streams/jisan5.m3u8'],
+    ['OAK_VALLEY','HLS','https://cctv-oak9.ktcdn.co.kr/cctv/ch2.stream/chunklist.m3u8'],
+    ['WELLI_HILLI','HLS','https://live.wellihillipark.com/wellihillipark/_definst_/cam05.stream/playlist.m3u8'],
+    ['VIVALDI','IFRAME','/vivaldi.html?channel=8&serial=TW0014A15451&autoplay=true'],
+    ['VIVALDI','IFRAME','/vivaldi.html?channel=10&serial=TW0014A15451&autoplay=true'],
   ]){
-    const camera=updateOfficialCameraSource(resort,{code:'CAM_01',name:'camera',sourceType:'HLS',sourceUrl,externalPageUrl:null,displayOrder:1});
-    assert.equal(camera.sourceType,'HLS');
+    const camera=updateOfficialCameraSource(resort,{code:'CAM_01',name:'camera',sourceType,sourceUrl,externalPageUrl:'https://official.example/cam',displayOrder:1});
+    assert.equal(camera.sourceType,'EXTERNAL_LINK',sourceUrl);
     assert.equal(camera.sourceIssue,'upstream-unavailable');
-    assert.ok(camera.availabilityNote.includes('원본'));
+    assert.equal(camera.externalPageUrl,'https://official.example/cam');
+    assert.ok(camera.availabilityNote.includes('공식 페이지'));
+  }
+});
+
+test('cameras still on air keep their player, including streams fixed by the proxy',()=>{
+  for(const [resort,sourceType,sourceUrl] of [
+    ['MUJU','HLS','/stream-proxy/muju/02/playlist.m3u8'],
+    ['JISAN','HLS','https://ant.livecity.co.kr:5443/jisancam/streams/jisan2.m3u8'],
+    ['OAK_VALLEY','HLS','https://cctv-oak9.ktcdn.co.kr/cctv/ch5.stream/chunklist.m3u8'],
+    ['WELLI_HILLI','HLS','https://live.wellihillipark.com/wellihillipark/_definst_/cam04.stream/playlist.m3u8'],
+    ['VIVALDI','IFRAME','/vivaldi.html?channel=1&serial=TW0014A15451&autoplay=true'],
+    ['VIVALDI','IFRAME','/vivaldi.html?channel=8&serial=XU0121A37904&autoplay=true'],
+    ['VIVALDI','IFRAME','/vivaldi.html?channel=10&serial=TD0314A17496&autoplay=true'],
+  ]){
+    const input={code:'CAM_01',name:'camera',sourceType,sourceUrl,externalPageUrl:null,displayOrder:1};
+    assert.equal(updateOfficialCameraSource(resort,input),input,sourceUrl);
+  }
+});
+
+test('moved official webcam pages replace only the confirmed old links',()=>{
+  for(const [resort,from,to] of [
+    ['OAK_VALLEY','https://app.oakvalley.co.kr/mobileapp/reserve/ski/webcam.do','https://oakvalley.co.kr/ski/introduction/realtime'],
+    ['WELLI_HILLI','https://m.wellihillipark.com/customer/webcam','https://www.wellihillipark.com/home/customer/webcam'],
+    ['VIVALDI','https://mice.sonohotelsresorts.com/daemyung.vp.utill.09_02_02_01.ds/dmparse.dm?areaType=S','https://www.sonohotelsresorts.com/skiboard'],
+  ]){
+    const camera={code:'CAM_02',name:'camera',sourceType:'HLS',sourceUrl:'https://custom.example/live.m3u8',externalPageUrl:from,displayOrder:2};
+    assert.equal(updateOfficialCameraSource(resort,camera).externalPageUrl,to);
+    const custom={...camera,externalPageUrl:'https://custom.example/page'};
+    assert.equal(updateOfficialCameraSource(resort,custom),custom);
   }
 });
 

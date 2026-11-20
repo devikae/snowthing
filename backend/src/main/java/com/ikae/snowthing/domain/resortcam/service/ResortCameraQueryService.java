@@ -35,7 +35,7 @@ public class ResortCameraQueryService {
                                                 Collectors.toList())));
 
         List<ResortCameraGroupResponse> resorts =
-                resortRepository.findAllByActiveTrueOrderByDisplayOrderAscIdAsc().stream()
+                resortRepository.findServiceResorts().stream()
                         .filter(resort -> camerasByResort.containsKey(resort.getCode()))
                         .map(resort -> toResponse(resort, camerasByResort))
                         .toList();
