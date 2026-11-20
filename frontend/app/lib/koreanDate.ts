@@ -59,6 +59,14 @@ function kstParts(date: Date) {
   return { month: parts.month, day: parts.day, hour: parts.hour, minute: parts.minute };
 }
 
+/** KST 기준 "HH:mm"(00~23시). 설질 제보 시각에 쓴다. */
+export function formatKstTime(value: string | Date) {
+  const date = toDate(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const { hour, minute } = kstParts(date);
+  return `${hour}:${minute}`;
+}
+
 /** KST 기준 "MM.DD HH:mm". 댓글과 카풀 출발 시각 등에 쓴다. */
 export function formatShortDateTime(value: string | Date) {
   const date = toDate(value);

@@ -1,4 +1,4 @@
-import { formatKoreanDate } from "./koreanDate";
+import { formatKoreanDate, formatKstTime } from "./koreanDate";
 
 export function formatKoreanCalendarDate(date: Date): string {
   return formatKoreanDate(date);
@@ -31,17 +31,7 @@ export function getResortReportDisplayName(name: string): string {
   return RESORT_REPORT_DISPLAY_NAMES[name] ?? name;
 }
 
+// ko-KR에 hour12: false를 주면 실행 환경에 따라 자정이 "24:05"로 나와서(Node 20, h24) KST 숫자를 직접 조립한다.
 export function formatReportTime(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(date);
-  } catch {
-    return "";
-  }
+  return formatKstTime(dateString);
 }
-
