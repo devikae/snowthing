@@ -382,6 +382,35 @@ class MarketListingControllerTest {
                 .andExpect(jsonPath("$.tradeStatus").value("SOLD"));
     }
 
+    @Test
+    void 판매_완료_글은_기본_목록에서_빠지고_includeSold면_보인다() throws Exception {
+        String publicId = createListing();
+        mockMvc.perform(
+                        patch("/api/v1/market-listings/{publicId}/trade-status", publicId)
+                                .with(csrf())
+                                .with(user(userDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"tradeStatus\":\"SOLD\",\"version\":0}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/market-listings").param("size", "50").with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.content[*].publicId")
+                                .value(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.hasItem(publicId))));
+        mockMvc.perform(
+                        get("/api/v1/market-listings")
+                                .param("size", "50")
+                                .param("includeSold", "true")
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.content[*].publicId")
+                                .value(org.hamcrest.Matchers.hasItem(publicId)));
+    }
+
     private String createListing() throws Exception {
         String response =
                 mockMvc.perform(

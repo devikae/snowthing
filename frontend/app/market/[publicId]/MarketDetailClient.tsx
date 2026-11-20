@@ -298,6 +298,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void copyContact(listing.contact ?? "")}>복사</button>{copyNotice && <small role="status">{copyNotice}</small>}</div>}
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />
             {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중" : "삭제"}</button>}</div>}
+            {listing.canEdit && listing.tradeStatus === "SOLD" && <p className="market-sold-note">판매 완료 글은 장터 목록 기본 보기에서 숨겨져요. 목록의 거래 상태에서 &apos;전체(판매 완료 포함)&apos;를 고르면 보여요.</p>}
             <ReportButton targetType="POST" targetId={publicId} />
           </section>
         </article>

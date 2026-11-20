@@ -60,6 +60,7 @@ public class MarketListingController {
             @RequestParam(required = false) String categoryCode,
             @RequestParam(required = false) ProductCondition productCondition,
             @RequestParam(required = false) TradeStatus tradeStatus,
+            @RequestParam(defaultValue = "false") boolean includeSold,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
         requireGuestAccess(userDetails);
@@ -70,7 +71,13 @@ public class MarketListingController {
         }
         return ResponseEntity.ok(
                 marketListingService.search(
-                        page, size, keyword, categoryCode, productCondition, tradeStatus));
+                        page,
+                        size,
+                        keyword,
+                        categoryCode,
+                        productCondition,
+                        tradeStatus,
+                        includeSold));
     }
 
     @PostMapping

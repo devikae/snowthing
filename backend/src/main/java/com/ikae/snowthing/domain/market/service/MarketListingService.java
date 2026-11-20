@@ -90,7 +90,8 @@ public class MarketListingService {
             String keyword,
             String categoryCode,
             ProductCondition productCondition,
-            TradeStatus tradeStatus) {
+            TradeStatus tradeStatus,
+            boolean includeSold) {
         validatePage(page, size);
         Page<MarketListing> result =
                 marketListingRepository.search(
@@ -98,6 +99,7 @@ public class MarketListingService {
                         categoryCode,
                         productCondition,
                         tradeStatus,
+                        includeSold,
                         PageRequest.of(page - 1, size));
         Map<Long, String> thumbnails = findThumbnailUrls(result.getContent());
         List<MarketListingSummaryResponse> content =

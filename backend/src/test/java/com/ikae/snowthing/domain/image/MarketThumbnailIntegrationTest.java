@@ -185,7 +185,7 @@ class MarketThumbnailIntegrationTest {
                             any(ImageProcessingGate.class));
             assertThat(previewThumbnail(listingId)).endsWith(target);
             assertThat(
-                            listings.search(1, 50, null, null, null, null).content().stream()
+                            listings.search(1, 50, null, null, null, null, false).content().stream()
                                     .filter(item -> item.publicId().equals(listingId))
                                     .findFirst()
                                     .orElseThrow()
