@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ikae.snowthing.domain.charactertest.dto.CharacterAdminGroupRequest;
 import com.ikae.snowthing.domain.charactertest.dto.CharacterGroupPreviewResponse;
 import com.ikae.snowthing.domain.charactertest.dto.CharacterJoinRequest;
 import com.ikae.snowthing.domain.charactertest.dto.CharacterJoinResponse;
@@ -58,6 +59,13 @@ public class CharacterTestController {
                 clientIpResolver.resolve(httpRequest),
                 ContentWriteRateLimiter.Action.CHARACTER_GROUP_CREATE);
         return created(groupService.create(request));
+    }
+
+    /** 관리자 전용(/api/v1/admin/**). 참여하지 않고 동호회용 모임 링크만 만든다. */
+    @PostMapping("/api/v1/admin/character-groups")
+    public ResponseEntity<CharacterGroupPreviewResponse> createEmptyGroup(
+            @RequestBody CharacterAdminGroupRequest request) {
+        return created(groupService.createEmpty(request.name()));
     }
 
     @GetMapping("/api/v1/character-groups/{publicId}")

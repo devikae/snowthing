@@ -103,6 +103,13 @@ async function postJoin(url: string, input: JoinInput): Promise<JoinResponse> {
   return response.json();
 }
 
+/** 운영자 전용. 참여하지 않고 동호회 오픈채팅에 뿌릴 빈 모임을 만든다. */
+export async function createClubGroup(name: string): Promise<GroupPreview> {
+  const response = await csrfFetch(`${API_BASE_URL}/api/v1/admin/character-groups`, { method: "POST", headers: jsonHeaders, body: JSON.stringify({ name }) });
+  if (!response.ok) throw new Error(await readErrorMessage(response, "모임 링크를 만들지 못했어요. 다시 시도해 주세요."));
+  return response.json();
+}
+
 export function createGroup(input: JoinInput) {
   return postJoin(GROUPS, input);
 }

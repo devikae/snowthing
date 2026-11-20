@@ -288,6 +288,64 @@ class CharacterTestApiIntegrationTest {
                 .isZero();
     }
 
+    @Test
+    void 관리자는_참여하지_않고_동호회용_빈_모임을_만들고_다른_사람은_못_만든다() throws Exception {
+        String body = "{\"name\":\"설원 동호회\"}";
+        mvc.perform(
+                        post("/api/v1/admin/character-groups")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                        post("/api/v1/admin/character-groups")
+                                .with(csrf())
+                                .with(
+                                        org.springframework.security.test.web.servlet.request
+                                                .SecurityMockMvcRequestPostProcessors.user("member")
+                                                .roles("USER"))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().isForbidden());
+
+        Map<?, ?> group =
+                read(
+                        mvc.perform(
+                                        post("/api/v1/admin/character-groups")
+                                                .with(csrf())
+                                                .with(
+                                                        org.springframework.security.test.web
+                                                                .servlet.request
+                                                                .SecurityMockMvcRequestPostProcessors
+                                                                .user("admin")
+                                                                .roles("ADMIN"))
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(body))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.name").value("설원 동호회"))
+                                .andExpect(jsonPath("$.participantCount").value(0)));
+        String groupId = (String) group.get("publicId");
+        assertThat(count("character_participant")).isZero();
+
+        Map<?, ?> first =
+                read(
+                        mvc.perform(
+                                        post("/api/v1/character-groups/"
+                                                        + groupId
+                                                        + "/participants")
+                                                .with(csrf())
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(joinBody("첫회원")))
+                                .andExpect(status().isCreated()));
+        mvc.perform(
+                        get("/api/v1/character-groups/" + groupId + "/map")
+                                .header(TOKEN_HEADER, first.get("accessToken")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groupName").value("설원 동호회"))
+                .andExpect(jsonPath("$.participantCount").value(1))
+                .andExpect(jsonPath("$.owner").value(false));
+    }
+
     private Map<?, ?> createGroup(String nickname) throws Exception {
         return read(
                 mvc.perform(
