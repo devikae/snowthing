@@ -4001,21 +4001,38 @@ html[data-theme="dark"] .snow-empty-copy strong {
   font-weight: 800;
 }
 
+/* 표처럼 칸을 맞춘다. 리조트마다 이름, D-n, 날짜 세 칸이고 숫자는 같은 폭 글자를 쓴다. */
 .opening-dday-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
+  display: grid;
+  flex: 1 1 520px;
+  grid-template-columns: repeat(auto-fill, minmax(13.5em, max-content));
+  gap: 6px 20px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .opening-dday-list li {
-  display: inline-flex;
+  display: grid;
+  /* 이름 칸 폭을 고정해 줄마다 D-n과 날짜가 같은 세로줄에 선다. 다섯 글자 이름까지 들어간다. */
+  grid-template-columns: 5.6em 3.2em 3.2em;
+  justify-content: start;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   font-size: 14px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.opening-dday-list li > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opening-dday-list li > em,
+.opening-dday-list li > small {
+  text-align: right;
 }
 
 .opening-dday-list em {
@@ -4047,6 +4064,16 @@ html[data-theme="dark"] .snow-empty-copy strong {
 @media (max-width: 640px) {
   .opening-dday-more {
     display: none;
+  }
+
+  .opening-dday-banner strong {
+    flex-basis: 100%;
+  }
+
+  .opening-dday-list {
+    flex-basis: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
   }
 }
 
@@ -4107,9 +4134,24 @@ html[data-theme="dark"] .snow-empty-copy strong {
   .filter-pills button,
   .home-tier-1 .board-tabs button,
   html[data-theme="dark"] .home-tier-1 .board-tabs button { height: 36px; }
-  /* 홈 탭 8개가 390px 폰 한 줄에 다 보이게 여백을 줄이고 남는 폭은 나눠 갖는다. */
+  /* 홈 탭 8개는 4칸 2줄 격자로 둔다. 한 줄에 밀어 넣으면 글자가 작고 칸 폭이 들쭉날쭉해 보인다. */
+  .home-tier-1 .board-tabs > .filter-pills {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+    overflow: visible;
+    background: var(--snow-surface-low);
+  }
   .home-tier-1 .board-tabs button,
-  html[data-theme="dark"] .home-tier-1 .board-tabs button { flex: 1 0 auto; padding-inline: 5px; }
+  html[data-theme="dark"] .home-tier-1 .board-tabs button {
+    display: flex;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 4px;
+    font-size: 14px;
+    text-align: center;
+  }
   /* 댓글의 답글 버튼과 로그인 안내 링크 터치 영역 */
   .comment-youtube-actions button { min-height: 32px; padding-inline: 4px; }
   .comment-login-guide a { display: inline-flex; min-height: 32px; align-items: center; }
