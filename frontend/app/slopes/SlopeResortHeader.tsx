@@ -54,9 +54,9 @@ export function SlopeResortHeader({ resort, title, chips, hasCam, backToResort =
             슬로프캠
           </Link>
         )}
-        <Link className={camStyles.backLink} href={`/slopes/compare?codes=${resort.code}`}>
+        <Link className={camStyles.backLink} href="/slopes/compare">
           <span className="material-symbols-outlined" aria-hidden="true">compare_arrows</span>
-          비교
+          슬로프 비교
         </Link>
       </div>
     </header>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Client } from "@stomp/stompjs";
@@ -20,6 +21,7 @@ export interface MemberProfile {
 interface ChatSender {
   publicId: string;
   nickname: string;
+  profileImageUrl?: string | null;
 }
 
 interface ChatMessage {
@@ -89,6 +91,9 @@ interface LiveChatSectionProps {
   currentMember: MemberProfile | null;
 }
 
+// 바닥에서 이만큼 안이면 바닥에 붙어 있는 것으로 보고 새 메시지에 따라 내린다.
+const BOTTOM_STICK_PX = 120;
+
 export default function LiveChatSection({ currentMember }: LiveChatSectionProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -110,7 +115,10 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   // 관리자가 비회원 발신을 켜면 로그인 없이도 보낼 수 있다. 서버가 같은 설정으로 다시 확인한다.
   const [anonymousChatEnabled, setAnonymousChatEnabled] = useState(false);
   const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => new Set());
+  // 비회원 닉네임은 서버가 IP로 정한다. 내가 보낸 메시지가 돌아왔을 때 그 이름을 받아 둬야 본인이 자기 이름을 안다.
+  const [myGuestNickname, setMyGuestNickname] = useState<string | null>(null);
   const pendingGuestSendsRef = useRef<{ content: string; time: number }[]>([]);
+  const memberPublicId = currentMember?.publicId;
   const canSend = Boolean(currentMember) || anonymousChatEnabled;
   const isAdmin = currentMember?.role === "ROLE_ADMIN";
   const [banTargetId, setBanTargetId] = useState<string | null>(null);
@@ -144,7 +152,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     const el = scrollContainerRef.current;
     if (!el) return;
     const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const atBottom = distanceToBottom < 35;
+    const atBottom = distanceToBottom < BOTTOM_STICK_PX;
     isAtBottomRef.current = atBottom;
     setShowScrollBottom(!atBottom);
   };
@@ -202,16 +210,26 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             const pendingIndex = pendingGuestSendsRef.current.findIndex(
               (pending) => pending.content === newMsg.content && Date.now() - pending.time < GUEST_ECHO_WINDOW_MILLIS,
             );
+            const mine =
+              (memberPublicId !== undefined && newMsg.sender.publicId === memberPublicId) ||
+              (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-"));
+            // 새 메시지를 그리기 전에 바닥 근처였는지 본다. 그린 뒤에는 메시지 높이만큼 멀어져 있다.
+            const feed = scrollContainerRef.current;
+            const stick =
+              mine || !feed || feed.scrollHeight - feed.scrollTop - feed.clientHeight < BOTTOM_STICK_PX;
             if (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-")) {
               pendingGuestSendsRef.current.splice(pendingIndex, 1);
               setMyGuestMessageIds((previous) => new Set(previous).add(newMsg.messageId));
+              // IP가 바뀌면(휴대폰 등) 이름도 바뀌므로 가장 최근 이름으로 둔다.
+              setMyGuestNickname(newMsg.sender.nickname);
             }
             setMessages((previous) => mergeMessages(previous, [newMsg]));
 
-            // 스크롤이 바닥 근처에 있을 때만 자동 스크롤
+            // 바닥 근처였거나 내가 보낸 메시지면 바로 내린다. 부드러운 스크롤은 움직이는 중에 다음 메시지가 오면
+            // 바닥이 아니라고 판단해 멈췄다. 그래서 새 메시지는 즉시 내린다.
             setTimeout(() => {
-              if (isAtBottomRef.current) {
-                scrollToBottom("smooth");
+              if (stick) {
+                scrollToBottom("auto");
               } else {
                 setShowScrollBottom(true);
               }
@@ -269,7 +287,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       client.deactivate();
       stompClientRef.current = null;
     };
-  }, [currentMember?.publicId]);
+  }, [memberPublicId]);
 
   // 5. 토스트 에러 자동 닫기 (4초)
   useEffect(() => {
@@ -403,7 +421,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
               return (
                 <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
                   <div className="live-chat-message-meta">
+                    {!isMine && <CommentProfileAvatar nickname={msg.sender.nickname} profileImageUrl={msg.sender.profileImageUrl} className="live-chat-avatar" size={24} />}
                     {!isMine && <strong>{msg.sender.nickname}</strong>}
+                    {isMine && !currentMember && <strong>{msg.sender.nickname} (나)</strong>}
                     <span className="live-chat-message-tag">
                       <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
                       {resort ? resort.koreanName : "일반"}
@@ -499,7 +519,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             currentMember
               ? "메시지를 입력하세요"
               : anonymousChatEnabled
-                ? "로그인 없이 대화할 수 있어요 (닉네임 자동)"
+                ? myGuestNickname
+                  ? `${myGuestNickname}(으)로 대화 중이에요`
+                  : "로그인 없이 대화할 수 있어요 (닉네임 자동)"
                 : "로그인하고 라이브톡에 참여해 보세요"
           }
           className="live-chat-compose-input capsule-input"

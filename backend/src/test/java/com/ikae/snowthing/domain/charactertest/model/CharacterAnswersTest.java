@@ -111,6 +111,47 @@ class CharacterAnswersTest {
         assertThat(raised.level()).isEqualTo(CompatibilityLevel.BEST);
     }
 
+    @Test
+    void 일곱번_웃음은_유형에서_A와_같이_세고_웃참_실패_뱃지를_준다() {
+        // 7번만 A에서 C로 바꿔도 유형, 스탯, 근거 질문은 같다.
+        CharacterAnswers coach = new CharacterAnswers("AABAABABBBBBAAA");
+        CharacterAnswers laugh = new CharacterAnswers("AABAABCBBBBBAAA");
+        assertThat(laugh.type()).isEqualTo(coach.type());
+        assertThat(laugh.stats()).isEqualTo(coach.stats());
+        assertThat(laugh.highlightQuestions()).isEqualTo(coach.highlightQuestions());
+        assertThat(laugh.badges()).containsExactly(CharacterAnswers.BADGE_LAUGH_FIRST);
+        assertThat(coach.badges()).isEmpty();
+
+        // T/F 축: 웃음(C) 하나와 A 하나면 T가 다수다.
+        assertThat(new CharacterAnswers("AAAAAACABAAAAAA").type()).isEqualTo(CharacterType.ESTJ);
+        assertThat(new CharacterAnswers("AAAAAACBBAAAAAA").type()).isEqualTo(CharacterType.ESFJ);
+        // 다수 쪽 근거가 웃음이면 7번이 근거 질문이 된다.
+        assertThat(new CharacterAnswers("AAAAAACABAAAAAA").highlightQuestions().get(2))
+                .isEqualTo(7);
+    }
+
+    @Test
+    void 일곱번은_웃은_사람끼리만_같은_답으로_센다() {
+        CharacterAnswers laugh = new CharacterAnswers("AAAAAACAAAAAAAA");
+        assertThat(laugh.matchCount(laugh)).isEqualTo(12);
+        assertThat(laugh.matchCount(new CharacterAnswers("AAAAAAAAAAAAAAA"))).isEqualTo(11);
+    }
+
+    @Test
+    void 일곱번에_웃음이_있어도_모든_답이_동점_없이_16유형_중_하나로_판정된다() {
+        Set<CharacterType> reached = EnumSet.noneOf(CharacterType.class);
+        for (int bits = 0; bits < 4096; bits++) {
+            for (char seventh : new char[] {'A', 'B', 'C'}) {
+                StringBuilder value = new StringBuilder(12);
+                for (int index = 0; index < 12; index++) {
+                    value.append(index == 6 ? seventh : (bits >> index & 1) == 0 ? 'A' : 'B');
+                }
+                reached.add(new CharacterAnswers(value + "CBA").type());
+            }
+        }
+        assertThat(reached).containsExactlyInAnyOrder(CharacterType.values());
+    }
+
     @ParameterizedTest
     @ValueSource(
             strings = {
@@ -118,6 +159,8 @@ class CharacterAnswersTest {
                 "AAAAAAAAAAAA",
                 "AAAAAAAAAAAAAAAA",
                 "CAAAAAAAAAAAAAA",
+                "AAAAACAAAAAAAAA",
+                "AAAAAAACAAAAAAA",
                 "AAAAAAAAAAAAAAD",
                 "aaaaaaaaaaaaaaa"
             })

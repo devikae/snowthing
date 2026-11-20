@@ -65,6 +65,17 @@ class SeasonOpeningServiceTest {
                         "BOOLEAN",
                         "메인 개장 D-DAY 배너 표시 여부",
                         "SYSTEM");
+        // 문구 줄은 기본 문구로 이미 있다고 둔다. 문구를 보내지 않는 저장은 문구를 바꾸지 않는다.
+        lenient()
+                .when(configRepository.findById(SeasonOpeningService.KEY_BANNER_TITLE))
+                .thenReturn(
+                        Optional.of(
+                                new SystemConfig(
+                                        SeasonOpeningService.KEY_BANNER_TITLE,
+                                        SeasonOpeningService.DEFAULT_BANNER_TITLE,
+                                        "STRING",
+                                        "메인 개장 D-DAY 배너 맨 앞 문구",
+                                        "SYSTEM")));
         lenient()
                 .when(repository.findAllByOrderByBannerOrderAscIdAsc())
                 .thenReturn(new ArrayList<>(List.of(yongpyong, high1)));
@@ -143,6 +154,31 @@ class SeasonOpeningServiceTest {
                 "admin");
 
         verify(actionLogger, never()).record(any(), any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("배너 문구를 바꾸면 공백을 정리해 저장하고 조치 기록에 남긴다")
+    void updatesBannerTitle() {
+        when(configRepository.findById(SeasonOpeningService.KEY_BANNER_ENABLED))
+                .thenReturn(Optional.of(bannerSwitch));
+
+        SeasonOpeningResponse response =
+                service.update(
+                        new SeasonOpeningUpdateRequest(
+                                true,
+                                "  개장   임박 ",
+                                List.of(
+                                        new Item("YONGPYONG", NOV_22, true, true, 1),
+                                        new Item("HIGH1", NOV_24, true, true, 2))),
+                        "admin");
+
+        assertThat(response.bannerTitle()).isEqualTo("개장 임박");
+        verify(actionLogger)
+                .record(
+                        eq(AdminActionType.SEASON_OPENING_UPDATE),
+                        eq(AdminTargetType.SEASON_OPENING),
+                        eq("ALL"),
+                        eq("배너 켬, 문구 \"개장 임박\""));
     }
 
     @Test
@@ -238,7 +274,7 @@ class SeasonOpeningServiceTest {
     }
 
     private static SeasonOpeningUpdateRequest request(boolean enabled, Item... items) {
-        return new SeasonOpeningUpdateRequest(enabled, List.of(items));
+        return new SeasonOpeningUpdateRequest(enabled, null, List.of(items));
     }
 
     private static SeasonOpening opening(

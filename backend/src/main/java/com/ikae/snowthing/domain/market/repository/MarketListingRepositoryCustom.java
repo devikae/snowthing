@@ -16,6 +16,7 @@ public interface MarketListingRepositoryCustom {
             String categoryCode,
             ProductCondition productCondition,
             TradeStatus tradeStatus,
+            boolean includeSold,
             Pageable pageable);
 
     List<MarketListing> findLatestVisible(int limit);

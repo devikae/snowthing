@@ -66,8 +66,8 @@ class ChatControllerMemberStatusTest {
     @Test
     @DisplayName("연결의 스냅샷이 활성이어도 현재 상태가 정지면 메시지를 거부한다")
     void suspendedMemberCannotSendThroughOpenConnection() {
-        given(memberRepository.findStatusById(MEMBER_ID))
-                .willReturn(Optional.of(MemberStatus.SUSPENDED));
+        given(memberRepository.findById(MEMBER_ID))
+                .willReturn(Optional.of(member("보더", MemberStatus.SUSPENDED)));
 
         assertThatThrownBy(() -> controller.handleChatMessage(REQUEST, principal, headers()))
                 .isInstanceOf(CustomException.class)
@@ -80,11 +80,41 @@ class ChatControllerMemberStatusTest {
     @DisplayName("현재 상태가 활성이면 메시지를 처리한다")
     void activeMemberCanSend() {
         ChatMessageResponse response = mock(ChatMessageResponse.class);
-        given(memberRepository.findStatusById(MEMBER_ID))
-                .willReturn(Optional.of(MemberStatus.ACTIVE));
+        given(memberRepository.findById(MEMBER_ID))
+                .willReturn(Optional.of(member("보더", MemberStatus.ACTIVE)));
         given(chatService.processMessage(any(), any(), any())).willReturn(response);
 
         assertThat(controller.handleChatMessage(REQUEST, principal, headers())).isSameAs(response);
+    }
+
+    @Test
+    @DisplayName("접속 뒤 닉네임을 바꾸면 메시지는 바뀐 닉네임으로 나간다")
+    void usesCurrentNickname() {
+        given(memberRepository.findById(MEMBER_ID))
+                .willReturn(Optional.of(member("새닉네임", MemberStatus.ACTIVE)));
+        given(chatService.processMessage(any(), any(), any()))
+                .willReturn(mock(ChatMessageResponse.class));
+
+        controller.handleChatMessage(REQUEST, principal, headers());
+
+        verify(chatService)
+                .processMessage(
+                        any(),
+                        org.mockito.ArgumentMatchers.argThat(
+                                details -> "새닉네임".equals(details.getMember().getNickname())),
+                        any());
+    }
+
+    private static Member member(String nickname, MemberStatus status) {
+        Member member =
+                Member.builder()
+                        .email("a@snowthing.com")
+                        .nickname(nickname)
+                        .password("x")
+                        .status(status)
+                        .build();
+        ReflectionTestUtils.setField(member, "id", MEMBER_ID);
+        return member;
     }
 
     private static SimpMessageHeaderAccessor headers() {

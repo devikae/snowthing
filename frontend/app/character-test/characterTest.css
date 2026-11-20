@@ -151,3 +151,5 @@ html[data-theme="dark"] .ct-intro-cast { background: linear-gradient(180deg, #1c
 .ct-save-sheet-body { display: grid; gap: 12px; justify-items: center; width: min(360px, 100%); border-radius: 12px; background: var(--snow-canvas); padding: 16px; text-align: center; }
 .ct-save-sheet-title { margin: 0; font-weight: 700; }
 .ct-save-sheet-image { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--snow-border); -webkit-touch-callout: default; user-select: auto; }
+
+.ct-club-created { display: grid; gap: 8px; border-top: 1px solid var(--snow-border); padding-top: 12px; }

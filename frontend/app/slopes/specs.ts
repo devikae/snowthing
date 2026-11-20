@@ -55,19 +55,10 @@ export type SlopeDetail = {
   resort: ResortInfo;
   slope: SlopeItem;
   neighbors: { id: number; name: string; difficulty: Difficulty; relation: Relation; distanceM: number | null }[];
-  similar: Similar[];
+  similarKr: Similar[];
+  similarJp: Similar[];
 };
 
-export type CompareItem = {
-  resort: ResortInfo;
-  slopeCount: number;
-  totalLengthM: number | null;
-  longestLengthM: number | null;
-  steepestMaxGradient: number | null;
-  meanAvgGradient: number | null;
-  avgGradientCount: number;
-  difficultyCounts: Record<Difficulty, number>;
-};
 
 // 코스 맵 파일 (frontend/public/slope-maps). 좌표는 미터이고 y가 클수록 아래(베이스 쪽)다.
 export type MapWay = {
@@ -143,6 +134,13 @@ export function codeFromSlug(slug: string) {
 
 export function slopePath(resortCode: string, slopeId: number) {
   return `/slopes/${resortSlug(resortCode)}/${slopeId}`;
+}
+
+// 슬로프 비교 주소. 고른 순서를 지키고 같은 슬로프는 한 번만 넣는다.
+export const COMPARE_MAX = 3;
+export function comparePath(ids: number[]) {
+  const unique = Array.from(new Set(ids)).slice(0, COMPARE_MAX);
+  return unique.length ? `/slopes/compare?ids=${unique.join(",")}` : "/slopes/compare";
 }
 
 export function formatLength(value: number | null) {

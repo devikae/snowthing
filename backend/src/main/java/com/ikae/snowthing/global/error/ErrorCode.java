@@ -229,7 +229,6 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "FILE_005", "이미지는 한 변 10,000px, 총 2,500만 화소 이하로 줄여 주세요."),
     RESORT_NOT_FOUND(HttpStatus.NOT_FOUND, "RESORT_001", "존재하지 않거나 비활성화된 리조트입니다."),
     SLOPE_NOT_FOUND(HttpStatus.NOT_FOUND, "SLOPE_001", "존재하지 않는 슬로프입니다."),
-    INVALID_SLOPE_COMPARE(HttpStatus.BAD_REQUEST, "SLOPE_002", "비교할 리조트는 2곳 이상 3곳 이하로 골라 주세요."),
     INVALID_RESORT_REPORT_CONTENT(
             HttpStatus.BAD_REQUEST, "REPORT_001", "설질 제보 내용은 1자 이상 100자 이하여야 합니다."),
     RESORT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "존재하지 않거나 확인할 수 없는 설질 제보입니다."),

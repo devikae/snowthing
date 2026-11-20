@@ -559,7 +559,7 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
 .post-comment-compose { overflow: hidden; border: 1px solid #dbe3ed; border-radius: 10px; background: white; }
 .post-comment-textarea { display: block; width: 100%; min-height: 104px; resize: vertical; border: 0; outline: 0; background: transparent; padding: 14px 15px; color: #334155; font-size: 13px; line-height: 1.65; }
 .post-comment-textarea::placeholder { color: var(--snow-muted); }
-.post-comment-compose:focus-within,.post-reply-compose:focus-within { border-color: #7dd3fc; box-shadow: 0 0 0 3px rgba(14,165,233,.08); }
+.post-comment-compose:focus-within { border-color: #7dd3fc; box-shadow: 0 0 0 3px rgba(14,165,233,.08); }
 .post-comment-compose-footer { display: flex; min-height: 52px; align-items: center; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; background: #f8fafc; padding: 8px 9px 8px 13px; }
 .post-comment-password { display: flex; min-width: 0; align-items: center; gap: 9px; margin-right: auto; color: #64748b; font-size: 11px; font-weight: 700; }
 .post-comment-password input { width: 180px; height: 34px; border: 1px solid #dbe3ed; border-radius: 7px; outline: 0; background: white; padding: 0 10px; color: #334155; font-size: 11px; }
@@ -574,11 +574,6 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
 .post-comment-reply { margin: 12px 0 0 24px; border: 1px solid #e2e8f0; border-radius: 9px; background: #f8fafc; padding: 14px 16px; }
 .post-comment-reply-author { display: flex; min-width: 0; align-items: center; gap: 6px; }
 .post-comment-reply-author > .material-symbols-outlined { color: #94a3b8; font-size: 17px; }
-.post-reply-compose { overflow: hidden; margin: 14px 0 0 24px; border: 1px solid #dbe3ed; border-radius: 9px; background: white; }
-.post-reply-compose .post-comment-textarea { min-height: 82px; }
-.post-reply-target { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px 0; font-size: 12px; font-weight: 700; color: var(--snow-muted); }
-.post-reply-target button { border: 0; background: none; padding: 0; font-size: 12px; color: var(--snow-muted); cursor: pointer; }
-.post-reply-target button:hover { color: var(--snow-ink); }
 .post-comments-more { display: grid; justify-items: center; gap: 6px; margin-top: 20px; }.post-comments-more-button { min-height: 38px; border: 0; border-radius: 9px; background: #f1f3f5; padding: 0 18px; color: #64748b; font-size: 11px; font-weight: 750; }
 .post-detail-sidebar { display: flex; flex-direction: column; gap: 6px; }.detail-carpool-card { padding: 15px; }.detail-carpool-card > header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }.detail-carpool-card h2 { display: flex; align-items: center; gap: 5px; margin: 0; color: #036e9f; font-size: 12px; }.detail-carpool-card h2 .material-symbols-outlined { font-size: 16px; }.detail-carpool-card > header > a { color: var(--snow-muted); font-size: 11px; }.detail-carpool-card > header > a:hover { color: #0275b3; }.detail-carpool-card article { border-bottom: 1px solid #f1f5f9; padding-block: 12px; }.detail-carpool-card article:last-child { border-bottom: 0; padding-bottom: 2px; }.detail-carpool-card article div,.detail-carpool-card article p { display: flex; align-items: center; justify-content: space-between; gap: 8px; }.detail-carpool-card article div b { border-radius: 4px; background: #475569; padding: 3px 6px; color: white; font-size: 10px; }.detail-carpool-card time { color: var(--snow-muted); font-size: 11px; }.detail-carpool-card article > strong { display: block; margin-top: 8px; color: #036e9f; font-size: 11px; }.detail-carpool-card article > strong span { color: var(--snow-muted); }.detail-carpool-card article p { margin: 6px 0 0; color: var(--snow-muted); font-size: 11px; }.detail-carpool-card article p b { color: #334155; }.detail-carpool-card article footer { display: flex; justify-content: flex-end; margin-top: 7px; }.detail-carpool-card article footer a { color: #0275b3; font-size: 11px; font-weight: 750; }.detail-carpool-empty { margin: 0; padding: 24px 4px; color: var(--snow-muted); font-size: 11px; text-align: center; }
 
@@ -594,7 +589,7 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
   .post-comment-password { width: 100%; }
   .post-comment-password input { min-width: 0; flex: 1; width: auto; }
   .post-comment-submit-button { width: 100%; }
-  .post-comment-reply,.post-reply-compose { margin-left: 12px; }
+  .post-comment-reply { margin-left: 12px; }
 }
 
 /* Shared board list */
@@ -702,11 +697,22 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
   color: white;
 }
 
-.post-comment-textarea:focus,
 .board-search select:focus,
 .board-search input:focus {
   border-color: var(--alpine-sky);
   box-shadow: 0 0 0 3px rgba(2, 132, 199, .1);
+}
+
+/* 댓글 입력칸은 상자(overflow:hidden) 안에 있어 입력칸 자체에 그림자를 주면 위아래 파란 줄만 남는다.
+   입력칸 대신 바깥 상자 테두리로 입력 중임을 보여 준다. 게시글, 중고장터, 카풀, 답글 입력칸 모두 같다. */
+.post-comment-textarea:focus,
+.post-comment-textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.post-comment-compose:focus-within {
+  border-color: var(--snow-ink-soft);
 }
 
 .board-widget > header h2 .material-symbols-outlined,
@@ -937,7 +943,6 @@ html[data-theme="dark"] .post-comment-textarea {
 }
 
 html[data-theme="dark"] .post-comment-compose,
-html[data-theme="dark"] .post-reply-compose,
 html[data-theme="dark"] .post-comment-reply,
 html[data-theme="dark"] .post-comment-compose-footer {
   border-color: var(--snow-border);
@@ -1092,6 +1097,7 @@ html[data-theme="dark"] .resort-report-board article { border-color: var(--snow-
 
 .live-chat-message.mine { align-items: flex-end; margin-left: auto; }
 .live-chat-message.other { align-items: flex-start; margin-right: auto; }
+.live-chat-avatar { width: 24px; height: 24px; flex: none; border-radius: 50%; object-fit: cover; background: #e2e8f0; color: #94a3b8; }
 .live-chat-message-meta { display: flex; max-width: 100%; align-items: center; gap: 6px; color: #64748b; font-size: 11px; line-height: 18px; }
 .live-chat-message-meta strong { overflow: hidden; max-width: 150px; color: #334155; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .live-chat-message-meta time { flex: none; color: #64748b; font-variant-numeric: tabular-nums; }
@@ -1454,13 +1460,10 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 .comment-reply-more { margin: 10px 0 0 48px; }
 .comment-reply-more button,
 .reply-more { border: 0; background: transparent; padding: 5px 0; color: #0369a1; font-size: 11px; font-weight: 800; }
-.post-reply-compose { overflow: hidden; margin: 12px 0 0 48px; border: 1px solid #dbe3ed; border-radius: 10px; background: #fff; }
 .post-comment-compose,
 .market-comments .post-comment-compose { overflow: hidden; display: block; border: 1px solid #dbe3ed; border-radius: 10px; background: #fff; }
 .post-comment-compose .post-comment-textarea,
-.post-reply-compose .post-comment-textarea,
 .market-comments .post-comment-textarea { display: block; width: 100%; min-height: 96px; box-sizing: border-box; resize: vertical; border: 0; border-radius: 0; outline: 0; background: transparent; padding: 14px 15px; color: #334155; font-family: inherit; font-size: 13px; line-height: 1.65; }
-.post-reply-compose .post-comment-textarea { min-height: 76px; }
 .post-comment-compose-footer,
 .market-comments .post-comment-compose-footer { display: flex; min-height: 50px; align-items: center; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; background: #f8fafc; padding: 7px 9px 7px 13px; }
 .post-comment-submit-button,
@@ -1470,7 +1473,7 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 
 @media (max-width: 640px) {
   .post-comments-card,.market-comments.post-comments-card { padding: 18px 14px; }
-  .post-comment-reply,.market-comment-reply.post-comment-reply,.post-reply-compose { margin-left: 18px; }
+  .post-comment-reply,.market-comment-reply.post-comment-reply { margin-left: 18px; }
   .comment-reply-more,.reply-more { margin-left: 18px; }
   .comment-profile-avatar { width: 34px; height: 34px; flex-basis: 34px; }
 }
@@ -1546,14 +1549,12 @@ html[data-theme="dark"] .post-comments-card > header h2 span {
 html[data-theme="dark"] .post-detail-author,
 html[data-theme="dark"] .post-comment-item,
 html[data-theme="dark"] .post-comment-compose,
-html[data-theme="dark"] .post-reply-compose,
 html[data-theme="dark"] .post-comment-compose-footer {
   border-color: var(--snow-border);
 }
 
 html[data-theme="dark"] .post-comment-reply,
 html[data-theme="dark"] .post-comment-compose,
-html[data-theme="dark"] .post-reply-compose,
 html[data-theme="dark"] .post-comment-compose-footer,
 html[data-theme="dark"] .comment-login-guide {
   background: var(--snow-surface-low);
@@ -1562,7 +1563,6 @@ html[data-theme="dark"] .comment-login-guide {
 html[data-theme="dark"] .comment-youtube-body > p,
 html[data-theme="dark"] .comment-youtube-body > header strong,
 html[data-theme="dark"] .post-comment-compose .post-comment-textarea,
-html[data-theme="dark"] .post-reply-compose .post-comment-textarea,
 html[data-theme="dark"] .comment-inline-editor textarea {
   color: var(--snow-ink);
 }
@@ -4013,21 +4013,38 @@ html[data-theme="dark"] .snow-empty-copy strong {
   font-weight: 800;
 }
 
+/* PC는 한 줄이라 리조트마다 "이름 D-n 날짜"를 붙여 쓰고 세로선으로 나눈다. 숫자는 같은 폭 글자를 쓴다. */
 .opening-dday-list {
   display: flex;
+  flex: 1 1 520px;
   flex-wrap: wrap;
-  gap: 6px 16px;
-  margin: 0;
+  align-items: center;
+  gap: 6px 0;
+  /* 여러 줄로 넘어가도 줄 맨 앞 세로선이 보이지 않게, 각 항목의 왼쪽 선을 목록 밖으로 밀어 잘라 낸다. */
+  overflow: hidden;
+  margin: 0 0 0 -15px;
   padding: 0;
   list-style: none;
 }
 
 .opening-dday-list li {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  justify-content: start;
   align-items: baseline;
   gap: 6px;
+  margin-left: -1px;
+  padding: 0 16px;
+  border-left: 1px solid var(--snow-border);
   font-size: 14px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.opening-dday-list li > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .opening-dday-list em {
@@ -4060,6 +4077,39 @@ html[data-theme="dark"] .snow-empty-copy strong {
   .opening-dday-more {
     display: none;
   }
+
+  .opening-dday-banner strong {
+    flex-basis: 100%;
+  }
+
+  /* 모바일은 두 칸 표로 놓고 이름 칸이 남는 폭을 써서 줄마다 D-n과 날짜가 같은 세로줄에 서게 한다. */
+  .opening-dday-list {
+    display: grid;
+    flex-basis: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    overflow: visible;
+    margin: 0;
+  }
+
+  .opening-dday-list li {
+    grid-template-columns: minmax(0, 1fr) 2.6em 3.1em;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    border-left: 0;
+    font-size: 13px;
+  }
+
+  .opening-dday-list li > em,
+  .opening-dday-list li > small {
+    text-align: right;
+  }
+}
+
+/* 메인 피드 위 최신 공지 한 줄. 아래 첫 글과 붙지 않게 띄운다. */
+.home-latest-notice {
+  margin-bottom: 10px;
 }
 
 .delete-modal-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, .5); }
@@ -4119,9 +4169,24 @@ html[data-theme="dark"] .snow-empty-copy strong {
   .filter-pills button,
   .home-tier-1 .board-tabs button,
   html[data-theme="dark"] .home-tier-1 .board-tabs button { height: 36px; }
-  /* 홈 탭 8개가 390px 폰 한 줄에 다 보이게 여백을 줄이고 남는 폭은 나눠 갖는다. */
+  /* 홈 탭 8개는 4칸 2줄 격자로 둔다. 한 줄에 밀어 넣으면 글자가 작고 칸 폭이 들쭉날쭉해 보인다. */
+  .home-tier-1 .board-tabs > .filter-pills {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+    overflow: visible;
+    background: var(--snow-surface-low);
+  }
   .home-tier-1 .board-tabs button,
-  html[data-theme="dark"] .home-tier-1 .board-tabs button { flex: 1 0 auto; padding-inline: 5px; }
+  html[data-theme="dark"] .home-tier-1 .board-tabs button {
+    display: flex;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 4px;
+    font-size: 14px;
+    text-align: center;
+  }
   /* 댓글의 답글 버튼과 로그인 안내 링크 터치 영역 */
   .comment-youtube-actions button { min-height: 32px; padding-inline: 4px; }
   .comment-login-guide a { display: inline-flex; min-height: 32px; align-items: center; }

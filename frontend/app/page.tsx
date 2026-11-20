@@ -10,15 +10,17 @@ export const metadata: Metadata = { alternates: { canonical: `${SITE_URL}/` } };
 // 셋 다 비로그인 기준 공개 목록이라 쿠키를 넘기지 않는다(fetchPublicJson). 하나가 실패하면 그 위젯만 브라우저가 기존처럼 다시 부른다.
 // 오늘의 설질은 서버에서 받지 않는다. 제보 시각 표시(formatReportTime)가 실행 환경 시간대를 타서 서버와 브라우저 글자가 달라질 수 있다.
 export default async function HomePage() {
-  const [posts, carpools, market] = await Promise.all([
+  const [posts, carpools, market, notices] = await Promise.all([
     fetchPublicJson<{ content?: HomePost[] }>(`/posts?page=1&size=${HOME_FEED_SIZE}`),
     fetchPublicJson<{ content?: HomeCarpoolItem[] }>(`/carpools?page=0&size=${HOME_CARPOOL_SIZE}`),
     fetchPublicJson<{ items?: MarketPreviewItem[] }>("/market-listings/preview"),
+    fetchPublicJson<{ content?: HomePost[] }>("/posts?categoryCode=NOTICE&page=1&size=1"),
   ]);
   const initial: HomeInitialData = {
     posts: posts ? (Array.isArray(posts.content) ? posts.content.slice(0, HOME_FEED_SIZE) : []) : null,
     carpools: carpools ? (Array.isArray(carpools.content) ? carpools.content : []) : null,
     marketPreviews: market ? (Array.isArray(market.items) ? market.items.slice(0, HOME_MARKET_SIZE) : []) : null,
+    latestNotice: Array.isArray(notices?.content) ? (notices.content[0] ?? null) : null,
   };
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteStructuredData).replace(/</g, "\\u003c") }} />

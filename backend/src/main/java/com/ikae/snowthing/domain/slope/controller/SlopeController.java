@@ -1,8 +1,6 @@
 package com.ikae.snowthing.domain.slope.controller;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Pattern;
 
 import org.springframework.http.CacheControl;
@@ -10,10 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.ikae.snowthing.domain.slope.dto.SlopeResponses.Compare;
 import com.ikae.snowthing.domain.slope.dto.SlopeResponses.ResortDetail;
 import com.ikae.snowthing.domain.slope.dto.SlopeResponses.ResortList;
 import com.ikae.snowthing.domain.slope.dto.SlopeResponses.SlopeDetail;
@@ -53,21 +49,6 @@ public class SlopeController {
     @GetMapping("/{slopeId}")
     public ResponseEntity<SlopeDetail> getSlope(@PathVariable Long slopeId) {
         return ResponseEntity.ok().cacheControl(SPEC_CACHE).body(queryService.getSlope(slopeId));
-    }
-
-    /** codes는 쉼표로 구분한 리조트 코드 2~3개. */
-    @GetMapping("/compare")
-    public ResponseEntity<Compare> compare(@RequestParam String codes) {
-        List<String> resortCodes =
-                Arrays.stream(codes.split(","))
-                        .map(String::trim)
-                        .filter(c -> !c.isEmpty())
-                        .toList();
-        if (resortCodes.size() > SlopeQueryService.COMPARE_MAX) {
-            throw new CustomException(ErrorCode.INVALID_SLOPE_COMPARE);
-        }
-        resortCodes.forEach(SlopeController::requireCode);
-        return ResponseEntity.ok().cacheControl(SPEC_CACHE).body(queryService.compare(resortCodes));
     }
 
     private static String requireCode(String resortCode) {

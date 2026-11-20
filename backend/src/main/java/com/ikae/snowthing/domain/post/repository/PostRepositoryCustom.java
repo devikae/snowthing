@@ -1,10 +1,12 @@
 package com.ikae.snowthing.domain.post.repository;
 
 import java.util.Collection;
+import java.util.Optional;
 import java.util.Set;
 
 import com.ikae.snowthing.domain.post.dto.PostListResponse;
 import com.ikae.snowthing.domain.post.dto.PostSearchRequest;
+import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 
 public interface PostRepositoryCustom {
@@ -17,4 +19,7 @@ public interface PostRepositoryCustom {
 
     /** 관리자가 삭제되지 않은 댓글을 남긴 게시글의 publicId. 1:1 문의 답변 상태 계산용 */
     Set<String> findPublicIdsAnsweredByAdmin(Collection<String> postPublicIds);
+
+    /** 같은 게시판의 공개 글 중 작성 순서로 base 바로 앞(older) 또는 바로 뒤 글. */
+    Optional<Post> findAdjacentInCategory(Post base, boolean older);
 }

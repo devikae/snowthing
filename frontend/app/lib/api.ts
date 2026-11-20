@@ -51,6 +51,7 @@ export const API_ENDPOINTS = {
     reaction: (publicId: string, type: "LIKE" | "DISLIKE") =>
       `${API_V1_URL}/posts/${publicId}/reaction?type=${type}`,
     scrap: (publicId: string) => `${API_V1_URL}/posts/${publicId}/scrap`,
+    adjacent: (publicId: string) => `${API_V1_URL}/posts/${publicId}/adjacent`,
     comments: (publicId: string, cursor?: string | null, size = 20) =>
       `${API_V1_URL}/posts/${publicId}/comments?${
         cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`

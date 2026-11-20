@@ -1,11 +1,13 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
+import { ReplyComposer } from "../../components/ReplyComposer";
+import { PostAdjacentNav } from "./PostAdjacentNav";
 import { AuthorMenu } from "../../components/AuthorMenu";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import dynamic from "next/dynamic";
@@ -834,6 +836,9 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
             )}
           </article>
 
+          {/* 댓글이 길어도 바로 넘어갈 수 있게 본문 바로 아래에 둔다. */}
+          {post.categoryCode !== "INQUIRY" && <PostAdjacentNav publicId={post.publicId} />}
+
           <section id="comments" className="post-comments-card">
             <header><h2>댓글 <span>{totalCommentCount}</span></h2></header>
 
@@ -956,6 +961,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
               </div>
             )}
           </section>
+
           </div>
         </div>
       </main>
@@ -1043,8 +1049,8 @@ function CommentRow({
   const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
   const isEditing = activeEditCommentId === item.commentId;
-  // 답글 입력창은 이 댓글 묶음의 맨 아래에 연다. 답글의 답글이면 누구에게 답하는지 보여 주고 @닉네임을 넣어 둔다.
-  const [replyTarget, setReplyTarget] = useState<{ commentId: string; name: string; isRoot: boolean } | null>(null);
+  // 답글 입력창은 답글 버튼을 누른 댓글 바로 아래에 연다. 답글의 답글이면 @닉네임을 넣어 둔다. 저장은 최상위 댓글에 단다.
+  const [replyTarget, setReplyTarget] = useState<{ commentId: string } | null>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const isReplyOpen = activeReplyParentId === item.commentId && replyTarget !== null;
   const displayName = (comment: CommentItem) => (isAnonymousPost ? `익명 (${comment.writerIp})` : getWriterName(comment));
@@ -1056,7 +1062,7 @@ function CommentRow({
       return;
     }
     const isRoot = target.commentId === item.commentId;
-    setReplyTarget({ commentId: targetId, name: displayName(target), isRoot });
+    setReplyTarget({ commentId: targetId });
     // 익명 글은 모두 "익명 (IP 일부)"로 보여 호출 문구가 누구인지 구분해 주지 못하므로 넣지 않는다.
     setReplyText(isRoot || isAnonymousPost ? "" : mentionPrefix(displayName(target)));
     setActiveReplyParentId(item.commentId);
@@ -1066,6 +1072,20 @@ function CommentRow({
     setReplyTarget(null);
   };
   const isReplyingTo = (comment: CommentItem) => isReplyOpen && replyTarget?.commentId === String(comment.commentId);
+  const renderReplyComposer = (nested: boolean) => (
+    <ReplyComposer
+      inputRef={replyInputRef}
+      value={replyText}
+      onChange={setReplyText}
+      onCancel={closeReply}
+      onSubmit={() => void handleCreateComment(item.commentId)}
+      submitting={submittingComment}
+      loginRequired={!isAnonymousPost && !currentUserPublicId}
+      anonymous={isAnonymousPost}
+      password={isAnonymousPost && !currentUserPublicId ? { value: replyAnonPassword, onChange: setReplyAnonPassword } : undefined}
+      nested={nested}
+    />
+  );
 
   useEffect(() => {
     if (!isReplyOpen) return;
@@ -1129,12 +1149,13 @@ function CommentRow({
           )}
         </div>
       </div>
+      {isReplyingTo(item) && renderReplyComposer(false)}
 
       {item.previewReplies.length > 0 && (
           <div className="comment-reply-list">
             {item.previewReplies.map((reply) => (
+              <Fragment key={reply.commentId}>
               <ReplyRow
-                key={reply.commentId}
                 item={reply}
                 isAnonymousPost={isAnonymousPost}
                 onReply={() => openReply(reply)}
@@ -1159,6 +1180,8 @@ function CommentRow({
                 handleConfirmDeleteComment={handleConfirmDeleteComment}
                 onToggleBlind={onToggleBlind}
               />
+              {isReplyingTo(reply) && renderReplyComposer(true)}
+              </Fragment>
             ))}
           </div>
       )}
@@ -1173,48 +1196,6 @@ function CommentRow({
             >
               {isLoadingReplies ? "답글을 불러오는 중" : `답글 더보기 (총 ${item.replyCount}개)`}
             </button>
-          </div>
-      )}
-      {isReplyOpen && replyTarget && (
-          <div className="post-reply-compose">
-            <div className="post-reply-target">
-              <span>{replyTarget.isRoot ? `${replyTarget.name}님 댓글에 답글` : `${replyTarget.name}님에게 답글`}</span>
-              <button type="button" onClick={closeReply}>취소</button>
-            </div>
-            <textarea
-              ref={replyInputRef}
-              rows={2}
-              maxLength={COMMENT_MAX_LENGTH}
-              value={replyText}
-              onChange={(event) => setReplyText(event.target.value)}
-              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해 보세요." : "로그인 후 답글을 작성할 수 있습니다."}
-              className="post-comment-textarea"
-              aria-label="답글 입력"
-            />
-            <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{replyText.length}/{COMMENT_MAX_LENGTH}</div>
-            <div className="post-comment-compose-footer">
-              {isAnonymousPost && !currentUserPublicId && (
-                <label className="post-comment-password">
-                  <span>비밀번호</span>
-                    <input
-                      type="password"
-                      placeholder="비밀번호 (4~20자)"
-                      minLength={4}
-                      maxLength={20}
-                      value={replyAnonPassword}
-                      onChange={(event) => setReplyAnonPassword(event.target.value)}
-                    />
-                </label>
-              )}
-              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
-              <button
-                disabled={submittingComment}
-                onClick={() => void handleCreateComment(item.commentId)}
-                className="post-comment-submit-button"
-              >
-                답글 등록
-              </button>
-            </div>
           </div>
       )}
 

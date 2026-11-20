@@ -35,6 +35,7 @@ public class MarketListingRepositoryCustomImpl implements MarketListingRepositor
             String categoryCode,
             ProductCondition productCondition,
             TradeStatus tradeStatus,
+            boolean includeSold,
             Pageable pageable) {
         BooleanExpression visibility =
                 post.status.eq(PostStatus.NORMAL).and(post.isDeleted.isFalse());
@@ -42,7 +43,7 @@ public class MarketListingRepositoryCustomImpl implements MarketListingRepositor
         filters.and(keywordContains(keyword));
         filters.and(categoryCodeEq(categoryCode));
         filters.and(productConditionEq(productCondition));
-        filters.and(tradeStatusCondition(keyword, tradeStatus));
+        filters.and(tradeStatusCondition(keyword, tradeStatus, includeSold));
 
         Long total =
                 queryFactory
@@ -102,11 +103,13 @@ public class MarketListingRepositoryCustomImpl implements MarketListingRepositor
                 : marketListing.productCondition.eq(productCondition);
     }
 
-    private BooleanExpression tradeStatusCondition(String keyword, TradeStatus tradeStatus) {
+    /** 기본 목록은 거래 가능한 글(판매 중, 예약 중)만 보인다. 판매 완료까지 보려면 includeSold를 켠다. */
+    private BooleanExpression tradeStatusCondition(
+            String keyword, TradeStatus tradeStatus, boolean includeSold) {
         if (tradeStatus != null) {
             return marketListing.tradeStatus.eq(tradeStatus);
         }
-        if (StringUtils.hasText(keyword)) {
+        if (includeSold || StringUtils.hasText(keyword)) {
             return null;
         }
         return marketListing.tradeStatus.in(TradeStatus.ON_SALE, TradeStatus.RESERVED);

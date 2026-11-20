@@ -17,6 +17,8 @@ import jakarta.validation.constraints.Size;
  */
 public record SeasonOpeningUpdateRequest(
         @NotNull Boolean bannerEnabled,
+        // 배너 맨 앞 문구. 비우거나 보내지 않으면 기본 문구("개장까지")로 둔다.
+        @Size(max = SeasonOpeningUpdateRequest.BANNER_TITLE_MAX) String bannerTitle,
         @NotEmpty @Size(max = 50) List<@NotNull @Valid Item> resorts) {
 
     public record Item(
@@ -25,4 +27,6 @@ public record SeasonOpeningUpdateRequest(
             boolean confirmed,
             boolean showOnBanner,
             @Min(1) @Max(999) int bannerOrder) {}
+
+    public static final int BANNER_TITLE_MAX = 12;
 }

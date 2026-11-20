@@ -5,6 +5,7 @@ import { fetchResult, type CharacterResult } from "./api";
 import { CardPanel } from "./CardPanel";
 import { characterImage, type JobCode, type Sport } from "./data";
 import { InviteSection } from "./InviteSection";
+import { ClubLinkMaker } from "./ClubLinkMaker";
 import { MyGroups } from "./MyGroups";
 import { clearFragment, readResultFragment } from "./links";
 import { getSavedAnswers, saveAnswers } from "./localStore";
@@ -99,6 +100,7 @@ export function CharacterTestApp() {
       <p className="ct-fineprint">재미로 보는 테스트예요. 모임에 들어가기 전까지 답변을 서버에 저장하지 않아요.</p>
     </section>
     <MyGroups />
+    <ClubLinkMaker />
     </>
   );
 }

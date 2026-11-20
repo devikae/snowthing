@@ -144,8 +144,8 @@ function SpecEntry({ resorts }: { resorts: ResortSummary[] }) {
   return (
     <section className={specStyles.specEntry} aria-label="슬로프 제원과 코스 맵">
       <strong>슬로프 제원과 코스 맵</strong>
-      <Link href="/slopes/compare">스키장 비교</Link>
-      <p>공식 길이와 경사, 코스별 맵, 경사가 비슷한 국내와 일본 슬로프를 봅니다.</p>
+      <Link href="/slopes/compare">슬로프 비교</Link>
+      <p>공식 길이와 경사, 코스별 맵, 경사가 비슷한 슬로프를 보고 슬로프끼리 나란히 비교합니다.</p>
       {countries.map((country) => {
         const list = resorts.filter((resort) => resort.country === country);
         return list.length === 0 ? null : (

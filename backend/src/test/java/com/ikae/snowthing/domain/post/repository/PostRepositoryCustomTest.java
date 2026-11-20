@@ -406,4 +406,42 @@ class PostRepositoryCustomTest {
             post.increaseLikeCount();
         }
     }
+
+    @Test
+    @DisplayName("이전글은 목록에서 바로 아래(더 오래된) 글, 다음글은 바로 위 글이다. 지운 글은 건너뛴다")
+    void findAdjacentInCategory() {
+        List<PostListResponse> list =
+                postRepository
+                        .findPostsByOffset(
+                                new PostSearchRequest(
+                                        "FREE",
+                                        null,
+                                        null,
+                                        null,
+                                        PostViewType.DEFAULT,
+                                        1,
+                                        null,
+                                        30))
+                        .content();
+        Post base =
+                postRepository
+                        .findWithMemberAndCategoryByPublicId(list.get(5).publicId())
+                        .orElseThrow();
+
+        assertThat(postRepository.findAdjacentInCategory(base, true).orElseThrow().getPublicId())
+                .isEqualTo(list.get(6).publicId());
+        assertThat(postRepository.findAdjacentInCategory(base, false).orElseThrow().getPublicId())
+                .isEqualTo(list.get(4).publicId());
+
+        jdbcTemplate.update(
+                "UPDATE post SET is_deleted = TRUE WHERE public_id = ?", list.get(6).publicId());
+        assertThat(postRepository.findAdjacentInCategory(base, true).orElseThrow().getPublicId())
+                .isEqualTo(list.get(7).publicId());
+
+        Post newest =
+                postRepository
+                        .findWithMemberAndCategoryByPublicId(list.get(0).publicId())
+                        .orElseThrow();
+        assertThat(postRepository.findAdjacentInCategory(newest, false)).isEmpty();
+    }
 }

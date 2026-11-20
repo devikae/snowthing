@@ -133,6 +133,21 @@ class ChatServiceTest {
         }
 
         @Test
+        @DisplayName("회원 메시지에는 프로필 사진 주소가 붙고 비회원은 비어 있다")
+        void senderCarriesProfileImage() {
+            ReflectionTestUtils.setField(
+                    testMember, "profileImageUrl", "https://images.snowthing.org/p/a.jpg");
+            ChatMessageRequest request = new ChatMessageRequest(null, "사진 붙나요");
+
+            assertThat(
+                            chatService
+                                    .processMessage(request, testUserDetails, "127.0.0.1")
+                                    .sender()
+                                    .profileImageUrl())
+                    .isEqualTo("https://images.snowthing.org/p/a.jpg");
+        }
+
+        @Test
         @DisplayName("리조트 미선택(null) 시 일반 잡담 모드로 성공")
         void sendGeneralChatMessage_Success() {
             // given

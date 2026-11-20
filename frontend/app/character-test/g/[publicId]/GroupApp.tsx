@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { fetchMap, fetchPreview, fetchResult, joinGroup, leaveGroup, type CharacterMap, type CharacterResult, type GroupPreview } from "../../api";
+import { fetchMap, fetchPreview, joinGroup, leaveGroup, type CharacterMap, type GroupPreview } from "../../api";
 import { CardPanel } from "../../CardPanel";
 import { characterName, JOBS, LEVELS, SPORT_LABEL, type Sport } from "../../data";
 import { INVITE_LABEL, InviteSection } from "../../InviteSection";
@@ -15,14 +15,16 @@ import { RelationshipMap } from "../../RelationshipMap";
 import { SAVED_NOTICE, blobToDataUrl, shareLink, shareOrSaveImage } from "../../shareFile";
 import { InAppSaveSheet } from "../../InAppSaveSheet";
 import { ShareGroupLink } from "../../ShareGroupLink";
+import { fetchViewer } from "../../../lib/viewer";
 
 type View =
   | { kind: "loading" }
   | { kind: "missing" }
   | { kind: "error"; message: string }
-  | { kind: "preview"; preview: GroupPreview; notice: string; hasSaved: boolean }
-  | { kind: "quiz"; preview: GroupPreview }
-  | { kind: "result"; preview: GroupPreview; result: CharacterResult; answers: string; sport: Sport }
+  | { kind: "preview"; preview: GroupPreview; notice: string; hasSaved: boolean; memberNickname: string }
+  // 이름을 먼저 받는다. answers가 있으면 테스트를 이미 끝낸 상태라 이름만 넣으면 바로 들어간다.
+  | { kind: "name"; preview: GroupPreview; memberNickname: string; done?: { answers: string; sport: Sport }; notice?: string }
+  | { kind: "quiz"; preview: GroupPreview; nickname: string; memberNickname: string }
   | { kind: "map"; map: CharacterMap; token: string };
 
 // 링크 하나로 개인과 동호회를 모두 처리한다. 토큰이 있으면 자기 지도, 없으면 테스트를 거쳐 들어온다.
@@ -30,8 +32,10 @@ export function GroupApp({ publicId }: { publicId: string }) {
   const [view, setView] = useState<View>({ kind: "loading" });
 
   const showPreview = useCallback(async (notice = "") => {
-    const preview = await fetchPreview(publicId);
-    setView(preview ? { kind: "preview", preview, notice, hasSaved: getSavedAnswers() !== null } : { kind: "missing" });
+    const [preview, viewer] = await Promise.all([fetchPreview(publicId), fetchViewer().catch(() => null)]);
+    // 로그인했으면 회원 닉네임을 이름 칸에 미리 넣는다. 고칠 수 있다.
+    const memberNickname = viewer?.nickname ?? "";
+    setView(preview ? { kind: "preview", preview, notice, hasSaved: getSavedAnswers() !== null, memberNickname } : { kind: "missing" });
   }, [publicId]);
 
   const load = useCallback(async () => {
@@ -63,13 +67,22 @@ export function GroupApp({ publicId }: { publicId: string }) {
     return () => clearTimeout(timer);
   }, [load]);
 
-  const finishQuiz = async (preview: GroupPreview, answers: string, sport: Sport) => {
+  // 링크로 들어온 사람은 테스트가 끝나면 따로 누르지 않아도 바로 모임에 들어간다.
+  const join = async (nickname: string, answers: string, sport: Sport) => {
+    const joined = await joinGroup(publicId, { nickname, sport, answers });
+    saveMembership(publicId, { token: joined.accessToken, nickname, groupName: joined.groupName });
+    setView({ kind: "loading" });
+    await load();
+  };
+
+  const finishQuiz = async (preview: GroupPreview, nickname: string, memberNickname: string, answers: string, sport: Sport) => {
     setView({ kind: "loading" });
     saveAnswers({ answers, sport });
     try {
-      setView({ kind: "result", preview, result: await fetchResult(answers), answers, sport });
+      await join(nickname, answers, sport);
     } catch (reason) {
-      setView({ kind: "error", message: reason instanceof Error ? reason.message : "결과를 불러오지 못했어요. 다시 시도해 주세요." });
+      // 그 사이 같은 이름이 들어왔거나 모임이 찼다. 답변은 그대로 두고 이름만 다시 받는다.
+      setView({ kind: "name", preview, memberNickname, done: { answers, sport }, notice: reason instanceof Error ? reason.message : "들어가지 못했어요. 다시 시도해 주세요." });
     }
   };
 
@@ -81,42 +94,41 @@ export function GroupApp({ publicId }: { publicId: string }) {
     return <section className="ct-panel"><h2>문제가 생겼어요</h2><p className="ct-error" role="alert">{view.message}</p><button type="button" className="ct-primary" onClick={() => { setView({ kind: "loading" }); void load(); }}>다시 시도</button></section>;
   }
   if (view.kind === "preview") {
-    const { preview, notice, hasSaved } = view;
+    const { preview, notice, hasSaved, memberNickname } = view;
     const saved = getSavedAnswers();
     return (
       <section className="ct-panel ct-intro">
         <p className="ct-eyebrow">초대받았어요</p>
         <h2>{preview.name}</h2>
-        <p className="ct-lead">지금 {preview.participantCount}명이 있어요. 스키장 상황 15개를 고르고 이름을 넣으면 나를 가운데 둔 관계 지도가 나와요.</p>
+        <p className="ct-lead">지금 {preview.participantCount}명이 있어요. 모임에서 보일 이름을 넣고 스키장 상황 15개를 고르면, 바로 모임에 들어가 나를 가운데 둔 관계 지도가 나와요.</p>
         {notice && <p className="ct-error" role="status">{notice}</p>}
         <p className="ct-fineprint">가입 없이 할 수 있어요. 재미로 보는 테스트이고, 이름을 넣기 전까지 답변을 저장하지 않아요.</p>
-        <button type="button" className="ct-primary" onClick={() => setView({ kind: "quiz", preview })}>테스트 시작</button>
-        {hasSaved && saved && <button type="button" className="ct-text-button" onClick={() => void finishQuiz(preview, saved.answers, saved.sport)}>지난 답변으로 바로 들어가기</button>}
+        <button type="button" className="ct-primary" onClick={() => setView({ kind: "name", preview, memberNickname })}>시작하기</button>
+        {hasSaved && saved && <button type="button" className="ct-text-button" onClick={() => setView({ kind: "name", preview, memberNickname, done: saved })}>지난 답변으로 바로 들어가기</button>}
       </section>
     );
   }
-  if (view.kind === "quiz") return <QuizFlow onComplete={(answers, sport) => void finishQuiz(view.preview, answers, sport)} />;
-  if (view.kind === "result") {
-    const { preview, result, answers, sport } = view;
-    const join = async (nickname: string) => {
-      const joined = await joinGroup(publicId, { nickname, sport, answers });
-      saveMembership(publicId, { token: joined.accessToken, nickname, groupName: joined.groupName });
-      setView({ kind: "loading" });
-      await load();
-    };
+  if (view.kind === "name") {
+    const { preview, memberNickname, done, notice } = view;
     return (
-      <>
-        <CardPanel result={result} sport={sport} answers={answers}>
-          <ShareGroupLink groupPublicId={publicId} groupName={preview.name} />
-        </CardPanel>
-        <section className="ct-panel" aria-labelledby="ct-join-title">
-          <h2 id="ct-join-title">{preview.name}에 들어가기</h2>
-          <p className="ct-lead">이름만 넣으면 이 모임 사람들과 어떤 사이인지 지도로 보여 줘요.</p>
-          <NicknameForm submitLabel="모임에 들어가기" onSubmit={join} />
-        </section>
-      </>
+      <section className="ct-panel" aria-labelledby="ct-name-title">
+        <p className="ct-eyebrow">{preview.name}</p>
+        <h2 id="ct-name-title">모임에서 보일 이름을 정해 주세요</h2>
+        <p className="ct-lead">{done ? "이름만 넣으면 바로 모임에 들어가요." : "테스트가 끝나면 이 이름으로 바로 모임에 들어가요. 같은 모임 사람들에게 보이는 이름이에요."}</p>
+        {notice && <p className="ct-error" role="alert">{notice}</p>}
+        <NicknameForm
+          submitLabel={done ? "모임에 들어가기" : "테스트 시작"}
+          initialNickname={memberNickname}
+          onSubmit={async (nickname) => {
+            if (done) await join(nickname, done.answers, done.sport);
+            else setView({ kind: "quiz", preview, nickname, memberNickname });
+          }}
+          onCancel={() => void showPreview()}
+        />
+      </section>
     );
   }
+  if (view.kind === "quiz") return <QuizFlow onComplete={(answers, sport) => void finishQuiz(view.preview, view.nickname, view.memberNickname, answers, sport)} />;
   return <MapView map={view.map} token={view.token} onReload={load} onLeft={() => showPreview("모임에서 나왔어요. 내 이름과 답변을 지웠어요.")} />;
 }
 
