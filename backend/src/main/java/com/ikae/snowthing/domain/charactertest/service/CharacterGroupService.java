@@ -64,6 +64,20 @@ public class CharacterGroupService {
         return toJoinResponse(group, owner, token);
     }
 
+    /**
+     * 운영자가 동호회 오픈채팅에 뿌릴 빈 모임. 만든 사람은 참여하지 않아 방장이 없다(owner NULL). 30일 동안 아무도 들어오지 않으면 다른 모임처럼 지워진다.
+     */
+    @Transactional
+    public CharacterGroupPreviewResponse createEmpty(String rawName) {
+        String name = groupName(rawName);
+        if (name == null) {
+            throw new CustomException(ErrorCode.CHARACTER_GROUP_NAME_INVALID);
+        }
+        CharacterGroup group = groupRepository.save(new CharacterGroup(null, name));
+        return new CharacterGroupPreviewResponse(
+                group.getPublicId(), group.getName(), 0, CharacterGroup.MAX_PARTICIPANTS);
+    }
+
     @Transactional(readOnly = true)
     public CharacterGroupPreviewResponse getPreview(String groupPublicId) {
         CharacterGroup group =

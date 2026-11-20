@@ -304,6 +304,32 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                 </div>
               </nav>
 
+              {/* 게시판 목록처럼 최신 공지 하나만 피드 위에 고정한다. 공지 탭에서는 목록과 겹치므로 숨긴다. */}
+              {initial.latestNotice && activeFeed !== "notice" && (
+                <section className="board-notices home-latest-notice" aria-label="최신 공지">
+                  <article className="m-row">
+                    <div className="m-row-left">
+                      <span className="m-cat notice">공지사항</span>
+                      <Link href={`/posts/${initial.latestNotice.publicId}`} className="m-title-link">
+                        <strong className="m-title">{initial.latestNotice.title}</strong>
+                      </Link>
+                    </div>
+                    <div className="m-row-right">
+                      <span className="m-author">
+                        <b>{initial.latestNotice.writerNickname}</b>
+                      </span>
+                      <span className="m-stats">
+                        <span className="m-stat">
+                          <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
+                          {initial.latestNotice.viewCount.toLocaleString("ko-KR")}
+                        </span>
+                      </span>
+                      <time className="m-time" suppressHydrationWarning>{formatCompactTime(initial.latestNotice.createdAt)}</time>
+                    </div>
+                  </article>
+                </section>
+              )}
+
               <div className="compact-post-list">
                 {feedLoading[activeFeed] ? (
                   <div className="home-feed-state">

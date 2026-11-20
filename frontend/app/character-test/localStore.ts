@@ -1,4 +1,4 @@
-import type { Sport } from "./data";
+import { ANSWERS_PATTERN, type Sport } from "./data";
 
 // 브라우저에만 두는 값. 접근 토큰은 XSS가 나면 읽힐 수 있지만, 비회원이라 세션이 없고 토큰의 권한이 이 지도 하나로 좁아 localStorage를 쓴다.
 const MEMBERSHIPS_KEY = "snowthing-character-memberships";
@@ -57,7 +57,7 @@ export function removeMembership(groupPublicId: string) {
 
 export function getSavedAnswers(): SavedAnswers | null {
   const saved = read<SavedAnswers>(SAVED_ANSWERS_KEY);
-  return saved && /^[AB]{12}[ABC]{3}$/.test(saved.answers) && (saved.sport === "SKI" || saved.sport === "BOARD") ? saved : null;
+  return saved && ANSWERS_PATTERN.test(saved.answers) && (saved.sport === "SKI" || saved.sport === "BOARD") ? saved : null;
 }
 
 export function saveAnswers(saved: SavedAnswers) {

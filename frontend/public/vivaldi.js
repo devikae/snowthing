@@ -1,1 +1,964 @@
-!function(){"use strict";const t=function(){function t(t,e){const n=(65535&t)+(65535&e);return(t>>16)+(e>>16)+(n>>16)<<16|65535&n}function e(e,n,s,i,r,o){return t((a=t(t(n,e),t(i,o)))<<(h=r)|a>>>32-h,s);var a,h}function n(t,n,s,i,r,o,a){return e(n&s|~n&i,t,n,r,o,a)}function s(t,n,s,i,r,o,a){return e(n&i|s&~i,t,n,r,o,a)}function i(t,n,s,i,r,o,a){return e(n^s^i,t,n,r,o,a)}function r(t,n,s,i,r,o,a){return e(s^(n|~i),t,n,r,o,a)}return function(e){const o=[];for(let t=0;t<e.length;t++)o.push(255&e.charCodeAt(t));const a=8*o.length;for(o.push(128);o.length%64!=56;)o.push(0);o.push(255&a,a>>>8&255,a>>>16&255,a>>>24&255,0,0,0,0);let h=1732584193,c=4023233417,l=2562383102,d=271733878;for(let e=0;e<o.length;e+=64){const a=[];for(let t=0;t<16;t++)a[t]=o[e+4*t]|o[e+4*t+1]<<8|o[e+4*t+2]<<16|o[e+4*t+3]<<24;let u=h,p=c,m=l,g=d;u=n(u,p,m,g,a[0],7,-680876936),g=n(g,u,p,m,a[1],12,-389564586),m=n(m,g,u,p,a[2],17,606105819),p=n(p,m,g,u,a[3],22,-1044525330),u=n(u,p,m,g,a[4],7,-176418897),g=n(g,u,p,m,a[5],12,1200080426),m=n(m,g,u,p,a[6],17,-1473231341),p=n(p,m,g,u,a[7],22,-45705983),u=n(u,p,m,g,a[8],7,1770035416),g=n(g,u,p,m,a[9],12,-1958414417),m=n(m,g,u,p,a[10],17,-42063),p=n(p,m,g,u,a[11],22,-1990404162),u=n(u,p,m,g,a[12],7,1804603682),g=n(g,u,p,m,a[13],12,-40341101),m=n(m,g,u,p,a[14],17,-1502002290),p=n(p,m,g,u,a[15],22,1236535329),u=s(u,p,m,g,a[1],5,-165796510),g=s(g,u,p,m,a[6],9,-1069501632),m=s(m,g,u,p,a[11],14,643717713),p=s(p,m,g,u,a[0],20,-373897302),u=s(u,p,m,g,a[5],5,-701558691),g=s(g,u,p,m,a[10],9,38016083),m=s(m,g,u,p,a[15],14,-660478335),p=s(p,m,g,u,a[4],20,-405537848),u=s(u,p,m,g,a[9],5,568446438),g=s(g,u,p,m,a[14],9,-1019803690),m=s(m,g,u,p,a[3],14,-187363961),p=s(p,m,g,u,a[8],20,1163531501),u=s(u,p,m,g,a[13],5,-1444681467),g=s(g,u,p,m,a[2],9,-51403784),m=s(m,g,u,p,a[7],14,1735328473),p=s(p,m,g,u,a[12],20,-1926607734),u=i(u,p,m,g,a[5],4,-378558),g=i(g,u,p,m,a[8],11,-2022574463),m=i(m,g,u,p,a[11],16,1839030562),p=i(p,m,g,u,a[14],23,-35309556),u=i(u,p,m,g,a[1],4,-1530992060),g=i(g,u,p,m,a[4],11,1272893353),m=i(m,g,u,p,a[7],16,-155497632),p=i(p,m,g,u,a[10],23,-1094730640),u=i(u,p,m,g,a[13],4,681279174),g=i(g,u,p,m,a[0],11,-358537222),m=i(m,g,u,p,a[3],16,-722521979),p=i(p,m,g,u,a[6],23,76029189),u=i(u,p,m,g,a[9],4,-640364487),g=i(g,u,p,m,a[12],11,-421815835),m=i(m,g,u,p,a[15],16,530742520),p=i(p,m,g,u,a[2],23,-995338651),u=r(u,p,m,g,a[0],6,-198630844),g=r(g,u,p,m,a[7],10,1126891415),m=r(m,g,u,p,a[14],15,-1416354905),p=r(p,m,g,u,a[5],21,-57434055),u=r(u,p,m,g,a[12],6,1700485571),g=r(g,u,p,m,a[3],10,-1894986606),m=r(m,g,u,p,a[10],15,-1051523),p=r(p,m,g,u,a[1],21,-2054922799),u=r(u,p,m,g,a[8],6,1873313359),g=r(g,u,p,m,a[15],10,-30611744),m=r(m,g,u,p,a[6],15,-1560198380),p=r(p,m,g,u,a[13],21,1309151649),u=r(u,p,m,g,a[4],6,-145523070),g=r(g,u,p,m,a[11],10,-1120210379),m=r(m,g,u,p,a[2],15,718787259),p=r(p,m,g,u,a[9],21,-343485551),h=t(h,u),c=t(c,p),l=t(l,m),d=t(d,g)}const u=new Uint8Array(16);return[h,c,l,d].forEach(((t,e)=>{u[4*e]=255&t,u[4*e+1]=t>>>8&255,u[4*e+2]=t>>>16&255,u[4*e+3]=t>>>24&255})),u}}(),e=12,n=0,s=1,i=2,r=3,o=1,a=1,h=2,c=3,l=4,d=5,u=6,p=10,m=12,g=4099,f=3,_=new Uint8Array([211,129,79,217,140,12,91,186,22,228,26,144,180,74,6,205]);function y(t){let e="";for(let n=0;n<t.length;n++)e+=String.fromCharCode(t[n]);return btoa(e)}function w(t){const e=new ArrayBuffer(t.length),n=new Uint8Array(e);for(let e=0;e<t.length;e++)n[e]=255&t.charCodeAt(e);return e}async function b(t){const e=function(t){const e=new Uint8Array(t.length/2);for(let n=0;n<t.length;n+=2)e[n/2]=parseInt(t.substr(n,2),16);return e}(t.startsWith(";")?t.slice(1):t),n=(new TextEncoder).encode("Web%#^GateWeb%#^Gate7263049165)#"),s=await crypto.subtle.importKey("raw",n,{name:"AES-GCM"},!1,["encrypt"]),i=await crypto.subtle.encrypt({name:"AES-GCM",iv:_,tagLength:128},s,e),r=new Uint8Array(i,0,i.byteLength-16),o=(new TextDecoder).decode(r);return JSON.parse(JSON.parse(o))}function v(e){return y(t(e))}async function U(t){const e=(new TextEncoder).encode(t),n=await crypto.subtle.digest("SHA-256",e);return y(new Uint8Array(n))}function E(t,n,s,i){i=i||0;const r=new Uint8Array(e);return r[0]=160|15&t,r[1]=255&n,r[2]=s>>8&255,r[3]=255&s,r[8]=i>>24&255,r[9]=i>>16&255,r[10]=i>>8&255,r[11]=255&i,r}function I(t,n,s,i){const r=i?i.byteLength:0,o=new Uint8Array(e+r);return o.set(E(t,n,s,r)),i&&o.set(i instanceof Uint8Array?i:new Uint8Array(i),e),o}class A{constructor(t){this.host=t.host,this.port=t.port,this.id=t.id,this.pass=t.pass,this.tls=!1!==t.tls,this.rds=!!t.rds,this.serial=t.serial||"",this.channel=t.channel||1,this.ws=null,this.keepAliveTimer=null,this.keepAliveInterval=22500,this.maxChannel=16,this.disposed=!1,this.state="disconnected",this._connectTimer=null,this.onReady=null,this.onFrame=null,this.onError=null,this.onMaxChannel=null}connect(){if(this.disposed)return;this.state="connecting";const t=`${this.tls||"https:"===location.protocol?"wss":"ws"}://${this.host}:${this.port}/wesp`;try{this.ws=new WebSocket(t,"binary"),this.ws.binaryType="arraybuffer",this.ws.onopen=()=>this._onOpen(),this.ws.onclose=()=>this._onClose(),this.ws.onerror=()=>this._onWsError(),this.ws.onmessage=t=>this._onMessage(t),this._connectTimer=setTimeout((()=>{"connecting"===this.state&&(C.error("Connection timeout"),this.disconnect(),this.onError&&this.onError("timeout"))}),1e4)}catch(t){C.error("WebSocket error:",t),this.onError&&this.onError(t.message)}}disconnect(){if(this.disposed=!0,this._stopKeepAlive(),this._connectTimer&&(clearTimeout(this._connectTimer),this._connectTimer=null),this.ws){this.ws.onopen=this.ws.onclose=this.ws.onerror=this.ws.onmessage=null;try{this.ws.close()}catch(t){}this.ws=null}this.state="disconnected"}startVideo(){"ready"===this.state&&(this.state="streaming",this._sendVideoStart())}_onOpen(){this._connectTimer&&(clearTimeout(this._connectTimer),this._connectTimer=null),C.info("Connected to",this.host),this.state="logging_in",this._send(E(n,o,a))}_onClose(){C.info("Disconnected"),this._stopKeepAlive(),this.disposed||this.onError&&this.onError("disconnected"),this.state="disconnected"}_onWsError(){C.error("WebSocket error"),this._stopKeepAlive(),this.disposed||this.onError&&this.onError("socket_error")}_onMessage(t){const n=t.data;if(!(n instanceof ArrayBuffer)||n.byteLength<e)return;const i=function(t){if(t.byteLength<e)return null;const n=new DataView(t),s=n.getUint8(0);return{version:s>>>4,transmit:15&s,category:n.getInt8(1),command:n.getUint16(2),status:n.getUint32(4),bodysize:n.getUint32(8)}}(n);if(i&&!(n.byteLength<e+i.bodysize)){if(0!==i.status&&i.command===a&&i.transmit!==s);else if(0!==i.status)return C.error("Server error:",i.status),void(this.onError&&this.onError("server_error_"+i.status));this._dispatch(i,n)}}_dispatch(t,e){switch(t.command){case a:this._handleLogin(t,e);break;case g:this._handleOpenSite(t);break;case p:this._handleStreamInfo(t);break;case l:this._handleContentInfo(t,e);break;case m:this._handleResolutionMap(t);break;case d:this._handleEventMap(t);break;case u:this._handleServiceStart(t,e);break;case h:this.disconnect();break;default:C.debug("Unhandled cmd:",t.command)}}async _handleLogin(t,n){if(t.transmit===s){if(C.info("Login OK"),t.bodysize>=8){const t=new DataView(n,e).getUint32(4);t>0&&(this.keepAliveInterval=750*t)}this._startKeepAlive(),this.state="handshaking",this.rds?this._sendOpenSite():this._sendStreamInfoReq()}else{if(t.bodysize<6)return void(this.onError&&this.onError("bad_challenge"));const s=new DataView(n,e,t.bodysize),i=s.getUint8(1),h=s.getUint32(2),c=function(t,e,n){let s="";for(let i=0;i<n;i++){const n=t[e+i];if(0===n)break;s+=String.fromCharCode(n)}return s}(new Uint8Array(n,18,h),0,h);C.debug("Auth level:",i,"nonce len:",h);try{const t=await async function(t,e,n){if(1===n)return v(t+":"+v(e));if(2===n){const n=await U(e);return await U(t+":"+n)}throw new Error("Unsupported auth level: "+n)}(c,this.pass,i),n=w(this.id),s=w(t);this._send(function(t,n,s,i){const r=4+s.byteLength+4+i.byteLength,o=new Uint8Array(e+r);o.set(E(t,n,a,r));const h=new DataView(o.buffer);let c=e;return h.setUint32(c,s.byteLength),c+=4,o.set(new Uint8Array(s),c),c+=s.byteLength,h.setUint32(c,i.byteLength),c+=4,o.set(new Uint8Array(i),c),o}(r,o,n,s))}catch(t){C.error("Hash computation failed:",t),this.onError&&this.onError("auth_error")}}}_handleOpenSite(t){t.transmit===s&&(C.debug("OpenSite OK"),this._sendStreamInfoReq())}_handleStreamInfo(t){t.transmit!==s&&t.transmit!==i||(C.debug("StreamInfo OK"),this._sendContentInfoReq())}_handleContentInfo(t,n){if(t.transmit===s){if(C.debug("ContentInfo OK"),t.bodysize>=4)try{const s=new DataView(n,e,t.bodysize),i=s.getUint32(0);let r=1,o=4;for(let e=0;e<i&&o+8<=t.bodysize;e++){const t=s.getUint8(o);o+=3;const e=s.getUint8(o);o+=1;o+=4+s.getUint32(o),0===t&&e>r&&(r=e)}this.maxChannel=r<=1?1:r<=4?4:r<=8?8:r<=16?16:r,this.onMaxChannel&&this.onMaxChannel(this.maxChannel)}catch(t){}this._sendResolutionMapReq()}}_handleResolutionMap(t){t.transmit===s&&(C.debug("ResolutionMap OK"),this._sendEventMapReq())}_handleEventMap(t){t.transmit===s&&(C.debug("Handshake complete"),this.state="ready",this.onReady&&this.onReady())}_handleServiceStart(t,e){if(t.transmit===s)C.debug("Video service ack");else if(t.transmit===i){if(t.bodysize<=48)return;this._handleVideoFrame(e,t.bodysize)}}_handleVideoFrame(t,e){const n=new DataView(t,12,e),s=n.getUint8(1);let i=0,r=f,o=0,a=0,h=4;if(0===s?(h+=14,o=n.getUint32(h),h+=4,a=n.getUint16(h),h+=2,h+=3,i=n.getUint32(h)):s>=2&&(h+=14,h+=9,r=n.getUint8(h),h+=1,h+=2,o=n.getUint32(h),h+=4,a=n.getUint16(h),h+=2,h+=3,i=n.getUint32(h)),i<=20)return;const c=t.byteLength-i+20,l=i-20;if(!(c<0||c+l>t.byteLength)&&(this._sendVideoAck(),this.onFrame&&r===f)){const e=new Uint8Array(t,c,l),n=new Blob([e],{type:"image/jpeg"});this.onFrame(n,1e3*o+a)}}_send(t){this.ws&&this.ws.readyState===WebSocket.OPEN&&this.ws.send(t)}_sendOpenSite(){const t=new Uint8Array(24);for(let e=0;e<this.serial.length&&e<24;e++)t[e]=this.serial.charCodeAt(e);this._send(I(n,o,g,t))}_sendStreamInfoReq(){this._send(I(n,o,p,new Uint8Array([this.channel])))}_sendContentInfoReq(){this._send(I(n,o,l,new Uint8Array([255])))}_sendResolutionMapReq(){this._send(I(n,o,m,new Uint8Array([0,0,0,0])))}_sendEventMapReq(){this._send(E(n,o,d))}_sendVideoStart(){const t=new Uint8Array(56);t.set(E(n,o,u,44));const s=new DataView(t.buffer);let i=e;s.setInt32(i,1),i+=4,s.setInt8(i,0),i+=1,s.setInt8(i,f),i+=1,s.setInt8(i,1),i+=1,s.setInt8(i,this.channel),i+=1,s.setInt32(i,32),i+=4,s.setInt32(i,0),i+=4,s.setInt16(i,0),i+=2,s.setInt32(i,30<<24),i+=4,s.setInt8(i,11),i+=1,s.setInt32(i,30<<24),i+=4,s.setInt8(i,6),i+=1,s.setUint32(i,4294967295),i+=4,s.setUint32(i,4294967295),i+=4,s.setInt32(i,0),i+=4,s.setInt8(i,10),i+=1,s.setInt8(i,f),i+=1,s.setInt8(i,10),i+=1,s.setInt8(i,0),i+=1,this._send(t)}_sendVideoAck(){this._send(I(r,o,u,new Uint8Array([0,0,0,this.channel])))}_sendKeepAlive(){this._send(E(r,o,c))}_startKeepAlive(){this._stopKeepAlive(),this.keepAliveTimer=setInterval((()=>this._sendKeepAlive()),this.keepAliveInterval)}_stopKeepAlive(){this.keepAliveTimer&&(clearInterval(this.keepAliveTimer),this.keepAliveTimer=null)}}let S={};const C={_level:1,useDefaults(){this._level=3},setLevel(t){this._level={OFF:0,ERROR:1,WARN:2,INFO:3,DEBUG:4}[t]||3},error(...t){this._level>=1&&console.error("[WESP]",...t)},warn(...t){this._level>=2&&console.warn("[WESP]",...t)},info(...t){this._level>=3&&console.log("[WESP]",...t)},debug(...t){this._level>=4&&console.debug("[WESP]",...t)}};window.WespJSSDK={Logger:C,Wesp:{},MonitorUIController:class{constructor(t,e){this.viewportId=t,this.siteInfo=Object.assign({},e),this.maxChannel=16,this.connection=null,this.imgElement=null,this.timestampEl=null,this.currentBlobUrl=null,this.params=null,this._pendingChangeLayout=null}init(t,e){if(this._createDom(),this.siteInfo.text&&S[this.siteInfo.text]){if(this.params=Object.assign({},S[this.siteInfo.text]),this.params.channel=this.siteInfo.channel,this.params.serial=this.siteInfo.serial,this.params.stream=this.siteInfo.stream,t&&t(),this._pendingChangeLayout){const t=this._pendingChangeLayout;this._pendingChangeLayout=null,this.changeLayout(t.div,t.off)}}else this._initialize(t,e)}async _initialize(t,e){try{if(this.siteInfo.text){const t=await b(this.siteInfo.text);S[this.siteInfo.text]=t,this.params=Object.assign({},t)}else{if(!this.siteInfo.host)throw new Error("No connection params: provide text or host/port/id/pass");this.params=Object.assign({},this.siteInfo)}this.params.channel=this.siteInfo.channel,this.params.serial=this.siteInfo.serial,this.params.stream=this.siteInfo.stream}catch(t){return C.error("Decrypt/config error:",t),void(e&&e(t.message))}if(this._pendingChangeLayout){const e=this._pendingChangeLayout;return this._pendingChangeLayout=null,this.changeLayout(e.div,e.off),void(t&&t())}const n=new A(this.params);n.onReady=()=>{this.maxChannel=n.maxChannel,n.disconnect(),t&&t()},n.onMaxChannel=t=>{this.maxChannel=t},n.onError=e=>{C.error("Init error:",e),n.disconnect(),t&&t()},n.connect()}_createDom(){const t=document.getElementById(this.viewportId);if(!t)return;t.innerHTML="";const e=document.createElement("table");e.id="videotable",e.style.cssText="width:100%;height:100%;border:none;border-collapse:collapse;";const n=document.createElement("td");n.style.cssText="padding:0;border:none;position:relative;width:100%;height:100%;",this.imgElement=document.createElement("img"),this.imgElement.className="img-responsive",this.imgElement.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;",this.timestampEl=document.createElement("div"),this.timestampEl.className="__video-timestamp",this.timestampEl.style.cssText="position:absolute;top:4px;left:6px;color:#fff;font-size:12px;text-shadow:1px 1px 2px #000;z-index:11;",n.appendChild(this.imgElement),n.appendChild(this.timestampEl);const s=document.createElement("tr");s.appendChild(n),e.appendChild(s),t.appendChild(e)}getMaxChannel(){return this.maxChannel}changeLayout(t,e){if(!this.params)return this._pendingChangeLayout={div:t,off:e},!1;this.connection&&(this.connection.disconnect(),this.connection=null);const n=e+1,s=new A(Object.assign({},this.params,{channel:n}));return s.onReady=()=>{C.info("Starting video ch="+n),s.startVideo()},s.onFrame=(t,e)=>this._displayFrame(t,e),s.onError=t=>C.error("Stream error:",t),this.connection=s,s.connect(),!0}_displayFrame(t,e){if(this.imgElement&&(this.currentBlobUrl&&URL.revokeObjectURL(this.currentBlobUrl),this.currentBlobUrl=URL.createObjectURL(t),this.imgElement.src=this.currentBlobUrl,this.timestampEl&&e>0)){const t=new Date(e);this.timestampEl.textContent=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")+" "+String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0")+":"+String(t.getSeconds()).padStart(2,"0")}}dispose(){this.connection&&(this.connection.disconnect(),this.connection=null),this.currentBlobUrl&&(URL.revokeObjectURL(this.currentBlobUrl),this.currentBlobUrl=null)}}}}();
+/**
+ * WESP Native SDK v1.0
+ * Pure browser JavaScript implementation of the WESP DVR streaming protocol.
+ * Drop-in replacement for WespJSSDKEncV4.min.js
+ *
+ * Implements JPEG stream viewing for Vivaldi Park (비발디파크) webcam DVR system.
+ * Protocol: Binary WebSocket to wss://host:port/wesp with challenge-response auth.
+ *
+ * 출처: https://github.com/hletrd/slopes (vivaldi.js, 커밋 7560442), Apache License 2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * 눈팅 변경 (IKA-100, 2026-11-20)
+ * - JPEG를 주지 않는 장비의 H.265/H.264 하위 스트림을 브라우저 WebCodecs로 디코딩해 canvas에 그린다.
+ * - 압축 영상 조각의 시작 위치를 Annex B 시작 코드로 찾는다(키프레임 뒤에 다른 데이터가 붙어 온다).
+ * - 재생 시작과 실패를 window의 wesp-status 이벤트로 알린다.
+ */
+(function() {
+  'use strict';
+
+  // ========================================================================
+  //  MD5 (RFC 1321) — needed for WESP login authentication (level 1)
+  // ========================================================================
+
+  const md5 = (function() {
+    function safeAdd(x, y) {
+      const lsw = (x & 0xFFFF) + (y & 0xFFFF);
+      return (((x >> 16) + (y >> 16) + (lsw >> 16)) << 16) | (lsw & 0xFFFF);
+    }
+    function rol(n, c) { return (n << c) | (n >>> (32 - c)); }
+    function cmn(q, a, b, x, s, t) { return safeAdd(rol(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b); }
+    function ff(a,b,c,d,x,s,t) { return cmn((b&c)|(~b&d),a,b,x,s,t); }
+    function gg(a,b,c,d,x,s,t) { return cmn((b&d)|(c&~d),a,b,x,s,t); }
+    function hh(a,b,c,d,x,s,t) { return cmn(b^c^d,a,b,x,s,t); }
+    function ii(a,b,c,d,x,s,t) { return cmn(c^(b|~d),a,b,x,s,t); }
+
+    return function md5(str) {
+      const bytes = [];
+      for (let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i) & 0xFF);
+      const bitLen = bytes.length * 8;
+      bytes.push(0x80);
+      while (bytes.length % 64 !== 56) bytes.push(0);
+      bytes.push(bitLen & 0xFF, (bitLen >>> 8) & 0xFF, (bitLen >>> 16) & 0xFF, (bitLen >>> 24) & 0xFF, 0, 0, 0, 0);
+
+      let a0 = 0x67452301, b0 = 0xEFCDAB89, c0 = 0x98BADCFE, d0 = 0x10325476;
+      for (let i = 0; i < bytes.length; i += 64) {
+        const w = [];
+        for (let j = 0; j < 16; j++)
+          w[j] = bytes[i+j*4] | (bytes[i+j*4+1]<<8) | (bytes[i+j*4+2]<<16) | (bytes[i+j*4+3]<<24);
+        let a=a0, b=b0, c=c0, d=d0;
+        a=ff(a,b,c,d,w[0],7,-680876936);d=ff(d,a,b,c,w[1],12,-389564586);c=ff(c,d,a,b,w[2],17,606105819);b=ff(b,c,d,a,w[3],22,-1044525330);
+        a=ff(a,b,c,d,w[4],7,-176418897);d=ff(d,a,b,c,w[5],12,1200080426);c=ff(c,d,a,b,w[6],17,-1473231341);b=ff(b,c,d,a,w[7],22,-45705983);
+        a=ff(a,b,c,d,w[8],7,1770035416);d=ff(d,a,b,c,w[9],12,-1958414417);c=ff(c,d,a,b,w[10],17,-42063);b=ff(b,c,d,a,w[11],22,-1990404162);
+        a=ff(a,b,c,d,w[12],7,1804603682);d=ff(d,a,b,c,w[13],12,-40341101);c=ff(c,d,a,b,w[14],17,-1502002290);b=ff(b,c,d,a,w[15],22,1236535329);
+        a=gg(a,b,c,d,w[1],5,-165796510);d=gg(d,a,b,c,w[6],9,-1069501632);c=gg(c,d,a,b,w[11],14,643717713);b=gg(b,c,d,a,w[0],20,-373897302);
+        a=gg(a,b,c,d,w[5],5,-701558691);d=gg(d,a,b,c,w[10],9,38016083);c=gg(c,d,a,b,w[15],14,-660478335);b=gg(b,c,d,a,w[4],20,-405537848);
+        a=gg(a,b,c,d,w[9],5,568446438);d=gg(d,a,b,c,w[14],9,-1019803690);c=gg(c,d,a,b,w[3],14,-187363961);b=gg(b,c,d,a,w[8],20,1163531501);
+        a=gg(a,b,c,d,w[13],5,-1444681467);d=gg(d,a,b,c,w[2],9,-51403784);c=gg(c,d,a,b,w[7],14,1735328473);b=gg(b,c,d,a,w[12],20,-1926607734);
+        a=hh(a,b,c,d,w[5],4,-378558);d=hh(d,a,b,c,w[8],11,-2022574463);c=hh(c,d,a,b,w[11],16,1839030562);b=hh(b,c,d,a,w[14],23,-35309556);
+        a=hh(a,b,c,d,w[1],4,-1530992060);d=hh(d,a,b,c,w[4],11,1272893353);c=hh(c,d,a,b,w[7],16,-155497632);b=hh(b,c,d,a,w[10],23,-1094730640);
+        a=hh(a,b,c,d,w[13],4,681279174);d=hh(d,a,b,c,w[0],11,-358537222);c=hh(c,d,a,b,w[3],16,-722521979);b=hh(b,c,d,a,w[6],23,76029189);
+        a=hh(a,b,c,d,w[9],4,-640364487);d=hh(d,a,b,c,w[12],11,-421815835);c=hh(c,d,a,b,w[15],16,530742520);b=hh(b,c,d,a,w[2],23,-995338651);
+        a=ii(a,b,c,d,w[0],6,-198630844);d=ii(d,a,b,c,w[7],10,1126891415);c=ii(c,d,a,b,w[14],15,-1416354905);b=ii(b,c,d,a,w[5],21,-57434055);
+        a=ii(a,b,c,d,w[12],6,1700485571);d=ii(d,a,b,c,w[3],10,-1894986606);c=ii(c,d,a,b,w[10],15,-1051523);b=ii(b,c,d,a,w[1],21,-2054922799);
+        a=ii(a,b,c,d,w[8],6,1873313359);d=ii(d,a,b,c,w[15],10,-30611744);c=ii(c,d,a,b,w[6],15,-1560198380);b=ii(b,c,d,a,w[13],21,1309151649);
+        a=ii(a,b,c,d,w[4],6,-145523070);d=ii(d,a,b,c,w[11],10,-1120210379);c=ii(c,d,a,b,w[2],15,718787259);b=ii(b,c,d,a,w[9],21,-343485551);
+        a0=safeAdd(a0,a);b0=safeAdd(b0,b);c0=safeAdd(c0,c);d0=safeAdd(d0,d);
+      }
+      const result = new Uint8Array(16);
+      [a0,b0,c0,d0].forEach((v,i) => {
+        result[i*4]=(v)&0xFF; result[i*4+1]=(v>>>8)&0xFF;
+        result[i*4+2]=(v>>>16)&0xFF; result[i*4+3]=(v>>>24)&0xFF;
+      });
+      return result;
+    };
+  })();
+
+  // ========================================================================
+  //  Protocol Constants
+  // ========================================================================
+
+  const WESP_VERSION = 10;
+  const HEADER_SIZE = 12;
+  const VITC_SIZE = 20;
+  const CONNECTION_TIMEOUT = 10000;
+
+  const Transmit = { REQ: 0, RES: 1, SVR: 2, CLI: 3, SVR2: 4 };
+  const Category = { MON: 1, EVENT: 2, PLAYBACK: 4, PTZ: 5, CONTROL: 11, PROXY: 12 };
+  const Command = {
+    Login: 1, Disconnect: 2, Keepalive: 3, ContentInfo: 4, EventMap: 5,
+    ServiceStart: 6, ServiceStop: 7, StreamInfo: 10, ResolutionMap: 12, OpenSite: 4099
+  };
+  const EncType = { JPEG: 3, H264: 6, H265: 7 };
+  const ContentType_Video = 0;
+  const VideoRequest_CP = 1;
+
+  const AES_IV = new Uint8Array([211,129,79,217,140,12,91,186,22,228,26,144,180,74,6,205]);
+  const AES_KEY_STR = 'Web%#^GateWeb%#^Gate7263049165)#';
+
+  // ========================================================================
+  //  Utilities
+  // ========================================================================
+
+  function hexToBytes(hex) {
+    const b = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) b[i/2] = parseInt(hex.substr(i, 2), 16);
+    return b;
+  }
+
+  function uint8ToBase64(arr) {
+    let s = '';
+    for (let i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i]);
+    return btoa(s);
+  }
+
+  function stringToArrayBuffer(str) {
+    const buf = new ArrayBuffer(str.length);
+    const v = new Uint8Array(buf);
+    for (let i = 0; i < str.length; i++) v[i] = str.charCodeAt(i) & 0xFF;
+    return buf;
+  }
+
+  function bytesToString(bytes, offset, length) {
+    let s = '';
+    for (let i = 0; i < length; i++) {
+      const b = bytes[offset + i];
+      if (b === 0) break;
+      s += String.fromCharCode(b);
+    }
+    return s;
+  }
+
+  // ========================================================================
+  //  AES-256-GCM Decryption
+  //  The original SDK encrypts siteInfo as AES-256-GCM. Since GCM uses CTR
+  //  internally, we can "decrypt" by calling encrypt (XOR is its own inverse).
+  //  Web Crypto's encrypt appends a 16-byte auth tag which we strip.
+  // ========================================================================
+
+  async function decryptSiteInfo(text) {
+    const hexStr = text.startsWith(';') ? text.slice(1) : text;
+    const ciphertext = hexToBytes(hexStr);
+    const keyBytes = new TextEncoder().encode(AES_KEY_STR);
+    const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+    const result = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: AES_IV, tagLength: 128 }, key, ciphertext);
+    const plaintext = new Uint8Array(result, 0, result.byteLength - 16);
+    const decoded = new TextDecoder().decode(plaintext);
+    return JSON.parse(JSON.parse(decoded));
+  }
+
+  /** Annex B 시작 코드(00 00 01 또는 00 00 00 01)의 위치. 없으면 -1. */
+  function findStartCode(bytes, from) {
+    for (let i = from; i + 3 < bytes.length; i++) {
+      if (bytes[i] === 0 && bytes[i + 1] === 0 && (bytes[i + 2] === 1 || (bytes[i + 2] === 0 && bytes[i + 3] === 1))) return i;
+    }
+    return -1;
+  }
+
+  /** 디코딩을 시작할 수 있는 조각인지(H.265: VPS 또는 IRAP, H.264: SPS 또는 IDR). */
+  function isKeyFrame(bytes, codec) {
+    for (let i = 0; i + 3 < bytes.length; i++) {
+      if (bytes[i] !== 0 || bytes[i + 1] !== 0) continue;
+      const head = bytes[i + 2] === 1 ? i + 3 : bytes[i + 2] === 0 && bytes[i + 3] === 1 ? i + 4 : -1;
+      if (head < 0 || head >= bytes.length) continue;
+      if (codec === EncType.H265) {
+        const type = (bytes[head] >> 1) & 0x3F;
+        if (type === 32 || (type >= 16 && type <= 21)) return true;
+      } else {
+        const type = bytes[head] & 0x1F;
+        if (type === 7 || type === 5) return true;
+      }
+      i = head;
+    }
+    return false;
+  }
+
+  // ========================================================================
+  //  CanvasVideoDecoder: H.265/H.264 조각을 WebCodecs로 디코딩해 canvas에 그린다
+  // ========================================================================
+
+  const DECODER_CODECS = {
+    [EncType.H265]: ['hev1.1.6.L93.B0', 'hvc1.1.6.L93.B0', 'hev1.1.6.L120.B0', 'hev1.2.4.L93.B0'],
+    [EncType.H264]: ['avc1.42E01F', 'avc1.4D401F', 'avc1.640028'],
+  };
+
+  class CanvasVideoDecoder {
+    constructor(codec, canvas, onFrame, onError) {
+      this.codec = codec;
+      this.canvas = canvas;
+      this.onFrame = onFrame;
+      this.onError = onError;
+      this.decoder = null;
+      this.waitingKey = true;
+      this.closed = false;
+      this._configure();
+    }
+
+    async _configure() {
+      if (typeof VideoDecoder === 'undefined') return this._fail('unsupported-codec');
+      for (const candidate of DECODER_CODECS[this.codec] || []) {
+        try {
+          const result = await VideoDecoder.isConfigSupported({ codec: candidate, optimizeForLatency: true });
+          if (this.closed) return false;
+          if (!result.supported) continue;
+          // description을 주지 않으면 Annex B 형식으로 받는다.
+          this.decoder = new VideoDecoder({
+            output: frame => this._draw(frame),
+            error: () => this._fail('decoder-error'),
+          });
+          this.decoder.configure(result.config);
+          return true;
+        } catch (_) { /* 다음 후보 */ }
+      }
+      return this._fail('unsupported-codec');
+    }
+
+    push(bytes, timestamp) {
+      if (this.closed || !this.decoder || this.decoder.state !== 'configured') return;
+      const key = isKeyFrame(bytes, this.codec);
+      // 밀리면 다음 키프레임까지 버려 지연이 쌓이지 않게 한다.
+      if (this.decoder.decodeQueueSize > 30) this.waitingKey = true;
+      if (this.waitingKey && !key) return;
+      this.waitingKey = false;
+      try {
+        // 받은 버퍼는 다음 메시지에서 재사용되지 않지만, 디코더가 비동기로 읽으므로 복사해서 넘긴다.
+        this.decoder.decode(new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: timestamp * 1000, data: bytes.slice() }));
+      } catch (_) {
+        this._fail('decoder-error');
+      }
+    }
+
+    _draw(frame) {
+      try {
+        if (!this.closed) {
+          if (this.canvas.width !== frame.displayWidth) this.canvas.width = frame.displayWidth;
+          if (this.canvas.height !== frame.displayHeight) this.canvas.height = frame.displayHeight;
+          this.canvas.getContext('2d').drawImage(frame, 0, 0);
+          this.onFrame(frame.timestamp / 1000);
+        }
+      } finally {
+        frame.close();
+      }
+    }
+
+    _fail(reason) {
+      if (!this.closed) this.onError(reason);
+      this.close();
+      return false;
+    }
+
+    close() {
+      this.closed = true;
+      if (this.decoder && this.decoder.state !== 'closed') {
+        try { this.decoder.close(); } catch (_) { /* 이미 닫힘 */ }
+      }
+      this.decoder = null;
+    }
+  }
+
+  // ========================================================================
+  //  Login Hash (challenge-response authentication)
+  // ========================================================================
+
+  function md5Base64(str) {
+    return uint8ToBase64(md5(str));
+  }
+
+  async function sha256Base64(str) {
+    const data = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return uint8ToBase64(new Uint8Array(hash));
+  }
+
+  async function computeLoginHash(nonce, password, level) {
+    if (level === 1) {
+      return md5Base64(nonce + ':' + md5Base64(password));
+    } else if (level === 2) {
+      const inner = await sha256Base64(password);
+      return await sha256Base64(nonce + ':' + inner);
+    }
+    throw new Error('Unsupported auth level: ' + level);
+  }
+
+  // ========================================================================
+  //  Packet Encoding / Decoding
+  // ========================================================================
+
+  function encodeHeader(transmit, category, command, bodysize) {
+    bodysize = bodysize || 0;
+    const buf = new Uint8Array(HEADER_SIZE);
+    buf[0] = (WESP_VERSION << 4) | (transmit & 0x0F);
+    buf[1] = category & 0xFF;
+    buf[2] = (command >> 8) & 0xFF;
+    buf[3] = command & 0xFF;
+    buf[8] = (bodysize >> 24) & 0xFF;
+    buf[9] = (bodysize >> 16) & 0xFF;
+    buf[10] = (bodysize >> 8) & 0xFF;
+    buf[11] = bodysize & 0xFF;
+    return buf;
+  }
+
+  function decodeHeader(buf) {
+    if (buf.byteLength < HEADER_SIZE) return null;
+    const v = new DataView(buf);
+    const b0 = v.getUint8(0);
+    return {
+      version: b0 >>> 4,
+      transmit: b0 & 0x0F,
+      category: v.getInt8(1),
+      command: v.getUint16(2),
+      status: v.getUint32(4),
+      bodysize: v.getUint32(8)
+    };
+  }
+
+  function buildPacket(transmit, category, command, body) {
+    const bodyLen = body ? body.byteLength : 0;
+    const buf = new Uint8Array(HEADER_SIZE + bodyLen);
+    buf.set(encodeHeader(transmit, category, command, bodyLen));
+    if (body) buf.set(body instanceof Uint8Array ? body : new Uint8Array(body), HEADER_SIZE);
+    return buf;
+  }
+
+  function buildLoginResponse(transmit, category, idBuf, hashBuf) {
+    const bodyLen = 4 + idBuf.byteLength + 4 + hashBuf.byteLength;
+    const buf = new Uint8Array(HEADER_SIZE + bodyLen);
+    buf.set(encodeHeader(transmit, category, Command.Login, bodyLen));
+    const dv = new DataView(buf.buffer);
+    let off = HEADER_SIZE;
+    dv.setUint32(off, idBuf.byteLength); off += 4;
+    buf.set(new Uint8Array(idBuf), off); off += idBuf.byteLength;
+    dv.setUint32(off, hashBuf.byteLength); off += 4;
+    buf.set(new Uint8Array(hashBuf), off);
+    return buf;
+  }
+
+  // ========================================================================
+  //  WespConnection — single WebSocket with full WESP protocol
+  // ========================================================================
+
+  class WespConnection {
+    constructor(params) {
+      this.host = params.host;
+      this.port = params.port;
+      this.id = params.id;
+      this.pass = params.pass;
+      this.tls = params.tls !== false;
+      this.rds = !!params.rds;
+      this.serial = params.serial || '';
+      this.channel = params.channel || 1;
+      this.WebSocket = params.WebSocket || globalThis.WebSocket;
+      this.webSocketOptions = params.webSocketOptions;
+      this.stream = params.stream || 'sub';
+      this.videoEncoding = EncType.JPEG;
+      this.videoResolution = 11;
+      this.videoFrameRate = 30;
+      this.alarmResolution = 6;
+      this.videoRequestMode = VideoRequest_CP;
+      this._pendingEncodedFrames = 0;
+      this.preferEncoded = !!params.preferEncoded;
+
+      this.ws = null;
+      this.keepAliveTimer = null;
+      this.keepAliveInterval = 22500;
+      this.maxChannel = 16;
+      this.disposed = false;
+      this.state = 'disconnected';
+      this._connectTimer = null;
+
+      this.onReady = null;
+      this.onFrame = null;
+      this.onEncodedFrame = null;
+      this.onError = null;
+      this.onMaxChannel = null;
+    }
+
+    connect() {
+      if (this.disposed) return;
+      this.state = 'connecting';
+      const proto = (this.tls || (typeof location !== 'undefined' && location.protocol === 'https:')) ? 'wss' : 'ws';
+      const url = `${proto}://${this.host}:${this.port}/wesp`;
+
+      try {
+        this.ws = new this.WebSocket(url, 'binary', this.webSocketOptions);
+        this.ws.binaryType = 'arraybuffer';
+        this.ws.onopen = () => this._onOpen();
+        this.ws.onclose = () => this._onClose();
+        this.ws.onerror = () => this._onWsError();
+        this.ws.onmessage = (e) => {
+          try { this._onMessage(e); }
+          catch (_) { this.onError && this.onError('invalid_packet'); }
+        };
+        this._connectTimer = setTimeout(() => {
+          if (this.state === 'connecting') {
+            Logger.error('Connection timeout');
+            this.disconnect();
+            this.onError && this.onError('timeout');
+          }
+        }, CONNECTION_TIMEOUT);
+      } catch (e) {
+        Logger.error('WebSocket error:', e);
+        this.onError && this.onError(e.message);
+      }
+    }
+
+    disconnect() {
+      this.disposed = true;
+      this._stopKeepAlive();
+      if (this._connectTimer) { clearTimeout(this._connectTimer); this._connectTimer = null; }
+      if (this.ws) {
+        this.ws.onopen = this.ws.onclose = this.ws.onerror = this.ws.onmessage = null;
+        try {
+          if (typeof this.ws.terminate === 'function') {
+            this.ws.on('error', () => {});
+            this.ws.terminate();
+          } else this.ws.close();
+        } catch(_) {}
+        this.ws = null;
+      }
+      this.state = 'disconnected';
+    }
+
+    startVideo() {
+      if (this.state !== 'ready') return;
+      this.state = 'streaming';
+      this._sendVideoStart();
+    }
+
+    // — WebSocket handlers —
+
+    _onOpen() {
+      if (this._connectTimer) { clearTimeout(this._connectTimer); this._connectTimer = null; }
+      Logger.info('Connected to', this.host);
+      this.state = 'logging_in';
+      this._send(encodeHeader(Transmit.REQ, Category.MON, Command.Login));
+    }
+
+    _onClose() {
+      Logger.info('Disconnected');
+      this._stopKeepAlive();
+      if (!this.disposed) this.onError && this.onError('disconnected');
+      this.state = 'disconnected';
+    }
+
+    _onWsError() {
+      Logger.error('WebSocket error');
+      this._stopKeepAlive();
+      if (!this.disposed) this.onError && this.onError('socket_error');
+    }
+
+    _onMessage(event) {
+      const data = event.data;
+      if (!(data instanceof ArrayBuffer) || data.byteLength < HEADER_SIZE) return;
+      const hdr = decodeHeader(data);
+      if (!hdr || data.byteLength < HEADER_SIZE + hdr.bodysize) return;
+      if (hdr.status !== 0 && hdr.command === Command.Login && hdr.transmit !== Transmit.RES) {
+        // Login step1 may have nonzero status in some implementations; let it through
+      } else if (hdr.status !== 0) {
+        Logger.error('Server error:', hdr.status);
+        this.onError && this.onError('server_error_' + hdr.status);
+        return;
+      }
+      this._dispatch(hdr, data);
+    }
+
+    _dispatch(hdr, data) {
+      switch (hdr.command) {
+        case Command.Login: this._handleLogin(hdr, data); break;
+        case Command.OpenSite: this._handleOpenSite(hdr); break;
+        case Command.StreamInfo: this._handleStreamInfo(hdr, data); break;
+        case Command.ContentInfo: this._handleContentInfo(hdr, data); break;
+        case Command.ResolutionMap: this._handleResolutionMap(hdr); break;
+        case Command.EventMap: this._handleEventMap(hdr); break;
+        case Command.ServiceStart: this._handleServiceStart(hdr, data); break;
+        case Command.Disconnect: this.disconnect(); break;
+        default: Logger.debug('Unhandled cmd:', hdr.command);
+      }
+    }
+
+    // — Login —
+
+    async _handleLogin(hdr, data) {
+      if (hdr.transmit === Transmit.RES) {
+        Logger.info('Login OK');
+        if (hdr.bodysize >= 8) {
+          const timeout = new DataView(data, HEADER_SIZE).getUint32(4);
+          if (timeout > 0) this.keepAliveInterval = timeout * 750;
+        }
+        this._startKeepAlive();
+        this.state = 'handshaking';
+        if (this.rds) this._sendOpenSite();
+        else this._sendStreamInfoReq();
+      } else {
+        if (hdr.bodysize < 6) { this.onError && this.onError('bad_challenge'); return; }
+        const bv = new DataView(data, HEADER_SIZE, hdr.bodysize);
+        const level = bv.getUint8(1);
+        const nonceLen = bv.getUint32(2);
+        const nonceBytes = new Uint8Array(data, HEADER_SIZE + 6, nonceLen);
+        const nonce = bytesToString(nonceBytes, 0, nonceLen);
+        Logger.debug('Auth level:', level, 'nonce len:', nonceLen);
+
+        try {
+          const hash = await computeLoginHash(nonce, this.pass, level);
+          const idBuf = stringToArrayBuffer(this.id);
+          const hashBuf = stringToArrayBuffer(hash);
+          this._send(buildLoginResponse(Transmit.CLI, Category.MON, idBuf, hashBuf));
+        } catch (e) {
+          Logger.error('Hash computation failed:', e);
+          this.onError && this.onError('auth_error');
+        }
+      }
+    }
+
+    // — Handshake sequence —
+
+    _handleOpenSite(hdr) {
+      if (hdr.transmit === Transmit.RES) {
+        Logger.debug('OpenSite OK');
+        this._sendStreamInfoReq();
+      }
+    }
+
+    _handleStreamInfo(hdr, data) {
+      if (this.state !== 'handshaking') return;
+      if (hdr.transmit === Transmit.RES || hdr.transmit === Transmit.SVR) {
+        if (this.onEncodedFrame && data && hdr.bodysize >= 4) {
+          const info = new DataView(data, HEADER_SIZE, hdr.bodysize);
+          const streams = [];
+          for (let i = 0; i < info.getUint8(1) && 4 + (i + 1) * 20 <= info.byteLength; i++) {
+            const offset = 4 + i * 20;
+            streams.push({ number: info.getUint8(offset), codec: info.getUint8(offset + 1), resolution: info.getUint8(offset + 6),
+              frameRate: info.getUint32(offset + 2) >>> 24 });
+          }
+          if (this.preferEncoded || !streams.some(stream => stream.codec === EncType.JPEG)) {
+            const supported = streams.filter(stream => stream.codec === EncType.H264 || stream.codec === EncType.H265);
+            const chosen = this.stream === 'main' ? supported[0] : supported.find(stream => stream.number === 2) || supported.at(-1);
+            if (chosen) {
+              this.videoEncoding = chosen.codec;
+              this.videoResolution = this.alarmResolution = chosen.resolution;
+              this.videoFrameRate = Math.max(1, Math.min(30, chosen.frameRate || 15));
+              this.videoRequestMode = 0;
+            }
+          }
+        }
+        Logger.debug('StreamInfo OK');
+        this._sendContentInfoReq();
+      }
+    }
+
+    _handleContentInfo(hdr, data) {
+      if (hdr.transmit !== Transmit.RES) return;
+      Logger.debug('ContentInfo OK');
+      if (hdr.bodysize >= 4) {
+        try {
+          const dv = new DataView(data, HEADER_SIZE, hdr.bodysize);
+          const count = dv.getUint32(0);
+          let maxCh = 1, off = 4;
+          for (let i = 0; i < count && off + 8 <= hdr.bodysize; i++) {
+            const type = dv.getUint8(off); off += 3;
+            const ch = dv.getUint8(off); off += 1;
+            const nameLen = dv.getUint32(off); off += 4 + nameLen;
+            if (type === 0 && ch > maxCh) maxCh = ch;
+          }
+          this.maxChannel = maxCh <= 1 ? 1 : maxCh <= 4 ? 4 : maxCh <= 8 ? 8 : maxCh <= 16 ? 16 : maxCh;
+          this.onMaxChannel && this.onMaxChannel(this.maxChannel);
+        } catch (_) { /* best-effort parsing */ }
+      }
+      this._sendResolutionMapReq();
+    }
+
+    _handleResolutionMap(hdr) {
+      if (hdr.transmit === Transmit.RES) {
+        Logger.debug('ResolutionMap OK');
+        this._sendEventMapReq();
+      }
+    }
+
+    _handleEventMap(hdr) {
+      if (hdr.transmit === Transmit.RES && this.state === 'handshaking') {
+        Logger.debug('Handshake complete');
+        this.state = 'ready';
+        this.onReady && this.onReady();
+      }
+    }
+
+    // — Video streaming —
+
+    _handleServiceStart(hdr, data) {
+      if (hdr.transmit === Transmit.RES) {
+        Logger.debug('Video service ack');
+      } else if (hdr.transmit === Transmit.SVR) {
+        if (hdr.bodysize <= 48) return;
+        this._handleVideoFrame(data, hdr.bodysize);
+      }
+    }
+
+    _handleVideoFrame(data, bodysize) {
+      const off = HEADER_SIZE;
+      const dv = new DataView(data, off, bodysize);
+      const fversion = dv.getUint8(1);
+      let datasize = 0, enctype = EncType.JPEG, timeSec = 0, timeMs = 0;
+      let p = 4;
+
+      if (fversion === 0) {
+        p += 1 + 4 + 1 + 8; // channel, errcode, qlevel, alarm
+        timeSec = dv.getUint32(p); p += 4;
+        timeMs = dv.getUint16(p); p += 2;
+        p += 1 + 2; // dstnow, tzoffset
+        datasize = dv.getUint32(p);
+      } else if (fversion >= 2) {
+        p += 1 + 4 + 1 + 8; // channel, errcode, qlevel, alarm
+        p += 1 + 8; // mdlevel, mdarea
+        enctype = dv.getUint8(p); p += 1;
+        p += 2; // watermarking
+        timeSec = dv.getUint32(p); p += 4;
+        timeMs = dv.getUint16(p); p += 2;
+        p += 1 + 2; // dstnow, tzoffset
+        datasize = dv.getUint32(p);
+      }
+
+      if (datasize <= VITC_SIZE) return;
+      let imgStart = data.byteLength - datasize + VITC_SIZE;
+      let imgLen = datasize - VITC_SIZE;
+      if (enctype === EncType.H264 || enctype === EncType.H265) {
+        // 키프레임은 영상 뒤에 다른 데이터가 붙어 와서 끝에서 거꾸로 세면 어긋난다. 시작 코드부터 자른다.
+        const start = findStartCode(new Uint8Array(data), off + p + 4);
+        if (start < 0) return;
+        imgStart = start;
+        imgLen = Math.min(imgLen, data.byteLength - start);
+      }
+      if (imgStart < 0 || imgStart + imgLen > data.byteLength) return;
+
+      const imgData = new Uint8Array(data, imgStart, imgLen);
+      if (this.onEncodedFrame && (enctype === EncType.H264 || enctype === EncType.H265)) {
+        const pending = this.onEncodedFrame(imgData, enctype, timeSec * 1000 + timeMs);
+        this._pendingEncodedFrames++;
+        this.ws?.pause?.();
+        Promise.resolve(pending)
+          .then(() => { if (!this.disposed && this.videoRequestMode === VideoRequest_CP) this._sendVideoAck(); })
+          .catch(() => { if (!this.disposed) this.onError && this.onError('decoder_error'); })
+          .finally(() => { if (--this._pendingEncodedFrames === 0 && !this.disposed) this.ws?.resume?.(); });
+        return;
+      }
+      if (this.videoRequestMode === VideoRequest_CP) this._sendVideoAck();
+      if (this.onFrame && enctype === EncType.JPEG) {
+        const blob = new Blob([imgData], { type: 'image/jpeg' });
+        this.onFrame(blob, timeSec * 1000 + timeMs);
+      }
+    }
+
+    // — Send helpers —
+
+    _send(buf) {
+      if (this.ws && this.ws.readyState === this.WebSocket.OPEN) this.ws.send(buf);
+    }
+
+    _sendOpenSite() {
+      const body = new Uint8Array(24);
+      for (let i = 0; i < this.serial.length && i < 24; i++) body[i] = this.serial.charCodeAt(i);
+      this._send(buildPacket(Transmit.REQ, Category.MON, Command.OpenSite, body));
+    }
+
+    _sendStreamInfoReq() {
+      this._send(buildPacket(Transmit.REQ, Category.MON, Command.StreamInfo, new Uint8Array([this.channel])));
+    }
+
+    _sendContentInfoReq() {
+      this._send(buildPacket(Transmit.REQ, Category.MON, Command.ContentInfo, new Uint8Array([0xFF])));
+    }
+
+    _sendResolutionMapReq() {
+      this._send(buildPacket(Transmit.REQ, Category.MON, Command.ResolutionMap, new Uint8Array([0,0,0,0])));
+    }
+
+    _sendEventMapReq() {
+      this._send(encodeHeader(Transmit.REQ, Category.MON, Command.EventMap));
+    }
+
+    _sendVideoStart() {
+      const buf = new Uint8Array(HEADER_SIZE + 44);
+      buf.set(encodeHeader(Transmit.REQ, Category.MON, Command.ServiceStart, 44));
+      const dv = new DataView(buf.buffer);
+      let i = HEADER_SIZE;
+      dv.setInt32(i, 1); i += 4;
+      dv.setInt8(i, ContentType_Video); i += 1;
+      dv.setInt8(i, this.videoEncoding); i += 1;
+      dv.setInt8(i, this.videoRequestMode); i += 1;
+      dv.setInt8(i, this.channel); i += 1;
+      dv.setInt32(i, 32); i += 4;
+      dv.setInt32(i, 0); i += 4;
+      dv.setInt16(i, 0); i += 2;
+      dv.setInt32(i, this.videoFrameRate << 24); i += 4;
+      dv.setInt8(i, this.videoResolution); i += 1;
+      dv.setInt32(i, this.videoFrameRate << 24); i += 4;
+      dv.setInt8(i, this.alarmResolution); i += 1;
+      dv.setUint32(i, 0xFFFFFFFF); i += 4;
+      dv.setUint32(i, 0xFFFFFFFF); i += 4;
+      dv.setInt32(i, 0); i += 4;
+      dv.setInt8(i, 10); i += 1;
+      dv.setInt8(i, this.videoEncoding); i += 1;
+      dv.setInt8(i, 10); i += 1;
+      dv.setInt8(i, 0); i += 1;
+      this._send(buf);
+    }
+
+    _sendVideoAck() {
+      this._send(buildPacket(Transmit.CLI, Category.MON, Command.ServiceStart,
+        new Uint8Array([ContentType_Video, 0, 0, this.channel])));
+    }
+
+    _sendKeepAlive() {
+      this._send(encodeHeader(Transmit.CLI, Category.MON, Command.Keepalive));
+    }
+
+    _startKeepAlive() {
+      this._stopKeepAlive();
+      this.keepAliveTimer = setInterval(() => this._sendKeepAlive(), this.keepAliveInterval);
+    }
+
+    _stopKeepAlive() {
+      if (this.keepAliveTimer) { clearInterval(this.keepAliveTimer); this.keepAliveTimer = null; }
+    }
+  }
+
+  // ========================================================================
+  //  MonitorUIController — API-compatible with original WespJSSDK
+  // ========================================================================
+
+  // Global cache: once decrypted, reuse across instances (same page lifecycle)
+  let _decryptCache = {};
+
+  class MonitorUIController {
+    constructor(viewportId, siteInfo) {
+      this.viewportId = viewportId;
+      this.siteInfo = Object.assign({}, siteInfo);
+      this.maxChannel = 16;
+      this.connection = null;
+      this.imgElement = null;
+      this.timestampEl = null;
+      this.currentBlobUrl = null;
+      this.params = null;
+      this._pendingChangeLayout = null;
+      this.canvasElement = null;
+      this.decoder = null;
+      this.playing = false;
+      this._frameWatchdog = null;
+    }
+
+    /** 재생 상태를 알린다. vivaldi.html이 받아 슬로프캠 화면에 전한다. */
+    _report(status, reason) {
+      if (status === 'playing') {
+        if (this.playing) return;
+        this.playing = true;
+      }
+      clearTimeout(this._frameWatchdog);
+      if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wesp-status', { detail: { status, reason } }));
+      }
+    }
+
+    init(callback, errorCallback) {
+      this._createDom();
+
+      // Fast path: if params already cached from a prior decryption, set synchronously
+      if (this.siteInfo.text && _decryptCache[this.siteInfo.text]) {
+        this.params = Object.assign({}, _decryptCache[this.siteInfo.text]);
+        this.params.channel = this.siteInfo.channel;
+        this.params.serial = this.siteInfo.serial;
+        this.params.stream = this.siteInfo.stream;
+        // Skip test connection on subsequent inits (camera switches)
+        if (callback) callback();
+        // If changeLayout was called before params were ready, run it now
+        if (this._pendingChangeLayout) {
+          const pl = this._pendingChangeLayout;
+          this._pendingChangeLayout = null;
+          this.changeLayout(pl.div, pl.off);
+        }
+        return;
+      }
+
+      this._initialize(callback, errorCallback);
+    }
+
+    async _initialize(callback, errorCallback) {
+      try {
+        if (this.siteInfo.text) {
+          const decrypted = await decryptSiteInfo(this.siteInfo.text);
+          _decryptCache[this.siteInfo.text] = decrypted;
+          this.params = Object.assign({}, decrypted);
+        } else if (this.siteInfo.host) {
+          this.params = Object.assign({}, this.siteInfo);
+        } else {
+          throw new Error('No connection params: provide text or host/port/id/pass');
+        }
+        this.params.channel = this.siteInfo.channel;
+        this.params.serial = this.siteInfo.serial;
+        this.params.stream = this.siteInfo.stream;
+      } catch (e) {
+        Logger.error('Decrypt/config error:', e);
+        errorCallback && errorCallback(e.message);
+        return;
+      }
+
+      // Execute any changeLayout that was called before params were ready
+      if (this._pendingChangeLayout) {
+        const pl = this._pendingChangeLayout;
+        this._pendingChangeLayout = null;
+        this.changeLayout(pl.div, pl.off);
+        callback && callback();
+        return;
+      }
+
+      const test = new WespConnection(this.params);
+      test.onReady = () => {
+        this.maxChannel = test.maxChannel;
+        test.disconnect();
+        callback && callback();
+      };
+      test.onMaxChannel = (mc) => { this.maxChannel = mc; };
+      test.onError = (err) => {
+        Logger.error('Init error:', err);
+        test.disconnect();
+        callback && callback();
+      };
+      test.connect();
+    }
+
+    _createDom() {
+      const container = document.getElementById(this.viewportId);
+      if (!container) return;
+      container.innerHTML = '';
+
+      const table = document.createElement('table');
+      table.id = 'videotable';
+      table.style.cssText = 'width:100%;height:100%;border:none;border-collapse:collapse;';
+
+      const td = document.createElement('td');
+      td.style.cssText = 'padding:0;border:none;position:relative;width:100%;height:100%;';
+
+      this.imgElement = document.createElement('img');
+      this.imgElement.className = 'img-responsive';
+      this.imgElement.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
+
+      this.timestampEl = document.createElement('div');
+      this.timestampEl.className = '__video-timestamp';
+      this.timestampEl.style.cssText = 'position:absolute;top:4px;left:6px;color:#fff;font-size:12px;text-shadow:1px 1px 2px #000;z-index:11;';
+
+      this.canvasElement = document.createElement('canvas');
+      this.canvasElement.className = 'img-responsive';
+      this.canvasElement.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:none;';
+
+      td.appendChild(this.imgElement);
+      td.appendChild(this.canvasElement);
+      td.appendChild(this.timestampEl);
+      const tr = document.createElement('tr');
+      tr.appendChild(td);
+      table.appendChild(tr);
+      container.appendChild(table);
+    }
+
+    getMaxChannel() { return this.maxChannel; }
+
+    changeLayout(division, channelOffset) {
+      if (!this.params) {
+        // Params not yet decrypted; queue and execute when ready
+        this._pendingChangeLayout = { div: division, off: channelOffset };
+        return false;
+      }
+      this._stopStream();
+      this.playing = false;
+
+      const ch = channelOffset + 1;
+      const conn = new WespConnection(Object.assign({}, this.params, { channel: ch }));
+      conn.onReady = () => { Logger.info('Starting video ch=' + ch); conn.startVideo(); };
+      conn.onFrame = (blob, ts) => this._displayFrame(blob, ts);
+      // JPEG를 주지 않는 장비는 압축 영상을 받아 브라우저에서 디코딩한다.
+      conn.onEncodedFrame = (bytes, codec, ts) => this._decodeFrame(bytes, codec, ts);
+      conn.onError = (err) => {
+        Logger.error('Stream error:', err);
+        this._report('failed', err);
+      };
+      this.connection = conn;
+      // 연결은 되지만 영상이 오지 않는 채널도 있다.
+      this._frameWatchdog = setTimeout(() => this._report('failed', 'no-frame'), 20000);
+      conn.connect();
+      return true;
+    }
+
+    _decodeFrame(bytes, codec, timestamp) {
+      if (!this.canvasElement) return;
+      if (this.decoder && this.decoder.codec !== codec) { this.decoder.close(); this.decoder = null; }
+      if (!this.decoder) {
+        this.decoder = new CanvasVideoDecoder(codec, this.canvasElement, frameTime => {
+          this.canvasElement.style.display = '';
+          this.imgElement.style.display = 'none';
+          this._showTimestamp(frameTime);
+          this._report('playing');
+        }, reason => {
+          Logger.error('Decoder error:', reason);
+          this._stopStream();
+          this._report('failed', reason);
+        });
+      }
+      this.decoder.push(bytes, timestamp);
+    }
+
+    _displayFrame(blob, timestamp) {
+      if (!this.imgElement) return;
+      this._report('playing');
+      if (this.currentBlobUrl) URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = URL.createObjectURL(blob);
+      this.imgElement.src = this.currentBlobUrl;
+      this._showTimestamp(timestamp);
+    }
+
+    _showTimestamp(timestamp) {
+      if (this.timestampEl && timestamp > 0) {
+        const d = new Date(timestamp);
+        this.timestampEl.textContent =
+          d.getFullYear() + '-' +
+          String(d.getMonth()+1).padStart(2,'0') + '-' +
+          String(d.getDate()).padStart(2,'0') + ' ' +
+          String(d.getHours()).padStart(2,'0') + ':' +
+          String(d.getMinutes()).padStart(2,'0') + ':' +
+          String(d.getSeconds()).padStart(2,'0');
+      }
+    }
+
+    _stopStream() {
+      clearTimeout(this._frameWatchdog);
+      if (this.connection) { this.connection.disconnect(); this.connection = null; }
+      if (this.decoder) { this.decoder.close(); this.decoder = null; }
+    }
+
+    dispose() {
+      this._stopStream();
+      if (this.currentBlobUrl) { URL.revokeObjectURL(this.currentBlobUrl); this.currentBlobUrl = null; }
+    }
+  }
+
+  // ========================================================================
+  //  Logger
+  // ========================================================================
+
+  const Logger = {
+    _level: 1,
+    useDefaults() { this._level = 3; },
+    setLevel(l) { this._level = ({OFF:0,ERROR:1,WARN:2,INFO:3,DEBUG:4})[l] || 3; },
+    error(...a) { this._level >= 1 && console.error('[WESP]', ...a); },
+    warn(...a)  { this._level >= 2 && console.warn('[WESP]', ...a); },
+    info(...a)  { this._level >= 3 && console.log('[WESP]', ...a); },
+    debug(...a) { this._level >= 4 && console.debug('[WESP]', ...a); }
+  };
+
+  // ========================================================================
+  //  Export — same shape as original WespJSSDK for drop-in compatibility
+  // ========================================================================
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { WespConnection, decryptSiteInfo, findStartCode, isKeyFrame, EncType };
+  } else {
+    window.WespJSSDK = { Logger, Wesp: {}, MonitorUIController };
+  }
+
+})();

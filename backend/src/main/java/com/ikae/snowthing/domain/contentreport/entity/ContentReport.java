@@ -33,9 +33,14 @@ public class ContentReport {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "reporter_id", nullable = false)
+    /** 비회원 신고는 NULL이다. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reporter_id")
     private Member reporter;
+
+    /** 비회원 신고자의 IP. 회원 신고는 NULL이다. */
+    @Column(name = "reporter_ip", length = 45)
+    private String reporterIp;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -58,12 +63,14 @@ public class ContentReport {
             ReportTargetType targetType,
             Long targetId,
             Member reporter,
+            String reporterIp,
             ReportReason reason,
             String detail,
             LocalDateTime createdAt) {
         this.targetType = targetType;
         this.targetId = targetId;
         this.reporter = reporter;
+        this.reporterIp = reporter == null ? reporterIp : null;
         this.reason = reason;
         this.detail = detail;
         this.status = ReportStatus.PENDING;

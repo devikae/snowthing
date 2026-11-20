@@ -43,6 +43,7 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
 import com.ikae.snowthing.domain.search.service.SearchOutboxWriter;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
+import com.ikae.snowthing.global.util.WriterDisplayFormatter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -260,7 +261,11 @@ public class ContentModerationService {
             ModerationTarget target, ModerationActionType action, List<ContentReport> reports) {
         Map<Long, Notification> notifications = new LinkedHashMap<>();
         for (ContentReport report : reports) {
-            addNotification(notifications, report.getReporter(), target, reporterMessage(action));
+            // 비회원 신고자는 알림을 받을 계정이 없다.
+            if (report.getReporter() != null) {
+                addNotification(
+                        notifications, report.getReporter(), target, reporterMessage(action));
+            }
         }
         String authorMessage = authorMessage(target, action);
         if (target.author() != null && authorMessage != null) {
@@ -334,7 +339,9 @@ public class ContentModerationService {
                 post == null ? null : post.getCategory().getCode(),
                 report.getReason(),
                 report.getDetail(),
-                report.getReporter().getNickname(),
+                report.getReporter() != null
+                        ? report.getReporter().getNickname()
+                        : "비회원 (" + WriterDisplayFormatter.maskIp(report.getReporterIp()) + ")",
                 report.getStatus(),
                 report.getCreatedAt(),
                 report.getResolvedAt());

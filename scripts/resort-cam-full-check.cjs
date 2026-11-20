@@ -72,9 +72,10 @@ withLocalBrowser('camera-full-check',async browser=>{
           if(!result.message||!await evaluate('[...document.querySelectorAll("main button")].some(button=>button.textContent==="다시 연결")'))result.status='missing-failure-guide';
         }
       }else if(camera.sourceType==='IFRAME'&&camera.sourceUrl.startsWith('/vivaldi.html')){
-        await waitFor(`(()=>{const d=document.querySelector('iframe')?.contentDocument;return [...(d?.images??[])].some(image=>image.complete&&image.naturalWidth>0&&image.src.startsWith('blob:'));})()`,20000);
-        const first=await evaluate(`(()=>{const image=document.querySelector('iframe').contentDocument.images[0];return{url:image.src,width:image.naturalWidth,height:image.naturalHeight}})()`);
-        await waitFor(`document.querySelector('iframe').contentDocument.images[0].src!==${JSON.stringify(first.url)}`,8000);
+        // JPEG 장비는 img, H.265/H.264 장비는 canvas에 그린다. 장비 시각이 바뀌면 영상이 움직이는 것이다.
+        await waitFor(`(()=>{const d=document.querySelector('iframe')?.contentDocument;const c=d?.querySelector('#vivaldi-player canvas');return (c&&c.style.display===''&&c.width>0)||[...(d?.images??[])].some(image=>image.complete&&image.naturalWidth>0&&image.src.startsWith('blob:'));})()`,20000);
+        const first=await evaluate(`(()=>{const d=document.querySelector('iframe').contentDocument;const c=d.querySelector('#vivaldi-player canvas');const image=d.images[0];const shown=c&&c.style.display===''?c:null;return{time:d.querySelector('.__video-timestamp')?.textContent??'',width:shown?c.width:image.naturalWidth,height:shown?c.height:image.naturalHeight}})()`);
+        await waitFor(`document.querySelector('iframe').contentDocument.querySelector('.__video-timestamp')?.textContent!==${JSON.stringify(first.time)}`,8000);
         result.status='playing';result.video={width:first.width,height:first.height,movingFrames:true};
       }else if(camera.sourceType==='YOUTUBE'){
         let sessionId;

@@ -1,0 +1,64 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>하이원 간략 슬로프맵 예시</title>
+<style>
+body{margin:0;font-family:var(--font-sans,system-ui,sans-serif);background:var(--background,#fff);color:var(--foreground,#171717)}
+.wrap{padding:16px;max-width:920px;margin:0 auto}
+h1{font-size:17px;margin:0 0 4px}.sub{font-size:12.5px;color:var(--muted-foreground,#6b7280);margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 240px;gap:14px}
+@media(max-width:680px){.grid{grid-template-columns:1fr}}
+.map{border:1px solid var(--border,#e5e7eb);border-radius:var(--radius,10px);background:var(--card,#fff);overflow:hidden}
+svg{display:block;width:100%;height:auto}
+.slmap{--d-novice:#22c55e;--d-easy:#16a34a;--d-intermediate:#2563eb;--d-advanced:#111827;--d-expert:#dc2626;--d-none:#9ca3af;--lift:#9ca3af}
+@media (prefers-color-scheme:dark){.slmap{--d-advanced:#e5e7eb;--lift:#6b7280}}
+.p{fill:none;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;cursor:pointer;transition:opacity .15s,stroke-width .15s}
+.hit{fill:none;stroke:transparent;stroke-width:18;cursor:pointer}
+.l{fill:none;stroke:var(--lift);stroke-width:1.6;stroke-dasharray:6 5}
+.lt{font-size:11px;fill:var(--muted-foreground,#6b7280)}
+.pt{font-size:12.5px;font-weight:600;fill:var(--foreground,#171717);paint-order:stroke;stroke:var(--card,#fff);stroke-width:3.5px;pointer-events:none}
+.dim .p{opacity:.18}.dim .p.on{opacity:1;stroke-width:8}
+.side{border:1px solid var(--border,#e5e7eb);border-radius:var(--radius,10px);padding:12px;background:var(--card,#fff);font-size:13px}
+.side h2{font-size:15px;margin:0 0 8px}.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border,#e5e7eb)}
+.row span:first-child{color:var(--muted-foreground,#6b7280)}.note{margin-top:10px;font-size:11.5px;color:var(--muted-foreground,#6b7280)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;margin-top:10px}.legend i{display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.src{font-size:11px;color:var(--muted-foreground,#6b7280);padding:6px 10px}
+</style></head><body><div class="wrap slmap">
+<h1>하이원 간략 슬로프맵 (A안 예시)</h1>
+<p class="sub">OSM 선 데이터만으로 자동 생성. 정상이 위, 베이스가 아래가 되도록 회전. 슬로프를 눌러 보세요.</p>
+<div class="grid"><div class="map"><svg id="m"></svg><div class="src">© OpenStreetMap contributors (ODbL)</div></div>
+<div class="side" id="info"><h2>슬로프를 선택하세요</h2><div class="note">눈팅에서는 여기 공식 길이, 평균 및 최대 경사가 나오고, 아래에 "비슷한 일본 슬로프"가 붙습니다.</div></div></div>
+<div class="legend" id="lg"></div></div>
+<script>
+const D=__DATA__,NS='http://www.w3.org/2000/svg',svg=document.getElementById('m');
+const KO={novice:'입문',easy:'초급',intermediate:'중급',advanced:'상급',expert:'최상급'};
+const LK={chair_lift:'리프트',gondola:'곤돌라'};
+svg.setAttribute('viewBox',`0 0 ${D.w} ${D.h}`);
+const el=(t,a,p=svg)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e};
+const d=pts=>'M'+pts.map(p=>p.join(',')).join('L');
+const mid=pts=>pts[Math.floor(pts.length/2)];
+const gL=el('g',{}),gP=el('g',{id:'gp'}),gT=el('g',{});
+const lifts=D.feats.filter(f=>f.kind==='lift'),pistes=D.feats.filter(f=>f.kind==='piste');
+lifts.forEach(f=>{el('path',{d:d(f.pts),class:'l'},gL);if(f.name){const m=mid(f.pts);el('text',{x:m[0]+6,y:m[1],class:'lt'},gL).textContent=f.name}});
+const order=['novice','easy','intermediate','advanced','expert'];
+pistes.sort((a,b)=>order.indexOf(a.diff)-order.indexOf(b.diff));
+let sel=null;
+pistes.forEach(f=>{
+ const col=`var(--d-${f.diff||'none'})`;
+ const p=el('path',{d:d(f.pts),class:'p',stroke:col},gP);
+ const h=el('path',{d:d(f.pts),class:'hit'},gP);
+ if(f.name){const m=mid(f.pts);el('text',{x:m[0]+7,y:m[1]+4,class:'pt'},gT).textContent=f.name}
+ h.addEventListener('click',()=>pick(f,p));
+});
+function pick(f,p){
+ if(sel)sel.classList.remove('on');
+ if(sel===p){sel=null;svg.classList.remove('dim');return reset()}
+ sel=p;p.classList.add('on');svg.classList.add('dim');
+ document.getElementById('info').innerHTML=`<h2>${f.name||'(이름 없음)'}</h2>
+ <div class="row"><span>난이도 (OSM)</span><span>${KO[f.diff]||'-'}</span></div>
+ <div class="row"><span>선 길이 (OSM 계산)</span><span>${f.len.toLocaleString()}m</span></div>
+ <div class="row"><span>공식 길이</span><span>수집 예정</span></div>
+ <div class="row"><span>평균 / 최대 경사</span><span>수집 예정</span></div>
+ <div class="note">다시 누르면 선택 해제. 실제 화면에서는 이 아래에 비슷한 일본 슬로프 후보와 미니맵이 나옵니다.</div>`;
+}
+function reset(){document.getElementById('info').innerHTML='<h2>슬로프를 선택하세요</h2>'}
+document.getElementById('lg').innerHTML=order.map(k=>`<span><i style="background:var(--d-${k})"></i>${KO[k]}</span>`).join('')+'<span><i style="background:var(--d-none)"></i>미분류</span><span><i style="background:repeating-linear-gradient(90deg,var(--lift) 0 5px,transparent 5px 9px)"></i>리프트/곤돌라</span>';
+</script></body></html>

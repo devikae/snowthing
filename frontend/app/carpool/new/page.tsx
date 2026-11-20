@@ -62,6 +62,11 @@ type CarpoolEditDetail = {
   routeSource: RouteSource | null;
 };
 
+
+// 실연비는 소수점 한 자리까지만 받는다. 예전에 두 자리로 저장된 글을 고칠 때도 한 자리로 맞춘다.
+function roundFuelEfficiency(value: number | string) {
+  return String(Math.round(Number(value) * 10) / 10);
+}
 const initial = {
   title: "",
   content: "",
@@ -228,7 +233,7 @@ export default function NewCarpoolPage() {
           returnHour: returning.hour,
           returnMinute: returning.minute,
           passengerCapacity: String(detail.passengerCapacity),
-          fuelEfficiency: String(detail.fuelEfficiency ?? initial.fuelEfficiency),
+          fuelEfficiency: roundFuelEfficiency(detail.fuelEfficiency ?? initial.fuelEfficiency),
           manualCostPerPerson: auto ? "" : String(detail.estimatedCostPerPerson),
           manualDistanceKm:
             detail.routeSource === "MANUAL"
@@ -974,13 +979,17 @@ export default function NewCarpoolPage() {
                 실연비(km/L)
                 <input
                   required
-                  min="0.01"
+                  min="0.1"
                   max={MAX_FUEL_EFFICIENCY}
-                  step="0.01"
+                  step="0.1"
                   type="number"
                   value={form.fuelEfficiency}
                   onChange={(event) =>
                     update("fuelEfficiency", event.target.value)
+                  }
+                  onBlur={(event) =>
+                    event.target.value &&
+                    update("fuelEfficiency", roundFuelEfficiency(event.target.value))
                   }
                 />
               </label>

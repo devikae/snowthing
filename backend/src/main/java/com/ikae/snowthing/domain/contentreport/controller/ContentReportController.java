@@ -32,11 +32,9 @@ public class ContentReportController {
             @Valid @RequestBody ContentReportCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails user,
             HttpServletRequest httpRequest) {
-        rateLimiter.check(
-                user,
-                clientIpResolver.resolve(httpRequest),
-                ContentWriteRateLimiter.Action.CONTENT_REPORT);
-        reportService.create(request, user);
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        rateLimiter.check(user, clientIp, ContentWriteRateLimiter.Action.CONTENT_REPORT);
+        reportService.create(request, user, clientIp);
         return ResponseEntity.noContent().build();
     }
 }

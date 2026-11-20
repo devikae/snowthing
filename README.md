@@ -6,33 +6,82 @@
 
 ##  1. 프로젝트 개요 (Overview)
 
-* **서비스명**: Snowthing (눈팅)
-* **목적**: 기존 노후화된 윈터스포츠 커뮤니티의 불편함(http 접속, 보안 취약, 이미지 첨부 오류 등)을 극복하고, 스노보더/스키어를 위한 커뮤니티 플랫폼을 제공합니다.
-* **1차 MVP 핵심 타겟**:
-  1. **숙련 이용자 (시즌 보더)**: 실시간 설질/현장 정보 공유, 프로필 N:M 중계(베이스 스키장/라이딩 성향) 등록
-  2. **초보 이용자 (입문 보더)**: 부담 없는 비회원 익명 작성 및 정제된 Q&A 지식 탐색
+* **서비스명**: Snowthing (눈팅), https://snowthing.org
+* **목적**: 기존 노후화된 윈터스포츠 커뮤니티의 불편함(http 접속, 보안 취약, 이미지 첨부 오류 등)을 극복하고, 흩어져 있던 웹캠, 현장 제보, 카풀, 중고 거래를 한곳에 모은 스노보더/스키어 커뮤니티를 제공합니다.
+* **핵심 타겟**:
+  1. **숙련 이용자 (시즌 보더)**: 실시간 설질/현장 정보 공유, 카풀과 동행 파트너 탐색
+  2. **초보 이용자 (입문 보더)**: 부담 없는 익명 작성과 Q&A, 슬로프 정보 탐색
 
 ---
 
-##  2. 기술 스택 (Tech Stack)
+## 2. 주요 기능 (Features)
+
+| 영역 | 기능 | 설계 문서 |
+| :--- | :--- | :--- |
+| 게시판 | 공지, 자유, 익명(비회원 작성), 질문, 리조트 맛집, 동호회 모집, 시즌방, 1:1 문의. 댓글과 대댓글, 추천과 비추천, 스크랩, 신고, 이전글과 다음글 | `docs/conception/sprint01~06`, `011`, `021`, `025`, `026` |
+| 라이브톡 | WebSocket(STOMP) 실시간 채팅. 리조트 태그, 비회원 자동 닉네임, AI 봇 멘션, 관리자 IP 차단 | `001_live_chat`, `009_mcp_bot` |
+| 슬로프캠 | 국내 리조트 웹캠을 한 화면에서 재생 | `003_resort_cam` |
+| 슬로프맵 | 국내와 일본 리조트의 공식 슬로프 제원, 코스 맵, 같은 경사 지표로 찾는 비슷한 슬로프, 슬로프끼리 비교 | `033_slope_compare` |
+| 현장 정보 | 오늘의 설질 제보, 리조트 날씨와 개장 D-DAY, 슬로프 운영 현황 | `007_resort_report`, `019_resort_weather_dday`, `030_slope_status` |
+| 카풀과 동행 | 카풀 모집과 참여, 유류비와 통행료 비용 계산, 후기 | `004_carpool`, `023_carpool_cost_mode`, `027_carpool_review` |
+| 중고장터 | 판매글, 거래 상태(판매 중, 예약 중, 판매 완료), 판매자 연락 | `002_used_market` |
+| 소통 | 쪽지, 알림(웹 푸시, 이메일) | `022_direct_message`, `022_notification`, `029_web_push`, `032_dm_email_notification` |
+| 회원 | 이메일 가입과 인증, 소셜 로그인(카카오, 네이버, 구글), 프로필, 탈퇴 | `005`, `008_social_login`, `012_profile_settings`, `025_member_withdrawal` |
+| 놀이 | 스키장 캐릭터 테스트(결과 카드, 모임 관계 지도, 동호회 링크), 시즌 기록, 라이더 도구 | `024_character_test`, `028_season_log`, `013_rider_tools` |
+| 검색과 AI | 게시글 검색, AI 근거 검색과 답변 초안, AI 검수 | `016_search_visibility`, `017_ai_answer_assist`, `031_ai_moderation` |
+| 운영 | 관리자 대시보드, 신고 처리, 개장일 관리, 디스코드 알림 | `017_admin_dashboard`, `020_discord_notification`, `032_season_opening_admin` |
+
+---
+
+## 3. 기술 스택 (Tech Stack)
 
 ### Frontend
-* **Core**: Next.js 16 (App Router), TypeScript, React 19
-* **State & Fetching**: React State, Fetch API (`credentials: 'include'`)
-* **Styling**: Vanilla CSS, UI Component System
+* **Core**: Next.js 16 (App Router), React 19, TypeScript 6
+* **데이터**: 서버 컴포넌트에서 공개 데이터를 먼저 받고(SEO), 로그인 데이터는 Fetch API(`credentials: 'include'`)와 CSRF 헤더로 요청
+* **실시간**: STOMP.js (라이브톡)
+* **에디터**: Toast UI Editor
+* **스타일**: Vanilla CSS, CSS Modules
 
 ### Backend
-* **Core**: Java 21 (LTS), Spring Boot 3.3.x, Spring Data JPA
-* **Security & Auth**: Spring Security 6, Spring Session (Servlet Memory / Redis Ready), BCrypt
-* **Build & Test**: Gradle, JUnit5, Mockito, MockMvc
+* **Core**: Java 21, Spring Boot 4.1, Spring Data JPA, QueryDSL 5.1
+* **보안과 인증**: Spring Security (세션 + Remember-Me, CSRF Double Submit Cookie), BCrypt, OAuth2 소셜 로그인
+* **실시간**: Spring WebSocket (STOMP)
+* **캐시**: Caffeine (도배 방지, 조회 제한 같은 서버 내 캐시)
+* **이미지**: Thumbnailator, WebP 읽기 (썸네일 생성)
+* **빌드와 테스트**: Gradle, JUnit 5, Mockito, MockMvc, Spotless
 
-### Database & Cache
-* **RDBMS**: MySQL 8.0 (local, test, and production)
-* **In-Memory Cache**: Spring Session Redis (Scale-out Ready)
+### Database
+* **RDBMS**: MySQL 8.0 (로컬, 테스트, 운영 모두 같은 버전)
+* **스키마 관리**: `database/production/NNN_*.sql` 마이그레이션 파일. 운영은 JPA `ddl-auto: validate`로 엔티티와 스키마가 맞는지만 검사
+* **Redis**: 의존성은 있지만 아직 쓰지 않음. 도입은 보류
 
 ---
 
-## 3. 세션 기반 인증 & 주요 아키텍처 설계 고민과 해결 (Architecture & Auth Flow)
+## 4. 인프라와 배포 (Infrastructure)
+
+```mermaid
+flowchart LR
+    Dev[GitHub main] -->|Actions OIDC| CI[테스트, 스키마 검증, 이미지 빌드]
+    CI --> ECR[(Amazon ECR)]
+    CI -->|SSM 명령| EC2[EC2: Docker Compose]
+    ECR --> EC2
+    EC2 --> FE[frontend: Next.js]
+    EC2 --> BE[backend: Spring Boot]
+    EC2 --> BOT[mcp-bot]
+    BE --> RDS[(RDS MySQL 8)]
+    BE --> S3[(S3 이미지)]
+    S3 --> CF[CloudFront]
+    BE --> SES[SES 이메일]
+```
+
+* **배포**: `main`에 합쳐지면 GitHub Actions가 테스트와 마이그레이션 스키마 검증을 거쳐 Docker 이미지를 ECR에 올리고, SSM으로 EC2에 배포합니다. 이미지는 commit SHA 태그와 digest로 고정합니다.
+* **마이그레이션 순서**: 운영 DB 마이그레이션(`scripts/run-production-migrations.sh`)을 먼저 적용하고 앱을 교체합니다. 적용한 파일은 체크섬을 기록하므로 고치지 않고 새 번호 파일을 만듭니다.
+* **이미지 저장**: 게시글과 프로필 이미지는 S3에 두고 CloudFront로 내려줍니다.
+* **운영 환경 변수**: 새 변수는 서버 env 파일과 `compose.prod.yml` 양쪽에 넣어야 컨테이너에 전달됩니다.
+
+---
+
+## 5. 세션 기반 인증 & 주요 아키텍처 설계 고민과 해결 (Architecture & Auth Flow)
 
 Snowthing은 사용자 경험(UX) 최우선과 데이터 무결성 및 보안성을 수호하기 위해 다음과 같은 핵심 아키텍처 설계를 선택하였습니다.
 
@@ -111,7 +160,7 @@ sequenceDiagram
 
 ---
 
-## 4. 게시판(Post) 도메인 설계 & 기술적 의사결정 (Board Architecture & Decisions)
+## 6. 게시판(Post) 도메인 설계 & 기술적 의사결정 (Board Architecture & Decisions)
 
 게시판은 Snowthing에서 가장 자주 읽히는 도메인이다. 그래서 단순 CRUD로만 만들지 않고, 목록 조회 비용, 익명 글 권한, 삭제 정책, 이미지 첨부 상태까지 같이 맞춰서 설계했다.
 
@@ -152,13 +201,19 @@ sequenceDiagram
 - `BLOCKED`: 관리자가 부적절한 글을 차단한 상태다.
 - `HIDDEN`: 비공개나 숨김 처리가 필요한 상태를 위해 분리해둔 값이다.
 - `DRAFT`: 임시 저장을 고려한 상태값이다.
+- `TEMPORARY_HOLD`: 신고 임시조치로 잠시 가려 둔 상태다. 관리자가 신고 처리 화면에서 되돌리거나 숨긴다.
 
 게시글 유형은 상태가 아니라 카테고리다. `PostCategory.code`로 구분한다.
 
+- `NOTICE`: 공지사항
 - `FREE`: 자유게시판
 - `ANONYMOUS`: 익명 게시판
-- `QNA`: 장비 Q&A
+- `QNA`: 질문게시판
 - `FOOD`: 리조트 맛집
+- `CREW`: 동호회 모집
+- `SEASON_ROOM`: 시즌방 모집
+- `INQUIRY`: 1:1 문의 (작성자와 관리자만 본다)
+- `MARKET`, `CARPOOL`: 중고장터와 카풀. 게시글 테이블을 같이 쓰지만 목록과 상세는 전용 화면과 API를 쓴다.
 
 상태와 유형을 섞지 않은 이유는 역할이 다르기 때문이다. `NORMAL`, `DELETED`는 글의 현재 처리 상태이고, `FREE`, `ANONYMOUS`는 글이 속한 게시판이다. 이 둘을 같은 enum으로 합치면 “익명 게시판에 있는 삭제된 글” 같은 상태를 표현하기가 지저분해진다.
 
@@ -263,7 +318,7 @@ Page<Post> findByCategoryCodeWithMemberAndCategory(@Param("categoryCode") String
 - `ACCESS_DENIED (403)`: 작성자가 아닌 사용자가 수정/삭제를 시도한 경우
 - `INVALID_ANON_PASSWORD (403)`: 익명 글 수정/삭제 비밀번호가 틀린 경우
 - `INVALID_CREDENTIALS (401)`: 로그인이 필요한 일반 게시글 작성에서 인증 정보가 없는 경우
-- `INVALID_INPUT (400)`: 익명 글 작성/추천·비추천 등에서 필요한 값이 빠진 경우
+- `INVALID_INPUT (400)`: 익명 글 작성/추천, 비추천 등에서 필요한 값이 빠진 경우
 - `INVALID_PAGE_SIZE (400)`: 허용 범위를 벗어난 `size` 요청
 - `INVALID_PAGE_LIMIT (400)`: offset page 제한을 넘긴 요청
 
@@ -276,7 +331,7 @@ Spring Security의 `CookieCsrfTokenRepository.withHttpOnlyFalse()`를 적용했�
 
 ---
 
-## 5. 댓글(Comment) 도메인 설계 & 기술적 의사결정
+## 7. 댓글(Comment) 도메인 설계 & 기술적 의사결정
 
 댓글은 게시글 상세 화면에서 가장 자주 읽히는 데이터다. 그래서 단순히 `post_id`로 전체 댓글을 가져오는 방식 대신, 루트 댓글과 대댓글을 나누고 초기 응답 크기를 제한하는 구조로 설계했다.
 
@@ -434,55 +489,59 @@ ORDER BY created_at ASC, comment_id ASC
 | 에러 | 0 |
 | 스킵 | 0 |
 
-댓글 도메인 전체 테스트는 42건 중 1건이 실패하고 1건이 스킵됐다.
+댓글 테스트는 배포 때마다 GitHub Actions의 백엔드 테스트 단계에서 함께 실행된다.
 
+---
+
+## 8. 프로젝트 구조 (Project Structure)
+
+```
+snowthing/
+├── backend/                     # Spring Boot 백엔드
+│   └── src/main/java/com/ikae/snowthing/
+│       ├── domain/              # 도메인별 패키지 (post, comment, chat, carpool, market,
+│       │                        #  resortcam, slope, charactertest, notification, admin 등)
+│       └── global/              # 보안, 웹소켓, 예외, 공통 설정
+├── frontend/                    # Next.js 프론트엔드
+│   └── app/                     # 화면 (posts, carpool, market, resort-cam, slopes,
+│                                #  character-test, messages, notifications, admin 등)
+├── database/
+│   ├── production/              # 운영 마이그레이션 SQL (번호 순서대로 적용)
+│   └── ddl.sql                  # 마이그레이션을 모두 적용한 전체 스키마
+├── docs/
+│   ├── conception/              # 기능별 설계 문서 (NNN_기능/)
+│   ├── specs/                   # 화면만 바뀌는 스펙
+│   ├── project/work.md          # 작업 기록
+│   └── study/                   # 학습 문서
+├── scripts/                     # 운영 마이그레이션, 배포, 데이터 생성, 점검 스크립트
+│   └── slope-data/              # 슬로프 제원과 코스 맵 생성기 (README 참고)
+├── compose.prod.yml             # 운영 Docker Compose (backend, frontend, mcp-bot)
+└── docker-compose.yml           # 로컬 MySQL
+```
+
+---
+
+## 9. 실행 및 테스트 (Build & Run)
+
+### 로컬 DB
 ```bash
-./gradlew.bat test --tests "*Comment*"
+docker compose up -d             # 로컬 MySQL 8.0
 ```
-
-실패한 테스트는 후보 3 구조나 현재 조회 구현 문제가 아니다.
-
-기존 `CommentServiceTest` 일부가 "삭제된 루트 댓글은 활성 대댓글이 없어도 목록에 남는다"는 예전 정책을 기대하고 있어서 현재 정책과 충돌한다.
-
-현재 정책은 활성 대댓글이 없는 삭제 루트를 숨기는 방식이다.
-
----
-
-## 6. 프로젝트 물리 디렉토리 구조 (Project Structure)
-
-```
-snowthing/ (프로젝트 최상위 루트)
-├── backend/                  # Spring Boot 백엔드 애플리케이션
-│   ├── src/main/java/com/ikae/snowthing/
-│   │   ├── domain/auth/      # 세션 로그인/로그아웃 컨트롤러 & 서비스
-│   │   ├── domain/member/    # 회원, N:M 스키장/성향 엔티티 & 레포지토리
-│   │   └── global/config/    # SecurityConfig, CorsConfig, DataInitializer
-│   └── src/test/java/        # 25개 백엔드 단위/통합/보안 테스트 수트
-├── frontend/                 # Next.js 프론트엔드 애플리케이션
-│   ├── app/signup/page.tsx   # 이메일/비밀번호 정규식 & N:M 체크박스 회원가입 UI
-│   ├── app/login/page.tsx    # credentials: 'include' 세션 로그인 UI
-│   └── app/page.tsx          # 메인 프로필 대시보드 & 프로필 수정 UI (PUT)
-├── docs/                     # 기획, 아키텍처, ERD, API 명세 문서
-│   ├── conception/           # 기획 및 아키텍처 명세서 (sprint01/)
-│   └── project/              # work.md 작업 이력 및 sql_logs 리포트
-└── README.md
-```
-
----
-
-## 7. 실행 및 테스트 (Build & Run)
 
 ### Backend (Spring Boot)
+테스트는 실제 MySQL을 씁니다. `SNOWTHING_TEST_DB_URL`, `SNOWTHING_TEST_DB_USERNAME`, `SNOWTHING_TEST_DB_PASSWORD`를 함께 지정하거나 `application-test.yml` 기본값(로컬 `snowthing_test`)을 씁니다.
 ```bash
 cd backend
-.\gradlew.bat test       # 전체 25개 통합/단원 테스트 실행
-.\gradlew.bat bootRun    # 8080 포트 백엔드 서버 기동
+./gradlew spotlessCheck test     # 포맷 검사와 전체 테스트
+./gradlew schemaValidate         # 마이그레이션 스키마와 JPA 엔티티 대조
+./gradlew bootRun                # 8080 포트 백엔드 서버 기동
 ```
 
 ### Frontend (Next.js)
 ```bash
 cd frontend
-npm run lint             # 코드 스타일 검증
-npm run build            # 프론트엔드 프로덕션 빌드
-npm run dev              # 3000 포트 개발 서버 기동
+npm ci --legacy-peer-deps
+npm run lint                     # 코드 스타일 검증
+npm run build                    # 프로덕션 빌드
+npm run dev                      # 3000 포트 개발 서버 (NEXT_PUBLIC_API_BASE_URL로 백엔드 주소 지정)
 ```

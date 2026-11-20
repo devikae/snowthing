@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SystemConfigService {
 
     public static final String KEY_CHAT_ANONYMOUS_ENABLED = "CHAT_ANONYMOUS_ENABLED";
+    public static final String KEY_MARKET_GUEST_ACCESS_ENABLED = "MARKET_GUEST_ACCESS_ENABLED";
 
     private final SystemConfigRepository repository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -44,14 +45,23 @@ public class SystemConfigService {
     }
 
     public boolean isAnonymousChatEnabled() {
+        return readBoolean(KEY_CHAT_ANONYMOUS_ENABLED, false);
+    }
+
+    /** 중고장터 목록과 상세를 비회원도 볼 수 있는지. 설정 행이 없으면 허용으로 본다. */
+    public boolean isMarketGuestAccessEnabled() {
+        return readBoolean(KEY_MARKET_GUEST_ACCESS_ENABLED, true);
+    }
+
+    private boolean readBoolean(String configKey, boolean defaultValue) {
         String val =
                 cache.get(
-                        KEY_CHAT_ANONYMOUS_ENABLED,
+                        configKey,
                         key ->
                                 repository
                                         .findById(key)
                                         .map(SystemConfig::getValue)
-                                        .orElse("false"));
+                                        .orElse(String.valueOf(defaultValue)));
         return Boolean.parseBoolean(val);
     }
 
@@ -62,7 +72,11 @@ public class SystemConfigService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getPublicConfigs() {
-        return Map.of("anonymousChatEnabled", isAnonymousChatEnabled());
+        return Map.of(
+                "anonymousChatEnabled",
+                isAnonymousChatEnabled(),
+                "marketGuestAccessEnabled",
+                isMarketGuestAccessEnabled());
     }
 
     @Transactional

@@ -26,6 +26,7 @@ function usePageVisible() {
 
 export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [manualPlay, setManualPlay] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -136,6 +137,31 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
     };
   }, [shouldLoad]);
 
+  // 비발디 플레이어(vivaldi.html)는 재생 시작과 실패를 postMessage로 알린다.
+  // 신호가 없으면 영상 없이 검은 화면만 남으므로 시간 안에 재생되지 않으면 실패 안내로 바꾼다.
+  const isVivaldiFrame = camera.sourceType === "IFRAME" && camera.sourceUrl.startsWith("/vivaldi.html");
+  useEffect(() => {
+    if (!isVivaldiFrame || !shouldLoad || failed) return;
+    const fail = (reason: string) => {
+      window.clearTimeout(startupTimer);
+      setFailed(true);
+      setFailureReason(reason);
+    };
+    const startupTimer = window.setTimeout(() => fail("vivaldi-startup-timeout"), 30000);
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
+      const data = event.data as { type?: unknown; status?: unknown; reason?: unknown } | null;
+      if (data?.type !== "snowthing-vivaldi") return;
+      if (data.status === "playing") window.clearTimeout(startupTimer);
+      else if (data.status === "failed") fail(`vivaldi-${typeof data.reason === "string" ? data.reason : "error"}`);
+    };
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.clearTimeout(startupTimer);
+      window.removeEventListener("message", onMessage);
+    };
+  }, [isVivaldiFrame, shouldLoad, failed, retryAttempt]);
+
   // 순수 영상 iframe 전용 (vivaldi.html, rtsp.me 등)
   const isDedicatedVideoIframe =
     camera.sourceType === "IFRAME" ||
@@ -180,6 +206,8 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
       {/* 3. 순수 영상 전용 IFRAME 스트림 (Vivaldi WESP 등) */}
       {isDedicatedVideoIframe && shouldLoad && !failed && (
         <iframe
+          key={retryAttempt}
+          ref={iframeRef}
           src={camera.sourceUrl}
           title={`${camera.name} 라이브 영상`}
           className={styles.iframeElement}
@@ -196,7 +224,7 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
           </div>
           <div className={styles.offlineText}>
             <h4>{camera.sourceIssue === "upstream-unavailable" ? "원본 영상에 연결할 수 없습니다" : camera.sourceIssue === "provider-restricted" ? "제공처에서 재생을 제한하고 있습니다" : camera.sourceIssue === "not-published" ? "현재 공개된 영상이 없습니다" : failed ? "영상에 연결하지 못했습니다" : "공식 페이지에서 확인해 주세요"}</h4>
-            <p>{camera.availabilityNote || (failed ? "영상 주소가 변경되었거나 제공처 연결에 문제가 있을 수 있습니다." : "이 카메라는 리조트 공식 페이지에서 확인할 수 있습니다.")}</p>
+            <p>{failureReason === "vivaldi-unsupported-codec" ? "이 브라우저는 이 카메라의 영상 형식(H.265)을 재생하지 못합니다. 다른 브라우저나 리조트 공식 페이지에서 확인해 주세요." : camera.availabilityNote || (failed ? "영상 주소가 변경되었거나 제공처 연결에 문제가 있을 수 있습니다." : "이 카메라는 리조트 공식 페이지에서 확인할 수 있습니다.")}</p>
             {camera.availabilityCheckedAt && <small>원본 확인: {camera.availabilityCheckedAt}</small>}
           </div>
           <div className={styles.offlineActions}>{failed && <button type="button" className={styles.officialSiteBtn} onClick={() => {

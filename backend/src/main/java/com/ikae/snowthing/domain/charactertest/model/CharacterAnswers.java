@@ -9,16 +9,25 @@ import java.util.regex.Pattern;
  *
  * <p>A가 앞 글자다: 1~3번 E/I, 4~6번 S/N, 7~9번 T/F, 10~12번 J/P.
  *
+ * <p>7번(친구가 넘어져서 민망해한다)만 C("엌ㅋㅋㅋ" 웃음)를 더 받는다. 달래지 않고 먼저 웃는 쪽이라 유형 계산에서는 A(T)와 같이 센다. 그래서 축별 다수결의 동점
+ * 없음은 그대로다. 결과에는 "웃참 실패" 뱃지로 따로 드러낸다.
+ *
  * <p>뒤 3자리는 타는 습관 질문(코스, 쉬는 타이밍, 타는 시간)으로 A, B, C 순서의 척도다. 유형에는 영향이 없고 궁합 점수에만 쓴다.
  */
 public record CharacterAnswers(String value) {
 
-    public static final String REGEXP = "^[AB]{12}[ABC]{3}$";
+    public static final String REGEXP = "^[AB]{6}[ABC][AB]{5}[ABC]{3}$";
     public static final int TYPE_QUESTION_COUNT = 12;
     public static final int QUESTION_COUNT = 15;
     private static final Pattern PATTERN = Pattern.compile(REGEXP);
     private static final int AXIS_SIZE = 3;
     private static final String[] AXES = {"EI", "SN", "TF", "JP"};
+
+    /** 7번 질문의 자리(0부터). C를 고르면 웃음이다. */
+    private static final int LAUGH_INDEX = 6;
+
+    /** 결과에 붙는 뱃지. 화면이 코드로 문구를 고른다. */
+    public static final String BADGE_LAUGH_FIRST = "LAUGH_FIRST";
 
     public CharacterAnswers {
         if (value == null || !PATTERN.matcher(value).matches()) {
@@ -44,10 +53,10 @@ public record CharacterAnswers(String value) {
     public List<Integer> highlightQuestions() {
         List<Integer> questions = new ArrayList<>(AXES.length);
         for (int axis = 0; axis < AXES.length; axis++) {
-            char majority = frontCount(axis) >= 2 ? 'A' : 'B';
+            boolean majorityFront = frontCount(axis) >= 2;
             int start = axis * AXIS_SIZE;
             for (int index = start; index < start + AXIS_SIZE; index++) {
-                if (value.charAt(index) == majority) {
+                if (isFront(index) == majorityFront) {
                     questions.add(index + 1);
                     break;
                 }
@@ -56,7 +65,12 @@ public record CharacterAnswers(String value) {
         return List.copyOf(questions);
     }
 
-    /** 두 사람의 유형 답변 12개 중 같은 수. */
+    /** 결과에 붙는 뱃지 코드. 7번에서 웃었으면 "웃참 실패"다. */
+    public List<String> badges() {
+        return value.charAt(LAUGH_INDEX) == 'C' ? List.of(BADGE_LAUGH_FIRST) : List.of();
+    }
+
+    /** 두 사람의 유형 답변 12개 중 같은 수. 7번의 A와 C는 다른 답으로 본다(둘 다 웃은 사람끼리만 같다). */
     public int matchCount(CharacterAnswers other) {
         int count = 0;
         for (int index = 0; index < TYPE_QUESTION_COUNT; index++) {
@@ -80,10 +94,16 @@ public record CharacterAnswers(String value) {
         int start = axis * AXIS_SIZE;
         int count = 0;
         for (int index = start; index < start + AXIS_SIZE; index++) {
-            if (value.charAt(index) == 'A') {
+            if (isFront(index)) {
                 count++;
             }
         }
         return count;
+    }
+
+    /** 이 답이 축의 앞 글자 쪽인지. 7번의 C(웃음)는 A와 같은 쪽이다. */
+    private boolean isFront(int index) {
+        char answer = value.charAt(index);
+        return answer == 'A' || (index == LAUGH_INDEX && answer == 'C');
     }
 }

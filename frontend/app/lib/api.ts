@@ -51,6 +51,7 @@ export const API_ENDPOINTS = {
     reaction: (publicId: string, type: "LIKE" | "DISLIKE") =>
       `${API_V1_URL}/posts/${publicId}/reaction?type=${type}`,
     scrap: (publicId: string) => `${API_V1_URL}/posts/${publicId}/scrap`,
+    adjacent: (publicId: string) => `${API_V1_URL}/posts/${publicId}/adjacent`,
     comments: (publicId: string, cursor?: string | null, size = 20) =>
       `${API_V1_URL}/posts/${publicId}/comments?${
         cursor != null ? `cursor=${cursor}&size=${size}` : `size=${size}`
@@ -72,6 +73,9 @@ export const API_ENDPOINTS = {
   },
   slopeStatus: {
     board: `${API_V1_URL}/slope-status`,
+  },
+  slopeSpecs: {
+    resorts: `${API_V1_URL}/slopes/resorts`,
   },
   market: {
     categories: `${API_V1_URL}/market/categories`,
@@ -209,6 +213,7 @@ export interface AdminDashboardStats {
   totalMembers: number;
   todayNewMembers: number;
   anonymousChatEnabled: boolean;
+  marketGuestAccessEnabled: boolean;
 }
 
 export interface SystemConfigItem {

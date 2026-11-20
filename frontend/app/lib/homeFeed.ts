@@ -36,6 +36,8 @@ export interface HomeInitialData {
   posts: HomePost[] | null;
   carpools: HomeCarpoolItem[] | null;
   marketPreviews: MarketPreviewItem[] | null;
+  /** 피드 위에 한 줄로 고정하는 최신 공지. 없거나 못 받으면 null이고 줄을 그리지 않는다. */
+  latestNotice: HomePost | null;
 }
 
 // 홈 첫 화면 요청 크기. 서버와 브라우저가 같은 값을 쓴다.

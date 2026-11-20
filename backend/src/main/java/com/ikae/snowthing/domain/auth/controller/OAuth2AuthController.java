@@ -53,6 +53,7 @@ import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
 import com.ikae.snowthing.global.security.RecentAuthentication;
+import com.ikae.snowthing.global.security.SnowthingRememberMeServices;
 import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
@@ -80,6 +81,7 @@ public class OAuth2AuthController {
     private final OAuthAuthorizationIpRateLimiter authorizationIpRateLimiter;
     private final SocialLinkReauthService socialLinkReauthService;
     private final ClientIpResolver clientIpResolver;
+    private final SnowthingRememberMeServices rememberMeServices;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -375,6 +377,8 @@ public class OAuth2AuthController {
             memberSessionRegistry.invalidateAll(userDetails.getPublicId());
             throw exception;
         }
+        // 세션이 사라져도 30일 동안 다시 로그인하지 않게 로그인 유지 쿠키를 내려준다.
+        rememberMeServices.loginSuccess(httpRequest, httpResponse, authentication);
     }
 
     private ResponseEntity<Void> redirectToLoginError(ErrorCode errorCode) {

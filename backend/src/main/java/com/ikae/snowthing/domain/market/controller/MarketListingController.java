@@ -11,12 +11,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.market.dto.*;
 import com.ikae.snowthing.domain.market.entity.ProductCondition;
 import com.ikae.snowthing.domain.market.entity.TradeStatus;
 import com.ikae.snowthing.domain.market.service.MarketListingService;
 import com.ikae.snowthing.domain.post.service.PostSearchRateLimiter;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
+import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.idempotency.IdempotencyTarget;
 import com.ikae.snowthing.global.idempotency.IdempotentCreateHandler;
 import com.ikae.snowthing.global.security.ContentWriteRateLimiter;
@@ -40,6 +43,7 @@ public class MarketListingController {
     private final ContentWriteRateLimiter contentWriteRateLimiter;
     private final IdempotentCreateHandler idempotentCreateHandler;
     private final PostSearchRateLimiter postSearchRateLimiter;
+    private final SystemConfigService systemConfigService;
 
     @GetMapping("/preview")
     public ResponseEntity<MarketPreviewResponse> getPreview() {
@@ -56,7 +60,10 @@ public class MarketListingController {
             @RequestParam(required = false) String categoryCode,
             @RequestParam(required = false) ProductCondition productCondition,
             @RequestParam(required = false) TradeStatus tradeStatus,
+            @RequestParam(defaultValue = "false") boolean includeSold,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpRequest) {
+        requireGuestAccess(userDetails);
         // 검색어는 LIKE로 글 전체를 훑으므로 게시판 검색과 같은 길이 규칙과 IP 한도를 쓴다.
         if (keyword != null && !keyword.isBlank()) {
             postSearchRateLimiter.checkKeywordSearch(
@@ -64,7 +71,13 @@ public class MarketListingController {
         }
         return ResponseEntity.ok(
                 marketListingService.search(
-                        page, size, keyword, categoryCode, productCondition, tradeStatus));
+                        page,
+                        size,
+                        keyword,
+                        categoryCode,
+                        productCondition,
+                        tradeStatus,
+                        includeSold));
     }
 
     @PostMapping
@@ -103,6 +116,7 @@ public class MarketListingController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest request,
             HttpServletResponse response) {
+        requireGuestAccess(userDetails);
         boolean increaseViewCount =
                 viewCountCookieManager.markIfFirstView(publicId, request, response);
         return ResponseEntity.ok()
@@ -132,5 +146,12 @@ public class MarketListingController {
             @PathVariable String publicId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         marketListingService.delete(publicId, userDetails);
         return ResponseEntity.noContent().build();
+    }
+
+    /** 관리자가 비회원 열람을 끄면 목록과 상세도 로그인이 필요하다. */
+    private void requireGuestAccess(CustomUserDetails userDetails) {
+        if (userDetails == null && !systemConfigService.isMarketGuestAccessEnabled()) {
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
+        }
     }
 }

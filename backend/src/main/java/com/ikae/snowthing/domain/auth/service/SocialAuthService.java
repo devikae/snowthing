@@ -83,9 +83,7 @@ public class SocialAuthService {
         String providerEmail = emailNormalizer.normalize(profile.email());
         LocalDateTime now = LocalDateTime.now(clock);
 
-        Member newMember =
-                createSocialMember(
-                        memberEmail, profile.nickname(), profile.emailAuthoritative(), now);
+        Member newMember = createSocialMember(memberEmail, profile.emailAuthoritative(), now);
         consentService.record(newMember.getId(), consent, now);
         notificationSettings.initializeForNewMember(newMember.getId(), now);
         saveSocialAccount(
@@ -266,12 +264,10 @@ public class SocialAuthService {
     }
 
     private Member createSocialMember(
-            String memberEmail, String rawNickname, boolean emailAuthoritative, LocalDateTime now) {
+            String memberEmail, boolean emailAuthoritative, LocalDateTime now) {
+        // 소셜 이름은 실명인 경우가 많아 닉네임으로 쓰지 않고 자동으로 짓는다.
         for (int attempt = 0; attempt < MAX_NICKNAME_GENERATION_ATTEMPTS; attempt++) {
-            String candidateNickname =
-                    attempt == 0
-                            ? socialNicknameGenerator.initialCandidate(rawNickname)
-                            : socialNicknameGenerator.generateWithSuffix(rawNickname);
+            String candidateNickname = socialNicknameGenerator.generate();
             if (memberRepository.existsByNickname(candidateNickname)) {
                 continue;
             }

@@ -84,6 +84,11 @@ public class PostController {
                         .withScrapped(postScrapService.isScrapped(publicId, userDetails)));
     }
 
+    @GetMapping("/{publicId}/adjacent")
+    public ResponseEntity<PostAdjacentResponse> getAdjacentPosts(@PathVariable String publicId) {
+        return ResponseEntity.ok(postService.getAdjacentPosts(publicId));
+    }
+
     @GetMapping
     public ResponseEntity<com.ikae.snowthing.global.common.dto.CursorPageResponse<PostListResponse>>
             searchPostsByOffset(

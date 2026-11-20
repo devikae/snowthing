@@ -10,6 +10,7 @@ import java.util.List;
 
 import jakarta.persistence.EntityManager;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ikae.snowthing.domain.admin.entity.SystemConfig;
+import com.ikae.snowthing.domain.admin.repository.SystemConfigRepository;
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.market.dto.MarketListingCreateRequest;
 import com.ikae.snowthing.domain.market.entity.MarketCategory;
 import com.ikae.snowthing.domain.market.entity.ProductCondition;
@@ -44,6 +48,8 @@ class MarketListingControllerTest {
     @Autowired private PostCategoryRepository postCategoryRepository;
     @Autowired private MarketCategoryRepository marketCategoryRepository;
     @Autowired private EntityManager entityManager;
+    @Autowired private SystemConfigRepository systemConfigRepository;
+    @Autowired private SystemConfigService systemConfigService;
 
     private CustomUserDetails userDetails;
 
@@ -139,14 +145,54 @@ class MarketListingControllerTest {
                 .andExpect(jsonPath("$.price").isNumber())
                 .andExpect(jsonPath("$.content").doesNotExist())
                 .andExpect(jsonPath("$.contact").doesNotExist());
-        mockMvc.perform(get("/api/v1/market-listings/{publicId}", publicId).with(anonymous()))
-                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void 중고장터_목록은_비로그인_요청을_거부한다() throws Exception {
+    void 비회원_열람을_허용하면_비로그인도_목록과_상세와_댓글을_본다() throws Exception {
+        setMarketGuestAccess(true);
+        String publicId = createListing();
+
+        mockMvc.perform(get("/api/v1/market-listings").with(anonymous()))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/market-listings/{publicId}", publicId).with(anonymous()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contact").value("010-1234-5678"))
+                .andExpect(jsonPath("$.canEdit").value(false));
+        mockMvc.perform(get("/api/v1/posts/{publicId}/comments", publicId).with(anonymous()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void 비회원_열람을_끄면_비로그인_목록과_상세와_댓글을_거부한다() throws Exception {
+        setMarketGuestAccess(false);
+        String publicId = createListing();
+
         mockMvc.perform(get("/api/v1/market-listings").with(anonymous()))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/market-listings/{publicId}", publicId).with(anonymous()))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/posts/{publicId}/comments", publicId).with(anonymous()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /** 설정 캐시는 트랜잭션과 함께 되돌아가지 않으므로 기본값으로 돌려 둔다. */
+    @AfterEach
+    void resetMarketGuestAccess() {
+        setMarketGuestAccess(true);
+    }
+
+    private void setMarketGuestAccess(boolean enabled) {
+        systemConfigRepository.save(
+                new SystemConfig(
+                        SystemConfigService.KEY_MARKET_GUEST_ACCESS_ENABLED,
+                        String.valueOf(enabled),
+                        "BOOLEAN",
+                        "중고장터 비로그인 열람 허용 여부",
+                        "TEST"));
+        systemConfigService.updateConfig(
+                SystemConfigService.KEY_MARKET_GUEST_ACCESS_ENABLED,
+                String.valueOf(enabled),
+                "TEST");
     }
 
     @Test
@@ -204,11 +250,8 @@ class MarketListingControllerTest {
     }
 
     @Test
-    void 판매글_댓글은_비로그인과_익명_작성을_거부한다() throws Exception {
+    void 판매글_댓글은_익명_작성을_거부한다() throws Exception {
         String publicId = createListing();
-
-        mockMvc.perform(get("/api/v1/posts/{publicId}/comments", publicId).with(anonymous()))
-                .andExpect(status().isUnauthorized());
 
         mockMvc.perform(
                         post("/api/v1/posts/{publicId}/comments", publicId)
@@ -337,6 +380,35 @@ class MarketListingControllerTest {
                                 .content("{\"tradeStatus\":\"SOLD\",\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tradeStatus").value("SOLD"));
+    }
+
+    @Test
+    void 판매_완료_글은_기본_목록에서_빠지고_includeSold면_보인다() throws Exception {
+        String publicId = createListing();
+        mockMvc.perform(
+                        patch("/api/v1/market-listings/{publicId}/trade-status", publicId)
+                                .with(csrf())
+                                .with(user(userDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"tradeStatus\":\"SOLD\",\"version\":0}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/market-listings").param("size", "50").with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.content[*].publicId")
+                                .value(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.hasItem(publicId))));
+        mockMvc.perform(
+                        get("/api/v1/market-listings")
+                                .param("size", "50")
+                                .param("includeSold", "true")
+                                .with(user(userDetails)))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.content[*].publicId")
+                                .value(org.hamcrest.Matchers.hasItem(publicId)));
     }
 
     private String createListing() throws Exception {

@@ -19,6 +19,7 @@ const STATIC_PATHS = [
   "/resort-reports",
   "/resort-cam",
   "/slopes",
+  "/slopes/compare",
   "/tools",
   "/tools/season-pass",
   "/tools/season-pass-prices",
@@ -81,8 +82,28 @@ async function dynamicEntries(): Promise<Entry[]> {
   return [...postEntries, ...marketEntries, ...carpoolEntries].filter(entry => !seen.has(entry.url) && Boolean(seen.add(entry.url)));
 }
 
+async function fetchJson<T>(path: string): Promise<T | null> {
+  try {
+    const response = await fetch(`${API_V1_URL}${path}`, { next: { revalidate }, signal: AbortSignal.timeout(LIST_TIMEOUT_MS) });
+    return response.ok ? ((await response.json()) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+// IKA-98 슬로프 제원 페이지. 리조트가 스무 곳 안팎이라 리조트마다 한 번씩 읽는다.
+async function slopeSpecPaths(): Promise<string[]> {
+  const list = await fetchJson<{ resorts?: { code: string }[] }>("/slopes/resorts");
+  const codes = (list?.resorts ?? []).map(resort => resort.code);
+  const details = await Promise.all(codes.map(code => fetchJson<{ slopes?: { id: number }[] }>(`/slopes/resorts/${code}`)));
+  return codes.flatMap((code, index) => [
+    `/slopes/${resortSlug(code)}`,
+    ...(details[index]?.slopes ?? []).map(slope => `/slopes/${resortSlug(code)}/${slope.id}`),
+  ]);
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [resorts, dynamic] = await Promise.all([getResortCameras(), dynamicEntries()]);
-  const paths = [...STATIC_PATHS, ...resorts.map(resort => `/resort-cam/${resortSlug(resort.code)}`)];
+  const [resorts, dynamic, slopePaths] = await Promise.all([getResortCameras(), dynamicEntries(), slopeSpecPaths()]);
+  const paths = [...STATIC_PATHS, ...resorts.map(resort => `/resort-cam/${resortSlug(resort.code)}`), ...slopePaths];
   return [...paths.map(path => ({ url: url(path) })), ...dynamic];
 }

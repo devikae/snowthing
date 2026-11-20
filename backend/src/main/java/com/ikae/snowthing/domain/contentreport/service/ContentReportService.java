@@ -37,11 +37,15 @@ public class ContentReportService {
     private final Clock clock;
 
     @Transactional
-    public void create(ContentReportCreateRequest request, CustomUserDetails user) {
+    public void create(
+            ContentReportCreateRequest request, CustomUserDetails user, String clientIp) {
+        // 비회원도 신고할 수 있다. 회원은 회원 기준, 비회원은 IP 기준으로 중복을 막는다.
         Member reporter =
-                memberRepository
-                        .findByEmail(user.getUsername())
-                        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+                user == null
+                        ? null
+                        : memberRepository
+                                .findByEmail(user.getUsername())
+                                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         Long targetId =
                 switch (request.targetType()) {
                     case POST -> visiblePost(request.targetId(), user).getId();
@@ -53,8 +57,12 @@ public class ContentReportService {
                         : request.detail().trim();
         LocalDateTime now = LocalDateTime.now(clock);
         Optional<ContentReport> existing =
-                reportRepository.findByTargetTypeAndTargetIdAndReporter_Id(
-                        request.targetType(), targetId, reporter.getId());
+                reporter != null
+                        ? reportRepository.findByTargetTypeAndTargetIdAndReporter_Id(
+                                request.targetType(), targetId, reporter.getId())
+                        : reportRepository
+                                .findFirstByTargetTypeAndTargetIdAndReporterIsNullAndReporterIp(
+                                        request.targetType(), targetId, clientIp);
         if (existing.isPresent()) {
             if (existing.get().getStatus() == ReportStatus.PENDING) {
                 throw new CustomException(ErrorCode.CONTENT_REPORT_DUPLICATE);
@@ -68,6 +76,7 @@ public class ContentReportService {
                             request.targetType(),
                             targetId,
                             reporter,
+                            clientIp,
                             request.reason(),
                             detail,
                             now));
