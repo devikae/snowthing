@@ -24,6 +24,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.util.MarkdownBodySanitizer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -115,24 +116,26 @@ public class PostService {
                             .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
+        // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
+        String content = MarkdownBodySanitizer.sanitize(request.content());
         Post post =
                 Post.builder()
                         .member(member)
                         .category(category)
                         .title(request.title())
-                        .content(request.content())
+                        .content(content)
                         .writerIp(resolveWriterIp(clientIp))
                         .isAnonymous(isAnon)
                         .anonymousPassword(encodedPassword)
                         .hasImage(false)
                         .build();
-        imageLifecycle.rejectNewInlineImages(request.content(), null);
+        imageLifecycle.rejectNewInlineImages(content, null);
         imageLifecycle.protectAll(
                 request.imageUrls(),
-                request.content(),
+                content,
                 userDetails == null ? null : userDetails.getUsername());
         post.replaceImages(toPostImages(request.imageUrls()));
-        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
 
         Post saved = postRepository.save(post);
         searchOutbox.postChanged(saved);
@@ -335,15 +338,17 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
-        imageLifecycle.rejectNewInlineImages(request.content(), post.getContent());
+        // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
+        String content = MarkdownBodySanitizer.sanitize(request.content());
+        imageLifecycle.rejectNewInlineImages(content, post.getContent());
         imageLifecycle.protectExisting(
                 request.imageUrls(),
-                request.content(),
+                content,
                 userDetails == null ? null : userDetails.getUsername(),
                 post.getImages().stream().map(PostImage::getImageUrl).toList(),
                 post.getContent());
-        post.update(request.title(), request.content(), category);
-        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
+        post.update(request.title(), content, category);
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }
