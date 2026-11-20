@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer } from "../lib/viewer";
 import { csrfFetch } from "../lib/csrfFetch";
@@ -13,6 +13,7 @@ import { errorText } from "../lib/errorText";
 import { formatShortDateTime } from "../lib/koreanDate";
 import { mergeReplies, replyCursor } from "../lib/commentReplies";
 import { useReplyTarget } from "./useReplyTarget";
+import { ReplyComposer } from "./ReplyComposer";
 
 interface WriterInfo {
   publicId: string | null;
@@ -211,6 +212,18 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     }
   };
 
+  // 답글 입력창은 답글 버튼을 누른 댓글 바로 아래에 연다. 답글 아래면 답글 카드 밖에 같은 들여쓰기로 둔다.
+  const renderReplyComposer = (item: CommentItem, root: CommentItem | null = null) => reply.isReplyingTo(item.commentId) && <ReplyComposer
+    inputRef={reply.inputRef}
+    value={replyContent}
+    onChange={setReplyContent}
+    onCancel={reply.close}
+    onSubmit={() => void createComment(root?.commentId ?? item.commentId)}
+    submitting={working}
+    loginRequired={!currentUserPublicId}
+    nested={Boolean(root)}
+  />;
+
   const renderComment = (item: CommentItem, root: CommentItem | null = null) => (
     <article className={root ? "post-comment-reply" : "post-comment-item"} key={item.commentId}>
       <div className="comment-youtube-row">
@@ -233,14 +246,9 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
           </div>}
         </div>
       </div>
-      {!root && item.previewReplies.map((child) => renderComment(child, item))}
+      {!root && renderReplyComposer(item)}
+      {!root && item.previewReplies.map((child) => <Fragment key={child.commentId}>{renderComment(child, item)}{renderReplyComposer(child, item)}</Fragment>)}
       {!root && item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" disabled={working} onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
-      {!root && reply.target && reply.isOpenFor(item.commentId) && <div className="post-reply-compose">
-        <div className="post-reply-target"><span>{reply.label(reply.target)}</span><button type="button" onClick={reply.close}>취소</button></div>
-        {!currentUserPublicId && <p className="post-comment-login-note px-3 pt-2">답글을 작성하려면 <Link href={`/login?returnUrl=${encodeURIComponent(`/carpool/${postPublicId}`)}`}>로그인</Link>이 필요합니다.</p>}
-        <textarea ref={reply.inputRef} className="post-comment-textarea" aria-label="답글 입력" maxLength={1000} value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력하세요." />
-        <div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={working || !currentUserPublicId || !replyContent.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div>
-      </div>}
     </article>
   );
 

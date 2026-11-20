@@ -559,7 +559,7 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
 .post-comment-compose { overflow: hidden; border: 1px solid #dbe3ed; border-radius: 10px; background: white; }
 .post-comment-textarea { display: block; width: 100%; min-height: 104px; resize: vertical; border: 0; outline: 0; background: transparent; padding: 14px 15px; color: #334155; font-size: 13px; line-height: 1.65; }
 .post-comment-textarea::placeholder { color: var(--snow-muted); }
-.post-comment-compose:focus-within,.post-reply-compose:focus-within { border-color: #7dd3fc; box-shadow: 0 0 0 3px rgba(14,165,233,.08); }
+.post-comment-compose:focus-within { border-color: #7dd3fc; box-shadow: 0 0 0 3px rgba(14,165,233,.08); }
 .post-comment-compose-footer { display: flex; min-height: 52px; align-items: center; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; background: #f8fafc; padding: 8px 9px 8px 13px; }
 .post-comment-password { display: flex; min-width: 0; align-items: center; gap: 9px; margin-right: auto; color: #64748b; font-size: 11px; font-weight: 700; }
 .post-comment-password input { width: 180px; height: 34px; border: 1px solid #dbe3ed; border-radius: 7px; outline: 0; background: white; padding: 0 10px; color: #334155; font-size: 11px; }
@@ -574,11 +574,6 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
 .post-comment-reply { margin: 12px 0 0 24px; border: 1px solid #e2e8f0; border-radius: 9px; background: #f8fafc; padding: 14px 16px; }
 .post-comment-reply-author { display: flex; min-width: 0; align-items: center; gap: 6px; }
 .post-comment-reply-author > .material-symbols-outlined { color: #94a3b8; font-size: 17px; }
-.post-reply-compose { overflow: hidden; margin: 14px 0 0 24px; border: 1px solid #dbe3ed; border-radius: 9px; background: white; }
-.post-reply-compose .post-comment-textarea { min-height: 82px; }
-.post-reply-target { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px 0; font-size: 12px; font-weight: 700; color: var(--snow-muted); }
-.post-reply-target button { border: 0; background: none; padding: 0; font-size: 12px; color: var(--snow-muted); cursor: pointer; }
-.post-reply-target button:hover { color: var(--snow-ink); }
 .post-comments-more { display: grid; justify-items: center; gap: 6px; margin-top: 20px; }.post-comments-more-button { min-height: 38px; border: 0; border-radius: 9px; background: #f1f3f5; padding: 0 18px; color: #64748b; font-size: 11px; font-weight: 750; }
 .post-detail-sidebar { display: flex; flex-direction: column; gap: 6px; }.detail-carpool-card { padding: 15px; }.detail-carpool-card > header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }.detail-carpool-card h2 { display: flex; align-items: center; gap: 5px; margin: 0; color: #036e9f; font-size: 12px; }.detail-carpool-card h2 .material-symbols-outlined { font-size: 16px; }.detail-carpool-card > header > a { color: var(--snow-muted); font-size: 11px; }.detail-carpool-card > header > a:hover { color: #0275b3; }.detail-carpool-card article { border-bottom: 1px solid #f1f5f9; padding-block: 12px; }.detail-carpool-card article:last-child { border-bottom: 0; padding-bottom: 2px; }.detail-carpool-card article div,.detail-carpool-card article p { display: flex; align-items: center; justify-content: space-between; gap: 8px; }.detail-carpool-card article div b { border-radius: 4px; background: #475569; padding: 3px 6px; color: white; font-size: 10px; }.detail-carpool-card time { color: var(--snow-muted); font-size: 11px; }.detail-carpool-card article > strong { display: block; margin-top: 8px; color: #036e9f; font-size: 11px; }.detail-carpool-card article > strong span { color: var(--snow-muted); }.detail-carpool-card article p { margin: 6px 0 0; color: var(--snow-muted); font-size: 11px; }.detail-carpool-card article p b { color: #334155; }.detail-carpool-card article footer { display: flex; justify-content: flex-end; margin-top: 7px; }.detail-carpool-card article footer a { color: #0275b3; font-size: 11px; font-weight: 750; }.detail-carpool-empty { margin: 0; padding: 24px 4px; color: var(--snow-muted); font-size: 11px; text-align: center; }
 
@@ -594,7 +589,7 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
   .post-comment-password { width: 100%; }
   .post-comment-password input { min-width: 0; flex: 1; width: auto; }
   .post-comment-submit-button { width: 100%; }
-  .post-comment-reply,.post-reply-compose { margin-left: 12px; }
+  .post-comment-reply { margin-left: 12px; }
 }
 
 /* Shared board list */
@@ -937,7 +932,6 @@ html[data-theme="dark"] .post-comment-textarea {
 }
 
 html[data-theme="dark"] .post-comment-compose,
-html[data-theme="dark"] .post-reply-compose,
 html[data-theme="dark"] .post-comment-reply,
 html[data-theme="dark"] .post-comment-compose-footer {
   border-color: var(--snow-border);
@@ -1454,13 +1448,10 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 .comment-reply-more { margin: 10px 0 0 48px; }
 .comment-reply-more button,
 .reply-more { border: 0; background: transparent; padding: 5px 0; color: #0369a1; font-size: 11px; font-weight: 800; }
-.post-reply-compose { overflow: hidden; margin: 12px 0 0 48px; border: 1px solid #dbe3ed; border-radius: 10px; background: #fff; }
 .post-comment-compose,
 .market-comments .post-comment-compose { overflow: hidden; display: block; border: 1px solid #dbe3ed; border-radius: 10px; background: #fff; }
 .post-comment-compose .post-comment-textarea,
-.post-reply-compose .post-comment-textarea,
 .market-comments .post-comment-textarea { display: block; width: 100%; min-height: 96px; box-sizing: border-box; resize: vertical; border: 0; border-radius: 0; outline: 0; background: transparent; padding: 14px 15px; color: #334155; font-family: inherit; font-size: 13px; line-height: 1.65; }
-.post-reply-compose .post-comment-textarea { min-height: 76px; }
 .post-comment-compose-footer,
 .market-comments .post-comment-compose-footer { display: flex; min-height: 50px; align-items: center; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; background: #f8fafc; padding: 7px 9px 7px 13px; }
 .post-comment-submit-button,
@@ -1470,7 +1461,7 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 
 @media (max-width: 640px) {
   .post-comments-card,.market-comments.post-comments-card { padding: 18px 14px; }
-  .post-comment-reply,.market-comment-reply.post-comment-reply,.post-reply-compose { margin-left: 18px; }
+  .post-comment-reply,.market-comment-reply.post-comment-reply { margin-left: 18px; }
   .comment-reply-more,.reply-more { margin-left: 18px; }
   .comment-profile-avatar { width: 34px; height: 34px; flex-basis: 34px; }
 }
@@ -1546,14 +1537,12 @@ html[data-theme="dark"] .post-comments-card > header h2 span {
 html[data-theme="dark"] .post-detail-author,
 html[data-theme="dark"] .post-comment-item,
 html[data-theme="dark"] .post-comment-compose,
-html[data-theme="dark"] .post-reply-compose,
 html[data-theme="dark"] .post-comment-compose-footer {
   border-color: var(--snow-border);
 }
 
 html[data-theme="dark"] .post-comment-reply,
 html[data-theme="dark"] .post-comment-compose,
-html[data-theme="dark"] .post-reply-compose,
 html[data-theme="dark"] .post-comment-compose-footer,
 html[data-theme="dark"] .comment-login-guide {
   background: var(--snow-surface-low);
@@ -1562,7 +1551,6 @@ html[data-theme="dark"] .comment-login-guide {
 html[data-theme="dark"] .comment-youtube-body > p,
 html[data-theme="dark"] .comment-youtube-body > header strong,
 html[data-theme="dark"] .post-comment-compose .post-comment-textarea,
-html[data-theme="dark"] .post-reply-compose .post-comment-textarea,
 html[data-theme="dark"] .comment-inline-editor textarea {
   color: var(--snow-ink);
 }

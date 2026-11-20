@@ -12,7 +12,8 @@ export type ReplyTarget = {
 };
 
 /**
- * 답글 입력창 상태. 입력창은 댓글 묶음 맨 아래에 열고, 열리면 그 자리로 스크롤하고 커서를 끝에 둔다.
+ * 답글 입력창 상태. 입력창은 답글 버튼을 누른 댓글 바로 아래에 열고, 열리면 그 자리로 스크롤하고 커서를 끝에 둔다.
+ * 저장은 여전히 최상위 댓글(rootId)에 단다.
  * 답글의 답글이면 입력창에 @닉네임을 넣어 누구에게 답하는지 남긴다. 대상이 바뀌면 쓰던 내용은 비운다.
  */
 export function useReplyTarget(setText: (text: string) => void) {
@@ -41,8 +42,6 @@ export function useReplyTarget(setText: (text: string) => void) {
     inputRef,
     toggle,
     close: () => setTarget(null),
-    isOpenFor: (rootId: string) => target?.rootId === rootId,
     isReplyingTo: (commentId: string) => target?.commentId === commentId,
-    label: (value: ReplyTarget) => (value.rootId === value.commentId ? `${value.name}님 댓글에 답글` : `${value.name}님에게 답글`),
   };
 }
