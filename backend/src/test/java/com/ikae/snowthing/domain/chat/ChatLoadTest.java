@@ -201,8 +201,7 @@ class ChatLoadTest {
                             HttpResponse.BodyHandlers.ofString());
             String csrfCookie = cookie(csrfResponse, "XSRF-TOKEN");
             String csrfToken = objectMapper.readTree(csrfResponse.body()).get("token").asText();
-            MemberLoginRequest loginRequest =
-                    new MemberLoginRequest(email(memberIndex), PASSWORD, false);
+            MemberLoginRequest loginRequest = new MemberLoginRequest(email(memberIndex), PASSWORD);
             HttpResponse<String> loginResponse =
                     httpClient.send(
                             HttpRequest.newBuilder()

@@ -107,7 +107,7 @@ class WebSocketChatIntegrationTest {
         memberService.signUp(signUpRequest);
 
         MemberLoginRequest loginRequest =
-                new MemberLoginRequest("chattester@snowthing.org", "Password123!", false);
+                new MemberLoginRequest("chattester@snowthing.org", "Password123!");
         HttpClient httpClient = HttpClient.newHttpClient();
 
         // 1-1. CSRF 토큰 획득

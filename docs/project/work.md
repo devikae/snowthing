@@ -1,3 +1,42 @@
+## 로그인 상태 30일 유지 (remember-me, IKA-102, 2026-11-20)
+
+- 상태: 구현, 보안 리뷰 반영, PR 생성. 머지와 운영 마이그레이션(056), 배포는 사용자 확인 후.
+- 배경: 세션이 서버 메모리(Tomcat)에 있어 60분 쉬거나 배포하면 로그아웃된다. JWT나 Redis 없이 MySQL에 로그인 유지 토큰을 둔다.
+- 완료
+  - DB: `056_migration_persistent_logins.sql`. `persistent_logins`(series PK, member_public_id, token_hash, previous_token_hash, last_used_at, created_at). 테스트용 `test-schema.sql`에도 추가.
+  - `SnowthingRememberMeServices`: Spring Security `AbstractRememberMeServices` 확장. 쿠키 `SNOWTHING_REMEMBER_ME`, 30일, HttpOnly, SameSite=Lax, Secure는 `snowthing.web.secure-cookies`(운영 true). 자동 로그인 때마다 token을 바꾸고 마지막 사용 시각부터 30일을 다시 센다.
+  - `SecurityConfig`에 `.rememberMe(...)`를 붙였다. 세션 없이 쿠키만 오면 다시 인증하고 세션 고정 방어(changeSessionId)를 거쳐 새 세션을 만든다. 로그아웃 처리기도 함께 붙는다.
+  - `RememberMeSessionRegistrationFilter`: 쿠키로 만든 세션을 `MemberSessionRegistry`에 올린다. 관리자 정지, 비밀번호 변경, 탈퇴 때 이 세션도 끊긴다.
+  - 로그인 API와 소셜 로그인(콜백, 소셜 가입 완료)에서 `loginSuccess`를 불러 쿠키를 내려준다. 체크박스 없이 항상 유지한다.
+  - `MemberSessionRegistry.invalidateAll`이 회원의 토큰도 모두 지운다. 정지, 관리자 지정과 해제, 비밀번호 변경과 재설정, 탈퇴, 로그인 중 정지 감지가 모두 이 메서드를 거친다.
+  - 매일 04:40(KST) 30일 넘게 쓰지 않은 토큰을 지운다.
+- 결정
+  - Spring 기본 `PersistentTokenBasedRememberMeServices`와 `JdbcTokenRepositoryImpl`을 그대로 쓰지 않았다. 기본 구현은 첫 요청이 token을 바꾸면 같은 쿠키로 동시에 들어온 나머지 요청을 도난으로 보고 회원의 토큰을 모두 지운다. 프론트는 화면 하나에서 API를 여러 개 동시에 부르므로 배포 직후 로그아웃이 생긴다. 바로 전 token을 바꾼 뒤 60초 동안 받아 주고, 바꾸기는 `WHERE token_hash = 읽은 값` 조건부 UPDATE로 한 요청만 하게 했다. 다른 안: token을 바꾸지 않기(도난 감지를 잃음).
+  - token 원문 대신 SHA-256 해시를 저장한다. 표나 백업이 새도 쿠키를 만들 수 없다.
+  - 회원을 이메일이 아니라 공개 ID로 묶는다. 탈퇴하면 이메일이 익명값으로 바뀌어 이메일로는 토큰을 지울 수 없다.
+  - 로그아웃은 이 기기의 토큰만 지운다. 다른 기기의 로그인 유지는 남는다. Spring 기본은 회원의 모든 토큰을 지운다. 강제 로그아웃 성격(정지, 비밀번호 변경 등)은 모두 지운다.
+  - 도난 의심(오래된 token)일 때 `CookieTheftException` 대신 일반 실패로 끝낸다. 기본 예외는 필터 밖으로 던져져 500이 된다. 회원 토큰은 모두 지우고 요청은 비로그인으로 이어간다.
+  - 쿠키로 만든 세션은 "최근 로그인"(`RecentAuthentication`)으로 표시하지 않는다. 민감한 작업의 재인증 요구는 그대로다.
+  - 키: `SNOWTHING_REMEMBER_ME_KEY`. 비우면 `SNOWTHING_EMAIL_VERIFICATION_SECRET`에 용도 접두사를 붙여 쓴다(멱등 키와 같은 방식). 이 키는 쿠키를 서명하지 않고 자동 로그인 인증 객체 확인에만 쓰여 운영에 새 비밀값이 꼭 필요하지 않다. `compose.prod.yml`에는 선택값으로 넣었다.
+  - 마이그레이션 번호: 054, 055는 병행 작업이 예약했고 052, 053은 브랜치 사이에 이미 두 번씩 쓰여 056으로 했다. `database/ddl.sql`은 IKA-92부터 mysqldump로 다시 뽑는 파일이고 기준이 053이다. 054, 055가 아직 main에 없어 056만 손으로 넣으면 기준이 어긋나므로 고치지 않았다. 054, 055가 머지된 뒤 다시 뽑을 때 함께 들어간다.
+- 보안 리뷰 (IKA-102, 2026-11-20)
+  - 확인하고 그대로 둔 것
+    - token 저장: SHA-256 해시만 저장, 비교는 `MessageDigest.isEqual`(상수 시간). token은 32바이트 SecureRandom이라 솔트 없는 해시로 충분하다(비밀번호처럼 추측 가능한 값이 아님).
+    - 커스텀 구현 판단: 맞다. Spring 기본 `PersistentTokenBasedRememberMeServices`는 동시 요청 중 두 번째 요청을 `CookieTheftException`으로 보고 회원의 모든 토큰을 지운다. 프론트가 첫 화면에서 API를 여러 개 동시에 부르므로 세션이 끝난 뒤 첫 방문마다 로그아웃될 수 있다. 조건부 UPDATE(CAS)로 한 요청만 바꾸고, 바로 전 token만 60초 받아 준다. 약해지는 부분은 "교체 후 60초 안에 바로 전 token을 쓰는 공격자"를 잡지 못하는 것뿐이고, 60초가 지나면 같은 쿠키로 탐지된다. 두 단계 전 token은 바로 탐지된다.
+    - 쿠키: HttpOnly, SameSite=Lax, Path=/, Max-Age 30일, Secure는 `snowthing.web.secure-cookies`(운영 prod 프로필 true, 로컬 false). 로그아웃 때 Max-Age=0으로 지운다.
+    - 정지, 탈퇴: `invalidateAll`이 토큰을 지우고, 남은 토큰이 있어도 `CustomUserDetails.isAccountNonLocked`, `isEnabled`를 Spring의 `AccountStatusUserDetailsChecker`가 확인해 자동 로그인을 막는다. 쿠키로 만든 세션도 등록 직후 `ensureStillActive`로 다시 확인한다.
+    - CSRF: 쿠키 기반 CSRF 토큰(`CookieCsrfTokenRepository`)은 세션과 무관해 자동 로그인과 충돌하지 않는다. SameSite=Lax라 다른 사이트의 POST에는 로그인 유지 쿠키가 붙지 않는다.
+    - 세션 고정: 쿠키로 인증할 때는 기존 세션이 없어 새 세션을 만든다.
+    - 만료 정리: `last_used_at` 인덱스로 매일 04:40 삭제. 회원 삭제는 `member_public_id` 인덱스.
+    - 글 상세 서버 렌더링은 쿠키를 백엔드로 넘기지 않아, 서버가 token을 바꿔도 브라우저 쿠키와 어긋나지 않는다.
+  - 고친 것
+    - 도난 감지 때 토큰만 지우고 세션은 남겼다. 훔친 쿠키로 만든 세션이 최대 60분 살아 있었다. `invalidateAll`로 세션, 채팅 연결, 토큰을 함께 끊는다.
+    - 로그인 화면의 기존 "로그인 상태 유지" 체크박스가 아직 있었다(처음 기록의 "프론트가 보내지 않는다"는 틀렸다). 체크하면 서버 메모리 세션을 30일로 늘렸고 관리자도 쓸 수 있었다. 관리자는 로그인 유지를 받지 않는다는 결정과 어긋나고, "로그인하면 30일 유지" 안내와도 겹친다. 체크박스와 `MemberLoginRequest.rememberMe`를 없애고 세션은 늘 1시간으로 둔다. 예전 프론트가 `rememberMe`를 보내도 Jackson이 모르는 필드로 무시한다.
+    - 글 상세 서버 렌더링이 1:1 문의 404를 판단할 때 `JSESSIONID`만 봐서, 세션이 끝나고 로그인 유지 쿠키만 남은 회원은 본인 문의 글이 404였다. 로그인 유지 쿠키도 본다.
+    - 테스트 추가: 위조 쿠키(없는 series, 깨진 형식, series만 맞는 쿠키), 도난 감지 때 공격자 세션 무효화, 8개 동시 요청, Secure 쿠키, 만료 정리.
+- 검증
+  - `RememberMeIntegrationTest` 17개(처음 10개, 리뷰 때 7개 추가). 전용 스키마 `snowthing_test_rememberpr`에서 통과.
+  - `MemberSessionRegistryTest`, `OAuth2AuthControllerTest`, `AuthControllerTest` 통과.
 ## 비회원 신고, 중고장터 비회원 열람 스위치, 후원 버튼, 답글 입력창 (IKA-101, 2026-11-20)
 
 - 상태: 코드 품질 검증 후 PR. 머지는 사용자 확인 후. 브랜치 `ika-101-guest-report-market`(원래 로컬 브랜치 `guest-access-reply-fix`를 이어받음).
