@@ -4,6 +4,7 @@ import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { fetchPublicResult, isPublicId } from "../../lib/publicApi";
 import { detailMetadata, firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
+import { renderMarkdownHtml } from "../../lib/markdownHtml.server";
 import PostDetailClient, { type PostDetail } from "./PostDetailClient";
 
 type Props = { params: Promise<{ publicId: string }> };
@@ -38,7 +39,9 @@ export default async function PostDetailPage({ params }: Props) {
   // 1:1 문의는 작성자에게도 비로그인 조회가 404라서, 로그인 세션 쿠키나 로그인 유지 쿠키가 있으면 기존처럼 브라우저가 다시 부르게 둔다.
   if (missing && !(await hasSessionCookie())) notFound();
   if (initialPost?.categoryCode === "CARPOOL") redirect(`/carpool/${publicId}`);
-  return <PostDetailClient params={params} initialPost={initialPost} />;
+  // 본문도 첫 HTML에 넣는다. 브라우저 뷰어가 준비되면 같은 자리를 이어 받는다.
+  const initialBodyHtml = initialPost ? renderMarkdownHtml(initialPost.content) : null;
+  return <PostDetailClient params={params} initialPost={initialPost} initialBodyHtml={initialBodyHtml} />;
 }
 
 async function hasSessionCookie() {
