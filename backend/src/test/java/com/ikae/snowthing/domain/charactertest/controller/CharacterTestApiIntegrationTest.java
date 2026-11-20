@@ -65,6 +65,7 @@ class CharacterTestApiIntegrationTest {
                         .andExpect(jsonPath("$.stats.planning").value(0))
                         .andExpect(jsonPath("$.highlightQuestions.length()").value(4))
                         .andExpect(jsonPath("$.bestMatch.job").exists())
+                        .andExpect(jsonPath("$.badges.length()").value(0))
                         .andReturn()
                         .getResponse()
                         .getContentAsString();
@@ -72,6 +73,19 @@ class CharacterTestApiIntegrationTest {
         assertThat(FORBIDDEN_WORDS.matcher(body).find()).isFalse();
         assertThat(count("character_group")).isZero();
         assertThat(count("character_participant")).isZero();
+    }
+
+    @Test
+    void 일곱번에_웃으면_같은_유형에_웃참_실패_뱃지가_붙는다() throws Exception {
+        mvc.perform(
+                        post("/api/v1/character-test/result")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"answers\":\"AAABBBCAABBBAAA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.character.job").value("HYPE"))
+                .andExpect(jsonPath("$.stats.warmth").value(0))
+                .andExpect(jsonPath("$.badges[0]").value("LAUGH_FIRST"));
     }
 
     @Test

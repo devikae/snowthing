@@ -18,6 +18,14 @@ export interface CharacterStats {
   planning: number;
 }
 
+// 답변 15자리 형식. 서버 CharacterAnswers.REGEXP와 같다(7번 자리만 C를 더 받는다).
+export const ANSWERS_PATTERN = /^[AB]{6}[ABC][AB]{5}[ABC]{3}$/;
+
+// 유형과 별개로 붙는 재미 뱃지. 서버가 코드로 내려 준다.
+export const BADGES: Record<string, { label: string; note: string }> = {
+  LAUGH_FIRST: { label: "웃참 실패", note: "친구가 넘어지면 일단 웃고 본다" },
+};
+
 export interface Question {
   situation: string;
   a: string;
@@ -33,7 +41,8 @@ export const QUESTIONS: readonly Question[] = [
   { situation: "처음 가는 리조트에 왔다", a: "슬로프맵 보고 쉬운 곳부터 탄다", b: "멋져 보이는 곳부터 가 본다" },
   { situation: "친구가 타는 법을 알려준다", a: "동작을 하나씩 알려 주는 게 좋다", b: "왜 그렇게 타는지부터 듣는 게 좋다" },
   { situation: "리프트 위에서 드는 생각", a: "아까 그 턴은 왜 밀렸지", b: "나도 올림픽 나갔으면 어땠을까" },
-  { situation: "친구가 넘어져서 민망해한다", a: "\"무릎을 더 굽혀 봐\"", b: "\"괜찮아? 방금 좀 멋있었어\"" },
+  // 7번만 C(웃음)가 있다. 서버는 유형 계산에서 A와 같이 세고 "웃참 실패" 뱃지를 붙인다.
+  { situation: "친구가 넘어져서 민망해한다", a: "\"무릎을 더 굽혀 봐\"", b: "\"괜찮아? 방금 좀 멋있었어\"", c: "엌ㅋㅋㅋㅋㅋㅋ" },
   { situation: "친구가 \"나 오늘 좀 늘지 않았어?\"라고 묻는다 (사실 비슷하다)", a: "\"음, 아직 턴이 밀려\"", b: "\"응, 많이 늘었어!\"" },
   { situation: "일행 중 한 명이 상급 코스를 무서워한다", a: "실력별로 나눠서 타자고 한다", b: "다 같이 갈 수 있는 곳으로 간다" },
   { situation: "스키장 가기 전날 밤", a: "장비, 옷, 주차까지 확인한다", b: "아침에 챙기면 된다" },

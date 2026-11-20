@@ -1,3 +1,5 @@
+import { ANSWERS_PATTERN } from "./data";
+
 export function groupUrl(groupPublicId: string) {
   return new URL(`/character-test/g/${groupPublicId}`, window.location.origin).toString();
 }
@@ -21,7 +23,6 @@ export function clearFragment() {
   window.history.replaceState(null, "", window.location.pathname);
 }
 
-const ANSWERS_PATTERN = /^[AB]{15}$/;
 
 /** 결과를 다른 브라우저에서 다시 열 때 쓰는 fragment. 서버에 남지 않게 fragment에만 둔다. */
 export function resultFragment(answers: string, sport: "SKI" | "BOARD") {
