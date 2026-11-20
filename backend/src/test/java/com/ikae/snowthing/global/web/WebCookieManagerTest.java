@@ -100,17 +100,72 @@ class WebCookieManagerTest {
     }
 
     @Test
-    @DisplayName("Nginx가 복원한 X-Real-IP를 전달하면 전달 체인보다 우선한다")
-    void resolve_withRealIp_prefersTrustedProxyValue() {
+    @DisplayName("클라이언트가 X-Real-IP를 꾸며 보내도 프록시가 체인 끝에 붙인 주소를 사용한다")
+    void resolve_withForgedRealIp_usesProxyAppendedForwardedIp() {
         ClientIpResolver resolver = new ClientIpResolver();
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRemoteAddr("127.0.0.1");
-        request.addHeader("X-Real-IP", "203.0.113.20");
+        request.setRemoteAddr("172.18.0.1");
+        request.addHeader("X-Real-IP", "198.51.100.99");
         request.addHeader("X-Forwarded-For", "198.51.100.99, 203.0.113.20");
 
         String ip = resolver.resolve(request);
 
         assertThat(ip).isEqualTo("203.0.113.20");
+    }
+
+    @Test
+    @DisplayName("Nginx가 덮어쓴 X-Real-IP와 체인 끝 주소가 같으면 그 주소를 사용한다")
+    void resolve_withRealIpMatchingForwardedFor_usesThatIp() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Real-IP", "203.0.113.20");
+        request.addHeader("X-Forwarded-For", "198.51.100.99, 203.0.113.20, 203.0.113.20");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("203.0.113.20");
+    }
+
+    @Test
+    @DisplayName("X-Forwarded-For가 여러 줄이면 마지막 줄의 마지막 주소를 사용한다")
+    void resolve_withMultipleForwardedForLines_usesLastLine() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Forwarded-For", "198.51.100.99");
+        request.addHeader("X-Forwarded-For", "198.51.100.98, 203.0.113.20");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("203.0.113.20");
+    }
+
+    @Test
+    @DisplayName("체인에 사설 주소만 있으면 X-Real-IP를 사용한다")
+    void resolve_withOnlyPrivateForwardedFor_fallsBackToRealIp() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Real-IP", "203.0.113.20");
+        request.addHeader("X-Forwarded-For", "10.0.0.5, 127.0.0.1");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("203.0.113.20");
+    }
+
+    @Test
+    @DisplayName("방문자가 IPv6면 체인 끝의 IPv6 주소를 그대로 사용한다")
+    void resolve_withIpv6Visitor_usesIpv6() {
+        ClientIpResolver resolver = new ClientIpResolver();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("172.18.0.1");
+        request.addHeader("X-Forwarded-For", "198.51.100.99, 2001:db8::1234");
+
+        String ip = resolver.resolve(request);
+
+        assertThat(ip).isEqualTo("2001:db8::1234");
     }
 
     @Test

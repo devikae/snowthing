@@ -1,3 +1,27 @@
+## 클라이언트 IP 헤더 신뢰 경로 보강 (보안 후속 수정, 2026-11-20)
+
+- 상태: 구현 완료, PR 생성. 머지와 운영 배포는 사용자 확인 후. 티켓 없이 진행(보안 후속 수정).
+- 배경: 백엔드 `ClientIpResolver`는 요청이 loopback이나 사설 대역에서 오면 `X-Real-IP`를 가장 먼저 믿었다. 운영 백엔드는 `127.0.0.1:8080`으로만 열려 있어 모든 요청이 호스트 Nginx를 거쳐 Docker 게이트웨이 주소로 들어온다. 그래서 Nginx가 `X-Real-IP`를 덮어쓰지 않는 location이 하나라도 있으면 클라이언트가 보낸 값이 그대로 쓰여 로그인, 검색, 글쓰기, 이미지 등 IP 기준 제한 전부를 헤더 하나로 피할 수 있다.
+- 조사 결론: 서버에 있는 파일에 달려 있어 코드만으로는 확정할 수 없다.
+  - 저장소가 `X-Real-IP`를 덮어쓰는 곳은 `/ws-chat` 조각 하나다(`scripts/deploy-ecr-service.sh`의 `configure_nginx_websocket_proxy`).
+  - `configure_nginx_request_limits`가 쓰는 `/etc/nginx/conf.d/snowthing-upload-limit.conf`는 http 수준 설정(업로드 크기, `set_real_ip_from`, `real_ip_header CF-Connecting-IP`, 라이브톡 제한)만 담는다. `$remote_addr`는 실제 방문자 주소로 복원되지만 백엔드로 넘기는 헤더는 정하지 않는다.
+  - `location /`, `location /api/`가 있는 서버 블록은 초기 배포 때 서버에서 손으로 만든 파일이고 저장소에 원문이 없다. 스크립트는 그 파일을 찾아 `/ws-chat` include 한 줄만 넣는다.
+- 완료
+  - 백엔드: 신뢰 프록시에서 온 요청은 `X-Forwarded-For`를 오른쪽부터 먼저 본다. 맨 오른쪽 값은 Cloudflare나 Nginx가 직접 붙여 클라이언트가 바꿀 수 없다. `X-Real-IP`는 전달 체인에 쓸 주소가 없을 때만 쓴다. 헤더가 여러 줄로 와도 모두 이어서 본다.
+  - 배포 스크립트: Cloudflare IPv6 7개 대역을 `set_real_ip_from`에 추가. http 수준에 `proxy_set_header X-Real-IP $remote_addr`, `X-Forwarded-For $proxy_add_x_forwarded_for`를 두어 `proxy_set_header`가 하나도 없는 location이 클라이언트 값을 그대로 넘기지 않게 했다. 배포 로그에 손으로 만든 설정의 백엔드 `proxy_pass` 수와 IP 헤더 덮어쓰기 줄 수를 한 줄로 남긴다(원문은 출력하지 않음).
+  - 문서: `docs/conception/001_live_chat/chat_spec.md`의 신뢰 경계 설명을 새 순서에 맞췄다.
+- 결정
+  - 서버 블록을 스크립트로 고치지 않았다. 원문을 모르는 파일의 location 안쪽을 자동으로 바꾸면 잘못됐을 때 전원 접속 장애가 난다. Nginx의 `proxy_set_header`는 location에 하나라도 있으면 상위 수준 값이 상속되지 않아 http 수준 줄만으로는 막지 못하는 경우가 남는다. 그래서 서버 설정이 어떻든 안전한 백엔드 쪽 순서 변경을 주 방어로 삼았다.
+  - 다른 안 1: `CF-Connecting-IP`를 백엔드가 직접 믿기. Cloudflare가 항상 덮어쓰지만 Cloudflare를 거치지 않는 경로(로컬, 보안 그룹 변경)에서는 위조된다. 설정 항목이 늘어 넣지 않았다.
+  - 다른 안 2: 전달 체인에서 Cloudflare 대역도 건너뛰기. WARP나 Workers처럼 방문자 주소가 Cloudflare 대역인 경우 그 앞의 위조 값을 고르게 되어 넣지 않았다.
+  - 전원이 한 IP로 묶일 위험을 따졌다. 새 순서가 고르는 값은 Nginx가 붙인 `$remote_addr`이거나(location이 `X-Forwarded-For`를 설정한 경우) Cloudflare가 붙인 방문자 주소다(설정하지 않은 경우). 앞의 경우 `$remote_addr`는 지금의 `X-Real-IP $remote_addr`와 같은 값이라 달라지지 않는다. 나빠지는 경우는 "real_ip 복원이 동작하지 않는데 location이 `X-Real-IP`만 `$http_cf_connecting_ip` 같은 다른 값으로 채우는" 설정뿐이다. 스크립트가 배포마다 real_ip 설정을 쓰므로 가능성은 낮지만 서버를 보지 못해 0은 아니다.
+- 발견된 이슈
+  - 로컬 Nginx 실험에서 `proxy_set_header Host $host`만 있는 location은 클라이언트의 `X-Real-IP: 203.0.113.9`를 그대로 넘겼다. 운영 `/api/` location이 이 모양이면 지금 우회가 가능하다.
+  - 기존 테스트 `forgedForwardedForBehindProxyIsIgnored`는 "X-Real-IP는 믿을 수 있고 X-Forwarded-For는 전부 클라이언트 값"이라는 가정이었다. 운영 경로(프록시가 끝에 주소를 붙임)에 맞게 다시 썼다.
+- 검증: `spotlessCheck test` 1416개 통과(건너뜀 1개, 실패 0, 전용 스키마 `snowthing_test_realip`, ratchetFrom은 임시 init script로 끔). `bash -n` 통과, shellcheck는 오류와 경고 없이 SC2016 안내 6건(Nginx 변수를 작은따옴표로 넘기는 의도된 표기, 기존 4건에 새 2줄). 스크립트가 만든 관리 조각을 `nginx:stable`(1.30.7) 컨테이너에 넣어 `nginx -t` 통과, 위조 헤더를 붙인 요청으로 `proxy_set_header`가 없는 location은 덮어쓰고 있는 location은 그대로인 것을 확인. 운영 서버 접속과 운영 요청은 하지 않았다. 서버가 인식한 IP를 읽기 전용 GET 응답으로 보여 주는 엔드포인트가 없어 운영 동작은 확인하지 못했다.
+- 남은 항목: 머지와 배포 후 확인(배포 로그의 `Nginx client IP headers outside managed files` 줄, 비회원 댓글의 마스킹 IP, 라이브톡 감사 로그의 IP가 사람마다 다른지).
+- 사용자 결정 필요: 서버에서 `sudo nginx -T | grep -n -E "location|proxy_pass|proxy_set_header|real_ip"`로 `/api/` location을 보고, `X-Real-IP $remote_addr`와 `X-Forwarded-For $proxy_add_x_forwarded_for`가 없으면 넣을지.
+
 ## 슬로프끼리 비교, 비슷한 슬로프 국내 일본 모두, 답글 입력칸과 라이브톡 닉네임 정리 (디자인 수정 묶음, 2026-11-20)
 
 - 상태: 구현 완료, PR #163 갱신. 사용자 요청으로 슬로프 기능 후속, 답글 입력칸(파란 줄, 유튜브식 답글), 라이브톡 비회원 닉네임 표시를 PR 하나로 묶는다. 티켓 없이 진행(디자인 수정 묶음).

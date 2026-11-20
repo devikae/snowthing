@@ -31,6 +31,16 @@ CLOUDFLARE_IPV4_RANGES=(
   "172.64.0.0/13"
   "131.0.72.0/22"
 )
+# 지금 보안 그룹은 Cloudflare IPv4만 들여보낸다. 원본에 IPv6가 열려도 방문자가 엣지 주소 하나로 묶이지 않게 함께 등록한다.
+CLOUDFLARE_IPV6_RANGES=(
+  "2400:cb00::/32"
+  "2606:4700::/32"
+  "2803:f800::/32"
+  "2405:b500::/32"
+  "2405:8100::/32"
+  "2a06:98c0::/29"
+  "2c0f:f248::/32"
+)
 
 case "$SERVICE" in
   backend)
@@ -173,7 +183,7 @@ configure_nginx_request_limits() {
 
   {
     printf '%s\n' 'client_max_body_size 6m;'
-    for cloudflare_range in "${CLOUDFLARE_IPV4_RANGES[@]}"; do
+    for cloudflare_range in "${CLOUDFLARE_IPV4_RANGES[@]}" "${CLOUDFLARE_IPV6_RANGES[@]}"; do
       printf 'set_real_ip_from %s;\n' "$cloudflare_range"
     done
     if [[ "$real_ip_header_exists" == false ]]; then
@@ -182,6 +192,11 @@ configure_nginx_request_limits() {
     if [[ "$real_ip_recursive_exists" == false ]]; then
       printf '%s\n' 'real_ip_recursive on;'
     fi
+    # proxy_set_header를 하나도 두지 않은 location에만 상속된다. 그런 location이 클라이언트가 보낸
+    # X-Real-IP, X-Forwarded-For를 그대로 넘기지 않게 한다. 자체 proxy_set_header가 있는 location은 그대로다.
+    printf '%s\n' \
+      'proxy_set_header X-Real-IP $remote_addr;' \
+      'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;'
     printf '%s\n' \
       'map $uri $snowthing_chat_limit_key {' \
       '  default "";' \
@@ -210,6 +225,30 @@ configure_nginx_request_limits() {
   nginx -t || true
   echo "Failed to configure Nginx request limits" >&2
   return 1
+}
+
+report_nginx_client_ip_headers() {
+  # 서버 블록은 저장소 밖에서 관리한다. 손으로 만든 설정 파일(이 스크립트가 쓰는 파일 제외)에서 백엔드로 넘기는 proxy_pass 수와
+  # IP 헤더를 덮어쓰는 줄 수만 남긴다. 설정 원문은 출력하지 않는다. 덮어쓰는 줄이 proxy_pass보다 적으면 서버 설정을 확인한다.
+  local summary
+  summary="$(nginx -T 2>/dev/null | awk \
+    -v managed="$NGINX_MANAGED_CONFIG_PATH" \
+    -v snippet="$NGINX_WEBSOCKET_SNIPPET_PATH" \
+    -v cam="$NGINX_CAM_ORIGIN_CONFIG_PATH" '
+    /^# configuration file / {
+      file = $4
+      sub(/:$/, "", file)
+      skip = (file == managed || file == snippet || file == cam)
+      next
+    }
+    skip { next }
+    /proxy_pass[[:space:]]+http:\/\/(127\.0\.0\.1|localhost):8080/ { backend++ }
+    /proxy_set_header[[:space:]]+X-Real-IP[[:space:]]+\$remote_addr/ { real_ip++ }
+    /proxy_set_header[[:space:]]+X-Forwarded-For[[:space:]]+\$(proxy_add_x_forwarded_for|remote_addr)/ { forwarded++ }
+    END {
+      printf "backend_proxy_pass=%d x_real_ip_overwrite=%d x_forwarded_for_overwrite=%d", backend, real_ip, forwarded
+    }' || true)"
+  echo "Nginx client IP headers outside managed files: ${summary:-unavailable}"
 }
 
 nginx_directive_exists_outside_managed_file() {
@@ -413,6 +452,7 @@ prepare_diagnostic_directory
 if [[ "$SERVICE" == "backend" ]]; then
   configure_nginx_request_limits
   configure_nginx_websocket_proxy
+  report_nginx_client_ip_headers
   prepare_chat_audit_directory
 fi
 if [[ "$SERVICE" == "frontend" ]]; then
