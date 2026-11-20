@@ -19,6 +19,7 @@ import { firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate, formatShortDateTime } from "../../lib/koreanDate";
 import { markdownToPlainText } from "../../lib/markdownText";
+import { mentionPrefix, mergeReplies, replyCursor } from "../../lib/commentReplies";
 
 // 뷰어 코드를 받는 동안에는 아래 평문 본문이 자리를 채운다.
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
@@ -128,6 +129,8 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const isSubmittingCommentRef = useRef(false);
+  // 방금 단 답글 id. 더보기 커서로 쓰면 사이 답글을 건너뛰므로 구분해 둔다.
+  const localReplyIdsRef = useRef<Set<string>>(new Set());
   const commentIdempotencyKey = useIdempotencyKey();
   const [activeReplyParentId, setActiveReplyParentId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -251,7 +254,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     const paging = replyPagingByRootId[rootCommentId];
     if (paging?.loading) return;
 
-    const cursor = paging?.nextCursor ?? root.previewReplies.at(-1)?.commentId ?? null;
+    const cursor = paging?.nextCursor ?? replyCursor(root.previewReplies, localReplyIdsRef.current);
     setReplyPagingByRootId((current) => ({
       ...current,
       [rootCommentId]: {
@@ -271,13 +274,10 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       setComments((current) =>
         current.map((comment) => {
           if (comment.commentId !== rootCommentId) return comment;
-          const merged = [...comment.previewReplies, ...(data.replies || [])];
           return {
             ...comment,
             replyCount: data.totalReplyCount,
-            previewReplies: merged.filter(
-              (reply, index) => merged.findIndex((candidate) => candidate.commentId === reply.commentId) === index,
-            ),
+            previewReplies: mergeReplies(comment.previewReplies, data.replies || []),
             hasMoreReplies: data.hasNext,
           };
         }),
@@ -545,15 +545,12 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
           setComments((current) =>
             current.map((comment) => {
               if (comment.commentId !== parentId) return comment;
-              const nextReplyCount = comment.replyCount + 1;
-              const nextPreviewReplies = comment.hasMoreReplies
-                ? comment.previewReplies
-                : [...comment.previewReplies, createdComment].slice(0, 5);
+              // 답글이 많아도 방금 단 답글은 바로 보이게 목록 끝에 붙인다.
+              localReplyIdsRef.current.add(String(createdComment.commentId));
               return {
                 ...comment,
-                replyCount: nextReplyCount,
-                previewReplies: nextPreviewReplies,
-                hasMoreReplies: comment.hasMoreReplies || nextReplyCount > 5,
+                replyCount: comment.replyCount + 1,
+                previewReplies: mergeReplies(comment.previewReplies, [createdComment]),
               };
             }),
           );
@@ -1046,9 +1043,39 @@ function CommentRow({
   const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
   const isEditing = activeEditCommentId === item.commentId;
-  const toggleReplyEditor = () => {
-    setActiveReplyParentId(activeReplyParentId === item.commentId ? null : item.commentId);
+  // 답글 입력창은 이 댓글 묶음의 맨 아래에 연다. 답글의 답글이면 누구에게 답하는지 보여 주고 @닉네임을 넣어 둔다.
+  const [replyTarget, setReplyTarget] = useState<{ commentId: string; name: string; isRoot: boolean } | null>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const isReplyOpen = activeReplyParentId === item.commentId && replyTarget !== null;
+  const displayName = (comment: CommentItem) => (isAnonymousPost ? `익명 (${comment.writerIp})` : getWriterName(comment));
+  const openReply = (target: CommentItem) => {
+    const targetId = String(target.commentId);
+    if (isReplyOpen && replyTarget?.commentId === targetId) {
+      setActiveReplyParentId(null);
+      setReplyTarget(null);
+      return;
+    }
+    const isRoot = target.commentId === item.commentId;
+    setReplyTarget({ commentId: targetId, name: displayName(target), isRoot });
+    // 익명 글은 모두 "익명 (IP 일부)"로 보여 호출 문구가 누구인지 구분해 주지 못하므로 넣지 않는다.
+    setReplyText(isRoot || isAnonymousPost ? "" : mentionPrefix(displayName(target)));
+    setActiveReplyParentId(item.commentId);
   };
+  const closeReply = () => {
+    setActiveReplyParentId(null);
+    setReplyTarget(null);
+  };
+  const isReplyingTo = (comment: CommentItem) => isReplyOpen && replyTarget?.commentId === String(comment.commentId);
+
+  useEffect(() => {
+    if (!isReplyOpen) return;
+    const input = replyInputRef.current;
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // 대상이 바뀔 때만 다시 맞춘다.
+  }, [isReplyOpen, replyTarget?.commentId]);
 
   return (
     <div className="post-comment-item">
@@ -1093,7 +1120,7 @@ function CommentRow({
             <>
               <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>
               <div className="comment-youtube-actions">
-                <button type="button" onClick={toggleReplyEditor}>{activeReplyParentId === item.commentId ? "답글 취소" : "답글"}</button>
+                <button type="button" onClick={() => openReply(item)}>{isReplyingTo(item) ? "답글 취소" : "답글"}</button>
                 {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
                 {!item.isDeleted && <ReportButton targetType="COMMENT" targetId={item.commentId} />}
                 <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />
@@ -1103,44 +1130,6 @@ function CommentRow({
         </div>
       </div>
 
-      {activeReplyParentId === item.commentId && (
-          <div className="post-reply-compose">
-            <textarea
-              rows={2}
-              maxLength={COMMENT_MAX_LENGTH}
-              value={replyText}
-              onChange={(event) => setReplyText(event.target.value)}
-              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해 보세요." : "로그인 후 답글을 작성할 수 있습니다."}
-              className="post-comment-textarea"
-              aria-label="답글 입력"
-            />
-            <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{replyText.length}/{COMMENT_MAX_LENGTH}</div>
-            <div className="post-comment-compose-footer">
-              {isAnonymousPost && !currentUserPublicId && (
-                <label className="post-comment-password">
-                  <span>비밀번호</span>
-                    <input
-                      type="password"
-                      placeholder="비밀번호 (4~20자)"
-                      minLength={4}
-                      maxLength={20}
-                      value={replyAnonPassword}
-                      onChange={(event) => setReplyAnonPassword(event.target.value)}
-                    />
-                </label>
-              )}
-              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
-              <button
-                disabled={submittingComment}
-                onClick={() => void handleCreateComment(item.commentId)}
-                className="post-comment-submit-button"
-              >
-                답글 등록
-              </button>
-            </div>
-          </div>
-      )}
-
       {item.previewReplies.length > 0 && (
           <div className="comment-reply-list">
             {item.previewReplies.map((reply) => (
@@ -1148,7 +1137,8 @@ function CommentRow({
                 key={reply.commentId}
                 item={reply}
                 isAnonymousPost={isAnonymousPost}
-                onReply={toggleReplyEditor}
+                onReply={() => openReply(reply)}
+                isReplying={isReplyingTo(reply)}
                 isEditing={activeEditCommentId === reply.commentId}
                 editCommentText={editCommentText}
                 setEditCommentText={setEditCommentText}
@@ -1185,6 +1175,49 @@ function CommentRow({
             </button>
           </div>
       )}
+      {isReplyOpen && replyTarget && (
+          <div className="post-reply-compose">
+            <div className="post-reply-target">
+              <span>{replyTarget.isRoot ? `${replyTarget.name}님 댓글에 답글` : `${replyTarget.name}님에게 답글`}</span>
+              <button type="button" onClick={closeReply}>취소</button>
+            </div>
+            <textarea
+              ref={replyInputRef}
+              rows={2}
+              maxLength={COMMENT_MAX_LENGTH}
+              value={replyText}
+              onChange={(event) => setReplyText(event.target.value)}
+              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해 보세요." : "로그인 후 답글을 작성할 수 있습니다."}
+              className="post-comment-textarea"
+              aria-label="답글 입력"
+            />
+            <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{replyText.length}/{COMMENT_MAX_LENGTH}</div>
+            <div className="post-comment-compose-footer">
+              {isAnonymousPost && !currentUserPublicId && (
+                <label className="post-comment-password">
+                  <span>비밀번호</span>
+                    <input
+                      type="password"
+                      placeholder="비밀번호 (4~20자)"
+                      minLength={4}
+                      maxLength={20}
+                      value={replyAnonPassword}
+                      onChange={(event) => setReplyAnonPassword(event.target.value)}
+                    />
+                </label>
+              )}
+              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
+              <button
+                disabled={submittingComment}
+                onClick={() => void handleCreateComment(item.commentId)}
+                className="post-comment-submit-button"
+              >
+                답글 등록
+              </button>
+            </div>
+          </div>
+      )}
+
     </div>
   );
 }
@@ -1193,6 +1226,7 @@ function ReplyRow({
   item,
   isAnonymousPost,
   onReply,
+  isReplying,
   isEditing,
   editCommentText,
   setEditCommentText,
@@ -1216,6 +1250,7 @@ function ReplyRow({
   item: CommentItem;
   isAnonymousPost: boolean;
   onReply: () => void;
+  isReplying: boolean;
   isEditing: boolean;
   editCommentText: string;
   setEditCommentText: (text: string) => void;
@@ -1281,7 +1316,7 @@ function ReplyRow({
             />
           ) : <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>}
           {!item.isDeleted && !isEditing && <div className="comment-youtube-actions">
-            <button type="button" onClick={onReply}>답글</button>
+            <button type="button" onClick={onReply}>{isReplying ? "답글 취소" : "답글"}</button>
             {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
             <ReportButton targetType="COMMENT" targetId={item.commentId} />
             <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />

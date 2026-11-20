@@ -38,7 +38,8 @@ public class AdminDashboardService {
         return new AdminDashboardStatsResponse(
                 memberRepository.count(),
                 memberRepository.countByCreatedAtAfter(today.atStartOfDay()),
-                systemConfigService.isAnonymousChatEnabled());
+                systemConfigService.isAnonymousChatEnabled(),
+                systemConfigService.isMarketGuestAccessEnabled());
     }
 
     /**
