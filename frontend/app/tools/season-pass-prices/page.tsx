@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { RESORT_PASS_PRICES, SEASON_PASS_PRICE_CHECKED_AT } from "../../lib/seasonPassPrices";
 import { publicPageMetadata } from "../../lib/siteMetadata";
+import { resortPathForPassCode } from "../../resorts/format";
 import { OpeningDateNote } from "./OpeningDateNote";
 
 export const metadata: Metadata = publicPageMetadata(
@@ -71,7 +72,7 @@ export default function SeasonPassPricesPage() {
               return (
                 <tr key={resort.code}>
                   <th scope="row">
-                    {resort.name}
+                    <Link href={resortPathForPassCode(resort.code)}>{resort.name}</Link>
                     <OpeningDateNote resortCode={resort.code} />
                   </th>
                   <td>
@@ -149,7 +150,7 @@ export default function SeasonPassPricesPage() {
         ))}
         <div className="tools-related">
           <Link href="/tools/season-pass">시즌권 본전 계산기 →</Link>
-          <Link href="/resort-cam">리조트별 개장일과 슬로프캠 →</Link>
+          <Link href="/resorts">리조트별 개장일과 정보 →</Link>
           <Link href="/carpool">카풀과 동행에서 교통비 줄이기 →</Link>
         </div>
       </section>

@@ -104,6 +104,8 @@ async function slopeSpecPaths(): Promise<string[]> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [resorts, dynamic, slopePaths] = await Promise.all([getResortCameras(), dynamicEntries(), slopeSpecPaths()]);
-  const paths = [...STATIC_PATHS, ...resorts.map(resort => `/resort-cam/${resortSlug(resort.code)}`), ...slopePaths];
+  // IKA-107 리조트 한눈에 보기. 슬로프캠과 같은 리조트 목록, 같은 주소 표기를 쓴다.
+  const landingPaths = ["/resorts", ...resorts.map(resort => `/resorts/${resortSlug(resort.code)}`)];
+  const paths = [...STATIC_PATHS, ...landingPaths, ...resorts.map(resort => `/resort-cam/${resortSlug(resort.code)}`), ...slopePaths];
   return [...paths.map(path => ({ url: url(path) })), ...dynamic];
 }
