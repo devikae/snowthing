@@ -22,7 +22,7 @@ export function OpeningDdayBanner() {
   if (openings.length === 0) return null;
 
   return (
-    <Link href="/resort-cam" className="opening-dday-banner">
+    <Link href="/resorts" className="opening-dday-banner">
       <strong>{data?.bannerTitle?.trim() || DEFAULT_BANNER_TITLE}</strong>
       <ul className="opening-dday-list">
         {openings.map(({ opening, date, days }) => (

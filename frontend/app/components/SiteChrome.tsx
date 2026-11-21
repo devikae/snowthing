@@ -75,7 +75,7 @@ function ChevronDownIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools" | "inquiry";
+export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "inquiry";
 
 interface MemberUser {
   publicId: string;
@@ -218,6 +218,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                   ))}
                 </div>
               </details>
+              <Link href="/resorts" className={active === "resorts" ? "nav-active" : ""} aria-current={active === "resorts" ? "page" : undefined}>
+                리조트 정보
+              </Link>
               <Link href="/resort-cam" className={active === "resort" ? "nav-active" : ""} aria-current={active === "resort" ? "page" : undefined}>
                 슬로프캠
               </Link>
@@ -305,6 +308,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               {boardItems.map((item) => (
                 <Link key={item.key} href={item.href} className={isBoardItemActive(item.key) ? "active" : ""} onClick={() => setMobileOpen(false)}>{item.label}</Link>
               ))}
+              <Link href="/resorts" className={active === "resorts" ? "active" : ""} onClick={() => setMobileOpen(false)}>리조트 정보</Link>
               <Link href="/resort-cam" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>슬로프캠</Link>
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀과 동행</Link>
