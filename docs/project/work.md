@@ -1,3 +1,31 @@
+## 글 상세 본문을 서버에서 그려 첫 HTML에 넣기 (IKA-104, 2026-11-20)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 배경: 글 상세는 서버에서 글을 받지만 본문은 `ToastViewer`(ssr:false)로만 그렸다. 첫 HTML에는 Markdown 기호를 지운 평문만 있어 링크, 사진, 문단이 빠졌고(`1\.` 같은 이스케이프도 그대로 보임), 뷰어가 그리면서 본문 높이가 바뀌어 아래 영역이 밀렸다.
+- 확인한 사실
+  - 본문 형식은 Markdown이고 원시 HTML(`<br>`, `<p>`)이 섞인다. 운영 글 196개 중 70개에 원시 HTML이 있다. 코드 블록, 표, 체크리스트가 있는 운영 글은 없었다(사진 1개, 링크 4개).
+  - 백엔드는 저장할 때 본문을 정화하지 않는다(IKA-46에서 넘긴 서버 정화가 아직 없다). 그래서 서버 렌더링이 정화를 직접 해야 한다.
+- 완료
+  - `lib/markdownHtml.server.ts`: 브라우저와 같은 Toast UI 뷰어 배포 파일을 jsdom 창 안에서 돌려 본문 HTML을 만든다. 정화는 같은 jsdom 창에 묶은 DOMPurify로 한다.
+  - `lib/sanitizeHtml.ts`: 정화 규칙을 `createHtmlSanitizer`로 꺼내 브라우저와 서버가 같은 규칙을 쓴다(동작은 그대로).
+  - `posts/[publicId]/page.tsx`: 서버에서 본문 HTML을 만들어 넘긴다. `PostDetailClient`: 뷰어가 그리기 전까지 같은 감싸개 클래스의 div에 그 HTML을 넣는다. 서버 HTML이 없으면(문의 글, 렌더 실패) 기존 평문 그대로. 뷰어 CSS를 이 화면에서 정적으로 불러 첫 CSS에 싣는다.
+  - `ToastViewer`: `useEffect`를 `useLayoutEffect`로 바꿔 뷰어가 그리는 것과 서버 본문을 치우는 것이 같은 화면 갱신에 들어가게 했다(본문 두 번 보임 방지).
+- 결정
+  - 새 의존성 `jsdom`(26.1.0, Node 20 지원), `@types/jsdom`. 이유: 기존 의존성 DOMPurify는 서버에서 DOM이 있어야 하고, Toast UI의 Markdown 파서(ToastMark)는 따로 공개되지 않았다(npm에는 알파판만). jsdom 하나로 뷰어와 같은 HTML, 같은 정화 규칙을 얻는다.
+  - 다른 선택지: marked 같은 Markdown 라이브러리 + sanitize-html. 의존성이 둘이고 출력 구조(체크리스트, 줄바꿈 `<br>`, 코드 블록 속성)가 뷰어와 달라 이어 받을 때 화면이 바뀌며, 정화 규칙을 두 벌 관리해야 한다.
+  - jsdom은 import하지 않고 실행 시점에 `createRequire`로 부른다. import하면 Turbopack이 `.next/node_modules`에 빌드 위치 기준 상대 링크를 만들고, Dockerfile 실행 단계가 `.next`를 `/app`으로 옮기면서 그 링크가 깨져 500이 났다(실제 이미지로 확인 후 수정).
+  - jsdom 창은 `runScripts: "outside-only"`라 본문 안 script와 on* 속성은 실행되지 않고, 리소스를 받지 않는다.
+  - 장터 상세는 바꾸지 않았다. 로그인해야 본문을 볼 수 있고 서버가 받는 공유 미리보기 API에는 본문이 없어 검색엔진 이득이 없다.
+- 부작용: 글 상세 응답이 약 20ms 늘었다(로컬 이미지, 같은 글 6회: 전 약 0.10초, 후 약 0.12~0.13초). 첫 요청은 jsdom 준비로 약 0.5초. 컨테이너 메모리 약 27MB 증가(79MB에서 106MB). 첫 HTML과 RSC 데이터에 본문 HTML이 더 실린다(사진 글 30KB에서 32KB).
+- 발견된 이슈: 운영 이미지(node:20-alpine)는 ko-KR 날짜 형식이 없어 서버가 "PM 12:04"로, 브라우저가 "오후 12:04"로 그려 글 상세에서 React #418(하이드레이션 불일치)이 난다. 이번 변경 전에도 같고(before, after 모두 1건), 이번 범위가 아니라 고치지 않았다. Dockerfile에 ICU 전체 데이터를 넣거나 서버 날짜 형식을 직접 만드는 후속 작업이 필요하다.
+- 검증
+  - lint, build 통과.
+  - 정화 단위 확인 13건 통과: script, img onerror, Markdown과 HTML의 javascript: 링크, 대소문자 섞은 JaVaScRiPt, iframe, svg onload, style, form/input, mXSS 2종 제거, target 링크 rel 추가, 제목, 굵게, 취소선, 체크리스트, 표, 코드 블록, 링크, 사진, 원시 p와 br 유지.
+  - 운영과 같은 Dockerfile 이미지(before 3231, after 3232), 운영 API 읽기만. curl로 after 첫 HTML에 `toastui-editor-contents`, 본문 사진 img 태그, 링크, 원시 p 문장이 있다.
+  - 글 4개(사진+링크, br 많은 글, 원시 p 글, 맨 주소 글) x 모바일 375, PC 1280 x 라이트, 다크: 최종 화면은 before와 같다. 뷰어가 그린 HTML과 서버 HTML이 data-nodeid만 빼고 16개 장면 모두 같다. JS를 끈 첫 HTML의 본문 높이가 뷰어 뒤 높이와 같다(756, 2073, 115, 689px).
+  - 레이아웃 이동(CLS): before는 PC 사진 글 0.215, 0.306, PC 다크 링크 글 0.205. after는 모두 0.0001 이하.
+- 남은 항목: 코드 블록, 표, 체크리스트가 있는 운영 글이 없어 화면으로는 보지 못했다(단위 확인만).
+- 사용자 결정 필요: 위 alpine 날짜 형식 하이드레이션 오류 후속 티켓 여부.
 ## SEO와 접근성 자잘한 수정 묶음 (티켓 없음, 2026-11-20)
 
 - 상태: 구현, 화면 확인, PR 생성. 머지는 사용자 확인 후.
