@@ -12,7 +12,6 @@
     "@stomp/stompjs": "^7.3.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@toast-ui/editor": "^3.2.2",
-    "@toast-ui/react-editor": "^3.2.3",
     "dompurify": "^3.4.17",
     "hls.js": "^1.6.15",
     "jsdom": "^26.1.0",
