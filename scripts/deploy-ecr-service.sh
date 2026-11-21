@@ -14,6 +14,9 @@ NGINX_SITES_ENABLED_PATH="/etc/nginx/sites-enabled"
 NGINX_WEBSOCKET_SNIPPET_PATH="/etc/nginx/snippets/snowthing-websocket.conf"
 NGINX_WEBSOCKET_INCLUDE="include /etc/nginx/snippets/snowthing-websocket.conf;"
 NGINX_CAM_ORIGIN_CONFIG_PATH="/etc/nginx/conf.d/snowthing-cam-origin.conf"
+PROD_ENV_PATH="/etc/snowthing/prod.env"
+# 서비스마다 지금 실행 중인 digest 주소를 남긴다. compose.prod.yml을 손으로 다시 띄울 때 --env-file로 함께 넘긴다.
+IMAGE_RECORD_PATH="/etc/snowthing/images.env"
 CLOUDFLARE_IPV4_RANGES=(
   "173.245.48.0/20"
   "103.21.244.0/22"
@@ -79,6 +82,54 @@ REGISTRY="${IMAGE_URI%%/*}"
 IMAGE_REPOSITORY="${IMAGE_URI%@sha256:*}"
 PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || true)"
 PREVIOUS_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$PREVIOUS_IMAGE" 2>/dev/null || true)"
+
+# 기록 파일에서 한 변수 줄만 바꾼다. 백엔드와 프론트 배포가 겹쳐도 서로의 줄을 지우지 않게 잠근다.
+record_image() {
+  local variable="$1" image="$2"
+  if [[ ! "$image" =~ @sha256:[0-9a-f]{64}$ ]]; then
+    echo "digest가 아닌 이미지 주소는 기록하지 않습니다: $variable=$image" >&2
+    return 1
+  fi
+  (
+    flock -w 30 9 || exit 1
+    local temporary_path
+    temporary_path="$(mktemp "${IMAGE_RECORD_PATH}.XXXXXX")"
+    if [[ -f "$IMAGE_RECORD_PATH" ]]; then
+      grep -v "^${variable}=" "$IMAGE_RECORD_PATH" > "$temporary_path" || true
+    fi
+    printf '%s=%s
+' "$variable" "$image" >> "$temporary_path"
+    chmod 0644 "$temporary_path"
+    mv -f "$temporary_path" "$IMAGE_RECORD_PATH"
+  ) 9> "${IMAGE_RECORD_PATH}.lock"
+}
+
+# 기록 파일이 생기기 전부터 떠 있던 서비스는 실행 중인 컨테이너의 digest로 채운다.
+# 다른 서비스 줄이 비어 있으면 손으로 다시 띄울 때 그 서비스가 존재하지 않는 기본 태그를 찾게 된다.
+seed_image_records() {
+  local entry variable container image
+  for entry in BACKEND_IMAGE_URI:snowthing-backend FRONTEND_IMAGE_URI:snowthing-frontend MCP_BOT_IMAGE_URI:snowthing-mcp-bot; do
+    variable="${entry%%:*}"
+    container="${entry#*:}"
+    if [[ -f "$IMAGE_RECORD_PATH" ]] && grep -q "^${variable}=" "$IMAGE_RECORD_PATH"; then
+      continue
+    fi
+    image="$(docker inspect --format '{{.Config.Image}}' "$container" 2>/dev/null || true)"
+    if [[ "$image" =~ @sha256:[0-9a-f]{64}$ ]]; then
+      record_image "$variable" "$image" || echo "$variable 초기 기록 실패, 배포는 계속합니다." >&2
+    fi
+  done
+}
+
+compose_service_up() {
+  local image="$1"
+  local env_files=(--env-file "$PROD_ENV_PATH")
+  if [[ -f "$IMAGE_RECORD_PATH" ]]; then
+    env_files+=(--env-file "$IMAGE_RECORD_PATH")
+  fi
+  # 셸 환경변수가 --env-file 값보다 우선하므로 대상 서비스만 새 digest로 바뀐다.
+  env "$IMAGE_VARIABLE=$image" docker compose     "${env_files[@]}"     -f compose.prod.yml     up -d --no-build "$SERVICE"
+}
 
 cleanup_service_images() {
   local current_image_id repository digest image_id repository_digest
@@ -463,11 +514,14 @@ aws ecr get-login-password --region "$AWS_REGION" \
 docker pull "$IMAGE_URI"
 
 echo "$SERVICE 컨테이너를 새 digest로 교체"
-if env "$IMAGE_VARIABLE=$IMAGE_URI" docker compose \
-  --env-file /etc/snowthing/prod.env \
-  -f compose.prod.yml \
-  up -d --no-build "$SERVICE" && check_health; then
+seed_image_records
+if compose_service_up "$IMAGE_URI" && check_health; then
   echo "$SERVICE 배포 성공: $IMAGE_URI"
+  if record_image "$IMAGE_VARIABLE" "$IMAGE_URI"; then
+    echo "실행 이미지 기록: $IMAGE_RECORD_PATH $IMAGE_VARIABLE"
+  else
+    echo "실행 이미지 기록에 실패했지만 성공한 배포는 유지합니다: $IMAGE_RECORD_PATH" >&2
+  fi
   if ! cleanup_service_images; then
     echo "Docker 이미지 자동 정리를 완료하지 못했지만 성공한 배포는 유지합니다." >&2
   fi
@@ -483,10 +537,9 @@ if [[ -z "$PREVIOUS_IMAGE" ]]; then
 fi
 
 echo "이전 이미지로 자동 복구: $PREVIOUS_IMAGE" >&2
-env "$IMAGE_VARIABLE=$PREVIOUS_IMAGE" docker compose \
-  --env-file /etc/snowthing/prod.env \
-  -f compose.prod.yml \
-  up -d --no-build "$SERVICE"
+compose_service_up "$PREVIOUS_IMAGE"
+# 실패한 digest는 기록하지 않는다. 기록이 이전 digest를 가리키도록 한 번 더 맞춘다.
+record_image "$IMAGE_VARIABLE" "$PREVIOUS_IMAGE"   || echo "이전 이미지 기록을 맞추지 못했습니다: $IMAGE_RECORD_PATH" >&2
 
 if check_health; then
   echo "이전 이미지 복구 성공" >&2
