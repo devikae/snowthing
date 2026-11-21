@@ -11,6 +11,7 @@ import { csrfFetch } from "../../../lib/csrfFetch";
 import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../../lib/api";
+import { CommentProfileAvatar } from "../../../components/CommentProfileAvatar";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 
@@ -30,6 +31,7 @@ interface PostDetail {
   writer?: {
     publicId: string;
     nickname: string;
+    profileImageUrl?: string | null;
   };
 }
 
@@ -54,6 +56,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isAuthor, setIsAuthor] = useState(false);
   const [writerNickname, setWriterNickname] = useState("");
+  const [writerProfileImageUrl, setWriterProfileImageUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -105,6 +108,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
             setImages(Array.isArray(data.images) ? data.images : []);
             setIsAnonymous(Boolean(data.isAnonymous));
             setWriterNickname(data.writer?.nickname || "익명의 사용자");
+            setWriterProfileImageUrl(data.writer?.profileImageUrl ?? null);
           } else {
             setErrorMsg("수정할 게시글 정보를 불러오지 못했습니다.");
           }
@@ -192,7 +196,6 @@ function PostEditForm({ publicId }: { publicId: string }) {
     return <div className="p-12 text-center text-sm text-[var(--snow-muted)]">게시글 정보를 불러오는 중입니다.</div>;
   }
 
-  const writerInitial = (writerNickname || "익").trim().charAt(0) || "익";
 
   return (
     <main className="compose-page community-container content-compose-page">
@@ -203,9 +206,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
 
         <div className="compose-meta-Cluster">
           <div className="compose-author-pill">
-            <span className="m-avatar" aria-hidden="true">
-              {writerInitial}
-            </span>
+            <CommentProfileAvatar className="m-avatar" nickname={writerNickname || "익명의 사용자"} profileImageUrl={writerProfileImageUrl} size={18} />
             <span>작성자</span>
             <strong>{writerNickname || "익명의 사용자"}</strong>
           </div>

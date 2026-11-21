@@ -376,11 +376,11 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                             ) : (
                               <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                             )}
-                            <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                            <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString("ko-KR")}`}>
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 visibility
                               </span>
-                              {post.viewCount.toLocaleString()}
+                              {post.viewCount.toLocaleString("ko-KR")}
                             </span>
                           </span>
                           <time className="m-time" suppressHydrationWarning>{formatCompactTime(post.createdAt)}</time>
