@@ -5,6 +5,8 @@ export const SITE_NAME = "눈팅";
 export const SITE_TITLE = "눈팅 SnowThing | 윈터스포츠 커뮤니티";
 export const SITE_DESCRIPTION = "눈팅(SnowThing)은 윈터스포츠 커뮤니티입니다. 슬로프캠, 오늘의 설질, 카풀과 동행, 장비 정보를 함께 나눠요.";
 
+export const POSTS_DESCRIPTION = "라이더들이 나누는 설질, 장비, 시즌 이야기. 자유게시판, 익명게시판, 질문게시판을 둘러보세요.";
+
 // Next는 하위 페이지의 openGraph가 상위 값을 통째로 덮는다. openGraph를 정하는 곳마다 이 이미지를 넣는다.
 export const DEFAULT_OG_IMAGE = { url: "/og-default.png", width: 1200, height: 630, alt: "눈팅 SnowThing" };
 
