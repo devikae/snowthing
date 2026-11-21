@@ -108,6 +108,10 @@ export function ResortCamView({
           </div>
           <div className={styles.resortHeaderActions}>
             <ResortWeatherChip resortCode={selectedResort.code} />
+            <Link className={styles.backLink} href={`/resorts/${resortSlug(selectedResort.code)}`}>
+              <span className="material-symbols-outlined" aria-hidden="true">info</span>
+              리조트 정보
+            </Link>
             <Link className={styles.backLink} href={`/slopes#${resortSlug(selectedResort.code)}`}>
               <span className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
               슬로프 현황

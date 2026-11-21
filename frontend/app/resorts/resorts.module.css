@@ -1,0 +1,484 @@
+/* IKA-107 리조트 한눈에 보기. 색은 globals.css의 토큰만 쓴다. */
+
+.hero {
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--snow-border);
+  padding-bottom: 18px;
+}
+
+.breadcrumb {
+  margin: 0 0 10px;
+  color: var(--snow-muted);
+  font-size: 13px;
+}
+
+.breadcrumb a {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  color: inherit;
+}
+
+.breadcrumb a:hover {
+  color: var(--snow-ink);
+}
+
+.heroTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.heroTitle h1 {
+  margin: 0;
+  color: var(--snow-ink);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 34px;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.region {
+  border: 1px solid var(--snow-border);
+  border-radius: 6px;
+  background: var(--snow-surface-mid);
+  padding: 3px 8px;
+  color: var(--snow-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 개장 D-DAY 배지. 슬로프캠 머리의 배지와 같은 모양이다. */
+.dday {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  border-radius: 999px;
+  background: var(--community-accent);
+  padding: 4px 11px;
+  color: var(--snow-canvas);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.dday small {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.lead {
+  max-width: 680px;
+  margin: 10px 0 0;
+  color: var(--snow-muted);
+  font-size: 14px;
+  line-height: 22px;
+  text-wrap: pretty;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--snow-border);
+  border-radius: 10px;
+  background: var(--snow-canvas);
+  padding: 18px;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.card h2,
+.others h2 {
+  margin: 0;
+  color: var(--snow-ink);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 24px;
+}
+
+.figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin: 0;
+}
+
+.figure strong {
+  color: var(--snow-ink);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 32px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure strong[data-open="true"] {
+  color: var(--snow-success);
+}
+
+.figureSub {
+  color: var(--snow-ink-soft);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tag {
+  align-self: center;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: var(--snow-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag[data-tone="confirmed"] {
+  border-color: transparent;
+  background: var(--snow-success-soft);
+  color: var(--snow-success);
+}
+
+.note,
+.empty {
+  margin: 0;
+  color: var(--snow-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.empty {
+  border-radius: 8px;
+  background: var(--snow-surface-low);
+  padding: 14px;
+  color: var(--snow-ink-soft);
+  font-size: 14px;
+}
+
+.facts,
+.prices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.prices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.facts > div,
+.prices > div {
+  min-width: 0;
+  border-radius: 8px;
+  background: var(--snow-surface-low);
+  padding: 10px 12px;
+}
+
+.facts dt,
+.prices dt {
+  color: var(--snow-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.facts dd,
+.prices dd {
+  margin: 2px 0 0;
+  color: var(--snow-ink);
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.prices dd strong {
+  display: block;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.prices dd small {
+  display: block;
+  color: var(--snow-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rows li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--snow-line);
+  padding: 9px 0;
+}
+
+.rows li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.rows strong {
+  color: var(--snow-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.rows a:hover strong {
+  text-decoration: underline;
+}
+
+.rows span {
+  color: var(--snow-muted);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips a,
+.chipMore {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  border: 1px solid var(--snow-border);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--snow-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chipMore {
+  border-color: transparent;
+  color: var(--snow-muted);
+}
+
+.chips a:hover {
+  border-color: var(--snow-ink-soft);
+  color: var(--snow-ink);
+}
+
+/* 블록 아래 이동 링크. 카드 맨 아래에 붙인다. */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.links a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--snow-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.links a:hover {
+  background: var(--snow-surface-mid);
+}
+
+.card a:focus-visible,
+.others a:focus-visible,
+.listCard:focus-visible,
+.breadcrumb a:focus-visible {
+  outline: 2px solid var(--snow-ink);
+  outline-offset: 2px;
+}
+
+.join {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  border: 1px solid var(--snow-border);
+  border-radius: 10px;
+  background: var(--snow-surface-low);
+  padding: 16px 18px;
+}
+
+.join p {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.join strong {
+  color: var(--snow-ink);
+  font-size: 15px;
+}
+
+.join span {
+  color: var(--snow-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.join > div {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.others {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 28px 0 8px;
+}
+
+/* ---------- 리조트 목록 (/resorts) ---------- */
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.listCard {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--snow-border);
+  border-radius: 10px;
+  background: var(--snow-canvas);
+  padding: 16px;
+}
+
+.listCard:hover {
+  border-color: var(--snow-border-strong);
+  background: var(--snow-surface-low);
+}
+
+.listHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.listHead h2 {
+  margin: 0;
+  color: var(--snow-ink);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 26px;
+}
+
+.listFacts {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.listFacts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.listFacts dt {
+  flex: none;
+  color: var(--snow-muted);
+}
+
+.listFacts dd {
+  margin: 0;
+  color: var(--snow-ink-soft);
+  font-weight: 700;
+  text-align: right;
+}
+
+.footnote {
+  margin: 16px 0 8px;
+  color: var(--snow-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .heroTitle h1 {
+    font-size: 22px;
+    line-height: 30px;
+  }
+
+  .join {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .join > div > a {
+    flex: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .prices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

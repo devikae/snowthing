@@ -13,6 +13,12 @@ spring:
   jpa:
     open-in-view: false
 
+  # 종료 신호를 받으면 새 요청을 막고 처리 중인 요청을 최대 20초 기다린다(IKA-105).
+  # 라이브톡 WebSocket은 이 단계에서 서버가 닫고 클라이언트가 다시 붙는다. 일반 API는 대부분 수 초 안에 끝난다.
+  # compose.prod.yml의 stop_grace_period(30초)가 이 값보다 길어야 docker가 중간에 강제 종료하지 않는다.
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
@@ -176,6 +182,7 @@ snowthing:
       redirect-uri: ${SNOWTHING_KAKAO_LOGIN_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth2/callback/kakao}
 
 server:
+  shutdown: graceful
   servlet:
     session:
       timeout: 60m
