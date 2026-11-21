@@ -132,8 +132,22 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
         profileMenuRef.current.removeAttribute("open");
       }
     };
+    // Esc를 누르면 열린 메뉴를 닫고 포커스를 메뉴 버튼(summary)으로 돌린다. details는 기본으로 Esc를 처리하지 않는다.
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      for (const menu of [boardMenuRef.current, profileMenuRef.current]) {
+        if (menu?.hasAttribute("open")) {
+          menu.removeAttribute("open");
+          menu.querySelector("summary")?.focus();
+        }
+      }
+    };
     document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
   // 화면을 옮겨도 이미 받은 내 정보가 있으면 헤더를 비우지 않고 바로 그린다.
   const [user, setUser] = useState<MemberUser | null>(() => peekViewer() ?? null);
