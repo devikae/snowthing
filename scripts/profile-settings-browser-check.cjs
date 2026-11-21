@@ -145,7 +145,7 @@ if (!email || !password) throw new Error('Set local PROFILE_CHECK_EMAIL and PROF
     assert.equal(await evaluate('document.querySelector("input[autocomplete=current-password]").type'), 'password');
     const documentNode = await send('DOM.getDocument');
     const fileNode = await send('DOM.querySelector', { nodeId: documentNode.root.nodeId, selector: 'input[type=file]' });
-    await send('DOM.setFileInputFiles', { nodeId: fileNode.nodeId, files: [path.resolve(__dirname, '../frontend/public/images/default-profile-avatar.png')] });
+    await send('DOM.setFileInputFiles', { nodeId: fileNode.nodeId, files: [path.resolve(__dirname, '../frontend/app/apple-icon.png')] });
     await waitFor('[...document.querySelectorAll("button")].some(b=>b.textContent==="사진 저장")');
     assert.equal(await evaluate('document.querySelector(".profile-photo-editor > img").getAttribute("src").startsWith("blob:")'), true);
     const actionStyles = await evaluate(`Array.from(document.querySelectorAll('.profile-settings button,.profile-file-label'),button=>{const s=getComputedStyle(button);return {text:button.textContent.trim(),size:s.fontSize,lineHeight:s.lineHeight,padding:s.padding,radius:s.borderRadius,family:s.fontFamily,spacing:s.letterSpacing,weight:s.fontWeight,primary:button.classList.contains('profile-button-primary'),cancel:button.classList.contains('profile-button-cancel'),background:s.backgroundColor,borderColor:s.borderColor}})`);

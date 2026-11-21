@@ -17,12 +17,14 @@ import {
 import "../notifications/notifications.css";
 
 const DROPDOWN_SIZE = 10;
+// 쪽지 배지(MessageNavLink)와 같은 간격이다. 탭이 보일 때만 부른다.
+const POLL_INTERVAL_MS = 60_000;
 
 function badgeText(count: number) {
   return count >= 10 ? "9+" : String(count);
 }
 
-/** 헤더 종 아이콘. 로그인한 회원에게만 그린다. 배지는 페이지 이동과 탭 복귀 때만 다시 센다(주기 조회 없음). */
+/** 헤더 종 아이콘. 로그인한 회원에게만 그린다. 배지는 페이지 이동, 탭 복귀, 탭이 보이는 동안 60초마다 다시 센다. */
 export function NotificationBell() {
   const router = useRouter();
   const pathname = usePathname();
@@ -32,14 +34,24 @@ export function NotificationBell() {
   const [loadingList, setLoadingList] = useState(false);
   const [listError, setListError] = useState("");
 
+  const inFlight = useRef(false);
+
   const refreshCount = useCallback(async () => {
+    // 숨은 탭에서는 부르지 않고, 앞 요청이 끝나기 전에는 겹쳐 부르지 않는다.
+    if (inFlight.current || document.visibilityState !== "visible") return;
+    inFlight.current = true;
     try {
-      const response = await fetch(NOTIFICATION_ENDPOINTS.unreadCount, { credentials: "include" });
-      if (!response.ok) return;
-      const data: { count: number } = await response.json();
-      setCount(data.count);
+      const response = await fetch(NOTIFICATION_ENDPOINTS.unreadCount, { credentials: "include", cache: "no-store" });
+      if (response.ok) {
+        const data: { count: number } = await response.json();
+        setCount(data.count);
+      } else if (response.status === 401) {
+        setCount(0);
+      }
     } catch {
       // 배지는 부가 정보라 실패해도 헤더를 깨지 않는다.
+    } finally {
+      inFlight.current = false;
     }
   }, []);
 
@@ -74,13 +86,24 @@ export function NotificationBell() {
         menuRef.current.removeAttribute("open");
       }
     };
+    // Esc를 누르면 드롭다운을 닫고 포커스를 종 버튼(summary)으로 돌린다.
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && menuRef.current?.hasAttribute("open")) {
+        menuRef.current.removeAttribute("open");
+        menuRef.current.querySelector("summary")?.focus();
+      }
+    };
+    const interval = window.setInterval(() => void refreshCount(), POLL_INTERVAL_MS);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
     document.addEventListener("mousedown", onOutsideClick);
+    document.addEventListener("keydown", onEscape);
     return () => {
+      window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
       document.removeEventListener("mousedown", onOutsideClick);
+      document.removeEventListener("keydown", onEscape);
     };
   }, [refreshCount]);
 

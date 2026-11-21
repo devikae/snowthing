@@ -1,5 +1,10 @@
 package com.ikae.snowthing.global.web;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.List;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
@@ -29,22 +34,37 @@ public class ClientIpResolver {
             return remoteAddress;
         }
 
+        // 전달 체인의 맨 오른쪽 값은 마지막 신뢰 구간(Cloudflare 또는 Nginx)이 직접 붙인 주소라 클라이언트가 바꿀 수 없다.
+        // X-Real-IP는 Nginx location이 덮어쓰지 않으면 클라이언트가 보낸 값이 그대로 오므로 체인이 없을 때만 쓴다.
+        String forwardedIp = rightmostUntrustedForwardedIp(request);
+        if (forwardedIp != null) {
+            return forwardedIp;
+        }
+
         String realIp = request.getHeader(X_REAL_IP);
         if (hasValidIp(realIp) && !isTrustedProxy(realIp.trim())) {
             return realIp.trim();
         }
+        return remoteAddress;
+    }
 
-        String forwardedFor = request.getHeader(X_FORWARDED_FOR);
-        if (hasValidIp(forwardedFor)) {
-            String[] candidates = forwardedFor.split(",");
-            for (int index = candidates.length - 1; index >= 0; index--) {
-                String candidate = candidates[index].trim();
-                if (hasValidIp(candidate) && !isTrustedProxy(candidate)) {
-                    return candidate;
-                }
+    private String rightmostUntrustedForwardedIp(HttpServletRequest request) {
+        // 헤더가 여러 줄로 오면 첫 줄만 읽지 않고 모두 이어서 본다. 마지막 줄의 마지막 값이 가장 가까운 구간이다.
+        Enumeration<String> headerLines = request.getHeaders(X_FORWARDED_FOR);
+        if (headerLines == null) {
+            return null;
+        }
+        List<String> candidates = new ArrayList<>();
+        while (headerLines.hasMoreElements()) {
+            candidates.addAll(Arrays.asList(headerLines.nextElement().split(",")));
+        }
+        for (int index = candidates.size() - 1; index >= 0; index--) {
+            String candidate = candidates.get(index).trim();
+            if (hasValidIp(candidate) && !isTrustedProxy(candidate)) {
+                return candidate;
             }
         }
-        return remoteAddress;
+        return null;
     }
 
     /** 요청 제한 키로 쓸 IP 형식. IP가 아닌 값은 모두 unknown 한 곳으로 묶어 값을 바꿔도 새 버킷이 생기지 않게 한다. */
