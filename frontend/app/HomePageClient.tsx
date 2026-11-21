@@ -287,6 +287,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                       key={tab.key}
                       type="button"
                       className={activeFeed === tab.key ? "active" : ""}
+                      aria-pressed={activeFeed === tab.key}
                       onClick={() => selectFeed(tab)}
                     >
                       {tab.label}
@@ -375,11 +376,11 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                             ) : (
                               <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                             )}
-                            <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString()}`}>
+                            <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString("ko-KR")}`}>
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 visibility
                               </span>
-                              {post.viewCount.toLocaleString()}
+                              {post.viewCount.toLocaleString("ko-KR")}
                             </span>
                           </span>
                           <time className="m-time" suppressHydrationWarning>{formatCompactTime(post.createdAt)}</time>
@@ -600,11 +601,12 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
               </div>
             ) : marketPreviews.length > 0 ? (
               <div className="market-grid market-preview-grid market-lookbook-4">
-                {marketPreviews.map((item) => {
+                {marketPreviews.map((item, index) => {
                   const detailHref = `/market/${item.publicId}`;
                   const href = profile ? detailHref : `/login?returnUrl=${encodeURIComponent(detailHref)}`;
+                  // 공개 미리보기 API는 설계상 제목을 주지 않는다(002_used_market 04_api-spec 4.1). 링크마다 이름이 달라지게 순서를 넣는다.
                   return (
-                    <Link href={href} key={item.publicId} className="lookbook-item" aria-label="중고장터 판매글 보기">
+                    <Link href={href} key={item.publicId} className="lookbook-item" aria-label={`중고장터 최신 판매글 ${index + 1}번째 보기`}>
                       <div className="lookbook-media">
                         {item.thumbnailImageUrl ? (
                           <Image src={item.thumbnailImageUrl} alt="" width={240} height={192} unoptimized />

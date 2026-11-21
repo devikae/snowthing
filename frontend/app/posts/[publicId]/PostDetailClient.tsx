@@ -22,8 +22,10 @@ import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate, formatShortDateTime } from "../../lib/koreanDate";
 import { markdownToPlainText } from "../../lib/markdownText";
 import { mentionPrefix, mergeReplies, replyCursor } from "../../lib/commentReplies";
+// 서버가 넣은 본문 HTML이 첫 화면부터 뷰어와 같은 모양이 되도록 뷰어 스타일을 이 화면 첫 CSS에 싣는다.
+import "@toast-ui/editor/dist/toastui-editor-viewer.css";
 
-// 뷰어 코드를 받는 동안에는 아래 평문 본문이 자리를 채운다.
+// 뷰어 코드를 받는 동안에는 서버가 만든 본문 HTML(없으면 평문 본문)이 자리를 채운다.
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
 const POST_LOAD_TIMEOUT_MS = 10_000;
@@ -104,7 +106,16 @@ interface CommentUpdateResponse {
   updatedAt: string;
 }
 
-export default function PostDetailClient({ params, initialPost }: { params: Promise<{ publicId: string }>; initialPost: PostDetail | null }) {
+export default function PostDetailClient({
+  params,
+  initialPost,
+  initialBodyHtml = null,
+}: {
+  params: Promise<{ publicId: string }>;
+  initialPost: PostDetail | null;
+  /** 서버가 initialPost 본문으로 만든 정화된 HTML. 뷰어가 그리기 전까지 보여 준다. */
+  initialBodyHtml?: string | null;
+}) {
   const router = useRouter();
   const { publicId } = use(params);
   // 서버가 비로그인 기준으로 받은 글을 먼저 그린다. 작성자 여부, 추천 여부, 조회수 반영은 아래 브라우저 요청이 덮어쓴다.
@@ -801,9 +812,17 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
             <section className="post-detail-content-panel" aria-label="게시글 내용">
               <div className="post-detail-content">
-                {!bodyRendered && (
-                  <div className="whitespace-pre-line text-base leading-8 text-[var(--snow-ink)]">{markdownToPlainText(post.content)}</div>
-                )}
+                {/* 서버가 뷰어와 같은 방법으로 만든 HTML을 같은 감싸개 클래스로 먼저 보여 준다. 뷰어가 그리면 같은 화면 갱신에서 치운다. */}
+                {!bodyRendered &&
+                  (initialBodyHtml && post.content === initialPost?.content ? (
+                    <div
+                      className="toast-viewer-wrapper text-base leading-8 text-[var(--snow-ink)]"
+                      // 서버에서 sanitizeHtml.ts와 같은 규칙으로 정화한 HTML이다(lib/markdownHtml.server.ts).
+                      dangerouslySetInnerHTML={{ __html: initialBodyHtml }}
+                    />
+                  ) : (
+                    <div className="whitespace-pre-line text-base leading-8 text-[var(--snow-ink)]">{markdownToPlainText(post.content)}</div>
+                  ))}
                 <ToastViewer content={post.content} onRendered={handleBodyRendered} />
               </div>
             </section>

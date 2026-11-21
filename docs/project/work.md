@@ -28,6 +28,136 @@
 - 확인 못 한 것: 실제 로그인 상태(가짜 내 정보 응답으로 가입 안내가 숨는 것만 확인), 백엔드가 느리거나 죽었을 때의 실제 화면(코드로만 처리), 개장일이 지난 뒤의 표기(아직 개장한 리조트가 없음), 슬로프 현황이 수집된 뒤의 숫자 표기(시즌 전이라 값이 없음).
 - 사용자 결정 필요: 메뉴 이름 "리조트 정보"와 위치, 홈 개장 배너가 리조트 목록으로 가도 되는지, 제목의 검색어 순서, 설질 제보를 이 페이지에 그대로 보일지.
 
+## 클라이언트 IP 헤더 신뢰 경로 보강 (보안 후속 수정, 2026-11-20)
+
+- 상태: 구현 완료, PR 생성. 머지와 운영 배포는 사용자 확인 후. 티켓 없이 진행(보안 후속 수정).
+- 배경: 백엔드 `ClientIpResolver`는 요청이 loopback이나 사설 대역에서 오면 `X-Real-IP`를 가장 먼저 믿었다. 운영 백엔드는 `127.0.0.1:8080`으로만 열려 있어 모든 요청이 호스트 Nginx를 거쳐 Docker 게이트웨이 주소로 들어온다. 그래서 Nginx가 `X-Real-IP`를 덮어쓰지 않는 location이 하나라도 있으면 클라이언트가 보낸 값이 그대로 쓰여 로그인, 검색, 글쓰기, 이미지 등 IP 기준 제한 전부를 헤더 하나로 피할 수 있다.
+- 조사 결론: 서버에 있는 파일에 달려 있어 코드만으로는 확정할 수 없다.
+  - 저장소가 `X-Real-IP`를 덮어쓰는 곳은 `/ws-chat` 조각 하나다(`scripts/deploy-ecr-service.sh`의 `configure_nginx_websocket_proxy`).
+  - `configure_nginx_request_limits`가 쓰는 `/etc/nginx/conf.d/snowthing-upload-limit.conf`는 http 수준 설정(업로드 크기, `set_real_ip_from`, `real_ip_header CF-Connecting-IP`, 라이브톡 제한)만 담는다. `$remote_addr`는 실제 방문자 주소로 복원되지만 백엔드로 넘기는 헤더는 정하지 않는다.
+  - `location /`, `location /api/`가 있는 서버 블록은 초기 배포 때 서버에서 손으로 만든 파일이고 저장소에 원문이 없다. 스크립트는 그 파일을 찾아 `/ws-chat` include 한 줄만 넣는다.
+- 완료
+  - 백엔드: 신뢰 프록시에서 온 요청은 `X-Forwarded-For`를 오른쪽부터 먼저 본다. 맨 오른쪽 값은 Cloudflare나 Nginx가 직접 붙여 클라이언트가 바꿀 수 없다. `X-Real-IP`는 전달 체인에 쓸 주소가 없을 때만 쓴다. 헤더가 여러 줄로 와도 모두 이어서 본다.
+  - 배포 스크립트: Cloudflare IPv6 7개 대역을 `set_real_ip_from`에 추가. http 수준에 `proxy_set_header X-Real-IP $remote_addr`, `X-Forwarded-For $proxy_add_x_forwarded_for`를 두어 `proxy_set_header`가 하나도 없는 location이 클라이언트 값을 그대로 넘기지 않게 했다. 배포 로그에 손으로 만든 설정의 백엔드 `proxy_pass` 수와 IP 헤더 덮어쓰기 줄 수를 한 줄로 남긴다(원문은 출력하지 않음).
+  - 문서: `docs/conception/001_live_chat/chat_spec.md`의 신뢰 경계 설명을 새 순서에 맞췄다.
+- 결정
+  - 서버 블록을 스크립트로 고치지 않았다. 원문을 모르는 파일의 location 안쪽을 자동으로 바꾸면 잘못됐을 때 전원 접속 장애가 난다. Nginx의 `proxy_set_header`는 location에 하나라도 있으면 상위 수준 값이 상속되지 않아 http 수준 줄만으로는 막지 못하는 경우가 남는다. 그래서 서버 설정이 어떻든 안전한 백엔드 쪽 순서 변경을 주 방어로 삼았다.
+  - 다른 안 1: `CF-Connecting-IP`를 백엔드가 직접 믿기. Cloudflare가 항상 덮어쓰지만 Cloudflare를 거치지 않는 경로(로컬, 보안 그룹 변경)에서는 위조된다. 설정 항목이 늘어 넣지 않았다.
+  - 다른 안 2: 전달 체인에서 Cloudflare 대역도 건너뛰기. WARP나 Workers처럼 방문자 주소가 Cloudflare 대역인 경우 그 앞의 위조 값을 고르게 되어 넣지 않았다.
+  - 전원이 한 IP로 묶일 위험을 따졌다. 새 순서가 고르는 값은 Nginx가 붙인 `$remote_addr`이거나(location이 `X-Forwarded-For`를 설정한 경우) Cloudflare가 붙인 방문자 주소다(설정하지 않은 경우). 앞의 경우 `$remote_addr`는 지금의 `X-Real-IP $remote_addr`와 같은 값이라 달라지지 않는다. 나빠지는 경우는 "real_ip 복원이 동작하지 않는데 location이 `X-Real-IP`만 `$http_cf_connecting_ip` 같은 다른 값으로 채우는" 설정뿐이다. 스크립트가 배포마다 real_ip 설정을 쓰므로 가능성은 낮지만 서버를 보지 못해 0은 아니다.
+- 발견된 이슈
+  - 로컬 Nginx 실험에서 `proxy_set_header Host $host`만 있는 location은 클라이언트의 `X-Real-IP: 203.0.113.9`를 그대로 넘겼다. 운영 `/api/` location이 이 모양이면 지금 우회가 가능하다.
+  - 기존 테스트 `forgedForwardedForBehindProxyIsIgnored`는 "X-Real-IP는 믿을 수 있고 X-Forwarded-For는 전부 클라이언트 값"이라는 가정이었다. 운영 경로(프록시가 끝에 주소를 붙임)에 맞게 다시 썼다.
+- 검증: `spotlessCheck test` 1416개 통과(건너뜀 1개, 실패 0, 전용 스키마 `snowthing_test_realip`, ratchetFrom은 임시 init script로 끔). `bash -n` 통과, shellcheck는 오류와 경고 없이 SC2016 안내 6건(Nginx 변수를 작은따옴표로 넘기는 의도된 표기, 기존 4건에 새 2줄). 스크립트가 만든 관리 조각을 `nginx:stable`(1.30.7) 컨테이너에 넣어 `nginx -t` 통과, 위조 헤더를 붙인 요청으로 `proxy_set_header`가 없는 location은 덮어쓰고 있는 location은 그대로인 것을 확인. 운영 서버 접속과 운영 요청은 하지 않았다. 서버가 인식한 IP를 읽기 전용 GET 응답으로 보여 주는 엔드포인트가 없어 운영 동작은 확인하지 못했다.
+- 남은 항목: 머지와 배포 후 확인(배포 로그의 `Nginx client IP headers outside managed files` 줄, 비회원 댓글의 마스킹 IP, 라이브톡 감사 로그의 IP가 사람마다 다른지).
+- 사용자 결정 필요: 서버에서 `sudo nginx -T | grep -n -E "location|proxy_pass|proxy_set_header|real_ip"`로 `/api/` location을 보고, `X-Real-IP $remote_addr`와 `X-Forwarded-For $proxy_add_x_forwarded_for`가 없으면 넣을지.
+## 글 상세 날짜 하이드레이션 오류와 글쓰기 작성자 줄 등 후속 수정 (티켓 없음, 2026-11-20)
+
+- 상태: 구현 완료, PR 생성. 머지는 사용자 확인 후. 후속 수정 묶음이라 티켓 없이 PR 하나.
+- 완료
+  - `formatKoreanDate`: 실행 환경의 ko-KR 형식에 기대지 않고 KST 숫자를 받아 "오전/오후"를 직접 붙인다. 운영 Node alpine은 "AM"을 내서 글 상세에서 React #418(하이드레이션 오류)이 났다.
+  - 글쓰기, 글 수정 작성자 줄: 닉네임 첫 글자 대신 `CommentProfileAvatar`(사진 또는 기본 그림).
+  - 설질 제보 시각 `formatReportTime`: `koreanDate.ts`에 `formatKstTime`("HH:mm", KST 숫자 조립)을 두고 바꿨다.
+  - 익명게시판 글쓰기 중 로그인이 풀린 회원: 등록에서 401이 오면 비회원 상태로 바꿔 비밀번호 칸을 보이고, 안내에 "비회원으로 올리려면 비밀번호를 넣고 다시 등록, 회원으로 올리려면 새 창에서 로그인"을 함께 쓴다(`LoginExpiredNotice`에 `guestAllowed`). 다시 누를 때 `/members/me`를 한 번 더 물어 새 창에서 다시 로그인했으면 비밀번호 없이 회원으로 보낸다. 다른 게시판은 그대로.
+  - 홈 피드 조회수 `toLocaleString()`에 "ko-KR"을 붙였다(서버 렌더링되는 숫자라 브라우저 언어가 독일어 등이면 "1.234"로 달라질 수 있다).
+- 결정
+  - 검수 지적 "KST가 아닌 브라우저에서 제보 시각이 틀린다"는 지금 API로는 재현되지 않았다. 응답 `createdAt`이 `+09:00`이 붙은 OffsetDateTime이고 `timeZone: Asia/Seoul`도 있어서다. 오프셋 없는 문자열이 오면 틀리는 것(UTC에서 09:05가 18:05)은 맞다. 대신 다른 실제 문제를 찾았다: ko-KR에 `hour12: false`를 주면 Node 20(ICU 76, 78)에서 자정대가 "24:05"로 나온다. 둘 다 막도록 공용 함수로 바꿨다. 다른 안: `hourCycle: "h23"`만 추가(작지만 ICU 차이에 또 기댄다).
+  - 하이드레이션 위험 grep 결과: 날짜 ko-KR 형식을 쓰는 곳은 `ResortHeaderInfo`, `slopes/page.tsx`, `notifications.ts`(모두 브라우저에서 데이터를 받은 뒤 그림), `carpool/[publicId]/page.tsx`(서버 전용 메타데이터, 하이드레이션 없음)라 바꾸지 않았다. 숫자 `toLocaleString()`은 서버 렌더링되는 홈 조회수만 고쳤고 관리자, 장터 목록 등은 브라우저에서만 그린다.
+  - `app/page.tsx` 주석의 "제보 시각이 시간대를 타서 서버에서 안 받는다"는 이유가 맞지 않아 고쳤다. 동작(설질은 브라우저가 받음)은 그대로.
+- 발견된 이슈: 로그인이 풀려 비회원으로 바뀌어도 이미 올린 사진은 목록에 남아 함께 보낸다. 서버가 비회원 글의 사진을 어떻게 처리하는지는 실제 등록으로 확인하지 못했다.
+- 검증
+  - 날짜 함수 2026년 전체(37분 13초 간격, 옵션 4종): `formatKoreanDate` 56,492건 중 기존 ko-KR(로컬 Node 20.19, ICU 76.1)과 다른 것 0건, 운영 이미지 Node 20.20.2(ICU 78.2)에서 AM/PM 0건.
+  - `formatKstTime` 14,123건: 시간대 Seoul, Los_Angeles, UTC, Berlin과 오프셋 있음/없음 모두 같은 결과. 기존 함수와 다른 589건은 모두 기존이 "24:xx"로 낸 자정대.
+  - `npm run lint`, `npm run build` 통과.
+  - 운영 Dockerfile 이미지 before(origin/main)/after, headless Chrome 모바일 375, PC 1280, 라이트, 다크: 글 상세 React #418 before 4장 모두와 브라우저 LA 시간대 1회, after 0. 작성자 줄 before "화", after 기본 프로필 그림. 익명 401 흐름 before 비밀번호 칸 없음, 재전송도 비밀번호 null, after 비밀번호 칸과 새 안내, 비밀번호 없이 누르면 앞단에서 막고 넣으면 그 값으로 전송. 홈과 /resort-reports 제보 시각 before, after 같음(LA에서도 같음).
+  - 글 등록은 운영에 보내지 않고 브라우저 안에서 401로 막아 확인했다. 실제 로그인, 실제 등록은 하지 않았다.
+- 남은 항목: 사용자 머지 확인.
+## 글 상세 본문을 서버에서 그려 첫 HTML에 넣기 (IKA-104, 2026-11-20)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 배포는 사용자 확인 후.
+- 배경: 글 상세는 서버에서 글을 받지만 본문은 `ToastViewer`(ssr:false)로만 그렸다. 첫 HTML에는 Markdown 기호를 지운 평문만 있어 링크, 사진, 문단이 빠졌고(`1\.` 같은 이스케이프도 그대로 보임), 뷰어가 그리면서 본문 높이가 바뀌어 아래 영역이 밀렸다.
+- 확인한 사실
+  - 본문 형식은 Markdown이고 원시 HTML(`<br>`, `<p>`)이 섞인다. 운영 글 196개 중 70개에 원시 HTML이 있다. 코드 블록, 표, 체크리스트가 있는 운영 글은 없었다(사진 1개, 링크 4개).
+  - 백엔드는 저장할 때 본문을 정화하지 않는다(IKA-46에서 넘긴 서버 정화가 아직 없다). 그래서 서버 렌더링이 정화를 직접 해야 한다.
+- 완료
+  - `lib/markdownHtml.server.ts`: 브라우저와 같은 Toast UI 뷰어 배포 파일을 jsdom 창 안에서 돌려 본문 HTML을 만든다. 정화는 같은 jsdom 창에 묶은 DOMPurify로 한다.
+  - `lib/sanitizeHtml.ts`: 정화 규칙을 `createHtmlSanitizer`로 꺼내 브라우저와 서버가 같은 규칙을 쓴다(동작은 그대로).
+  - `posts/[publicId]/page.tsx`: 서버에서 본문 HTML을 만들어 넘긴다. `PostDetailClient`: 뷰어가 그리기 전까지 같은 감싸개 클래스의 div에 그 HTML을 넣는다. 서버 HTML이 없으면(문의 글, 렌더 실패) 기존 평문 그대로. 뷰어 CSS를 이 화면에서 정적으로 불러 첫 CSS에 싣는다.
+  - `ToastViewer`: `useEffect`를 `useLayoutEffect`로 바꿔 뷰어가 그리는 것과 서버 본문을 치우는 것이 같은 화면 갱신에 들어가게 했다(본문 두 번 보임 방지).
+- 결정
+  - 새 의존성 `jsdom`(26.1.0, Node 20 지원), `@types/jsdom`. 이유: 기존 의존성 DOMPurify는 서버에서 DOM이 있어야 하고, Toast UI의 Markdown 파서(ToastMark)는 따로 공개되지 않았다(npm에는 알파판만). jsdom 하나로 뷰어와 같은 HTML, 같은 정화 규칙을 얻는다.
+  - 다른 선택지: marked 같은 Markdown 라이브러리 + sanitize-html. 의존성이 둘이고 출력 구조(체크리스트, 줄바꿈 `<br>`, 코드 블록 속성)가 뷰어와 달라 이어 받을 때 화면이 바뀌며, 정화 규칙을 두 벌 관리해야 한다.
+  - jsdom은 import하지 않고 실행 시점에 `createRequire`로 부른다. import하면 Turbopack이 `.next/node_modules`에 빌드 위치 기준 상대 링크를 만들고, Dockerfile 실행 단계가 `.next`를 `/app`으로 옮기면서 그 링크가 깨져 500이 났다(실제 이미지로 확인 후 수정).
+  - jsdom 창은 `runScripts: "outside-only"`라 본문 안 script와 on* 속성은 실행되지 않고, 리소스를 받지 않는다.
+  - 장터 상세는 바꾸지 않았다. 로그인해야 본문을 볼 수 있고 서버가 받는 공유 미리보기 API에는 본문이 없어 검색엔진 이득이 없다.
+- 부작용: 글 상세 응답이 약 20ms 늘었다(로컬 이미지, 같은 글 6회: 전 약 0.10초, 후 약 0.12~0.13초). 첫 요청은 jsdom 준비로 약 0.5초. 컨테이너 메모리 약 27MB 증가(79MB에서 106MB). 첫 HTML과 RSC 데이터에 본문 HTML이 더 실린다(사진 글 30KB에서 32KB).
+- 발견된 이슈: 운영 이미지(node:20-alpine)는 ko-KR 날짜 형식이 없어 서버가 "PM 12:04"로, 브라우저가 "오후 12:04"로 그려 글 상세에서 React #418(하이드레이션 불일치)이 난다. 이번 변경 전에도 같고(before, after 모두 1건), 이번 범위가 아니라 고치지 않았다. Dockerfile에 ICU 전체 데이터를 넣거나 서버 날짜 형식을 직접 만드는 후속 작업이 필요하다.
+- 검증
+  - lint, build 통과.
+  - 정화 단위 확인 13건 통과: script, img onerror, Markdown과 HTML의 javascript: 링크, 대소문자 섞은 JaVaScRiPt, iframe, svg onload, style, form/input, mXSS 2종 제거, target 링크 rel 추가, 제목, 굵게, 취소선, 체크리스트, 표, 코드 블록, 링크, 사진, 원시 p와 br 유지.
+  - 운영과 같은 Dockerfile 이미지(before 3231, after 3232), 운영 API 읽기만. curl로 after 첫 HTML에 `toastui-editor-contents`, 본문 사진 img 태그, 링크, 원시 p 문장이 있다.
+  - 글 4개(사진+링크, br 많은 글, 원시 p 글, 맨 주소 글) x 모바일 375, PC 1280 x 라이트, 다크: 최종 화면은 before와 같다. 뷰어가 그린 HTML과 서버 HTML이 data-nodeid만 빼고 16개 장면 모두 같다. JS를 끈 첫 HTML의 본문 높이가 뷰어 뒤 높이와 같다(756, 2073, 115, 689px).
+  - 레이아웃 이동(CLS): before는 PC 사진 글 0.215, 0.306, PC 다크 링크 글 0.205. after는 모두 0.0001 이하.
+- 남은 항목: 코드 블록, 표, 체크리스트가 있는 운영 글이 없어 화면으로는 보지 못했다(단위 확인만).
+- 사용자 결정 필요: 위 alpine 날짜 형식 하이드레이션 오류 후속 티켓 여부.
+## SEO와 접근성 자잘한 수정 묶음 (티켓 없음, 2026-11-20)
+
+- 상태: 구현, 화면 확인, PR 생성. 머지는 사용자 확인 후.
+- 계획: 검수에서 나온 SEO, 접근성 10건을 최신 main에서 다시 확인하고 남은 것만 고친다.
+- 완료
+  - 사이트맵: noindex인 `/market`을 뺐다. 판매글 상세(`/market/{id}`)도 레이아웃의 noindex를 물려받으므로 사이트맵에서 빼고, 그 목록 API 호출(50개씩 2쪽)도 지웠다.
+  - 게시판 목록 메타데이터: `/posts`는 `https://snowthing.org/posts`, 게시판은 `/posts?category=코드`를 canonical과 og:url로 둔다. 쪽 번호가 붙어도 게시판 주소를 가리킨다. 1:1 문의는 noindex라 canonical을 두지 않는다. 글 상세 canonical은 그대로(자기 주소).
+  - 캐릭터 테스트: twitter:image를 og:image와 같은 `/character-test/og-test.png`로.
+  - 홈 게시판 탭 버튼에 `aria-pressed`.
+  - 홈 중고장터 미리보기 링크 이름을 "중고장터 최신 판매글 N번째 보기"로 서로 다르게.
+  - 헤더 게시판, 프로필, 알림 드롭다운: Esc로 닫고 포커스를 메뉴 버튼(summary)으로 돌린다.
+  - 알림 배지: 쪽지 배지와 같이 탭이 보이는 동안 60초마다 다시 센다. 숨은 탭과 겹친 요청은 건너뛴다.
+  - 안 쓰는 `public/images/default-profile-avatar.png`(323KB) 삭제. 이 파일을 업로드 테스트 파일로 쓰던 `scripts/profile-settings-browser-check.cjs`는 `frontend/app/apple-icon.png`를 쓰게 바꿨다.
+  - 쓰지 않는 의존성 `@toast-ui/react-editor` 제거(package-lock 갱신). 에디터는 `@toast-ui/editor`를 직접 쓴다.
+- 결정
+  - 장터 미리보기 이름에 글 제목을 넣지 않았다. 공개 미리보기 API는 설계(002_used_market 04_api-spec 4.1, 05 정책)상 publicId와 썸네일만 준다. 제목을 넣으려면 비로그인에게 제목을 공개하는 계약 변경이 필요해 순서 번호로 구분했다. 다른 안: 응답에 제목 추가(설계 변경, 사용자 결정 필요).
+  - 홈 탭은 `role=tab`이 아니라 `aria-pressed`. 탭 패널 구조(aria-controls, 화살표 키 이동)가 없는 버튼 묶음이라 토글 버튼 의미가 맞다.
+  - 알림 폴링 부하: 로그인한 회원의 보이는 탭 하나당 분당 1회 `GET /api/v1/notifications/unread-count`가 는다. 쿼리는 `idx_notification_receiver_read_id(receiver_id, is_read, notification_id)` 인덱스로 센다. 쪽지 배지와 합치면 탭당 분당 2회.
+  - 이미지 삭제 근거: 프론트, CSS, 백엔드, 마이그레이션, 메일 템플릿에 경로가 없다. 마지막 사용은 11/06 커밋(30351e1)에서 `CommentProfileAvatar`로 바뀌며 사라졌다. 그 전에도 화면 기본 이미지(src)로만 썼고 저장 요청에 넣지 않았다. 프로필 사진 주소는 업로드(`setMyProfileImage`)로만 저장된다. 운영 DB는 확인하지 않았다(접근 금지).
+- 발견된 이슈
+  - 10번(`--snow-faint` 대비) 은 이미 해결돼 있었다. `globals.css` 1616행 리뉴얼 `:root`가 라이트 `#6b6b74`(흰 배경 5.28:1), 다크 `#8f8f99`(#1f1f1f 위 5.15:1, #272727 위 4.66:1)로 덮어써 실제 값은 4.5:1 이상이다. 브라우저 계산값으로 확인. 앞쪽 `#94a3b8` 선언과 CSS 모듈의 `var(--snow-faint, #94a3b8)` 대체값은 쓰이지 않는 값이라 손대지 않았다.
+- 검증
+  - `npm run lint` 통과, `npm run build` 통과, Docker 이미지 빌드 통과.
+  - curl(운영과 같은 이미지, 3221 before, 3222 after): 사이트맵 `<loc>` 648개에서 647개, `/market` 없음. `/posts`, `/posts?category=FREE`, `&page=2` canonical과 og:url 확인. INQUIRY는 noindex만. 글 상세 canonical은 자기 주소 그대로. 캐릭터 테스트 twitter:image가 og-test.png.
+  - headless Chrome(로그인 흉내, 쓰기 요청 차단): 탭 aria-pressed true/false가 눌린 탭을 따라감, 장터 링크 이름 4개가 서로 다름(미리보기 응답은 가짜 4건), 세 드롭다운 모두 before는 Esc 뒤에도 열림, after는 닫히고 포커스가 summary로. 알림 unread-count 요청: 보이는 탭 62초 동안 before 0회, after 1회, 숨긴 뒤 62초 동안 둘 다 0회. 화면은 before와 after가 같다. 콘솔 오류 없음.
+- 남은 항목: 머지(사용자 확인).
+- 사용자 결정 필요: 장터 미리보기에 제목을 공개할지(지금은 순서 번호).
+## 배포 중 종료 대기와 실행 이미지 기록, 프론트 Node 22 (IKA-105, 2026-11-20)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지와 운영 반영은 사용자 확인 후.
+- 계획: 배포 때 처리 중인 요청이 끊기지 않게 종료 대기를 맞추고, 서버에 실행 중인 digest를 남겨 손으로 다시 띄워도 같은 이미지로 뜨게 한다. 프론트 실행 이미지를 Node 22(digest 고정)와 standalone 출력으로 바꾼다.
+- 완료
+  - 백엔드 `application.yml`: `server.shutdown: graceful`(Spring Boot 4.1은 이미 기본값이지만 명시), `spring.lifecycle.timeout-per-shutdown-phase: 20s`.
+  - `compose.prod.yml`: 백엔드 `stop_grace_period: 30s`, 프론트 `15s`. 이미지 기본값을 `latest`에서 `not-recorded-pass-etc-snowthing-images-env` 태그로 바꿔 기록 파일을 빼먹은 실수가 pull 오류 메시지로 바로 드러나게 했다.
+  - `scripts/deploy-ecr-service.sh`: 배포 성공 때 `/etc/snowthing/images.env`의 해당 서비스 줄(`BACKEND_IMAGE_URI` 등)을 새 digest로 바꾼다. 롤백 때는 이전 digest로 맞춘다. 파일이 없거나 줄이 없으면 배포 전에 실행 중인 컨테이너의 digest로 채운다. compose 실행은 `--env-file prod.env --env-file images.env`에 대상 서비스만 셸 환경변수로 덮는다. 승인, 헬스체크, 실패 시 이전 이미지 복구, 이미지 정리(current, previous 보호) 흐름은 그대로다.
+  - `frontend/Dockerfile`: `node:22-alpine@sha256:1314fb30...`로 빌드와 실행 단계 고정. `next.config.ts`에 `output: "standalone"`을 켜고 실행 단계는 `.next/standalone`, `.next/static`, `public`만 복사한다. `npm run start` 대신 `node server.js`, `HOSTNAME=0.0.0.0`.
+  - CI(`frontend-ci.yml`, `deploy-frontend.yml`)의 Node를 22로 맞췄다.
+- 결정
+  - 종료 대기 20초: 일반 API는 수 초 안에 끝나고, 라이브톡 WebSocket은 종료 단계에서 서버가 닫고 클라이언트가 다시 붙는다. 사진 업로드(최대 6MB)도 이 안에 끝난다. 더 길면 배포 때 헬스체크 전 공백이 길어진다. compose 대기는 그보다 10초 길게 30초.
+  - 기록 위치는 `prod.env`와 같은 `/etc/snowthing/`. `prod.env`에 넣지 않고 따로 둔 이유는 비밀값 파일을 스크립트가 다시 쓰지 않게 하려는 것. 다른 안: compose 파일의 `env_file`(컨테이너 환경변수일 뿐 이미지 주소 치환에 안 쓰임), `${VAR:?}` 필수값(기록이 없는 서비스가 하나라도 있으면 다른 서비스 배포까지 실패해 버림).
+  - 기록 갱신은 `flock`으로 잠근다. 백엔드와 프론트 배포가 겹쳐도 서로의 줄을 지우지 않는다.
+  - standalone 출력을 택했다. 다른 안 `npm ci --omit=dev`는 next 전체와 런타임 의존성이 그대로 남아 줄어드는 폭이 작다. standalone 서버 파일에는 next.config가 함께 들어가 IKA-58(`poweredByHeader`가 빠진 문제)과 같은 누락이 없다. 컨테이너 응답에 `X-Powered-By`가 없는 것으로 확인했다.
+- 발견된 이슈
+  - Node 20 이미지는 `Intl.DateTimeFormat("ko-KR", { timeStyle: "short" })`가 `AM 3:36`, Node 22는 `오전 3:36`을 낸다(브라우저와 같음). `formatKoreanDate(값, KOREAN_DATE_TIME)`를 서버에서 그리던 화면은 오히려 브라우저와 같아진다. 날짜만 쓰는 형식, `11월 6일 (금)`, 24시간 형식은 두 버전이 같다.
+  - 예전 커밋으로 되돌리는 롤백(rollback_tag)은 그 커밋의 배포 스크립트를 쓰므로 기록 파일을 갱신하지 않는다. 이 PR 이후 커밋으로의 롤백부터 기록된다.
+- 검증
+  - 프론트 이미지 로컬 빌드(`NEXT_PUBLIC_API_BASE_URL=https://snowthing.org`): 이전(origin/main) 1.12GB(내용 240.7MB) → 이후 339MB(내용 83.9MB).
+  - 두 이미지를 3240, 3241로 띄워 홈, 글 상세 모두 200, 보안 헤더 같음, `X-Powered-By` 없음, `/og-default.png`와 `/_next/image` 200. 1280x900 스크린샷 비교: 글 상세는 바이트까지 같고, 홈은 상대 시각(46분, 47분)만 다르다. `docker stop`은 둘 다 1초 안에 종료(코드 143).
+  - `docker compose config`: 두 env 파일을 넘기면 세 서비스가 기록된 digest로, 셸에서 백엔드만 덮으면 백엔드만 새 digest로, 기록 파일 없이는 not-recorded 태그로 해석된다. stop_grace_period 30s, 15s 확인.
+  - 기록 함수: ubuntu 24.04 컨테이너에서 가짜 docker로 처음 채우기(mcp-bot 컨테이너가 없으면 그 줄은 비움), 성공 기록, 다시 채우기가 기존 줄을 덮지 않음, 롤백 되돌림, digest 아닌 값 거부, 동시 기록 20건 뒤 줄 2개 유지를 확인했다.
+  - `bash -n`, shellcheck(기존 SC2016 정보 4건만, 새 경고 없음), 워크플로와 compose YAML 파싱, 프론트 lint, build.
+  - 백엔드 spotlessCheck test 통과(테스트 1412건, 실패 0, 건너뜀 1, 스키마 snowthing_test_ika105).
+- 운영 반영 때 사용자 확인
+  - 첫 배포 뒤 EC2에서 `cat /etc/snowthing/images.env`로 세 줄(백엔드, 프론트, 봇)이 지금 `docker inspect --format '{{.Config.Image}}' snowthing-backend` 등과 같은지 본다. 봇 줄은 봇 컨테이너가 떠 있을 때만 생긴다.
+  - 손으로 다시 띄울 때: 저장소 디렉터리에서 `docker compose --env-file /etc/snowthing/prod.env --env-file /etc/snowthing/images.env -f compose.prod.yml up -d`. 기록 파일을 빼면 not-recorded 태그 pull 오류가 나고 기존 컨테이너는 그대로다.
+  - 배포 직후 라이브톡이 다시 붙는지, 백엔드 종료 로그에 `Graceful shutdown complete`가 찍히는지.
+- 남은 항목: 실제 배포에서의 종료 시간과 기록 파일 생성은 운영 배포 때만 확인할 수 있다.
+- 사용자 결정 필요: 없음.
 
 ## 슬로프끼리 비교, 비슷한 슬로프 국내 일본 모두, 답글 입력칸과 라이브톡 닉네임 정리 (디자인 수정 묶음, 2026-11-20)
 

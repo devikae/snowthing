@@ -14,6 +14,9 @@ NGINX_SITES_ENABLED_PATH="/etc/nginx/sites-enabled"
 NGINX_WEBSOCKET_SNIPPET_PATH="/etc/nginx/snippets/snowthing-websocket.conf"
 NGINX_WEBSOCKET_INCLUDE="include /etc/nginx/snippets/snowthing-websocket.conf;"
 NGINX_CAM_ORIGIN_CONFIG_PATH="/etc/nginx/conf.d/snowthing-cam-origin.conf"
+PROD_ENV_PATH="/etc/snowthing/prod.env"
+# 서비스마다 지금 실행 중인 digest 주소를 남긴다. compose.prod.yml을 손으로 다시 띄울 때 --env-file로 함께 넘긴다.
+IMAGE_RECORD_PATH="/etc/snowthing/images.env"
 CLOUDFLARE_IPV4_RANGES=(
   "173.245.48.0/20"
   "103.21.244.0/22"
@@ -30,6 +33,16 @@ CLOUDFLARE_IPV4_RANGES=(
   "104.24.0.0/14"
   "172.64.0.0/13"
   "131.0.72.0/22"
+)
+# 지금 보안 그룹은 Cloudflare IPv4만 들여보낸다. 원본에 IPv6가 열려도 방문자가 엣지 주소 하나로 묶이지 않게 함께 등록한다.
+CLOUDFLARE_IPV6_RANGES=(
+  "2400:cb00::/32"
+  "2606:4700::/32"
+  "2803:f800::/32"
+  "2405:b500::/32"
+  "2405:8100::/32"
+  "2a06:98c0::/29"
+  "2c0f:f248::/32"
 )
 
 case "$SERVICE" in
@@ -69,6 +82,54 @@ REGISTRY="${IMAGE_URI%%/*}"
 IMAGE_REPOSITORY="${IMAGE_URI%@sha256:*}"
 PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || true)"
 PREVIOUS_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$PREVIOUS_IMAGE" 2>/dev/null || true)"
+
+# 기록 파일에서 한 변수 줄만 바꾼다. 백엔드와 프론트 배포가 겹쳐도 서로의 줄을 지우지 않게 잠근다.
+record_image() {
+  local variable="$1" image="$2"
+  if [[ ! "$image" =~ @sha256:[0-9a-f]{64}$ ]]; then
+    echo "digest가 아닌 이미지 주소는 기록하지 않습니다: $variable=$image" >&2
+    return 1
+  fi
+  (
+    flock -w 30 9 || exit 1
+    local temporary_path
+    temporary_path="$(mktemp "${IMAGE_RECORD_PATH}.XXXXXX")"
+    if [[ -f "$IMAGE_RECORD_PATH" ]]; then
+      grep -v "^${variable}=" "$IMAGE_RECORD_PATH" > "$temporary_path" || true
+    fi
+    printf '%s=%s
+' "$variable" "$image" >> "$temporary_path"
+    chmod 0644 "$temporary_path"
+    mv -f "$temporary_path" "$IMAGE_RECORD_PATH"
+  ) 9> "${IMAGE_RECORD_PATH}.lock"
+}
+
+# 기록 파일이 생기기 전부터 떠 있던 서비스는 실행 중인 컨테이너의 digest로 채운다.
+# 다른 서비스 줄이 비어 있으면 손으로 다시 띄울 때 그 서비스가 존재하지 않는 기본 태그를 찾게 된다.
+seed_image_records() {
+  local entry variable container image
+  for entry in BACKEND_IMAGE_URI:snowthing-backend FRONTEND_IMAGE_URI:snowthing-frontend MCP_BOT_IMAGE_URI:snowthing-mcp-bot; do
+    variable="${entry%%:*}"
+    container="${entry#*:}"
+    if [[ -f "$IMAGE_RECORD_PATH" ]] && grep -q "^${variable}=" "$IMAGE_RECORD_PATH"; then
+      continue
+    fi
+    image="$(docker inspect --format '{{.Config.Image}}' "$container" 2>/dev/null || true)"
+    if [[ "$image" =~ @sha256:[0-9a-f]{64}$ ]]; then
+      record_image "$variable" "$image" || echo "$variable 초기 기록 실패, 배포는 계속합니다." >&2
+    fi
+  done
+}
+
+compose_service_up() {
+  local image="$1"
+  local env_files=(--env-file "$PROD_ENV_PATH")
+  if [[ -f "$IMAGE_RECORD_PATH" ]]; then
+    env_files+=(--env-file "$IMAGE_RECORD_PATH")
+  fi
+  # 셸 환경변수가 --env-file 값보다 우선하므로 대상 서비스만 새 digest로 바뀐다.
+  env "$IMAGE_VARIABLE=$image" docker compose     "${env_files[@]}"     -f compose.prod.yml     up -d --no-build "$SERVICE"
+}
 
 cleanup_service_images() {
   local current_image_id repository digest image_id repository_digest
@@ -173,7 +234,7 @@ configure_nginx_request_limits() {
 
   {
     printf '%s\n' 'client_max_body_size 6m;'
-    for cloudflare_range in "${CLOUDFLARE_IPV4_RANGES[@]}"; do
+    for cloudflare_range in "${CLOUDFLARE_IPV4_RANGES[@]}" "${CLOUDFLARE_IPV6_RANGES[@]}"; do
       printf 'set_real_ip_from %s;\n' "$cloudflare_range"
     done
     if [[ "$real_ip_header_exists" == false ]]; then
@@ -182,6 +243,11 @@ configure_nginx_request_limits() {
     if [[ "$real_ip_recursive_exists" == false ]]; then
       printf '%s\n' 'real_ip_recursive on;'
     fi
+    # proxy_set_header를 하나도 두지 않은 location에만 상속된다. 그런 location이 클라이언트가 보낸
+    # X-Real-IP, X-Forwarded-For를 그대로 넘기지 않게 한다. 자체 proxy_set_header가 있는 location은 그대로다.
+    printf '%s\n' \
+      'proxy_set_header X-Real-IP $remote_addr;' \
+      'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;'
     printf '%s\n' \
       'map $uri $snowthing_chat_limit_key {' \
       '  default "";' \
@@ -210,6 +276,30 @@ configure_nginx_request_limits() {
   nginx -t || true
   echo "Failed to configure Nginx request limits" >&2
   return 1
+}
+
+report_nginx_client_ip_headers() {
+  # 서버 블록은 저장소 밖에서 관리한다. 손으로 만든 설정 파일(이 스크립트가 쓰는 파일 제외)에서 백엔드로 넘기는 proxy_pass 수와
+  # IP 헤더를 덮어쓰는 줄 수만 남긴다. 설정 원문은 출력하지 않는다. 덮어쓰는 줄이 proxy_pass보다 적으면 서버 설정을 확인한다.
+  local summary
+  summary="$(nginx -T 2>/dev/null | awk \
+    -v managed="$NGINX_MANAGED_CONFIG_PATH" \
+    -v snippet="$NGINX_WEBSOCKET_SNIPPET_PATH" \
+    -v cam="$NGINX_CAM_ORIGIN_CONFIG_PATH" '
+    /^# configuration file / {
+      file = $4
+      sub(/:$/, "", file)
+      skip = (file == managed || file == snippet || file == cam)
+      next
+    }
+    skip { next }
+    /proxy_pass[[:space:]]+http:\/\/(127\.0\.0\.1|localhost):8080/ { backend++ }
+    /proxy_set_header[[:space:]]+X-Real-IP[[:space:]]+\$remote_addr/ { real_ip++ }
+    /proxy_set_header[[:space:]]+X-Forwarded-For[[:space:]]+\$(proxy_add_x_forwarded_for|remote_addr)/ { forwarded++ }
+    END {
+      printf "backend_proxy_pass=%d x_real_ip_overwrite=%d x_forwarded_for_overwrite=%d", backend, real_ip, forwarded
+    }' || true)"
+  echo "Nginx client IP headers outside managed files: ${summary:-unavailable}"
 }
 
 nginx_directive_exists_outside_managed_file() {
@@ -413,6 +503,7 @@ prepare_diagnostic_directory
 if [[ "$SERVICE" == "backend" ]]; then
   configure_nginx_request_limits
   configure_nginx_websocket_proxy
+  report_nginx_client_ip_headers
   prepare_chat_audit_directory
 fi
 if [[ "$SERVICE" == "frontend" ]]; then
@@ -423,11 +514,14 @@ aws ecr get-login-password --region "$AWS_REGION" \
 docker pull "$IMAGE_URI"
 
 echo "$SERVICE 컨테이너를 새 digest로 교체"
-if env "$IMAGE_VARIABLE=$IMAGE_URI" docker compose \
-  --env-file /etc/snowthing/prod.env \
-  -f compose.prod.yml \
-  up -d --no-build "$SERVICE" && check_health; then
+seed_image_records
+if compose_service_up "$IMAGE_URI" && check_health; then
   echo "$SERVICE 배포 성공: $IMAGE_URI"
+  if record_image "$IMAGE_VARIABLE" "$IMAGE_URI"; then
+    echo "실행 이미지 기록: $IMAGE_RECORD_PATH $IMAGE_VARIABLE"
+  else
+    echo "실행 이미지 기록에 실패했지만 성공한 배포는 유지합니다: $IMAGE_RECORD_PATH" >&2
+  fi
   if ! cleanup_service_images; then
     echo "Docker 이미지 자동 정리를 완료하지 못했지만 성공한 배포는 유지합니다." >&2
   fi
@@ -443,10 +537,9 @@ if [[ -z "$PREVIOUS_IMAGE" ]]; then
 fi
 
 echo "이전 이미지로 자동 복구: $PREVIOUS_IMAGE" >&2
-env "$IMAGE_VARIABLE=$PREVIOUS_IMAGE" docker compose \
-  --env-file /etc/snowthing/prod.env \
-  -f compose.prod.yml \
-  up -d --no-build "$SERVICE"
+compose_service_up "$PREVIOUS_IMAGE"
+# 실패한 digest는 기록하지 않는다. 기록이 이전 digest를 가리키도록 한 번 더 맞춘다.
+record_image "$IMAGE_VARIABLE" "$PREVIOUS_IMAGE"   || echo "이전 이미지 기록을 맞추지 못했습니다: $IMAGE_RECORD_PATH" >&2
 
 if check_health; then
   echo "이전 이미지 복구 성공" >&2
