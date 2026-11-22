@@ -306,7 +306,7 @@ export default function PostEditPage({ params }: { params: Promise<{ publicId: s
 
   return (
     <div className="community-page">
-      <TopNav active="posts" />
+      <TopNav />
       <Suspense fallback={<div className="p-12 text-center text-sm text-[var(--snow-muted)]">불러오는 중입니다.</div>}>
         <PostEditForm publicId={publicId} />
       </Suspense>

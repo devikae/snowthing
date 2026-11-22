@@ -76,7 +76,7 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="community-page">
-      <TopNav active="profile" />
+      <TopNav />
       <main className={`community-container ${styles.page}`}>
         <header className={styles.heading}>
           <div>

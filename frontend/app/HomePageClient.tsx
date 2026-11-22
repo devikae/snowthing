@@ -271,7 +271,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
 
   return (
     <div className="community-page">
-      <TopNav active="home" />
+      <TopNav />
       <main className="community-container home-main">
         {/* 소개 문구는 헤더 로고 옆에 보인다. 홈 제목은 화면 낭독기와 검색엔진용으로 둔다. */}
         <h1 className="sr-only">윈터스포츠 커뮤니티 눈팅</h1>

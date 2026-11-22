@@ -117,7 +117,7 @@ function MessageList() {
 export default function MessagesPage() {
   return (
     <div className="community-page">
-      <TopNav active="profile" />
+      <TopNav />
       <main className={`community-container ${styles.page}`}>
         <header className={styles.heading}>
           <div>

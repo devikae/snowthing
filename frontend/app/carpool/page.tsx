@@ -144,7 +144,7 @@ function CarpoolList() {
 export default function CarpoolPage() {
   return (
     <div className="community-page">
-      <TopNav active="carpool" />
+      <TopNav />
       <main className="community-container carpool-page">
         <PageHeading title="카풀과 동행" description="출발지와 리조트가 맞는 동행을 찾아보세요."
           actions={<Link href="/carpool/new">모집글 등록</Link>} />

@@ -177,7 +177,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
 
   return (
     <div className="community-page">
-      <TopNav active="market" />
+      <TopNav />
       <main className="community-container market-compose-page content-compose-page">
         <PageHeading title="판매글 수정" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 수정해 주세요." />
         {!detail ? <div className="market-state">{error || "판매글을 불러오는 중입니다."}</div> : <form className="market-compose-card" onSubmit={(event) => void submit(event)}>

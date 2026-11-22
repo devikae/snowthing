@@ -167,7 +167,7 @@ export default function CarpoolDetailClient() {
 
   return (
     <div className="community-page">
-      <TopNav active="carpool" />
+      <TopNav />
       <main className="community-container carpool-detail-page content-detail-page">
         {notFound ? (
           <div className="carpool-empty">

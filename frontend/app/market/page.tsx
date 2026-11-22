@@ -163,7 +163,7 @@ function MarketPageContent() {
 
   return (
     <div className="community-page">
-      <TopNav active="market" />
+      <TopNav />
       <main className="community-container market-page">
         <PageHeading title="중고장터" description="라이더끼리 장비를 사고팔아요."
           actions={<Link href="/market/new">판매글 등록</Link>} />

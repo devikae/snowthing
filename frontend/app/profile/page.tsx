@@ -186,7 +186,7 @@ export default function ProfilePage() {
     setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setShowPassword(false);
   };
 
-  return <div className="community-page"><TopNav active="profile" /><main className="community-container profile-settings">
+  return <div className="community-page"><TopNav /><main className="community-container profile-settings">
     <header className="profile-settings-heading"><div><h1>내 정보 수정</h1><p>프로필과 계정 정보를 관리합니다.</p></div><Link href="/">홈으로</Link></header>
     {error && <p className="profile-feedback error" role="alert">{error}</p>}{notice && <p className="profile-feedback" role="status">{notice}</p>}
     {loading ? <div className="profile-loading" aria-busy="true">내 정보를 불러오는 중입니다.</div> : !profile || !form ? <button type="button" className="profile-button-primary" onClick={() => { setLoading(true); setError(""); void load(); }}>다시 불러오기</button> : <>

@@ -596,7 +596,7 @@ export default function NewCarpoolPage() {
 
   return (
     <>
-      <div className="community-page"><TopNav active="carpool" />
+      <div className="community-page"><TopNav />
       <main className="community-container carpool-compose-page content-compose-page">
         <PageHeading title={`카풀 모집글 ${editPublicId ? "수정" : "등록"}`}
           breadcrumb={<Link href="/carpool">카풀과 동행</Link>}

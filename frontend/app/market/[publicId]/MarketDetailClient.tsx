@@ -324,8 +324,8 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
     }
   };
 
-  if (loading) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
-  if (!listing) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state"><p>{error}</p><Link href="/market">목록으로</Link></main></div>;
+  if (loading) return <div className="community-page"><TopNav /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
+  if (!listing) return <div className="community-page"><TopNav /><main className="community-container market-state"><p>{error}</p><Link href="/market">목록으로</Link></main></div>;
 
   // 공개 상태가 아니면 서버가 수정과 거래 상태 변경을 막으므로 그 버튼은 숨긴다. 삭제는 그대로 둔다.
   const isPublic = listing.status === "NORMAL";
@@ -335,7 +335,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
 
   return (
     <div className="community-page">
-      <TopNav active="market" />
+      <TopNav />
       <main className="community-container market-detail-page content-detail-page">
         <div className="post-detail-toolbar"><Link href="/market"><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link></div>
         {error && <div className="compose-error" role="alert">{error}</div>}

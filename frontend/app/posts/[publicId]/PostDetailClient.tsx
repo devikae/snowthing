@@ -703,7 +703,7 @@ export default function PostDetailClient({
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--snow-background)]">
-        <TopNav active="posts" />
+        <TopNav />
         <div className="p-12 text-center text-sm text-[var(--snow-muted)]">불러오는 중입니다.</div>
       </div>
     );
@@ -712,7 +712,7 @@ export default function PostDetailClient({
   if (errorMsg || !post) {
     return (
       <div className="min-h-screen bg-[var(--snow-background)]">
-        <TopNav active="posts" />
+        <TopNav />
         <main className="snow-container px-5 py-12 text-center">
           <p className="text-[var(--snow-error)]">{errorMsg || "게시글이 존재하지 않습니다."}</p>
           <Link href="/posts" className="snow-btn-secondary mt-5">
@@ -725,7 +725,7 @@ export default function PostDetailClient({
 
   return (
     <div className="min-h-screen bg-[var(--snow-background)]">
-      <TopNav active="posts" />
+      <TopNav />
       <main className="post-detail-page community-container content-detail-page">
         <div className="post-detail-toolbar">
           <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>

@@ -98,7 +98,7 @@ export default function ResortReportsPage() {
 
   return (
     <div className="community-page">
-      <TopNav active="posts" />
+      <TopNav />
       <main className="community-container resort-report-page">
         <PageHeading title="오늘의 설질" description="라이더가 직접 전하는 리조트 현장 소식입니다."
           meta={<time className="snow-date-badge">{koreanToday}</time>}

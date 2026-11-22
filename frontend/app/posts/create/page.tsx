@@ -409,7 +409,7 @@ function PostCreateForm() {
 export default function PostCreatePage() {
   return (
     <div className="community-page">
-      <TopNav active="posts" />
+      <TopNav />
       <Suspense fallback={<div className="p-20 text-center text-xs text-[var(--snow-muted)]">글쓰기 화면을 준비하고 있습니다.</div>}>
         <PostCreateForm />
       </Suspense>

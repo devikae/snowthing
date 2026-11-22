@@ -177,7 +177,7 @@ export default function MarketCreatePage() {
 
   return (
     <div className="community-page">
-      <TopNav active="market" />
+      <TopNav />
       <main className="community-container market-compose-page content-compose-page">
         <PageHeading title="판매글 등록" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 작성해 주세요." />
         <form className="market-compose-card" onSubmit={submit}>
