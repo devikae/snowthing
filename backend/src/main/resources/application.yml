@@ -147,6 +147,36 @@ snowthing:
         api-key: ${SNOWTHING_SEARCH_EMBEDDING_API_KEY:}
         connect-timeout-millis: 2000
         read-timeout-millis: 10000
+  # IKA-80 AI 자동 검열. 기본 꺼짐. 켜면 글, 댓글, 장터, 카풀, 설질 제보를 쓰고 고칠 때 대기열에 넣고 1분마다 판정한다.
+  # 2단계(OpenAI Moderation API)는 따로 켠다. 이용자 글이 국외(미국)로 가므로 개인정보처리방침을 고친 뒤 켠다. 키가 비어 있으면 규칙만 돈다.
+  moderation:
+    enabled: ${SNOWTHING_MODERATION_ENABLED:false}
+    poll-interval-ms: 60000
+    batch-size: 50
+    lease: 5m
+    max-attempts: 5
+    retry-base-delay: 1m
+    retry-max-delay: 30m
+    hourly-alert-threshold: 10
+    rules:
+      enabled: true
+      duplicate-window: 10m
+      duplicate-min-count: 3
+      duplicate-min-length: 10
+      new-account-age: 24h
+      new-account-min-links: 3
+      short-text-length: 20
+    api:
+      enabled: ${SNOWTHING_MODERATION_API_ENABLED:false}
+      api-key: ${SNOWTHING_OPENAI_API_KEY:}
+      base-url: https://api.openai.com/v1
+      model: omni-moderation-latest
+      hide-threshold: 0.9
+      review-threshold: 0.4
+      hide-categories: sexual,sexual/minors,illicit,illicit/violent
+      max-inputs-per-call: 20
+      connect-timeout: 3s
+      read-timeout: 15s
   discord:
     # IKA-18. 비어 있으면 그 채널 알림은 꺼진다. 웹훅 URL은 비밀값이라 운영 prod.env에만 둔다.
     alert-webhook: ${DISCORD_WEBHOOK_ALERT:}

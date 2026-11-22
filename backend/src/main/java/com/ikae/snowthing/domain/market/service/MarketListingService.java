@@ -22,6 +22,7 @@ import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.entity.PostImage;
@@ -65,6 +66,7 @@ public class MarketListingService {
     private final com.ikae.snowthing.domain.image.service.MarketThumbnailService marketThumbnails;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
     private final AdminActionLogger actionLogger;
+    private final ModerationEnqueuer moderation;
 
     public MarketCategoryListResponse getCategories() {
         return new MarketCategoryListResponse(
@@ -150,6 +152,7 @@ public class MarketListingService {
         post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
         postRepository.save(post);
         searchOutbox.postChanged(post);
+        moderation.marketWritten(post);
         marketThumbnails.queue(post.getPublicId(), representativeImage(images, content));
 
         MarketListing listing =
@@ -235,6 +238,7 @@ public class MarketListingService {
                 request.contact());
         marketListingRepository.flush();
         searchOutbox.postChanged(listing.getPost());
+        moderation.marketWritten(listing.getPost());
         marketThumbnails.queue(
                 listing.getPost().getPublicId(), representativeImage(images, content));
         return new MarketListingUpdateResponse(

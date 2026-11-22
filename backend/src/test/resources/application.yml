@@ -51,6 +51,14 @@ snowthing:
     reconcile:
       enabled: false
 
+  # 자동 검열(IKA-80)은 대기열 적재를 켜고 스케줄러는 끈다. 테스트가 처리기를 직접 부른다. 2단계는 끈다(외부 호출 없음).
+  moderation:
+    enabled: true
+    scheduler-enabled: false
+    api:
+      enabled: false
+      api-key: ""
+
   # 작성 연타 제한과 로그인 시도 제한은 테스트끼리 같은 작성자, 같은 IP를 공유해 기본으로 끈다.
   write-limit:
     enabled: false

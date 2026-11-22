@@ -11,5 +11,6 @@ public enum AdminTargetType {
     CHAT_BAN,
     CONFIG,
     SEASON_OPENING,
-    BANNED_WORD
+    BANNED_WORD,
+    CONTENT_MODERATION
 }

@@ -345,6 +345,7 @@ public enum ErrorCode {
     BANNED_WORD_DUPLICATED(HttpStatus.CONFLICT, "ADMIN_010", "이미 등록된 금칙어입니다."),
     BANNED_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_011", "존재하지 않는 금칙어입니다."),
     FILTER_HOLD_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_012", "이미 처리했거나 존재하지 않는 보류 항목입니다."),
+    MODERATION_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_013", "이미 처리했거나 존재하지 않는 검토 항목입니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

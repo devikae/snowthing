@@ -7,9 +7,11 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.ikae.snowthing.global.notification.DailySummaryQueryRepository.ModerationCounts;
 import com.ikae.snowthing.global.notification.DailySummaryQueryRepository.Split;
 
 import lombok.extern.slf4j.Slf4j;
@@ -30,18 +32,30 @@ public class DailySummaryScheduler {
     private final DailySummaryQueryRepository queryRepository;
     private final DiscordNotifier notifier;
     private final Clock clock;
+    private final boolean moderationEnabled;
 
     @Autowired
     public DailySummaryScheduler(
-            DailySummaryQueryRepository queryRepository, DiscordNotifier notifier) {
-        this(queryRepository, notifier, Clock.system(KST));
+            DailySummaryQueryRepository queryRepository,
+            DiscordNotifier notifier,
+            @Value("${snowthing.moderation.enabled:false}") boolean moderationEnabled) {
+        this(queryRepository, notifier, Clock.system(KST), moderationEnabled);
     }
 
     DailySummaryScheduler(
             DailySummaryQueryRepository queryRepository, DiscordNotifier notifier, Clock clock) {
+        this(queryRepository, notifier, clock, false);
+    }
+
+    DailySummaryScheduler(
+            DailySummaryQueryRepository queryRepository,
+            DiscordNotifier notifier,
+            Clock clock,
+            boolean moderationEnabled) {
         this.queryRepository = queryRepository;
         this.notifier = notifier;
         this.clock = clock;
+        this.moderationEnabled = moderationEnabled;
     }
 
     @Scheduled(cron = "${snowthing.discord.daily-summary-cron:0 0 9 * * *}", zone = "Asia/Seoul")
@@ -70,7 +84,17 @@ public class DailySummaryScheduler {
                 + "\n"
                 + line("글", posts)
                 + "\n"
-                + line("댓글", comments);
+                + line("댓글", comments)
+                + moderationLine(from, to);
+    }
+
+    /** 자동 검열(IKA-80)이 켜져 있을 때만 한 줄을 더한다. */
+    private String moderationLine(LocalDateTime from, LocalDateTime to) {
+        if (!moderationEnabled) {
+            return "";
+        }
+        ModerationCounts counts = queryRepository.countModeration(from, to);
+        return "\n어제 자동 숨김 " + counts.hidden() + "건, 검토 대기 " + counts.review() + "건";
     }
 
     private static String line(String label, Split split) {

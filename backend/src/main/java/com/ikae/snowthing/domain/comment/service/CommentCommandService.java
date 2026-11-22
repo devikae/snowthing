@@ -14,6 +14,7 @@ import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.contentfilter.service.ContentFilterService;
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
@@ -35,6 +36,7 @@ class CommentCommandService {
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
     private final ApplicationEventPublisher eventPublisher;
     private final ContentFilterService contentFilter;
+    private final ModerationEnqueuer moderation;
 
     @Transactional
     CommentResponse createComment(
@@ -103,6 +105,7 @@ class CommentCommandService {
         Optional<String> matched = contentFilter.inspect(userDetails, request.content());
         matched.ifPresent(ignored -> comment.holdByFilter(contentFilter.now()));
         Comment saved = commentRepository.save(comment);
+        moderation.commentWritten(saved);
         CommentResponse response =
                 CommentResponse.from(saved)
                         .withViewerPermissions(

@@ -186,6 +186,10 @@ export const API_ENDPOINTS = {
     filterHold: (id: string) => `${API_V1_URL}/admin/filter-holds/${encodeURIComponent(id)}`,
     filterHoldAction: (id: string, action: "release" | "ban-ip") =>
       `${API_V1_URL}/admin/filter-holds/${encodeURIComponent(id)}/${action}`,
+    moderations: (page: number, size = 20) => `${API_V1_URL}/admin/moderations?page=${page}&size=${size}`,
+    moderation: (id: string) => `${API_V1_URL}/admin/moderations/${encodeURIComponent(id)}`,
+    moderationAction: (id: string, action: "pass" | "keep") =>
+      `${API_V1_URL}/admin/moderations/${encodeURIComponent(id)}/${action}`,
   },
   public: {
     configs: `${API_V1_URL}/public/configs`,

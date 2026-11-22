@@ -27,6 +27,7 @@ const ADMIN_MENU: { title: string; items: { href: string; label: string }[] }[] 
       { href: "/admin/carpool", label: "카풀" },
       { href: "/admin/resort-reports", label: "설질 제보" },
       { href: "/admin/spam", label: "스팸 보류" },
+      { href: "/admin/moderation", label: "자동 검열" },
       { href: "/admin/chat", label: "IP 차단" },
     ],
   },

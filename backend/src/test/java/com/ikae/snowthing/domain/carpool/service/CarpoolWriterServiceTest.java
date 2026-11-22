@@ -25,6 +25,7 @@ import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
@@ -58,7 +59,8 @@ class CarpoolWriterServiceTest {
                         resortRepository,
                         carpoolDetailRepository,
                         mock(SearchOutboxWriter.class),
-                        imageLifecycle);
+                        imageLifecycle,
+                        mock(ModerationEnqueuer.class));
         Member owner =
                 Member.builder()
                         .publicId(OWNER_PUBLIC_ID)

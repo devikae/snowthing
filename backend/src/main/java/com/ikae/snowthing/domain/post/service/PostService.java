@@ -21,6 +21,7 @@ import com.ikae.snowthing.domain.contentfilter.service.ContentFilterService;
 import com.ikae.snowthing.domain.image.service.ImageUrlResolver;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.post.dto.*;
 import com.ikae.snowthing.domain.post.entity.*;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
@@ -61,6 +62,7 @@ public class PostService {
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
     private final ChatIpBanService chatIpBanService;
     private final ContentFilterService contentFilter;
+    private final ModerationEnqueuer moderation;
 
     @Transactional
     public PostResponse createPost(
@@ -154,6 +156,7 @@ public class PostService {
         Post saved = postRepository.save(post);
         matched.ifPresent(word -> contentFilter.recordPostHold(saved, word));
         searchOutbox.postChanged(saved);
+        moderation.postWritten(saved);
         return PostResponse.from(saved);
     }
 
@@ -462,6 +465,7 @@ public class PostService {
         }
         applyFilterAfterEdit(post, userDetails);
         searchOutbox.postChanged(post);
+        moderation.postWritten(post);
         return PostResponse.from(post);
     }
 

@@ -1,10 +1,14 @@
 package com.ikae.snowthing.domain.resortreport.repository;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +17,11 @@ import com.ikae.snowthing.domain.resortreport.entity.ResortReport;
 import com.ikae.snowthing.domain.resortreport.entity.ResortReportStatus;
 
 public interface ResortReportRepository extends JpaRepository<ResortReport, Long> {
+
+    /** 자동 숨김(IKA-80)이 상태와 내용을 확인하는 동안 삭제나 수정이 끼어들지 않게 잠근다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ResortReport r WHERE r.id = :reportId")
+    Optional<ResortReport> findByIdForUpdate(@Param("reportId") Long reportId);
 
     @Query(
             value =
