@@ -54,12 +54,12 @@ export default function AdminDmMailPage() {
         ? "쪽지 메일 기록을 켤까요? 다음 쪽지부터 발송 요청을 쌓습니다."
         : "쪽지 메일 기록을 끌까요? 다음 쪽지부터 발송 요청을 쌓지 않습니다. 이미 쌓인 요청은 그대로 둡니다.";
     }
-    if (!next) return "쪽지 메일 발송을 끌까요? 지금 보내는 한 통까지만 나가고 그 뒤로는 보내지 않습니다.";
+    if (!next) return "쪽지 메일 발송을 끌까요? 지금 처리 중인 몇 통까지만 나가고 그 뒤로는 보내지 않습니다.";
     if (!data.send.serverAllowed) {
       return "쪽지 메일 발송을 켜 둘까요? 지금은 서버 설정에서 막혀 있어 메일이 나가지 않습니다. 서버 설정을 켜면 실제 회원에게 메일이 나갑니다.";
     }
     const waiting = counts ? counts.PENDING + counts.RETRY_WAIT : 0;
-    const backlog = waiting > 0 ? ` 대기 중인 요청 ${waiting}건도 바로 보냅니다.` : "";
+    const backlog = waiting > 0 ? ` 대기 중인 요청도 최대 ${waiting}건까지 바로 보냅니다.` : "";
     return `쪽지 메일 발송을 켤까요? 실제 회원에게 메일이 나갑니다.${backlog} ${data.deadlineHours}시간이 지난 요청은 보내지 않고 건너뜁니다.`;
   };
 
@@ -122,7 +122,9 @@ export default function AdminDmMailPage() {
           {SWITCHES.map(({ field, label, description }) => {
             const state = data?.[field];
             const on = state?.switchOn ?? false;
-            const blocked = state ? !state.serverAllowed : false;
+            const blocked = state
+              ? !state.serverAllowed || (field === "send" && !data?.mailProviderReady)
+              : false;
             return (
               <li
                 className="admin-ai-row"
