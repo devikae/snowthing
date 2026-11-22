@@ -25,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.aimember.AiMemberRoster.AiMember;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.CommentView;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.PostView;
@@ -81,6 +82,7 @@ class AiMemberContentGuardTest {
     @Mock private SimpMessagingTemplate messagingTemplate;
     @Mock private SharedRequestLimiter sharedLimiter;
     @Mock private ScheduledExecutorService executor;
+    @Mock private SystemConfigService systemConfig;
 
     private AiMemberRoster roster;
     private AiMemberActionService service;
@@ -102,8 +104,12 @@ class AiMemberContentGuardTest {
                         chatService,
                         messagingTemplate,
                         sharedLimiter,
-                        executor);
+                        executor,
+                        systemConfig);
         lenient().when(sharedLimiter.acquire(anyList())).thenReturn(new Decision(true, 0, null));
+        lenient().when(systemConfig.isAiMemberPostEnabled()).thenReturn(true);
+        lenient().when(systemConfig.isAiMemberCommentEnabled()).thenReturn(true);
+        lenient().when(systemConfig.isAiMemberChatEnabled()).thenReturn(true);
         lenient()
                 .when(memberRepository.findStatusById(any()))
                 .thenReturn(Optional.of(MemberStatus.ACTIVE));

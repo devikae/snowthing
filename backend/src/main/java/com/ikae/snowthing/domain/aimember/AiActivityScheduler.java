@@ -144,6 +144,10 @@ public class AiActivityScheduler {
     }
 
     private void runReaction(LocalDateTime now, List<Long> memberIds, List<AiMember> active) {
+        // 꺼진 동안 고른 대상을 실패로 남기면 다시 켰을 때 그 글에 댓글을 못 단다.
+        if (!actionService.commentsEnabled()) {
+            return;
+        }
         List<PostView> posts = queryRepository.findRecentPosts(now.minusDays(1));
         if (posts.isEmpty()) {
             return;

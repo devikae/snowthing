@@ -11,10 +11,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.admin.dto.AdminDashboardStatsResponse;
+import com.ikae.snowthing.domain.admin.dto.AdminDashboardStatsResponse.AiMemberSwitches;
 import com.ikae.snowthing.domain.admin.dto.AdminOverviewResponse;
 import com.ikae.snowthing.domain.admin.dto.AdminOverviewResponse.DailyCount;
 import com.ikae.snowthing.domain.admin.repository.AdminQueryRepository;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.global.config.AiMemberProperties;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -30,6 +32,7 @@ public class AdminDashboardService {
     private final MemberRepository memberRepository;
     private final SystemConfigService systemConfigService;
     private final AdminQueryRepository adminQueryRepository;
+    private final AiMemberProperties aiMemberProperties;
 
     @Transactional(readOnly = true)
     public AdminDashboardStatsResponse getDashboardStats() {
@@ -39,7 +42,12 @@ public class AdminDashboardService {
                 memberRepository.count(),
                 memberRepository.countByCreatedAtAfter(today.atStartOfDay()),
                 systemConfigService.isAnonymousChatEnabled(),
-                systemConfigService.isMarketGuestAccessEnabled());
+                systemConfigService.isMarketGuestAccessEnabled(),
+                new AiMemberSwitches(
+                        aiMemberProperties.enabled(),
+                        systemConfigService.isAiMemberPostEnabled(),
+                        systemConfigService.isAiMemberCommentEnabled(),
+                        systemConfigService.isAiMemberChatEnabled()));
     }
 
     /**
