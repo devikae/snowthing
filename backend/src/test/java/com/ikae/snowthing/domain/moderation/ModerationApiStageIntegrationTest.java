@@ -144,6 +144,42 @@ class ModerationApiStageIntegrationTest extends ModerationTestSupport {
         assertThat(postStatus(postId)).isEqualTo("NORMAL");
     }
 
+    @Test
+    @DisplayName("2단계 응답을 기다리는 동안 고친 글은 이전 수정본의 판정으로 숨기거나 검토 대기에 올리지 않는다")
+    void editDuringApiCallSupersedesOldVerdict() throws Exception {
+        long high = writePost(writerSession, "HIGH 고치는 중", "숨김 점수가 나올 이전 수정본입니다");
+        long mid = writePost(writerSession, "MID 고치는 중", "검토 대기 점수가 나올 이전 수정본입니다");
+        List<Long> editing = new ArrayList<>(List.of(high, mid));
+        reset(apiClient);
+        given(apiClient.moderate(anyList()))
+                .willAnswer(
+                        invocation -> {
+                            List<String> inputs = invocation.getArgument(0);
+                            // 응답이 오기 전에 작성자가 깨끗한 내용으로 고친다(한 번만).
+                            for (Long postId : List.copyOf(editing)) {
+                                editPost(writerSession, postId, "고친 글", "평범한 설질 후기로 고쳤습니다");
+                                editing.remove(postId);
+                            }
+                            return inputs.stream().map(this::scoresFor).toList();
+                        });
+
+        drain();
+
+        for (long postId : List.of(high, mid)) {
+            List<Map<String, Object>> rows =
+                    jdbc.queryForList(
+                            "SELECT status, verdict, reasons FROM content_moderation"
+                                    + " WHERE target_type = 'POST' AND target_id = ?"
+                                    + " ORDER BY content_moderation_id",
+                            postId);
+            assertThat(rows).hasSize(2);
+            assertThat(rows.get(0)).containsEntry("status", "SKIPPED").containsEntry("verdict", null);
+            assertThat((String) rows.get(0).get("reasons")).contains("SUPERSEDED");
+            assertThat(rows.get(1)).containsEntry("status", "DONE").containsEntry("verdict", "PASS");
+            assertThat(postStatus(postId)).isEqualTo("NORMAL");
+        }
+    }
+
     private MockHttpSession otherWriter() throws Exception {
         return login(member("short", Role.ROLE_USER));
     }

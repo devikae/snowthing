@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.comment.repository.CommentRepository;
 import com.ikae.snowthing.domain.moderation.entity.ModerationTargetType;
+import com.ikae.snowthing.domain.moderation.repository.ContentModerationRepository;
 import com.ikae.snowthing.domain.notification.repository.NotificationRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
@@ -41,6 +42,7 @@ public class ModerationActions {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final ResortReportRepository resortReportRepository;
+    private final ContentModerationRepository moderations;
     private final NotificationRepository notificationRepository;
     private final SearchOutboxWriter searchOutbox;
     private final Clock clock;
@@ -48,15 +50,21 @@ public class ModerationActions {
     /**
      * 대상을 잠그고 숨긴다. 지금 보이는 상태가 아니거나 판정한 뒤 내용이 바뀌었으면 숨기지 않고 false를 돌려준다.
      *
-     * @param expectedHash 판정한 내용의 해시. 판정과 숨김 사이에 작성자가 고쳤으면 새 줄이 따로 판정한다
+     * <p>판정한 수정본이 지금 수정본인지는 대상을 잠근 뒤 같은 대상의 더 새 대기 줄이 있는지로 본다. 수정은 원문과 대기 줄을 한 트랜잭션에서 쓰므로, 잠근 뒤에는
+     * 커밋된 수정의 새 줄이 보인다. 내용 해시는 기호와 띄어쓰기를 지워 만들어 기호만 고친 수정을 구분하지 못하므로 보조 확인으로만 쓴다.
+     *
+     * @param moderationId 판정한 대기 줄
+     * @param expectedHash 판정한 내용의 해시
      */
     @Transactional(propagation = Propagation.MANDATORY)
-    public boolean hide(ModerationTargetType type, long targetId, String expectedHash) {
+    public boolean hide(
+            ModerationTargetType type, long targetId, long moderationId, String expectedHash) {
         if (type.isPost()) {
             Post post = postRepository.findByIdForUpdate(targetId).orElse(null);
             if (post == null
                     || post.isDeleted()
                     || post.getStatus() != PostStatus.NORMAL
+                    || moderations.hasNewerRow(type, targetId, moderationId)
                     || !expectedHash.equals(
                             ModerationTextRules.contentHash(post.getTitle(), post.getContent()))) {
                 return false;
@@ -70,6 +78,7 @@ public class ModerationActions {
             Comment comment = commentRepository.findByIdForUpdate(targetId).orElse(null);
             if (comment == null
                     || comment.isDeleted()
+                    || moderations.hasNewerRow(type, targetId, moderationId)
                     || !expectedHash.equals(
                             ModerationTextRules.contentHash("", comment.getContent()))) {
                 return false;
@@ -84,6 +93,7 @@ public class ModerationActions {
         ResortReport report = resortReportRepository.findByIdForUpdate(targetId).orElse(null);
         if (report == null
                 || report.isDeleted()
+                || moderations.hasNewerRow(type, targetId, moderationId)
                 || report.getStatus() != ResortReportStatus.NORMAL
                 || !expectedHash.equals(ModerationTextRules.contentHash("", report.getContent()))) {
             return false;
