@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -47,7 +48,8 @@ class OpenAiModerationClientTest {
                         content()
                                 .json(
                                         "{\"model\":\"omni-moderation-latest\","
-                                                + "\"input\":[\"첫 글\",\"둘째 글\"]}"))
+                                                + "\"input\":[\"첫 글\",\"둘째 글\"]}",
+                                        JsonCompareMode.STRICT))
                 .andRespond(
                         withSuccess(
                                 "{\"id\":\"modr-1\",\"results\":["
