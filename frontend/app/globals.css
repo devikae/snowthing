@@ -193,7 +193,8 @@ button:disabled {
 
 /* Modern alpine community chrome and home */
 .community-page { min-height: 100vh; }
-.community-header { position: sticky; top: 0; z-index: 50; }
+/* 아래 디자인 리뉴얼 블록의 backdrop-filter는 빌드(CSS 최적화)에서 -webkit- 접두사만 남아 Chrome이 읽지 못한다. 실제로 쓰이는 값은 이 줄이라 지우지 않는다. */
+.community-header { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); }
 .community-header-inner { display: flex; height: 64px; align-items: center; justify-content: space-between; gap: 20px; }
 .community-header-left, .community-header-actions { display: flex; min-width: 0; align-items: center; }
 .community-header-left { gap: 28px; }
