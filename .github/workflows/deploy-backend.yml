@@ -3,7 +3,7 @@ name: Deploy Backend
 on:
   push:
     branches: [ "main" ]
-    paths: [ 'backend/**', 'database/**', 'shared/**', '.dockerignore', 'compose.prod.yml', 'scripts/deploy-ecr-service.sh', '.github/workflows/deploy-backend.yml' ]
+    paths: [ 'backend/**', 'database/**', 'shared/**', '.dockerignore', 'compose.prod.yml', 'scripts/deploy-ecr-service.sh', 'scripts/lib/prod-secrets.sh', '.github/workflows/deploy-backend.yml' ]
   workflow_dispatch:
     inputs:
       stable_tag:

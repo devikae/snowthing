@@ -17,6 +17,9 @@ NGINX_CAM_ORIGIN_CONFIG_PATH="/etc/nginx/conf.d/snowthing-cam-origin.conf"
 PROD_ENV_PATH="/etc/snowthing/prod.env"
 # 서비스마다 지금 실행 중인 digest 주소를 남긴다. compose.prod.yml을 손으로 다시 띄울 때 --env-file로 함께 넘긴다.
 IMAGE_RECORD_PATH="/etc/snowthing/images.env"
+# 서버에 /etc/snowthing/parameter-store.env가 있을 때만 Parameter Store 값을 함께 읽는다(IKA-110). 없으면 prod.env만 쓴다.
+# shellcheck source=scripts/lib/prod-secrets.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prod-secrets.sh"
 CLOUDFLARE_IPV4_RANGES=(
   "173.245.48.0/20"
   "103.21.244.0/22"
@@ -123,12 +126,8 @@ seed_image_records() {
 
 compose_service_up() {
   local image="$1"
-  local env_files=(--env-file "$PROD_ENV_PATH")
-  if [[ -f "$IMAGE_RECORD_PATH" ]]; then
-    env_files+=(--env-file "$IMAGE_RECORD_PATH")
-  fi
   # 셸 환경변수가 --env-file 값보다 우선하므로 대상 서비스만 새 digest로 바뀐다.
-  env "$IMAGE_VARIABLE=$image" docker compose     "${env_files[@]}"     -f compose.prod.yml     up -d --no-build "$SERVICE"
+  prod_compose "$IMAGE_VARIABLE=$image" up -d --no-build "$SERVICE"
 }
 
 cleanup_service_images() {
@@ -497,6 +496,13 @@ collect_diagnostics() {
   echo "service=$SERVICE container=$CONTAINER_NAME target_image=$IMAGE_URI" >&2
   docker inspect --format 'status={{.State.Status}} running={{.State.Running}} exit_code={{.State.ExitCode}} restart_count={{.RestartCount}}' "$CONTAINER_NAME" 2>/dev/null >&2 || true
 }
+
+# 서버를 건드리기 전에 비밀값부터 읽는다. 읽지 못하면 여기서 끝나고 실행 중인 컨테이너는 그대로다.
+prod_secrets_load "$AWS_REGION"
+if [[ -n "$PROD_SECRETS_SOURCE" ]]; then
+  # 필수 값이 빠졌으면 pull 전에 실패한다. 값은 출력하지 않는다.
+  prod_compose "$IMAGE_VARIABLE=$IMAGE_URI" config --quiet
+fi
 
 echo "ECR 로그인 및 digest 이미지 pull"
 prepare_diagnostic_directory
