@@ -62,6 +62,18 @@ class ModerationScoreRulesTest {
                 .isEqualTo(ModerationVerdict.REVIEW);
     }
 
+    @Test
+    @DisplayName("숨김 임계값이 검토 임계값보다 낮아도 숨김을 정한 점수는 근거로 남긴다")
+    void hideScoreKeptBelowReviewThreshold() {
+        ModerationProperties.Api lowHide =
+                new ModerationProperties.Api(
+                        true, "key", null, null, 0.5, 0.8, List.of("illicit"), 0, null, null);
+        ModerationScoreRules.Result result =
+                ModerationScoreRules.judge(Map.of("illicit", 0.6, "hate", 0.3), lowHide);
+        assertThat(result.verdict()).isEqualTo(ModerationVerdict.HIDE);
+        assertThat(result.notableScores()).containsOnlyKeys("illicit");
+    }
+
     private ModerationScoreRules.Result judge(Map<String, Double> scores) {
         return ModerationScoreRules.judge(scores, api);
     }

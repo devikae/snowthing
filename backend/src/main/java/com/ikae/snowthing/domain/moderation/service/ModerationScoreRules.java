@@ -27,12 +27,15 @@ public final class ModerationScoreRules {
         Map<String, Double> notable = new LinkedHashMap<>();
         for (Map.Entry<String, Double> entry : scores.entrySet()) {
             double score = entry.getValue() == null ? 0 : entry.getValue();
-            if (hideCategories.contains(entry.getKey()) && score >= api.hideThreshold()) {
+            boolean hides =
+                    hideCategories.contains(entry.getKey()) && score >= api.hideThreshold();
+            if (hides) {
                 verdict = ModerationVerdict.HIDE;
             } else if (score >= api.reviewThreshold()) {
                 verdict = verdict.max(ModerationVerdict.REVIEW);
             }
-            if (score >= api.reviewThreshold()) {
+            // 숨김 임계값을 검토 임계값보다 낮게 잡아도 숨김을 정한 점수는 근거로 남긴다.
+            if (hides || score >= api.reviewThreshold()) {
                 notable.put(entry.getKey(), Math.round(score * 1000) / 1000.0);
             }
         }
@@ -40,7 +43,7 @@ public final class ModerationScoreRules {
     }
 
     /**
-     * @param notableScores 근거로 남길 점수 (검토 임계값 이상만, 소수 셋째 자리)
+     * @param notableScores 근거로 남길 점수 (숨김을 정한 점수와 검토 임계값 이상, 소수 셋째 자리)
      */
     public record Result(ModerationVerdict verdict, Map<String, Double> notableScores) {}
 }
