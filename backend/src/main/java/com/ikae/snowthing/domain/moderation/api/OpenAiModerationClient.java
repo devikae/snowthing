@@ -82,14 +82,16 @@ public class OpenAiModerationClient implements ModerationApiClient {
         List<Map<String, Double>> scores = new ArrayList<>(expected);
         for (JsonNode result : results) {
             JsonNode categoryScores = result.path("category_scores");
-            if (!categoryScores.isObject()) {
+            if (!categoryScores.isObject() || categoryScores.isEmpty()) {
                 throw new ModerationApiException("moderation result has no category_scores");
             }
+            // 점수가 비었거나 숫자가 아니면 통과로 두지 않고 실패로 돌려 재시도와 검토 대기로 보낸다.
             Map<String, Double> row = new LinkedHashMap<>();
             for (Map.Entry<String, JsonNode> entry : categoryScores.properties()) {
-                if (entry.getValue().isNumber()) {
-                    row.put(entry.getKey(), entry.getValue().asDouble());
+                if (!entry.getValue().isNumber()) {
+                    throw new ModerationApiException("moderation score is not a number");
                 }
+                row.put(entry.getKey(), entry.getValue().asDouble());
             }
             scores.add(row);
         }

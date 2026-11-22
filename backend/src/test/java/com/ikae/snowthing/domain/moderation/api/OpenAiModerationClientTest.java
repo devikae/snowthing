@@ -21,10 +21,13 @@ import org.springframework.web.client.RestClient;
 
 import com.ikae.snowthing.domain.moderation.config.ModerationProperties;
 
+import tools.jackson.databind.json.JsonMapper;
+
 /** OpenAI Moderation API 호출 형식과 응답 해석 (IKA-80). 실제 API는 부르지 않는다. */
 class OpenAiModerationClientTest {
 
     private static final String BASE = "https://api.example.test/v1";
+    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final ModerationProperties.Api api =
             new ModerationProperties.Api(true, "sk-test", BASE, null, 0, 0, null, 0, null, null);
@@ -91,6 +94,25 @@ class OpenAiModerationClientTest {
         OpenAiModerationClient client = new OpenAiModerationClient(api, builder.build());
 
         assertThatThrownBy(() -> client.moderate(List.of("가", "나")))
+                .isInstanceOf(ModerationApiException.class);
+    }
+
+    @Test
+    @DisplayName("점수가 비었거나 숫자가 아니면 통과로 두지 않고 실패로 본다")
+    void emptyOrNonNumericScores() {
+        assertThatThrownBy(
+                        () ->
+                                OpenAiModerationClient.parse(
+                                        JSON.readTree("{\"results\":[{\"category_scores\":{}}]}"),
+                                        1))
+                .isInstanceOf(ModerationApiException.class);
+        assertThatThrownBy(
+                        () ->
+                                OpenAiModerationClient.parse(
+                                        JSON.readTree(
+                                                "{\"results\":[{\"category_scores\":"
+                                                        + "{\"sexual\":\"0.9\"}}]}"),
+                                        1))
                 .isInstanceOf(ModerationApiException.class);
     }
 
