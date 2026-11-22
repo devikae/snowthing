@@ -63,8 +63,10 @@ public final class ModerationTextRules {
                             + "|han\\.gl|me2\\.do|vo\\.la|url\\.kr|buly\\.kr|c11\\.kr|shorturl\\.at"
                             + "|cutt\\.ly|rebrand\\.ly|ow\\.ly|tiny\\.cc|lrl\\.kr|zxcv\\.be)/[a-z0-9]");
     private static final Pattern URL = Pattern.compile("(?:https?://|www\\.)[^\\s<>\"'()\\[\\]]+");
+    // 포트는 숫자만 허용하고 바로 뒤에서 주소의 호스트 부분이 끝나야 한다. "snowthing.org:x@다른곳"은 @ 뒤가 실제 호스트다.
     private static final Pattern OWN_HOST =
-            Pattern.compile("^(?:https?://)?(?:[a-z0-9-]+\\.)*snowthing\\.org(?:[/:?#]|$)");
+            Pattern.compile(
+                    "^(?:https?://)?(?:[a-z0-9-]+\\.)*snowthing\\.org(?::[0-9]+)?(?:[/?#]|$)");
 
     private ModerationTextRules() {}
 

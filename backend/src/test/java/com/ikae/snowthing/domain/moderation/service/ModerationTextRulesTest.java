@@ -119,6 +119,15 @@ class ModerationTextRulesTest {
     }
 
     @Test
+    @DisplayName("눈팅 주소를 사용자 정보 자리에 넣은 다른 호스트 주소는 외부 링크로 센다")
+    void ownHostUserInfoIsExternal() {
+        String body =
+                "https://snowthing.org:pw@a.example/1 https://snowthing.org@b.example/2"
+                        + " http://www.snowthing.org:x@c.example/3 https://snowthing.org:8443/ok";
+        assertThat(post(body).externalLinkCount()).isEqualTo(3);
+    }
+
+    @Test
     @DisplayName("정치 글은 표시한다")
     void political() {
         assertThat(post("이번 대선 후보 누구 찍어요").political()).isTrue();
