@@ -405,6 +405,39 @@ class ModerationIntegrationTest extends ModerationTestSupport {
         assertThat(actionCount("MODERATION_DELETE")).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("이전 검토 대기 판정을 처리해도 같은 대상의 더 새 판정은 닫지 않는다")
+    void reviewClosesOnlyOlderRows() throws Exception {
+        long postId = writePost(writerSession, "이전 판정", "문의는 t.me/olderrow 로");
+        drain();
+        long older = ((Number) latest("POST", postId).get("content_moderation_id")).longValue();
+        // 판정이 엇갈려 이전 줄보다 새 HIDE 줄이 아직 검토되지 않고 남은 상황.
+        LocalDateTime now = LocalDateTime.now();
+        jdbc.update(
+                "INSERT INTO content_moderation (target_type, target_id, content_hash, status,"
+                        + " verdict, attempt_count, next_attempt_at, created_at, updated_at,"
+                        + " processed_at) VALUES ('POST', ?, 'x', 'DONE', 'HIDE', 1, ?, ?, ?, ?)",
+                postId,
+                now,
+                now,
+                now,
+                now);
+        long newer = ((Number) latest("POST", postId).get("content_moderation_id")).longValue();
+
+        mockMvc.perform(post(ADMIN_API + "/" + older + "/pass").session(adminSession).with(csrf()))
+                .andExpect(status().isNoContent());
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT review_result FROM content_moderation"
+                                        + " WHERE content_moderation_id = ?",
+                                String.class,
+                                older))
+                .isEqualTo("PASS");
+        assertThat(latest("POST", postId).get("review_result")).isNull();
+        assertThat(queueItem(newer)).isNotNull();
+    }
+
     private long marketPost(String title, String content) {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         return tx.execute(

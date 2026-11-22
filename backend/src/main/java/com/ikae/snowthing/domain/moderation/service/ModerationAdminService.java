@@ -46,7 +46,7 @@ import lombok.RequiredArgsConstructor;
  * </ul>
  *
  * <p>숨김과 해제, 삭제는 기존 관리자 조치(글 블라인드, 장터 상태, 댓글 블라인드, 설질 제보 상태)를 그대로 불러 검색 반영과 조치 기록이 빠지지 않게 한다. 같은
- * 대상의 아직 검토하지 않은 판정은 함께 닫는다. 같은 항목을 두 관리자가 동시에 처리하지 않게 판정 줄을 잠그고 읽는다.
+ * 대상의 아직 검토하지 않은 이전 판정은 함께 닫는다(더 새 판정은 남긴다). 같은 항목을 두 관리자가 동시에 처리하지 않게 판정 줄을 잠그고 읽는다.
  */
 @Service
 @RequiredArgsConstructor
@@ -184,11 +184,7 @@ public class ModerationAdminService {
             AdminActionType action,
             CustomUserDetails admin) {
         repository.markReviewed(
-                row.targetType(),
-                row.targetId(),
-                result,
-                admin == null ? null : admin.getMemberId(),
-                LocalDateTime.now(clock));
+                row, result, admin == null ? null : admin.getMemberId(), LocalDateTime.now(clock));
         actionLogger.record(
                 action,
                 AdminTargetType.CONTENT_MODERATION,

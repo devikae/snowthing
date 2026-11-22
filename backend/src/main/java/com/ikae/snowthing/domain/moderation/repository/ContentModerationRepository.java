@@ -214,24 +214,24 @@ public class ContentModerationRepository {
                 id);
     }
 
-    /** 관리자 처리. 같은 대상의 아직 검토하지 않은 판정을 모두 함께 닫는다. */
+    /**
+     * 관리자 처리. 고른 줄과 같은 대상의 그보다 이전 미검토 판정을 함께 닫는다. 더 새 판정은 그 판정의 조치를 따로 받아야 하므로 닫지 않는다.
+     */
     public int markReviewed(
-            ModerationTargetType type,
-            long targetId,
-            ModerationReviewResult result,
-            Long reviewerId,
-            LocalDateTime now) {
+            Row row, ModerationReviewResult result, Long reviewerId, LocalDateTime now) {
         return jdbc.update(
                 "UPDATE content_moderation SET review_result = ?, reviewed_by = ?, reviewed_at = ?,"
                         + " updated_at = ? WHERE target_type = ? AND target_id = ?"
+                        + " AND content_moderation_id <= ?"
                         + " AND verdict IN ('HIDE', 'REVIEW') AND review_result IS NULL"
                         + " AND status IN ('DONE', 'FAILED')",
                 result.name(),
                 reviewerId,
                 now,
                 now,
-                type.name(),
-                targetId);
+                row.targetType().name(),
+                row.targetId(),
+                row.id());
     }
 
     /** 검토 대기열. 최근 판정 순, ID 보조 정렬. 한 건 더 읽어 다음 쪽 여부를 안다. */
