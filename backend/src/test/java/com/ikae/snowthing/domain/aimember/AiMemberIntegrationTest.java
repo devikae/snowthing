@@ -202,12 +202,12 @@ class AiMemberIntegrationTest {
         LocalDateTime now = LocalDateTime.now();
         for (String key : AI_SWITCH_KEYS) {
             if (systemConfigRepository.findById(key).isEmpty()) {
-                systemConfigRepository.save(new SystemConfig(key, "true", "BOOLEAN", key, "SYSTEM"));
+                systemConfigRepository.save(
+                        new SystemConfig(key, "true", "BOOLEAN", key, "SYSTEM"));
             }
         }
         PostView userPost = userPost(now);
-        given(gateway.compose(any()))
-                .willReturn(new ComposeResponse("r", "스위치 테스트 글", "본문", null));
+        given(gateway.compose(any())).willReturn(new ComposeResponse("r", "스위치 테스트 글", "본문", null));
 
         // 끈다: 관리자 API(PATCH /api/v1/admin/configs/{key})가 부르는 서비스와 같은 경로다.
         for (String key : AI_SWITCH_KEYS) {
