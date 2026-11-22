@@ -8,9 +8,9 @@ import "@toast-ui/editor/dist/toastui-editor.css";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { sanitizeHtml } from "../lib/sanitizeHtml";
-import { readErrorMessage } from "../lib/messageApi";
 import { useImageUploadLease } from "../lib/useImageUploadLease";
 import { prepareImageForUpload } from "../lib/imageFile";
+import { readErrorMessage } from "../lib/http";
 
 export interface ToastEditorHandle {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

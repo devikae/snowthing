@@ -17,7 +17,7 @@ export default async function SlopeComparePage() {
   const resorts = await getSlopeResorts();
   return (
     <div className="community-page">
-      <TopNav active="resort" />
+      <TopNav />
       <main className="community-container">
         <PageHeading
           breadcrumb={<Link href="/slopes">슬로프</Link>}

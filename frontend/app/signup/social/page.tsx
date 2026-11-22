@@ -42,7 +42,7 @@ export default function SocialSignUpPage() {
 
   return (
     <div className="min-h-screen bg-[var(--snow-background)]">
-      <TopNav active="signup" />
+      <TopNav />
       <main className="snow-container px-5 py-10 lg:px-8">
         <section className="mx-auto max-w-2xl">
           <h1 className="mb-6 text-center text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1>

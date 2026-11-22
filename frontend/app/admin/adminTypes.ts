@@ -319,14 +319,7 @@ export interface ApiErrorBody {
   message?: string;
 }
 
-export async function readErrorMessage(response: Response, fallback: string) {
-  try {
-    const body = (await response.json()) as ApiErrorBody;
-    return body.message || fallback;
-  } catch {
-    return fallback;
-  }
-}
+export { readErrorMessage } from "../lib/http";
 
 export function formatDateTime(value: string | null) {
   if (!value) return "-";

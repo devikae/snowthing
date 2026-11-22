@@ -101,9 +101,35 @@ const boardItems: NavItem[] = [
   { href: "/posts?category=SEASON_ROOM", label: "시즌방 모집", key: "seasonRoom" },
 ];
 
-export function TopNav({ active = "home" }: { active?: ActiveNav }) {
+// 주소의 첫 경로로 강조할 메뉴를 고른다. 게시판 목록은 쿼리(category, view)에 따라 달라 화면이 직접 넘긴다.
+const SECTION_NAV: Record<string, ActiveNav> = {
+  posts: "posts",
+  "resort-reports": "posts",
+  carpool: "carpool",
+  market: "market",
+  messages: "profile",
+  profile: "profile",
+  login: "login",
+  "forgot-password": "login",
+  signup: "signup",
+  resorts: "resorts",
+  slopes: "resort",
+  "resort-cam": "resort",
+  tools: "tools",
+  "character-test": "tools",
+  "season-log": "tools",
+};
+
+export function activeNavFromPath(pathname: string | null): ActiveNav {
+  const section = pathname?.split("/")[1] ?? "";
+  return SECTION_NAV[section] ?? "home";
+}
+
+/** active를 넘기지 않으면 주소로 정한다. 오류 화면처럼 주소와 다른 메뉴를 써야 할 때만 넘긴다. */
+export function TopNav({ active: activeOverride }: { active?: ActiveNav }) {
   const router = useRouter();
   const pathname = usePathname();
+  const active = activeOverride ?? activeNavFromPath(pathname);
   const boardMenuRef = useRef<HTMLDetailsElement>(null);
   const profileMenuRef = useRef<HTMLDetailsElement>(null);
 

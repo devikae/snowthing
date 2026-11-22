@@ -24,6 +24,7 @@ import { markdownToPlainText } from "../../lib/markdownText";
 import { mentionPrefix, mergeReplies, replyCursor } from "../../lib/commentReplies";
 // 서버가 넣은 본문 HTML이 첫 화면부터 뷰어와 같은 모양이 되도록 뷰어 스타일을 이 화면 첫 CSS에 싣는다.
 import "@toast-ui/editor/dist/toastui-editor-viewer.css";
+import { getJson, readErrorMessage } from "../../lib/http";
 
 // 뷰어 코드를 받는 동안에는 서버가 만든 본문 HTML(없으면 평문 본문)이 자리를 채운다.
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
@@ -221,8 +222,7 @@ export default function PostDetailClient({
       const res = await fetch(API_ENDPOINTS.posts.comments(publicId, cursor), { credentials: "include" });
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.message || "댓글을 불러오지 못했습니다.");
+        throw new Error(await readErrorMessage(res, "댓글을 불러오지 못했습니다."));
       }
 
       const data: CommentListResponse = await res.json();
@@ -278,12 +278,7 @@ export default function PostDetailClient({
     }));
 
     try {
-      const res = await fetch(API_ENDPOINTS.comments.replies(rootCommentId, cursor), {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("답글을 불러오지 못했습니다.");
-
-      const data: CommentReplyListResponse = await res.json();
+      const data = await getJson<CommentReplyListResponse>(API_ENDPOINTS.comments.replies(rootCommentId, cursor), "답글을 불러오지 못했습니다.");
       setComments((current) =>
         current.map((comment) => {
           if (comment.commentId !== rootCommentId) return comment;
@@ -369,8 +364,7 @@ export default function PostDetailClient({
         body: JSON.stringify({ blinded }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.message || "가리기 상태를 바꾸지 못했습니다.");
+        throw new Error(await readErrorMessage(res, "가리기 상태를 바꾸지 못했습니다."));
       }
       setPost((current) => (current ? { ...current, status: blinded ? "BLOCKED" : "NORMAL" } : current));
     } catch (error) {
@@ -390,8 +384,7 @@ export default function PostDetailClient({
         body: JSON.stringify({ blinded }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.message || "댓글 가리기 상태를 바꾸지 못했습니다.");
+        throw new Error(await readErrorMessage(res, "댓글 가리기 상태를 바꾸지 못했습니다."));
       }
       setReplyPagingByRootId({});
       await fetchComments();
@@ -466,8 +459,7 @@ export default function PostDetailClient({
         }
         return;
       }
-      const errorData = await res.json().catch(() => ({}));
-      setReactionMsg(errorData.message || "스크랩하지 못했습니다.");
+      setReactionMsg(await readErrorMessage(res, "스크랩하지 못했습니다."));
     } catch {
       setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
@@ -703,7 +695,7 @@ export default function PostDetailClient({
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--snow-background)]">
-        <TopNav active="posts" />
+        <TopNav />
         <div className="p-12 text-center text-sm text-[var(--snow-muted)]">불러오는 중입니다.</div>
       </div>
     );
@@ -712,7 +704,7 @@ export default function PostDetailClient({
   if (errorMsg || !post) {
     return (
       <div className="min-h-screen bg-[var(--snow-background)]">
-        <TopNav active="posts" />
+        <TopNav />
         <main className="snow-container px-5 py-12 text-center">
           <p className="text-[var(--snow-error)]">{errorMsg || "게시글이 존재하지 않습니다."}</p>
           <Link href="/posts" className="snow-btn-secondary mt-5">
@@ -725,7 +717,7 @@ export default function PostDetailClient({
 
   return (
     <div className="min-h-screen bg-[var(--snow-background)]">
-      <TopNav active="posts" />
+      <TopNav />
       <main className="post-detail-page community-container content-detail-page">
         <div className="post-detail-toolbar">
           <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>

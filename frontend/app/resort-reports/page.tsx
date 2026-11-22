@@ -9,6 +9,7 @@ import { RESORT_MAP } from "../lib/resortTags";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { CompactSelect } from "../components/CompactSelect";
+import { readErrorMessage } from "../lib/http";
 
 interface ResortMaster {
   id: number;
@@ -92,13 +93,12 @@ export default function ResortReportsPage() {
       await loadReports();
       return;
     }
-    const data = await response.json().catch(() => ({}));
-    alert(data.message || "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    alert(await readErrorMessage(response, "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
   };
 
   return (
     <div className="community-page">
-      <TopNav active="posts" />
+      <TopNav />
       <main className="community-container resort-report-page">
         <PageHeading title="오늘의 설질" description="라이더가 직접 전하는 리조트 현장 소식입니다."
           meta={<time className="snow-date-badge">{koreanToday}</time>}

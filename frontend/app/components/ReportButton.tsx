@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { readErrorMessage } from "../lib/http";
 
 const REASONS: [string, string][] = [
   ["RIGHTS_INFRINGEMENT", "명예훼손, 사생활 침해, 저작권 침해"],
@@ -27,7 +28,7 @@ export function ReportButton({ targetType, targetId, className }: { targetType: 
     try {
       const response = await csrfFetch(API_ENDPOINTS.reports.create, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetType, targetId, reason, detail }) });
       if (response.status === 401 || response.status === 403) { setMessage("신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요."); return; }
-      if (!response.ok) { const body = await response.json().catch(() => null); setMessage(body?.message ?? "신고를 접수하지 못했습니다."); return; }
+      if (!response.ok) { setMessage(await readErrorMessage(response, "신고를 접수하지 못했습니다.")); return; }
       setDone(true);
       setMessage("신고를 접수했습니다. 로그인한 회원에게는 확인 결과를 알림으로 알려 드립니다.");
     } catch { setMessage("신고를 접수하지 못했습니다."); }

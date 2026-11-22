@@ -18,6 +18,7 @@ import { csrfFetch } from "./lib/csrfFetch";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
 import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 import { HOME_CARPOOL_SIZE, HOME_FEED_SIZE, HOME_MARKET_SIZE, type HomeCarpoolItem, type HomeInitialData, type HomePost, type MarketPreviewItem } from "./lib/homeFeed";
+import { readErrorMessage } from "./lib/http";
 
 type HomeFeedKey = "all" | "notice" | "free" | "anonymous" | "qna" | "food" | "crew" | "season_room";
 
@@ -184,8 +185,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
         setSnowReportContent("");
         await loadTodayReports({ quiet: true });
       } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.message || "설질 제보를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        alert(await readErrorMessage(res, "설질 제보를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       }
     } catch {
       alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
@@ -271,7 +271,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
 
   return (
     <div className="community-page">
-      <TopNav active="home" />
+      <TopNav />
       <main className="community-container home-main">
         {/* 소개 문구는 헤더 로고 옆에 보인다. 홈 제목은 화면 낭독기와 검색엔진용으로 둔다. */}
         <h1 className="sr-only">윈터스포츠 커뮤니티 눈팅</h1>

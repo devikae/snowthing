@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BlockedMember, MESSAGE_ENDPOINTS, formatMessageDate, readErrorMessage, unblockMember } from "../lib/messageApi";
+import { BlockedMember, MESSAGE_ENDPOINTS, formatMessageDate, unblockMember } from "../lib/messageApi";
 import styles from "./messages.module.css";
 import { errorText } from "../lib/errorText";
+import { readErrorMessage } from "../lib/http";
 
 /** 설정 화면의 차단 목록. 차단한 회원과는 서로 쪽지를 보낼 수 없다. */
 export function BlockedMembersSection() {

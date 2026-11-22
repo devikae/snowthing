@@ -101,7 +101,7 @@ export default function SlopesPage() {
 
   return (
     <div className="community-page">
-      <TopNav active="resort" />
+      <TopNav />
       <main className="community-container slopes-page">
         <PageHeading
           title="슬로프 현황"

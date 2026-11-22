@@ -50,7 +50,7 @@ function ComposeMessage() {
 export default function NewMessagePage() {
   return (
     <div className="community-page">
-      <TopNav active="profile" />
+      <TopNav />
       <main className={`community-container ${styles.page}`}>
         <header className={styles.heading}>
           <div>

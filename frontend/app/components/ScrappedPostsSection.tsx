@@ -6,8 +6,8 @@ import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { errorText } from "../lib/errorText";
 import { formatKoreanDate } from "../lib/koreanDate";
-import { readErrorMessage } from "../lib/messageApi";
 import styles from "./messages.module.css";
+import { readErrorMessage } from "../lib/http";
 
 interface ScrappedPost {
   postPublicId: string;

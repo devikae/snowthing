@@ -14,6 +14,8 @@ import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
+import { readErrorMessage } from "../../../lib/http";
+import { PRODUCT_CONDITION_OPTIONS, TRANSACTION_METHOD_OPTIONS } from "../../marketOptions";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
 
@@ -33,8 +35,6 @@ interface Detail {
   canEdit: boolean;
 }
 
-const conditions = [["NEW", "새 상품"], ["LIKE_NEW", "거의 새 상품"], ["GOOD", "사용감 적음"], ["USED", "사용감 있음"], ["DAMAGED", "수리, 하자 있음"]] as const;
-const methods = [["DIRECT", "직거래"], ["DELIVERY", "택배"], ["BOTH", "모두 가능"]] as const;
 
 export default function MarketEditPage({ params }: { params: Promise<{ publicId: string }> }) {
   const { publicId } = use(params);
@@ -117,8 +117,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
           body: formData,
         });
         if (!response.ok) {
-          const data = await response.json().catch(() => null);
-          throw new Error(data?.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          throw new Error(await readErrorMessage(response, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
         const uploaded: { imageUrl: string } = await response.json();
         setImages((current) => [...current, uploaded.imageUrl]);
@@ -167,8 +166,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
         router.replace(`/market/${publicId}`);
         return;
       }
-      const data = await response.json().catch(() => null);
-      setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해 주세요.");
+      setError(await readErrorMessage(response, "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해 주세요."));
     } catch {
       setError("판매글을 수정하지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요.");
     }
@@ -177,16 +175,16 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
 
   return (
     <div className="community-page">
-      <TopNav active="market" />
+      <TopNav />
       <main className="community-container market-compose-page content-compose-page">
         <PageHeading title="판매글 수정" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 수정해 주세요." />
         {!detail ? <div className="market-state">{error || "판매글을 불러오는 중입니다."}</div> : <form className="market-compose-card" onSubmit={(event) => void submit(event)}>
           {error && <div className="compose-error" role="alert">{error}</div>}
           <div className="market-form-grid">
             <label><span>상품 분류 *</span><select value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)}>{categories.map((category) => <option key={category.code} value={category.code}>{category.name}</option>)}</select></label>
-            <label><span>상품 상태 *</span><select value={productCondition} onChange={(event) => setProductCondition(event.target.value)}>{conditions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>
+            <label><span>상품 상태 *</span><select value={productCondition} onChange={(event) => setProductCondition(event.target.value)}>{PRODUCT_CONDITION_OPTIONS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>
           </div>
-          <fieldset className="market-radio-field"><legend>거래 방식 *</legend>{methods.map(([code, label]) => <label key={code}><input type="radio" name="transactionMethod" checked={transactionMethod === code} onChange={() => setTransactionMethod(code)} />{label}</label>)}</fieldset>
+          <fieldset className="market-radio-field"><legend>거래 방식 *</legend>{TRANSACTION_METHOD_OPTIONS.map(([code, label]) => <label key={code}><input type="radio" name="transactionMethod" checked={transactionMethod === code} onChange={() => setTransactionMethod(code)} />{label}</label>)}</fieldset>
           <label className="market-form-field"><span>글 제목 *</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} /></label>
           <div className="market-price-row"><label><span>가격 *</span><div><input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={8} value={free ? "" : price} onChange={(event) => setPrice(event.target.value.replace(/\D/g, ""))} disabled={free} /><b>원</b></div></label><label className="market-check"><input type="checkbox" checked={negotiable} onChange={(event) => { setNegotiable(event.target.checked); if (event.target.checked) setFree(false); }} />가격 협의 가능</label><label className="market-check"><input type="checkbox" checked={free} onChange={(event) => { setFree(event.target.checked); if (event.target.checked) setNegotiable(false); }} />무료 나눔</label></div>
           <label className="market-form-field"><span>연락처 * <small>전화번호나 카카오톡 ID 등 자유 입력, 최대 30자</small></span><input value={contact} onChange={(event) => setContact(event.target.value)} maxLength={30} placeholder="구매 희망자가 연락할 수단을 입력해 주세요." /></label>
