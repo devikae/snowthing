@@ -32,13 +32,15 @@ public class DmMailOutboxWriter {
     private final DmMailOutboxRepository outbox;
     private final NotificationSettingService settings;
     private final DmMailProperties properties;
+    private final DmMailSwitches switches;
     private final DmMailSender sender;
     private final DmMailComposer composer;
     private final Clock clock;
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void messageSent(DirectMessage message) {
-        if (!properties.enqueueEnabled()) {
+        // 설정 캐시를 읽는다. 쪽지마다 DB를 조회하지 않는다.
+        if (!switches.enqueueOn()) {
             return;
         }
         Long receiverId = message.getReceiver().getId();

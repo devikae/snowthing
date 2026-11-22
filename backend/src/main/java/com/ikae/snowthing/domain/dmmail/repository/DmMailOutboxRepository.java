@@ -271,6 +271,26 @@ public class DmMailOutboxRepository {
                 params(ids, token, now, Map.of("reason", reason.name())));
     }
 
+    /**
+     * 발송 기한이 지난 대기 행(PENDING, RETRY_WAIT)을 SKIPPED로 넘긴다. 발송이 꺼져 있던 동안 쌓인 행을 한 번에 정리할 때 쓴다. 선점된 행
+     * (PROCESSING)은 건드리지 않는다. 선점과 같은 순서(event_id)로 잠가 서로 교착하지 않게 한다.
+     */
+    public int skipStale(
+            LocalDateTime createdAtOrBefore,
+            DmMailSkipReason reason,
+            LocalDateTime now,
+            int limit) {
+        return jdbc.update(
+                "UPDATE dm_mail_outbox SET status = 'SKIPPED', skip_reason = ?, lease_until = NULL,"
+                        + " updated_at = ?"
+                        + " WHERE status IN ('PENDING', 'RETRY_WAIT') AND created_at <= ?"
+                        + " ORDER BY event_id LIMIT ?",
+                reason.name(),
+                now,
+                createdAtOrBefore,
+                limit);
+    }
+
     public Map<DmMailStatus, Long> countByStatus() {
         Map<DmMailStatus, Long> counts = new EnumMap<>(DmMailStatus.class);
         for (DmMailStatus status : DmMailStatus.values()) {
