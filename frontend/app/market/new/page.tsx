@@ -15,7 +15,7 @@ import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { errorText } from "../../lib/errorText";
-import { readApiError } from "../../lib/readApiError";
+import { readApiError, readErrorMessage } from "../../lib/http";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), { ssr: false });
@@ -110,8 +110,7 @@ export default function MarketCreatePage() {
         formData.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: formData });
         if (!response.ok) {
-          const data = await response.json().catch(() => null);
-          throw new Error(data?.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          throw new Error(await readErrorMessage(response, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
         const uploaded: UploadedImage = await response.json();
         setImages((current) => [...current, uploaded]);

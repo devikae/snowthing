@@ -2,6 +2,7 @@ import { API_V1_URL } from "./api";
 import { fetchViewer } from "./viewer";
 import { csrfFetch } from "./csrfFetch";
 import { formatKoreanDate } from "./koreanDate";
+import { readErrorMessage } from "./http";
 
 // 쪽지와 차단 API. 다른 작업과 api.ts 충돌을 줄이려고 따로 둔다.
 export const MESSAGE_ENDPOINTS = {
@@ -76,11 +77,6 @@ export interface BlockedMember {
 }
 
 export const MESSAGE_MAX_LENGTH = 1000;
-
-export async function readErrorMessage(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-  return typeof data?.message === "string" ? data.message : fallback;
-}
 
 /** 쪽지 작성 화면 주소. 판매글에서 보낼 때는 판매글 publicId와 제목을 함께 넘긴다. */
 export function composeMessageHref(

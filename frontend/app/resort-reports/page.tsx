@@ -9,6 +9,7 @@ import { RESORT_MAP } from "../lib/resortTags";
 import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { CompactSelect } from "../components/CompactSelect";
+import { readErrorMessage } from "../lib/http";
 
 interface ResortMaster {
   id: number;
@@ -92,8 +93,7 @@ export default function ResortReportsPage() {
       await loadReports();
       return;
     }
-    const data = await response.json().catch(() => ({}));
-    alert(data.message || "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    alert(await readErrorMessage(response, "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
   };
 
   return (

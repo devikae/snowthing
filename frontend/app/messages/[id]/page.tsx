@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { MessageComposeForm } from "../../components/MessageComposeForm";
 import { csrfFetch } from "../../lib/csrfFetch";
-import { MESSAGE_ENDPOINTS, MessageDetail, formatMessageDate, notifyMessagesUpdated, readErrorMessage } from "../../lib/messageApi";
+import { MESSAGE_ENDPOINTS, MessageDetail, formatMessageDate, notifyMessagesUpdated } from "../../lib/messageApi";
 import styles from "../../components/messages.module.css";
 import { errorText } from "../../lib/errorText";
+import { readErrorMessage } from "../../lib/http";
 
 export default function MessageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

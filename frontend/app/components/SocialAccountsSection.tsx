@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { API_ENDPOINTS, SocialLoginProvider } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { errorText } from "../lib/errorText";
+import { readErrorMessage } from "../lib/http";
 
 type Provider = "KAKAO" | "NAVER" | "GOOGLE";
 interface SocialAccounts { passwordLogin: boolean; accounts: { provider: Provider; connectedAt: string }[]; }
@@ -27,10 +28,6 @@ const LINK_ERROR_MESSAGES: Record<string, string> = {
 
 const labelOf = (provider: string) => PROVIDERS.find(x => x.key === provider)?.label ?? provider;
 
-async function message(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-  return data?.message ?? fallback;
-}
 
 export function SocialAccountsSection() {
   const [data, setData] = useState<SocialAccounts | null>(null);
@@ -44,7 +41,7 @@ export function SocialAccountsSection() {
   const load = useCallback(async () => {
     try {
       const response = await fetch(API_ENDPOINTS.members.socialAccounts, { credentials: "include" });
-      if (!response.ok) throw new Error(await message(response, "로그인 방법을 불러오지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "로그인 방법을 불러오지 못했습니다."));
       setData(await response.json());
     } catch (e) { setError(errorText(e, "로그인 방법을 불러오지 못했습니다.")); }
   }, []);
@@ -76,7 +73,7 @@ export function SocialAccountsSection() {
       const response = await csrfFetch(API_ENDPOINTS.auth.oauth2Link(provider.path), password === undefined
         ? { method: "POST" }
         : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: password }) });
-      if (!response.ok) throw new Error(await message(response, "소셜 계정 연결을 시작하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "소셜 계정 연결을 시작하지 못했습니다."));
       const { authorizationUrl }: { authorizationUrl: string } = await response.json();
       setCurrentPassword("");
       window.location.assign(authorizationUrl);
@@ -106,7 +103,7 @@ export function SocialAccountsSection() {
     setBusy(provider.key); setNotice(""); setError("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.socialAccount(provider.path), { method: "DELETE" });
-      if (!response.ok) throw new Error(await message(response, "연결을 해제하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "연결을 해제하지 못했습니다."));
       setNotice(`${provider.label} 로그인 연결을 해제했습니다.`);
       await load();
     } catch (e) { setError(errorText(e, "연결을 해제하지 못했습니다.")); }

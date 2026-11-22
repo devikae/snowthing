@@ -15,6 +15,7 @@ import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { errorText } from "../lib/errorText";
 import "./profile.css";
+import { readErrorMessage } from "../lib/http";
 
 interface Preference { id: number; name: string; }
 interface Settings {
@@ -24,10 +25,6 @@ interface Settings {
 }
 interface Form { nickname: string; bio: string; departureRegion: string; resortIds: number[]; ridingStyleIds: number[]; }
 const toForm = (p: Settings): Form => ({ nickname: p.nickname, bio: p.bio ?? "", departureRegion: p.departureRegion ?? "", resortIds: p.resorts.map(x => x.id), ridingStyleIds: p.ridingStyles.map(x => x.id) });
-async function message(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-  return data?.message ?? fallback;
-}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -65,7 +62,7 @@ export default function ProfilePage() {
         fetch(API_ENDPOINTS.master.ridingStyles, { credentials: "include" }),
       ]);
       if (responses[0].status === 401) { router.replace("/login?returnUrl=/profile"); return; }
-      for (const response of responses) if (!response.ok) throw new Error(await message(response, "내 정보와 선택 항목을 불러오지 못했습니다. 다시 시도해 주세요."));
+      for (const response of responses) if (!response.ok) throw new Error(await readErrorMessage(response, "내 정보와 선택 항목을 불러오지 못했습니다. 다시 시도해 주세요."));
       const p: Settings = await responses[0].json();
       const resortData: Preference[] = await responses[1].json();
       const styleData: { id: number; styleName: string }[] = await responses[2].json();
@@ -107,7 +104,7 @@ export default function ProfilePage() {
     setCheckingNickname(true); setNicknameMessage("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.nicknameAvailability, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname }) });
-      if (!response.ok) throw new Error(await message(response, "중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const result: { nickname: string; available: boolean } = await response.json();
       if (version !== nicknameVersion.current) return;
       setCheckedNickname(result.available && result.nickname === nickname ? nickname : null);
@@ -121,7 +118,7 @@ export default function ProfilePage() {
     setBusy("save"); setError(""); setNotice("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.settings, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      if (!response.ok) throw new Error(await message(response, "내 정보를 저장하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "내 정보를 저장하지 못했습니다."));
       const p: Settings = await response.json(); setProfile(p); setForm(toForm(p));
       setCheckedNickname(null); setNicknameMessage(""); setNotice("내 정보를 저장했습니다.");
       window.dispatchEvent(new Event("snowthing-profile-updated"));
@@ -140,7 +137,7 @@ export default function ProfilePage() {
         if (fileRef.current) fileRef.current.value = "";
         return;
       }
-      if (!response.ok) throw new Error(await message(response, "프로필 사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "프로필 사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const url = reset ? null : (await response.json()).imageUrl;
       setProfile({ ...profile, profileImageUrl: url }); setPhoto(null); setPreview(null);
       if (fileRef.current) fileRef.current.value = "";
@@ -157,7 +154,7 @@ export default function ProfilePage() {
     setBusy("password"); setError(""); setNotice("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.changePassword, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
-      if (!response.ok) throw new Error(await message(response, "비밀번호를 변경하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "비밀번호를 변경하지 못했습니다."));
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
       allowNavigation.current = true;
       window.location.href = "/login?passwordChanged=1";
@@ -170,7 +167,7 @@ export default function ProfilePage() {
     try {
       const body = profile.passwordChangeAvailable ? { password: withdrawInput } : { confirmation: withdrawInput };
       const response = await csrfFetch(API_ENDPOINTS.members.withdrawal, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!response.ok) throw new Error(await message(response, "탈퇴를 처리하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "탈퇴를 처리하지 못했습니다."));
       allowNavigation.current = true;
       window.location.href = "/login?withdrawn=1";
     } catch (e) { setError(e instanceof Error ? e.message : "탈퇴를 처리하지 못했습니다."); setBusy(null); }

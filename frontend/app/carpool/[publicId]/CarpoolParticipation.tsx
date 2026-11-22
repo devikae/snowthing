@@ -6,8 +6,9 @@ import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { errorText } from "../../lib/errorText";
 import { fetchViewer, type Viewer } from "../../lib/viewer";
-import { CARPOOL_REVIEW_TAGS, responseMessage, type CarpoolReviewRating, type CarpoolReviewTag } from "../review";
+import { CARPOOL_REVIEW_TAGS, type CarpoolReviewRating, type CarpoolReviewTag } from "../review";
 import "../review.css";
+import { readErrorMessage } from "../../lib/http";
 
 interface Participant {
   publicId: string | null;
@@ -43,7 +44,7 @@ export function CarpoolParticipation({ publicId }: { publicId: string }) {
         fetch(API_ENDPOINTS.carpool.participation(publicId), { credentials: "include", cache: "no-store" }),
         fetchViewer(),
       ]);
-      if (!response.ok) throw new Error(await responseMessage(response, "함께 탄 사람을 불러오지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "함께 탄 사람을 불러오지 못했습니다."));
       setData(await response.json());
       setViewer(me);
     } catch (loadError) {
@@ -65,7 +66,7 @@ export function CarpoolParticipation({ publicId }: { publicId: string }) {
         method: "POST",
         ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
       });
-      if (!response.ok) throw new Error(await responseMessage(response, fallback));
+      if (!response.ok) throw new Error(await readErrorMessage(response, fallback));
       await load();
       return true;
     } catch (sendError) {

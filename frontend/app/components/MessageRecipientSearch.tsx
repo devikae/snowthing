@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { composeMessageHref, MESSAGE_ENDPOINTS, readErrorMessage } from "../lib/messageApi";
+import { composeMessageHref, MESSAGE_ENDPOINTS } from "../lib/messageApi";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import styles from "./messages.module.css";
 import { errorText } from "../lib/errorText";
+import { readErrorMessage } from "../lib/http";
 
 const MIN_LENGTH = 2;
 const DEBOUNCE_MS = 300;

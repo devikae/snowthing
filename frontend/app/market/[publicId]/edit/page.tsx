@@ -14,6 +14,7 @@ import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
+import { readErrorMessage } from "../../../lib/http";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
 
@@ -117,8 +118,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
           body: formData,
         });
         if (!response.ok) {
-          const data = await response.json().catch(() => null);
-          throw new Error(data?.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          throw new Error(await readErrorMessage(response, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
         const uploaded: { imageUrl: string } = await response.json();
         setImages((current) => [...current, uploaded.imageUrl]);
@@ -167,8 +167,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
         router.replace(`/market/${publicId}`);
         return;
       }
-      const data = await response.json().catch(() => null);
-      setError(data?.message || "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해 주세요.");
+      setError(await readErrorMessage(response, "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해 주세요."));
     } catch {
       setError("판매글을 수정하지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요.");
     }

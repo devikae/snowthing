@@ -19,6 +19,7 @@ import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
 import { fetchViewer, isAdminViewer } from "../../lib/viewer";
+import { readErrorMessage } from "../../lib/http";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -230,8 +231,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         return;
       }
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.message || "댓글을 등록하지 못했습니다.");
+        throw new Error(await readErrorMessage(response, "댓글을 등록하지 못했습니다."));
       }
       commentIdempotencyKey.reset();
       if (parentId) {
@@ -268,8 +268,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         body: JSON.stringify({ tradeStatus, version: listing.version }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        setError(data?.message || "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+        setError(await readErrorMessage(response, "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해 주세요."));
         return;
       }
       const data: { tradeStatus: string; version: number; updatedAt: string } = await response.json();
@@ -293,8 +292,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         body: JSON.stringify({ moderationStatus: action.status }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        setError(data?.message || "판매글 상태를 바꾸지 못했습니다.");
+        setError(await readErrorMessage(response, "판매글 상태를 바꾸지 못했습니다."));
         return;
       }
       setListing((current) => (current ? { ...current, status: action.status } : current));
@@ -315,8 +313,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         router.replace("/market");
         return;
       }
-      const data = await response.json().catch(() => null);
-      setError(data?.message || "판매글을 삭제하지 못했습니다.");
+      setError(await readErrorMessage(response, "판매글을 삭제하지 못했습니다."));
     } catch {
       setError("판매글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {

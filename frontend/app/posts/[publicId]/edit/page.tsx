@@ -15,6 +15,7 @@ import { API_ENDPOINTS } from "../../../lib/api";
 import { CommentProfileAvatar } from "../../../components/CommentProfileAvatar";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
+import { readErrorMessage } from "../../../lib/http";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
@@ -144,7 +145,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
         const form = new FormData();
         form.append("file", file);
         const response = await csrfFetch(API_ENDPOINTS.images.upload, { method: "POST", body: form });
-        if (!response.ok) { const data = await response.json().catch(() => null); throw new Error(data?.message || "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요."); }
+        if (!response.ok) { throw new Error(await readErrorMessage(response, "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.")); }
         const uploaded: { imageUrl: string } = await response.json();
         setImages((current) => [...current, uploaded.imageUrl]);
       }

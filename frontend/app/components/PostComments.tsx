@@ -14,6 +14,7 @@ import { formatShortDateTime } from "../lib/koreanDate";
 import { mergeReplies, replyCursor } from "../lib/commentReplies";
 import { useReplyTarget } from "./useReplyTarget";
 import { ReplyComposer } from "./ReplyComposer";
+import { getJson, readErrorMessage } from "../lib/http";
 
 interface WriterInfo {
   publicId: string | null;
@@ -87,11 +88,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     setError("");
     if (!append) setLoading(true);
     try {
-      const response = await fetch(API_ENDPOINTS.posts.comments(postPublicId, cursor, COMMENT_PAGE_SIZE), {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("댓글을 불러오지 못했습니다.");
-      const data: CommentListResponse = await response.json();
+      const data = await getJson<CommentListResponse>(API_ENDPOINTS.posts.comments(postPublicId, cursor, COMMENT_PAGE_SIZE), "댓글을 불러오지 못했습니다.");
       setComments((current) => (append ? mergeUnique(current, data.comments || []) : data.comments || []));
       setTotalCount(data.totalCommentCount || 0);
       setNextCursor(data.nextCursor ?? null);
@@ -125,8 +122,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         body,
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "댓글을 등록하지 못했습니다.");
+        throw new Error(await readErrorMessage(response, "댓글을 등록하지 못했습니다."));
       }
       idempotencyKey.reset();
       const created: CommentItem = await response.json();
@@ -155,11 +151,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     setWorking(true);
     setError("");
     try {
-      const response = await fetch(API_ENDPOINTS.comments.replies(root.commentId, cursor, COMMENT_PAGE_SIZE), {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("답글을 불러오지 못했습니다.");
-      const data: ReplyListResponse = await response.json();
+      const data = await getJson<ReplyListResponse>(API_ENDPOINTS.comments.replies(root.commentId, cursor, COMMENT_PAGE_SIZE), "답글을 불러오지 못했습니다.");
       setComments((current) => current.map((item) => item.commentId === root.commentId
         ? { ...item, replyCount: data.totalReplyCount, previewReplies: mergeReplies(item.previewReplies, data.replies || []), hasMoreReplies: data.hasNext }
         : item));

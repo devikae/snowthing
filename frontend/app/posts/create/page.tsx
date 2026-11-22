@@ -14,7 +14,7 @@ import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../lib/api";
-import { readApiError } from "../../lib/readApiError";
+import { readApiError } from "../../lib/http";
 import { LoginExpiredNotice } from "../../components/LoginExpiredNotice";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";

@@ -7,6 +7,7 @@ import { type FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { carpoolCostLabel, formatCarpoolDateTime } from "./format";
+import { readErrorMessage } from "../lib/http";
 
 interface CarpoolItem {
   publicId: string;
@@ -64,8 +65,7 @@ function CarpoolList() {
     void fetch(`${API_ENDPOINTS.carpool.list}?page=${page - 1}&size=${PAGE_SIZE}${keywordQuery}`, { credentials: "include" })
       .then(async (response) => {
         if (response.status === 400 || response.status === 429) {
-          const body = await response.json().catch(() => null);
-          return { rejected: typeof body?.message === "string" ? body.message : "카풀 모집글을 불러오지 못했습니다." };
+          return { rejected: await readErrorMessage(response, "카풀 모집글을 불러오지 못했습니다.") };
         }
         if (!response.ok) throw new Error();
         return response.json();

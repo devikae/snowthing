@@ -10,7 +10,7 @@ import { csrfFetch } from "../../lib/csrfFetch";
 import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { API_ENDPOINTS } from "../../lib/api";
-import { readApiError } from "../../lib/readApiError";
+import { readApiError } from "../../lib/http";
 import KakaoMapPicker, { MapPlace } from "../KakaoMapPicker";
 
 type TripType = "ONE_WAY" | "ROUND_TRIP";

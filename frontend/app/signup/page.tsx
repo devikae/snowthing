@@ -10,6 +10,7 @@ import { API_ENDPOINTS } from "../lib/api";
 import { errorText } from "../lib/errorText";
 import { safeReturnUrl } from "../lib/safeReturnUrl";
 import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "./RegistrationConsentForm";
+import { readErrorMessage } from "../lib/http";
 
 interface ResortMaster { id: number; name: string; regionName: string; }
 interface RidingStyleMaster { id: number; styleName: string; description: string; }
@@ -19,14 +20,6 @@ interface VerificationTokenResponse { verificationToken: string; expiresInSecond
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const NICKNAME_REGEX = /^[a-zA-Z0-9가-힣]{2,10}$/;
 
-async function readError(response: Response, fallback: string) {
-  try {
-    const body = await response.json();
-    return body.message || body.error || fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -106,11 +99,11 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const availabilityResponse = await csrfFetch(API_ENDPOINTS.members.emailAvailability, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-      if (!availabilityResponse.ok) throw new Error(await readError(availabilityResponse, "이메일 중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      if (!availabilityResponse.ok) throw new Error(await readErrorMessage(availabilityResponse, "이메일 중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const availability = await availabilityResponse.json();
       if (!availability.available) throw new Error("이미 가입된 이메일이거나 탈퇴 후 30일이 지나지 않은 이메일입니다.");
       const response = await csrfFetch(API_ENDPOINTS.auth.requestSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-      if (!response.ok) throw new Error(await readError(response, "인증번호를 보내지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "인증번호를 보내지 못했습니다."));
       const body: VerificationSendResponse = await response.json();
       setVerificationRequestId(body.requestId);
       setResendSeconds(body.resendAvailableInSeconds);
@@ -127,7 +120,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.auth.confirmSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: verificationRequestId, code: verificationCode }) });
-      if (!response.ok) throw new Error(await readError(response, "인증번호를 확인하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "인증번호를 확인하지 못했습니다."));
       const body: VerificationTokenResponse = await response.json();
       setEmailVerificationToken(body.verificationToken);
       setVerificationExpiresSeconds(0);
@@ -152,7 +145,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ...consentPayload(consent) }) });
-      if (!response.ok) throw new Error(await readError(response, "가입하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "가입하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
       clearViewerCache();
       router.push(loginResponse.ok ? returnUrl : loginHref);

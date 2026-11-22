@@ -6,12 +6,9 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { errorText } from "../lib/errorText";
+import { readErrorMessage } from "../lib/http";
 
 
-async function errorMessage(response: Response, fallback: string) {
-  try { const body = await response.json(); return body.message || body.error || fallback; }
-  catch { return fallback; }
-}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -30,7 +27,7 @@ export default function ForgotPasswordPage() {
     setError(""); setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.auth.requestPasswordReset, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-      if (!response.ok) throw new Error(await errorMessage(response, "인증번호 요청에 실패했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "인증번호 요청에 실패했습니다."));
       const body = await response.json();
       setRequestId(body.requestId);
       setNotice("입력한 이메일이 가입된 계정과 일치하면 인증번호가 발송됩니다. 메일을 확인해 주세요.");
@@ -44,7 +41,7 @@ export default function ForgotPasswordPage() {
     setError(""); setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.auth.confirmPasswordReset, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId, code }) });
-      if (!response.ok) throw new Error(await errorMessage(response, "인증번호가 올바르지 않습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "인증번호가 올바르지 않습니다."));
       const body = await response.json();
       setResetToken(body.resetToken);
       setNotice("인증되었습니다. 새 비밀번호를 설정해 주세요.");
@@ -61,7 +58,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.auth.resetPassword, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resetToken, newPassword: password }) });
-      if (!response.ok) throw new Error(await errorMessage(response, "비밀번호를 변경하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "비밀번호를 변경하지 못했습니다."));
       setNotice("비밀번호가 변경되었습니다. 모든 기존 로그인 세션이 종료되었습니다.");
       // 안내를 읽을 수 있게 바로 이동하지 않고 로그인 버튼을 보여 준다.
       setResetToken("completed");

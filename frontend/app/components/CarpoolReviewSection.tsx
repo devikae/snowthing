@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { carpoolReviewTagLabel, responseMessage, type CarpoolReviewRating, type CarpoolReviewTag } from "../carpool/review";
+import { carpoolReviewTagLabel, type CarpoolReviewRating, type CarpoolReviewTag } from "../carpool/review";
 import { formatCarpoolDateTime } from "../carpool/format";
 import "../carpool/review.css";
 import { API_ENDPOINTS } from "../lib/api";
 import { errorText } from "../lib/errorText";
+import { readErrorMessage } from "../lib/http";
 
 interface MyCarpoolReviews {
   rideCount: number;
@@ -32,7 +33,7 @@ export function CarpoolReviewSection() {
     let cancelled = false;
     void fetch(API_ENDPOINTS.carpool.myReviews, { credentials: "include", cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error(await responseMessage(response, "카풀 후기를 불러오지 못했습니다."));
+        if (!response.ok) throw new Error(await readErrorMessage(response, "카풀 후기를 불러오지 못했습니다."));
         return (await response.json()) as MyCarpoolReviews;
       })
       .then((value) => {
