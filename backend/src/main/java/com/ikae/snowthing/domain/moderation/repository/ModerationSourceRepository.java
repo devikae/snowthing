@@ -50,8 +50,8 @@ public class ModerationSourceRepository {
             return jdbc
                     .query(
                             "SELECT c.content, c.is_deleted, m.created_at AS member_created_at FROM"
-                                + " comment c LEFT JOIN member m ON m.member_id = c.member_id WHERE"
-                                + " c.comment_id = ?",
+                                    + " comment c LEFT JOIN member m ON m.member_id = c.member_id WHERE"
+                                    + " c.comment_id = ?",
                             (rs, row) ->
                                     new Source(
                                             "",

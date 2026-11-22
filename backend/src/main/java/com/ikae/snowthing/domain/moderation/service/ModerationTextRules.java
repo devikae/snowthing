@@ -60,8 +60,8 @@ public final class ModerationTextRules {
     private static final Pattern SHORT_URL =
             Pattern.compile(
                     "(?<![a-z0-9.-])(?:bit\\.ly|abit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co|is\\.gd"
-                        + "|han\\.gl|me2\\.do|vo\\.la|url\\.kr|buly\\.kr|c11\\.kr|shorturl\\.at"
-                        + "|cutt\\.ly|rebrand\\.ly|ow\\.ly|tiny\\.cc|lrl\\.kr|zxcv\\.be)/[a-z0-9]");
+                            + "|han\\.gl|me2\\.do|vo\\.la|url\\.kr|buly\\.kr|c11\\.kr|shorturl\\.at"
+                            + "|cutt\\.ly|rebrand\\.ly|ow\\.ly|tiny\\.cc|lrl\\.kr|zxcv\\.be)/[a-z0-9]");
     private static final Pattern URL = Pattern.compile("(?:https?://|www\\.)[^\\s<>\"'()\\[\\]]+");
     private static final Pattern OWN_HOST =
             Pattern.compile("^(?:https?://)?(?:[a-z0-9-]+\\.)*snowthing\\.org(?:[/:?#]|$)");
