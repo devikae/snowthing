@@ -265,8 +265,7 @@ class AdminHiddenDetailIntegrationTest {
                                     .destinationLongitude(BigDecimal.valueOf(127.0))
                                     .tripType(CarpoolTripType.ONE_WAY)
                                     .departureAt(
-                                            LocalDateTime.now(ZoneId.of("Asia/Seoul"))
-                                                    .minusDays(1))
+                                            LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusDays(1))
                                     .passengerCapacity(1)
                                     .costMode(CarpoolCostMode.MANUAL)
                                     .estimatedCostPerPerson(10000)
