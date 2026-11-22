@@ -1,3 +1,45 @@
+## AI 자동 검열 1차 (IKA-80, 2026-11-22)
+
+- 상태: 구현과 로컬 검증 완료, 커밋(푸시 전). PR, 머지, 운영 마이그레이션은 사용자 확인 후. 기능 스위치는 기본 꺼짐.
+- 계획: 설계 `docs/conception/031_ai_moderation/01_design.md` 9절의 1차만 한다. 대기열, 1단계 규칙, 2단계 OpenAI Moderation API(기본 꺼짐), 자동 숨김, 관리자 검토 화면, Discord 요약. 사용자 결정 세 가지(설계 11절)를 따른다.
+- 완료
+  - `062_migration_content_moderation.sql`: `content_moderation` 표. 본문 없이 내용 해시, 판정, 근거(JSON), 재시도, 관리자 처리를 남긴다. 테스트는 엔티티(`ContentModeration`)로 create-drop이 만든다(060과 같음).
+  - 적재(`ModerationEnqueuer`, MANDATORY): 글 작성과 수정(`PostService`), 댓글 작성과 수정(`CommentCommandService`, `CommentService`), 장터 글 작성과 수정(`MarketListingService`), 카풀 글 작성과 수정(`CarpoolWriterService`), 설질 제보 작성(`ResortReportService`, 수정 기능 없음). 관리자 글과 1:1 문의(댓글 포함)는 넣지 않는다.
+  - 처리(`ModerationProcessor`, `ModerationScheduler`): 1분마다 50줄씩, 한 번 깨면 최대 10묶음. 검색 색인 outbox와 같은 `FOR UPDATE SKIP LOCKED` + 임대(5분) + 시도 횟수 선증가. 실패하면 1분부터 두 배씩(최대 30분) 미루고 5번째 실패에 FAILED + 검토 대기. 처리할 때 원문을 다시 읽어 지워졌거나 가려졌거나 더 새 수정본이 있으면 SKIPPED.
+  - 1단계 규칙(`ModerationRuleEvaluator`, `ModerationTextRules`): 스팸 신호 네 묶음(금칙어는 IKA-96 목록, 외부 연락 유도, 같은 내용 반복, 새 계정 링크). 두 묶음 이상이면 HIDE, 한 묶음이면 REVIEW, 정치 글은 REVIEW. 관리자가 문제없음으로 본 내용 해시는 PASS.
+  - 2단계(`OpenAiModerationClient`, `ModerationScoreRules`): `omni-moderation-latest`, 최대 20건을 한 요청에, 태그를 지운 제목과 본문만(4000자까지). 숨김 카테고리(sexual, sexual/minors, illicit, illicit/violent) 0.9 이상 HIDE, 어느 카테고리든 0.4 이상 REVIEW. 규칙 판정과 둘 중 무거운 쪽. 규칙에 하나도 걸리지 않은 20자 미만 글은 부르지 않는다.
+  - 숨김(`ModerationActions`): 글과 카풀 `BLOCKED`, 장터 `HIDDEN`, 댓글 `moderation_held`, 설질 제보 `HIDDEN`. 지우거나 정지하지 않는다.
+  - 관리자: `GET /api/v1/admin/moderations`, `POST /{id}/pass`(문제없음), `POST /{id}/keep`(숨김 유지, 검토 대기 항목은 이때 숨김), `DELETE /{id}`. 숨김 해제, 숨김, 삭제는 기존 관리자 조치(글 블라인드, 장터 상태, 댓글 블라인드, 설질 제보 상태, 관리자 삭제)를 그대로 부른다. 조치 기록 `MODERATION_PASS`, `MODERATION_KEEP`, `MODERATION_DELETE`. 화면 `/admin/moderation`(사이드바 콘텐츠, 스팸 보류 다음 "자동 검열").
+  - 알림: 일일 요약에 "어제 자동 숨김 N건, 검토 대기 M건"(기능이 켜졌을 때만). 매시 5분에 지난 정시 한 시간 자동 숨김이 10건을 넘으면 #장애로 알림(`ModerationAlertScheduler`).
+  - 설정: `snowthing.moderation.*`, env `SNOWTHING_MODERATION_ENABLED`(기본 false), `SNOWTHING_MODERATION_API_ENABLED`(기본 false), `SNOWTHING_OPENAI_API_KEY`(기본 빈 값). `compose.prod.yml` backend에도 넣었다.
+  - 개인정보처리방침 초안: `docs/conception/031_ai_moderation/02_privacy_policy_draft.md`. 실제 방침과 버전은 바꾸지 않았다.
+- 결정
+  - 키워드 목록: 사용자 결정대로 IKA-96 금칙어를 그대로 쓴다. 다른 안: 설정 파일 키워드(관리 지점이 둘이 된다).
+  - "확실한 스팸" 기준: 스팸 신호 묶음 두 개 이상. 다른 안: 신호마다 점수를 매겨 합산(임계값을 하나 더 정해야 하고 표본 없이 맞추기 어렵다). 외부 연락 종류 여러 개(텔레그램과 단축 주소)는 한 묶음으로 센다.
+  - 장터와 카풀은 오픈채팅 링크와 카톡 아이디를 보지 않는다. 거래와 동승 연락이 본래 목적이라 정상 글이 모두 걸린다. 텔레그램과 단축 주소는 본다.
+  - 같은 내용 반복: 정리한 내용 해시가 같고 같은 회원 또는 같은 IP, 이 줄 작성 시각 앞 10분 안에 이 줄 포함 3개 이상. 정리한 글자가 10자 미만이면 보지 않는다("감사합니다" 댓글). 앞쪽 창만 봐서 첫 두 개는 걸리지 않는다. 다른 안: 앞뒤 창(이미 처리한 앞 글은 어차피 바뀌지 않는다).
+  - 반복 확인용으로 `member_id`, `writer_ip`를 표에 더했다. 원문 표마다 열 이름이 달라(설질 제보는 IP 없음) 처리할 때 조인하는 것보다 단순하다. 다른 안: 원문 표 조인.
+  - 줄은 수정마다 새로 넣고 처리할 때 같은 대상의 더 새 줄이 있으면 SKIPPED. 판정이 끝나면 같은 대상의 이전 미검토 판정을 SUPERSEDED로 닫는다. 다른 안: PENDING 줄 갱신(처리 중인 줄과 겹치면 판정과 내용이 어긋날 수 있다).
+  - 숨김 직전에 원문을 잠그고 해시를 다시 비교한다. 판정과 숨김 사이에 작성자가 고쳤으면 숨기지 않는다(새 줄이 따로 판정).
+  - 금칙어 보류(FILTER_HOLD), 신고 임시조치, 블라인드 상태인 대상은 이미 가려져 있어 판정하지 않는다(SKIPPED). 그래서 글과 댓글의 금칙어 신호는 관리자가 보류를 풀어 준 글과 IKA-96이 보지 않는 장터, 카풀, 설질 제보에서 주로 걸린다.
+  - 1:1 문의는 넣지 않는다. 쪽지처럼 작성자와 운영자만 보는 대화라 외부로 보내지 않는다. 설계에 없던 판단이다.
+  - 관리자 처리 화면의 "숨김 유지"는 검토 대기 항목에서는 "숨기기"로 보인다. 설계의 "작성자 정지" 버튼은 1차에서 뺐다(회원 관리 화면).
+  - 시간당 알림은 매시 정시 기준 한 시간을 센다. 다른 안: 매 처리마다 지난 60분을 세기(알림 중복 방지 상태가 필요하다).
+- 다른 기능 영향
+  - 테스트 설정은 적재를 켜고 스케줄러를 끈다. 다른 통합 테스트도 글을 쓰면 줄이 생기지만 FK가 없어 영향이 없다.
+  - 숨긴 글은 기존 블라인드와 같아 작성자에게도 404, 숨긴 댓글은 다른 사람에게 "임시조치된 댓글입니다."로 보인다. 설계 4절의 "운영 검토 중인 글입니다" 문구는 만들지 않았다.
+  - AI 회원: 검열 코드에 AI 회원 분기가 없다. 관리자 목록에도 닉네임만 보인다.
+  - 열린 PR `ika-90-market-carpool-admin-hide`가 `MarketListingService`를 고친다. 머지 순서에 따라 같은 파일 충돌이 날 수 있다(적재 한 줄씩).
+- 검증
+  - (아래 "검증 결과"에 실행한 명령과 숫자를 적는다)
+- 남은 항목
+  - 개인정보처리방침 초안 검토와 새 버전 시행(2단계를 켜기 전).
+  - 2단계 켜기 전 실제 글 표본(정상 50, 문제 30)으로 한국어 판정 확인과 임계값 조정.
+  - 운영 062 마이그레이션 적용, `SNOWTHING_MODERATION_ENABLED=true`로 규칙부터 켜기(사용자 확인 후).
+  - 2차: 3단계 LLM, 신고 2회 이상 재판정. 3차: 이미지, 라이브톡.
+  - 처리 끝난 줄 정리(보관 기간) 작업은 아직 없다. 하루 수백 줄 규모라 1차에서는 두었다.
+- 사용자 결정 필요: 개인정보처리방침 초안 5절의 다섯 가지. 장터와 카풀의 연락처 예외 범위.
+
 ## AI 회원 활동 관리자 스위치 (IKA-108, 2026-11-22)
 
 - 상태: 구현, 로컬 화면 확인(사용자), PR. 머지는 사용자 확인 후.
