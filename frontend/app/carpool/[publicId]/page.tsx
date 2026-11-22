@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { hasSessionCookie } from "../../lib/sessionCookie.server";
 import { detailMetadata, fetchPreviewResult, plainTextSummary } from "../../lib/sharePreview";
 import CarpoolDetailClient from "./CarpoolDetailClient";
 
@@ -35,10 +36,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return detailMetadata({ ...preview, path: `/carpool/${encodeURIComponent(publicId)}` });
 }
 
-// 카풀 상세 API는 로그인과 상관없이 삭제되거나 없는 글에만 404를 준다. 그때는 404 페이지로 답한다.
+// 비로그인 조회가 404면 삭제됐거나 없는 글, 또는 관리자가 가린 글이다. 비로그인이면 404 페이지로 답한다.
+// 가린 글은 관리자에게만 보이므로 로그인 쿠키가 있으면 브라우저가 다시 부르게 둔다.
 // 미리보기 값은 60초 보관하므로 같은 글을 매번 다시 조회하지는 않는다.
 export default async function CarpoolDetailPage({ params }: Props) {
   const { publicId } = await params;
-  if ((await loadPreview(publicId)).missing) notFound();
+  if ((await loadPreview(publicId)).missing && !(await hasSessionCookie())) notFound();
   return <CarpoolDetailClient />;
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { hasSessionCookie } from "../../lib/sessionCookie.server";
 import { detailMetadata, fetchPreviewResult } from "../../lib/sharePreview";
 import MarketDetailClient from "./MarketDetailClient";
 
@@ -44,10 +45,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return detailMetadata({ ...preview, path: `/market/${encodeURIComponent(publicId)}` });
 }
 
-// 공유 미리보기 API는 로그인과 상관없이 같은 판매글을 보여 주므로, 404면 누구에게나 없는 판매글이다.
+// 공유 미리보기 API는 로그인과 상관없이 공개 판매글만 보여 준다. 404면 없는 글이거나 관리자가 숨긴 글이다.
+// 숨긴 글은 관리자에게만 보이므로 로그인 쿠키가 있으면 404 페이지로 끊지 않고 브라우저가 다시 부르게 둔다.
 // 미리보기 값은 60초 보관하므로 같은 글을 매번 다시 조회하지는 않는다.
 export default async function MarketDetailPage({ params }: Props) {
   const { publicId } = await params;
-  if ((await loadPreview(publicId)).missing) notFound();
+  if ((await loadPreview(publicId)).missing && !(await hasSessionCookie())) notFound();
   return <MarketDetailClient params={params} />;
 }

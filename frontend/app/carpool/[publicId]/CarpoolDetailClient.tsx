@@ -9,6 +9,8 @@ import PostComments from "../../components/PostComments";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { errorText } from "../../lib/errorText";
+import { fetchViewer, isAdminViewer } from "../../lib/viewer";
 import { ReportButton } from "../../components/ReportButton";
 import KakaoShareButton from "../../components/KakaoShareButton";
 import { carpoolCostLabel, formatCarpoolDateTime } from "../format";
@@ -43,6 +45,7 @@ interface CarpoolDetail {
   contactInfo: string | null;
   contactPublicToGuest: boolean;
   canManage: boolean;
+  status: string;
   createdAt: string;
 }
 
@@ -71,6 +74,8 @@ export default function CarpoolDetailClient() {
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [writerSummary, setWriterSummary] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [blindBusy, setBlindBusy] = useState(false);
   const writerPublicId = item?.writerPublicId ?? null;
 
   // 작성자의 공개 카풀 요약. 실패하거나 기록이 없으면 아무것도 표시하지 않는다.
@@ -87,6 +92,40 @@ export default function CarpoolDetailClient() {
       cancelled = true;
     };
   }, [writerPublicId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchViewer().then((viewer) => {
+      if (!cancelled) setIsAdmin(isAdminViewer(viewer));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 관리자가 모집글 화면에서 바로 가리거나 가리기를 푼다. 권한은 서버의 관리자 API가 다시 확인한다.
+  const toggleBlind = async () => {
+    if (!item || blindBusy) return;
+    const blinded = item.status !== "BLOCKED";
+    if (!window.confirm(blinded ? "이 글을 가릴까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." : "이 글의 가리기를 해제할까요?")) return;
+    setBlindBusy(true);
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.admin.blindPost(item.publicId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blinded }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || "가리기 상태를 바꾸지 못했습니다.");
+      }
+      setItem((current) => (current ? { ...current, status: blinded ? "BLOCKED" : "NORMAL" } : current));
+    } catch (blindError) {
+      window.alert(errorText(blindError, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+    } finally {
+      setBlindBusy(false);
+    }
+  };
 
   const deleteCarpool = async () => {
     if (!window.confirm("이 카풀 모집글을 삭제할까요?")) return;
@@ -163,6 +202,16 @@ export default function CarpoolDetailClient() {
                     {item.equipmentLoadAvailable ? "장비 적재 가능" : "장비 적재 불가"}
                   </span>
                 </div>
+                {isAdmin && item.status === "BLOCKED" && (
+                  <p role="status" className="mt-3 rounded border border-[var(--snow-border)] px-3 py-2 text-sm text-[var(--snow-muted)]">
+                    가린 글입니다. 일반 사용자에게는 보이지 않고 관리자에게만 보입니다.
+                  </p>
+                )}
+                {isAdmin && item.status === "TEMPORARY_HOLD" && (
+                  <p role="status" className="mt-3 rounded border border-[var(--snow-border)] px-3 py-2 text-sm text-[var(--snow-muted)]">
+                    신고로 임시조치된 글입니다. 해제는 신고 처리 화면에서 합니다.
+                  </p>
+                )}
                 <h1>{item.title}</h1>
                 <div className="post-detail-author">
                   <CommentProfileAvatar
@@ -177,14 +226,27 @@ export default function CarpoolDetailClient() {
                     {writerSummary && <small className="carpool-writer-summary">{writerSummary}</small>}
                   </div>
                   <ReportButton targetType="POST" targetId={publicId} />
-                  {item.canManage && (
-                    <div className="post-detail-owner-actions">
-                      <Link href={`/carpool/${publicId}/edit`}>수정</Link>
-                      <button type="button" disabled={deleting} onClick={() => void deleteCarpool()}>
-                        {deleting ? "삭제 중" : "삭제"}
-                      </button>
-                    </div>
-                  )}
+                  {(() => {
+                    // 가린 글은 서버가 수정과 삭제를 막으므로 공개 상태에서만 버튼을 보인다.
+                    const canManage = item.canManage && item.status === "NORMAL";
+                    const canBlind = isAdmin && (item.status === "NORMAL" || item.status === "BLOCKED");
+                    if (!canManage && !canBlind) return null;
+                    return (
+                      <div className="post-detail-owner-actions">
+                        {canManage && <Link href={`/carpool/${publicId}/edit`}>수정</Link>}
+                        {canBlind && (
+                          <button type="button" disabled={blindBusy} onClick={() => void toggleBlind()}>
+                            {item.status === "BLOCKED" ? "가리기 해제" : "가리기"}
+                          </button>
+                        )}
+                        {canManage && (
+                          <button type="button" disabled={deleting} onClick={() => void deleteCarpool()}>
+                            {deleting ? "삭제 중" : "삭제"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </header>
 
@@ -233,7 +295,7 @@ export default function CarpoolDetailClient() {
                   <h2>모집 내용</h2>
                   <p>{item.content}</p>
                 </section>
-                <CarpoolParticipation publicId={publicId} />
+                {item.status === "NORMAL" && <CarpoolParticipation publicId={publicId} />}
                 <PostComments postPublicId={publicId} />
               </div>
             </div>

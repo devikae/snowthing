@@ -7,6 +7,7 @@ import com.ikae.snowthing.domain.carpool.entity.*;
 import com.ikae.snowthing.domain.carpool.entity.CarpoolDetail;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
+import com.ikae.snowthing.domain.post.entity.PostStatus;
 
 public record CarpoolResponse(
         String publicId,
@@ -42,6 +43,7 @@ public record CarpoolResponse(
         boolean contactPublicToGuest,
         boolean equipmentLoadAvailable,
         boolean canManage,
+        PostStatus status,
         LocalDateTime createdAt) {
 
     public static CarpoolResponse from(
@@ -88,6 +90,7 @@ public record CarpoolResponse(
                 detail.isContactPublicToGuest(),
                 detail.isEquipmentLoadAvailable(),
                 canManage,
+                post.getStatus(),
                 post.getCreatedAt());
     }
 }
