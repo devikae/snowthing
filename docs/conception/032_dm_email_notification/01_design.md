@@ -1,6 +1,6 @@
 # 쪽지 도착 메일 알림
 
-Sprint 8 미션(댓글 이메일 알림과 분산 환경의 데이터 정합성)을 쪽지 기준으로 바꿔 설계한다. 트랜잭션 방식 비교와 결과 불명 정책의 근거는 `ADR-3201-dm-mail-outbox.md`에 둔다.
+Sprint 8 미션(댓글 이메일 알림과 분산 환경의 데이터 정합성)을 쪽지 기준으로 바꿔 설계한다. 트랜잭션 방식 비교와 결과 불명 정책의 근거는 `ADR-3201-dm-mail-outbox.md`에 둔다. 관리자 화면에서 켜고 끄는 스위치(IKA-109)는 `04_admin_switch.md`에 둔다.
 
 ## 배경
 
@@ -171,7 +171,7 @@ flowchart TD
   I -->|발송 직전 확인 실패| S["SKIPPED 발송 제외"]
 ```
 
-RETRY_WAIT 행은 선점 대상에 PENDING과 함께 포함한다. `skip_reason` 값과 판단 순서는 `EXPIRED`, `RECIPIENT_INACTIVE`, `NOTIFICATION_OFF`, `EMAIL_UNDELIVERABLE`, `ALREADY_READ`, `MESSAGE_MISSING`(쪽지 행이 없음)이다.
+RETRY_WAIT 행은 선점 대상에 PENDING과 함께 포함한다. `skip_reason` 값과 판단 순서는 `EXPIRED`, `RECIPIENT_INACTIVE`, `NOTIFICATION_OFF`, `EMAIL_UNDELIVERABLE`, `ALREADY_READ`, `MESSAGE_MISSING`(쪽지 행이 없음)이다. 발송 직전 확인과 별개로, 발송이 꺼져 있던 동안 기한이 지난 대기 행은 스케줄러가 `SEND_OFF_EXPIRED`로 넘긴다(`04_admin_switch.md`).
 
 ## 실패 정책
 
@@ -196,7 +196,7 @@ RETRY_WAIT 행은 선점 대상에 PENDING과 함께 포함한다. `skip_reason`
 
 - 쪽지 메일 전용 `SesV2Client` 빈을 만든다. SDK 재시도는 0회로 한다. SDK가 몰래 재시도하면 앱이 모르는 중복이 생기기 때문이다.
 - 시도당 3초, 전체 5초 제한은 `SesMailConfig`와 같은 값으로 둔다. 설정(`snowthing.dm-mail.ses.*`)으로 바꿀 수 있고, 테스트는 짧게 줄인다.
-- `snowthing.mail.provider`가 `ses`가 아니면 발송하지 않는 발송기를 쓰고, 워커는 작업을 잡지 않는다. 행은 PENDING으로 남는다. 나중에 공급자를 켜고 워커가 잡을 때, 생성 후 24시간이 지난 행은 SKIPPED(EXPIRED)가 된다.
+- `snowthing.mail.provider`가 `ses`가 아니면 발송하지 않는 발송기를 쓰고, 워커는 작업을 잡지 않는다. 행은 PENDING으로 남는다. 생성 후 24시간이 지난 행은 스케줄러 정리에서 SKIPPED(SEND_OFF_EXPIRED)가 된다.
 - 인증메일 클라이언트와 `SesVerificationEmailSender`는 바꾸지 않는다. 쪽지 메일을 인증메일 클래스에 끼워 넣지 않는다.
 
 ## API와 화면
@@ -218,18 +218,20 @@ PUT /api/v1/members/me/notification-settings
 
 | 키 | 운영 기본값 | 설명 |
 |---|---|---|
-| `snowthing.dm-mail.enqueue-enabled` | false | outbox 적재 |
-| `snowthing.dm-mail.send-enabled` | false | 워커 발송 |
+| `snowthing.dm-mail.enqueue-enabled` | false | outbox 적재를 서버가 허용하는지. 관리자 화면 기록 스위치와 둘 다 켜져야 적재한다 |
+| `snowthing.dm-mail.send-enabled` | false | 발송을 서버가 허용하는지. 관리자 화면 발송 스위치와 둘 다 켜져야 보낸다 |
+| `snowthing.dm-mail.stale-sweep-interval` | 10m | 발송이 꺼져 있는 동안 기한 지난 대기 행을 정리하는 간격 |
 | `snowthing.dm-mail.cooldown` | 10m | 같은 받는 사람 묶음 간격 |
 | `snowthing.dm-mail.deadline` | 24h | 쪽지 생성 후 발송 포기 시점 |
 | `snowthing.dm-mail.lease` | 60s | 선점 유지 시간 |
 | `snowthing.dm-mail.max-attempts` | 5 | 재시도 한도 |
 
+- 켜고 끄는 것은 관리자 화면 스위치로 한다(IKA-109). 환경변수는 비상 차단으로 남는다. 켜는 절차는 `04_admin_switch.md`에 있다.
 - 적재를 먼저 켜서 행이 쌓이는 것을 확인하고, 발송은 승인된 테스트 수신자로 별도 확인 후 켠다. 24시간 기한이 있어 발송을 켤 때 오래된 건이 한꺼번에 나가지 않는다.
 - 운영 env를 추가할 때 `compose.prod.yml`에도 넣는다.
 - 로그에는 eventId와 오류 분류만 남긴다. 이메일, 본문, 비밀값은 남기지 않는다.
-- 대기 건수, 가장 오래된 대기 시간, UNKNOWN과 FAILED 건수는 관리자 요약 `GET /api/v1/admin/dm-mail/outbox/summary`로 본다. 검색 outbox 요약과 같은 방식이다. 상태를 바꾸는 관리자 API는 두지 않는다.
-- ACCEPTED와 SKIPPED 행은 30일 뒤 매일 04:40에 1000행씩 지운다. UNKNOWN과 FAILED는 운영 확인용으로 남긴다.
+- 대기 건수, 가장 오래된 대기 시간, UNKNOWN과 FAILED 건수는 관리자 요약 `GET /api/v1/admin/dm-mail/outbox/summary`로 본다. 검색 outbox 요약과 같은 방식이다. 발송 요청 행의 상태를 바꾸는 관리자 API는 두지 않는다.
+- ACCEPTED와 SKIPPED 행은 30일 뒤 매일 04:40에 1000행씩 최대 20번 지운다. 발송 스위치와 관계없이 돈다. UNKNOWN과 FAILED는 운영 확인용으로 남긴다.
 - 성능 비교용 `snowthing.dm-mail.delivery-mode=sync-baseline`이 있다. 쪽지 트랜잭션 안에서 SES를 바로 부르는 기준선이며, 벤치마크 테스트에서만 켠다.
 
 ## 검증

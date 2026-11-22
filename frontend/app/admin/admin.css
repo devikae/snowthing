@@ -719,3 +719,63 @@
     align-items: flex-start;
   }
 }
+
+/* 쪽지 메일 화면 (IKA-109). 스위치 줄은 AI 회원 화면의 admin-ai-* 를 같이 쓴다. */
+.admin-ai-text span.admin-mail-blocked {
+  color: var(--snow-ink-soft);
+  font-weight: 700;
+}
+
+.admin-ai-row[data-blocked="true"] .admin-ai-state {
+  min-width: 6.5em;
+}
+
+/* 서버 설정에서 막힌 스위치는 켜 둬도 동작하지 않는다. 켜짐 색을 쓰지 않는다. */
+.admin-ai-row[data-blocked="true"] .admin-switch[aria-checked="true"] {
+  background: var(--snow-muted);
+}
+
+.admin-mail-counts {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.admin-mail-counts > div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--snow-border);
+  border-radius: 6px;
+  background: var(--snow-surface-low);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.admin-mail-counts dt {
+  color: var(--snow-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-mail-counts dd {
+  margin: 0;
+  color: var(--snow-ink);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-mail-counts > div[data-attention="true"] {
+  border-color: var(--snow-error);
+}
+
+.admin-mail-counts > div[data-attention="true"] dd {
+  color: var(--snow-error);
+}
+
+@media (max-width: 640px) {
+  .admin-mail-counts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

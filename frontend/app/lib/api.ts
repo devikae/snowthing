@@ -138,6 +138,8 @@ export const API_ENDPOINTS = {
       `${API_V1_URL}/admin/members/${encodeURIComponent(publicId)}/${action}`,
     searchReconcile: `${API_V1_URL}/admin/search/reconcile`,
     searchOutboxSummary: `${API_V1_URL}/admin/search/outbox/summary`,
+    dmMailSwitches: `${API_V1_URL}/admin/dm-mail/switches`,
+    dmMailOutboxSummary: `${API_V1_URL}/admin/dm-mail/outbox/summary`,
     stats: `${API_V1_URL}/admin/dashboard/stats`,
     configs: `${API_V1_URL}/admin/configs`,
     updateConfig: (key: string) => `${API_V1_URL}/admin/configs/${encodeURIComponent(key)}`,
@@ -227,6 +229,29 @@ export interface AdminDashboardStats {
     commentEnabled: boolean;
     chatEnabled: boolean;
   };
+}
+
+/** 쪽지 메일 스위치 하나. serverAllowed가 false면 서버 설정(환경변수)에서 막혀 있어 switchOn이어도 동작하지 않는다. */
+export interface AdminDmMailSwitchState {
+  configKey: string;
+  serverAllowed: boolean;
+  switchOn: boolean;
+  effective: boolean;
+}
+
+export interface AdminDmMailSwitches {
+  enqueue: AdminDmMailSwitchState;
+  send: AdminDmMailSwitchState;
+  mailProviderReady: boolean;
+  deadlineHours: number;
+}
+
+export interface AdminDmMailOutboxSummary {
+  counts: Record<"PENDING" | "PROCESSING" | "ACCEPTED" | "RETRY_WAIT" | "FAILED" | "UNKNOWN" | "SKIPPED", number>;
+  oldestOpenCreatedAt: string | null;
+  oldestOpenAgeSeconds: number | null;
+  attentionCount: number;
+  checkedAt: string;
 }
 
 export interface SystemConfigItem {
