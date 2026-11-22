@@ -246,6 +246,9 @@ export const ACTION_LABEL: Record<string, string> = {
   BANNED_WORD_DELETE: "금칙어 삭제",
   FILTER_HOLD_RELEASE: "금칙어 보류 공개 전환",
   FILTER_HOLD_DELETE: "금칙어 보류 삭제",
+  MODERATION_PASS: "자동 검열 문제없음",
+  MODERATION_KEEP: "자동 검열 숨김 유지",
+  MODERATION_DELETE: "자동 검열 삭제",
 };
 
 export const TARGET_LABEL: Record<string, string> = {
@@ -259,7 +262,27 @@ export const TARGET_LABEL: Record<string, string> = {
   CONFIG: "설정",
   SEASON_OPENING: "개장일",
   BANNED_WORD: "금칙어",
+  CONTENT_MODERATION: "자동 검열",
 };
+
+/** 자동 검열 검토 대기 항목 (IKA-80). 숨김(HIDE)과 검토 대기(REVIEW) 판정만 온다. */
+export interface ModerationItem {
+  id: string;
+  targetType: "POST" | "COMMENT" | "MARKET" | "CARPOOL" | "RESORT_REPORT";
+  targetId: string;
+  verdict: "HIDE" | "REVIEW";
+  stage: "RULE" | "MODERATION_API" | "LLM" | null;
+  failed: boolean;
+  reasons: string[];
+  postPublicId: string | null;
+  categoryCode: string | null;
+  title: string | null;
+  excerpt: string;
+  targetState: "VISIBLE" | "HIDDEN" | "DELETED";
+  writerNickname: string | null;
+  createdAt: string;
+  processedAt: string | null;
+}
 
 /** 금칙어 보류 검토 항목 (IKA-96). 관리자 화면 전용이라 작성자 IP를 그대로 받는다. */
 export interface FilterHoldItem {
