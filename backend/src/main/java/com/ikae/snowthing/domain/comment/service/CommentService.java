@@ -272,10 +272,11 @@ public class CommentService {
         validateUpdatePermission(comment, request.anonymousPassword(), userDetails);
 
         comment.updateContent(request.content());
+        // 아래 보류 처리의 벌크 갱신이 영속성 컨텍스트를 비우므로 글과 회원을 읽는 적재를 먼저 한다.
+        moderation.commentWritten(comment);
         applyFilterAfterEdit(comment, userDetails);
         commentRepository.flush();
         searchOutbox.commentChanged(comment, comment.isFilterHeld());
-        moderation.commentWritten(comment);
 
         return new CommentUpdateResponse(
                 comment.getId(), comment.getContent(), comment.getUpdatedAt());
