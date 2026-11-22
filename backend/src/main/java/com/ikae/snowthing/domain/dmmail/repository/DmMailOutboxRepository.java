@@ -273,8 +273,8 @@ public class DmMailOutboxRepository {
 
     /**
      * 발송 기한이 지난 대기 행(PENDING, RETRY_WAIT)을 SKIPPED로 넘긴다. 발송이 꺼져 있던 동안 쌓인 행을 한 번에 정리할 때 쓴다. 선점된 행
-     * (PROCESSING)은 건드리지 않는다. 선점과 잠그는 순서가 같다고 보장하지 않으므로 드물게 교착이 나면 poll()이 잡고 다음
-     * 주기에 다시 돈다. 표가 작고(30일 보관) autocommit이라 잠금 시간은 짧다.
+     * (PROCESSING)은 건드리지 않는다. 선점과 잠그는 순서가 같다고 보장하지 않으므로 드물게 교착이 나면 poll()이 잡고 다음 주기에 다시 돈다. 표가
+     * 작고(30일 보관) autocommit이라 잠금 시간은 짧다.
      */
     public int skipStale(
             LocalDateTime createdAtOrBefore,
