@@ -149,7 +149,7 @@ public final class ModerationTextRules {
     /**
      * @param contacts 걸린 외부 연락 유도 종류 (CONTACT_*)
      * @param externalLinkCount 눈팅 밖 주소 수
-     * @param political 정치 글 (숨기지 않고 검토 대기)
+     * @param political 정치 글 (이것만으로는 숨기지 않고 검토 대기)
      * @param normalizedLength 정리한 제목과 본문 글자 수
      */
     public record Findings(
