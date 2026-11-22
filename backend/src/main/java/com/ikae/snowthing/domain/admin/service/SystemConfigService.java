@@ -32,6 +32,9 @@ public class SystemConfigService {
     public static final String KEY_AI_MEMBER_POST_ENABLED = "AI_MEMBER_POST_ENABLED";
     public static final String KEY_AI_MEMBER_COMMENT_ENABLED = "AI_MEMBER_COMMENT_ENABLED";
     public static final String KEY_AI_MEMBER_CHAT_ENABLED = "AI_MEMBER_CHAT_ENABLED";
+    // 쪽지 도착 메일 스위치(IKA-109). 관리자 화면 전용이라 공개 설정에는 넣지 않는다.
+    public static final String KEY_DM_MAIL_ENQUEUE_ENABLED = "DM_MAIL_ENQUEUE_ENABLED";
+    public static final String KEY_DM_MAIL_SEND_ENABLED = "DM_MAIL_SEND_ENABLED";
 
     private final SystemConfigRepository repository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -70,6 +73,16 @@ public class SystemConfigService {
     /** AI 회원 라이브톡 대화. 설정 행이 없으면 켜진 것으로 본다. */
     public boolean isAiMemberChatEnabled() {
         return readBoolean(KEY_AI_MEMBER_CHAT_ENABLED, true);
+    }
+
+    /** 쪽지 메일 발송 요청 기록. 설정 행이 없으면 꺼진 것으로 본다. 환경변수까지 합친 최종 판단은 {@code DmMailSwitches}가 한다. */
+    public boolean isDmMailEnqueueEnabled() {
+        return readBoolean(KEY_DM_MAIL_ENQUEUE_ENABLED, false);
+    }
+
+    /** 쪽지 메일 발송. 설정 행이 없으면 꺼진 것으로 본다. */
+    public boolean isDmMailSendEnabled() {
+        return readBoolean(KEY_DM_MAIL_SEND_ENABLED, false);
     }
 
     private boolean readBoolean(String configKey, boolean defaultValue) {
