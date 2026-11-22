@@ -16,11 +16,10 @@ import com.ikae.snowthing.domain.admin.dto.AdminOverviewResponse;
 import com.ikae.snowthing.domain.admin.dto.AdminOverviewResponse.DailyCount;
 import com.ikae.snowthing.domain.admin.repository.AdminQueryRepository;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.global.config.AiMemberProperties;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
-
-import com.ikae.snowthing.global.config.AiMemberProperties;
 
 import lombok.RequiredArgsConstructor;
 

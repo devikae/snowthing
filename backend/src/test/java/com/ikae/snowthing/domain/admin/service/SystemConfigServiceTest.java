@@ -59,7 +59,8 @@ class SystemConfigServiceTest {
     @DisplayName("AI 회원 스위치를 끄면 바로 꺼진 값으로 읽힌다")
     void aiMemberSwitch_updateTakesEffect() {
         SystemConfig config =
-                new SystemConfig("AI_MEMBER_POST_ENABLED", "true", "BOOLEAN", "AI 회원 글쓰기 허용 여부", "SYSTEM");
+                new SystemConfig(
+                        "AI_MEMBER_POST_ENABLED", "true", "BOOLEAN", "AI 회원 글쓰기 허용 여부", "SYSTEM");
         when(repository.findById("AI_MEMBER_POST_ENABLED")).thenReturn(Optional.of(config));
         assertThat(service.isAiMemberPostEnabled()).isTrue();
 

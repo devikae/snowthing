@@ -44,21 +44,12 @@ function DailyBars({ series, metric, label }: { series: AdminDailyCount[]; metri
   );
 }
 
-type AiSwitchField = "postEnabled" | "commentEnabled" | "chatEnabled";
-
-const AI_SWITCHES: { field: AiSwitchField; configKey: string; label: string; object: string }[] = [
-  { field: "postEnabled", configKey: "AI_MEMBER_POST_ENABLED", label: "글쓰기", object: "글쓰기를" },
-  { field: "commentEnabled", configKey: "AI_MEMBER_COMMENT_ENABLED", label: "댓글", object: "댓글을" },
-  { field: "chatEnabled", configKey: "AI_MEMBER_CHAT_ENABLED", label: "라이브톡 대화", object: "라이브톡 대화를" },
-];
-
-/** 관리자 대시보드. 오늘 숫자, 처리 대기 건수, 최근 7일이나 30일 추이, 비회원 라이브톡과 중고장터 설정, AI 회원 활동 스위치를 보여 준다. 날짜는 KST 기준이다. */
+/** 관리자 대시보드. 오늘 숫자, 처리 대기 건수, 최근 7일이나 30일 추이, 비회원 라이브톡과 중고장터 설정을 보여 준다. 날짜는 KST 기준이다. */
 export default function AdminDashboardPage() {
   const [days, setDays] = useState<7 | 30>(7);
   const [metric, setMetric] = useState<Metric>("signups");
   const [updatingChat, setUpdatingChat] = useState(false);
   const [updatingMarket, setUpdatingMarket] = useState(false);
-  const [updatingAi, setUpdatingAi] = useState<AiSwitchField | null>(null);
   const overview = useAdminFetch<AdminOverview>(API_ENDPOINTS.admin.overview(days), "운영 현황을 불러오지 못했습니다.");
   const stats = useAdminFetch<AdminDashboardStats>(API_ENDPOINTS.admin.stats, "회원 현황을 불러오지 못했습니다.");
 
@@ -108,28 +99,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const toggleAiSwitch = async (field: AiSwitchField, configKey: string, object: string) => {
-    if (!stats.data || updatingAi) return;
-    const next = !stats.data.aiMembers[field];
-    const message = next ? `AI 회원 ${object} 다시 켤까요?` : `AI 회원 ${object} 멈출까요? 다음 예약 활동부터 건너뜁니다.`;
-    if (!window.confirm(message)) return;
-    setUpdatingAi(field);
-    try {
-      const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig(configKey), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: String(next) }),
-      });
-      if (!response.ok) throw new Error(await readErrorMessage(response, "설정을 바꾸지 못했습니다."));
-      stats.reload();
-    } catch (cause) {
-      stats.setError((cause as Error).message);
-    } finally {
-      setUpdatingAi(null);
-    }
-  };
-
-  const aiMembers = stats.data?.aiMembers;
   const today = overview.data?.today;
   const metricLabel = METRICS.find((item) => item.key === metric)?.label ?? "";
 
@@ -234,29 +203,6 @@ export default function AdminDashboardPage() {
             {stats.data?.marketGuestAccessEnabled ? "회원만 보게 막기" : "비회원도 보게 열기"}
           </button>
         </div>
-      </section>
-      <section className="panel admin-section" aria-label="AI 회원 활동">
-        <h2>AI 회원 활동</h2>
-        <small className="admin-meta">
-          {aiMembers && !aiMembers.installed
-            ? "서버 설정에서 AI 회원 기능이 꺼져 있어 아래 스위치는 지금 효과가 없습니다."
-            : "끄면 다음 예약 활동부터 건너뜁니다. 이미 올라간 글과 댓글은 그대로 둡니다."}
-        </small>
-        {AI_SWITCHES.map(({ field, configKey, label, object }) => (
-          <div className="admin-toolbar" key={field}>
-            <span>
-              {label} <small className="admin-meta">{aiMembers ? (aiMembers[field] ? "켜짐" : "꺼짐") : "-"}</small>
-            </span>
-            <button
-              className="admin-button"
-              type="button"
-              disabled={!aiMembers || updatingAi !== null}
-              onClick={() => void toggleAiSwitch(field, configKey, object)}
-            >
-              {aiMembers?.[field] ? `${label} 멈추기` : `${label} 켜기`}
-            </button>
-          </div>
-        ))}
       </section>
     </>
   );

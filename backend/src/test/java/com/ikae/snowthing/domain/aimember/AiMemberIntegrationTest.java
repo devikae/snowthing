@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +22,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.ikae.snowthing.domain.admin.entity.SystemConfig;
+import com.ikae.snowthing.domain.admin.repository.SystemConfigRepository;
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.aimember.AiMemberRoster.AiMember;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.PostView;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.Reaction;
@@ -47,6 +52,11 @@ import com.ikae.snowthing.global.security.SharedRequestLimiter.Decision;
 class AiMemberIntegrationTest {
 
     private static final String WRITER_IP = "211.36.10.20";
+    private static final List<String> AI_SWITCH_KEYS =
+            List.of(
+                    SystemConfigService.KEY_AI_MEMBER_POST_ENABLED,
+                    SystemConfigService.KEY_AI_MEMBER_COMMENT_ENABLED,
+                    SystemConfigService.KEY_AI_MEMBER_CHAT_ENABLED);
 
     @Autowired private AiMemberActionService actionService;
     @Autowired private AiMemberQueryRepository queryRepository;
@@ -54,6 +64,8 @@ class AiMemberIntegrationTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private PostCategoryRepository categories;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private SystemConfigService systemConfigService;
+    @Autowired private SystemConfigRepository systemConfigRepository;
 
     @MockitoBean private AiComposeGateway gateway;
     @MockitoBean private SharedRequestLimiter sharedLimiter;
@@ -109,6 +121,11 @@ class AiMemberIntegrationTest {
             jdbc.update("DELETE FROM member WHERE member_id = ?", memberId);
         }
         roster.replace(List.of());
+        for (String key : AI_SWITCH_KEYS) {
+            systemConfigRepository
+                    .findById(key)
+                    .ifPresent(config -> systemConfigService.updateConfig(key, "true", "test"));
+        }
     }
 
     @Test
@@ -177,5 +194,78 @@ class AiMemberIntegrationTest {
         assertThat(queryRepository.ipPrefixUsedByOthers(WRITER_IP, aiMember.memberId())).isFalse();
         assertThat(queryRepository.ipPrefixUsedByOthers("58.120.9.9", aiMember.memberId()))
                 .isTrue();
+    }
+
+    @Test
+    @DisplayName("관리자가 AI 글, 댓글, 라이브톡을 끄면 봇 서버를 부르지 않고 아무것도 저장되지 않으며, 다시 켜면 바로 쓴다")
+    void adminSwitchesStopAndResumeActivity() {
+        LocalDateTime now = LocalDateTime.now();
+        for (String key : AI_SWITCH_KEYS) {
+            if (systemConfigRepository.findById(key).isEmpty()) {
+                systemConfigRepository.save(new SystemConfig(key, "true", "BOOLEAN", key, "SYSTEM"));
+            }
+        }
+        PostView userPost = userPost(now);
+        given(gateway.compose(any()))
+                .willReturn(new ComposeResponse("r", "스위치 테스트 글", "본문", null));
+
+        // 끈다: 관리자 API(PATCH /api/v1/admin/configs/{key})가 부르는 서비스와 같은 경로다.
+        for (String key : AI_SWITCH_KEYS) {
+            systemConfigService.updateConfig(key, "false", "admin");
+        }
+        actionService.writePost(aiMember, now);
+        boolean commented =
+                actionService.writeComment(
+                        new Reaction(aiMember.memberId(), userPost, null), List.of(), now);
+        actionService.chat(List.of(aiMember), 2, now);
+
+        verify(gateway, never()).compose(any());
+        assertThat(commented).isFalse();
+        assertThat(countRows("post")).isZero();
+        assertThat(countRows("comment")).isZero();
+
+        // 다시 켠다: 재시작 없이 다음 호출부터 쓴다.
+        systemConfigService.updateConfig(
+                SystemConfigService.KEY_AI_MEMBER_POST_ENABLED, "true", "admin");
+        systemConfigService.updateConfig(
+                SystemConfigService.KEY_AI_MEMBER_COMMENT_ENABLED, "true", "admin");
+        actionService.writePost(aiMember, now);
+        given(gateway.compose(any())).willReturn(new ComposeResponse("r", null, "ㅇㅇ", null));
+        boolean commentedAgain =
+                actionService.writeComment(
+                        new Reaction(aiMember.memberId(), userPost, null), List.of(), now);
+
+        assertThat(countRows("post")).isEqualTo(1);
+        assertThat(commentedAgain).isTrue();
+        assertThat(countRows("comment")).isEqualTo(1);
+    }
+
+    private int countRows(String table) {
+        Integer count =
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM " + table + " WHERE member_id = ?",
+                        Integer.class,
+                        aiMember.memberId());
+        return count == null ? 0 : count;
+    }
+
+    private PostView userPost(LocalDateTime now) {
+        Long categoryId = categories.findByCode("FREE").map(PostCategory::getId).orElseThrow();
+        String publicId = UUID.randomUUID().toString();
+        jdbc.update(
+                "INSERT INTO post (public_id, member_id, category_id, title, content, writer_ip,"
+                        + " is_anonymous, view_count, comment_count, like_count, dislike_count,"
+                        + " has_image, status, is_deleted, content_version, created_at, updated_at)"
+                        + " VALUES (?, ?, ?, '바인딩 각도', '본문', '58.120.1.1', false, 0, 0, 0, 0,"
+                        + " false, 'NORMAL', false, 0, ?, ?)",
+                publicId,
+                userId,
+                categoryId,
+                now.minusHours(1),
+                now.minusHours(1));
+        return queryRepository.findRecentPosts(now.minusHours(2)).stream()
+                .filter(view -> view.publicId().equals(publicId))
+                .findFirst()
+                .orElseThrow();
     }
 }
