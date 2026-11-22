@@ -35,6 +35,50 @@
   - 헤더 흐림 효과가 디자인 의도(20px)와 다른 문제, 별도 결정 필요.
   - push, PR, 머지.
 
+## 운영 비밀값 목록과 Parameter Store 선택 경로 (IKA-110, 2026-11-22)
+
+- 상태: 구현과 로컬 검증 완료, PR 생성. 머지는 사용자 확인 후. AWS 설정과 값 이전은 사용자가 한다. 백엔드, 프론트 코드와 마이그레이션 변경 없음.
+- 계획: 운영 환경변수를 전수로 뽑아 비밀 여부, 유출 영향, 교체 방법을 표로 남긴다. 배포 스크립트가 서버에 설정이 있을 때만 Parameter Store에서 값을 읽게 하고, 설정이 없으면 지금과 같게 둔다.
+- 완료
+  - `docs/conception/036_secrets_parameter_store/01_secrets-inventory.md`: `compose.prod.yml`, `application.yml`, 워크플로, 서버 파일의 변수 전수 목록(비밀, 설정값, 공개값), 유출 영향, 교체 방법과 사용자 영향, 권한 줄이기, 기본값 때문에 빠지면 위험한 변수, 유출 의심 절차.
+  - `docs/conception/036_secrets_parameter_store/02_parameter-store.md`: 방식 비교와 결정, 동작, 재시작과 손으로 띄우기, IAM 정책 예시, 값 넣는 명령, 하나씩 옮기는 순서, 지우는 시점, 되돌리기, 한계.
+  - `scripts/lib/prod-secrets.sh`: `/etc/snowthing/parameter-store.env`가 있을 때만 `aws ssm get-parameters-by-path --with-decryption`으로 읽어 서브셸에서 export하고 `docker compose`를 실행한다.
+  - `scripts/deploy-ecr-service.sh`: 시작할 때 값을 읽고(실패하면 nginx, pull, 컨테이너를 건드리기 전에 종료), compose 실행을 공용 함수로 바꿨다.
+  - `scripts/compose-prod.sh`: 손으로 띄울 때 배포 스크립트와 같은 값으로 compose를 실행한다. 값을 출력하는 `config`는 막는다.
+  - 배포 워크플로 두 개의 경로 필터에 `scripts/lib/prod-secrets.sh` 추가. `compose.prod.yml`은 주석 두 줄만 추가.
+- 결정
+  - 값은 파일로 쓰지 않고 프로세스 환경으로만 넘긴다. 다른 안: tmpfs 임시 파일(env 파일 문법 이스케이프가 필요하고 스크립트가 죽으면 파일이 남는다), 애플리케이션이 직접 읽기(백엔드와 mcp-bot 코드 변경, 재시작이 AWS 가용성에 묶인다), 서버 파일로 동기화(평문이 그대로 남는다). 부작용: 실행 중 root는 `/proc`에서 볼 수 있다(root는 어느 방식이든 볼 수 있다).
+  - 켜는 스위치는 서버 설정 파일이다. 다른 안: 스크립트 인자와 GitHub 변수(SSM 명령 다섯 곳을 고쳐야 하고 과거 커밋 롤백 때 인자가 빠진다).
+  - 같은 이름이면 Parameter Store가 prod.env를 이긴다. compose가 셸 환경을 `--env-file`보다 먼저 보는 기본 규칙을 그대로 썼다.
+  - `compose.prod.yml`이 쓰지 않는 이름과 `*_IMAGE_URI`는 실패시키지 않고 건너뛴다. 과거 커밋으로 롤백할 때 그 시점 compose에 없는 이름 때문에 배포가 막히지 않게 했다. 형식이 틀린 이름, 0개, 덜 읽힌 응답은 실패시킨다.
+  - 응답 해석은 python3로 한다(NUL 구분으로 넘겨 특수문자를 지킨다). 서버에 jq가 있는지 알 수 없고 Ubuntu에는 python3가 기본으로 있다. 없으면 시작 전에 실패한다.
+  - aws 오류 원문은 Actions 로그 대신 서버의 `/var/log/snowthing-deploy/parameter-store-error.log`(600)에만 남긴다. ARN에 계정 ID가 들어 있을 수 있다.
+  - 설정이 있을 때는 pull 전에 `compose config --quiet`로 필수 값을 먼저 확인한다. 설정이 없을 때는 이 단계를 넣지 않아 기존 흐름과 같다.
+  - #164(IKA-105)는 이미 main에 머지돼 있어 그 위에서 작업했다. `images.env` 흐름(`--env-file` 두 번째 인자, digest 기록)은 그대로다.
+- 발견된 이슈
+  - docker는 컨테이너 환경변수를 컨테이너 설정으로 디스크에 보관한다(root 전용). Parameter Store로 옮겨도 평문이 디스크에서 완전히 사라지지는 않는다.
+  - Parameter Store로 옮기면 백엔드 컨테이너가 인스턴스 역할로 mcp-bot 전용 값(`OPENAI_API_KEY`)까지 읽을 수 있게 된다. 지금은 prod.env가 호스트에만 있어 읽지 못한다.
+  - `AmazonSSMManagedInstanceCore` 정책은 `ssm:GetParameter(s)`를 모든 리소스에 허용하는 것으로 알고 있다. 경로 단위 정책만으로는 범위가 좁혀지지 않아 거부 문장 예시를 문서에 넣었다. 실제 계정에서 확인하지 못했다.
+  - 비밀을 prod.env에서 지운 뒤 예전 명령으로 손으로 띄우면 필수 네 값 말고는 빈 값으로 컨테이너가 다시 만들어진다. `scripts/compose-prod.sh`만 쓰도록 문서와 compose 주석에 적었다.
+  - 이 변경 전 커밋으로 롤백하면 그 시점 스크립트는 Parameter Store를 읽지 않는다. 롤백 대상이 모두 이 변경 이후가 될 때까지 prod.env에서 비밀을 지우면 안 된다.
+  - `application.yml`에는 있지만 `compose.prod.yml`이 넘기지 않는 변수가 있다(슬로프 수집 리조트 목록, 검색 설정 등). prod.env에 넣어도 전달되지 않는다. 이번에 고치지 않았다.
+- 검증: 아래 숫자는 실제 실행 결과다.
+  - `bash -n` 3개 파일 통과. shellcheck(도커): 새 파일 2개 경고 0건, 배포 스크립트는 기존과 같은 SC2016 안내 6건(변경 전과 같은 줄).
+  - 가짜 aws 명령과 실제 `docker compose config`로 25개 확인 모두 통과: 설정이 없을 때 config 결과가 기존 명령과 바이트 단위로 같음(166줄), aws 호출 0번, 23개 중 21개 채택, `$`, `#`, 따옴표, 공백, 개행, 한글 값 유지, prod.env보다 우선, prod.env 전용 값 유지, 이미지 주소 보호, `set -x`에서도 값 미출력, 실패 6종(aws 실패, NextToken 남음, 잘린 JSON, 0개, 잘못된 이름, 쓰는 이름 없음)에서 값 0개로 종료.
+  - 실제 컨테이너(node:22-alpine)를 띄워 받은 환경변수 6개가 넣은 값과 글자 그대로 같은지 확인.
+  - 실제 aws CLI 2.38.1을 로컬 가짜 SSM 엔드포인트(10개씩 응답)에 붙여 요청 3번으로 23개를 모두 읽는 것 확인. AWS에는 접속하지 않았다.
+  - ubuntu:24.04 컨테이너에서 docker, aws, curl, nginx를 가짜로 두고 배포 스크립트 전체 실행: 설정이 없을 때 변경 전 스크립트와 docker 호출 13건, 표준 출력, 표준 오류, images.env가 모두 같음. 설정이 있을 때 compose 호출에만 값이 있고 login, pull, inspect 등에는 없음. 읽기 실패 시 종료 코드 1, pull과 compose 호출 0건, nginx 파일 0개. 헬스체크 실패 시 복구 compose 호출에도 같은 값. `bash -x`로 돌려도 값 미출력.
+  - 워크플로 6개와 `compose.prod.yml` YAML 파싱 통과.
+  - 하지 않은 것: 실제 AWS 계정에서의 읽기와 IAM, KMS 권한, 운영 서버에서의 실행.
+- 리뷰 반영(CodeRabbit이 건너뛰어 다른 세션이 이어받아 검토)
+  - 필수 이름 목록: 설정 파일에 `SNOWTHING_SSM_REQUIRED_NAMES`를 필수로 두고, 경로가 돌려준 이름에 하나라도 없으면 nginx, pull, compose 전에 실패한다. 이전에는 쓰는 이름이 하나만 있어도 통과해 값 하나가 빠진 채 배포될 수 있었다. 다른 안: 목록을 선택으로 두기(켜지 않으면 같은 구멍이 남는다).
+  - `prod-secrets.sh`의 경로 변수(설정 파일, prod.env, images.env, compose 파일, 오류 로그)를 고정했다. 호출한 셸의 환경변수가 바꿀 수 없다. 저장소에 셸 테스트가 없어 테스트용 덮어쓰기 장치는 두지 않았다.
+  - `compose-prod.sh`: 전역 옵션 뒤의 첫 인자를 하위 명령으로 보고 `config`, `convert`를 `--quiet` 없이 막는다. `exec`, `run`의 마지막 인자가 `env`, `printenv`이면 막는다. `sh -c env`나 `docker inspect`는 막지 못해 문서에 한계로 적었다.
+  - 문서 5.4에 `--env-file` 값의 `$` 보간 차이를 적었다.
+  - 검증: `bash -n` 3개 통과, shellcheck 새 파일 경고 0건(배포 스크립트 SC2016 안내 6건은 기존과 같음), ubuntu:24.04 컨테이너에서 가짜 aws, docker로 30개 확인 통과.
+- 남은 항목: 머지, AWS 설정, 값 이전(`02_parameter-store.md` 5절).
+- 사용자 결정 필요: `OPENAI_API_KEY`를 Parameter Store로 옮길지(위 발견된 이슈 둘째). 인스턴스 역할에 거부 문장을 넣을지. 머지하면 백엔드와 프론트 배포가 모두 돈다.
+
 ## 쪽지 메일 알림을 관리자 화면에서 켜고 끄기 (IKA-109, 2026-11-22)
 
 - 상태: 구현, 로컬 전체 스택 화면 확인, PR. 머지와 배포는 사용자 확인 후. 운영에는 접근하지 않았다.

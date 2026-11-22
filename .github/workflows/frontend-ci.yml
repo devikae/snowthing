@@ -26,11 +26,11 @@ jobs:
       NEXT_PUBLIC_API_BASE_URL: https://example.invalid
       NEXT_PUBLIC_KAKAO_MAP_APP_KEY: ci-dummy-kakao-key
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       # Node 버전은 frontend/Dockerfile(node:22-alpine)과 맞춘다.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm

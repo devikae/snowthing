@@ -18,6 +18,12 @@ application-credentials*.yml
 *.pem
 *.key
 *.p12
+*.jks
+*.keystore
+.env.production
+.env.*.local
+!.env.example
+!.env.local.example
 
 # Local Project & Study Notes
 __pycache__/
