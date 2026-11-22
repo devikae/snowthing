@@ -20,6 +20,7 @@ import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportCreateRequest;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportResponse;
 import com.ikae.snowthing.domain.resortreport.entity.ResortReport;
@@ -48,6 +49,7 @@ public class ResortReportService {
     private final MemberRepository memberRepository;
     private final Clock clock;
     private final AdminActionLogger actionLogger;
+    private final ModerationEnqueuer moderation;
 
     @Transactional
     public ResortReportResponse createReport(Long memberId, ResortReportCreateRequest request) {
@@ -83,6 +85,7 @@ public class ResortReportService {
                         .build();
 
         ResortReport savedReport = resortReportRepository.save(report);
+        moderation.resortReportWritten(savedReport);
         return ResortReportResponse.from(savedReport, true);
     }
 

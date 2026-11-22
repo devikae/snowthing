@@ -19,6 +19,7 @@ import com.ikae.snowthing.domain.contentfilter.service.ContentFilterService.Comm
 import com.ikae.snowthing.domain.market.repository.MarketListingRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
@@ -49,6 +50,7 @@ public class CommentService {
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
     private final ChatIpBanService chatIpBanService;
     private final ContentFilterService contentFilter;
+    private final ModerationEnqueuer moderation;
 
     public CommentResponse createComment(
             String postPublicId,
@@ -273,6 +275,7 @@ public class CommentService {
         applyFilterAfterEdit(comment, userDetails);
         commentRepository.flush();
         searchOutbox.commentChanged(comment, comment.isFilterHeld());
+        moderation.commentWritten(comment);
 
         return new CommentUpdateResponse(
                 comment.getId(), comment.getContent(), comment.getUpdatedAt());

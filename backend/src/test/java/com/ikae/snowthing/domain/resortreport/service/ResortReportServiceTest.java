@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
@@ -32,6 +33,7 @@ import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportCreateRequest;
 import com.ikae.snowthing.domain.resortreport.dto.ResortReportResponse;
 import com.ikae.snowthing.domain.resortreport.entity.ResortReport;
@@ -64,7 +66,8 @@ class ResortReportServiceTest {
                         resortRepository,
                         memberRepository,
                         WINTER_CLOCK,
-                        actionLogger);
+                        actionLogger,
+                        mock(ModerationEnqueuer.class));
     }
 
     @Test
@@ -120,7 +123,8 @@ class ResortReportServiceTest {
                         resortRepository,
                         memberRepository,
                         Clock.fixed(Instant.parse("2026-07-01T00:00:00Z"), KST),
-                        actionLogger);
+                        actionLogger,
+                        mock(ModerationEnqueuer.class));
 
         assertThatThrownBy(() -> summerService.createReport(1L, request(10L)))
                 .isInstanceOf(CustomException.class)
@@ -137,7 +141,8 @@ class ResortReportServiceTest {
                         resortRepository,
                         memberRepository,
                         Clock.fixed(Instant.parse("2026-10-06T15:30:00Z"), KST),
-                        actionLogger);
+                        actionLogger,
+                        mock(ModerationEnqueuer.class));
         Member author = member(1L, "눈꽃보더", Role.ROLE_USER);
         Resort resort = resort(10L);
         given(memberRepository.findByIdForUpdate(author.getId())).willReturn(Optional.of(author));

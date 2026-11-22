@@ -19,6 +19,7 @@ import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Resort;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.repository.ResortRepository;
+import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategory;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
@@ -43,6 +44,7 @@ public class CarpoolWriterService {
     private final CarpoolDetailRepository carpoolDetailRepository;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
+    private final ModerationEnqueuer moderation;
 
     @Transactional
     public CarpoolResponse save(
@@ -76,6 +78,7 @@ public class CarpoolWriterService {
                         .build();
         postRepository.save(post);
         searchOutbox.postChanged(post);
+        moderation.carpoolWritten(post);
 
         CostSnapshot cost = CostSnapshot.of(request, calculation);
         CarpoolDetail detail =
@@ -138,6 +141,7 @@ public class CarpoolWriterService {
 
         post.update(request.title(), request.content(), post.getCategory());
         searchOutbox.postChanged(post);
+        moderation.carpoolWritten(post);
         CostSnapshot cost = CostSnapshot.of(request, calculation);
         detail.update(
                 request.departureRegion(),
