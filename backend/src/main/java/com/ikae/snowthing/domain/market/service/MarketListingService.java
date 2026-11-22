@@ -30,6 +30,7 @@ import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostCategoryRepository;
 import com.ikae.snowthing.domain.post.repository.PostImageRepository;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.domain.post.service.InquiryAccess;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse.PageInfo;
 import com.ikae.snowthing.global.error.ErrorCode;
@@ -188,7 +189,7 @@ public class MarketListingService {
         if (userDetails != null) {
             requireMember(userDetails);
         }
-        MarketListing listing = findVisible(publicId);
+        MarketListing listing = findDetailVisibleTo(publicId, userDetails);
         Post post = listing.getPost();
         List<String> images =
                 postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId()).stream()
@@ -365,6 +366,7 @@ public class MarketListingService {
                 listing.getVersion(),
                 canEdit,
                 canDelete,
+                post.getStatus(),
                 listing.getCreatedAt(),
                 listing.getUpdatedAt());
     }
@@ -452,6 +454,22 @@ public class MarketListingService {
                 marketListingRepository
                         .findDetailByPostPublicId(publicId)
                         .orElseThrow(() -> new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND));
+        validateVisible(listing);
+        return listing;
+    }
+
+    /** 숨김, 차단, 임시조치 판매글은 관리자 로그인 세션에만 보인다. 봇 위임과 API 토큰은 관리자여도 막는다. */
+    private MarketListing findDetailVisibleTo(String publicId, CustomUserDetails userDetails) {
+        MarketListing listing =
+                marketListingRepository
+                        .findDetailByPostPublicId(publicId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.MARKET_LISTING_NOT_FOUND));
+        Post post = listing.getPost();
+        boolean sessionAdmin =
+                InquiryAccess.isSessionUser(userDetails) && InquiryAccess.isAdmin(userDetails);
+        if (!post.isDeleted() && post.getStatus() != PostStatus.NORMAL && sessionAdmin) {
+            return listing;
+        }
         validateVisible(listing);
         return listing;
     }

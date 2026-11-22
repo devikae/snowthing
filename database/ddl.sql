@@ -2,10 +2,12 @@
 -- Snowthing 데이터베이스 스키마 (MySQL 8.0)
 --
 -- 이 파일은 손으로 고치지 않는다. database/production 마이그레이션 체인을 적용한 스키마에서 뽑은 결과다.
--- 기준 마이그레이션: 058_migration_market_guest_access (001_initial_schema, 002_reference_data 다음 003~055, 057, 058 적용. 056은 아직 main에 없다)
+-- 기준 마이그레이션: 060_migration_spam_filter (001_initial_schema 다음 003~060 적용)
 --
 -- 생성 방법
---   1. 빈 스키마에 001_initial_schema.sql, 002_reference_data.sql을 넣는다.
+--   1. 빈 스키마에 001_initial_schema.sql을 넣는다. 002_reference_data.sql은 데이터만 있고 지금 체인에서는
+--      005의 resort.code NOT NULL 변경과 부딪히므로 넣지 않는다(스키마에는 영향이 없다).
+--      mysql 클라이언트 기본 문자셋을 utf8mb4로 둔다. 아니면 한글 COMMENT가 깨진다.
 --   2. scripts/run-production-migrations.sh database/production 으로 나머지를 적용한다.
 --   3. mysqldump --default-character-set=utf8mb4 --no-data --skip-comments --skip-dump-date --skip-set-charset
 --      --compact --skip-add-drop-table --ignore-table=<스키마>.schema_migration <스키마>
@@ -120,6 +122,14 @@ CREATE TABLE `api_token` (
   KEY `idx_api_token_member_created` (`member_id`,`created_at`),
   CONSTRAINT `fk_api_token_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='제한 API 토큰';
+CREATE TABLE `banned_word` (
+  `banned_word_id` bigint NOT NULL AUTO_INCREMENT,
+  `word` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '관리자가 입력한 금칙어 표기',
+  `normalized_word` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '비교 값 (HTML 제거, NFKC, 소문자, 글자와 숫자만)',
+  `created_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`banned_word_id`),
+  UNIQUE KEY `uk_banned_word_normalized` (`normalized_word`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='금칙어 (걸리면 글과 댓글을 조용히 보류)';
 CREATE TABLE `banner` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `title` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -264,7 +274,7 @@ CREATE TABLE `chat_banned_ip` (
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_chat_banned_ip` (`banned_ip`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='IP 차단 목록 (라이브톡, 게시글, 댓글 작성 공통). banned_ip는 단일 IP 또는 CIDR 대역';
 CREATE TABLE `comment` (
   `comment_id` bigint NOT NULL AUTO_INCREMENT COMMENT '댓글 식별자',
   `version` bigint NOT NULL DEFAULT '0' COMMENT '낙관적 락 동시성 제어용 버전',
@@ -280,6 +290,7 @@ CREATE TABLE `comment` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
   `moderation_held` tinyint(1) NOT NULL DEFAULT '0' COMMENT '임시조치로 가린 댓글이면 TRUE',
+  `filter_state` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '금칙어 보류 상태 (NULL 보통, HELD 보류, REJECTED 보류 뒤 삭제)',
   PRIMARY KEY (`comment_id`),
   KEY `idx_comment_post_parent_id` (`post_id`,`parent_id`,`comment_id`),
   KEY `idx_comment_parent_deleted_id` (`parent_id`,`is_deleted`,`comment_id`),
@@ -289,6 +300,21 @@ CREATE TABLE `comment` (
   CONSTRAINT `fk_comment_parent` FOREIGN KEY (`parent_id`) REFERENCES `comment` (`comment_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_comment_post` FOREIGN KEY (`post_id`) REFERENCES `post` (`post_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='댓글 및 계층형 대댓글';
+CREATE TABLE `content_filter_hold` (
+  `content_filter_hold_id` bigint NOT NULL AUTO_INCREMENT,
+  `target_type` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '보류 대상 (POST, COMMENT)',
+  `target_id` bigint NOT NULL COMMENT '글 번호 또는 댓글 번호',
+  `post_id` bigint NOT NULL COMMENT '글 번호 (댓글이면 댓글이 달린 글)',
+  `member_id` bigint DEFAULT NULL COMMENT '작성 회원 (비회원이면 NULL). 탈퇴 회원 기록도 남기려고 FK를 두지 않는다',
+  `writer_ip` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '작성자 IP',
+  `matched_word` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '걸린 금칙어',
+  `held_at` datetime(6) NOT NULL COMMENT '보류한 시각 (금칙어가 든 내용으로 고치면 다시 쓴다)',
+  PRIMARY KEY (`content_filter_hold_id`),
+  UNIQUE KEY `uk_content_filter_hold_target` (`target_type`,`target_id`),
+  KEY `idx_content_filter_hold_list` (`held_at`,`content_filter_hold_id`),
+  KEY `idx_content_filter_hold_member` (`member_id`),
+  KEY `idx_content_filter_hold_ip` (`writer_ip`,`held_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='금칙어 보류 중인 글과 댓글';
 CREATE TABLE `content_moderation_action` (
   `content_moderation_action_id` bigint NOT NULL AUTO_INCREMENT,
   `target_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -587,6 +613,17 @@ CREATE TABLE `notification` (
   KEY `idx_notification_receiver_read_id` (`receiver_id`,`is_read`,`notification_id`),
   CONSTRAINT `fk_notification_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `member` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 알림';
+CREATE TABLE `persistent_logins` (
+  `series` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '기기별 토큰 묶음 식별자 (쿠키에 담김)',
+  `member_public_id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '회원 공개 ID',
+  `token_hash` char(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '현재 token의 SHA-256 해시',
+  `previous_token_hash` char(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '바로 전 token의 SHA-256 해시',
+  `last_used_at` datetime(6) NOT NULL COMMENT '발급 또는 마지막 자동 로그인 시각 (KST)',
+  `created_at` datetime(6) NOT NULL COMMENT '발급 시각 (KST)',
+  PRIMARY KEY (`series`),
+  KEY `idx_persistent_logins_member` (`member_public_id`),
+  KEY `idx_persistent_logins_last_used` (`last_used_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='로그인 상태 유지 토큰';
 CREATE TABLE `post` (
   `post_id` bigint NOT NULL AUTO_INCREMENT COMMENT '게시글 고유 식별자',
   `public_id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '외부 API/URL 노출용 UUID v7',

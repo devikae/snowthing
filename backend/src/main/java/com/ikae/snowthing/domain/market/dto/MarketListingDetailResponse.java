@@ -6,6 +6,7 @@ import java.util.List;
 import com.ikae.snowthing.domain.market.entity.ProductCondition;
 import com.ikae.snowthing.domain.market.entity.TradeStatus;
 import com.ikae.snowthing.domain.market.entity.TransactionMethod;
+import com.ikae.snowthing.domain.post.entity.PostStatus;
 
 public record MarketListingDetailResponse(
         String publicId,
@@ -27,6 +28,7 @@ public record MarketListingDetailResponse(
         long version,
         boolean canEdit,
         boolean canDelete,
+        PostStatus status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
 

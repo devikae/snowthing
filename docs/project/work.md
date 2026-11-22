@@ -44,6 +44,67 @@
   - 처리 끝난 줄 정리(보관 기간) 작업은 아직 없다. 하루 수백 줄 규모라 1차에서는 두었다.
 - 사용자 결정 필요: 개인정보처리방침 초안 5절의 다섯 가지. 장터와 카풀의 연락처 예외 범위.
 
+## 쪽지 메일 알림을 관리자 화면에서 켜고 끄기 (IKA-109, 2026-11-22)
+
+- 상태: 구현, 로컬 전체 스택 화면 확인, PR. 머지와 배포는 사용자 확인 후. 운영에는 접근하지 않았다.
+- 계획: 쪽지 도착 메일(IKA-88)의 기록, 발송 스위치를 `system_config`로 옮겨 재시작 없이 바꾼다. 환경변수는 비상 차단으로 남긴다. 설계는 `docs/conception/032_dm_email_notification/04_admin_switch.md`.
+- 완료
+  - `061_migration_dm_mail_admin_switch.sql`: `system_config`에 `DM_MAIL_ENQUEUE_ENABLED`, `DM_MAIL_SEND_ENABLED`(기본 false). 스키마 변경이 없어 `database/ddl.sql`은 그대로다.
+  - `DmMailSwitches`: 최종 동작 = 환경변수 AND 화면 스위치. 발송은 메일 공급자(ses)까지 본다. `DmMailOutboxWriter`와 `DmMailScheduler`가 같은 판단을 쓴다.
+  - `DmMailScheduler`: `@ConditionalOnProperty`를 빼고 항상 빈으로 뜬다. 주기마다 스위치를 보고, 꺼져 있으면 DB를 건드리지 않는다. 발송을 다시 켠 첫 주기와 꺼져 있는 동안 10분마다 발송 기한(24시간)이 지난 PENDING, RETRY_WAIT 행을 SKIPPED(`SEND_OFF_EXPIRED`)로 넘긴다. 보관 기간 정리는 스위치와 관계없이 돌고 한 번에 1000행씩 최대 20번 지운다.
+  - `GET /api/v1/admin/dm-mail/switches`: 스위치마다 서버 허용 여부, 화면 값, 실제 동작 여부. 바꾸는 것은 기존 `PATCH /api/v1/admin/configs/{key}`(ROLE_ADMIN, CSRF, `admin_action_log`에 CONFIG_UPDATE).
+  - 관리자 화면 `/admin/dm-mail`(사이드바 "AI, 시스템 > 쪽지 메일"): 스위치 두 개, 서버 설정 차단 안내, 발송 상태 요약, 켤 때 확인 문구.
+- 결정
+  - 화면 스위치는 IKA-108과 같은 `SystemConfigService` 캐시(5분)로 읽는다. 쪽지 저장과 1초 폴링마다 불러도 DB 조회는 키마다 5분에 한 번이다. 관리자 API로 바꾸면 캐시도 같이 바뀌어 다음 쪽지, 다음 폴링 주기(최대 1초)부터 반영된다. DB를 직접 고치거나 서버가 여러 대면 최대 5분 늦는다. 다른 안: 쪽지마다 DB 조회(쪽지 트랜잭션에 쿼리 하나가 는다).
+  - 바꾸는 API를 새로 만들지 않고 기존 설정 API를 쓴다. 조치 기록과 권한 검사가 이미 붙어 있다. 대가: 값 검증이 없어 true가 아닌 글자는 모두 꺼짐으로 읽힌다(꺼지는 쪽이라 안전하다).
+  - 오래된 건의 기준은 기존 정책인 24시간(`snowthing.dm-mail.deadline`)을 그대로 쓴다. 사유는 기존 `EXPIRED`(워커가 발송 직전에 거른 것)와 구분되게 `SEND_OFF_EXPIRED`를 더했다. `skip_reason`은 VARCHAR(30)이라 스키마 변경이 없다.
+  - 발송이 꺼져 있을 때도 정리를 돌린다. 기록만 켜고 발송을 오래 꺼 두면 대기 행이 끝없이 쌓이기 때문이다. 대기 행은 최근 24시간치만 남고, 넘긴 행은 30일 뒤 지워진다. 대가: 꺼져 있는 동안 10분에 UPDATE 한 번.
+  - 메일 공급자가 ses가 아니면 발송을 꺼진 것으로 본다. 전에는 워커가 매초 돌며 아무것도 잡지 않았다.
+  - 서버 설정에서 막혀 있어도 화면 스위치는 바꿀 수 있다(IKA-108의 AI 회원 화면과 같다). 막힌 스위치는 "켜 둠, 막힘"으로 쓰고 켜짐 색을 쓰지 않는다.
+  - 테스트 설정: 스케줄러 빈이 항상 떠서, 테스트 `application.yml`에서 첫 폴링을 하루 뒤로 미뤘다. 테스트는 처리기나 `poll()`을 직접 부른다. `DmMailTestConfig`는 화면 스위치를 켜진 것으로 보는 빈을 기본으로 주고, 스위치 자체를 검증하는 테스트만 실제 빈을 쓴다. 그래서 `DmMailOutboxIntegrationTest`는 고치지 않았다.
+- 발견된 이슈
+  - `SystemConfigService.updateConfig`는 트랜잭션이 커밋되기 전에 캐시를 바꾼다. 커밋이 실패하면 캐시와 DB가 최대 5분 어긋난다. IKA-108 이전부터 있던 동작이라 고치지 않았다.
+  - 정리 UPDATE는 `idx_dm_mail_outbox_due`의 status 범위로 대기 행을 훑는다. 운영 데이터로 EXPLAIN을 확인하지 않았다.
+  - 모바일 관리자 메뉴는 가로로 넘기는 탭인데 현재 메뉴가 화면 안으로 스크롤되지 않는다. 다른 관리자 화면도 같다. 고치지 않았다.
+- 검증: 아래 숫자는 실제 실행 결과다.
+  - `./gradlew spotlessCheck test`(로컬 MySQL `snowthing_test_ika109`, ratchetFrom만 임시로 끔): 1614개 중 실패 0, 건너뜀 1(기존). 새 테스트 26개: `DmMailAdminSwitchIntegrationTest` 13, `DmMailServerBlockIntegrationTest` 3, `DmMailSwitchesTest` 9(판단표 9줄), `SystemConfigServiceTest` 1. `DmMailOutboxIntegrationTest` 27개는 고치지 않고 통과.
+  - 프론트 `npm run lint`, `npm run build` 통과.
+  - 마이그레이션: 빈 스키마에 001, 002를 넣고 `scripts/run-production-migrations.sh`로 003~061 적용, 다시 실행하면 "already applied", 061 파일을 직접 한 번 더 실행해도 행이 늘지 않고 한글 설명이 깨지지 않음.
+  - 로컬 전체 스택(백엔드 bootJar, 프론트 standalone, MySQL `snowthing_ika109`, 가짜 SES)에서 관리자로 로그인해 headless Chrome으로 확인: 환경변수 차단 8개 항목, 환경변수 허용 20개 항목 모두 통과. 둘 다 켜고 쪽지를 보내면 가짜 SES에 메일 1건, 발송을 끄고 보내면 0건이고 outbox에 PENDING 1행, 대기 행을 25시간 전으로 돌리고 발송을 켜면 그 행은 SKIPPED(SEND_OFF_EXPIRED)이고 새 쪽지만 1건 발송, 환경변수가 꺼진 백엔드에서는 화면 스위치를 둘 다 켜도 outbox 0행과 메일 0건. PC와 모바일, 라이트와 다크 스크린샷을 열어 봤다. 콘솔 예외 0건.
+- 남은 항목: 머지, 운영 마이그레이션(061)과 배포. 운영에서 켜는 것은 설계 문서의 "운영에서 켜는 절차"를 따른다.
+- 사용자 결정 필요: 운영에서 언제 켤지. 켜려면 `prod.env`에 `SNOWTHING_DM_MAIL_ENQUEUE_ENABLED=true`, `SNOWTHING_DM_MAIL_SEND_ENABLED=true`를 넣고 다시 띄워야 한다.
+- 확인 못 한 것: 실제 SES 발송, 운영 환경, 실제 휴대폰 브라우저.
+
+## 중고장터와 카풀 상세에서 관리자가 바로 가리기 (IKA-90, 2026-11-22)
+
+- 상태: 구현과 로컬 검증 완료, 커밋. push, PR, 머지는 사용자 확인 후. 마이그레이션 없음.
+- 계획: 게시판 글(IKA-89)처럼 관리자가 중고장터 판매글과 카풀 모집글 상세 화면에서 바로 가리고 푼다. 가린 글은 관리자에게만 상세가 보인다.
+- 완료
+  - `CarpoolService.find`: 삭제된 글은 누구에게나 404. 공개(NORMAL)가 아닌 글은 관리자 로그인 세션만 읽는다. 그 밖의 사람은 기존처럼 임시조치면 `POST_009`(403), 가린 글이면 404.
+  - `MarketListingService.getDetail`: 같은 규칙. 숨김(HIDDEN), 차단(BLOCKED), 임시조치 판매글은 관리자 로그인 세션만 읽고, 그 밖은 기존 응답(404, 임시조치 403). 공유 미리보기, 수정, 거래 상태 변경은 그대로 공개 글만 받는다.
+  - `CarpoolResponse`, `MarketListingDetailResponse`에 `status`(PostStatus) 추가. 화면이 가린 글 안내와 버튼을 고른다.
+  - 카풀 상세 화면: 관리자에게 가리기 / 가리기 해제 버튼(관리자 글 가리기 API `PATCH /api/v1/admin/posts/{id}/blind`), 가린 글과 임시조치 글 안내. 공개가 아니면 수정, 삭제 버튼과 동승 영역을 숨긴다(서버가 막는다).
+  - 중고장터 상세 화면: 관리자에게 숨기기, 차단(공개 글), 공개로 되돌리기(숨김, 차단 글) 버튼(`PATCH /api/v1/admin/market-listings/{id}/moderation-status`), 상태 안내. 공개가 아니면 수정과 거래 상태 선택을 숨기고 삭제는 둔다. 버튼이 늘어 `.market-owner-tools`에 줄바꿈을 켰다.
+  - 두 상세의 서버 렌더링: 비로그인 조회가 404여도 로그인 쿠키가 있으면 404 페이지로 끊지 않고 브라우저가 다시 부른다(게시글 상세와 같은 방식). 쿠키 확인 함수를 `lib/sessionCookie.server.ts`로 옮겨 세 화면이 같이 쓴다.
+  - 관리자 게시판 관리 목록(`AdminBoardPosts`): 공개가 아닌 글도 제목을 링크로 열어 상세에서 확인할 수 있게 했다(삭제된 글만 링크 없음).
+  - 통합 테스트 `AdminHiddenDetailIntegrationTest` 4개.
+- 결정
+  - DB 컬럼을 새로 만들지 않았다. 티켓에는 컬럼 추가가 적혀 있지만 카풀은 `post.status`의 BLOCKED(게시판 가리기와 같은 API), 판매글은 기존 NORMAL, HIDDEN, BLOCKED 상태로 충분하다. 다른 안: `is_hidden` 같은 별도 컬럼(같은 뜻의 상태가 두 군데 생겨 공개 목록, 검색 색인, 관리자 목록 조건을 모두 다시 맞춰야 한다).
+  - 관리자 판정은 로그인 세션 관리자만 인정한다(`InquiryAccess.isSessionUser`와 `isAdmin`). 봇 위임과 API 토큰은 소유자가 관리자여도 가린 글에 404다. 라이브톡 봇이 가린 글 내용을 공개 채팅에 옮기지 않게 한다. 지금도 두 토큰은 ROLE_ADMIN 권한을 받지 않아 권한만 봐도 막히지만, 토큰 권한 구성이 바뀌어도 열리지 않게 종류를 직접 확인한다. 다른 안: 게시판 글 상세처럼 권한만 보기(코드는 짧지만 토큰 권한 구성에 기대게 된다).
+  - 임시조치 글도 관리자는 읽는다. 게시판 글 상세(IKA-89)와 같다. 해제 버튼은 두지 않고 신고 처리 화면으로 안내한다(두 관리자 API 모두 임시조치 글은 409로 막는다).
+  - 판매글 화면에서 차단도 함께 제공한다. 관리자 중고장터 화면이 공개, 숨김, 차단 세 상태를 쓰기 때문이다.
+  - 가린 글의 댓글 작성, 동승 신청, 수정은 기존처럼 서버가 막는다. 바꾸지 않았다.
+  - 서버 렌더링의 404 처리: 로그인한 일반 회원이 없는 카풀이나 판매글 주소를 열면 404 페이지 대신 화면 안의 "찾을 수 없음" 안내를 본다. 게시글 상세와 같은 대가다. 다른 안: 서버 렌더링에서 쿠키를 넘겨 관리자 여부를 확인(세션 쿠키를 서버에서 백엔드로 전달하는 곳이 늘어나 피했다).
+  - 관리자가 가린 글을 열어도 조회수는 기존처럼 오른다.
+- 남은 항목
+  - 실제 화면 확인(관리자 계정으로 가리기, 해제, 일반 계정으로 404 확인)은 사용자 확인 필요.
+  - push, PR, 머지.
+- 검증: 아래는 실제 실행 결과다.
+  - `./gradlew compileJava compileTestJava test`: BUILD SUCCESSFUL, 테스트 1543개 중 실패 0, 건너뜀 1(기존). 새 `AdminHiddenDetailIntegrationTest` 4개 통과(가린 카풀 관리자만 읽기와 해제, 임시조치 카풀 일반 회원 403, 숨김과 차단 판매글 관리자만 읽기와 공개 복귀, 봇 위임과 API 토큰 404).
+  - spotless는 worktree에서 돌지 않아 google-java-format AOSP 모양을 손으로 맞췄다. 머지 전 원본 저장소에서 `spotlessCheck` 필요.
+  - `npm run lint` 통과, `npm run build` 통과.
+  - 실제 화면 확인은 하지 않았다.
+
 ## AI 회원 활동 관리자 스위치 (IKA-108, 2026-11-22)
 
 - 상태: 구현, 로컬 화면 확인(사용자), PR. 머지는 사용자 확인 후.

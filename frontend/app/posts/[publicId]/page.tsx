@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { fetchPublicResult, isPublicId } from "../../lib/publicApi";
 import { RECENT_WRITE_COOKIE } from "../../lib/recentWrite";
 import { detailMetadata, firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
 import { renderMarkdownHtml } from "../../lib/markdownHtml.server";
+import { hasSessionCookie } from "../../lib/sessionCookie.server";
 import PostDetailClient, { type PostDetail } from "./PostDetailClient";
 
 type Props = { params: Promise<{ publicId: string }> };
@@ -49,10 +50,4 @@ export default async function PostDetailPage({ params }: Props) {
 async function wroteRecently(publicId: string) {
   const store = await cookies();
   return store.get(RECENT_WRITE_COOKIE)?.value === publicId;
-}
-
-async function hasSessionCookie() {
-  const store = await cookies();
-  // 세션이 끝나도 로그인 유지 쿠키가 있으면 브라우저 요청은 다시 로그인된 채로 간다.
-  return store.has("JSESSIONID") || store.has("SESSION") || store.has("SNOWTHING_REMEMBER_ME");
 }

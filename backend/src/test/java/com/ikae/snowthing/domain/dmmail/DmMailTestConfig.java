@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.dmmail;
 import java.time.Duration;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -12,6 +13,7 @@ import com.ikae.snowthing.domain.dmmail.mail.DmMail;
 import com.ikae.snowthing.domain.dmmail.mail.DmMailResult;
 import com.ikae.snowthing.domain.dmmail.mail.DmMailSender;
 import com.ikae.snowthing.domain.dmmail.mail.SesDmMailSender;
+import com.ikae.snowthing.domain.dmmail.service.DmMailSwitches;
 import com.ikae.snowthing.testsupport.FakeSesServer;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -40,6 +42,36 @@ public class DmMailTestConfig {
         return new SwitchableSender(
                 sender(FAKE_SES.endpoint(), attempt, call),
                 sender("http://127.0.0.1:" + deadPort(), attempt, call));
+    }
+
+    /**
+     * 관리자 화면 스위치(system_config)는 켜진 것으로 본다. 기록과 발송은 테스트 속성 {@code snowthing.dm-mail.*-enabled}만으로
+     * 정해진다. 화면 스위치 자체를 검증하는 테스트는 {@code dm-mail-test.real-switches=true}로 실제 빈을 쓴다.
+     */
+    @Bean
+    @Primary
+    @ConditionalOnProperty(
+            name = "dm-mail-test.real-switches",
+            havingValue = "false",
+            matchIfMissing = true)
+    public DmMailSwitches adminSwitchesAlwaysOn(DmMailProperties properties) {
+        return new DmMailSwitches(properties, null, null) {
+            @Override
+            public boolean enqueueOn() {
+                return properties.enqueueEnabled();
+            }
+
+            @Override
+            public boolean sendOn() {
+                return properties.sendEnabled();
+            }
+
+            @Override
+            public Snapshot snapshot() {
+                return new Snapshot(
+                        properties.enqueueEnabled(), true, properties.sendEnabled(), true, true);
+            }
+        };
     }
 
     static SesDmMailSender sender(String endpoint, Duration attempt, Duration call) {

@@ -40,6 +40,10 @@ snowthing:
       secret: test-email-verification-secret-at-least-32-bytes
   mail:
     provider: disabled
+  # 쪽지 메일 스케줄러 빈은 항상 뜬다(IKA-109). 테스트에서는 폴링이 스스로 돌지 않게 첫 실행을 하루 뒤로 미루고,
+  # 처리기나 스케줄러의 poll()을 직접 부른다. 폴링이 필요한 벤치마크는 initial-delay-ms를 0으로 덮어쓴다.
+  dm-mail:
+    initial-delay-ms: 86400000
   # 테스트에서는 outbox 폴링·일일 대조 스케줄러를 끄고 처리기를 직접 부른다.
   search:
     indexer:

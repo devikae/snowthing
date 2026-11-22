@@ -7,8 +7,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 쪽지 도착 메일 설정 (IKA-88). 적재와 발송을 따로 켠다. 운영은 둘 다 꺼진 채 배포하고, 적재를 먼저 켜서 확인한 뒤 발송을 켠다.
  *
- * @param enqueueEnabled 쪽지 트랜잭션에서 outbox 행을 쓸지
- * @param sendEnabled 워커가 SES를 부를지. false면 스케줄러 빈을 만들지 않는다
+ * <p>enqueueEnabled와 sendEnabled는 환경변수로 정하는 서버 쪽 비상 차단이다(IKA-109). 실제 동작은 이 값과 관리자 화면
+ * 스위치(system_config)가 모두 켜져 있을 때만 켜진다. 판단은 {@code DmMailSwitches}가 한다.
+ *
+ * @param enqueueEnabled 서버가 outbox 적재를 허용하는지. false면 관리자 화면 스위치와 관계없이 쓰지 않는다
+ * @param sendEnabled 서버가 발송을 허용하는지. false면 관리자 화면 스위치와 관계없이 SES를 부르지 않는다
  * @param deliveryMode {@code outbox}(기본) 또는 {@code sync-baseline}. 후자는 성능 비교 기준선 측정 전용으로, 쪽지 트랜잭션
  *     안에서 바로 SES를 부른다. 운영에서 쓰지 않는다
  * @param cooldown 같은 받는 사람에게 메일을 다시 보내기까지 최소 간격. 그동안 온 쪽지는 모아서 한 통으로 보낸다

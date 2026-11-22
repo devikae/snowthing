@@ -23,6 +23,7 @@ import com.ikae.snowthing.domain.member.entity.Role;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
+import com.ikae.snowthing.domain.post.service.InquiryAccess;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -73,11 +74,15 @@ public class CarpoolService {
                 postRepository
                         .findWithMemberAndCategoryByPublicId(publicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
-        if (!post.isDeleted() && post.getStatus() == PostStatus.TEMPORARY_HOLD) {
-            throw new CustomAuthException(ErrorCode.CONTENT_TEMPORARILY_HELD);
-        }
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+        if (post.isDeleted()) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
+        }
+        // 가린 글과 임시조치 글은 관리자 로그인 세션에만 보인다. 게시판 글 상세와 같은 규칙이다.
+        if (post.getStatus() != PostStatus.NORMAL && !isSessionAdmin(userDetails)) {
+            throw new CustomAuthException(
+                    post.getStatus() == PostStatus.TEMPORARY_HOLD
+                            ? ErrorCode.CONTENT_TEMPORARILY_HELD
+                            : ErrorCode.POST_NOT_FOUND);
         }
         CarpoolDetail detail =
                 carpoolDetailRepository
@@ -193,6 +198,11 @@ public class CarpoolService {
         if (!isManager(post, userDetails)) {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
         }
+    }
+
+    /** 봇 위임과 API 토큰은 소유자가 관리자여도 가린 글을 읽지 못한다. */
+    private boolean isSessionAdmin(CustomUserDetails userDetails) {
+        return InquiryAccess.isSessionUser(userDetails) && InquiryAccess.isAdmin(userDetails);
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {

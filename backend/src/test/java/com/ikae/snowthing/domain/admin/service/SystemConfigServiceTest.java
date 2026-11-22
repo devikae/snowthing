@@ -56,6 +56,15 @@ class SystemConfigServiceTest {
     }
 
     @Test
+    @DisplayName("쪽지 메일 스위치는 설정 행이 없으면 꺼진 것으로 본다")
+    void dmMailSwitches_defaultFalse() {
+        when(repository.findById(any())).thenReturn(Optional.empty());
+
+        assertThat(service.isDmMailEnqueueEnabled()).isFalse();
+        assertThat(service.isDmMailSendEnabled()).isFalse();
+    }
+
+    @Test
     @DisplayName("AI 회원 스위치를 끄면 바로 꺼진 값으로 읽힌다")
     void aiMemberSwitch_updateTakesEffect() {
         SystemConfig config =

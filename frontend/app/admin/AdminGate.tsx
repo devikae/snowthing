@@ -43,6 +43,7 @@ const ADMIN_MENU: { title: string; items: { href: string; label: string }[] }[] 
     title: "AI, 시스템",
     items: [
       { href: "/admin/ai-members", label: "AI 회원" },
+      { href: "/admin/dm-mail", label: "쪽지 메일" },
       { href: "/admin/answer-drafts", label: "답변 초안" },
       { href: "/admin/api-tokens", label: "API 토큰" },
       { href: "/admin/search", label: "검색 인덱스" },
