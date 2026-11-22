@@ -27,8 +27,7 @@ public final class ModerationScoreRules {
         Map<String, Double> notable = new LinkedHashMap<>();
         for (Map.Entry<String, Double> entry : scores.entrySet()) {
             double score = entry.getValue() == null ? 0 : entry.getValue();
-            boolean hides =
-                    hideCategories.contains(entry.getKey()) && score >= api.hideThreshold();
+            boolean hides = hideCategories.contains(entry.getKey()) && score >= api.hideThreshold();
             if (hides) {
                 verdict = ModerationVerdict.HIDE;
             } else if (score >= api.reviewThreshold()) {

@@ -14,8 +14,8 @@ import com.ikae.snowthing.domain.moderation.entity.ModerationTargetType;
  * <ul>
  *   <li>글, 장터, 카풀: 지워지지 않았고 status = NORMAL. 금칙어 보류(FILTER_HOLD), 신고 임시조치, 블라인드는 이미 가려져 있어 검사하지
  *       않는다.
- *   <li>댓글: is_deleted = false (신고 임시조치, 관리자 블라인드, 금칙어 보류는 모두 삭제 상태를 함께 켠다). 댓글 읽기와 같이 부모 글도
- *       지워지지 않았고 status = NORMAL이어야 한다.
+ *   <li>댓글: is_deleted = false (신고 임시조치, 관리자 블라인드, 금칙어 보류는 모두 삭제 상태를 함께 켠다). 댓글 읽기와 같이 부모 글도 지워지지
+ *       않았고 status = NORMAL이어야 한다.
  *   <li>설질 제보: status = NORMAL.
  * </ul>
  */

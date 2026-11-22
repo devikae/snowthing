@@ -338,7 +338,8 @@ class ModerationIntegrationTest extends ModerationTestSupport {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         LocalDateTime now = LocalDateTime.now();
         ContentModerationRepository.Row stale =
-                tx.execute(status -> moderationRepository.claim(now, now.plusMinutes(5), 50))
+                tx
+                        .execute(status -> moderationRepository.claim(now, now.plusMinutes(5), 50))
                         .stream()
                         .filter(row -> row.targetId() == postId)
                         .findFirst()
@@ -348,7 +349,8 @@ class ModerationIntegrationTest extends ModerationTestSupport {
                 now.minusSeconds(1),
                 stale.id());
         ContentModerationRepository.Row current =
-                tx.execute(status -> moderationRepository.claim(now, now.plusMinutes(5), 50))
+                tx
+                        .execute(status -> moderationRepository.claim(now, now.plusMinutes(5), 50))
                         .stream()
                         .filter(row -> row.id() == stale.id())
                         .findFirst()
@@ -361,7 +363,12 @@ class ModerationIntegrationTest extends ModerationTestSupport {
         assertThat(moderationRepository.scheduleRetry(stale, now.plusMinutes(1), now)).isZero();
         assertThat(
                         moderationRepository.complete(
-                                stale, ModerationStatus.DONE, null, ModerationVerdict.PASS, null, now))
+                                stale,
+                                ModerationStatus.DONE,
+                                null,
+                                ModerationVerdict.PASS,
+                                null,
+                                now))
                 .isZero();
         assertThat(latest("POST", postId))
                 .containsEntry("status", "PENDING")
@@ -370,7 +377,12 @@ class ModerationIntegrationTest extends ModerationTestSupport {
 
         assertThat(
                         moderationRepository.complete(
-                                current, ModerationStatus.DONE, null, ModerationVerdict.PASS, null, now))
+                                current,
+                                ModerationStatus.DONE,
+                                null,
+                                ModerationVerdict.PASS,
+                                null,
+                                now))
                 .isEqualTo(1);
     }
 

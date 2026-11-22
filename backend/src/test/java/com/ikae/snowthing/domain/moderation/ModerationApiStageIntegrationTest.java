@@ -173,9 +173,13 @@ class ModerationApiStageIntegrationTest extends ModerationTestSupport {
                                     + " ORDER BY content_moderation_id",
                             postId);
             assertThat(rows).hasSize(2);
-            assertThat(rows.get(0)).containsEntry("status", "SKIPPED").containsEntry("verdict", null);
+            assertThat(rows.get(0))
+                    .containsEntry("status", "SKIPPED")
+                    .containsEntry("verdict", null);
             assertThat((String) rows.get(0).get("reasons")).contains("SUPERSEDED");
-            assertThat(rows.get(1)).containsEntry("status", "DONE").containsEntry("verdict", "PASS");
+            assertThat(rows.get(1))
+                    .containsEntry("status", "DONE")
+                    .containsEntry("verdict", "PASS");
             assertThat(postStatus(postId)).isEqualTo("NORMAL");
         }
     }

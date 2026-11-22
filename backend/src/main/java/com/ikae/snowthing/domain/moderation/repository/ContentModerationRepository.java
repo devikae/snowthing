@@ -96,8 +96,8 @@ public class ContentModerationRepository {
     }
 
     /**
-     * 판정 기록과 조치를 같은 트랜잭션에서 하려고 처리 중인 줄을 잠근다. 다른 처리기가 이미 끝냈거나, 임대가 끝나 다른 처리기가 다시 가져갔으면(시도 번호가
-     * 다르다) 빈 값.
+     * 판정 기록과 조치를 같은 트랜잭션에서 하려고 처리 중인 줄을 잠근다. 다른 처리기가 이미 끝냈거나, 임대가 끝나 다른 처리기가 다시 가져갔으면(시도 번호가 다르다) 빈
+     * 값.
      */
     public Optional<Row> lockPending(Row claimed) {
         return jdbc
@@ -224,9 +224,7 @@ public class ContentModerationRepository {
                 id);
     }
 
-    /**
-     * 관리자 처리. 고른 줄과 같은 대상의 그보다 이전 미검토 판정을 함께 닫는다. 더 새 판정은 그 판정의 조치를 따로 받아야 하므로 닫지 않는다.
-     */
+    /** 관리자 처리. 고른 줄과 같은 대상의 그보다 이전 미검토 판정을 함께 닫는다. 더 새 판정은 그 판정의 조치를 따로 받아야 하므로 닫지 않는다. */
     public int markReviewed(
             Row row, ModerationReviewResult result, Long reviewerId, LocalDateTime now) {
         return jdbc.update(

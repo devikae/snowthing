@@ -33,10 +33,10 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <ul>
  *   <li>가져오기: 검색 색인 outbox와 같다. FOR UPDATE SKIP LOCKED로 고르고 임대(lease_until)를 걸며 시도 횟수를 미리 올린다. 처리 중
- *       서버가 죽으면 임대가 끝난 뒤 다시 가져간다. 기록과 재시도 예약은 가져간 시도 번호가 그대로일 때만 한다. 임대가 끝나 다른 처리기가 다시
- *       가져갔으면 늦게 돌아온 이전 시도는 아무것도 쓰지 않는다.
- *   <li>원문은 처리 시점에 다시 읽는다. 지워졌거나 이미 가려졌거나 같은 대상의 더 새 줄이 있으면 판정하지 않는다(SKIPPED). 판정을 기록할
- *       때(최종 실패 포함) 줄을 잠근 뒤 더 새 줄이 생겼는지 다시 보고, 생겼으면 이전 수정본의 판정을 검토 대기로 올리지 않고 SKIPPED로 닫는다.
+ *       서버가 죽으면 임대가 끝난 뒤 다시 가져간다. 기록과 재시도 예약은 가져간 시도 번호가 그대로일 때만 한다. 임대가 끝나 다른 처리기가 다시 가져갔으면 늦게 돌아온
+ *       이전 시도는 아무것도 쓰지 않는다.
+ *   <li>원문은 처리 시점에 다시 읽는다. 지워졌거나 이미 가려졌거나 같은 대상의 더 새 줄이 있으면 판정하지 않는다(SKIPPED). 판정을 기록할 때(최종 실패 포함)
+ *       줄을 잠근 뒤 더 새 줄이 생겼는지 다시 보고, 생겼으면 이전 수정본의 판정을 검토 대기로 올리지 않고 SKIPPED로 닫는다.
  *   <li>1단계 규칙 뒤 2단계가 켜져 있으면 남은 글을 한 요청에 묶어 보낸다. 2단계 호출은 트랜잭션 밖에서 한다.
  *   <li>판정 기록과 숨김은 줄마다 트랜잭션 하나로 함께 커밋한다.
  *   <li>실패하면 다음 시각을 늦춰 다시 하고, 정해진 횟수만큼 실패하면 FAILED로 두고 검토 대기로 보낸다.
@@ -178,7 +178,8 @@ public class ModerationProcessor {
                             if (repository.lockPending(row).isEmpty()) {
                                 return "ALREADY_DONE";
                             }
-                            if (repository.hasNewerRow(row.targetType(), row.targetId(), row.id())) {
+                            if (repository.hasNewerRow(
+                                    row.targetType(), row.targetId(), row.id())) {
                                 // 판정하는 동안 작성자가 고쳤다. 이전 수정본의 판정은 검토 대기열에 올리지 않고 새 줄이 따로 판정한다.
                                 repository.complete(
                                         row,
