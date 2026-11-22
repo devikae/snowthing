@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { fetchPublicResult, isPublicId } from "../../lib/publicApi";
 import { detailMetadata, firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
 import { renderMarkdownHtml } from "../../lib/markdownHtml.server";
+import { hasSessionCookie } from "../../lib/sessionCookie.server";
 import PostDetailClient, { type PostDetail } from "./PostDetailClient";
 
 type Props = { params: Promise<{ publicId: string }> };
@@ -42,10 +42,4 @@ export default async function PostDetailPage({ params }: Props) {
   // 본문도 첫 HTML에 넣는다. 브라우저 뷰어가 준비되면 같은 자리를 이어 받는다.
   const initialBodyHtml = initialPost ? renderMarkdownHtml(initialPost.content) : null;
   return <PostDetailClient params={params} initialPost={initialPost} initialBodyHtml={initialBodyHtml} />;
-}
-
-async function hasSessionCookie() {
-  const store = await cookies();
-  // 세션이 끝나도 로그인 유지 쿠키가 있으면 브라우저 요청은 다시 로그인된 채로 간다.
-  return store.has("JSESSIONID") || store.has("SESSION") || store.has("SNOWTHING_REMEMBER_ME");
 }
