@@ -1,5 +1,7 @@
 package com.ikae.snowthing.domain.moderation.service;
 
+import java.time.Duration;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -21,6 +23,12 @@ public class ModerationScheduler {
     /** 한 번 깨어났을 때 연속으로 처리할 최대 묶음 수. 밀린 줄을 비우되 스케줄러 스레드를 오래 잡지 않게 한다. */
     private static final int MAX_BATCHES_PER_TICK = 10;
 
+    /**
+     * 한 번 깨어났을 때 쓰는 최대 시간. 스케줄러 스레드 풀(6개)을 다른 예약 작업과 함께 쓰므로, 2단계 응답이 느려도 한 틱이 길게 붙잡지 않게 묶음을 마칠 때마다
+     * 확인한다. 마지막 묶음은 이 시간을 조금 넘길 수 있다. 남은 줄은 다음 틱이 가져간다.
+     */
+    static final Duration MAX_TICK_DURATION = Duration.ofSeconds(30);
+
     private final ModerationProcessor processor;
 
     @Scheduled(
@@ -28,9 +36,12 @@ public class ModerationScheduler {
             initialDelayString = "${snowthing.moderation.initial-delay-ms:30000}")
     public void poll() {
         try {
+            long deadline = System.nanoTime() + MAX_TICK_DURATION.toNanos();
             int batches = 0;
-            while (processor.processBatch() > 0 && ++batches < MAX_BATCHES_PER_TICK) {
-                // 가져온 줄이 있으면 바로 다음 묶음을 본다.
+            while (processor.processBatch() > 0
+                    && ++batches < MAX_BATCHES_PER_TICK
+                    && System.nanoTime() - deadline < 0) {
+                // 가져온 줄이 있고 시간이 남았으면 바로 다음 묶음을 본다.
             }
         } catch (RuntimeException failure) {
             log.warn("content moderation poll failed: {}", failure.getClass().getSimpleName());
