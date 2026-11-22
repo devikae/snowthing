@@ -19,18 +19,51 @@ if (( $# == 0 )); then
   exit 2
 fi
 
-# config는 비밀값이 채워진 설정 전체를 출력한다. 값이 터미널 기록이나 SSM 세션 로그에 남지 않게 막는다.
-if [[ "$1" == "config" ]]; then
+# 하위 명령은 전역 옵션(-p X, --profile X, --env-file X, -f X 등) 뒤의 첫 인자다.
+# 값을 받는 전역 옵션은 다음 인자까지 건너뛴다. --name=값 모양은 한 인자다.
+subcommand=""
+subcommand_index=0
+index=1
+while (( index <= $# )); do
+  argument="${!index}"
+  case "$argument" in
+    -f|--file|-p|--project-name|--profile|--env-file|--project-directory|--ansi|--parallel|--progress)
+      index=$((index + 2))
+      continue
+      ;;
+    -*)
+      index=$((index + 1))
+      continue
+      ;;
+  esac
+  subcommand="$argument"
+  subcommand_index=$index
+  break
+done
+
+# config와 convert는 비밀값이 채워진 설정 전체를 출력한다. 값이 터미널 기록이나 SSM 세션 로그에 남지 않게 막는다.
+if [[ "$subcommand" == "config" || "$subcommand" == "convert" ]]; then
   quiet=false
-  for argument in "$@"; do
+  for argument in "${@:subcommand_index+1}"; do
     case "$argument" in
-      -q|--quiet|--services|--images|--volumes) quiet=true ;;
+      -q|--quiet|--services|--images|--volumes|--profiles) quiet=true ;;
     esac
   done
   if [[ "$quiet" == false ]]; then
-    echo "config는 비밀값을 그대로 출력합니다. --quiet, --services, --images 중 하나와 함께 쓰세요." >&2
+    echo "$subcommand 는 비밀값을 그대로 출력합니다. --quiet, --services, --images 중 하나와 함께 쓰세요." >&2
     exit 2
   fi
+fi
+
+# 컨테이너 환경을 통째로 출력하는 가장 흔한 실수(exec 서비스 env, exec 서비스 printenv)만 막는다.
+# 이름을 붙인 printenv <이름>은 막지 않는다. sh -c 'env' 같은 우회나 docker inspect는 막지 못한다.
+if [[ "$subcommand" == "exec" || "$subcommand" == "run" ]] && (( $# > subcommand_index )); then
+  case "${!#}" in
+    env|printenv|/usr/bin/env|/usr/bin/printenv|/bin/env|/bin/printenv)
+      echo "$subcommand 로 환경변수 전체를 출력하지 않습니다. 값 비교는 printenv <이름> | sha256sum 처럼 해시로 하세요." >&2
+      exit 2
+      ;;
+  esac
 fi
 
 prod_secrets_load "${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"

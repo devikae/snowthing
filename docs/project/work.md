@@ -33,6 +33,12 @@
   - ubuntu:24.04 컨테이너에서 docker, aws, curl, nginx를 가짜로 두고 배포 스크립트 전체 실행: 설정이 없을 때 변경 전 스크립트와 docker 호출 13건, 표준 출력, 표준 오류, images.env가 모두 같음. 설정이 있을 때 compose 호출에만 값이 있고 login, pull, inspect 등에는 없음. 읽기 실패 시 종료 코드 1, pull과 compose 호출 0건, nginx 파일 0개. 헬스체크 실패 시 복구 compose 호출에도 같은 값. `bash -x`로 돌려도 값 미출력.
   - 워크플로 6개와 `compose.prod.yml` YAML 파싱 통과.
   - 하지 않은 것: 실제 AWS 계정에서의 읽기와 IAM, KMS 권한, 운영 서버에서의 실행.
+- 리뷰 반영(CodeRabbit이 건너뛰어 다른 세션이 이어받아 검토)
+  - 필수 이름 목록: 설정 파일에 `SNOWTHING_SSM_REQUIRED_NAMES`를 필수로 두고, 경로가 돌려준 이름에 하나라도 없으면 nginx, pull, compose 전에 실패한다. 이전에는 쓰는 이름이 하나만 있어도 통과해 값 하나가 빠진 채 배포될 수 있었다. 다른 안: 목록을 선택으로 두기(켜지 않으면 같은 구멍이 남는다).
+  - `prod-secrets.sh`의 경로 변수(설정 파일, prod.env, images.env, compose 파일, 오류 로그)를 고정했다. 호출한 셸의 환경변수가 바꿀 수 없다. 저장소에 셸 테스트가 없어 테스트용 덮어쓰기 장치는 두지 않았다.
+  - `compose-prod.sh`: 전역 옵션 뒤의 첫 인자를 하위 명령으로 보고 `config`, `convert`를 `--quiet` 없이 막는다. `exec`, `run`의 마지막 인자가 `env`, `printenv`이면 막는다. `sh -c env`나 `docker inspect`는 막지 못해 문서에 한계로 적었다.
+  - 문서 5.4에 `--env-file` 값의 `$` 보간 차이를 적었다.
+  - 검증: `bash -n` 3개 통과, shellcheck 새 파일 경고 0건(배포 스크립트 SC2016 안내 6건은 기존과 같음), ubuntu:24.04 컨테이너에서 가짜 aws, docker로 30개 확인 통과.
 - 남은 항목: 머지, AWS 설정, 값 이전(`02_parameter-store.md` 5절).
 - 사용자 결정 필요: `OPENAI_API_KEY`를 Parameter Store로 옮길지(위 발견된 이슈 둘째). 인스턴스 역할에 거부 문장을 넣을지. 머지하면 백엔드와 프론트 배포가 모두 돈다.
 

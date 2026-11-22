@@ -33,8 +33,12 @@
 ```
 /etc/snowthing/parameter-store.env   (root 소유, 644. 비밀 아님)
 SNOWTHING_SSM_PARAMETER_PATH=/snowthing/prod
+SNOWTHING_SSM_REQUIRED_NAMES=DISCORD_WEBHOOK_EVENT,SNOWTHING_KMA_SERVICE_KEY     필수. 경로에 꼭 있어야 하는 이름
 SNOWTHING_SSM_PARAMETER_REGION=ap-northeast-2     선택. 없으면 배포 스크립트가 받은 리전
 ```
+
+- `SNOWTHING_SSM_REQUIRED_NAMES`: Parameter Store로 옮긴 이름을 모두 쉼표로 적는다(대문자, 숫자, 밑줄. 공백은 무시). 비어 있거나 형식이 틀리면 aws를 부르기 전에 실패한다. 경로가 돌려준 이름에 하나라도 없으면 nginx, pull, compose를 건드리기 전에 실패하고 빠진 이름만 출력한다. 이 목록이 없으면 값 하나가 지워졌거나 권한에서 빠져도 나머지만 읽힌 채 배포되고, 그 값은 prod.env 값이나 빈 값으로 조용히 바뀐다.
+- 설정 파일과 prod.env, images.env, compose 파일, 오류 로그 경로는 `scripts/lib/prod-secrets.sh`에 고정돼 있다. 호출한 셸의 환경변수로 바꿀 수 없다.
 
 이름은 경로 뒤 마지막 부분을 그대로 환경변수 이름으로 쓴다. `/snowthing/prod/SNOWTHING_KMA_SERVICE_KEY`는 `SNOWTHING_KMA_SERVICE_KEY`가 된다.
 
@@ -63,7 +67,7 @@ flowchart TD
     A[배포 스크립트 시작] --> B{parameter-store.env 있음?}
     B -- 없음 --> C[prod.env와 images.env만으로 compose 실행. 기존과 같음]
     B -- 있음 --> D[aws ssm get-parameters-by-path --with-decryption]
-    D -- 실패, 0개, 이름 오류, 덜 읽힘 --> E[종료. nginx, pull, 컨테이너 모두 건드리지 않음]
+    D -- 실패, 0개, 이름 오류, 덜 읽힘, 필수 이름 없음 --> E[종료. nginx, pull, 컨테이너 모두 건드리지 않음]
     D -- 성공 --> F[compose config --quiet로 필수 값 확인]
     F -- 실패 --> E
     F -- 성공 --> G[이미지 pull]
@@ -74,6 +78,7 @@ flowchart TD
 ```
 
 - 페이지: Parameter Store는 한 번에 10개까지만 준다. aws CLI가 `NextToken`을 따라가며 끝까지 읽어 한 JSON으로 합친다. 응답에 `NextToken`이 남아 있으면 덜 읽은 것으로 보고 실패시킨다.
+- 필수 이름 검사: 설정 파일의 `SNOWTHING_SSM_REQUIRED_NAMES`가 모두 응답에 있어야 한다. compose가 쓰는지와 상관없이 경로가 돌려준 이름 전체와 비교한다.
 - 이름 검사: 대문자, 숫자, 밑줄이 아닌 이름이 하나라도 있으면 실패. `compose.prod.yml`이 보간하지 않는 이름과 `*_IMAGE_URI`는 건너뛰고 이름만 경고로 남긴다(과거 커밋으로 롤백할 때 그 시점 compose에 없는 이름이 있어도 배포가 되게).
 - 일부만 읽힌 상태 방지: 읽기, 해석, 이름 검사를 모두 통과한 뒤에만 값 목록을 채운다. 하나라도 실패하면 목록은 비어 있고 스크립트는 `set -e`로 끝난다.
 - 출력: 읽은 개수와 건너뛴 이름만 출력한다. 값은 출력하지 않는다. `set -x`로 실행해도 값을 다루는 함수 안에서는 추적을 끈다. aws 오류 원문(계정 ID가 든 ARN이 나올 수 있다)은 Actions 로그로 가지 않게 서버의 `/var/log/snowthing-deploy/parameter-store-error.log`(600)에만 남긴다.
@@ -98,6 +103,8 @@ sudo AWS_REGION=<리전> scripts/compose-prod.sh up -d            # 전체를 �
 sudo AWS_REGION=<리전> scripts/compose-prod.sh up -d backend    # 한 서비스만
 sudo AWS_REGION=<리전> scripts/compose-prod.sh config --quiet   # 값이 다 채워지는지만 확인
 ```
+
+`compose-prod.sh`는 값을 그대로 출력하는 명령을 막는다. 전역 옵션(`-p X`, `--profile X`, `--env-file X`, `-f X`) 뒤의 첫 인자를 하위 명령으로 보고, `config`와 `convert`는 `--quiet`(`-q`), `--services`, `--images`, `--volumes`, `--profiles` 중 하나가 없으면 실행하지 않는다. `exec`, `run`의 마지막 인자가 `env`나 `printenv`이면 막는다. 알려진 한계: `exec backend sh -c env` 같은 우회, `docker inspect`, `docker exec`를 직접 쓰는 경우는 막지 못한다. 실수를 줄이는 장치이지 root를 막는 장치가 아니다.
 
 비밀을 prod.env에서 지운 뒤에 예전 명령(`docker compose --env-file /etc/snowthing/prod.env ... up -d`)을 그대로 쓰면 안 된다. 필수 네 값은 compose가 막아 주지만 나머지 비밀은 빈 값으로 컨테이너가 다시 만들어진다(`01_secrets-inventory.md` 7절).
 
@@ -192,13 +199,15 @@ unset VALUE
 - aws CLI v1은 `https://`로 시작하는 값을 주소로 보고 내용을 받아 오려 한다. Discord 웹훅 주소가 여기에 걸린다. v2(CloudShell 기본)를 쓴다.
 - 값은 ASCII만 쓴다. 서버 로캘에 따라 ASCII 밖의 글자가 든 응답을 해석하지 못할 수 있다. 그 경우 배포는 시작 전에 실패한다.
 - prod.env의 값이 따옴표로 감싸져 있으면 따옴표는 빼고 넣는다. compose는 env 파일의 감싼 따옴표를 벗기지만 Parameter Store 값은 글자 그대로 쓴다.
+- `$`가 든 값을 조심한다. compose는 `--env-file` 값 안의 `$`를 보간하지만(작은따옴표로 감싼 값 제외) Parameter Store 값은 글자 그대로 쓰므로, 옮기면 실제로 쓰이는 값이 달라질 수 있다. 5.5 4번의 해시 비교가 이 차이를 잡는다.
 
 ### 5.5 하나씩 옮기는 순서
 
 1. 영향이 작은 값 하나부터 넣는다(예: `DISCORD_WEBHOOK_EVENT`). prod.env의 줄은 지우지 않는다.
 2. 서버에 설정 파일을 만든다.
    ```bash
-   echo 'SNOWTHING_SSM_PARAMETER_PATH=/snowthing/prod' | sudo tee /etc/snowthing/parameter-store.env >/dev/null
+   printf '%s\n' 'SNOWTHING_SSM_PARAMETER_PATH=/snowthing/prod' 'SNOWTHING_SSM_REQUIRED_NAMES=DISCORD_WEBHOOK_EVENT' \
+     | sudo tee /etc/snowthing/parameter-store.env >/dev/null
    sudo chmod 644 /etc/snowthing/parameter-store.env
    ```
 3. 읽히는지 확인한다. 컨테이너를 건드리지 않는다.
@@ -215,7 +224,7 @@ unset VALUE
    # 두 해시가 같아야 한다. (get-parameter 권한이 있는 내 PC나 CloudShell에서)
    ```
 5. 다음 배포 로그에서 "Parameter Store에서 N개 값을 읽었습니다"를 확인한다. 값이 같으면 컨테이너 동작은 달라지지 않는다.
-6. 나머지를 같은 방법으로 옮긴다. 권장 순서: Discord 웹훅, 공공 API 키(`SNOWTHING_KMA_SERVICE_KEY`, `SNOWTHING_OPINET_API_KEY`), 소셜 로그인 시크릿, 봇 비밀 둘, `WEB_PUSH_VAPID_PRIVATE_KEY`, `SNOWTHING_EMAIL_VERIFICATION_SECRET`, 마지막에 `OPENAI_API_KEY`(5.6을 읽고 정한다).
+6. 나머지를 같은 방법으로 옮긴다. 값을 하나 넣을 때마다 설정 파일의 `SNOWTHING_SSM_REQUIRED_NAMES`에 그 이름을 쉼표로 덧붙이고 3번으로 확인한다. 권장 순서: Discord 웹훅, 공공 API 키(`SNOWTHING_KMA_SERVICE_KEY`, `SNOWTHING_OPINET_API_KEY`), 소셜 로그인 시크릿, 봇 비밀 둘, `WEB_PUSH_VAPID_PRIVATE_KEY`, `SNOWTHING_EMAIL_VERIFICATION_SECRET`, 마지막에 `OPENAI_API_KEY`(5.6을 읽고 정한다).
 7. 건너뛴 이름 경고가 나오면 이름을 잘못 넣은 것이다. `compose.prod.yml`에 있는 이름과 글자가 같아야 한다.
 
 ### 5.6 `OPENAI_API_KEY`를 옮길지

@@ -2,8 +2,9 @@
 # 운영 비밀값을 Parameter Store에서 읽어 docker compose에 넘긴다(IKA-110).
 # deploy-ecr-service.sh와 compose-prod.sh가 source해서 쓴다. 단독으로 실행하지 않는다.
 #
-# 켜는 방법: 서버에 PARAMETER_STORE_CONFIG_PATH 파일을 만들고 아래 한 줄을 적는다(비밀값이 아니다).
+# 켜는 방법: 서버에 PARAMETER_STORE_CONFIG_PATH 파일을 만들고 아래 줄을 적는다(비밀값이 아니다).
 #   SNOWTHING_SSM_PARAMETER_PATH=/snowthing/prod
+#   SNOWTHING_SSM_REQUIRED_NAMES=DISCORD_WEBHOOK_EVENT,SNOWTHING_KMA_SERVICE_KEY   (필수. 경로에 반드시 있어야 하는 이름, 쉼표로 구분)
 #   SNOWTHING_SSM_PARAMETER_REGION=ap-northeast-2   (선택. 없으면 호출한 쪽이 준 리전)
 # 파일이 없으면 아무것도 읽지 않고 prod.env만 쓰는 기존 동작 그대로다.
 #
@@ -11,11 +12,12 @@
 # compose는 셸 환경을 --env-file보다 먼저 보므로 같은 이름이면 Parameter Store 값이 prod.env 값을 이긴다.
 # 설계와 이전 절차: docs/conception/036_secrets_parameter_store/
 
-PROD_ENV_PATH="${PROD_ENV_PATH:-/etc/snowthing/prod.env}"
-IMAGE_RECORD_PATH="${IMAGE_RECORD_PATH:-/etc/snowthing/images.env}"
-PARAMETER_STORE_CONFIG_PATH="${PARAMETER_STORE_CONFIG_PATH:-/etc/snowthing/parameter-store.env}"
-PROD_SECRETS_ERROR_LOG_DIR="${PROD_SECRETS_ERROR_LOG_DIR:-/var/log/snowthing-deploy}"
-PROD_COMPOSE_FILE="${PROD_COMPOSE_FILE:-compose.prod.yml}"
+# 경로는 고정한다. 호출한 셸의 환경변수(예: set -a 로 다른 env 파일을 읽은 뒤)가 바꾸지 못하게 한다.
+PROD_ENV_PATH="/etc/snowthing/prod.env"
+IMAGE_RECORD_PATH="/etc/snowthing/images.env"
+PARAMETER_STORE_CONFIG_PATH="/etc/snowthing/parameter-store.env"
+PROD_SECRETS_ERROR_LOG_DIR="/var/log/snowthing-deploy"
+PROD_COMPOSE_FILE="compose.prod.yml"
 
 PROD_SECRET_NAMES=()
 PROD_SECRET_VALUES=()
@@ -45,8 +47,9 @@ prod_secrets_allowed_name() {
 prod_secrets_load() {
   local -
   set +x
-  local default_region="${1:-}" path region error_log fields=() status index name value
-  local names=() values=() skipped=()
+  local default_region="${1:-}" path region required_raw error_log fields=() status index name value
+  local names=() values=() skipped=() required=() missing=()
+  local -A returned=()
 
   PROD_SECRET_NAMES=()
   PROD_SECRET_VALUES=()
@@ -73,6 +76,14 @@ prod_secrets_load() {
     echo "Parameter Store 리전을 알 수 없습니다. 설정 파일의 SNOWTHING_SSM_PARAMETER_REGION 또는 AWS_REGION을 확인하세요." >&2
     return 1
   fi
+  # 경로에 꼭 있어야 하는 이름. 값 하나가 빠진 채 읽혀도(권한, 오타, 삭제) 배포가 시작되지 않게 한다.
+  required_raw="$(prod_secrets_config_value SNOWTHING_SSM_REQUIRED_NAMES)"
+  required_raw="${required_raw//[[:space:]]/}"
+  if [[ ! "$required_raw" =~ ^[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*$ ]]; then
+    echo "SNOWTHING_SSM_REQUIRED_NAMES가 없거나 형식이 잘못됐습니다(예: A_KEY,B_SECRET. 대문자, 숫자, 밑줄을 쉼표로 구분): $PARAMETER_STORE_CONFIG_PATH" >&2
+    return 1
+  fi
+  IFS=, read -r -a required <<< "$required_raw"
   if ! command -v python3 >/dev/null 2>&1; then
     echo "Parameter Store 응답을 읽으려면 python3가 필요합니다." >&2
     return 1
@@ -144,6 +155,7 @@ except Exception:
       echo "환경변수 이름으로 쓸 수 없는 파라미터가 있습니다(대문자, 숫자, 밑줄만): $name" >&2
       return 1
     fi
+    returned["$name"]=1
     if ! prod_secrets_allowed_name "$name"; then
       # 과거 커밋으로 되돌릴 때 그 시점 compose에 없는 이름이 있을 수 있어 실패시키지 않고 건너뛴다.
       skipped+=("$name")
@@ -152,6 +164,15 @@ except Exception:
     names+=("$name")
     values+=("$value")
   done
+
+  # 필수 이름은 compose 사용 여부와 상관없이 경로가 돌려준 이름 전체와 비교한다.
+  for name in "${required[@]}"; do
+    [[ -n "${returned[$name]:-}" ]] || missing+=("$name")
+  done
+  if (( ${#missing[@]} > 0 )); then
+    echo "Parameter Store 경로에 필수 이름이 없습니다: ${missing[*]}. 배포를 시작하지 않습니다." >&2
+    return 1
+  fi
 
   if (( ${#names[@]} == 0 )); then
     echo "Parameter Store에 $PROD_COMPOSE_FILE 이 쓰는 이름이 하나도 없습니다. 이름을 확인하세요." >&2
