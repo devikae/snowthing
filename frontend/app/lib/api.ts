@@ -214,6 +214,13 @@ export interface AdminDashboardStats {
   todayNewMembers: number;
   anonymousChatEnabled: boolean;
   marketGuestAccessEnabled: boolean;
+  /** AI 회원 활동 스위치. installed가 false면 서버 설정으로 기능 전체가 꺼져 있어 스위치가 효과가 없다. */
+  aiMembers: {
+    installed: boolean;
+    postEnabled: boolean;
+    commentEnabled: boolean;
+    chatEnabled: boolean;
+  };
 }
 
 export interface SystemConfigItem {
