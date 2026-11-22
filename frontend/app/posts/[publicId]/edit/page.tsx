@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import { ToastEditorHandle } from "../../../components/ToastEditor";
 import { Footer, TopNav } from "../../../components/SiteChrome";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { markRecentWrite } from "../../../lib/recentWrite";
 import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../../lib/api";
@@ -181,6 +182,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
       });
 
       if (res.ok) {
+        markRecentWrite(publicId);
         router.push(`/posts/${publicId}`);
         return;
       }

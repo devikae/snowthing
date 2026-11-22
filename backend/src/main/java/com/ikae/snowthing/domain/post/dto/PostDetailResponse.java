@@ -75,7 +75,7 @@ public record PostDetailResponse(
                 post.getCategory().getCode(),
                 post.getTitle(),
                 post.getContent(),
-                post.getStatus(),
+                post.getStatus().publicView(),
                 post.isAnonymous(),
                 isAuthor,
                 post.isAnonymous() && !isAuthor && post.getAnonymousPassword() != null,

@@ -1,7 +1,10 @@
 package com.ikae.snowthing.domain.post.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
@@ -12,6 +15,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ikae.snowthing.domain.admin.service.ChatIpBanService;
+import com.ikae.snowthing.domain.contentfilter.entity.FilterTargetType;
+import com.ikae.snowthing.domain.contentfilter.service.ContentFilterService;
 import com.ikae.snowthing.domain.image.service.ImageUrlResolver;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
@@ -53,10 +59,15 @@ public class PostService {
     private final ImageUrlResolver imageUrlResolver;
     private final com.ikae.snowthing.domain.image.service.PostImageLifecycleService imageLifecycle;
     private final com.ikae.snowthing.domain.search.service.SearchOutboxWriter searchOutbox;
+    private final ChatIpBanService chatIpBanService;
+    private final ContentFilterService contentFilter;
 
     @Transactional
     public PostResponse createPost(
             PostCreateRequest request, CustomUserDetails userDetails, String clientIp) {
+        if (!isAdmin(userDetails)) {
+            chatIpBanService.requireWritable(clientIp);
+        }
         PostCategory category =
                 categoryRepository
                         .findByCode(request.categoryCode())
@@ -118,6 +129,8 @@ public class PostService {
 
         // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
         String content = MarkdownBodySanitizer.sanitize(request.content());
+        // 금칙어가 걸리면 저장과 응답은 평소와 같고 상태만 FILTER_HOLD로 둔다 (IKA-96).
+        Optional<String> matched = contentFilter.inspect(userDetails, request.title(), content);
         Post post =
                 Post.builder()
                         .member(member)
@@ -128,6 +141,7 @@ public class PostService {
                         .isAnonymous(isAnon)
                         .anonymousPassword(encodedPassword)
                         .hasImage(false)
+                        .status(matched.isPresent() ? PostStatus.FILTER_HOLD : null)
                         .build();
         imageLifecycle.rejectNewInlineImages(content, null);
         imageLifecycle.protectAll(
@@ -138,6 +152,7 @@ public class PostService {
         post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
 
         Post saved = postRepository.save(post);
+        matched.ifPresent(word -> contentFilter.recordPostHold(saved, word));
         searchOutbox.postChanged(saved);
         return PostResponse.from(saved);
     }
@@ -178,6 +193,18 @@ public class PostService {
     @Transactional
     public PostDetailResponse getPostDetail(
             String publicId, CustomUserDetails userDetails, boolean shouldIncreaseViewCount) {
+        return getPostDetail(publicId, userDetails, shouldIncreaseViewCount, null);
+    }
+
+    /**
+     * @param viewerIp 금칙어 보류 글의 비회원 작성자를 알아볼 때 쓴다 (IKA-96)
+     */
+    @Transactional
+    public PostDetailResponse getPostDetail(
+            String publicId,
+            CustomUserDetails userDetails,
+            boolean shouldIncreaseViewCount,
+            String viewerIp) {
         Post post =
                 postRepository
                         .findWithMemberAndCategoryByPublicId(publicId)
@@ -189,7 +216,8 @@ public class PostService {
         rejectMarketPost(post);
         InquiryAccess.requireReadable(post, userDetails);
 
-        if (post.getStatus() != PostStatus.NORMAL) {
+        if (post.getStatus() != PostStatus.NORMAL
+                && !contentFilter.canSeeHeldPost(post, userDetails, viewerIp)) {
             if (!isAdmin(userDetails)) {
                 throw new CustomAuthException(
                         post.getStatus() == PostStatus.TEMPORARY_HOLD
@@ -247,6 +275,14 @@ public class PostService {
 
     public CursorPageResponse<PostListResponse> searchPostsByOffset(
             PostSearchRequest request, CustomUserDetails userDetails) {
+        return searchPostsByOffset(request, userDetails, null);
+    }
+
+    /**
+     * @param viewerIp 게시판 첫 쪽에 비회원 작성자 본인의 금칙어 보류 글을 끼워 넣을 때 쓴다 (IKA-96)
+     */
+    public CursorPageResponse<PostListResponse> searchPostsByOffset(
+            PostSearchRequest request, CustomUserDetails userDetails, String viewerIp) {
         if (request.page() != null && request.page() > MAX_OFFSET_PAGE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_LIMIT);
         }
@@ -254,7 +290,13 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
         PostSearchRequest scoped = scopeInquiry(request, userDetails);
-        return withAnswered(scoped, postRepository.findPostsByOffset(scoped));
+        boolean firstPage = scoped.page() == null || scoped.page() <= 1;
+        return withViewerHeldPosts(
+                scoped,
+                firstPage,
+                userDetails,
+                viewerIp,
+                withAnswered(scoped, postRepository.findPostsByOffset(scoped)));
     }
 
     public CursorPageResponse<PostListResponse> searchPostsByCursor(PostSearchRequest request) {
@@ -263,11 +305,74 @@ public class PostService {
 
     public CursorPageResponse<PostListResponse> searchPostsByCursor(
             PostSearchRequest request, CustomUserDetails userDetails) {
+        return searchPostsByCursor(request, userDetails, null);
+    }
+
+    public CursorPageResponse<PostListResponse> searchPostsByCursor(
+            PostSearchRequest request, CustomUserDetails userDetails, String viewerIp) {
         if (request.size() < MIN_PAGE_SIZE || request.size() > MAX_PAGE_SIZE) {
             throw new CustomAuthException(ErrorCode.INVALID_PAGE_SIZE);
         }
         PostSearchRequest scoped = scopeInquiry(request, userDetails);
-        return withAnswered(scoped, postRepository.findPostsByCursor(scoped));
+        boolean firstPage = scoped.cursor() == null || scoped.cursor().isBlank();
+        return withViewerHeldPosts(
+                scoped,
+                firstPage,
+                userDetails,
+                viewerIp,
+                withAnswered(scoped, postRepository.findPostsByCursor(scoped)));
+    }
+
+    /**
+     * 작성자 본인이 게시판 첫 쪽에서 자기 금칙어 보류 글을 평소처럼 보게 끼워 넣는다 (IKA-96). 검색, 인기글, 1:1 문의, 둘째 쪽부터는 넣지 않는다. 첫 쪽이
+     * 꽉 찼으면 마지막 글보다 새 글만 넣어 다음 쪽과 겹치지 않게 한다. 전체 건수와 쪽 수는 바꾸지 않는다(본인 글 몇 건 차이).
+     */
+    private CursorPageResponse<PostListResponse> withViewerHeldPosts(
+            PostSearchRequest request,
+            boolean firstPage,
+            CustomUserDetails viewer,
+            String viewerIp,
+            CursorPageResponse<PostListResponse> page) {
+        if (!firstPage
+                || PostCategoryCodes.isInquiry(request.categoryCode())
+                || (request.keyword() != null && !request.keyword().isBlank())
+                || request.viewType() == PostViewType.BEST) {
+            return page;
+        }
+        String categoryCode = request.categoryCode();
+        List<PostListResponse> held =
+                contentFilter.heldPostsOfViewer(viewer, viewerIp).stream()
+                        .filter(post -> isListedIn(post.getCategory().getCode(), categoryCode))
+                        .map(PostListResponse::from)
+                        .toList();
+        if (held.isEmpty()) {
+            return page;
+        }
+        boolean full = page.content().size() >= request.size();
+        LocalDateTime oldestShown =
+                page.content().isEmpty() ? null : page.content().getLast().createdAt();
+        List<PostListResponse> merged = new ArrayList<>(page.content());
+        for (PostListResponse item : held) {
+            if (!full || oldestShown == null || item.createdAt().isAfter(oldestShown)) {
+                merged.add(item);
+            }
+        }
+        if (merged.size() == page.content().size()) {
+            return page;
+        }
+        merged.sort(
+                Comparator.comparing(
+                                PostListResponse::createdAt,
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(PostListResponse::publicId));
+        return new CursorPageResponse<>(List.copyOf(merged), page.pageInfo());
+    }
+
+    private static boolean isListedIn(String postCategory, String requestedCategory) {
+        if (requestedCategory != null && !requestedCategory.isBlank()) {
+            return postCategory.equalsIgnoreCase(requestedCategory);
+        }
+        return !PostCategoryCodes.HIDDEN_FROM_BOARD_LIST.contains(postCategory);
     }
 
     /** 1:1 문의 목록은 로그인이 필요하고, 관리자가 아니면 본인 글로 좁힌다. 요청에 담긴 작성자 값은 믿지 않는다. */
@@ -305,7 +410,10 @@ public class PostService {
                         .findByPublicId(publicId)
                         .orElseThrow(() -> new CustomAuthException(ErrorCode.POST_NOT_FOUND));
 
-        if (post.isDeleted() || post.getStatus() != PostStatus.NORMAL) {
+        // 금칙어 보류 글도 작성자는 평소처럼 고칠 수 있다 (IKA-96). 권한 검사는 아래에서 같다.
+        if (post.isDeleted()
+                || (post.getStatus() != PostStatus.NORMAL
+                        && post.getStatus() != PostStatus.FILTER_HOLD)) {
             throw new CustomAuthException(ErrorCode.POST_NOT_FOUND);
         }
 
@@ -352,6 +460,7 @@ public class PostService {
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }
+        applyFilterAfterEdit(post, userDetails);
         searchOutbox.postChanged(post);
         return PostResponse.from(post);
     }
@@ -374,9 +483,29 @@ public class PostService {
 
         validateDeletePermission(post, anonymousPassword, userDetails, isAdmin);
 
+        boolean wasHeld = post.getStatus() == PostStatus.FILTER_HOLD;
         post.softDelete(userDetails != null ? userDetails.getMemberId() : null);
         imageLifecycle.releasePostImages(post);
         searchOutbox.postChanged(post);
+        if (wasHeld) {
+            contentFilter.clearHold(FilterTargetType.POST, post.getId());
+        }
+    }
+
+    /**
+     * 고친 제목과 본문을 다시 검사한다 (IKA-96). 금칙어가 새로 들어가면 보류하고, 보류 글을 깨끗하게 고치면 다시 공개한다. 신고 임시조치 같은 다른 상태는 여기서
+     * 바꾸지 않는다(수정 자체가 NORMAL, FILTER_HOLD만 받는다).
+     */
+    private void applyFilterAfterEdit(Post post, CustomUserDetails editor) {
+        Optional<String> matched =
+                contentFilter.inspect(editor, post.getTitle(), post.getContent());
+        if (matched.isPresent()) {
+            post.changeStatus(PostStatus.FILTER_HOLD);
+            contentFilter.recordPostHold(post, matched.get());
+        } else if (post.getStatus() == PostStatus.FILTER_HOLD) {
+            post.changeStatus(PostStatus.NORMAL);
+            contentFilter.clearHold(FilterTargetType.POST, post.getId());
+        }
     }
 
     private void validateEditPermission(

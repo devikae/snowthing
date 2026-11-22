@@ -28,6 +28,7 @@ function statusLabel(post: AdminPostItem) {
   }
   if (post.isBlinded) return "블라인드";
   if (post.status === "TEMPORARY_HOLD") return "임시조치";
+  if (post.status === "FILTER_HOLD") return "금칙어 보류";
   if (post.status === "NORMAL") return "정상";
   return post.status;
 }

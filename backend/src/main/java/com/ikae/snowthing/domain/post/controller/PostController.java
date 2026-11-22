@@ -74,7 +74,11 @@ public class PostController {
         boolean shouldIncreaseViewCount =
                 viewCountCookieManager.markIfFirstView(publicId, request, response);
         PostDetailResponse postDetailResponse =
-                postService.getPostDetail(publicId, userDetails, shouldIncreaseViewCount);
+                postService.getPostDetail(
+                        publicId,
+                        userDetails,
+                        shouldIncreaseViewCount,
+                        clientIpResolver.resolve(request));
         String anonymousVoterId = anonymousVoterCookieManager.find(request).orElse(null);
         return ResponseEntity.ok(
                 postDetailResponse
@@ -105,7 +109,9 @@ public class PostController {
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, page, null, size);
-        return ResponseEntity.ok(postService.searchPostsByOffset(request, userDetails));
+        return ResponseEntity.ok(
+                postService.searchPostsByOffset(
+                        request, userDetails, clientIpResolver.resolve(httpRequest)));
     }
 
     @GetMapping("/scroll")
@@ -124,7 +130,9 @@ public class PostController {
         PostSearchRequest request =
                 new PostSearchRequest(
                         categoryCode, resortId, searchType, keyword, viewType, null, cursor, size);
-        return ResponseEntity.ok(postService.searchPostsByCursor(request, userDetails));
+        return ResponseEntity.ok(
+                postService.searchPostsByCursor(
+                        request, userDetails, clientIpResolver.resolve(httpRequest)));
     }
 
     @PutMapping("/{publicId}")

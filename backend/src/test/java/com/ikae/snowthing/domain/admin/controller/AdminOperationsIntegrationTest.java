@@ -339,13 +339,9 @@ class AdminOperationsIntegrationTest {
         assertThat(chatIpBanService.isBanned(sameBlockIp)).isFalse();
     }
 
-    // 메모리 캐시 키는 정규화한 IP다(IPv6는 /64).
-    @SuppressWarnings("unchecked")
+    // 메모리 차단 목록에서 이 IP를 막는 가장 늦은 끝 시각이다(IPv6 주소 하나 차단은 같은 /64에 적용).
     private LocalDateTime cachedUntil(String ip) {
-        return ((java.util.Map<String, LocalDateTime>)
-                        org.springframework.test.util.ReflectionTestUtils.getField(
-                                chatIpBanService, "activeBans"))
-                .get(com.ikae.snowthing.global.web.ClientIpResolver.normalizeForLimit(ip));
+        return chatIpBanService.bannedUntil(ip);
     }
 
     @Test

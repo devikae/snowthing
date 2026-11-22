@@ -25,7 +25,7 @@ public record PostResponse(
                 post.getCategory().getCode(),
                 post.getTitle(),
                 writerName,
-                post.getStatus(),
+                post.getStatus().publicView(),
                 post.getCreatedAt());
     }
 }

@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { ToastEditorHandle } from "../../components/ToastEditor";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { markRecentWrite } from "../../lib/recentWrite";
 import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
@@ -222,6 +223,7 @@ function PostCreateForm() {
         idempotencyKey.reset();
         const data = await res.json();
         if (toolDraft) { try { sessionStorage.removeItem(DECK_QUESTION_KEY); } catch { /* Draft cleanup must not prevent navigation. */ } }
+        markRecentWrite(data.publicId);
         router.push(`/posts/${data.publicId}`);
       } else if (res.status === 401 || (isAnonCategory && member && res.status === 400 && !(await isStillLoggedIn()))) {
         // 익명게시판은 비회원 글쓰기가 열려 있어, 로그인이 풀린 회원의 요청에 서버가 401이 아니라

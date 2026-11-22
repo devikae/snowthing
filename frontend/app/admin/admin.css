@@ -512,6 +512,67 @@
   }
 }
 
+/* 금칙어 보류 검토와 금칙어 목록 (IKA-96) */
+.admin-hold-row {
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.admin-hold-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-hold-body .admin-body {
+  max-height: 120px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+.admin-hold-row .admin-actions {
+  justify-content: flex-end;
+}
+
+.admin-word-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 9999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 13px;
+}
+
+.admin-word button {
+  border: 0;
+  background: transparent;
+  color: var(--snow-muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.admin-word button:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .admin-hold-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-hold-row .admin-actions {
+    justify-content: flex-start;
+  }
+}
+
 /* AI 회원 활동 스위치 (IKA-108). 설정 목록 형태로 한 패널 안에 줄을 나눈다. */
 .admin-ai-notice {
   margin: 0;
