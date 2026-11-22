@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.jsoup.parser.Parser;
+
 import com.ikae.snowthing.domain.aimember.PoliticalContentFilter;
 import com.ikae.snowthing.domain.contentfilter.service.BannedWordMatcher;
 import com.ikae.snowthing.domain.moderation.entity.ModerationTargetType;
@@ -39,7 +41,6 @@ public final class ModerationTextRules {
     public static final String CONTACT_SHORT_URL = "CONTACT_SHORT_URL";
 
     private static final Pattern TAG = Pattern.compile("<[^>]*>");
-    private static final Pattern ENTITY = Pattern.compile("&(#[0-9]+|#x[0-9a-fA-F]+|[a-zA-Z]+);");
     private static final Pattern INVISIBLE = Pattern.compile("[\\p{Cf}]+");
 
     private static final Pattern TELEGRAM =
@@ -130,9 +131,11 @@ public final class ModerationTextRules {
         return text.length() > maxLength ? text.substring(0, maxLength) : text;
     }
 
+    /** 태그를 지우고 문자 참조(&amp;#116; 같은 것)는 화면처럼 글자로 푼다. 공백으로 지우면 참조로 쓴 연락 문구가 규칙과 2단계에서 빠진다. */
     static String plainText(String text) {
         if (text == null || text.isEmpty()) return "";
-        return ENTITY.matcher(TAG.matcher(text).replaceAll(" ")).replaceAll(" ");
+        return Parser.unescapeEntities(TAG.matcher(text).replaceAll(" "), false)
+                .replace((char) 0xA0, ' ');
     }
 
     private static String fold(String text) {

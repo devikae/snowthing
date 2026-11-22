@@ -135,6 +135,14 @@ class ModerationTextRulesTest {
     }
 
     @Test
+    @DisplayName("문자 참조로 쓴 연락 문구도 글자로 풀어 잡고 2단계 입력에도 남긴다")
+    void characterReferences() {
+        String body = "문의는 &#116;&#101;&#108;&#101;&#103;&#114;&#97;&#109; 으로";
+        assertThat(post(body).contacts()).contains(ModerationTextRules.CONTACT_TELEGRAM);
+        assertThat(ModerationTextRules.apiInput("", body, 100)).contains("telegram");
+    }
+
+    @Test
     @DisplayName("정치 글은 표시한다")
     void political() {
         assertThat(post("이번 대선 후보 누구 찍어요").political()).isTrue();
