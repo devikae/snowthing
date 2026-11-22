@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -42,6 +43,30 @@ class SystemConfigServiceTest {
     void isAnonymousChatEnabled_defaultFalse() {
         when(repository.findById("CHAT_ANONYMOUS_ENABLED")).thenReturn(Optional.empty());
         assertThat(service.isAnonymousChatEnabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("AI 회원 스위치는 설정 행이 없으면 켜진 것으로 본다")
+    void aiMemberSwitches_defaultTrue() {
+        when(repository.findById(any())).thenReturn(Optional.empty());
+
+        assertThat(service.isAiMemberPostEnabled()).isTrue();
+        assertThat(service.isAiMemberCommentEnabled()).isTrue();
+        assertThat(service.isAiMemberChatEnabled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("AI 회원 스위치를 끄면 바로 꺼진 값으로 읽힌다")
+    void aiMemberSwitch_updateTakesEffect() {
+        SystemConfig config =
+                new SystemConfig(
+                        "AI_MEMBER_POST_ENABLED", "true", "BOOLEAN", "AI 회원 글쓰기 허용 여부", "SYSTEM");
+        when(repository.findById("AI_MEMBER_POST_ENABLED")).thenReturn(Optional.of(config));
+        assertThat(service.isAiMemberPostEnabled()).isTrue();
+
+        service.updateConfig("AI_MEMBER_POST_ENABLED", "false", "admin");
+
+        assertThat(service.isAiMemberPostEnabled()).isFalse();
     }
 
     @Test

@@ -240,6 +240,17 @@ class AdminOperationsIntegrationTest {
     }
 
     @Test
+    @DisplayName("관리자 대시보드는 AI 회원 스위치 상태를 내려준다")
+    void dashboardShowsAiMemberSwitches() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/dashboard/stats").session(adminSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.aiMembers.installed").isBoolean())
+                .andExpect(jsonPath("$.aiMembers.postEnabled").isBoolean())
+                .andExpect(jsonPath("$.aiMembers.commentEnabled").isBoolean())
+                .andExpect(jsonPath("$.aiMembers.chatEnabled").isBoolean());
+    }
+
+    @Test
     @DisplayName("공개 설정 API는 비로그인도 읽고, 비회원 라이브톡과 중고장터 열람 여부만 내보낸다")
     void publicConfigsExposeOnlyGuestFlags() throws Exception {
         MvcResult result =

@@ -28,6 +28,10 @@ public class SystemConfigService {
 
     public static final String KEY_CHAT_ANONYMOUS_ENABLED = "CHAT_ANONYMOUS_ENABLED";
     public static final String KEY_MARKET_GUEST_ACCESS_ENABLED = "MARKET_GUEST_ACCESS_ENABLED";
+    // AI 회원 활동 스위치(IKA-108). 관리자 화면 전용이라 공개 설정에는 넣지 않는다.
+    public static final String KEY_AI_MEMBER_POST_ENABLED = "AI_MEMBER_POST_ENABLED";
+    public static final String KEY_AI_MEMBER_COMMENT_ENABLED = "AI_MEMBER_COMMENT_ENABLED";
+    public static final String KEY_AI_MEMBER_CHAT_ENABLED = "AI_MEMBER_CHAT_ENABLED";
 
     private final SystemConfigRepository repository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -51,6 +55,21 @@ public class SystemConfigService {
     /** 중고장터 목록과 상세를 비회원도 볼 수 있는지. 설정 행이 없으면 허용으로 본다. */
     public boolean isMarketGuestAccessEnabled() {
         return readBoolean(KEY_MARKET_GUEST_ACCESS_ENABLED, true);
+    }
+
+    /** AI 회원 글쓰기. 설정 행이 없으면 켜진 것으로 본다. */
+    public boolean isAiMemberPostEnabled() {
+        return readBoolean(KEY_AI_MEMBER_POST_ENABLED, true);
+    }
+
+    /** AI 회원 댓글. 설정 행이 없으면 켜진 것으로 본다. */
+    public boolean isAiMemberCommentEnabled() {
+        return readBoolean(KEY_AI_MEMBER_COMMENT_ENABLED, true);
+    }
+
+    /** AI 회원 라이브톡 대화. 설정 행이 없으면 켜진 것으로 본다. */
+    public boolean isAiMemberChatEnabled() {
+        return readBoolean(KEY_AI_MEMBER_CHAT_ENABLED, true);
     }
 
     private boolean readBoolean(String configKey, boolean defaultValue) {

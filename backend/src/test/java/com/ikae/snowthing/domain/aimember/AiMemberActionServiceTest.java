@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.aimember.AiMemberRoster.AiMember;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.PostView;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.Reaction;
@@ -61,6 +62,7 @@ class AiMemberActionServiceTest {
     @Mock private SimpMessagingTemplate messagingTemplate;
     @Mock private SharedRequestLimiter sharedLimiter;
     @Mock private ScheduledExecutorService executor;
+    @Mock private SystemConfigService systemConfig;
 
     private AiMemberActionService service;
 
@@ -80,10 +82,34 @@ class AiMemberActionServiceTest {
                         chatService,
                         messagingTemplate,
                         sharedLimiter,
-                        executor);
+                        executor,
+                        systemConfig);
+        lenient().when(systemConfig.isAiMemberPostEnabled()).thenReturn(true);
+        lenient().when(systemConfig.isAiMemberCommentEnabled()).thenReturn(true);
+        lenient().when(systemConfig.isAiMemberChatEnabled()).thenReturn(true);
         lenient()
                 .when(memberRepository.findStatusById(1L))
                 .thenReturn(Optional.of(MemberStatus.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("관리자가 끈 행동은 봇 서버를 부르지 않고 건너뛰고, 켜진 행동은 그대로 한다")
+    void switchedOffActionsSkipCompose() {
+        given(systemConfig.isAiMemberPostEnabled()).willReturn(false);
+        given(systemConfig.isAiMemberCommentEnabled()).willReturn(false);
+        given(systemConfig.isAiMemberChatEnabled()).willReturn(false);
+        PostView post = new PostView(10L, "post-10", 100L, "FREE", "제목", "본문", NOW);
+
+        service.writePost(MEMBER, NOW);
+        boolean commented = service.writeComment(new Reaction(1L, post, null), List.of(), NOW);
+        service.chat(List.of(MEMBER), 2, NOW);
+
+        assertThat(commented).isFalse();
+        assertThat(service.commentsEnabled()).isFalse();
+        verify(sharedLimiter, never()).acquire(anyList());
+        verify(gateway, never()).compose(any());
+        verify(postService, never()).createPost(any(), any(), any());
+        verify(commentService, never()).createComment(any(), any(), any(), any());
     }
 
     @Test

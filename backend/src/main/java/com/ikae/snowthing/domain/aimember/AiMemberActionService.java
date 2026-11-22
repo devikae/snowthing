@@ -17,6 +17,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.aimember.AiMemberRoster.AiMember;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.CommentView;
 import com.ikae.snowthing.domain.aimember.AiReactionPolicy.Reaction;
@@ -77,9 +78,10 @@ public class AiMemberActionService {
     private final SimpMessagingTemplate messagingTemplate;
     private final SharedRequestLimiter sharedLimiter;
     private final ScheduledExecutorService aiMemberExecutor;
+    private final SystemConfigService systemConfig;
 
     public void writePost(AiMember member, LocalDateTime now) {
-        if (!isActive(member)) {
+        if (!systemConfig.isAiMemberPostEnabled() || !isActive(member)) {
             return;
         }
         SplittableRandom random = new SplittableRandom();
@@ -122,7 +124,7 @@ public class AiMemberActionService {
      */
     public boolean writeComment(Reaction reaction, List<CommentView> comments, LocalDateTime now) {
         AiMember member = roster.byMemberId(reaction.memberId()).orElse(null);
-        if (member == null || !isActive(member)) {
+        if (!commentsEnabled() || member == null || !isActive(member)) {
             return false;
         }
         if (threadHasPolitics(reaction, comments)) {
@@ -181,6 +183,9 @@ public class AiMemberActionService {
 
     /** 대화를 한 번에 만들고 20~90초 간격으로 나눠 보낸다. */
     public void chat(List<AiMember> candidates, int lineCount, LocalDateTime now) {
+        if (!systemConfig.isAiMemberChatEnabled()) {
+            return;
+        }
         List<AiMember> participants = candidates.stream().filter(this::isActive).toList();
         if (participants.isEmpty()) {
             return;
@@ -338,6 +343,11 @@ public class AiMemberActionService {
     }
 
     /** 명단은 기동 때 만들어지므로 그 뒤의 정지는 여기서 본다. 유료 compose 호출 전에 확인한다. */
+    /** 관리자가 AI 댓글을 껐으면 스케줄러가 댓글 대상을 고르지도 않게 한다. */
+    public boolean commentsEnabled() {
+        return systemConfig.isAiMemberCommentEnabled();
+    }
+
     private boolean isActive(AiMember member) {
         return memberRepository.findStatusById(member.memberId()).orElse(null)
                 == MemberStatus.ACTIVE;
