@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
-import type { SeasonOpening, SeasonOpenings } from "../../lib/seasonOpening";
+import { BANNER_TITLE_MAX, DEFAULT_BANNER_TITLE, type SeasonOpening, type SeasonOpenings } from "../../lib/seasonOpening";
 import { clearSeasonOpeningsCache } from "../../lib/useSeasonOpenings";
 import { readErrorMessage } from "../adminTypes";
 import { useAdminFetch } from "../useAdminFetch";
@@ -62,6 +62,7 @@ export default function AdminSeasonOpeningsPage() {
         credentials: "include",
         body: JSON.stringify({
           bannerEnabled: current.bannerEnabled,
+          bannerTitle: current.bannerTitle?.trim() || DEFAULT_BANNER_TITLE,
           resorts: current.resorts.map((resort, index) => ({
             resortCode: resort.resortCode,
             openingDate: resort.openingDate || null,
@@ -106,6 +107,16 @@ export default function AdminSeasonOpeningsPage() {
                   onChange={(event) => change({ ...current, bannerEnabled: event.target.checked })}
                 />
                 메인 개장 배너 켜기
+              </label>
+              <label className="admin-season-title">
+                배너 문구
+                <input
+                  type="text"
+                  value={current.bannerTitle ?? DEFAULT_BANNER_TITLE}
+                  maxLength={BANNER_TITLE_MAX}
+                  placeholder={DEFAULT_BANNER_TITLE}
+                  onChange={(event) => change({ ...current, bannerTitle: event.target.value })}
+                />
               </label>
               <button className="admin-button primary" type="button" disabled={saving || !dirty} onClick={save}>
                 {saving ? "저장 중..." : "저장"}

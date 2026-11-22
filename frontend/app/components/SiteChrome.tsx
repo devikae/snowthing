@@ -75,7 +75,7 @@ function ChevronDownIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "profile" | "login" | "signup" | "tools" | "inquiry";
+export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "inquiry";
 
 interface MemberUser {
   publicId: string;
@@ -132,8 +132,22 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
         profileMenuRef.current.removeAttribute("open");
       }
     };
+    // Esc를 누르면 열린 메뉴를 닫고 포커스를 메뉴 버튼(summary)으로 돌린다. details는 기본으로 Esc를 처리하지 않는다.
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      for (const menu of [boardMenuRef.current, profileMenuRef.current]) {
+        if (menu?.hasAttribute("open")) {
+          menu.removeAttribute("open");
+          menu.querySelector("summary")?.focus();
+        }
+      }
+    };
     document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
   // 화면을 옮겨도 이미 받은 내 정보가 있으면 헤더를 비우지 않고 바로 그린다.
   const [user, setUser] = useState<MemberUser | null>(() => peekViewer() ?? null);
@@ -181,6 +195,7 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               <SnowflakeMark />
               <RotatingWordmark />
             </Link>
+            <span className="alpine-logo-tagline">윈터스포츠 커뮤니티</span>
             <nav className="community-main-nav" aria-label="메인 메뉴">
               <details className="header-board-menu" ref={boardMenuRef}>
                 <summary className={boardActive ? "nav-active" : ""}>
@@ -203,6 +218,9 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
                   ))}
                 </div>
               </details>
+              <Link href="/resorts" className={active === "resorts" ? "nav-active" : ""} aria-current={active === "resorts" ? "page" : undefined}>
+                리조트 정보
+              </Link>
               <Link href="/resort-cam" className={active === "resort" ? "nav-active" : ""} aria-current={active === "resort" ? "page" : undefined}>
                 슬로프캠
               </Link>
@@ -290,10 +308,12 @@ export function TopNav({ active = "home" }: { active?: ActiveNav }) {
               {boardItems.map((item) => (
                 <Link key={item.key} href={item.href} className={isBoardItemActive(item.key) ? "active" : ""} onClick={() => setMobileOpen(false)}>{item.label}</Link>
               ))}
+              <Link href="/resorts" className={active === "resorts" ? "active" : ""} onClick={() => setMobileOpen(false)}>리조트 정보</Link>
               <Link href="/resort-cam" className={active === "resort" ? "active" : ""} onClick={() => setMobileOpen(false)}>슬로프캠</Link>
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀과 동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
+              <Link href="/character-test" onClick={() => setMobileOpen(false)}>스키장 캐릭터 테스트</Link>
               {user && <Link href="/season-log" onClick={() => setMobileOpen(false)}>내 시즌 기록</Link>}
               {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}
             </nav>

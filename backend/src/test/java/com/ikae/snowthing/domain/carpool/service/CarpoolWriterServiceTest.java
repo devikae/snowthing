@@ -128,7 +128,7 @@ class CarpoolWriterServiceTest {
                         .routeSource(CarpoolRouteSource.KAKAO)
                         .build();
         Resort resort = mock(Resort.class);
-        when(resort.isActive()).thenReturn(true);
+        when(resort.isServiceTarget()).thenReturn(true);
         when(resortRepository.findById(1L)).thenReturn(Optional.of(resort));
         when(carpoolDetailRepository.findByPostPublicId(post.getPublicId()))
                 .thenReturn(Optional.of(detail));
@@ -151,7 +151,7 @@ class CarpoolWriterServiceTest {
         CarpoolDetail detail =
                 CarpoolDetail.builder().post(post).costMode(CarpoolCostMode.AUTO).build();
         Resort resort = mock(Resort.class);
-        when(resort.isActive()).thenReturn(true);
+        when(resort.isServiceTarget()).thenReturn(true);
         when(resortRepository.findById(1L)).thenReturn(Optional.of(resort));
         when(carpoolDetailRepository.findByPostPublicId(post.getPublicId()))
                 .thenReturn(Optional.of(detail));
@@ -174,7 +174,7 @@ class CarpoolWriterServiceTest {
         CarpoolDetail detail =
                 CarpoolDetail.builder().post(post).costMode(CarpoolCostMode.AUTO).build();
         Resort resort = mock(Resort.class);
-        when(resort.isActive()).thenReturn(true);
+        when(resort.isServiceTarget()).thenReturn(true);
         when(resortRepository.findById(1L)).thenReturn(Optional.of(resort));
         when(carpoolDetailRepository.findByPostPublicId(post.getPublicId()))
                 .thenReturn(Optional.of(detail));
@@ -195,7 +195,7 @@ class CarpoolWriterServiceTest {
         CarpoolDetail detail =
                 CarpoolDetail.builder().post(post).costMode(CarpoolCostMode.MANUAL).build();
         Resort resort = mock(Resort.class);
-        when(resort.isActive()).thenReturn(true);
+        when(resort.isServiceTarget()).thenReturn(true);
         when(resortRepository.findById(1L)).thenReturn(Optional.of(resort));
         when(carpoolDetailRepository.findByPostPublicId(post.getPublicId()))
                 .thenReturn(Optional.of(detail));

@@ -65,6 +65,7 @@ class CharacterTestApiIntegrationTest {
                         .andExpect(jsonPath("$.stats.planning").value(0))
                         .andExpect(jsonPath("$.highlightQuestions.length()").value(4))
                         .andExpect(jsonPath("$.bestMatch.job").exists())
+                        .andExpect(jsonPath("$.badges.length()").value(0))
                         .andReturn()
                         .getResponse()
                         .getContentAsString();
@@ -72,6 +73,19 @@ class CharacterTestApiIntegrationTest {
         assertThat(FORBIDDEN_WORDS.matcher(body).find()).isFalse();
         assertThat(count("character_group")).isZero();
         assertThat(count("character_participant")).isZero();
+    }
+
+    @Test
+    void 일곱번에_웃으면_같은_유형에_웃참_실패_뱃지가_붙는다() throws Exception {
+        mvc.perform(
+                        post("/api/v1/character-test/result")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"answers\":\"AAABBBCAABBBAAA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.character.job").value("HYPE"))
+                .andExpect(jsonPath("$.stats.warmth").value(0))
+                .andExpect(jsonPath("$.badges[0]").value("LAUGH_FIRST"));
     }
 
     @Test
@@ -272,6 +286,64 @@ class CharacterTestApiIntegrationTest {
                                         + " AND LOWER(column_name) NOT LIKE '%participant%'",
                                 Long.class))
                 .isZero();
+    }
+
+    @Test
+    void 관리자는_참여하지_않고_동호회용_빈_모임을_만들고_다른_사람은_못_만든다() throws Exception {
+        String body = "{\"name\":\"설원 동호회\"}";
+        mvc.perform(
+                        post("/api/v1/admin/character-groups")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                        post("/api/v1/admin/character-groups")
+                                .with(csrf())
+                                .with(
+                                        org.springframework.security.test.web.servlet.request
+                                                .SecurityMockMvcRequestPostProcessors.user("member")
+                                                .roles("USER"))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().isForbidden());
+
+        Map<?, ?> group =
+                read(
+                        mvc.perform(
+                                        post("/api/v1/admin/character-groups")
+                                                .with(csrf())
+                                                .with(
+                                                        org.springframework.security.test.web
+                                                                .servlet.request
+                                                                .SecurityMockMvcRequestPostProcessors
+                                                                .user("admin")
+                                                                .roles("ADMIN"))
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(body))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.name").value("설원 동호회"))
+                                .andExpect(jsonPath("$.participantCount").value(0)));
+        String groupId = (String) group.get("publicId");
+        assertThat(count("character_participant")).isZero();
+
+        Map<?, ?> first =
+                read(
+                        mvc.perform(
+                                        post("/api/v1/character-groups/"
+                                                        + groupId
+                                                        + "/participants")
+                                                .with(csrf())
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(joinBody("첫회원")))
+                                .andExpect(status().isCreated()));
+        mvc.perform(
+                        get("/api/v1/character-groups/" + groupId + "/map")
+                                .header(TOKEN_HEADER, first.get("accessToken")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groupName").value("설원 동호회"))
+                .andExpect(jsonPath("$.participantCount").value(1))
+                .andExpect(jsonPath("$.owner").value(false));
     }
 
     private Map<?, ?> createGroup(String nickname) throws Exception {

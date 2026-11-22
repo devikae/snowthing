@@ -14,6 +14,8 @@ export type SeasonOpening = {
 
 export type SeasonOpenings = {
   bannerEnabled: boolean;
+  /** 배너 맨 앞 문구. 관리자가 정하고, 없으면 기본 문구를 쓴다. */
+  bannerTitle?: string;
   /** 배너 순서, 같으면 등록 순. */
   resorts: SeasonOpening[];
 };
@@ -59,6 +61,9 @@ export function upcomingOpening(
 }
 
 /** 메인 배너에 걸 리조트. 스위치가 꺼졌으면 빈 목록, 켜졌으면 배너에 넣기로 한 리조트 중 아직 개장 전인 것을 관리자가 정한 순서대로. */
+export const DEFAULT_BANNER_TITLE = "개장까지";
+export const BANNER_TITLE_MAX = 12;
+
 export function bannerOpenings(data: SeasonOpenings, today: string): UpcomingOpening[] {
   if (!data.bannerEnabled) return [];
   return data.resorts

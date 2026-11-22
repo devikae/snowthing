@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Client } from "@stomp/stompjs";
@@ -20,6 +21,7 @@ export interface MemberProfile {
 interface ChatSender {
   publicId: string;
   nickname: string;
+  profileImageUrl?: string | null;
 }
 
 interface ChatMessage {
@@ -34,6 +36,15 @@ interface ChatError {
   code: string;
   message: string;
   timestamp: string;
+}
+
+const BAN_DAY_OPTIONS = [1, 7, 30] as const;
+type BanDays = (typeof BAN_DAY_OPTIONS)[number];
+const BOT_SENDER_ID = "snowthing-ai";
+
+// 로그인 회원이 보낸 메시지만 회원 정지를 걸 수 있다. 비회원은 매번 anon- 아이디, 안내 봇은 고정 아이디다.
+function isMemberSender(sender: ChatSender): boolean {
+  return !sender.publicId.startsWith("anon-") && sender.publicId !== BOT_SENDER_ID;
 }
 
 const LOCAL_STORAGE_TAG_KEY = "snowthing_chat_resort";
@@ -80,6 +91,9 @@ interface LiveChatSectionProps {
   currentMember: MemberProfile | null;
 }
 
+// 바닥에서 이만큼 안이면 바닥에 붙어 있는 것으로 보고 새 메시지에 따라 내린다.
+const BOTTOM_STICK_PX = 120;
+
 export default function LiveChatSection({ currentMember }: LiveChatSectionProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -101,9 +115,16 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   // 관리자가 비회원 발신을 켜면 로그인 없이도 보낼 수 있다. 서버가 같은 설정으로 다시 확인한다.
   const [anonymousChatEnabled, setAnonymousChatEnabled] = useState(false);
   const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => new Set());
+  // 비회원 닉네임은 서버가 IP로 정한다. 내가 보낸 메시지가 돌아왔을 때 그 이름을 받아 둬야 본인이 자기 이름을 안다.
+  const [myGuestNickname, setMyGuestNickname] = useState<string | null>(null);
   const pendingGuestSendsRef = useRef<{ content: string; time: number }[]>([]);
+  const memberPublicId = currentMember?.publicId;
   const canSend = Boolean(currentMember) || anonymousChatEnabled;
   const isAdmin = currentMember?.role === "ROLE_ADMIN";
+  const [banTargetId, setBanTargetId] = useState<string | null>(null);
+  const [banDays, setBanDays] = useState<BanDays>(7);
+  const [banSuspend, setBanSuspend] = useState(false);
+  const [banBusy, setBanBusy] = useState(false);
 
   const stompClientRef = useRef<Client | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -131,7 +152,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     const el = scrollContainerRef.current;
     if (!el) return;
     const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const atBottom = distanceToBottom < 35;
+    const atBottom = distanceToBottom < BOTTOM_STICK_PX;
     isAtBottomRef.current = atBottom;
     setShowScrollBottom(!atBottom);
   };
@@ -189,16 +210,26 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             const pendingIndex = pendingGuestSendsRef.current.findIndex(
               (pending) => pending.content === newMsg.content && Date.now() - pending.time < GUEST_ECHO_WINDOW_MILLIS,
             );
+            const mine =
+              (memberPublicId !== undefined && newMsg.sender.publicId === memberPublicId) ||
+              (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-"));
+            // 새 메시지를 그리기 전에 바닥 근처였는지 본다. 그린 뒤에는 메시지 높이만큼 멀어져 있다.
+            const feed = scrollContainerRef.current;
+            const stick =
+              mine || !feed || feed.scrollHeight - feed.scrollTop - feed.clientHeight < BOTTOM_STICK_PX;
             if (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-")) {
               pendingGuestSendsRef.current.splice(pendingIndex, 1);
               setMyGuestMessageIds((previous) => new Set(previous).add(newMsg.messageId));
+              // IP가 바뀌면(휴대폰 등) 이름도 바뀌므로 가장 최근 이름으로 둔다.
+              setMyGuestNickname(newMsg.sender.nickname);
             }
             setMessages((previous) => mergeMessages(previous, [newMsg]));
 
-            // 스크롤이 바닥 근처에 있을 때만 자동 스크롤
+            // 바닥 근처였거나 내가 보낸 메시지면 바로 내린다. 부드러운 스크롤은 움직이는 중에 다음 메시지가 오면
+            // 바닥이 아니라고 판단해 멈췄다. 그래서 새 메시지는 즉시 내린다.
             setTimeout(() => {
-              if (isAtBottomRef.current) {
-                scrollToBottom("smooth");
+              if (stick) {
+                scrollToBottom("auto");
               } else {
                 setShowScrollBottom(true);
               }
@@ -256,7 +287,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       client.deactivate();
       stompClientRef.current = null;
     };
-  }, [currentMember?.publicId]);
+  }, [memberPublicId]);
 
   // 5. 토스트 에러 자동 닫기 (4초)
   useEffect(() => {
@@ -310,14 +341,43 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     setInputContent("");
   };
 
+  const openBanPanel = (message: ChatMessage) => {
+    setBanTargetId(message.messageId);
+    setBanDays(7);
+    setBanSuspend(false);
+  };
+
+  const closeBanPanel = () => {
+    if (!banBusy) setBanTargetId(null);
+  };
+
+  // IP 차단(최근 메시지 삭제 포함)을 먼저 하고, 고른 경우에만 회원 정지를 이어서 한다. 둘 다 서버 관리자 API가 권한을 다시 확인한다.
   const banMessageSender = async (message: ChatMessage) => {
-    if (!window.confirm(`${message.sender.nickname}의 IP를 7일 동안 차단하고 최근 메시지를 지울까요?`)) return;
+    if (banBusy) return;
+    setBanBusy(true);
     try {
-      const response = await csrfFetch(API_ENDPOINTS.admin.banMessageIp(message.messageId), { method: "POST" });
-      if (!response.ok) throw new Error();
+      const response = await csrfFetch(API_ENDPOINTS.admin.banMessageIp(message.messageId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days: banDays }),
+      });
+      if (!response.ok) {
+        setToastError("IP를 차단하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
       setMessages((previous) => previous.filter((item) => item.messageId !== message.messageId));
+      if (banSuspend && isMemberSender(message.sender)) {
+        const suspend = await csrfFetch(API_ENDPOINTS.admin.memberStatusAction(message.sender.publicId, "suspend"), { method: "POST" });
+        if (!suspend.ok) {
+          const data = await suspend.json().catch(() => null);
+          setToastError(`IP는 차단했지만 회원을 정지하지 못했습니다. ${data?.message ?? ""}`.trim());
+        }
+      }
+      setBanTargetId(null);
     } catch {
-      setToastError("IP를 차단하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setToastError("서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setBanBusy(false);
     }
   };
 
@@ -361,7 +421,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
               return (
                 <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
                   <div className="live-chat-message-meta">
+                    {!isMine && <CommentProfileAvatar nickname={msg.sender.nickname} profileImageUrl={msg.sender.profileImageUrl} className="live-chat-avatar" size={24} />}
                     {!isMine && <strong>{msg.sender.nickname}</strong>}
+                    {isMine && !currentMember && <strong>{msg.sender.nickname} (나)</strong>}
                     <span className="live-chat-message-tag">
                       <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
                       {resort ? resort.koreanName : "일반"}
@@ -370,8 +432,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
                     {isAdmin && !isMine && (
                       <button
                         type="button"
-                        onClick={() => void banMessageSender(msg)}
+                        onClick={() => (banTargetId === msg.messageId ? closeBanPanel() : openBanPanel(msg))}
                         title="이 사용자 IP 차단 및 최근 메시지 삭제"
+                        aria-expanded={banTargetId === msg.messageId}
                         className="ml-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-100"
                       >
                         차단
@@ -379,6 +442,19 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
                     )}
                   </div>
                   <div className="live-chat-message-bubble">{msg.content}</div>
+                  {isAdmin && banTargetId === msg.messageId && (
+                    <ChatBanPanel
+                      nickname={msg.sender.nickname}
+                      canSuspend={isMemberSender(msg.sender)}
+                      days={banDays}
+                      setDays={setBanDays}
+                      suspend={banSuspend}
+                      setSuspend={setBanSuspend}
+                      busy={banBusy}
+                      onConfirm={() => void banMessageSender(msg)}
+                      onClose={closeBanPanel}
+                    />
+                  )}
                 </div>
               );
             })
@@ -443,10 +519,13 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             currentMember
               ? "메시지를 입력하세요"
               : anonymousChatEnabled
-                ? "로그인 없이 대화할 수 있어요 (닉네임 자동)"
+                ? myGuestNickname
+                  ? `${myGuestNickname}(으)로 대화 중이에요`
+                  : "로그인 없이 대화할 수 있어요 (닉네임 자동)"
                 : "로그인하고 라이브톡에 참여해 보세요"
           }
           className="live-chat-compose-input capsule-input"
+          aria-label="라이브톡 메시지"
         />
 
         <button
@@ -466,5 +545,71 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         </button>
       </form>
     </section>
+  );
+}
+
+function ChatBanPanel({
+  nickname,
+  canSuspend,
+  days,
+  setDays,
+  suspend,
+  setSuspend,
+  busy,
+  onConfirm,
+  onClose,
+}: {
+  nickname: string;
+  canSuspend: boolean;
+  days: BanDays;
+  setDays: (days: BanDays) => void;
+  suspend: boolean;
+  setSuspend: (value: boolean) => void;
+  busy: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-label={`${nickname} 차단`}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onClose();
+      }}
+      className="mt-1 grid max-w-[280px] gap-2 rounded-lg border border-rose-200 bg-white p-3 text-xs text-slate-700 shadow-sm"
+    >
+      <p className="font-bold">{nickname}의 IP를 차단하고 최근 메시지를 지웁니다.</p>
+      <fieldset className="flex flex-wrap gap-3">
+        <legend className="mb-1 text-[11px] text-slate-500">차단 기간</legend>
+        {BAN_DAY_OPTIONS.map((option) => (
+          <label key={option} className="inline-flex items-center gap-1">
+            <input
+              type="radio"
+              name="chat-ban-days"
+              value={option}
+              checked={days === option}
+              disabled={busy}
+              onChange={() => setDays(option)}
+              autoFocus={days === option}
+            />
+            {option}일
+          </label>
+        ))}
+      </fieldset>
+      {canSuspend && (
+        <label className="inline-flex items-center gap-1">
+          <input type="checkbox" checked={suspend} disabled={busy} onChange={(event) => setSuspend(event.target.checked)} />
+          회원 정지도 함께 하기
+        </label>
+      )}
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onClose} disabled={busy} className="rounded border border-slate-200 px-2 py-1">
+          취소
+        </button>
+        <button type="button" onClick={onConfirm} disabled={busy} className="rounded bg-rose-600 px-2 py-1 font-bold text-white disabled:opacity-60">
+          {busy ? "차단 중" : "차단"}
+        </button>
+      </div>
+    </div>
   );
 }

@@ -77,6 +77,9 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "MEMBER_005", "소셜 로그인 계정의 비밀번호는 로그인 제공자에서 변경해 주세요."),
     PROFILE_ACTION_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "MEMBER_006", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    // 횟수 초과(429)가 아니라 서버가 잠시 바쁜 것이라 503이다. 프로필 화면은 429를 "변경 횟수 초과"로 보여 주므로 코드도 나눈다.
+    IMAGE_PROCESSING_BUSY(
+            HttpStatus.SERVICE_UNAVAILABLE, "FILE_009", "사진 처리 요청이 몰리고 있습니다. 잠시 뒤 다시 시도해 주세요."),
     IMAGE_GLOBAL_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS,
             "FILE_007",
@@ -116,6 +119,9 @@ public enum ErrorCode {
             HttpStatus.FORBIDDEN,
             "POST_009",
             "신고 또는 운영 정책에 따라 임시조치된 게시물입니다. 이의가 있으면 manager@snowthing.org로 문의해 주세요."),
+    POST_SEARCH_KEYWORD_INVALID(HttpStatus.BAD_REQUEST, "POST_010", "검색어는 2자 이상 50자 이하로 입력해 주세요."),
+    POST_SEARCH_RATE_LIMIT(
+            HttpStatus.TOO_MANY_REQUESTS, "POST_011", "검색이 너무 잦습니다. 잠시 후 다시 시도해 주세요."),
     CONTENT_REPORT_TARGET_NOT_FOUND(
             HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
     CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),
@@ -222,6 +228,7 @@ public enum ErrorCode {
     IMAGE_DIMENSIONS_EXCEEDED(
             HttpStatus.BAD_REQUEST, "FILE_005", "이미지는 한 변 10,000px, 총 2,500만 화소 이하로 줄여 주세요."),
     RESORT_NOT_FOUND(HttpStatus.NOT_FOUND, "RESORT_001", "존재하지 않거나 비활성화된 리조트입니다."),
+    SLOPE_NOT_FOUND(HttpStatus.NOT_FOUND, "SLOPE_001", "존재하지 않는 슬로프입니다."),
     INVALID_RESORT_REPORT_CONTENT(
             HttpStatus.BAD_REQUEST, "REPORT_001", "설질 제보 내용은 1자 이상 100자 이하여야 합니다."),
     RESORT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "존재하지 않거나 확인할 수 없는 설질 제보입니다."),
@@ -323,7 +330,7 @@ public enum ErrorCode {
     SEASON_OPENING_DATE_OUT_OF_RANGE(
             HttpStatus.BAD_REQUEST, "ADMIN_006", "개장일은 2020년부터 2100년 사이로 입력해 주세요."),
 
-    // 금칙어 보류와 IP 대역 차단 (053, IKA-96). 차단된 작성은 차단 여부나 대역을 알려 주지 않는다.
+    // 금칙어 보류와 IP 대역 차단 (060, IKA-96). 차단된 작성은 차단 여부나 대역을 알려 주지 않는다.
     WRITE_NOT_ALLOWED(HttpStatus.FORBIDDEN, "COMMON_007", "지금은 글을 쓸 수 없습니다. 잠시 후 다시 시도해 주세요."),
     IP_BAN_INVALID_RANGE(
             HttpStatus.BAD_REQUEST,

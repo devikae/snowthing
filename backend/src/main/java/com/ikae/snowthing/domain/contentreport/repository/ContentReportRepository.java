@@ -23,6 +23,9 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, Lo
     Optional<ContentReport> findByTargetTypeAndTargetIdAndReporter_Id(
             ReportTargetType targetType, Long targetId, Long reporterId);
 
+    Optional<ContentReport> findFirstByTargetTypeAndTargetIdAndReporterIsNullAndReporterIp(
+            ReportTargetType targetType, Long targetId, String reporterIp);
+
     @EntityGraph(attributePaths = "reporter")
     List<ContentReport> findByTargetTypeAndTargetIdAndStatus(
             ReportTargetType targetType, Long targetId, ReportStatus status);

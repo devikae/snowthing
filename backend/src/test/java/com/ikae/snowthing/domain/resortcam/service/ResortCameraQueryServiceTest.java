@@ -40,8 +40,7 @@ class ResortCameraQueryServiceTest {
         Resort high1 = resort("HIGH1", "하이원리조트", 2);
         ResortCamera camera = camera(phoenix);
 
-        given(resortRepository.findAllByActiveTrueOrderByDisplayOrderAscIdAsc())
-                .willReturn(List.of(phoenix, high1));
+        given(resortRepository.findServiceResorts()).willReturn(List.of(phoenix, high1));
         given(resortCameraRepository.findAllActiveOrdered()).willReturn(List.of(camera));
 
         ResortCameraListResponse response = service.getActiveResortCameras();

@@ -31,6 +31,7 @@ import com.ikae.snowthing.domain.member.repository.MemberSocialAccountRepository
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
 import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
+import com.ikae.snowthing.domain.notification.service.NotificationSettingService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -50,6 +51,7 @@ public class SocialAuthService {
     private final ApplicationEventPublisher eventPublisher;
     private final RegistrationConsentService consentService;
     private final WithdrawnEmailService withdrawnEmails;
+    private final NotificationSettingService notificationSettings;
 
     /**
      * 콜백에서 호출한다. 연결된 회원이 있으면 돌려주고, 처음 온 사용자면 비어 있는 값을 돌려준다. 이때 회원을 만들지 않는다. 가입할 수 없는 사용자는 동의 화면까지
@@ -81,10 +83,9 @@ public class SocialAuthService {
         String providerEmail = emailNormalizer.normalize(profile.email());
         LocalDateTime now = LocalDateTime.now(clock);
 
-        Member newMember =
-                createSocialMember(
-                        memberEmail, profile.nickname(), profile.emailAuthoritative(), now);
+        Member newMember = createSocialMember(memberEmail, profile.emailAuthoritative(), now);
         consentService.record(newMember.getId(), consent, now);
+        notificationSettings.initializeForNewMember(newMember.getId(), now);
         saveSocialAccount(
                 MemberSocialAccount.builder()
                         .member(newMember)
@@ -263,12 +264,10 @@ public class SocialAuthService {
     }
 
     private Member createSocialMember(
-            String memberEmail, String rawNickname, boolean emailAuthoritative, LocalDateTime now) {
+            String memberEmail, boolean emailAuthoritative, LocalDateTime now) {
+        // 소셜 이름은 실명인 경우가 많아 닉네임으로 쓰지 않고 자동으로 짓는다.
         for (int attempt = 0; attempt < MAX_NICKNAME_GENERATION_ATTEMPTS; attempt++) {
-            String candidateNickname =
-                    attempt == 0
-                            ? socialNicknameGenerator.initialCandidate(rawNickname)
-                            : socialNicknameGenerator.generateWithSuffix(rawNickname);
+            String candidateNickname = socialNicknameGenerator.generate();
             if (memberRepository.existsByNickname(candidateNickname)) {
                 continue;
             }

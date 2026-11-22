@@ -5,11 +5,18 @@ x-logging: &default-logging
     max-size: "50m"
     max-file: "5"
 
+# 이미지 주소(IKA-105): 배포 스크립트가 성공한 digest를 /etc/snowthing/images.env에 남긴다.
+# 손으로 다시 띄울 때도 그 파일을 함께 넘겨야 지금 실행 중인 digest로 뜬다.
+#   docker compose --env-file /etc/snowthing/prod.env --env-file /etc/snowthing/images.env -f compose.prod.yml up -d
+# 파일을 빼먹으면 아래 기본값(존재하지 않는 태그)으로 pull이 실패하고 기존 컨테이너는 그대로 남는다.
 services:
   backend:
-    image: ${BACKEND_IMAGE_URI:-snowthing-backend:latest}
+    image: ${BACKEND_IMAGE_URI:-snowthing-backend:not-recorded-pass-etc-snowthing-images-env}
     container_name: snowthing-backend
     restart: unless-stopped
+    # 백엔드는 처리 중인 요청을 최대 20초 기다린다(application.yml timeout-per-shutdown-phase).
+    # docker 기본 10초면 그 전에 강제 종료되므로 여유를 두고 30초로 늘린다.
+    stop_grace_period: 30s
     logging: *default-logging
     ports:
       - "127.0.0.1:8080:8080"
@@ -37,11 +44,15 @@ services:
       # 첫 관리자 지정(IKA-12). 쉼표로 구분한 이메일. Spring 기본값도 빈 값이라 비워 두면 아무도 올리지 않는다.
       - SNOWTHING_ADMIN_BOOTSTRAP_EMAILS=${SNOWTHING_ADMIN_BOOTSTRAP_EMAILS:-}
       - SNOWTHING_EMAIL_VERIFICATION_SECRET=${SNOWTHING_EMAIL_VERIFICATION_SECRET:?SNOWTHING_EMAIL_VERIFICATION_SECRET must be set}
+      - SNOWTHING_REMEMBER_ME_KEY=${SNOWTHING_REMEMBER_ME_KEY:-}
       - SNOWTHING_MAIL_PROVIDER=${SNOWTHING_MAIL_PROVIDER:-ses}
       - SNOWTHING_SES_REGION=${SNOWTHING_SES_REGION:-ap-northeast-2}
       - SNOWTHING_MAIL_FROM=${SNOWTHING_MAIL_FROM:-help@snowthing.org}
       - SNOWTHING_MAIL_FROM_NAME=${SNOWTHING_MAIL_FROM_NAME:-SnowThing}
       - SNOWTHING_SES_CONFIGURATION_SET=${SNOWTHING_SES_CONFIGURATION_SET:-}
+      # IKA-88 쪽지 도착 메일. 기본 꺼짐. 적재를 먼저 켜고, 발송은 테스트 수신자로 확인한 뒤 켠다.
+      - SNOWTHING_DM_MAIL_ENQUEUE_ENABLED=${SNOWTHING_DM_MAIL_ENQUEUE_ENABLED:-false}
+      - SNOWTHING_DM_MAIL_SEND_ENABLED=${SNOWTHING_DM_MAIL_SEND_ENABLED:-false}
       - SNOWTHING_CHAT_AUDIT_LOG_PATH=/var/log/snowthing-chat/chat_audit.log
       - SNOWTHING_IMAGE_BUDGET_LOG_PATH=/var/log/snowthing-chat/image_budget.jsonl
       - SNOWTHING_CHAT_MAX_CONNECTIONS=${SNOWTHING_CHAT_MAX_CONNECTIONS:-500}
@@ -65,7 +76,9 @@ services:
       - WEB_PUSH_VAPID_PRIVATE_KEY=${WEB_PUSH_VAPID_PRIVATE_KEY:-}
       - WEB_PUSH_VAPID_SUBJECT=${WEB_PUSH_VAPID_SUBJECT:-}
       # OOM 뒤 멈춘 채 남지 않고 종료되어 restart 정책으로 다시 뜨게 한다.
-      - JAVA_TOOL_OPTIONS=-XX:+ExitOnOutOfMemoryError -javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
+      # 힙 상한은 호스트 RAM(2GB)의 50%, 약 1GB다. 지정하지 않으면 JVM 기본값 25%(약 512MB)라 사진 디코딩 2건(약 300MB)과 라이브톡이 겹칠 때 빠듯하다.
+      # 나머지 절반은 JVM 힙 밖 메모리(메타스페이스, 스레드 스택, Pinpoint), frontend, mcp-bot(256MB 제한), nginx, OS 몫이다.
+      - JAVA_TOOL_OPTIONS=-XX:+ExitOnOutOfMemoryError -XX:MaxRAMPercentage=50.0 -javaagent:/opt/pinpoint-agent/pinpoint-bootstrap.jar -Dpinpoint.agentId=${PINPOINT_AGENT_ID:-snowthing-prod-01} -Dpinpoint.applicationName=${PINPOINT_APPLICATION_NAME:-snowthing-backend-prod} -Dpinpoint.config=/opt/pinpoint-agent/snowthing-pinpoint.config
       - TZ=Asia/Seoul
     volumes:
       - /var/log/snowthing-chat:/var/log/snowthing-chat
@@ -74,9 +87,11 @@ services:
       - /opt/snowthing-ai:/etc/snowthing-ai:ro
 
   frontend:
-    image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:latest}
+    image: ${FRONTEND_IMAGE_URI:-snowthing-frontend:not-recorded-pass-etc-snowthing-images-env}
     container_name: snowthing-frontend
     restart: unless-stopped
+    # 화면 서버는 오래 붙잡는 연결이 없어 기본보다 조금만 늘린다.
+    stop_grace_period: 15s
     logging: *default-logging
     ports:
       - "127.0.0.1:3000:3000"
@@ -85,7 +100,7 @@ services:
       - PORT=3000
 
   mcp-bot:
-    image: ${MCP_BOT_IMAGE_URI:-snowthing-mcp-bot:latest}
+    image: ${MCP_BOT_IMAGE_URI:-snowthing-mcp-bot:not-recorded-pass-etc-snowthing-images-env}
     container_name: snowthing-mcp-bot
     restart: unless-stopped
     logging: *default-logging
@@ -97,12 +112,18 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-6-luna}
       - OPENAI_REASONING_EFFORT=${OPENAI_REASONING_EFFORT:-low}
+      # AI 회원 말투(IKA-99). 예시 원문은 저장소 밖 호스트 디렉터리에 두고, 파일이 없으면 예시 없이 글을 쓴다.
+      - OPENAI_COMPOSE_REASONING_EFFORT=${OPENAI_COMPOSE_REASONING_EFFORT:-low}
+      - SNOWTHING_AI_STYLE_EXAMPLES_FILE=/etc/snowthing-ai-style/style-examples.json
       - SNOWTHING_API_BASE_URL=http://backend:8080
       - SNOWTHING_BOT_INTERNAL_SECRET=${SNOWTHING_BOT_INTERNAL_SECRET:-}
       - SNOWTHING_BOT_HOST=0.0.0.0
       - SNOWTHING_BOT_PORT=3100
       - SNOWTHING_BOT_TIMEOUT_MS=${SNOWTHING_BOT_TIMEOUT_MS:-15000}
       - TZ=Asia/Seoul
+    # 페르소나 파일이 있는 /opt/snowthing-ai 전체가 아니라 예시 디렉터리만 넘긴다.
+    volumes:
+      - /opt/snowthing-ai/style:/etc/snowthing-ai-style:ro
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777

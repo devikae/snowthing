@@ -48,6 +48,10 @@ class PostRepositoryCustomTest {
 
     @BeforeEach
     void setUp() {
+        // 같은 Spring 컨텍스트를 쓰는 다른 테스트가 커밋하고 남긴 글이 있으면 게시판 전체 건수 검증이 실행 순서에 따라 흔들린다.
+        // 이 테스트의 트랜잭션 안에서만 숨기고 끝나면 롤백된다.
+        jdbcTemplate.update("UPDATE post SET is_deleted = TRUE WHERE is_deleted = FALSE");
+
         freeCategory =
                 categoryRepository
                         .findByCode("FREE")
@@ -401,5 +405,43 @@ class PostRepositoryCustomTest {
         for (int i = 0; i < count; i++) {
             post.increaseLikeCount();
         }
+    }
+
+    @Test
+    @DisplayName("이전글은 목록에서 바로 아래(더 오래된) 글, 다음글은 바로 위 글이다. 지운 글은 건너뛴다")
+    void findAdjacentInCategory() {
+        List<PostListResponse> list =
+                postRepository
+                        .findPostsByOffset(
+                                new PostSearchRequest(
+                                        "FREE",
+                                        null,
+                                        null,
+                                        null,
+                                        PostViewType.DEFAULT,
+                                        1,
+                                        null,
+                                        30))
+                        .content();
+        Post base =
+                postRepository
+                        .findWithMemberAndCategoryByPublicId(list.get(5).publicId())
+                        .orElseThrow();
+
+        assertThat(postRepository.findAdjacentInCategory(base, true).orElseThrow().getPublicId())
+                .isEqualTo(list.get(6).publicId());
+        assertThat(postRepository.findAdjacentInCategory(base, false).orElseThrow().getPublicId())
+                .isEqualTo(list.get(4).publicId());
+
+        jdbcTemplate.update(
+                "UPDATE post SET is_deleted = TRUE WHERE public_id = ?", list.get(6).publicId());
+        assertThat(postRepository.findAdjacentInCategory(base, true).orElseThrow().getPublicId())
+                .isEqualTo(list.get(7).publicId());
+
+        Post newest =
+                postRepository
+                        .findWithMemberAndCategoryByPublicId(list.get(0).publicId())
+                        .orElseThrow();
+        assertThat(postRepository.findAdjacentInCategory(newest, false)).isEmpty();
     }
 }

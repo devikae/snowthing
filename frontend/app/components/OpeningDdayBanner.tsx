@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { bannerOpenings, formatDday } from "../lib/seasonOpening";
+import { DEFAULT_BANNER_TITLE, bannerOpenings, formatDday } from "../lib/seasonOpening";
 import { useKstToday } from "../lib/useKstToday";
 import { useSeasonOpenings } from "../lib/useSeasonOpenings";
 
@@ -22,8 +22,8 @@ export function OpeningDdayBanner() {
   if (openings.length === 0) return null;
 
   return (
-    <Link href="/resort-cam" className="opening-dday-banner">
-      <strong>개장까지</strong>
+    <Link href="/resorts" className="opening-dday-banner">
+      <strong>{data?.bannerTitle?.trim() || DEFAULT_BANNER_TITLE}</strong>
       <ul className="opening-dday-list">
         {openings.map(({ opening, date, days }) => (
           <li key={opening.resortCode}>

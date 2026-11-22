@@ -1,11 +1,13 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
+import { ReplyComposer } from "../../components/ReplyComposer";
+import { PostAdjacentNav } from "./PostAdjacentNav";
 import { AuthorMenu } from "../../components/AuthorMenu";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import dynamic from "next/dynamic";
@@ -19,8 +21,11 @@ import { firstImageUrl, plainTextSummary } from "../../lib/sharePreview";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate, formatShortDateTime } from "../../lib/koreanDate";
 import { markdownToPlainText } from "../../lib/markdownText";
+import { mentionPrefix, mergeReplies, replyCursor } from "../../lib/commentReplies";
+// 서버가 넣은 본문 HTML이 첫 화면부터 뷰어와 같은 모양이 되도록 뷰어 스타일을 이 화면 첫 CSS에 싣는다.
+import "@toast-ui/editor/dist/toastui-editor-viewer.css";
 
-// 뷰어 코드를 받는 동안에는 아래 평문 본문이 자리를 채운다.
+// 뷰어 코드를 받는 동안에는 서버가 만든 본문 HTML(없으면 평문 본문)이 자리를 채운다.
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
 const POST_LOAD_TIMEOUT_MS = 10_000;
@@ -69,6 +74,8 @@ interface CommentItem {
   canDelete: boolean;
   requiresDeletePassword: boolean;
   createdAt: string;
+  // 관리자 응답에만 온다. 일반 사용자 응답에는 없다.
+  blinded?: boolean;
 }
 
 interface CommentListResponse {
@@ -99,7 +106,16 @@ interface CommentUpdateResponse {
   updatedAt: string;
 }
 
-export default function PostDetailClient({ params, initialPost }: { params: Promise<{ publicId: string }>; initialPost: PostDetail | null }) {
+export default function PostDetailClient({
+  params,
+  initialPost,
+  initialBodyHtml = null,
+}: {
+  params: Promise<{ publicId: string }>;
+  initialPost: PostDetail | null;
+  /** 서버가 initialPost 본문으로 만든 정화된 HTML. 뷰어가 그리기 전까지 보여 준다. */
+  initialBodyHtml?: string | null;
+}) {
   const router = useRouter();
   const { publicId } = use(params);
   // 서버가 비로그인 기준으로 받은 글을 먼저 그린다. 작성자 여부, 추천 여부, 조회수 반영은 아래 브라우저 요청이 덮어쓴다.
@@ -126,6 +142,8 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const isSubmittingCommentRef = useRef(false);
+  // 방금 단 답글 id. 더보기 커서로 쓰면 사이 답글을 건너뛰므로 구분해 둔다.
+  const localReplyIdsRef = useRef<Set<string>>(new Set());
   const commentIdempotencyKey = useIdempotencyKey();
   const [activeReplyParentId, setActiveReplyParentId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -142,6 +160,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [blindBusy, setBlindBusy] = useState(false);
   const [deleteModalConfig, setDeleteModalConfig] = useState({
     title: "게시글 삭제 확인",
     description: "이 게시글을 삭제할까요?",
@@ -248,7 +267,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
     const paging = replyPagingByRootId[rootCommentId];
     if (paging?.loading) return;
 
-    const cursor = paging?.nextCursor ?? root.previewReplies.at(-1)?.commentId ?? null;
+    const cursor = paging?.nextCursor ?? replyCursor(root.previewReplies, localReplyIdsRef.current);
     setReplyPagingByRootId((current) => ({
       ...current,
       [rootCommentId]: {
@@ -268,13 +287,10 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
       setComments((current) =>
         current.map((comment) => {
           if (comment.commentId !== rootCommentId) return comment;
-          const merged = [...comment.previewReplies, ...(data.replies || [])];
           return {
             ...comment,
             replyCount: data.totalReplyCount,
-            previewReplies: merged.filter(
-              (reply, index) => merged.findIndex((candidate) => candidate.commentId === reply.commentId) === index,
-            ),
+            previewReplies: mergeReplies(comment.previewReplies, data.replies || []),
             hasMoreReplies: data.hasNext,
           };
         }),
@@ -339,6 +355,50 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
     return () => window.clearTimeout(timer);
   }, [fetchComments, initialPost, publicId, router]);
+
+  // 관리자가 글 화면에서 바로 가리거나 가리기를 푼다. 권한은 서버의 관리자 API가 다시 확인한다.
+  const handleTogglePostBlind = async () => {
+    if (!post || blindBusy) return;
+    const blinded = post.status !== "BLOCKED";
+    if (!confirm(blinded ? "이 글을 가릴까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." : "이 글의 가리기를 해제할까요?")) return;
+    setBlindBusy(true);
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.admin.blindPost(post.publicId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blinded }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || "가리기 상태를 바꾸지 못했습니다.");
+      }
+      setPost((current) => (current ? { ...current, status: blinded ? "BLOCKED" : "NORMAL" } : current));
+    } catch (error) {
+      alert(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+    } finally {
+      setBlindBusy(false);
+    }
+  };
+
+  const handleToggleCommentBlind = async (comment: CommentItem) => {
+    const blinded = !comment.blinded;
+    if (!confirm(blinded ? "이 댓글을 가릴까요? 일반 사용자에게는 내용이 보이지 않게 됩니다." : "이 댓글의 가리기를 해제할까요? 신고로 가린 댓글이면 신고 처리 화면에서 해제해야 합니다.")) return;
+    try {
+      const res = await csrfFetch(API_ENDPOINTS.admin.blindComment(comment.commentId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blinded }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || "댓글 가리기 상태를 바꾸지 못했습니다.");
+      }
+      setReplyPagingByRootId({});
+      await fetchComments();
+    } catch (error) {
+      alert(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+    }
+  };
 
   const askLoginForReaction = () => {
     if (confirm("추천과 비추천은 로그인해야 할 수 있어요. 로그인 화면으로 이동할까요?")) {
@@ -498,15 +558,12 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
           setComments((current) =>
             current.map((comment) => {
               if (comment.commentId !== parentId) return comment;
-              const nextReplyCount = comment.replyCount + 1;
-              const nextPreviewReplies = comment.hasMoreReplies
-                ? comment.previewReplies
-                : [...comment.previewReplies, createdComment].slice(0, 5);
+              // 답글이 많아도 방금 단 답글은 바로 보이게 목록 끝에 붙인다.
+              localReplyIdsRef.current.add(String(createdComment.commentId));
               return {
                 ...comment,
-                replyCount: nextReplyCount,
-                previewReplies: nextPreviewReplies,
-                hasMoreReplies: comment.hasMoreReplies || nextReplyCount > 5,
+                replyCount: comment.replyCount + 1,
+                previewReplies: mergeReplies(comment.previewReplies, [createdComment]),
               };
             }),
           );
@@ -681,6 +738,17 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
               <div><span className="material-symbols-outlined" aria-hidden="true">visibility</span><span className="sr-only">조회</span>{post.viewCount}<span className="material-symbols-outlined" aria-hidden="true">chat_bubble</span><span className="sr-only">댓글</span>{post.commentCount}<span className="material-symbols-outlined" aria-hidden="true">thumb_up</span><span className="sr-only">추천</span>{post.likeCount}</div>
             </div>
 
+            {isAdmin && post.status === "BLOCKED" && (
+              <p role="status" className="mt-3 rounded border border-[var(--snow-border)] px-3 py-2 text-sm text-[var(--snow-muted)]">
+                가린 글입니다. 일반 사용자에게는 보이지 않고 관리자에게만 보입니다.
+              </p>
+            )}
+            {isAdmin && post.status === "TEMPORARY_HOLD" && (
+              <p role="status" className="mt-3 rounded border border-[var(--snow-border)] px-3 py-2 text-sm text-[var(--snow-muted)]">
+                신고로 임시조치된 글입니다. 해제는 신고 처리 화면에서 합니다.
+              </p>
+            )}
+
             <h1>{post.title}</h1>
 
             <div className="post-detail-author">
@@ -727,6 +795,11 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                         수정
                       </Link>
                     )}
+                    {isAdmin && (post.status === "NORMAL" || post.status === "BLOCKED") && (
+                      <button type="button" disabled={blindBusy} onClick={() => void handleTogglePostBlind()}>
+                        {post.status === "BLOCKED" ? "가리기 해제" : "가리기"}
+                      </button>
+                    )}
                     {canDelete && (
                       <button onClick={handleOpenDeleteModal}>
                         삭제
@@ -739,9 +812,17 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
 
             <section className="post-detail-content-panel" aria-label="게시글 내용">
               <div className="post-detail-content">
-                {!bodyRendered && (
-                  <div className="whitespace-pre-line text-base leading-8 text-[var(--snow-ink)]">{markdownToPlainText(post.content)}</div>
-                )}
+                {/* 서버가 뷰어와 같은 방법으로 만든 HTML을 같은 감싸개 클래스로 먼저 보여 준다. 뷰어가 그리면 같은 화면 갱신에서 치운다. */}
+                {!bodyRendered &&
+                  (initialBodyHtml && post.content === initialPost?.content ? (
+                    <div
+                      className="toast-viewer-wrapper text-base leading-8 text-[var(--snow-ink)]"
+                      // 서버에서 sanitizeHtml.ts와 같은 규칙으로 정화한 HTML이다(lib/markdownHtml.server.ts).
+                      dangerouslySetInnerHTML={{ __html: initialBodyHtml }}
+                    />
+                  ) : (
+                    <div className="whitespace-pre-line text-base leading-8 text-[var(--snow-ink)]">{markdownToPlainText(post.content)}</div>
+                  ))}
                 <ToastViewer content={post.content} onRendered={handleBodyRendered} />
               </div>
             </section>
@@ -773,6 +854,9 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
             </div>
             )}
           </article>
+
+          {/* 댓글이 길어도 바로 넘어갈 수 있게 본문 바로 아래에 둔다. */}
+          {post.categoryCode !== "INQUIRY" && <PostAdjacentNav publicId={post.publicId} />}
 
           <section id="comments" className="post-comments-card">
             <header><h2>댓글 <span>{totalCommentCount}</span></h2></header>
@@ -868,6 +952,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
                     submittingComment={submittingComment}
                     handleLoadMoreReplies={handleLoadMoreReplies}
                     isLoadingReplies={Boolean(replyPagingByRootId[comment.commentId]?.loading)}
+                    onToggleBlind={isAdmin ? (target) => void handleToggleCommentBlind(target) : undefined}
                   />
                 ))
               )}
@@ -895,6 +980,7 @@ export default function PostDetailClient({ params, initialPost }: { params: Prom
               </div>
             )}
           </section>
+
           </div>
         </div>
       </main>
@@ -944,6 +1030,7 @@ function CommentRow({
   handleConfirmDeleteComment,
   handleLoadMoreReplies,
   isLoadingReplies,
+  onToggleBlind,
 }: {
   item: CommentItem;
   isAnonymousPost: boolean;
@@ -976,13 +1063,58 @@ function CommentRow({
   handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
   handleLoadMoreReplies: (rootCommentId: string) => Promise<void>;
   isLoadingReplies: boolean;
+  onToggleBlind?: (comment: CommentItem) => void;
 }) {
   const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
   const isEditing = activeEditCommentId === item.commentId;
-  const toggleReplyEditor = () => {
-    setActiveReplyParentId(activeReplyParentId === item.commentId ? null : item.commentId);
+  // 답글 입력창은 답글 버튼을 누른 댓글 바로 아래에 연다. 답글의 답글이면 @닉네임을 넣어 둔다. 저장은 최상위 댓글에 단다.
+  const [replyTarget, setReplyTarget] = useState<{ commentId: string } | null>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const isReplyOpen = activeReplyParentId === item.commentId && replyTarget !== null;
+  const displayName = (comment: CommentItem) => (isAnonymousPost ? `익명 (${comment.writerIp})` : getWriterName(comment));
+  const openReply = (target: CommentItem) => {
+    const targetId = String(target.commentId);
+    if (isReplyOpen && replyTarget?.commentId === targetId) {
+      setActiveReplyParentId(null);
+      setReplyTarget(null);
+      return;
+    }
+    const isRoot = target.commentId === item.commentId;
+    setReplyTarget({ commentId: targetId });
+    // 익명 글은 모두 "익명 (IP 일부)"로 보여 호출 문구가 누구인지 구분해 주지 못하므로 넣지 않는다.
+    setReplyText(isRoot || isAnonymousPost ? "" : mentionPrefix(displayName(target)));
+    setActiveReplyParentId(item.commentId);
   };
+  const closeReply = () => {
+    setActiveReplyParentId(null);
+    setReplyTarget(null);
+  };
+  const isReplyingTo = (comment: CommentItem) => isReplyOpen && replyTarget?.commentId === String(comment.commentId);
+  const renderReplyComposer = (nested: boolean) => (
+    <ReplyComposer
+      inputRef={replyInputRef}
+      value={replyText}
+      onChange={setReplyText}
+      onCancel={closeReply}
+      onSubmit={() => void handleCreateComment(item.commentId)}
+      submitting={submittingComment}
+      loginRequired={!isAnonymousPost && !currentUserPublicId}
+      anonymous={isAnonymousPost}
+      password={isAnonymousPost && !currentUserPublicId ? { value: replyAnonPassword, onChange: setReplyAnonPassword } : undefined}
+      nested={nested}
+    />
+  );
+
+  useEffect(() => {
+    if (!isReplyOpen) return;
+    const input = replyInputRef.current;
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // 대상이 바뀔 때만 다시 맞춘다.
+  }, [isReplyOpen, replyTarget?.commentId]);
 
   return (
     <div className="post-comment-item">
@@ -1027,61 +1159,26 @@ function CommentRow({
             <>
               <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>
               <div className="comment-youtube-actions">
-                <button type="button" onClick={toggleReplyEditor}>{activeReplyParentId === item.commentId ? "답글 취소" : "답글"}</button>
+                <button type="button" onClick={() => openReply(item)}>{isReplyingTo(item) ? "답글 취소" : "답글"}</button>
                 {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
                 {!item.isDeleted && <ReportButton targetType="COMMENT" targetId={item.commentId} />}
+                <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />
               </div>
             </>
           )}
         </div>
       </div>
-
-      {activeReplyParentId === item.commentId && (
-          <div className="post-reply-compose">
-            <textarea
-              rows={2}
-              maxLength={COMMENT_MAX_LENGTH}
-              value={replyText}
-              onChange={(event) => setReplyText(event.target.value)}
-              placeholder={isAnonymousPost || currentUserPublicId ? "답글을 작성해 보세요." : "로그인 후 답글을 작성할 수 있습니다."}
-              className="post-comment-textarea"
-              aria-label="답글 입력"
-            />
-            <div className="px-3 pb-1 text-right text-xs text-[var(--snow-muted)]">{replyText.length}/{COMMENT_MAX_LENGTH}</div>
-            <div className="post-comment-compose-footer">
-              {isAnonymousPost && !currentUserPublicId && (
-                <label className="post-comment-password">
-                  <span>비밀번호</span>
-                    <input
-                      type="password"
-                      placeholder="비밀번호 (4~20자)"
-                      minLength={4}
-                      maxLength={20}
-                      value={replyAnonPassword}
-                      onChange={(event) => setReplyAnonPassword(event.target.value)}
-                    />
-                </label>
-              )}
-              {!isAnonymousPost && !currentUserPublicId && <span className="post-comment-login-note">답글 작성을 위해 로그인이 필요합니다.</span>}
-              <button
-                disabled={submittingComment}
-                onClick={() => void handleCreateComment(item.commentId)}
-                className="post-comment-submit-button"
-              >
-                답글 등록
-              </button>
-            </div>
-          </div>
-      )}
+      {isReplyingTo(item) && renderReplyComposer(false)}
 
       {item.previewReplies.length > 0 && (
           <div className="comment-reply-list">
             {item.previewReplies.map((reply) => (
+              <Fragment key={reply.commentId}>
               <ReplyRow
-                key={reply.commentId}
                 item={reply}
                 isAnonymousPost={isAnonymousPost}
-                onReply={toggleReplyEditor}
+                onReply={() => openReply(reply)}
+                isReplying={isReplyingTo(reply)}
                 isEditing={activeEditCommentId === reply.commentId}
                 editCommentText={editCommentText}
                 setEditCommentText={setEditCommentText}
@@ -1100,7 +1197,10 @@ function CommentRow({
                 handleStartDeleteComment={handleStartDeleteComment}
                 handleCancelDeleteComment={handleCancelDeleteComment}
                 handleConfirmDeleteComment={handleConfirmDeleteComment}
+                onToggleBlind={onToggleBlind}
               />
+              {isReplyingTo(reply) && renderReplyComposer(true)}
+              </Fragment>
             ))}
           </div>
       )}
@@ -1117,6 +1217,7 @@ function CommentRow({
             </button>
           </div>
       )}
+
     </div>
   );
 }
@@ -1125,6 +1226,7 @@ function ReplyRow({
   item,
   isAnonymousPost,
   onReply,
+  isReplying,
   isEditing,
   editCommentText,
   setEditCommentText,
@@ -1143,10 +1245,12 @@ function ReplyRow({
   handleStartDeleteComment,
   handleCancelDeleteComment,
   handleConfirmDeleteComment,
+  onToggleBlind,
 }: {
   item: CommentItem;
   isAnonymousPost: boolean;
   onReply: () => void;
+  isReplying: boolean;
   isEditing: boolean;
   editCommentText: string;
   setEditCommentText: (text: string) => void;
@@ -1165,6 +1269,7 @@ function ReplyRow({
   handleStartDeleteComment: (commentId: string) => void;
   handleCancelDeleteComment: () => void;
   handleConfirmDeleteComment: (comment: CommentItem) => Promise<void>;
+  onToggleBlind?: (comment: CommentItem) => void;
 }) {
   const canEdit = canEditComment(item);
   const canDelete = canDeleteComment(item);
@@ -1211,9 +1316,13 @@ function ReplyRow({
             />
           ) : <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>}
           {!item.isDeleted && !isEditing && <div className="comment-youtube-actions">
-            <button type="button" onClick={onReply}>답글</button>
+            <button type="button" onClick={onReply}>{isReplying ? "답글 취소" : "답글"}</button>
             {canEdit && <button type="button" onClick={() => handleStartEditComment(item)}>수정</button>}
             <ReportButton targetType="COMMENT" targetId={item.commentId} />
+            <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />
+          </div>}
+          {item.isDeleted && item.blinded && !isEditing && <div className="comment-youtube-actions">
+            <CommentBlindButton comment={item} onToggleBlind={onToggleBlind} />
           </div>}
         </div>
       </div>
@@ -1288,6 +1397,16 @@ function CommentEditForm({
         </button>
       </div>
     </div>
+  );
+}
+
+/** 관리자에게만 넘기는 onToggleBlind가 있을 때만 그린다. 그냥 지운 댓글은 되살릴 수 없어 버튼을 두지 않는다. */
+function CommentBlindButton({ comment, onToggleBlind }: { comment: CommentItem; onToggleBlind?: (comment: CommentItem) => void }) {
+  if (!onToggleBlind || (comment.isDeleted && !comment.blinded)) return null;
+  return (
+    <button type="button" onClick={() => onToggleBlind(comment)}>
+      {comment.blinded ? "가리기 해제" : "가리기"}
+    </button>
   );
 }
 

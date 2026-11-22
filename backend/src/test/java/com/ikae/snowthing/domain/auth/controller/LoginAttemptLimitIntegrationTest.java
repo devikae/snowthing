@@ -203,22 +203,31 @@ class LoginAttemptLimitIntegrationTest {
     }
 
     @Test
-    @DisplayName("Nginx를 거쳐도 클라이언트가 붙인 X-Forwarded-For 앞부분으로는 차단을 우회하지 못한다")
+    @DisplayName("Nginx를 거쳐도 클라이언트가 꾸민 X-Real-IP와 X-Forwarded-For 앞부분으로는 차단을 우회하지 못한다")
     void forgedForwardedForBehindProxyIsIgnored() throws Exception {
+        // 운영 경로를 본뜬다. 클라이언트가 보낸 값 뒤에 Cloudflare나 Nginx가 실제 방문자 주소를 붙인다.
+        // Nginx location이 X-Real-IP를 덮어쓰지 않아 꾸민 값이 그대로 들어오는 경우까지 막는지 본다.
         for (int i = 0; i < 5; i++) {
-            int attempt = i;
+            String fake = "198.51.100." + i;
             assertUnauthorized(
                     login(
                             email,
                             WRONG_PASSWORD,
                             LOOPBACK,
                             builder ->
-                                    builder.header("X-Real-IP", IP)
-                                            .header("X-Forwarded-For", "198.51.100." + attempt)
-                                            .header("CF-Connecting-IP", "198.51.100." + attempt)));
+                                    builder.header("X-Real-IP", fake)
+                                            .header("X-Forwarded-For", fake + ", " + IP)
+                                            .header("CF-Connecting-IP", fake)));
         }
 
-        assertBlocked(login(email, PASSWORD, LOOPBACK, builder -> builder.header("X-Real-IP", IP)));
+        assertBlocked(
+                login(
+                        email,
+                        PASSWORD,
+                        LOOPBACK,
+                        builder ->
+                                builder.header("X-Real-IP", "198.51.100.99")
+                                        .header("X-Forwarded-For", "198.51.100.99, " + IP)));
     }
 
     @Test

@@ -30,6 +30,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.util.MarkdownBodySanitizer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -126,33 +127,62 @@ public class PostService {
                             .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
+        // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
+        String content = MarkdownBodySanitizer.sanitize(request.content());
         // 금칙어가 걸리면 저장과 응답은 평소와 같고 상태만 FILTER_HOLD로 둔다 (IKA-96).
-        Optional<String> matched =
-                contentFilter.inspect(userDetails, request.title(), request.content());
+        Optional<String> matched = contentFilter.inspect(userDetails, request.title(), content);
         Post post =
                 Post.builder()
                         .member(member)
                         .category(category)
                         .title(request.title())
-                        .content(request.content())
+                        .content(content)
                         .writerIp(resolveWriterIp(clientIp))
                         .isAnonymous(isAnon)
                         .anonymousPassword(encodedPassword)
                         .hasImage(false)
                         .status(matched.isPresent() ? PostStatus.FILTER_HOLD : null)
                         .build();
-        imageLifecycle.rejectNewInlineImages(request.content(), null);
+        imageLifecycle.rejectNewInlineImages(content, null);
         imageLifecycle.protectAll(
                 request.imageUrls(),
-                request.content(),
+                content,
                 userDetails == null ? null : userDetails.getUsername());
         post.replaceImages(toPostImages(request.imageUrls()));
-        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
 
         Post saved = postRepository.save(post);
         matched.ifPresent(word -> contentFilter.recordPostHold(saved, word));
         searchOutbox.postChanged(saved);
         return PostResponse.from(saved);
+    }
+
+    /**
+     * 상세 아래 이전글, 다음글. 게시판 목록에 나오는 글만 대상이다. 1:1 문의, 중고장터, 카풀은 목록 화면이 따로라 빈 값을 준다. 기준 글이 지워졌거나 숨김이어도
+     * 빈 값이라 글이 있는지 드러나지 않는다.
+     */
+    public PostAdjacentResponse getAdjacentPosts(String publicId) {
+        Post base = postRepository.findWithMemberAndCategoryByPublicId(publicId).orElse(null);
+        if (base == null
+                || base.isDeleted()
+                || base.getStatus() != PostStatus.NORMAL
+                || PostCategoryCodes.HIDDEN_FROM_BOARD_LIST.contains(
+                        base.getCategory().getCode())) {
+            return PostAdjacentResponse.NONE;
+        }
+        return new PostAdjacentResponse(
+                postRepository
+                        .findAdjacentInCategory(base, true)
+                        .map(this::adjacentItem)
+                        .orElse(null),
+                postRepository
+                        .findAdjacentInCategory(base, false)
+                        .map(this::adjacentItem)
+                        .orElse(null));
+    }
+
+    private PostAdjacentResponse.Item adjacentItem(Post post) {
+        return new PostAdjacentResponse.Item(post.getPublicId(), post.getTitle());
     }
 
     @Transactional
@@ -416,15 +446,17 @@ public class PostService {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
-        imageLifecycle.rejectNewInlineImages(request.content(), post.getContent());
+        // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
+        String content = MarkdownBodySanitizer.sanitize(request.content());
+        imageLifecycle.rejectNewInlineImages(content, post.getContent());
         imageLifecycle.protectExisting(
                 request.imageUrls(),
-                request.content(),
+                content,
                 userDetails == null ? null : userDetails.getUsername(),
                 post.getImages().stream().map(PostImage::getImageUrl).toList(),
                 post.getContent());
-        post.update(request.title(), request.content(), category);
-        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
+        post.update(request.title(), content, category);
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
         if (request.imageUrls() != null) {
             post.replaceImages(toPostImages(request.imageUrls()));
         }

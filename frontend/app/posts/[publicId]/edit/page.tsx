@@ -12,6 +12,7 @@ import { markRecentWrite } from "../../../lib/recentWrite";
 import { useLeaveWarning } from "../../../lib/useLeaveWarning";
 import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { API_ENDPOINTS } from "../../../lib/api";
+import { CommentProfileAvatar } from "../../../components/CommentProfileAvatar";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 
@@ -31,6 +32,7 @@ interface PostDetail {
   writer?: {
     publicId: string;
     nickname: string;
+    profileImageUrl?: string | null;
   };
 }
 
@@ -55,9 +57,11 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isAuthor, setIsAuthor] = useState(false);
   const [writerNickname, setWriterNickname] = useState("");
+  const [writerProfileImageUrl, setWriterProfileImageUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   useImageUploadLease(images);
   const [canUploadImages, setCanUploadImages] = useState(false);
@@ -73,6 +77,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
             if (meRes.ok) {
               const meData = await meRes.json();
               currentUserPublicId = meData.publicId || null;
+              setIsAdmin(meData.role === "ROLE_ADMIN");
             }
           } catch {
             currentUserPublicId = null;
@@ -106,6 +111,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
             setImages(Array.isArray(data.images) ? data.images : []);
             setIsAnonymous(Boolean(data.isAnonymous));
             setWriterNickname(data.writer?.nickname || "익명의 사용자");
+            setWriterProfileImageUrl(data.writer?.profileImageUrl ?? null);
           } else {
             setErrorMsg("수정할 게시글 정보를 불러오지 못했습니다.");
           }
@@ -194,7 +200,6 @@ function PostEditForm({ publicId }: { publicId: string }) {
     return <div className="p-12 text-center text-sm text-[var(--snow-muted)]">게시글 정보를 불러오는 중입니다.</div>;
   }
 
-  const writerInitial = (writerNickname || "익").trim().charAt(0) || "익";
 
   return (
     <main className="compose-page community-container content-compose-page">
@@ -205,9 +210,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
 
         <div className="compose-meta-Cluster">
           <div className="compose-author-pill">
-            <span className="m-avatar" aria-hidden="true">
-              {writerInitial}
-            </span>
+            <CommentProfileAvatar className="m-avatar" nickname={writerNickname || "익명의 사용자"} profileImageUrl={writerProfileImageUrl} size={18} />
             <span>작성자</span>
             <strong>{writerNickname || "익명의 사용자"}</strong>
           </div>
@@ -229,7 +232,8 @@ function PostEditForm({ publicId }: { publicId: string }) {
       {categoryCode !== "INQUIRY" && (
       <nav className="compose-category-bar" aria-label="게시판 변경">
         <div className="filter-pills">
-          {categoryOptions.map((option) => (
+          {/* 공지사항은 관리자만 고를 수 있다. 일반 회원에게 보이면 눌러도 서버가 403으로 거부한다. */}
+          {categoryOptions.filter((option) => option.value !== "NOTICE" || isAdmin || categoryCode === "NOTICE").map((option) => (
             <button
               key={option.value}
               type="button"

@@ -20,6 +20,7 @@ public class MemberSessionRegistry implements HttpSessionListener {
 
     private final ChatConnectionRegistry chatConnectionRegistry;
     private final ChatSessionRevocationRegistry chatSessionRevocationRegistry;
+    private final RememberMeTokenRepository rememberMeTokenRepository;
     private final ConcurrentHashMap<String, Set<HttpSession>> sessionsByMember =
             new ConcurrentHashMap<>();
     private final ConcurrentHashMap<HttpSession, String> memberBySession =
@@ -51,7 +52,16 @@ public class MemberSessionRegistry implements HttpSessionListener {
         }
     }
 
+    /**
+     * 회원의 모든 세션을 끊고 로그인 유지 토큰도 지운다. 토큰이 남으면 끊긴 기기가 쿠키로 다시 로그인한다. 정지, 권한 변경, 비밀번호 변경과 재설정, 탈퇴가 모두 이
+     * 메서드를 거친다.
+     */
     public void invalidateAll(String memberPublicId) {
+        invalidateSessions(memberPublicId);
+        rememberMeTokenRepository.deleteByMember(memberPublicId);
+    }
+
+    private void invalidateSessions(String memberPublicId) {
         Set<HttpSession> sessions = sessionsByMember.remove(memberPublicId);
         if (sessions == null) {
             return;

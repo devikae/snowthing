@@ -229,6 +229,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
         // 금칙어 보류 행은 작성자 본인에게만 오므로 평소 댓글처럼 보낸다.
         boolean deleted =
                 rs.getBoolean("is_deleted") && !"HELD".equals(rs.getString("filter_state"));
+        boolean held = rs.getBoolean("moderation_held");
         String memberPublicId = rs.getString("member_public_id");
         WriterResponse writer =
                 !anonymous
@@ -248,7 +249,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 writer,
                 anonymous,
                 anonymous ? WriterDisplayFormatter.maskIp(rs.getString("writer_ip")) : null,
-                rs.getBoolean("moderation_held")
+                held
                         ? CommentResponse.HELD_TEXT
                         : deleted ? CommentResponse.DELETED_TEXT : rs.getString("content"),
                 deleted,
@@ -260,7 +261,9 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom {
                 false,
                 false,
                 false,
-                rs.getObject("created_at", LocalDateTime.class));
+                rs.getObject("created_at", LocalDateTime.class),
+                held,
+                null);
     }
 
     /** 보는 사람을 모르면 아무 보류 댓글과도 맞지 않는 값(null)이 들어간다. */

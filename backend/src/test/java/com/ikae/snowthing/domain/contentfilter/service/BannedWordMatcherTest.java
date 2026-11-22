@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** 금칙어 비교 (IKA-96). 053 마이그레이션 초기 목록으로 우회 표기는 잡고 스키 대화는 잡지 않는지 본다. */
+/** 금칙어 비교 (IKA-96). 060 마이그레이션 초기 목록으로 우회 표기는 잡고 스키 대화는 잡지 않는지 본다. */
 class BannedWordMatcherTest {
 
     private static final List<String> SEED =

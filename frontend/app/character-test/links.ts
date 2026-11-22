@@ -1,3 +1,5 @@
+import { ANSWERS_PATTERN } from "./data";
+
 export function groupUrl(groupPublicId: string) {
   return new URL(`/character-test/g/${groupPublicId}`, window.location.origin).toString();
 }
@@ -19,4 +21,18 @@ export function readFragmentToken() {
 
 export function clearFragment() {
   window.history.replaceState(null, "", window.location.pathname);
+}
+
+
+/** 결과를 다른 브라우저에서 다시 열 때 쓰는 fragment. 서버에 남지 않게 fragment에만 둔다. */
+export function resultFragment(answers: string, sport: "SKI" | "BOARD") {
+  return `r=${answers}&s=${sport}`;
+}
+
+export function readResultFragment(): { answers: string; sport: "SKI" | "BOARD" } | null {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const answers = params.get("r");
+  const sport = params.get("s");
+  if (!answers || !ANSWERS_PATTERN.test(answers) || (sport !== "SKI" && sport !== "BOARD")) return null;
+  return { answers, sport };
 }

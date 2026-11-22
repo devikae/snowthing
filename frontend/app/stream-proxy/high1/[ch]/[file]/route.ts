@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeLegacyAvcManifest } from "../../../../resort-cam/hlsManifest";
-import { toPublicWowzaManifest, toUpstreamWowzaFile } from "../../../wowzaSession";
+import { fetchWowzaFile, rememberWowzaSession, toPublicWowzaManifest, type WowzaSource } from "../../../wowzaSession";
+
+const HEADERS = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" };
 
 export async function GET(
   request: NextRequest,
@@ -11,15 +13,19 @@ export async function GET(
     if (!/^[1-9]\d?$/.test(ch) || Number(ch) > 18 || file.length > 120 || !/^[A-Za-z0-9_-]+\.(m3u8|ts|m4s|mp4|aac)$/.test(file)) {
       return new NextResponse("Invalid camera path", { status: 400 });
     }
-    const targetUrl = `http://59.30.12.195:1935/live/_definst_/ch${ch}.stream/${toUpstreamWowzaFile(file)}`;
+    const base = `http://59.30.12.195:1935/live/_definst_/ch${ch}.stream`;
+    // 번호 발급과 403 재요청까지 한 요청 안에서 끝나도록 시간 제한을 함께 쓴다.
+    const init: RequestInit = { headers: HEADERS, signal: AbortSignal.timeout(10000) };
+    const source: WowzaSource = {
+      key: `high1:${ch}`,
+      playlistUrl: async () => `${base}/playlist.m3u8`,
+      fileUrl: async (upstreamFile) => `${base}/${upstreamFile}`,
+      init,
+    };
 
-    const res = await fetch(targetUrl, {
-      cache: "no-store",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-      },
-      signal: AbortSignal.timeout(8000),
-    });
+    const res = file === "playlist.m3u8"
+      ? await fetch(`${base}/playlist.m3u8`, { ...init, cache: "no-store" })
+      : await fetchWowzaFile(source, file);
 
     if (!res.ok) {
       return new NextResponse(`High1 upstream error: ${res.status}`, { status: res.status });
@@ -31,9 +37,12 @@ export async function GET(
       ? "video/MP2T"
       : "application/octet-stream";
 
-    const body = file.endsWith(".m3u8")
-      ? normalizeLegacyAvcManifest(toPublicWowzaManifest(await res.text()))
-      : res.body;
+    let body: BodyInit | null = res.body;
+    if (file.endsWith(".m3u8")) {
+      const manifest = await res.text();
+      if (file === "playlist.m3u8") rememberWowzaSession(source.key, manifest);
+      body = normalizeLegacyAvcManifest(toPublicWowzaManifest(manifest));
+    }
     return new NextResponse(body, {
       status: 200,
       headers: {

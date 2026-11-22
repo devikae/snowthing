@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { PageHeading } from "../../components/PageHeading";
+import { LoginExpiredNotice } from "../../components/LoginExpiredNotice";
 import type { ToastEditorHandle } from "../../components/ToastEditor";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
@@ -14,6 +15,7 @@ import { useLeaveWarning } from "../../lib/useLeaveWarning";
 import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey";
 import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { errorText } from "../../lib/errorText";
+import { readApiError } from "../../lib/readApiError";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), { ssr: false });
@@ -62,6 +64,7 @@ export default function MarketCreatePage() {
   const isSubmittingRef = useRef(false);
   const idempotencyKey = useIdempotencyKey();
   const [error, setError] = useState("");
+  const [loginExpired, setLoginExpired] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -136,6 +139,7 @@ export default function MarketCreatePage() {
     isSubmittingRef.current = true;
     setSubmitting(true);
     setError("");
+    setLoginExpired(false);
     try {
       const body = JSON.stringify({
         categoryCode,
@@ -154,14 +158,12 @@ export default function MarketCreatePage() {
         headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: idempotencyKey.keyFor(body) },
         body,
       });
+      // 로그인 화면으로 옮기면 입력과 사진이 사라진다. 이 화면에 남아 새 창 로그인을 안내한다.
       if (response.status === 401) {
-        router.replace(`/login?returnUrl=${encodeURIComponent("/market/new")}`);
+        setLoginExpired(true);
         return;
       }
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "판매글을 등록하지 못했습니다.");
-      }
+      if (!response.ok) throw new Error((await readApiError(response, "판매글을 등록하지 못했습니다.")).message);
       idempotencyKey.reset();
       const data: { publicId: string } = await response.json();
       router.push(`/market/${data.publicId}`);
@@ -179,7 +181,7 @@ export default function MarketCreatePage() {
       <main className="community-container market-compose-page content-compose-page">
         <PageHeading title="판매글 등록" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 작성해 주세요." />
         <form className="market-compose-card" onSubmit={submit}>
-          {error && <div className="compose-error" role="alert"><span className="material-symbols-outlined" aria-hidden="true">error</span>{error}</div>}
+          {(error || loginExpired) && <div className="compose-error" role="alert"><span className="material-symbols-outlined" aria-hidden="true">error</span>{error || <LoginExpiredNotice returnUrl="/market/new" />}</div>}
           <div className="market-form-grid">
             <label><span>상품 분류 *</span><select value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} required>{categories.map((category) => <option key={category.code} value={category.code}>{category.name}</option>)}</select></label>
             <label><span>상품 상태 *</span><select value={productCondition} onChange={(event) => setProductCondition(event.target.value)}>{productConditions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>
@@ -188,7 +190,7 @@ export default function MarketCreatePage() {
           <label className="market-form-field"><span>글 제목 *</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} placeholder="판매할 상품을 알 수 있는 제목을 입력해 주세요." required /></label>
           <div className="market-price-row">
             <label><span>가격 *</span><div><input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={8} value={free ? "" : price} onChange={(event) => setPrice(event.target.value.replace(/\D/g, ""))} disabled={free} placeholder="0" /><b>원</b></div></label>
-            <label className="market-check"><input type="checkbox" checked={negotiable} onChange={(event) => setNegotiable(event.target.checked)} disabled={free} />가격 협의 가능</label>
+            <label className="market-check"><input type="checkbox" checked={negotiable} onChange={(event) => { setNegotiable(event.target.checked); if (event.target.checked) setFree(false); }} />가격 협의 가능</label>
             <label className="market-check"><input type="checkbox" checked={free} onChange={(event) => { setFree(event.target.checked); if (event.target.checked) setNegotiable(false); }} />무료 나눔</label>
           </div>
           <label className="market-form-field"><span>연락처 * <small>전화번호나 카카오톡 ID 등 자유 입력, 최대 30자</small></span><input value={contact} onChange={(event) => setContact(event.target.value)} maxLength={30} placeholder="구매 희망자가 연락할 수단을 입력해 주세요." required /></label>

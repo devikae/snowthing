@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer } from "../lib/viewer";
 import { csrfFetch } from "../lib/csrfFetch";
@@ -11,6 +11,9 @@ import { AuthorMenu } from "./AuthorMenu";
 import { ReportButton } from "./ReportButton";
 import { errorText } from "../lib/errorText";
 import { formatShortDateTime } from "../lib/koreanDate";
+import { mergeReplies, replyCursor } from "../lib/commentReplies";
+import { useReplyTarget } from "./useReplyTarget";
+import { ReplyComposer } from "./ReplyComposer";
 
 interface WriterInfo {
   publicId: string | null;
@@ -67,8 +70,10 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   const [hasNext, setHasNext] = useState(false);
   const [currentUserPublicId, setCurrentUserPublicId] = useState<string | null>(null);
   const [content, setContent] = useState("");
-  const [replyParentId, setReplyParentId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
+  const reply = useReplyTarget(setReplyContent);
+  // 방금 단 답글 id. 더보기 커서로 쓰면 사이 답글을 건너뛰므로 구분해 둔다.
+  const localReplyIdsRef = useRef<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [working, setWorking] = useState(false);
@@ -127,9 +132,10 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       const created: CommentItem = await response.json();
       if (parentId) {
         setComments((current) => current.map((root) => root.commentId === parentId
-          ? { ...root, replyCount: root.replyCount + 1, previewReplies: mergeUnique(root.previewReplies, [created]).slice(0, 5), hasMoreReplies: root.hasMoreReplies || root.replyCount + 1 > 5 }
+          ? { ...root, replyCount: root.replyCount + 1, previewReplies: mergeReplies(root.previewReplies, [created]) }
           : root));
-        setReplyParentId(null);
+        localReplyIdsRef.current.add(String(created.commentId));
+        reply.close();
         setReplyContent("");
       } else {
         setComments((current) => [...current, created]);
@@ -145,7 +151,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   };
 
   const loadMoreReplies = async (root: CommentItem) => {
-    const cursor = root.previewReplies.at(-1)?.commentId ?? null;
+    const cursor = replyCursor(root.previewReplies, localReplyIdsRef.current);
     setWorking(true);
     setError("");
     try {
@@ -155,7 +161,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
       if (!response.ok) throw new Error("답글을 불러오지 못했습니다.");
       const data: ReplyListResponse = await response.json();
       setComments((current) => current.map((item) => item.commentId === root.commentId
-        ? { ...item, replyCount: data.totalReplyCount, previewReplies: mergeUnique(item.previewReplies, data.replies || []), hasMoreReplies: data.hasNext }
+        ? { ...item, replyCount: data.totalReplyCount, previewReplies: mergeReplies(item.previewReplies, data.replies || []), hasMoreReplies: data.hasNext }
         : item));
     } catch (replyError) {
       setError(errorText(replyError, "답글을 불러오지 못했습니다."));
@@ -206,10 +212,22 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
     }
   };
 
-  const renderComment = (item: CommentItem, reply = false) => (
-    <article className={reply ? "post-comment-reply" : "post-comment-item"} key={item.commentId}>
+  // 답글 입력창은 답글 버튼을 누른 댓글 바로 아래에 연다. 답글 아래면 답글 카드 밖에 같은 들여쓰기로 둔다.
+  const renderReplyComposer = (item: CommentItem, root: CommentItem | null = null) => reply.isReplyingTo(item.commentId) && <ReplyComposer
+    inputRef={reply.inputRef}
+    value={replyContent}
+    onChange={setReplyContent}
+    onCancel={reply.close}
+    onSubmit={() => void createComment(root?.commentId ?? item.commentId)}
+    submitting={working}
+    loginRequired={!currentUserPublicId}
+    nested={Boolean(root)}
+  />;
+
+  const renderComment = (item: CommentItem, root: CommentItem | null = null) => (
+    <article className={root ? "post-comment-reply" : "post-comment-item"} key={item.commentId}>
       <div className="comment-youtube-row">
-        {reply && <span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>}
+        {root && <span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
           <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatShortDateTime(item.createdAt)}</time></header>
@@ -221,19 +239,16 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
             </div>
           ) : <p className={item.isDeleted ? "deleted" : ""}>{item.content}</p>}
           {!item.isDeleted && editingId !== item.commentId && <div className="comment-youtube-actions">
-            {!reply && <button type="button" onClick={() => setReplyParentId(replyParentId === item.commentId ? null : item.commentId)}>답글</button>}
+            <button type="button" onClick={() => reply.toggle(root?.commentId ?? item.commentId, item.commentId, item.writer?.nickname || "탈퇴한 회원")}>{reply.isReplyingTo(item.commentId) ? "답글 취소" : "답글"}</button>
             {item.canEdit && <button type="button" onClick={() => { setEditingId(item.commentId); setEditingContent(item.content); }}>수정</button>}
             {item.canDelete && <button type="button" onClick={() => void deleteComment(item.commentId)}>삭제</button>}
             <ReportButton targetType="COMMENT" targetId={String(item.commentId)} />
           </div>}
         </div>
       </div>
-      {!reply && item.previewReplies.map((child) => renderComment(child, true))}
-      {!reply && item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" disabled={working} onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
-      {!reply && replyParentId === item.commentId && <div className="post-reply-compose">
-        <textarea className="post-comment-textarea" aria-label="답글 입력" maxLength={1000} value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력하세요." />
-        <div className="post-comment-compose-footer"><button className="post-comment-submit-button" type="button" disabled={working || !replyContent.trim()} onClick={() => void createComment(item.commentId)}>답글 등록</button></div>
-      </div>}
+      {!root && renderReplyComposer(item)}
+      {!root && item.previewReplies.map((child) => <Fragment key={child.commentId}>{renderComment(child, item)}{renderReplyComposer(child, item)}</Fragment>)}
+      {!root && item.hasMoreReplies && <button className="post-comments-more-button reply-more" type="button" disabled={working} onClick={() => void loadMoreReplies(item)}>답글 더보기</button>}
     </article>
   );
 

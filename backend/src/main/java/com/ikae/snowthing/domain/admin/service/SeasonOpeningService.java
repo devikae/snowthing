@@ -44,6 +44,8 @@ import lombok.extern.slf4j.Slf4j;
 public class SeasonOpeningService {
 
     public static final String KEY_BANNER_ENABLED = "SEASON_OPENING_BANNER_ENABLED";
+    public static final String KEY_BANNER_TITLE = "SEASON_OPENING_BANNER_TITLE";
+    public static final String DEFAULT_BANNER_TITLE = "개장까지";
     static final String TARGET_ID = "ALL";
     private static final LocalDate MIN_DATE = LocalDate.of(2020, 1, 1);
     private static final LocalDate MAX_DATE = LocalDate.of(2100, 12, 31);
@@ -84,13 +86,16 @@ public class SeasonOpeningService {
             }
         }
         boolean switchChanged = updateBannerSwitch(request.bannerEnabled(), updatedBy);
+        String title = bannerTitle(request.bannerTitle());
+        boolean titleChanged =
+                updateConfig(KEY_BANNER_TITLE, title, "STRING", "메인 개장 D-DAY 배너 맨 앞 문구", updatedBy);
 
-        if (switchChanged || !changed.isEmpty()) {
+        if (switchChanged || titleChanged || !changed.isEmpty()) {
             actionLogger.record(
                     AdminActionType.SEASON_OPENING_UPDATE,
                     AdminTargetType.SEASON_OPENING,
                     TARGET_ID,
-                    reason(request.bannerEnabled(), changed));
+                    reason(request.bannerEnabled(), changed, titleChanged ? title : null));
         }
         log.info(
                 "Season openings updated: bannerEnabled={}, changed={}, by={}",
@@ -104,6 +109,10 @@ public class SeasonOpeningService {
     private SeasonOpeningResponse response(List<SeasonOpening> openings) {
         return new SeasonOpeningResponse(
                 isBannerEnabled(),
+                configRepository
+                        .findById(KEY_BANNER_TITLE)
+                        .map(SystemConfig::getValue)
+                        .orElse(DEFAULT_BANNER_TITLE),
                 List.copyOf(openings.stream().map(SeasonOpeningItem::from).toList()));
     }
 
@@ -114,11 +123,29 @@ public class SeasonOpeningService {
                 .orElse(true);
     }
 
+    /** 앞뒤 공백과 겹친 공백을 정리한다. 비어 있으면 기본 문구다. */
+    private static String bannerTitle(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return DEFAULT_BANNER_TITLE;
+        }
+        return raw.strip().replaceAll("\\s+", " ");
+    }
+
     /** 스위치 값이 바뀌었으면 true. 줄이 없으면 만든다. */
     private boolean updateBannerSwitch(boolean enabled, String updatedBy) {
-        String value = String.valueOf(enabled);
+        return updateConfig(
+                KEY_BANNER_ENABLED,
+                String.valueOf(enabled),
+                "BOOLEAN",
+                "메인 개장 D-DAY 배너 표시 여부",
+                updatedBy);
+    }
+
+    /** 설정 한 줄을 저장한다. 값이 바뀌었거나 새로 만들었으면 true. */
+    private boolean updateConfig(
+            String key, String value, String valueType, String description, String updatedBy) {
         return configRepository
-                .findById(KEY_BANNER_ENABLED)
+                .findById(key)
                 .map(
                         config -> {
                             if (value.equals(config.getValue())) {
@@ -131,11 +158,7 @@ public class SeasonOpeningService {
                         () -> {
                             configRepository.save(
                                     new SystemConfig(
-                                            KEY_BANNER_ENABLED,
-                                            value,
-                                            "BOOLEAN",
-                                            "메인 개장 D-DAY 배너 표시 여부",
-                                            updatedBy));
+                                            key, value, valueType, description, updatedBy));
                             return true;
                         });
     }
@@ -165,8 +188,14 @@ public class SeasonOpeningService {
         }
     }
 
-    private static String reason(boolean bannerEnabled, List<String> changed) {
-        String state = bannerEnabled ? "배너 켬" : "배너 끔";
-        return changed.isEmpty() ? state : state + ", 바뀐 리조트 " + String.join(", ", changed);
+    private static String reason(boolean bannerEnabled, List<String> changed, String newTitle) {
+        StringBuilder reason = new StringBuilder(bannerEnabled ? "배너 켬" : "배너 끔");
+        if (newTitle != null) {
+            reason.append(", 문구 \"").append(newTitle).append('"');
+        }
+        if (!changed.isEmpty()) {
+            reason.append(", 바뀐 리조트 ").append(String.join(", ", changed));
+        }
+        return reason.toString();
     }
 }

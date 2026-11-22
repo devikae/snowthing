@@ -1,0 +1,40 @@
+name: Frontend CI
+
+# PR 검사 전용이다. main push 때는 deploy-frontend.yml의 ci-frontend가 빌드를 돌린다.
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths: [ 'frontend/**', 'shared/**', '.github/workflows/frontend-ci.yml' ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-build:
+    name: Frontend Lint and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./frontend
+    env:
+      # 빌드 검증용 더미 공개값이다. 실제 값은 배포 워크플로가 저장소 변수에서 넣는다.
+      NEXT_PUBLIC_API_BASE_URL: https://example.invalid
+      NEXT_PUBLIC_KAKAO_MAP_APP_KEY: ci-dummy-kakao-key
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Node 버전은 frontend/Dockerfile(node:22-alpine)과 맞춘다.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint
+      - run: npm run build

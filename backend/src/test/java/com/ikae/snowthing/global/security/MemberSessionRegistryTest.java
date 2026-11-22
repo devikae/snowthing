@@ -15,13 +15,17 @@ class MemberSessionRegistryTest {
 
     private ChatConnectionRegistry chatConnectionRegistry;
     private ChatSessionRevocationRegistry revocationRegistry;
+    private RememberMeTokenRepository rememberMeTokenRepository;
     private MemberSessionRegistry registry;
 
     @BeforeEach
     void setUp() {
         chatConnectionRegistry = mock(ChatConnectionRegistry.class);
         revocationRegistry = mock(ChatSessionRevocationRegistry.class);
-        registry = new MemberSessionRegistry(chatConnectionRegistry, revocationRegistry);
+        rememberMeTokenRepository = mock(RememberMeTokenRepository.class);
+        registry =
+                new MemberSessionRegistry(
+                        chatConnectionRegistry, revocationRegistry, rememberMeTokenRepository);
     }
 
     @Test
@@ -39,6 +43,14 @@ class MemberSessionRegistryTest {
         verify(chatConnectionRegistry).disconnectHttpSession("session-2");
         verify(revocationRegistry).revoke("session-1");
         verify(revocationRegistry).revoke("session-2");
+        verify(rememberMeTokenRepository).deleteByMember("member-1");
+    }
+
+    @Test
+    void invalidateAllDeletesRememberMeTokensEvenWithoutLiveSession() {
+        registry.invalidateAll("member-without-session");
+
+        verify(rememberMeTokenRepository).deleteByMember("member-without-session");
     }
 
     @Test

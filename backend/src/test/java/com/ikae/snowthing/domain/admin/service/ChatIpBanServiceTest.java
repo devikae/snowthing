@@ -193,4 +193,85 @@ class ChatIpBanServiceTest {
                 .createdBy("admin")
                 .build();
     }
+
+    @Test
+    @DisplayName("IPv6 주소 하나를 막으면 같은 /64 대역이면 주소 끝자리가 달라도 차단된다")
+    void ipv6BanCoversSame64() {
+        service.banIp("2001:db8:1:2::10", "도배", LocalDateTime.now().plusDays(1), "admin");
+
+        assertThat(service.isBanned("2001:db8:1:2:abcd:ef01:2345:6789")).isTrue();
+        assertThat(service.isBanned("2001:0db8:0001:0002:0000:0000:0000:0001")).isTrue();
+        assertThat(service.isBanned("2001:db8:1:3::10")).isFalse();
+    }
+
+    @Test
+    @DisplayName("예전에 원문으로 저장된 차단 행도 시작 시 읽어 IPv6는 같은 /64 대역을 막는다")
+    void legacyRawRowsAreNormalizedOnLoad() {
+        rows.add(row("2001:db8:aa:bb::1", null));
+        rows.add(row(" 203.0.113.7 ", null));
+        service.init();
+
+        assertThat(service.isBanned("2001:db8:aa:bb:1111:2222:3333:4444")).isTrue();
+        assertThat(service.isBanned("203.0.113.7")).isTrue();
+        assertThat(service.isBanned("203.0.113.8")).isFalse();
+    }
+
+    @Test
+    @DisplayName("해제해도 같은 /64 대역의 다른 활성 차단이 있으면 계속 막는다")
+    void unbanKeepsOtherActiveBanOfSameKey() {
+        service.banIp("2001:db8:1:2::1", "도배", LocalDateTime.now().plusDays(1), "admin");
+        service.banIp("2001:db8:1:2::2", "도배", LocalDateTime.now().plusDays(3), "admin");
+        ChatBannedIp first = rows.get(0);
+        ChatBannedIp second = rows.get(1);
+
+        when(repository.findById(first.getId())).thenReturn(Optional.of(first));
+        rows.remove(first);
+        service.unbanIp(first.getId());
+        assertThat(service.isBanned("2001:db8:1:2::99")).isTrue();
+
+        when(repository.findById(second.getId())).thenReturn(Optional.of(second));
+        rows.remove(second);
+        service.unbanIp(second.getId());
+        assertThat(service.isBanned("2001:db8:1:2::99")).isFalse();
+    }
+
+    @Test
+    @DisplayName("메시지의 IP가 IP가 아닌 값이면 차단하지 않고 그 메시지만 지운다")
+    void banByMessageWithNonIpOnlyRemovesMessage() {
+        when(recentHistoryBuffer.getIpForMessage("msg-9")).thenReturn("unknown");
+        when(recentHistoryBuffer.removeByMessageId("msg-9")).thenReturn(List.of("msg-9"));
+
+        service.banIpByMessageId("msg-9", 7, "admin");
+
+        verify(repository, never()).save(any());
+        verify(recentHistoryBuffer).removeByMessageId("msg-9");
+    }
+
+    @Test
+    @DisplayName("같은 /64에 짧은 차단이 뒤에 와도 긴 차단을 따른다")
+    void laterExpiryWinsWithinSame64() {
+        service.banIp("2001:db8:5:6::1", "도배", LocalDateTime.now().plusDays(30), "admin");
+        service.banIp("2001:db8:5:6::2", "도배", LocalDateTime.now().minusMinutes(1), "admin");
+
+        assertThat(service.isBanned("2001:db8:5:6::99")).isTrue();
+    }
+
+    @Test
+    @DisplayName("IP가 아닌 값은 차단하지 않는다")
+    void nonIpBanIsRejected() {
+        assertThatThrownBy(
+                        () ->
+                                service.banIp(
+                                        "not-an-ip",
+                                        "도배",
+                                        LocalDateTime.now().plusDays(1),
+                                        "admin"))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        failure ->
+                                assertThat(failure.getErrorCode())
+                                        .isEqualTo(ErrorCode.IP_BAN_INVALID_RANGE));
+        verify(repository, never()).save(any());
+        assertThat(service.isBanned("unknown")).isFalse();
+    }
 }

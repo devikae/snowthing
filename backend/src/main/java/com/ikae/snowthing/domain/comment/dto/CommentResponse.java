@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.ikae.snowthing.domain.comment.entity.Comment;
@@ -27,7 +28,10 @@ public record CommentResponse(
         boolean requiresPassword,
         boolean canDelete,
         boolean requiresDeletePassword,
-        LocalDateTime createdAt) {
+        LocalDateTime createdAt,
+        @JsonIgnore boolean moderationHeld,
+        // 관리자에게만 가림 여부를 내려 준다. 일반 사용자 응답에는 이 필드가 없다 (IKA-89).
+        @JsonInclude(JsonInclude.Include.NON_NULL) Boolean blinded) {
 
     private static final String ANONYMOUS_NAME = "ㅇㅇ";
     public static final String DELETED_TEXT = "삭제된 댓글입니다.";
@@ -67,7 +71,9 @@ public record CommentResponse(
                 false,
                 false,
                 false,
-                comment.getCreatedAt());
+                comment.getCreatedAt(),
+                comment.isModerationHeld(),
+                null);
     }
 
     /** 금칙어 보류 댓글은 작성자 본인에게만 응답하므로 평소 댓글처럼 보낸다 (IKA-96). */
@@ -93,7 +99,9 @@ public record CommentResponse(
                 requiresPassword,
                 canDelete,
                 requiresDeletePassword,
-                createdAt);
+                createdAt,
+                moderationHeld,
+                blinded);
     }
 
     public CommentResponse withReplyInfo(
@@ -115,7 +123,9 @@ public record CommentResponse(
                 requiresPassword,
                 canDelete,
                 requiresDeletePassword,
-                createdAt);
+                createdAt,
+                moderationHeld,
+                blinded);
     }
 
     public CommentResponse withViewerPermissions(String viewerPublicId, boolean admin) {
@@ -150,7 +160,9 @@ public record CommentResponse(
                 editPasswordRequired,
                 deletable,
                 deletePasswordRequired,
-                createdAt);
+                createdAt,
+                moderationHeld,
+                admin ? moderationHeld : null);
     }
 
     public CommentResponse withViewerPermissions(String viewerPublicId) {

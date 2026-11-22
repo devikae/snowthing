@@ -52,6 +52,10 @@ class SocialAuthServiceTest {
     @Mock private RegistrationConsentService consentService;
     @Mock private WithdrawnEmailService withdrawnEmails;
 
+    @Mock
+    private com.ikae.snowthing.domain.notification.service.NotificationSettingService
+            notificationSettings;
+
     private static final SocialSignUpRequest CONSENT = SocialSignUpRequest.builder().build();
 
     private SocialAuthService socialAuthService;
@@ -69,7 +73,8 @@ class SocialAuthServiceTest {
                         fixedClock,
                         eventPublisher,
                         consentService,
-                        withdrawnEmails);
+                        withdrawnEmails,
+                        notificationSettings);
     }
 
     private Member completeSignUp(OAuthUserProfile profile) {
@@ -151,7 +156,7 @@ class SocialAuthServiceTest {
     }
 
     @Test
-    @DisplayName("가입을 마치면 새 회원의 동의 기록을 함께 저장한다")
+    @DisplayName("가입을 마치면 새 회원의 동의 기록과 쪽지 메일 알림 켜짐 설정을 함께 저장한다")
     void completeSignUp_NewUser_RecordsConsent() {
         OAuthUserProfile profile =
                 new OAuthUserProfile(
@@ -175,6 +180,8 @@ class SocialAuthServiceTest {
                         org.mockito.ArgumentMatchers.eq(11L),
                         org.mockito.ArgumentMatchers.eq(CONSENT),
                         any());
+        verify(notificationSettings)
+                .initializeForNewMember(org.mockito.ArgumentMatchers.eq(11L), any());
     }
 
     @Test
@@ -188,7 +195,6 @@ class SocialAuthServiceTest {
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-1001"))
                 .willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("네이버보더")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(
                         invocation -> {
@@ -202,7 +208,8 @@ class SocialAuthServiceTest {
         assertThat(member.getId()).isEqualTo(10L);
         assertThat(member.getEmail()).matches("oauth-naver-[A-Za-z0-9_-]{43}@users\\.invalid");
         assertThat(member.getPassword()).isNull();
-        assertThat(member.getNickname()).isEqualTo("네이버보더");
+        // 소셜 이름(네이버보더)은 실명일 수 있어 쓰지 않고 자동 닉네임을 짓는다.
+        assertThat(member.getNickname()).isNotEqualTo("네이버보더").matches(NicknamePolicy.REGEXP);
         assertThat(member.getEmailVerifiedAt()).isNull();
         assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
 
@@ -213,7 +220,7 @@ class SocialAuthServiceTest {
         assertThat(socialCaptor.getValue().getProviderUserId()).isEqualTo("naver-1001");
         assertThat(socialCaptor.getValue().getProviderEmail()).isEqualTo("newrider@naver.com");
         verify(memberRepository, never()).findByEmail("newrider@naver.com");
-        verify(eventPublisher).publishEvent(new MemberSignedUpEvent("네이버보더", "NAVER"));
+        verify(eventPublisher).publishEvent(new MemberSignedUpEvent(member.getNickname(), "NAVER"));
     }
 
     @Test
@@ -231,7 +238,6 @@ class SocialAuthServiceTest {
                                 SocialProvider.GOOGLE, "google-authoritative"))
                 .willReturn(Optional.empty());
         given(memberRepository.findByEmail("rider@gmail.com")).willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("구글보더")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -279,7 +285,7 @@ class SocialAuthServiceTest {
     }
 
     @Test
-    @DisplayName("소셜 닉네임이 이미 사용 중이면 난수 접미사가 붙은 고유 닉네임으로 가입된다")
+    @DisplayName("자동으로 지은 닉네임이 이미 있으면 다시 지어 고유 닉네임으로 가입된다")
     void authenticateOrRegister_DuplicateNickname_GeneratesUniqueNickname() {
         OAuthUserProfile profile =
                 new OAuthUserProfile(
@@ -289,16 +295,16 @@ class SocialAuthServiceTest {
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-999"))
                 .willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("설원라이더")).willReturn(true);
+        given(memberRepository.existsByNickname(org.mockito.ArgumentMatchers.anyString()))
+                .willReturn(true, false);
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
         Member created = completeSignUp(profile);
 
-        assertThat(created.getNickname())
-                .isNotEqualTo("설원라이더")
-                .startsWith("설원라이더")
-                .matches(NicknamePolicy.REGEXP);
+        assertThat(created.getNickname()).isNotEqualTo("설원라이더").matches(NicknamePolicy.REGEXP);
+        verify(memberRepository, org.mockito.Mockito.times(2))
+                .existsByNickname(org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -438,7 +444,6 @@ class SocialAuthServiceTest {
                 .willReturn(Optional.empty());
         given(memberRepository.findByEmail("concurrent@snowthing.org"))
                 .willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("동시가입자")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
         assertThatThrownBy(() -> completeSignUp(profile))
@@ -467,7 +472,6 @@ class SocialAuthServiceTest {
                 .willReturn(Optional.empty());
         given(memberRepository.findByEmail("concurrent-email@snowthing.org"))
                 .willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("동시가입자")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
         assertThatThrownBy(() -> completeSignUp(profile))
@@ -492,7 +496,6 @@ class SocialAuthServiceTest {
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-internal-concurrent"))
                 .willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("내부충돌")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
         assertThatThrownBy(() -> completeSignUp(profile))
@@ -517,7 +520,6 @@ class SocialAuthServiceTest {
                         memberSocialAccountRepository.findByProviderAndProviderUserId(
                                 SocialProvider.NAVER, "naver-social-concurrent"))
                 .willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("소셜충돌")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
         given(memberSocialAccountRepository.saveAndFlush(any(MemberSocialAccount.class)))
@@ -546,7 +548,6 @@ class SocialAuthServiceTest {
                                 SocialProvider.GOOGLE, "google-unknown"))
                 .willReturn(Optional.empty());
         given(memberRepository.findByEmail("unknown@snowthing.org")).willReturn(Optional.empty());
-        given(memberRepository.existsByNickname("알수없는오류")).willReturn(false);
         given(memberRepository.saveAndFlush(any(Member.class))).willThrow(violation);
 
         assertThatThrownBy(() -> completeSignUp(profile)).isSameAs(violation);

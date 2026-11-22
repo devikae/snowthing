@@ -51,8 +51,7 @@ class ResortWeatherServiceTest {
         resortRepository = mock(ResortRepository.class);
         Resort active = mock(Resort.class);
         when(active.getCode()).thenReturn(RESORT);
-        when(resortRepository.findAllByActiveTrueOrderByDisplayOrderAscIdAsc())
-                .thenReturn(List.of(active));
+        when(resortRepository.findServiceResorts()).thenReturn(List.of(active));
         registry = mock(ResortWeatherSourceRegistry.class);
         when(registry.sourcesFor(RESORT)).thenReturn(List.of(official, kma));
         service =
@@ -193,7 +192,7 @@ class ResortWeatherServiceTest {
         assertThatThrownBy(() -> service.getWeather("RANDOM_1"))
                 .isInstanceOf(CustomException.class);
 
-        verify(resortRepository, times(1)).findAllByActiveTrueOrderByDisplayOrderAscIdAsc();
+        verify(resortRepository, times(1)).findServiceResorts();
     }
 
     private static final class FakeSource implements ResortWeatherSource {

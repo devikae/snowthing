@@ -75,6 +75,8 @@ function MarketPageContent() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // 검색어 길이, 검색 횟수 제한처럼 사용자가 고칠 수 있는 실패는 서버 문구를 목록 자리에 보여 준다.
+  const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
 
   const redirectToLogin = useCallback(() => {
     const returnUrl = `/market${searchParams.size ? `?${searchParams.toString()}` : ""}`;
@@ -84,18 +86,28 @@ function MarketPageContent() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
+    setRejectedMessage(null);
     try {
       const listParams = new URLSearchParams({ page: String(page), size: "20" });
       if (keyword.trim()) listParams.set("keyword", keyword.trim());
       if (categoryCode) listParams.set("categoryCode", categoryCode);
       if (productCondition) listParams.set("productCondition", productCondition);
-      if (tradeStatus) listParams.set("tradeStatus", tradeStatus);
+      if (tradeStatus === "ALL") listParams.set("includeSold", "true");
+      else if (tradeStatus) listParams.set("tradeStatus", tradeStatus);
       const [categoryResponse, listResponse] = await Promise.all([
         fetch(API_ENDPOINTS.market.categories, { credentials: "include" }),
         fetch(`${API_ENDPOINTS.market.list}?${listParams}`, { credentials: "include" }),
       ]);
       if (categoryResponse.status === 401 || listResponse.status === 401) {
         redirectToLogin();
+        return;
+      }
+      if (categoryResponse.ok && (listResponse.status === 400 || listResponse.status === 429)) {
+        const body = await listResponse.json().catch(() => null);
+        const categoryData: { categories?: MarketCategory[] } = await categoryResponse.json();
+        setCategories(Array.isArray(categoryData.categories) ? categoryData.categories : []);
+        setItems([]);
+        setRejectedMessage(typeof body?.message === "string" ? body.message : "중고장터를 불러오지 못했습니다.");
         return;
       }
       if (!categoryResponse.ok || !listResponse.ok) throw new Error("중고장터를 불러오지 못했습니다.");
@@ -126,8 +138,12 @@ function MarketPageContent() {
     router.push(`/market${params.size ? `?${params}` : ""}`);
   };
 
+  const keywordTooShort = Array.from(searchKeyword.trim()).length === 1;
+
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
+    // 서버도 한 글자 검색을 거절한다. 입력칸 아래 안내가 이미 떠 있으므로 요청을 보내지 않는다.
+    if (keywordTooShort) return;
     const params = new URLSearchParams(searchParams.toString());
     params.delete("page");
     if (searchKeyword.trim()) params.set("keyword", searchKeyword.trim());
@@ -154,13 +170,14 @@ function MarketPageContent() {
 
         <section className="market-filter-card">
           <form onSubmit={handleSearch} className="market-search-row">
-            <input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="상품 제목 검색" aria-label="상품 제목 검색" maxLength={100} />
-            <button type="submit">검색</button>
+            <input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="상품 제목 검색" aria-label="상품 제목 검색" aria-describedby={keywordTooShort ? "market-search-hint" : undefined} maxLength={50} />
+            <button type="submit" disabled={keywordTooShort}>검색</button>
+            {keywordTooShort && <p id="market-search-hint" className="search-length-hint" role="status">한 글자로는 검색할 수 없어요.</p>}
           </form>
           <div className="market-filter-row">
             <select value={categoryCode} onChange={(event) => move({ categoryCode: event.target.value, page: 1 })} aria-label="상품 분류"><option value="">상품 분류 전체</option>{categories.map((category) => <option key={category.code} value={category.code}>{category.name}</option>)}</select>
             <select value={productCondition} onChange={(event) => move({ productCondition: event.target.value, page: 1 })} aria-label="상품 상태"><option value="">상품 상태 전체</option>{Object.entries(conditionLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
-            <select value={tradeStatus} onChange={(event) => move({ tradeStatus: event.target.value, page: 1 })} aria-label="거래 상태"><option value="">거래 상태 전체</option>{Object.entries(tradeLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
+            <select value={tradeStatus} onChange={(event) => move({ tradeStatus: event.target.value, page: 1 })} aria-label="거래 상태"><option value="">거래 가능(판매 중, 예약 중)</option><option value="ALL">전체(판매 완료 포함)</option>{Object.entries(tradeLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
             <button type="button" className="market-filter-reset" onClick={() => { setSearchKeyword(""); router.push("/market"); }}>초기화</button>
             <div className="market-view-toggle" aria-label="보기 방식"><button type="button" className={viewMode === "list" ? "active" : ""} onClick={() => changeView("list")} aria-pressed={viewMode === "list"} aria-label="목록으로 보기"><span className="material-symbols-outlined" aria-hidden="true">view_list</span></button><button type="button" className={viewMode === "album" ? "active" : ""} onClick={() => changeView("album")} aria-pressed={viewMode === "album"} aria-label="앨범으로 보기"><span className="material-symbols-outlined" aria-hidden="true">grid_view</span></button></div>
           </div>
@@ -168,6 +185,7 @@ function MarketPageContent() {
 
         <section className={`market-results ${viewMode}`} aria-live="polite">
           {loading ? <div className="market-state"><span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span><p>판매글을 불러오는 중입니다.</p></div>
+            : rejectedMessage ? <div className="market-state"><span className="material-symbols-outlined" aria-hidden="true">search_off</span><p>{rejectedMessage}</p></div>
             : error ? <div className="market-state"><span className="material-symbols-outlined" aria-hidden="true">cloud_off</span><p>중고장터를 불러오지 못했습니다.</p><button onClick={() => void load()}>다시 시도</button></div>
             : items.length === 0 ? <div className="market-state"><span className="material-symbols-outlined" aria-hidden="true">inventory_2</span><p>조건에 맞는 판매글이 없습니다.</p></div>
             : items.map((item) => <Link href={`/market/${item.publicId}`} key={item.publicId} className="market-result-card">

@@ -12,9 +12,9 @@
     "@stomp/stompjs": "^7.3.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@toast-ui/editor": "^3.2.2",
-    "@toast-ui/react-editor": "^3.2.3",
     "dompurify": "^3.4.17",
     "hls.js": "^1.6.15",
+    "jsdom": "^26.1.0",
     "next": "16.2.12",
     "postcss": "^8.5.26",
     "react": "19.2.8",
@@ -22,6 +22,7 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "@types/node": "26.1.2",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",

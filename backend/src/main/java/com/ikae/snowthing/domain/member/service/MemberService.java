@@ -140,7 +140,11 @@ public class MemberService {
         }
 
         if (!request.getResortIds().isEmpty()) {
-            List<Resort> resorts = resortRepository.findAllById(request.getResortIds());
+            // 해외 리조트나 비활성 리조트는 고를 수 없다. 가입 흐름은 기존처럼 없는 ID를 조용히 건너뛴다.
+            List<Resort> resorts =
+                    resortRepository.findAllById(request.getResortIds()).stream()
+                            .filter(Resort::isServiceTarget)
+                            .toList();
             List<MemberResort> memberResorts =
                     resorts.stream()
                             .map(
@@ -190,7 +194,11 @@ public class MemberService {
 
         Set<Long> resortIds = new LinkedHashSet<>(request.getResortIds());
         Set<Long> styleIds = new LinkedHashSet<>(request.getRidingStyleIds());
-        List<Resort> resorts = resortRepository.findAllById(resortIds);
+        // 해외 리조트나 비활성 리조트가 섞이면 개수가 맞지 않아 INVALID_INPUT이 된다.
+        List<Resort> resorts =
+                resortRepository.findAllById(resortIds).stream()
+                        .filter(Resort::isServiceTarget)
+                        .toList();
         List<RidingStyle> ridingStyles = ridingStyleRepository.findAllById(styleIds);
         if (resorts.size() != resortIds.size() || ridingStyles.size() != styleIds.size()) {
             throw new CustomException(ErrorCode.INVALID_INPUT);

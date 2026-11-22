@@ -5,6 +5,7 @@ import { PageHeading } from "../components/PageHeading";
 import { useEffect, useRef, useState } from "react";
 import { CameraPlayer } from "./CameraPlayer";
 import { OpeningDdayTag, ResortWeatherChip } from "./ResortHeaderInfo";
+import { useSlopeSpecResorts } from "../slopes/useSlopeSpecResorts";
 import styles from "./resortCam.module.css";
 import type { ResortCameraGroup } from "./types";
 import { cameraSlug, resortSlug } from "./types";
@@ -27,6 +28,9 @@ export function ResortCamView({
   const cameras = selectedCamera ? [selectedCamera] : (selectedResort?.cameras ?? []);
   const gridRef = useRef<HTMLDivElement>(null);
   const [visibleCodes, setVisibleCodes] = useState<Set<string>>(new Set());
+  // IKA-98 제원 페이지가 있는 리조트에만 "슬로프맵" 버튼을 보인다.
+  const specResorts = useSlopeSpecResorts();
+  const hasSlopeSpec = specResorts.some((resort) => resort.code === selectedResortCode);
 
   useEffect(() => {
     if (selectedCamera || !gridRef.current) return;
@@ -104,10 +108,20 @@ export function ResortCamView({
           </div>
           <div className={styles.resortHeaderActions}>
             <ResortWeatherChip resortCode={selectedResort.code} />
+            <Link className={styles.backLink} href={`/resorts/${resortSlug(selectedResort.code)}`}>
+              <span className="material-symbols-outlined" aria-hidden="true">info</span>
+              리조트 정보
+            </Link>
             <Link className={styles.backLink} href={`/slopes#${resortSlug(selectedResort.code)}`}>
               <span className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
               슬로프 현황
             </Link>
+            {hasSlopeSpec && (
+              <Link className={styles.backLink} href={`/slopes/${resortSlug(selectedResort.code)}`}>
+                <span className="material-symbols-outlined" aria-hidden="true">landscape</span>
+                슬로프맵
+              </Link>
+            )}
             {selectedCamera && (
               <Link className={styles.backLink} href={`/resort-cam/${resortSlug(selectedResort.code)}`}>
                 <span className="material-symbols-outlined" aria-hidden="true">grid_view</span>

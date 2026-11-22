@@ -26,6 +26,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.util.ContactFilter;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 import lombok.RequiredArgsConstructor;
 
@@ -44,11 +45,6 @@ public class ChatService {
 
     private static final Pattern BOT_MENTION_PREFIX = Pattern.compile("(?i)^@bot(?:\\s+|$)");
     private static final Pattern NORMALIZATION_IGNORED_PATTERN = Pattern.compile("[\\s\\p{Punct}]");
-
-    private static final String[] ANONYMOUS_PREFIXES = {
-        "눈사람", "카빙꿈나무", "스노우러버", "파우더헌터", "트릭마스터",
-        "슬로프요정", "안전라이더", "시즌권러버", "설질지킴이", "덕스탠스"
-    };
 
     private final ChatRecentHistoryBuffer chatRecentHistoryBuffer;
     private final Clock clock;
@@ -140,7 +136,11 @@ public class ChatService {
                         .replaceAll("")
                         .toLowerCase(Locale.ROOT);
         long now = clock.millis();
-        String abuseKey = member != null ? "member:" + member.getId() : "ip:" + clientIp;
+        // 비회원은 다른 제한기와 같은 정규화 키를 쓴다. IPv6 주소 끝자리를 바꿔도 같은 도배 기록에 걸린다.
+        String abuseKey =
+                member != null
+                        ? "member:" + member.getId()
+                        : "ip:" + ClientIpResolver.normalizeForLimit(clientIp);
         validateAbuseLimits(abuseKey, normalizedContent, now);
 
         // 5. Resort tag resolution
@@ -152,7 +152,10 @@ public class ChatService {
         String sentAt = LocalDateTime.now().format(ISO_FORMATTER);
         SenderDto sender =
                 member != null
-                        ? new SenderDto(member.getPublicId(), member.getNickname())
+                        ? new SenderDto(
+                                member.getPublicId(),
+                                member.getNickname(),
+                                member.getProfileImageUrl())
                         : new SenderDto("anon-" + UUID.randomUUID(), anonymousNickname(clientIp));
 
         ChatMessageResponse response =
@@ -163,9 +166,7 @@ public class ChatService {
 
     /** 같은 IP는 같은 닉네임을 받는다. IP 원문은 내보내지 않는다. */
     private String anonymousNickname(String clientIp) {
-        int hash = clientIp == null ? 0 : clientIp.hashCode();
-        String prefix = ANONYMOUS_PREFIXES[Math.floorMod(hash, ANONYMOUS_PREFIXES.length)];
-        return prefix + "#" + String.format("%04d", Math.floorMod(hash, 10_000));
+        return AnonymousNickname.of(clientIp);
     }
 
     public List<ChatMessageResponse> getRecentMessages() {

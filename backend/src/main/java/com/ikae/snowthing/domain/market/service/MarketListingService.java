@@ -35,6 +35,7 @@ import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.util.MarkdownBodySanitizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -90,7 +91,8 @@ public class MarketListingService {
             String keyword,
             String categoryCode,
             ProductCondition productCondition,
-            TradeStatus tradeStatus) {
+            TradeStatus tradeStatus,
+            boolean includeSold) {
         validatePage(page, size);
         Page<MarketListing> result =
                 marketListingRepository.search(
@@ -98,6 +100,7 @@ public class MarketListingService {
                         categoryCode,
                         productCondition,
                         tradeStatus,
+                        includeSold,
                         PageRequest.of(page - 1, size));
         Map<Long, String> thumbnails = findThumbnailUrls(result.getContent());
         List<MarketListingSummaryResponse> content =
@@ -126,9 +129,10 @@ public class MarketListingService {
                 postCategoryRepository
                         .findByCode(MARKET_POST_CATEGORY_CODE)
                         .orElseThrow(() -> new CustomException(ErrorCode.POST_CATEGORY_NOT_FOUND));
-        imageLifecycle.rejectNewInlineImages(request.content(), null);
-        imageLifecycle.protectAll(
-                request.imageUrls(), request.content(), userDetails.getUsername());
+        // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
+        String content = MarkdownBodySanitizer.sanitize(request.content());
+        imageLifecycle.rejectNewInlineImages(content, null);
+        imageLifecycle.protectAll(request.imageUrls(), content, userDetails.getUsername());
         List<PostImage> images = toPostImages(request.imageUrls());
 
         Post post =
@@ -136,16 +140,16 @@ public class MarketListingService {
                         .member(member)
                         .category(postCategory)
                         .title(request.title().trim())
-                        .content(request.content())
+                        .content(content)
                         .writerIp(resolveWriterIp(clientIp))
                         .isAnonymous(false)
                         .hasImage(!images.isEmpty())
                         .build();
         post.replaceImages(images);
-        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
+        post.replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
         postRepository.save(post);
         searchOutbox.postChanged(post);
-        marketThumbnails.queue(post.getPublicId(), representativeImage(images, request.content()));
+        marketThumbnails.queue(post.getPublicId(), representativeImage(images, content));
 
         MarketListing listing =
                 MarketListing.builder()
@@ -177,7 +181,10 @@ public class MarketListingService {
     @Transactional
     public MarketListingDetailResponse getDetail(
             String publicId, CustomUserDetails userDetails, boolean increaseViewCount) {
-        requireMember(userDetails);
+        // 비회원 열람 허용 여부는 컨트롤러에서 관리자 설정으로 확인한다.
+        if (userDetails != null) {
+            requireMember(userDetails);
+        }
         MarketListing listing = findVisible(publicId);
         Post post = listing.getPost();
         List<String> images =
@@ -207,17 +214,16 @@ public class MarketListingService {
         MarketListing listing = findForUpdate(publicId);
         validateWriter(listing.getPost(), userDetails);
         validateVersion(listing, request.version());
-        imageLifecycle.rejectNewInlineImages(request.content(), listing.getPost().getContent());
-        imageLifecycle.protectAll(
-                request.imageUrls(), request.content(), userDetails.getUsername());
+        // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
+        String content = MarkdownBodySanitizer.sanitize(request.content());
+        imageLifecycle.rejectNewInlineImages(content, listing.getPost().getContent());
+        imageLifecycle.protectAll(request.imageUrls(), content, userDetails.getUsername());
         MarketCategory category = requireActiveCategory(request.categoryCode());
         List<PostImage> images = toPostImages(request.imageUrls());
 
-        listing.getPost()
-                .update(request.title().trim(), request.content(), listing.getPost().getCategory());
+        listing.getPost().update(request.title().trim(), content, listing.getPost().getCategory());
         listing.getPost().replaceImages(images);
-        listing.getPost()
-                .replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), request.content()));
+        listing.getPost().replaceContentImageKeys(imageLifecycle.collectKeys(List.of(), content));
         listing.update(
                 category,
                 request.productCondition(),
@@ -229,7 +235,7 @@ public class MarketListingService {
         marketListingRepository.flush();
         searchOutbox.postChanged(listing.getPost());
         marketThumbnails.queue(
-                listing.getPost().getPublicId(), representativeImage(images, request.content()));
+                listing.getPost().getPublicId(), representativeImage(images, content));
         return new MarketListingUpdateResponse(
                 publicId, listing.getVersion(), listing.getUpdatedAt());
     }

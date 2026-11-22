@@ -5,26 +5,104 @@
   color: var(--snow-ink);
 }
 
-.admin-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--snow-border);
-  overflow-x: auto;
+/* 관리자 메뉴: 넓은 화면은 왼쪽 사이드바, 좁은 화면은 위쪽 가로 스크롤 탭 */
+.admin-shell {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
 }
 
-.admin-tabs a {
-  flex: 0 0 auto;
-  padding: 10px 14px;
-  white-space: nowrap;
-  border-bottom: 2px solid transparent;
+.admin-content {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.admin-nav {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 16px;
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+  padding-right: 12px;
+  border-right: 1px solid var(--snow-border);
+}
+
+.admin-nav-group {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-nav-title {
+  margin: 0 0 4px;
+  padding-inline: 12px;
   color: var(--snow-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-nav a {
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--snow-ink-soft);
   font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.admin-tabs a[aria-current="page"] {
-  border-bottom-color: var(--snow-accent);
+.admin-nav a:hover {
+  background: var(--snow-surface-mid);
   color: var(--snow-ink);
+}
+
+.admin-nav a[aria-current="page"] {
+  background: var(--snow-surface-mid);
+  color: var(--snow-accent);
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .admin-nav {
+    position: static;
+    display: flex;
+    gap: 4px;
+    max-height: none;
+    overflow-x: auto;
+    padding-right: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--snow-border);
+  }
+
+  .admin-nav-group {
+    display: contents;
+  }
+
+  .admin-nav-title {
+    display: none;
+  }
+
+  .admin-nav a {
+    flex: 0 0 auto;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    padding: 10px 14px;
+  }
+
+  .admin-nav a:hover,
+  .admin-nav a[aria-current="page"] {
+    background: none;
+  }
+
+  .admin-nav a[aria-current="page"] {
+    border-bottom-color: var(--snow-accent);
+    color: var(--snow-ink);
+  }
 }
 
 .admin-page .panel {
@@ -378,7 +456,16 @@
 
 
 /* 개장일 관리 (IKA-87) */
+.admin-season-title input {
+  width: 9em;
+  border: 1px solid var(--snow-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
 .admin-season-switch,
+.admin-season-title,
 .admin-season-fields label {
   display: inline-flex;
   align-items: center;

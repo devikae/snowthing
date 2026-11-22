@@ -89,7 +89,7 @@ public class SeasonLogService {
         Resort resort =
                 resortRepository
                         .findById(request.resortId())
-                        .filter(Resort::isActive)
+                        .filter(Resort::isServiceTarget)
                         .orElseThrow(() -> new CustomException(ErrorCode.RESORT_NOT_FOUND));
         Member member = memberRepository.getReferenceById(memberId);
         SeasonVisit visit = new SeasonVisit(member, resort, visitDate, now());

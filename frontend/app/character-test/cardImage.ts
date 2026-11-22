@@ -1,4 +1,4 @@
-import { STAT_MAX, STATS, characterImage, characterName, descriptionSentences, gearBox, gearImage, type JobCode, type Sport } from "./data";
+import { BADGES, STAT_MAX, STATS, characterImage, characterName, descriptionSentences, gearBox, gearImage, type JobCode, type Sport } from "./data";
 import type { CharacterResult } from "./api";
 import { canvasToBlob, loadImage, pageFontFamily } from "./shareFile";
 
@@ -8,7 +8,10 @@ const CONTENT_WIDTH = 960;
 // 아래쪽 글자에 눈송이가 걸치지 않도록 이 높이까지만 뿌린다.
 const SNOW_BOTTOM = 1630;
 const SPRITE_SIZE = 400;
-const DESCRIPTION_MAX_SIZE = 34;
+const DESCRIPTION_MAX_SIZE = 44;
+// 설명 상자가 아래로 늘어날 수 있는 끝. 아래 "윈터스포츠 커뮤니티" 문구와 띄운다.
+const CONTENT_BOTTOM = HEIGHT - 300;
+const BEST_HEIGHT = 148;
 const DESCRIPTION_WIDTH = 900;
 const STAT_COLORS = ["#ec4899", "#f97316", "#10b981", "#0284c7"];
 // 타입마다 배경색이 다르다. 캐릭터 옷과 겹치지 않는 색을 골랐고, 맨 아래 글자가 읽히도록 끝 색을 너무 밝게 두지 않는다.
@@ -111,6 +114,24 @@ export async function renderCard(result: CharacterResult, sport: Sport): Promise
   ctx.drawImage(gear, box.x, box.y, box.width, box.height);
   ctx.drawImage(sprite, spriteX, spriteTop, SPRITE_SIZE, SPRITE_SIZE);
 
+  // 재미 뱃지(웃참 실패 등)는 캐릭터 오른쪽 위에 스티커처럼 기울여 붙인다.
+  const badgeCodes = (result.badges ?? []).filter((code) => BADGES[code]);
+  badgeCodes.forEach((code, index) => {
+    const label = BADGES[code].label;
+    ctx.save();
+    ctx.translate(WIDTH - 210, spriteTop + 70 + index * 96);
+    ctx.rotate(-0.12);
+    ctx.font = font(800, 40);
+    const width = ctx.measureText(label).width + 56;
+    ctx.fillStyle = "#ffffff";
+    roundRect(ctx, -width / 2, -40, width, 80, 40);
+    ctx.fill();
+    ctx.fillStyle = theme.bottom;
+    ctx.textAlign = "center";
+    ctx.fillText(label, 0, 14);
+    ctx.restore();
+  });
+
   const panelX = (WIDTH - CONTENT_WIDTH) / 2;
   const cellGap = 16;
   const cellPadding = 24;
@@ -145,23 +166,27 @@ export async function renderCard(result: CharacterResult, sport: Sport): Promise
   ctx.font = font(500, DESCRIPTION_MAX_SIZE);
   const widest = Math.max(...description.map((line) => ctx.measureText(line).width));
   const descriptionSize = Math.min(DESCRIPTION_MAX_SIZE, Math.floor((DESCRIPTION_MAX_SIZE * DESCRIPTION_WIDTH) / widest));
-  const descriptionLine = descriptionSize + 20;
+  const descriptionLine = Math.round(descriptionSize * 1.6);
   const descriptionY = statsY + statsHeight + 20;
-  const descriptionHeight = 108 + description.length * descriptionLine;
+  // 찰떡 타입 상자를 뺀 남은 공간을 설명 상자가 채우고, 글은 그 안에서 세로 가운데에 둔다.
+  const bestSpace = result.bestMatch && bestSprite ? BEST_HEIGHT + 20 : 0;
+  const descriptionHeight = CONTENT_BOTTOM - bestSpace - descriptionY;
+  const descriptionTextHeight = 64 + description.length * descriptionLine;
+  const descriptionTop = descriptionY + (descriptionHeight - descriptionTextHeight) / 2;
   ctx.fillStyle = theme.box;
   roundRect(ctx, panelX, descriptionY, CONTENT_WIDTH, descriptionHeight, 32);
   ctx.fill();
   ctx.textAlign = "center";
   ctx.fillStyle = theme.accent;
-  ctx.font = font(800, 30);
-  ctx.fillText("이런 타입이에요", WIDTH / 2, descriptionY + 56);
+  ctx.font = font(800, 36);
+  ctx.fillText("이런 타입이에요", WIDTH / 2, descriptionTop + 36);
   ctx.fillStyle = "#ffffff";
   ctx.font = font(500, descriptionSize);
-  description.forEach((line, index) => ctx.fillText(line, WIDTH / 2, descriptionY + 112 + index * descriptionLine));
+  description.forEach((line, index) => ctx.fillText(line, WIDTH / 2, descriptionTop + 64 + descriptionSize + index * descriptionLine));
 
   if (result.bestMatch && bestSprite) {
     const bestY = descriptionY + descriptionHeight + 20;
-    const bestHeight = 148;
+    const bestHeight = BEST_HEIGHT;
     ctx.fillStyle = "#f8fafc";
     roundRect(ctx, panelX, bestY, CONTENT_WIDTH, bestHeight, 32);
     ctx.fill();

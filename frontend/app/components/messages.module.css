@@ -401,10 +401,6 @@
   text-decoration: none;
 }
 
-.marketMessage :global(.material-symbols-outlined) {
-  font-size: 18px;
-}
-
 /* 설정 화면 차단 목록 */
 .blockList {
   display: grid;

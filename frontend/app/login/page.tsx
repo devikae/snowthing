@@ -43,7 +43,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [withdrawn, setWithdrawn] = useState(false);
   useEffect(() => {
@@ -55,10 +54,15 @@ export default function LoginPage() {
   // 자식인 헤더의 effect가 이 페이지의 effect보다 먼저 돌기 때문에, 헤더가 그려지기 전인 첫 렌더에서 비운다.
   useState(() => clearViewerCache());
   const [fromMarket, setFromMarket] = useState(false);
+  // 회원가입으로 넘어가도 원래 보던 화면으로 돌아오게 returnUrl을 그대로 넘긴다.
+  const [signupHref, setSignupHref] = useState("/signup");
   useEffect(() => {
     const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") ?? "";
-    if (!returnUrl.startsWith("/market")) return;
-    const timer = window.setTimeout(() => setFromMarket(true), 0);
+    const safe = safeReturnUrl(returnUrl);
+    const timer = window.setTimeout(() => {
+      if (returnUrl.startsWith("/market")) setFromMarket(true);
+      if (safe !== "/") setSignupHref(`/signup?returnUrl=${encodeURIComponent(safe)}`);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
@@ -115,7 +119,7 @@ export default function LoginPage() {
       const response = await csrfFetch(API_ENDPOINTS.auth.login, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
@@ -149,7 +153,6 @@ export default function LoginPage() {
             <label className={styles.field}>이메일<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" autoCapitalize="none" required disabled={loading} /></label>
             <label className={styles.field}>비밀번호<input name="password" type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="비밀번호를 입력해 주세요" autoComplete="current-password" required disabled={loading} /></label>
             <div className={styles.options}>
-              <label className={styles.remember}><input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} disabled={loading} />로그인 상태 유지</label>
               <Link href="/forgot-password">비밀번호 찾기</Link>
             </div>
             <button type="submit" className={`${styles.button} ${styles.primary}`} disabled={loading}>{loading ? "로그인 중" : "로그인"}</button>
@@ -192,7 +195,8 @@ export default function LoginPage() {
               )}
             </div>
           )}
-          <p className={styles.signup}>아직 계정이 없나요?<Link href="/signup">회원가입</Link></p>
+          <p className={styles.signup}>아직 계정이 없나요?<Link href={signupHref}>회원가입</Link></p>
+          <p className={styles.keepNotice}>로그인하면 30일 동안 유지돼요. 공용 PC에서는 꼭 로그아웃해 주세요.</p>
         </section>
       </main>
       <Footer />

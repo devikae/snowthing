@@ -1,0 +1,15 @@
+# 성능 비교 | 제외한 첫 실행: 제한 시간 0.9초 < SES 지연 1초, Outbox 60건 UNKNOWN인데 공급자는 59건 수락
+# 실행 시각(KST): 2026-11-17 23:54:48
+$ grep -E '"mode"|p50|p95|UNKNOWN|cnt|fakeSes' benchmark/run1-excluded-sync-baseline.json benchmark/run1-excluded-outbox.json
+benchmark/run1-excluded-sync-baseline.json:  "mode" : "sync-baseline",
+benchmark/run1-excluded-sync-baseline.json:    "p50" : 637,
+benchmark/run1-excluded-sync-baseline.json:    "p95" : 1249,
+benchmark/run1-excluded-sync-baseline.json:  "fakeSesRequests" : 60,
+benchmark/run1-excluded-sync-baseline.json:  "fakeSesAccepted" : 55,
+benchmark/run1-excluded-outbox.json:  "mode" : "outbox",
+benchmark/run1-excluded-outbox.json:    "p50" : 14,
+benchmark/run1-excluded-outbox.json:    "p95" : 31,
+benchmark/run1-excluded-outbox.json:      "status" : "UNKNOWN",
+benchmark/run1-excluded-outbox.json:      "cnt" : 60
+benchmark/run1-excluded-outbox.json:    "fakeSesRequests" : 60,
+benchmark/run1-excluded-outbox.json:    "fakeSesAccepted" : 59

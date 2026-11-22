@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION, DEFAULT_OG_IMAGE } from "./lib/siteMetadata";
-import "@toast-ui/editor/dist/toastui-editor.css";
 import "./globals.css";
-import "./carpool.css";
 import "./detailForms.css";
 import "./motion.css";
+import { SupportCoffeeButton } from "./components/SupportCoffeeButton";
 
 /* eslint-disable @next/next/no-page-custom-font -- App Router의 최상위 레이아웃에서 모든 화면에 공통 폰트를 로드합니다. */
 
@@ -69,7 +68,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>{children}<SupportCoffeeButton /></body>
     </html>
   );
 }

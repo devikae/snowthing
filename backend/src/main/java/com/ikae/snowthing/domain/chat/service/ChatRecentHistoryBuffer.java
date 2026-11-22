@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
+import com.ikae.snowthing.global.web.ClientIpResolver;
 
 /**
  * 실시간 라이브톡 최근 대화 인메모리 순환 버퍼 (Circular Ring Buffer). 새로고침 시 최대 30개의 최근 대화 내역을 즉시 제공하여 대화 맥락 단절을
@@ -48,7 +49,13 @@ public class ChatRecentHistoryBuffer {
 
     public synchronized List<String> removeByIp(String targetIp) {
         if (targetIp == null) return List.of();
-        return removeByIpMatching(targetIp::equals);
+        // 차단과 같은 기준으로 비교한다. IPv6는 같은 /64 대역의 메시지를 함께 지운다.
+        String target = ClientIpResolver.normalizeForLimit(targetIp);
+        return removeByIpMatching(
+                ip ->
+                        "unknown".equals(target)
+                                ? targetIp.equals(ip)
+                                : target.equals(ClientIpResolver.normalizeForLimit(ip)));
     }
 
     /** 차단 대역 안의 IP가 보낸 최근 메시지를 지운다 (IKA-96). IP를 모르는 메시지는 남긴다. */

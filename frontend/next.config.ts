@@ -14,6 +14,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // 실행 이미지에 서버가 쓰는 파일만 담는다(IKA-105). frontend/Dockerfile이 .next/standalone을 복사한다.
+  output: "standalone",
   turbopack: { root: repositoryRoot },
   outputFileTracingRoot: repositoryRoot,
   poweredByHeader: false,
