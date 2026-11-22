@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.function.Predicate;
 
 import org.springframework.stereotype.Component;
 
@@ -50,16 +51,20 @@ public class ChatRecentHistoryBuffer {
         if (targetIp == null) return List.of();
         // 차단과 같은 기준으로 비교한다. IPv6는 같은 /64 대역의 메시지를 함께 지운다.
         String target = ClientIpResolver.normalizeForLimit(targetIp);
+        return removeByIpMatching(
+                ip ->
+                        "unknown".equals(target)
+                                ? targetIp.equals(ip)
+                                : target.equals(ClientIpResolver.normalizeForLimit(ip)));
+    }
+
+    /** 차단 대역 안의 IP가 보낸 최근 메시지를 지운다 (IKA-96). IP를 모르는 메시지는 남긴다. */
+    public synchronized List<String> removeByIpMatching(Predicate<String> ipMatcher) {
         List<String> removed = new ArrayList<>();
         buffer.removeIf(
                 m -> {
                     String ip = messageIpCache.getIfPresent(m.messageId());
-                    if (ip == null) return false;
-                    boolean sameClient =
-                            "unknown".equals(target)
-                                    ? targetIp.equals(ip)
-                                    : target.equals(ClientIpResolver.normalizeForLimit(ip));
-                    if (sameClient) {
+                    if (ip != null && ipMatcher.test(ip)) {
                         removed.add(m.messageId());
                         return true;
                     }

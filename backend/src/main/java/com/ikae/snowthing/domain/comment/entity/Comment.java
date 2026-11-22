@@ -78,6 +78,14 @@ public class Comment extends BaseTimeEntity {
     @Column(name = "moderation_held", nullable = false)
     private boolean moderationHeld = false;
 
+    /**
+     * 금칙어 보류 상태 (IKA-96). HELD는 삭제 상태를 함께 켜서 검색, AI 조회, 관리자 외 모든 조회에서 빠지게 하고, 댓글 목록만 작성자 본인에게 평소처럼
+     * 보여 준다. REJECTED는 관리자나 작성자가 지운 보류 댓글이라 누구에게도 보이지 않는다(삭제 자리 표시도 남기지 않는다).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "filter_state", length = 10)
+    private CommentFilterState filterState;
+
     @Builder
     public Comment(
             Post post,
@@ -132,6 +140,26 @@ public class Comment extends BaseTimeEntity {
         this.isDeleted = false;
         this.moderationHeld = false;
         this.deletedAt = null;
+    }
+
+    public boolean isFilterHeld() {
+        return filterState == CommentFilterState.HELD;
+    }
+
+    public void holdByFilter(LocalDateTime now) {
+        this.isDeleted = true;
+        this.deletedAt = now;
+        this.filterState = CommentFilterState.HELD;
+    }
+
+    public void releaseFilterHold() {
+        this.isDeleted = false;
+        this.deletedAt = null;
+        this.filterState = null;
+    }
+
+    public void rejectFilterHold() {
+        this.filterState = CommentFilterState.REJECTED;
     }
 
     public void updateContent(String newContent) {

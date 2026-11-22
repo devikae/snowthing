@@ -8,6 +8,7 @@ import { PostImageIcon } from "../components/PostImageIcon";
 import { PostListAuthor } from "../components/PostListAuthor";
 import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer, isAdminViewer } from "../lib/viewer";
+import { hasRecentWrite } from "../lib/recentWrite";
 import { formatCompactTime } from "../lib/koreanDate";
 import {
   DEFAULT_SEARCH_TYPE,
@@ -140,7 +141,8 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       // 게시판을 옮기면 서버가 새 주소의 목록을 다시 받아 props로 넘긴다. 그 값이 있으면 요청 없이 바꾼다.
-      if (serverList) {
+      // 방금 글을 쓴 브라우저는 작성자 기준 목록(본인 글 포함)을 다시 받는다 (IKA-96).
+      if (serverList && !hasRecentWrite()) {
         setPosts(serverList.posts);
         setTotalPages(serverList.totalPages);
         setError(null);

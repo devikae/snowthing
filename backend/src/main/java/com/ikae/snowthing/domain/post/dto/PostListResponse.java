@@ -50,7 +50,7 @@ public record PostListResponse(
                 post.getCommentCount(),
                 post.getLikeCount(),
                 post.getDislikeCount(),
-                post.getStatus(),
+                post.getStatus().publicView(),
                 post.isDeleted(),
                 post.getCreatedAt(),
                 null);

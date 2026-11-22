@@ -1,9 +1,9 @@
 package com.ikae.snowthing.domain.admin.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import jakarta.annotation.PostConstruct;
 
@@ -23,23 +23,38 @@ import com.ikae.snowthing.domain.admin.repository.ChatBannedIpRepository;
 import com.ikae.snowthing.domain.chat.service.ChatRecentHistoryBuffer;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
-import com.ikae.snowthing.global.web.ClientIpResolver;
+import com.ikae.snowthing.global.web.IpRange;
 
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * IP 차단 목록 하나로 라이브톡, 게시글 작성, 댓글 작성을 막는다 (IKA-96). 이름은 라이브톡 전용이던 때 그대로 둔다.
+ *
+ * <ul>
+ *   <li>저장은 기존 chat_banned_ip 표를 그대로 쓴다. 예전 단일 IP 차단은 IPv4는 /32, IPv6는 같은 /64 대역으로 읽혀 계속 동작한다.
+ *   <li>모든 쓰기 요청이 확인하므로 활성 차단을 메모리에 들고 대역마다 비교한다. 차단은 수십 건 수준이라 선형 비교로 충분하다.
+ *   <li>차단 줄마다 따로 비교하므로 같은 IP나 겹치는 대역에 차단이 여러 줄이면 가장 늦게 끝나는 차단까지 막힌다. 한 줄을 풀어도 남은 줄은 그대로 동작한다.
+ *   <li>관리자가 바꾸면 커밋 뒤 DB에서 다시 읽는다. 롤백된 변경이 메모리에 남지 않는다. 만료는 비교할 때 시각으로 거른다.
+ * </ul>
+ */
 @Slf4j
 @Service
 public class ChatIpBanService {
+
+    /** 너무 넓은 대역을 실수로 막지 않게 하는 최소 길이. IPv4 /16은 6만 5천 개, IPv6 /32는 통신사 하나 규모다. */
+    static final int MIN_IPV4_PREFIX = 16;
+
+    static final int MIN_IPV6_PREFIX = 32;
+
+    /** 보류 글에서 바로 막을 때 쓰는 대역. IPv6은 가정 하나가 받는 /64, IPv4는 공유 IP가 많아 주소 하나만 막는다. */
+    static final int HOLD_SHORTCUT_IPV6_PREFIX = 64;
 
     private final ChatBannedIpRepository repository;
     private final ChatRecentHistoryBuffer historyBuffer;
     private final SimpMessagingTemplate messagingTemplate;
     private final AdminActionLogger actionLogger;
 
-    // 메모리 캐시: 정규화한 IP 키 -> 차단 끝 시각(영구는 MAX).
-    // 키는 ClientIpResolver.normalizeForLimit 값이라 IPv6는 /64 대역으로 묶인다. 주소 끝자리가 바뀌어도 같은 차단에 걸린다.
-    // DB에는 관리자가 입력한 원문을 그대로 두고 읽을 때 정규화한다. 그래서 예전에 원문으로 저장된 행도 그대로 맞는다.
-    private final ConcurrentHashMap<String, LocalDateTime> activeBans = new ConcurrentHashMap<>();
+    private volatile List<ActiveBan> activeBans = List.of();
 
     public ChatIpBanService(
             ChatBannedIpRepository repository,
@@ -54,24 +69,54 @@ public class ChatIpBanService {
 
     @PostConstruct
     public void init() {
-        List<ChatBannedIp> bans = repository.findAllActiveBans(LocalDateTime.now());
-        for (ChatBannedIp ban : bans) {
-            String key = banKey(ban.getBannedIp());
-            if (key != null) activeBans.merge(key, untilOf(ban), ChatIpBanService::later);
+        reload();
+    }
+
+    /** DB의 활성 차단을 다시 읽어 메모리 목록을 바꾼다. 형식이 틀린 옛 값은 건너뛴다. */
+    public void reload() {
+        List<ActiveBan> loaded = new ArrayList<>();
+        for (ChatBannedIp ban : repository.findAllActiveBans(LocalDateTime.now())) {
+            IpRange.parse(ban.getBannedIp())
+                    .map(ChatIpBanService::effectiveRange)
+                    .ifPresentOrElse(
+                            range -> loaded.add(new ActiveBan(range, ban.getBannedUntil())),
+                            () -> log.warn("Skipping unparsable IP ban: id={}", ban.getId()));
         }
-        log.info("Loaded {} active chat IP bans into memory", activeBans.size());
+        activeBans = List.copyOf(loaded);
+        log.info("Loaded {} active IP bans into memory", loaded.size());
     }
 
     public boolean isBanned(String ip) {
-        String key = banKey(ip);
-        if (key == null) return false;
-        LocalDateTime until = activeBans.get(key);
-        if (until == null) return false;
-        if (until.isBefore(LocalDateTime.now())) {
-            activeBans.remove(key, until);
-            return false;
+        if (ip == null || ip.isBlank()) return false;
+        List<ActiveBan> bans = activeBans;
+        if (bans.isEmpty()) return false;
+        LocalDateTime now = LocalDateTime.now();
+        for (ActiveBan ban : bans) {
+            if (ban.isActive(now) && ban.range().contains(ip)) {
+                return true;
+            }
         }
-        return true;
+        return false;
+    }
+
+    /** 이 IP를 막는 활성 차단 중 가장 늦게 끝나는 시각. 영구 차단은 MAX, 막히지 않았으면 null이다. */
+    public LocalDateTime bannedUntil(String ip) {
+        if (ip == null || ip.isBlank()) return null;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime latest = null;
+        for (ActiveBan ban : activeBans) {
+            if (!ban.isActive(now) || !ban.range().contains(ip)) continue;
+            LocalDateTime until = ban.until() == null ? LocalDateTime.MAX : ban.until();
+            if (latest == null || until.isAfter(latest)) latest = until;
+        }
+        return latest;
+    }
+
+    /** 게시글, 댓글 작성 전에 부른다. 차단 내용은 알려 주지 않는 일반 오류로 막는다. */
+    public void requireWritable(String ip) {
+        if (isBanned(ip)) {
+            throw new CustomException(ErrorCode.WRITE_NOT_ALLOWED);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -84,35 +129,55 @@ public class ChatIpBanService {
 
     @Transactional
     public ChatBannedIpResponse banIp(
-            String ip, String reason, LocalDateTime until, String createdBy) {
-        String bannedIp = ip == null ? null : ip.trim();
-        String key = banKey(bannedIp);
-        // IP가 아닌 값을 차단하면 정규화 키가 unknown 하나로 모여 엉뚱한 사용자들이 함께 막힐 수 있어 받지 않는다.
-        if (key == null) throw new CustomException(ErrorCode.INVALID_INPUT);
-        ChatBannedIp entity =
-                ChatBannedIp.builder()
-                        .bannedIp(bannedIp)
-                        .reason(reason)
-                        .bannedUntil(until)
-                        .createdBy(createdBy)
-                        .build();
-
-        ChatBannedIp saved = repository.save(entity);
+            String ipOrRange, String reason, LocalDateTime until, String createdBy) {
+        IpRange range = validRange(ipOrRange);
+        ChatBannedIp saved =
+                repository.save(
+                        ChatBannedIp.builder()
+                                .bannedIp(range.toCanonicalString())
+                                .reason(reason)
+                                .bannedUntil(until)
+                                .createdBy(createdBy)
+                                .build());
         actionLogger.record(
-                AdminActionType.CHAT_IP_BAN, AdminTargetType.CHAT_BAN, saved.getId(), reason);
-        LocalDateTime effectiveUntil = until == null ? LocalDateTime.MAX : until;
+                AdminActionType.CHAT_IP_BAN,
+                AdminTargetType.CHAT_BAN,
+                saved.getId(),
+                range.toCanonicalString() + " " + reason);
+        IpRange effective = effectiveRange(range);
         // 메모리 반영과 메시지 삭제는 커밋 뒤에 한다. 롤백된 차단이 메모리에 남아 사용자를 막지 않게 하려는 것이다.
         afterCommit(
                 () -> {
-                    activeBans.merge(key, effectiveUntil, ChatIpBanService::later);
-                    List<String> purgedMessageIds = historyBuffer.removeByIp(bannedIp);
+                    reload();
+                    List<String> purgedMessageIds =
+                            historyBuffer.removeByIpMatching(effective::contains);
                     if (!purgedMessageIds.isEmpty()) {
                         broadcastPurge(purgedMessageIds);
                     }
                 });
-        log.info("Chat IP banned: ip={}, until={}, by={}", bannedIp, until, createdBy);
+        log.info(
+                "IP banned: range={}, until={}, by={}",
+                range.toCanonicalString(),
+                until,
+                createdBy);
 
         return ChatBannedIpResponse.from(saved);
+    }
+
+    /** 금칙어 보류 항목에서 작성자 IP 대역을 막는다. IPv6은 /64, IPv4는 주소 하나다. */
+    @Transactional
+    public ChatBannedIpResponse banWriterRange(
+            String writerIp, String reason, LocalDateTime until, String createdBy) {
+        IpRange address =
+                IpRange.parse(writerIp)
+                        .orElseThrow(() -> new CustomException(ErrorCode.IP_BAN_INVALID_RANGE));
+        String range =
+                address.isIpv6()
+                        ? IpRange.parse(writerIp.strip() + "/" + HOLD_SHORTCUT_IPV6_PREFIX)
+                                .orElseThrow()
+                                .toCanonicalString()
+                        : address.toCanonicalString();
+        return banIp(range, reason, until, createdBy);
     }
 
     @Transactional
@@ -126,29 +191,10 @@ public class ChatIpBanService {
                                     AdminActionType.CHAT_IP_UNBAN,
                                     AdminTargetType.CHAT_BAN,
                                     id,
-                                    null);
-                            String key = banKey(ban.getBannedIp());
-                            if (key != null) {
-                                // 같은 대역의 다른 차단이 아직 살아 있으면 그 끝 시각으로 남긴다.
-                                LocalDateTime remaining =
-                                        repository.findAllActiveBans(LocalDateTime.now()).stream()
-                                                .filter(other -> !id.equals(other.getId()))
-                                                .filter(
-                                                        other ->
-                                                                key.equals(
-                                                                        banKey(
-                                                                                other
-                                                                                        .getBannedIp())))
-                                                .map(ChatIpBanService::untilOf)
-                                                .reduce(ChatIpBanService::later)
-                                                .orElse(null);
-                                afterCommit(
-                                        () -> {
-                                            if (remaining == null) activeBans.remove(key);
-                                            else activeBans.put(key, remaining);
-                                        });
-                            }
-                            log.info("Chat IP unbanned: ip={}", ban.getBannedIp());
+                                    ban.getBannedIp());
+                            // 같은 대역의 다른 차단이 남아 있으면 다시 읽을 때 그대로 남는다.
+                            afterCommit(this::reload);
+                            log.info("IP unbanned: range={}", ban.getBannedIp());
                         });
     }
 
@@ -156,7 +202,7 @@ public class ChatIpBanService {
     public void banIpByMessageId(String messageId, int days, String createdBy) {
         String ip = historyBuffer.getIpForMessage(messageId);
         // IP를 모르거나 IP가 아닌 값이면 차단 대신 그 메시지만 지운다. banIp는 이런 값을 400으로 거절한다.
-        if (banKey(ip) == null) {
+        if (IpRange.parse(ip).isEmpty()) {
             List<String> removed = historyBuffer.removeByMessageId(messageId);
             if (!removed.isEmpty()) {
                 broadcastPurge(removed);
@@ -170,19 +216,25 @@ public class ChatIpBanService {
                 createdBy);
     }
 
-    /** 차단 비교에 쓰는 키. IP가 아니면 null이다. */
-    private static String banKey(String ip) {
-        String key = ClientIpResolver.normalizeForLimit(ip == null ? null : ip.trim());
-        return "unknown".equals(key) ? null : key;
+    private static IpRange validRange(String value) {
+        IpRange range =
+                IpRange.parse(value)
+                        .orElseThrow(() -> new CustomException(ErrorCode.IP_BAN_INVALID_RANGE));
+        int minimum = range.isIpv6() ? MIN_IPV6_PREFIX : MIN_IPV4_PREFIX;
+        if (range.prefixLength() < minimum) {
+            throw new CustomException(ErrorCode.IP_BAN_RANGE_TOO_WIDE);
+        }
+        return range;
     }
 
-    private static LocalDateTime untilOf(ChatBannedIp ban) {
-        return ban.getBannedUntil() == null ? LocalDateTime.MAX : ban.getBannedUntil();
-    }
-
-    /** 같은 키(IPv6는 같은 /64)에 차단이 겹치면 더 늦게 끝나는 차단을 따른다. 짧은 기간으로 다시 차단해도 남아 있는 긴 차단이 줄어들지 않는다. */
-    private static LocalDateTime later(LocalDateTime left, LocalDateTime right) {
-        return left.isAfter(right) ? left : right;
+    /**
+     * 실제로 비교할 대역. IPv6 주소 하나나 /64보다 좁은 대역을 막은 줄은 같은 /64 대역 전체에 적용한다. 주소 끝자리를 바꿔 가며 차단을 피하지 못하게 하려는
+     * 것이다 (IKA-93). 저장 값은 입력한 주소 그대로 두고 비교할 때만 넓힌다.
+     */
+    private static IpRange effectiveRange(IpRange range) {
+        if (!range.isIpv6() || range.prefixLength() <= HOLD_SHORTCUT_IPV6_PREFIX) return range;
+        String address = range.toCanonicalString().split("/")[0];
+        return IpRange.parse(address + "/" + HOLD_SHORTCUT_IPV6_PREFIX).orElse(range);
     }
 
     /** 트랜잭션 안이면 커밋 뒤에, 밖이면 바로 실행한다. */
@@ -212,6 +264,12 @@ public class ChatIpBanService {
                                     List.copyOf(messageIds)));
         } catch (Exception e) {
             log.warn("Failed to broadcast message purge: {}", e.getMessage());
+        }
+    }
+
+    private record ActiveBan(IpRange range, LocalDateTime until) {
+        boolean isActive(LocalDateTime now) {
+            return until == null || until.isAfter(now);
         }
     }
 }
