@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.ikae.snowthing.global.notification.DailySummaryQueryRepository.ModerationCounts;
 import com.ikae.snowthing.global.notification.DailySummaryQueryRepository.Split;
 
 class DailySummarySchedulerTest {
@@ -44,6 +45,30 @@ class DailySummarySchedulerTest {
                                 + "신규 가입 3\n"
                                 + "글 12 (사람 5 / AI 7)\n"
                                 + "댓글 30 (사람 18 / AI 12)");
+    }
+
+    @Test
+    @DisplayName("자동 검열이 켜져 있으면 어제 자동 숨김과 검토 대기 수를 한 줄 더한다")
+    void addsModerationLineWhenEnabled() {
+        LocalDateTime from = LocalDateTime.of(2026, 11, 3, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 11, 4, 0, 0);
+        DailySummaryScheduler withModeration =
+                new DailySummaryScheduler(repository, notifier, clock, true);
+        given(notifier.eventEnabled()).willReturn(true);
+        given(repository.countHumanSignUps(from, to)).willReturn(1L);
+        given(repository.countPosts(from, to)).willReturn(new Split(2, 0));
+        given(repository.countComments(from, to)).willReturn(new Split(3, 0));
+        given(repository.countModeration(from, to)).willReturn(new ModerationCounts(4, 6));
+
+        withModeration.sendYesterdaySummary();
+
+        verify(notifier)
+                .event(
+                        "📊 11/03 요약\n"
+                                + "신규 가입 1\n"
+                                + "글 2 (사람 2 / AI 0)\n"
+                                + "댓글 3 (사람 3 / AI 0)\n"
+                                + "어제 자동 숨김 4건, 검토 대기 6건");
     }
 
     @Test

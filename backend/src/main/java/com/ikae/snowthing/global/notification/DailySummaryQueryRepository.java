@@ -39,6 +39,17 @@ public class DailySummaryQueryRepository {
         return countByWriter("comment", from, to);
     }
 
+    /** 자동 검열(IKA-80) 판정 수. 그날 판정을 마친 줄 중 자동 숨김(HIDE)과 검토 대기(REVIEW). 작성자 종류로 나누지 않는다. */
+    public ModerationCounts countModeration(LocalDateTime from, LocalDateTime to) {
+        return jdbc.queryForObject(
+                "SELECT COALESCE(SUM(CASE WHEN verdict = 'HIDE' THEN 1 ELSE 0 END), 0) AS hidden,"
+                        + " COALESCE(SUM(CASE WHEN verdict = 'REVIEW' THEN 1 ELSE 0 END), 0)"
+                        + " AS review FROM content_moderation"
+                        + " WHERE processed_at >= :from AND processed_at < :to",
+                params(from, to),
+                (rs, row) -> new ModerationCounts(rs.getLong("hidden"), rs.getLong("review")));
+    }
+
     private Split countByWriter(String table, LocalDateTime from, LocalDateTime to) {
         return jdbc.queryForObject(
                 "SELECT COUNT(*) AS total,"
@@ -66,4 +77,6 @@ public class DailySummaryQueryRepository {
             return human + ai;
         }
     }
+
+    public record ModerationCounts(long hidden, long review) {}
 }
