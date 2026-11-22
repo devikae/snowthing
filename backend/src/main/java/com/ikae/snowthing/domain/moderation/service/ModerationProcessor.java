@@ -317,7 +317,11 @@ public class ModerationProcessor {
         if (note != null) body.put("note", note);
         if (body.isEmpty()) return null;
         String json = JSON.writeValueAsString(body);
-        return json.length() > MAX_REASONS_LENGTH ? json.substring(0, MAX_REASONS_LENGTH) : json;
+        if (json.length() > MAX_REASONS_LENGTH && body.remove("scores") != null) {
+            // 중간을 자르면 JSON이 깨져 관리자 화면이 근거를 못 읽는다. 점수를 통째로 빼고 규칙과 메모를 남긴다.
+            json = JSON.writeValueAsString(body);
+        }
+        return json.length() > MAX_REASONS_LENGTH ? null : json;
     }
 
     private record ApiCandidate(Row row, RuleResult rules, String input) {}

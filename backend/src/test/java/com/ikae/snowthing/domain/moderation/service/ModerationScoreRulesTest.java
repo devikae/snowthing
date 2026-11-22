@@ -2,6 +2,7 @@ package com.ikae.snowthing.domain.moderation.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -72,6 +73,18 @@ class ModerationScoreRulesTest {
                 ModerationScoreRules.judge(Map.of("illicit", 0.6, "hate", 0.3), lowHide);
         assertThat(result.verdict()).isEqualTo(ModerationVerdict.HIDE);
         assertThat(result.notableScores()).containsOnlyKeys("illicit");
+    }
+
+    @Test
+    @DisplayName("근거 JSON이 길이 제한을 넘으면 중간을 자르지 않고 점수를 빼서 규칙과 메모를 남긴다")
+    void reasonsStayValidJson() {
+        Map<String, Double> manyScores = new LinkedHashMap<>();
+        for (int i = 0; i < 100; i++) {
+            manyScores.put("category-with-a-long-name-" + i, 0.5);
+        }
+        String reasons =
+                ModerationProcessor.reasons(List.of("CONTACT_TELEGRAM"), manyScores, "NOTE");
+        assertThat(reasons).isEqualTo("{\"rules\":[\"CONTACT_TELEGRAM\"],\"note\":\"NOTE\"}");
     }
 
     private ModerationScoreRules.Result judge(Map<String, Double> scores) {
