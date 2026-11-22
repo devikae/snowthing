@@ -30,8 +30,12 @@
   - 숨긴 글은 기존 블라인드와 같아 작성자에게도 404, 숨긴 댓글은 다른 사람에게 "임시조치된 댓글입니다."로 보인다. 설계 4절의 "운영 검토 중인 글입니다" 문구는 만들지 않았다.
   - AI 회원: 검열 코드에 AI 회원 분기가 없다. 관리자 목록에도 닉네임만 보인다.
   - 열린 PR `ika-90-market-carpool-admin-hide`가 `MarketListingService`를 고친다. 머지 순서에 따라 같은 파일 충돌이 날 수 있다(적재 한 줄씩).
-- 검증
-  - (아래 "검증 결과"에 실행한 명령과 숫자를 적는다)
+- 검증 (실제 실행 결과)
+  - `./gradlew compileJava compileTestJava test` 전체: 247개 클래스 1651개 테스트, 실패 0, 건너뜀 1. 다른 작업과 겹치지 않게 전용 스키마 `snowthing_test_ika80`(SNOWTHING_TEST_DB_URL, USERNAME, PASSWORD)로 돌렸다. 공용 `snowthing_test`에서는 다른 테스트가 같은 시각에 create-drop으로 표를 지워 한 번 깨졌다.
+  - 새 테스트: `ModerationTextRulesTest` 34개(패턴별, 정상 글 12개, 장터와 카풀 예외, 링크 수, 해시, 2단계 입력), `ModerationScoreRulesTest` 5개(임계값 분기), `OpenAiModerationClientTest` 4개(요청 형식, 응답 해석, 오류, 키 없음), `ModerationAlertSchedulerTest` 2개, `DailySummarySchedulerTest` 1개 추가, `ModerationIntegrationTest` 13개(같은 트랜잭션 적재와 롤백, 관리자 글과 1:1 문의 제외, 규칙 판정, AI 회원 동일 처리, 반복, 댓글 숨김, 장터, SKIPPED, 묶음 처리, 재시작 뒤 이어 처리, 관리자 403과 401, 문제없음 해제와 같은 해시 재숨김 없음, 숨김 유지와 삭제), `ModerationApiStageIntegrationTest` 4개(가짜 클라이언트로 HIDE, REVIEW, PASS 분기와 보내는 글 확인, 규칙 판정 유지, 짧은 글은 호출 안 함, 5번 실패 뒤 FAILED와 검토 대기).
+  - 062 마이그레이션을 빈 스키마에 두 번 적용해 오류 없음 확인(표와 인덱스 생성). 운영 DB에는 적용하지 않았다.
+  - `npm ci --legacy-peer-deps`, `npm run lint` 통과, `npm run build` 통과(`/admin/moderation` 정적 생성). 화면을 브라우저로 열어 보지는 않았다.
+  - spotless는 worktree에서 돌지 않아 google-java-format 1.22.0(AOSP)을 직접 돌려 맞췄다(import 정렬은 spotless 규칙대로 손으로 확인).
 - 남은 항목
   - 개인정보처리방침 초안 검토와 새 버전 시행(2단계를 켜기 전).
   - 2단계 켜기 전 실제 글 표본(정상 50, 문제 30)으로 한국어 판정 확인과 임계값 조정.
