@@ -95,16 +95,20 @@ public class ContentModerationRepository {
         return rows;
     }
 
-    /** 판정 기록과 조치를 같은 트랜잭션에서 하려고 처리 중인 줄을 잠근다. 다른 처리기가 이미 끝냈으면 빈 값. */
-    public Optional<Row> lockPending(long id) {
+    /**
+     * 판정 기록과 조치를 같은 트랜잭션에서 하려고 처리 중인 줄을 잠근다. 다른 처리기가 이미 끝냈거나, 임대가 끝나 다른 처리기가 다시 가져갔으면(시도 번호가
+     * 다르다) 빈 값.
+     */
+    public Optional<Row> lockPending(Row claimed) {
         return jdbc
                 .query(
                         "SELECT "
                                 + COLUMNS
                                 + " FROM content_moderation WHERE content_moderation_id = ?"
-                                + " AND status = 'PENDING' FOR UPDATE",
+                                + " AND status = 'PENDING' AND attempt_count = ? FOR UPDATE",
                         (rs, rowNum) -> map(rs, 0),
-                        id)
+                        claimed.id(),
+                        claimed.attempt())
                 .stream()
                 .findFirst();
     }
@@ -124,8 +128,9 @@ public class ContentModerationRepository {
                 .findFirst();
     }
 
+    /** 가져간 시도가 아직 이 줄의 주인일 때만(시도 번호가 같을 때만) 기록한다. 늦게 돌아온 이전 시도는 0을 돌려준다. */
     public int complete(
-            long id,
+            Row claimed,
             ModerationStatus status,
             ModerationStage stage,
             ModerationVerdict verdict,
@@ -134,23 +139,28 @@ public class ContentModerationRepository {
         return jdbc.update(
                 "UPDATE content_moderation SET status = ?, stage = ?, verdict = ?, reasons = ?,"
                         + " processed_at = ?, lease_until = NULL, updated_at = ?"
-                        + " WHERE content_moderation_id = ? AND status = 'PENDING'",
+                        + " WHERE content_moderation_id = ? AND status = 'PENDING'"
+                        + " AND attempt_count = ?",
                 status.name(),
                 stage == null ? null : stage.name(),
                 verdict == null ? null : verdict.name(),
                 reasons,
                 now,
                 now,
-                id);
+                claimed.id(),
+                claimed.attempt());
     }
 
-    public int scheduleRetry(long id, LocalDateTime nextAttemptAt, LocalDateTime now) {
+    /** {@link #complete}와 같이 이 시도가 주인일 때만 고친다. 다시 가져간 처리기의 임대를 지우지 않는다. */
+    public int scheduleRetry(Row claimed, LocalDateTime nextAttemptAt, LocalDateTime now) {
         return jdbc.update(
                 "UPDATE content_moderation SET next_attempt_at = ?, lease_until = NULL,"
-                        + " updated_at = ? WHERE content_moderation_id = ? AND status = 'PENDING'",
+                        + " updated_at = ? WHERE content_moderation_id = ? AND status = 'PENDING'"
+                        + " AND attempt_count = ?",
                 nextAttemptAt,
                 now,
-                id);
+                claimed.id(),
+                claimed.attempt());
     }
 
     /** 같은 대상에 이 줄보다 새 줄(작성자가 다시 고침)이 있는지. */

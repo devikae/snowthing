@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.Role;
+import com.ikae.snowthing.domain.moderation.entity.ModerationStatus;
+import com.ikae.snowthing.domain.moderation.entity.ModerationVerdict;
 import com.ikae.snowthing.domain.moderation.repository.ContentModerationRepository;
 import com.ikae.snowthing.domain.moderation.service.ModerationEnqueuer;
 import com.ikae.snowthing.domain.post.entity.Post;
@@ -326,6 +329,49 @@ class ModerationIntegrationTest extends ModerationTestSupport {
                 .containsEntry("verdict", "HIDE")
                 .containsEntry("attempt_count", 2);
         assertThat(postStatus(postId)).isEqualTo("BLOCKED");
+    }
+
+    @Test
+    @DisplayName("임대가 끝나 다른 처리기가 다시 가져간 줄은 이전 시도가 기록하거나 임대를 지우지 못한다")
+    void staleAttemptCannotWrite() throws Exception {
+        long postId = writePost(writerSession, "이전 시도", "임대 확인용 글입니다");
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        LocalDateTime now = LocalDateTime.now();
+        ContentModerationRepository.Row stale =
+                tx.execute(status -> moderationRepository.claim(now, now.plusMinutes(5), 50))
+                        .stream()
+                        .filter(row -> row.targetId() == postId)
+                        .findFirst()
+                        .orElseThrow();
+        jdbc.update(
+                "UPDATE content_moderation SET lease_until = ? WHERE content_moderation_id = ?",
+                now.minusSeconds(1),
+                stale.id());
+        ContentModerationRepository.Row current =
+                tx.execute(status -> moderationRepository.claim(now, now.plusMinutes(5), 50))
+                        .stream()
+                        .filter(row -> row.id() == stale.id())
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(current.attempt()).isEqualTo(stale.attempt() + 1);
+
+        Optional<ContentModerationRepository.Row> locked =
+                tx.execute(status -> moderationRepository.lockPending(stale));
+        assertThat(locked).isEmpty();
+        assertThat(moderationRepository.scheduleRetry(stale, now.plusMinutes(1), now)).isZero();
+        assertThat(
+                        moderationRepository.complete(
+                                stale, ModerationStatus.DONE, null, ModerationVerdict.PASS, null, now))
+                .isZero();
+        assertThat(latest("POST", postId))
+                .containsEntry("status", "PENDING")
+                .extracting(row -> row.get("lease_until"))
+                .isNotNull();
+
+        assertThat(
+                        moderationRepository.complete(
+                                current, ModerationStatus.DONE, null, ModerationVerdict.PASS, null, now))
+                .isEqualTo(1);
     }
 
     @Test
