@@ -89,7 +89,8 @@ public final class ModerationTextRules {
         if (SHORT_URL.matcher(scan).find()) contacts.add(CONTACT_SHORT_URL);
         return new Findings(
                 List.copyOf(contacts),
-                externalLinkCount(scan),
+                // 원문과 정리한 글을 합쳐 세면 엔티티나 태그 때문에 모양이 달라진 같은 주소를 두 번 센다. 따로 세어 큰 쪽을 쓴다.
+                Math.max(externalLinkCount(raw), externalLinkCount(plain)),
                 PoliticalContentFilter.containsPolitics(plainText(join(title, body))),
                 BannedWordMatcher.normalize(title).length()
                         + BannedWordMatcher.normalize(body).length());

@@ -128,6 +128,13 @@ class ModerationTextRulesTest {
     }
 
     @Test
+    @DisplayName("엔티티가 든 주소를 원문과 정리한 글에서 두 번 세지 않는다")
+    void entityLinkCountedOnce() {
+        String body = "https://a.example/?x=1&amp;y=2 https://b.example/?x=1&amp;y=2";
+        assertThat(post(body).externalLinkCount()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("정치 글은 표시한다")
     void political() {
         assertThat(post("이번 대선 후보 누구 찍어요").political()).isTrue();
