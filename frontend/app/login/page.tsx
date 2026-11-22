@@ -140,7 +140,7 @@ export default function LoginPage() {
 
   return (
     <div className={`community-page ${styles.page}`}>
-      <TopNav active="login" />
+      <TopNav />
       <main className={`community-container ${styles.main}`}>
         <section className={styles.panel} aria-labelledby="login-heading">
           <header className={styles.heading}>

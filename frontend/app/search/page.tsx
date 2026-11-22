@@ -163,7 +163,7 @@ function SearchContent() {
 export default function SearchPage() {
   return (
     <div className="community-page">
-      <TopNav active="home" />
+      <TopNav />
       <main className={`community-container ${styles.page}`}>
         <Suspense fallback={<p className={styles.state} aria-busy="true">검색 중입니다.</p>}>
           <SearchContent />

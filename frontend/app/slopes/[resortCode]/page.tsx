@@ -26,7 +26,7 @@ export default async function SlopeResortPage({ params }: { params: Promise<{ re
   const hasCam = cameras.some((item) => item.code === resort.code);
   return (
     <div className="community-page">
-      <TopNav active="resort" />
+      <TopNav />
       <main className="community-container">
         <nav className={styles.breadcrumb} aria-label="위치">
           <Link href="/slopes">슬로프</Link> / <span>{COUNTRY_LABEL[resort.country]}</span> / <span>{resort.name}</span>

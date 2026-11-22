@@ -16,6 +16,7 @@ import KakaoShareButton from "../../components/KakaoShareButton";
 import { carpoolCostLabel, formatCarpoolDateTime } from "../format";
 import { carpoolSummaryText, type CarpoolReviewSummary } from "../review";
 import { CarpoolParticipation } from "./CarpoolParticipation";
+import { readErrorMessage } from "../../lib/http";
 
 interface CarpoolDetail {
   publicId: string;
@@ -116,8 +117,7 @@ export default function CarpoolDetailClient() {
         body: JSON.stringify({ blinded }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.message || "가리기 상태를 바꾸지 못했습니다.");
+        throw new Error(await readErrorMessage(response, "가리기 상태를 바꾸지 못했습니다."));
       }
       setItem((current) => (current ? { ...current, status: blinded ? "BLOCKED" : "NORMAL" } : current));
     } catch (blindError) {
@@ -167,7 +167,7 @@ export default function CarpoolDetailClient() {
 
   return (
     <div className="community-page">
-      <TopNav active="carpool" />
+      <TopNav />
       <main className="community-container carpool-detail-page content-detail-page">
         {notFound ? (
           <div className="carpool-empty">

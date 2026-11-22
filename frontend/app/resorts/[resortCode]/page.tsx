@@ -89,7 +89,7 @@ export default async function ResortLandingPage({ params }: Params) {
   return (
     <div className="community-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
-      <TopNav active="resorts" />
+      <TopNav />
       <main className="community-container slopes-page">
         <header className={styles.hero}>
           <nav className={styles.breadcrumb} aria-label="위치">

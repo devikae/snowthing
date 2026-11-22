@@ -10,6 +10,7 @@ import { API_ENDPOINTS } from "../lib/api";
 import { errorText } from "../lib/errorText";
 import { safeReturnUrl } from "../lib/safeReturnUrl";
 import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "./RegistrationConsentForm";
+import { readErrorMessage } from "../lib/http";
 
 interface ResortMaster { id: number; name: string; regionName: string; }
 interface RidingStyleMaster { id: number; styleName: string; description: string; }
@@ -19,14 +20,6 @@ interface VerificationTokenResponse { verificationToken: string; expiresInSecond
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const NICKNAME_REGEX = /^[a-zA-Z0-9가-힣]{2,10}$/;
 
-async function readError(response: Response, fallback: string) {
-  try {
-    const body = await response.json();
-    return body.message || body.error || fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -106,11 +99,11 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const availabilityResponse = await csrfFetch(API_ENDPOINTS.members.emailAvailability, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-      if (!availabilityResponse.ok) throw new Error(await readError(availabilityResponse, "이메일 중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      if (!availabilityResponse.ok) throw new Error(await readErrorMessage(availabilityResponse, "이메일 중복 확인을 하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const availability = await availabilityResponse.json();
       if (!availability.available) throw new Error("이미 가입된 이메일이거나 탈퇴 후 30일이 지나지 않은 이메일입니다.");
       const response = await csrfFetch(API_ENDPOINTS.auth.requestSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-      if (!response.ok) throw new Error(await readError(response, "인증번호를 보내지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "인증번호를 보내지 못했습니다."));
       const body: VerificationSendResponse = await response.json();
       setVerificationRequestId(body.requestId);
       setResendSeconds(body.resendAvailableInSeconds);
@@ -127,7 +120,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.auth.confirmSignUpVerification, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: verificationRequestId, code: verificationCode }) });
-      if (!response.ok) throw new Error(await readError(response, "인증번호를 확인하지 못했습니다."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "인증번호를 확인하지 못했습니다."));
       const body: VerificationTokenResponse = await response.json();
       setEmailVerificationToken(body.verificationToken);
       setVerificationExpiresSeconds(0);
@@ -152,7 +145,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.signup, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, emailVerificationToken, password, nickname, resortIds: selectedResortIds, ridingStyleIds: selectedStyleIds, ...consentPayload(consent) }) });
-      if (!response.ok) throw new Error(await readError(response, "가입하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      if (!response.ok) throw new Error(await readErrorMessage(response, "가입하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       const loginResponse = await csrfFetch(API_ENDPOINTS.auth.login, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
       clearViewerCache();
       router.push(loginResponse.ok ? returnUrl : loginHref);
@@ -166,7 +159,7 @@ export default function SignUpPage() {
   if (!showSignUpForm) {
     return (
       <div className="min-h-screen bg-[var(--snow-background)]">
-        <TopNav active="signup" />
+        <TopNav />
         <main className="snow-container px-5 py-10 lg:px-8">
           <section className="mx-auto max-w-2xl">
             <h1 className="mb-6 text-center text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1>
@@ -182,7 +175,7 @@ export default function SignUpPage() {
     );
   }
 
-  return <div className="min-h-screen bg-[var(--snow-background)]"><TopNav active="signup" /><main className="snow-container px-5 py-10 lg:px-8"><section className="mx-auto max-w-2xl"><header className="mb-6 text-center"><h1 className="text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1></header><form onSubmit={handleSubmit} noValidate className="snow-card grid gap-7 bg-white p-6 md:p-8">
+  return <div className="min-h-screen bg-[var(--snow-background)]"><TopNav /><main className="snow-container px-5 py-10 lg:px-8"><section className="mx-auto max-w-2xl"><header className="mb-6 text-center"><h1 className="text-3xl font-extrabold text-[var(--snow-ink)]">회원가입</h1></header><form onSubmit={handleSubmit} noValidate className="snow-card grid gap-7 bg-white p-6 md:p-8">
     {errorMsg && <div role="alert" className="rounded border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{errorMsg}</div>}
     {notice && <div className="rounded border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-sky-800">{notice}</div>}
     <div ref={emailSectionRef} className="grid gap-3"><RequiredLabel>이메일</RequiredLabel><div className="flex gap-2"><input ref={emailInputRef} type="email" autoComplete="email" value={email} onChange={(event) => changeEmail(event.target.value)} className="snow-input flex-1" placeholder="you@example.com" disabled={isEmailVerified} required aria-invalid={emailVerificationError ? true : undefined} aria-describedby={emailVerificationError ? "email-verification-error" : undefined} /><button type="button" className="snow-btn-secondary whitespace-nowrap" onClick={requestVerification} disabled={loading || isEmailVerified || resendSeconds > 0}>{isEmailVerified ? "인증 완료" : resendSeconds > 0 ? `${resendSeconds}초 후 재전송` : verificationRequestId ? "다시 받기" : "이메일 인증"}</button></div>{emailVerificationError && <p id="email-verification-error" role="alert" className="text-sm font-semibold text-rose-600">{emailVerificationError}</p>}{verificationRequestId && !isEmailVerified && <><div className="flex gap-2"><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))} className="snow-input flex-1" placeholder="인증번호 6자리" /><button type="button" className="snow-btn-primary whitespace-nowrap" onClick={confirmVerification} disabled={loading || verificationExpiresSeconds === 0}>인증 확인</button></div><p className="text-xs font-semibold text-[var(--snow-muted)]">{verificationExpiresSeconds > 0 ? `인증번호 유효 시간 ${Math.floor(verificationExpiresSeconds / 60)}:${String(verificationExpiresSeconds % 60).padStart(2, "0")}` : "인증번호가 만료되었습니다. 다시 받아 주세요."}</p></>}</div>

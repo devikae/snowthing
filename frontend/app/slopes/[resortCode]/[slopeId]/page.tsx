@@ -32,7 +32,7 @@ export default async function SlopeDetailPage({ params }: Params) {
   if (slope.nameLocal && slope.nameLocal !== slope.name) chips.push(slope.nameLocal);
   return (
     <div className="community-page">
-      <TopNav active="resort" />
+      <TopNav />
       <main className="community-container">
         <nav className={styles.breadcrumb} aria-label="위치">
           <Link href="/slopes">슬로프</Link> / <span>{COUNTRY_LABEL[resort.country]}</span> /{" "}

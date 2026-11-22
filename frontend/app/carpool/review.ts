@@ -28,8 +28,3 @@ export function carpoolSummaryText(summary: CarpoolReviewSummary | null): string
   if (summary.topTags[0]) parts.push(carpoolReviewTagLabel(summary.topTags[0].tag));
   return parts.join(", ");
 }
-
-export async function responseMessage(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-  return typeof data?.message === "string" ? data.message : fallback;
-}

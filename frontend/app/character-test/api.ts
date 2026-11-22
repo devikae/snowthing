@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "../lib/api";
 import { csrfFetch as rawCsrfFetch } from "../lib/csrfFetch";
-import { readErrorMessage } from "../lib/messageApi";
 import type { CharacterLabel, CharacterStats, LevelCode, Sport } from "./data";
+import { readErrorMessage } from "../lib/http";
 
 const GROUPS = `${API_BASE_URL}/api/v1/character-groups`;
 const TOKEN_HEADER = "X-Character-Token";

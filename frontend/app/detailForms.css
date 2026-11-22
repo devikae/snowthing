@@ -170,12 +170,6 @@ html :is(.post-detail-author-avatar,.comment-profile-avatar) {
   color: var(--snow-muted);
 }
 
-html .content-detail-page .detail-carpool-actions { display: flex; align-items: center; gap: 8px; }
-html .content-detail-page .detail-carpool-refresh { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 4px; padding: 4px; background: transparent; color: var(--snow-muted); cursor: pointer; }
-html .content-detail-page .detail-carpool-refresh .material-symbols-outlined { font-size: 16px; }
-html .content-detail-page .detail-carpool-refresh:hover { background: var(--snow-surface-mid); color: var(--snow-ink); }
-html .content-detail-page .detail-carpool-refresh:disabled { opacity: .5; cursor: wait; }
-html .content-detail-page .detail-carpool-refresh:focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 2px; }
 
 html .m-anonymous-badge { flex: none; border-radius: 4px; background: var(--snow-surface-mid); padding: 2px 4px; color: var(--snow-ink-soft); font-size: 12px; font-weight: 500; line-height: 16px; }
 html .m-author-anonymous b { flex: none; font-variant-numeric: tabular-nums; }
@@ -203,14 +197,6 @@ html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-deta
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .comment-youtube-body header strong { color: var(--snow-ink); font-size: 14px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .comment-youtube-body p { color: var(--snow-ink-soft); font-size: 14px; line-height: 24px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) :is(.comment-youtube-body time,.comment-youtube-actions button) { color: var(--snow-muted); font-size: 12px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card { border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-surface-low); padding: 16px; box-shadow: none; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card > header { padding: 0 0 12px; border-color: var(--snow-border); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card h2 { color: var(--snow-ink); font: 600 14px/20px var(--font-hanken); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card article { padding: 12px 0; border-color: var(--snow-border); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card article > div { flex-wrap: wrap; gap: 8px; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card article:last-child { padding-bottom: 0; }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card article p { color: var(--snow-ink-soft); }
-html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .detail-carpool-card :is(time,small) { color: var(--snow-muted); }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-detail-card { border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-canvas); box-shadow: none; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-detail-price { color: var(--snow-ink); font-size: 24px; }
 html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .market-contact { border: 1px solid var(--snow-border); border-radius: 8px; background: var(--snow-surface-low); color: var(--snow-ink); }
@@ -254,7 +240,6 @@ html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :i
 }
 @media(max-width:900px) {
   html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-layout { grid-template-columns: minmax(0,1fr); }
-  html .content-detail-page:is(.post-detail-page,.carpool-detail-page,.market-detail-page) .post-detail-sidebar { display: block; }
 }
 @media(max-width:640px) {
   html :is(.content-compose-page,.content-detail-page) { width: calc(100% - 32px); margin-block: 24px 40px; }
@@ -291,8 +276,6 @@ html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-react
 html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button.active strong { color: #e0f2fe; }
 html[data-theme="dark"] .content-detail-page.post-detail-page .post-detail-reactions .post-vote button:last-child.active { border-color: #64748b; background: #334155; color: #e2e8f0; }
 /* 카카오 공유는 브랜드 노란색을 지키되 작은 줄에 맞게 크기만 줄인다 */
-@media (max-width: 640px) {
-}
 
 
 /* 글 상세 도구: 작성자 줄 오른쪽의 스크랩, 공유, 카톡 공유 아이콘과 신고 */

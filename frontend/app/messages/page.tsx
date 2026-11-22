@@ -4,10 +4,11 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
-import { MESSAGE_ENDPOINTS, MessageBox, MessagePage, MessageSummary, formatMessageDate, readErrorMessage } from "../lib/messageApi";
+import { MESSAGE_ENDPOINTS, MessageBox, MessagePage, MessageSummary, formatMessageDate } from "../lib/messageApi";
 import styles from "../components/messages.module.css";
 import { errorText } from "../lib/errorText";
 import MessageMailToggle from "./MessageMailToggle";
+import { readErrorMessage } from "../lib/http";
 
 const boxLabels: Record<MessageBox, string> = { RECEIVED: "받은 쪽지", SENT: "보낸 쪽지" };
 
@@ -117,7 +118,7 @@ function MessageList() {
 export default function MessagesPage() {
   return (
     <div className="community-page">
-      <TopNav active="profile" />
+      <TopNav />
       <main className={`community-container ${styles.page}`}>
         <header className={styles.heading}>
           <div>

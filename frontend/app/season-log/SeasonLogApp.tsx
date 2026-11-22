@@ -9,6 +9,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { getResortReportDisplayName } from "../lib/resortReports";
 import { fetchViewer } from "../lib/viewer";
 import { SeasonLog, SeasonVisit, shareUrl } from "./types";
+import { readErrorMessage } from "../lib/http";
 
 interface ResortMaster {
   id: number;
@@ -43,10 +44,6 @@ function koreanDate(date: string) {
   return `${month}월 ${day}일`;
 }
 
-async function failureMessage(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-  return typeof data?.message === "string" ? data.message : fallback;
-}
 
 export function SeasonLogApp() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
@@ -69,7 +66,7 @@ export function SeasonLogApp() {
 
   const load = useCallback(async () => {
     const response = await fetch(API_ENDPOINTS.seasonLogs.me(season), { credentials: "include", cache: "no-store" });
-    if (!response.ok) throw new Error(await failureMessage(response, "시즌 기록을 불러오지 못했습니다."));
+    if (!response.ok) throw new Error(await readErrorMessage(response, "시즌 기록을 불러오지 못했습니다."));
     return (await response.json()) as SeasonLog;
   }, [season]);
 
@@ -122,7 +119,7 @@ export function SeasonLogApp() {
         body: JSON.stringify({ visitDate, resortId: Number(chosenResortId) }),
       });
       if (!response.ok) {
-        setNotice(await failureMessage(response, "기록하지 못했습니다."));
+        setNotice(await readErrorMessage(response, "기록하지 못했습니다."));
         return;
       }
       const saved: SeasonVisit = await response.json();
@@ -147,7 +144,7 @@ export function SeasonLogApp() {
     try {
       const response = await csrfFetch(API_ENDPOINTS.seasonLogs.visit(visit.visitDate), { method: "DELETE" });
       if (!response.ok && response.status !== 404) {
-        setNotice(await failureMessage(response, "기록을 지우지 못했습니다."));
+        setNotice(await readErrorMessage(response, "기록을 지우지 못했습니다."));
         return;
       }
       await reload();
@@ -166,7 +163,7 @@ export function SeasonLogApp() {
     try {
       const response = await csrfFetch(API_ENDPOINTS.seasonLogs.share(log.season.startYear), { method: enabled ? "PUT" : "DELETE" });
       if (!response.ok) {
-        setNotice(await failureMessage(response, "공유 설정을 바꾸지 못했습니다."));
+        setNotice(await readErrorMessage(response, "공유 설정을 바꾸지 못했습니다."));
         return;
       }
       await reload();

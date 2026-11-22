@@ -24,7 +24,7 @@ export default async function ResortsPage() {
 
   return (
     <div className="community-page">
-      <TopNav active="resorts" />
+      <TopNav />
       <main className="community-container slopes-page">
         <PageHeading
           title="리조트 정보"

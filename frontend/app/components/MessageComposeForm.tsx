@@ -2,9 +2,10 @@
 
 import { FormEvent, useRef, useState } from "react";
 import { csrfFetch } from "../lib/csrfFetch";
-import { MESSAGE_ENDPOINTS, MESSAGE_MAX_LENGTH, readErrorMessage } from "../lib/messageApi";
+import { MESSAGE_ENDPOINTS, MESSAGE_MAX_LENGTH } from "../lib/messageApi";
 import styles from "./messages.module.css";
 import { errorText } from "../lib/errorText";
+import { readErrorMessage } from "../lib/http";
 
 interface MessageComposeFormProps {
   receiver: { publicId: string; nickname: string };

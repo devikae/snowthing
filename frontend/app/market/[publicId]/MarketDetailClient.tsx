@@ -19,6 +19,8 @@ import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
 import { fetchViewer, isAdminViewer } from "../../lib/viewer";
+import { readErrorMessage } from "../../lib/http";
+import { PRODUCT_CONDITION_LABELS } from "../marketOptions";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -65,14 +67,6 @@ interface CommentListResponse {
   nextCursor: string | null;
   hasNext: boolean;
 }
-
-const conditionLabels: Record<string, string> = {
-  NEW: "새 상품",
-  LIKE_NEW: "거의 새 상품",
-  GOOD: "사용감 적음",
-  USED: "사용감 있음",
-  DAMAGED: "수리, 하자 있음",
-};
 
 const transactionLabels: Record<string, string> = {
   DIRECT: "직거래",
@@ -230,8 +224,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         return;
       }
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.message || "댓글을 등록하지 못했습니다.");
+        throw new Error(await readErrorMessage(response, "댓글을 등록하지 못했습니다."));
       }
       commentIdempotencyKey.reset();
       if (parentId) {
@@ -268,8 +261,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         body: JSON.stringify({ tradeStatus, version: listing.version }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        setError(data?.message || "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+        setError(await readErrorMessage(response, "거래 상태를 변경하지 못했습니다. 새로고침 후 다시 시도해 주세요."));
         return;
       }
       const data: { tradeStatus: string; version: number; updatedAt: string } = await response.json();
@@ -293,8 +285,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         body: JSON.stringify({ moderationStatus: action.status }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        setError(data?.message || "판매글 상태를 바꾸지 못했습니다.");
+        setError(await readErrorMessage(response, "판매글 상태를 바꾸지 못했습니다."));
         return;
       }
       setListing((current) => (current ? { ...current, status: action.status } : current));
@@ -315,8 +306,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         router.replace("/market");
         return;
       }
-      const data = await response.json().catch(() => null);
-      setError(data?.message || "판매글을 삭제하지 못했습니다.");
+      setError(await readErrorMessage(response, "판매글을 삭제하지 못했습니다."));
     } catch {
       setError("판매글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -324,8 +314,8 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
     }
   };
 
-  if (loading) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
-  if (!listing) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state"><p>{error}</p><Link href="/market">목록으로</Link></main></div>;
+  if (loading) return <div className="community-page"><TopNav /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
+  if (!listing) return <div className="community-page"><TopNav /><main className="community-container market-state"><p>{error}</p><Link href="/market">목록으로</Link></main></div>;
 
   // 공개 상태가 아니면 서버가 수정과 거래 상태 변경을 막으므로 그 버튼은 숨긴다. 삭제는 그대로 둔다.
   const isPublic = listing.status === "NORMAL";
@@ -335,7 +325,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
 
   return (
     <div className="community-page">
-      <TopNav active="market" />
+      <TopNav />
       <main className="community-container market-detail-page content-detail-page">
         <div className="post-detail-toolbar"><Link href="/market"><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link></div>
         {error && <div className="compose-error" role="alert">{error}</div>}
@@ -351,7 +341,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             <div className="market-detail-tags"><em data-status={listing.tradeStatus}>{tradeLabels[listing.tradeStatus]}</em><span>{listing.category.name}</span></div>
             <h1>{listing.title}</h1>
             <strong className="market-detail-price">{listing.free ? "무료 나눔" : `${listing.price.toLocaleString()}원`}{listing.negotiable && <small>가격 협의 가능</small>}</strong>
-            <dl><div><dt>상품 상태</dt><dd>{conditionLabels[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회 / 댓글</dt><dd>{listing.viewCount} / {listing.commentCount}</dd></div></dl>
+            <dl><div><dt>상품 상태</dt><dd>{PRODUCT_CONDITION_LABELS[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회 / 댓글</dt><dd>{listing.viewCount} / {listing.commentCount}</dd></div></dl>
             <div className="market-seller"><CommentProfileAvatar className="market-seller-avatar" nickname={listing.seller.nickname} profileImageUrl={listing.seller.profileImageUrl} size={36} /><div><small>판매자</small><AuthorMenu publicId={listing.seller.publicId} nickname={listing.seller.nickname} /></div></div>
             {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void copyContact(listing.contact ?? "")}>복사</button>{copyNotice && <small role="status">{copyNotice}</small>}</div>}
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />

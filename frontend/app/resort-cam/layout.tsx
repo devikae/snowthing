@@ -9,7 +9,7 @@ export default async function ResortCamLayout({ children }: { children: React.Re
 
   return (
     <div className="community-page">
-      <TopNav active="resort" />
+      <TopNav />
       <ResortCamProvider resorts={resorts}>{children}</ResortCamProvider>
       <Footer />
     </div>
