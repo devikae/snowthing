@@ -81,8 +81,9 @@ public class ModerationActions {
             notificationRepository.clearPreviewByCommentId(targetId);
             return true;
         }
-        ResortReport report = resortReportRepository.findById(targetId).orElse(null);
+        ResortReport report = resortReportRepository.findByIdForUpdate(targetId).orElse(null);
         if (report == null
+                || report.isDeleted()
                 || report.getStatus() != ResortReportStatus.NORMAL
                 || !expectedHash.equals(ModerationTextRules.contentHash("", report.getContent()))) {
             return false;
