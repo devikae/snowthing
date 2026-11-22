@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { formatKoreanDate } from "../lib/koreanDate";
+import { PRODUCT_CONDITION_LABELS } from "./marketOptions";
 
 type ViewMode = "list" | "album";
 
@@ -33,14 +34,6 @@ interface MarketItem {
   commentCount: number;
   createdAt: string;
 }
-
-const conditionLabels: Record<string, string> = {
-  NEW: "새 상품",
-  LIKE_NEW: "거의 새 상품",
-  GOOD: "사용감 적음",
-  USED: "사용감 있음",
-  DAMAGED: "수리, 하자 있음",
-};
 
 const tradeLabels: Record<string, string> = {
   ON_SALE: "판매 중",
@@ -176,7 +169,7 @@ function MarketPageContent() {
           </form>
           <div className="market-filter-row">
             <select value={categoryCode} onChange={(event) => move({ categoryCode: event.target.value, page: 1 })} aria-label="상품 분류"><option value="">상품 분류 전체</option>{categories.map((category) => <option key={category.code} value={category.code}>{category.name}</option>)}</select>
-            <select value={productCondition} onChange={(event) => move({ productCondition: event.target.value, page: 1 })} aria-label="상품 상태"><option value="">상품 상태 전체</option>{Object.entries(conditionLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
+            <select value={productCondition} onChange={(event) => move({ productCondition: event.target.value, page: 1 })} aria-label="상품 상태"><option value="">상품 상태 전체</option>{Object.entries(PRODUCT_CONDITION_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
             <select value={tradeStatus} onChange={(event) => move({ tradeStatus: event.target.value, page: 1 })} aria-label="거래 상태"><option value="">거래 가능(판매 중, 예약 중)</option><option value="ALL">전체(판매 완료 포함)</option>{Object.entries(tradeLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
             <button type="button" className="market-filter-reset" onClick={() => { setSearchKeyword(""); router.push("/market"); }}>초기화</button>
             <div className="market-view-toggle" aria-label="보기 방식"><button type="button" className={viewMode === "list" ? "active" : ""} onClick={() => changeView("list")} aria-pressed={viewMode === "list"} aria-label="목록으로 보기"><span className="material-symbols-outlined" aria-hidden="true">view_list</span></button><button type="button" className={viewMode === "album" ? "active" : ""} onClick={() => changeView("album")} aria-pressed={viewMode === "album"} aria-label="앨범으로 보기"><span className="material-symbols-outlined" aria-hidden="true">grid_view</span></button></div>
@@ -190,7 +183,7 @@ function MarketPageContent() {
             : items.length === 0 ? <div className="market-state"><span className="material-symbols-outlined" aria-hidden="true">inventory_2</span><p>조건에 맞는 판매글이 없습니다.</p></div>
             : items.map((item) => <Link href={`/market/${item.publicId}`} key={item.publicId} className="market-result-card">
               <div className="market-result-image"><MarketImage item={item} /><em data-status={item.tradeStatus}>{tradeLabels[item.tradeStatus] ?? item.tradeStatus}</em></div>
-              <div className="market-result-copy"><div><span>{item.category.name}</span><span>{conditionLabels[item.productCondition]}</span></div><strong>{item.title}</strong><p><span>{item.seller.nickname}</span><span>{formatKoreanDate(item.createdAt)}</span><span>댓글 {item.commentCount}</span></p></div>
+              <div className="market-result-copy"><div><span>{item.category.name}</span><span>{PRODUCT_CONDITION_LABELS[item.productCondition]}</span></div><strong>{item.title}</strong><p><span>{item.seller.nickname}</span><span>{formatKoreanDate(item.createdAt)}</span><span>댓글 {item.commentCount}</span></p></div>
               <b>{item.free ? "무료 나눔" : `${item.price.toLocaleString()}원`}</b>
             </Link>)}
         </section>

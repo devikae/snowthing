@@ -17,6 +17,7 @@ import { useImageUploadLease } from "../../lib/useImageUploadLease";
 import { errorText } from "../../lib/errorText";
 import { readApiError, readErrorMessage } from "../../lib/http";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
+import { PRODUCT_CONDITION_OPTIONS, TRANSACTION_METHOD_OPTIONS } from "../marketOptions";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), { ssr: false });
 
@@ -29,20 +30,6 @@ interface UploadedImage {
   imageUrl: string;
   imageKey: string;
 }
-
-const productConditions = [
-  ["NEW", "새 상품"],
-  ["LIKE_NEW", "거의 새 상품"],
-  ["GOOD", "사용감 적음"],
-  ["USED", "사용감 있음"],
-  ["DAMAGED", "수리, 하자 있음"],
-] as const;
-
-const transactionMethods = [
-  ["DIRECT", "직거래"],
-  ["DELIVERY", "택배"],
-  ["BOTH", "모두 가능"],
-] as const;
 
 export default function MarketCreatePage() {
   const router = useRouter();
@@ -183,9 +170,9 @@ export default function MarketCreatePage() {
           {(error || loginExpired) && <div className="compose-error" role="alert"><span className="material-symbols-outlined" aria-hidden="true">error</span>{error || <LoginExpiredNotice returnUrl="/market/new" />}</div>}
           <div className="market-form-grid">
             <label><span>상품 분류 *</span><select value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} required>{categories.map((category) => <option key={category.code} value={category.code}>{category.name}</option>)}</select></label>
-            <label><span>상품 상태 *</span><select value={productCondition} onChange={(event) => setProductCondition(event.target.value)}>{productConditions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>
+            <label><span>상품 상태 *</span><select value={productCondition} onChange={(event) => setProductCondition(event.target.value)}>{PRODUCT_CONDITION_OPTIONS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>
           </div>
-          <fieldset className="market-radio-field"><legend>거래 방식 *</legend>{transactionMethods.map(([code, label]) => <label key={code}><input type="radio" name="transactionMethod" value={code} checked={transactionMethod === code} onChange={() => setTransactionMethod(code)} />{label}</label>)}</fieldset>
+          <fieldset className="market-radio-field"><legend>거래 방식 *</legend>{TRANSACTION_METHOD_OPTIONS.map(([code, label]) => <label key={code}><input type="radio" name="transactionMethod" value={code} checked={transactionMethod === code} onChange={() => setTransactionMethod(code)} />{label}</label>)}</fieldset>
           <label className="market-form-field"><span>글 제목 *</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} placeholder="판매할 상품을 알 수 있는 제목을 입력해 주세요." required /></label>
           <div className="market-price-row">
             <label><span>가격 *</span><div><input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={8} value={free ? "" : price} onChange={(event) => setPrice(event.target.value.replace(/\D/g, ""))} disabled={free} placeholder="0" /><b>원</b></div></label>

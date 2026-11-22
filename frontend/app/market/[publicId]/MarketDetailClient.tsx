@@ -20,6 +20,7 @@ import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
 import { fetchViewer, isAdminViewer } from "../../lib/viewer";
 import { readErrorMessage } from "../../lib/http";
+import { PRODUCT_CONDITION_LABELS } from "../marketOptions";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -66,14 +67,6 @@ interface CommentListResponse {
   nextCursor: string | null;
   hasNext: boolean;
 }
-
-const conditionLabels: Record<string, string> = {
-  NEW: "새 상품",
-  LIKE_NEW: "거의 새 상품",
-  GOOD: "사용감 적음",
-  USED: "사용감 있음",
-  DAMAGED: "수리, 하자 있음",
-};
 
 const transactionLabels: Record<string, string> = {
   DIRECT: "직거래",
@@ -348,7 +341,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             <div className="market-detail-tags"><em data-status={listing.tradeStatus}>{tradeLabels[listing.tradeStatus]}</em><span>{listing.category.name}</span></div>
             <h1>{listing.title}</h1>
             <strong className="market-detail-price">{listing.free ? "무료 나눔" : `${listing.price.toLocaleString()}원`}{listing.negotiable && <small>가격 협의 가능</small>}</strong>
-            <dl><div><dt>상품 상태</dt><dd>{conditionLabels[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회 / 댓글</dt><dd>{listing.viewCount} / {listing.commentCount}</dd></div></dl>
+            <dl><div><dt>상품 상태</dt><dd>{PRODUCT_CONDITION_LABELS[listing.productCondition]}</dd></div><div><dt>거래 방식</dt><dd>{transactionLabels[listing.transactionMethod]}</dd></div><div><dt>등록일</dt><dd>{formatDate(listing.createdAt)}</dd></div><div><dt>조회 / 댓글</dt><dd>{listing.viewCount} / {listing.commentCount}</dd></div></dl>
             <div className="market-seller"><CommentProfileAvatar className="market-seller-avatar" nickname={listing.seller.nickname} profileImageUrl={listing.seller.profileImageUrl} size={36} /><div><small>판매자</small><AuthorMenu publicId={listing.seller.publicId} nickname={listing.seller.nickname} /></div></div>
             {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void copyContact(listing.contact ?? "")}>복사</button>{copyNotice && <small role="status">{copyNotice}</small>}</div>}
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />

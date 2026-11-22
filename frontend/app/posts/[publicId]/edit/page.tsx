@@ -16,6 +16,7 @@ import { CommentProfileAvatar } from "../../../components/CommentProfileAvatar";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 import { readErrorMessage } from "../../../lib/http";
+import { COMPOSE_CATEGORIES } from "../../composeCategories";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
@@ -37,15 +38,6 @@ interface PostDetail {
   };
 }
 
-const categoryOptions = [
-  { value: "NOTICE", label: "공지사항" },
-  { value: "FREE", label: "자유게시판" },
-  { value: "ANONYMOUS", label: "익명게시판" },
-  { value: "QNA", label: "질문게시판" },
-  { value: "FOOD", label: "리조트 맛집" },
-  { value: "CREW", label: "동호회 모집" },
-  { value: "SEASON_ROOM", label: "시즌방 모집" },
-];
 
 function PostEditForm({ publicId }: { publicId: string }) {
   const router = useRouter();
@@ -234,12 +226,12 @@ function PostEditForm({ publicId }: { publicId: string }) {
       <nav className="compose-category-bar" aria-label="게시판 변경">
         <div className="filter-pills">
           {/* 공지사항은 관리자만 고를 수 있다. 일반 회원에게 보이면 눌러도 서버가 403으로 거부한다. */}
-          {categoryOptions.filter((option) => option.value !== "NOTICE" || isAdmin || categoryCode === "NOTICE").map((option) => (
+          {COMPOSE_CATEGORIES.filter((option) => option.code !== "NOTICE" || isAdmin || categoryCode === "NOTICE").map((option) => (
             <button
-              key={option.value}
+              key={option.code}
               type="button"
-              className={categoryCode === option.value ? "active" : ""}
-              onClick={() => setCategoryCode(option.value)}
+              className={categoryCode === option.code ? "active" : ""}
+              onClick={() => setCategoryCode(option.code)}
             >
               {option.label}
             </button>

@@ -18,6 +18,7 @@ import { readApiError } from "../../lib/http";
 import { LoginExpiredNotice } from "../../components/LoginExpiredNotice";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
+import { COMPOSE_CATEGORIES } from "../composeCategories";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
@@ -30,16 +31,6 @@ interface MemberProfile {
   role: string;
   profileImageUrl?: string | null;
 }
-
-const COMPOSE_CATEGORIES = [
-  { code: "NOTICE", label: "공지사항", adminOnly: true },
-  { code: "FREE", label: "자유게시판", adminOnly: false },
-  { code: "ANONYMOUS", label: "익명게시판", adminOnly: false },
-  { code: "QNA", label: "질문게시판", adminOnly: false },
-  { code: "FOOD", label: "리조트 맛집", adminOnly: false },
-  { code: "CREW", label: "동호회 모집", adminOnly: false },
-  { code: "SEASON_ROOM", label: "시즌방 모집", adminOnly: false },
-] as const;
 
 function PostCreateForm() {
   const router = useRouter();
