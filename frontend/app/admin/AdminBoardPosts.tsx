@@ -150,7 +150,7 @@ export function AdminBoardPosts({ board, title, description }: { board: Board; t
                 </span>
                 <span style={{ minWidth: 0 }}>
                   <p style={{ overflowWrap: "anywhere" }}>
-                    {post.isDeleted || post.status !== "NORMAL" ? post.title : <Link href={postHref(board, post.publicId)}>{post.title}</Link>}
+                    {post.isDeleted ? post.title : <Link href={postHref(board, post.publicId)}>{post.title}</Link>}
                   </p>
                   <small style={{ overflowWrap: "anywhere" }}>
                     {post.writerNickname ?? "비회원"}, 작성 {formatDateTime(post.createdAt)}
