@@ -18,6 +18,7 @@ import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "../../lib/idempotencyKey"
 import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
+import { fetchViewer, isAdminViewer } from "../../lib/viewer";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
 
@@ -41,6 +42,7 @@ interface MarketDetail {
   version: number;
   canEdit: boolean;
   canDelete: boolean;
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +80,21 @@ const transactionLabels: Record<string, string> = {
   BOTH: "직거래, 택배",
 };
 
+type ModerationStatus = "NORMAL" | "HIDDEN" | "BLOCKED";
+
+const moderationActions: { status: ModerationStatus; label: string; confirm: string }[] = [
+  { status: "HIDDEN", label: "숨기기", confirm: "이 판매글을 숨길까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." },
+  { status: "BLOCKED", label: "차단", confirm: "이 판매글을 차단할까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." },
+];
+
+const restoreAction = { status: "NORMAL" as const, label: "공개로 되돌리기", confirm: "이 판매글을 다시 공개할까요?" };
+
+const hiddenNotices: Record<string, string> = {
+  HIDDEN: "숨긴 판매글입니다. 일반 사용자에게는 보이지 않고 관리자에게만 보입니다.",
+  BLOCKED: "차단한 판매글입니다. 일반 사용자에게는 보이지 않고 관리자에게만 보입니다.",
+  TEMPORARY_HOLD: "신고로 임시조치된 판매글입니다. 해제는 신고 처리 화면에서 합니다.",
+};
+
 const tradeLabels: Record<string, string> = {
   ON_SALE: "판매 중",
   RESERVED: "예약 중",
@@ -108,6 +125,18 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [copyNotice, setCopyNotice] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [moderating, setModerating] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchViewer().then((viewer) => {
+      if (!cancelled) setIsAdmin(isAdminViewer(viewer));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 복사는 권한이 없거나 오래된 브라우저에서 실패할 수 있어, 결과를 문구로 알려 준다.
   const copyContact = async (contact: string) => {
@@ -252,6 +281,30 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
     }
   };
 
+  // 관리자가 판매글 화면에서 바로 숨기거나 다시 공개한다. 권한은 서버의 관리자 API가 다시 확인한다.
+  const changeModeration = async (action: { status: ModerationStatus; confirm: string }) => {
+    if (!listing || moderating || !window.confirm(action.confirm)) return;
+    setModerating(true);
+    setError("");
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.admin.marketModeration(publicId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moderationStatus: action.status }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setError(data?.message || "판매글 상태를 바꾸지 못했습니다.");
+        return;
+      }
+      setListing((current) => (current ? { ...current, status: action.status } : current));
+    } catch {
+      setError("판매글 상태를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setModerating(false);
+    }
+  };
+
   const deleteListing = async () => {
     if (!listing || !listing.canDelete || deleting || !window.confirm("이 판매글을 삭제할까요?")) return;
     setDeleting(true);
@@ -274,6 +327,10 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   if (loading) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state">판매글을 불러오는 중입니다.</main></div>;
   if (!listing) return <div className="community-page"><TopNav active="market" /><main className="community-container market-state"><p>{error}</p><Link href="/market">목록으로</Link></main></div>;
 
+  // 공개 상태가 아니면 서버가 수정과 거래 상태 변경을 막으므로 그 버튼은 숨긴다. 삭제는 그대로 둔다.
+  const isPublic = listing.status === "NORMAL";
+  const canEdit = listing.canEdit && isPublic;
+  const adminActions = !isAdmin ? [] : isPublic ? moderationActions : listing.status === "HIDDEN" || listing.status === "BLOCKED" ? [restoreAction] : [];
   const galleryImages = listing.images.length ? listing.images : listing.coverImageUrl ? [listing.coverImageUrl] : [];
 
   return (
@@ -290,6 +347,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             {listing.images.length > 1 && <div className="market-gallery-thumbs">{listing.images.map((image, index) => <button type="button" key={image} className={activeImage === index ? "active" : ""} onClick={() => setActiveImage(index)}><Image src={image} alt={`${index + 1}번 사진`} width={96} height={72} unoptimized /></button>)}</div>}
           </section>
           <section className="market-detail-summary">
+            {isAdmin && hiddenNotices[listing.status] && <p role="status" className="mb-3 rounded border border-[var(--snow-border)] px-3 py-2 text-sm text-[var(--snow-muted)]">{hiddenNotices[listing.status]}</p>}
             <div className="market-detail-tags"><em data-status={listing.tradeStatus}>{tradeLabels[listing.tradeStatus]}</em><span>{listing.category.name}</span></div>
             <h1>{listing.title}</h1>
             <strong className="market-detail-price">{listing.free ? "무료 나눔" : `${listing.price.toLocaleString()}원`}{listing.negotiable && <small>가격 협의 가능</small>}</strong>
@@ -297,8 +355,8 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
             <div className="market-seller"><CommentProfileAvatar className="market-seller-avatar" nickname={listing.seller.nickname} profileImageUrl={listing.seller.profileImageUrl} size={36} /><div><small>판매자</small><AuthorMenu publicId={listing.seller.publicId} nickname={listing.seller.nickname} /></div></div>
             {listing.contact && <div className="market-contact"><small>판매자 연락처</small><strong>{listing.contact}</strong><button type="button" onClick={() => void copyContact(listing.contact ?? "")}>복사</button>{copyNotice && <small role="status">{copyNotice}</small>}</div>}
             <MarketMessageButton seller={listing.seller} listing={{ publicId, title: listing.title }} />
-            {(listing.canEdit || listing.canDelete) && <div className="market-owner-tools">{listing.canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중" : "삭제"}</button>}</div>}
-            {listing.canEdit && listing.tradeStatus === "SOLD" && <p className="market-sold-note">판매 완료 글은 장터 목록 기본 보기에서 숨겨져요. 목록의 거래 상태에서 &apos;전체(판매 완료 포함)&apos;를 고르면 보여요.</p>}
+            {(canEdit || listing.canDelete || adminActions.length > 0) && <div className="market-owner-tools">{canEdit && <><select value={listing.tradeStatus} onChange={(event) => void changeTradeStatus(event.target.value)}><option value="ON_SALE">판매 중</option><option value="RESERVED">예약 중</option><option value="SOLD">판매 완료</option></select><Link href={`/market/${publicId}/edit`}>수정</Link></>}{adminActions.map((action) => <button type="button" key={action.status} onClick={() => void changeModeration(action)} disabled={moderating}>{action.label}</button>)}{listing.canDelete && <button type="button" onClick={() => void deleteListing()} disabled={deleting}>{deleting ? "삭제 중" : "삭제"}</button>}</div>}
+            {canEdit && listing.tradeStatus === "SOLD" && <p className="market-sold-note">판매 완료 글은 장터 목록 기본 보기에서 숨겨져요. 목록의 거래 상태에서 &apos;전체(판매 완료 포함)&apos;를 고르면 보여요.</p>}
             <ReportButton targetType="POST" targetId={publicId} />
           </section>
         </article>

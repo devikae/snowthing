@@ -1362,7 +1362,7 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 .market-contact strong { color: var(--snow-ink); font-size: 13.5px; font-weight: 500; }
 .market-contact button { border: 0; background: transparent; color: var(--snow-ink); font-size: 12.5px; font-weight: 600; }
 .market-contact button:hover { text-decoration: underline; }
-.market-owner-tools { display: flex; gap: 6px; margin-top: auto; padding-top: 18px; }
+.market-owner-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 18px; }
 .market-owner-tools select, .market-owner-tools a, .market-owner-tools button { min-height: 34px; padding: 0 12px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); font-size: 12.5px; font-weight: 500; }
 .market-owner-tools a { display: inline-flex; align-items: center; }
 .market-detail-page > .post-detail-toolbar { margin-bottom: 0; }
