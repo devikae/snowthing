@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ikae.snowthing.domain.member.entity.Member;
@@ -33,9 +34,13 @@ import com.ikae.snowthing.domain.moderation.api.ModerationApiException;
 @SpringBootTest(
         properties = {
             "snowthing.moderation.api.enabled=true",
-            "snowthing.moderation.api.api-key=test-key"
+            "snowthing.moderation.api.api-key=test-key",
+            // 클래스가 끝나면 컨텍스트를 닫는다. create-drop이면 닫힐 때 공유 테스트 스키마를 지워 다른 컨텍스트가 깨진다.
+            "spring.jpa.hibernate.ddl-auto=update"
         })
 @AutoConfigureMockMvc
+// 이 설정(속성 두 개와 가짜 API 클라이언트)은 이 클래스만 쓴다. 캐시에 남기면 전체 테스트에서 테스트 JVM 힙이 모자란다.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ModerationApiStageIntegrationTest extends ModerationTestSupport {
 
     @MockitoBean private ModerationApiClient apiClient;
