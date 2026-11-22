@@ -570,6 +570,8 @@
 
   .admin-hold-row .admin-actions {
     justify-content: flex-start;
+  }
+}
 
 /* AI 회원 활동 스위치 (IKA-108). 설정 목록 형태로 한 패널 안에 줄을 나눈다. */
 .admin-ai-notice {
