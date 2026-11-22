@@ -234,8 +234,8 @@ public class CommentService {
     }
 
     /**
-     * 관리자는 가린 글도 상세에서 보므로 댓글도 함께 읽는다. 글 상세 조회와 같은 기준이다 (IKA-89). 금칙어 보류 글은 작성자 본인에게도 공개 글처럼 댓글을
-     * 보여 준다 (IKA-96).
+     * 관리자는 가린 글도 상세에서 보므로 댓글도 함께 읽는다. 글 상세 조회와 같은 기준이다 (IKA-89). 금칙어 보류 글은 작성자 본인에게도 공개 글처럼 댓글을 보여
+     * 준다 (IKA-96).
      */
     private void validatePostVisibility(Post post, CustomUserDetails viewer, String viewerIp) {
         if (post == null || post.isDeleted()) {

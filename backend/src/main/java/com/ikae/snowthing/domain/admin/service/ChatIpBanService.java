@@ -228,8 +228,8 @@ public class ChatIpBanService {
     }
 
     /**
-     * 실제로 비교할 대역. IPv6 주소 하나나 /64보다 좁은 대역을 막은 줄은 같은 /64 대역 전체에 적용한다. 주소 끝자리를 바꿔 가며 차단을 피하지 못하게 하려는 것이다
-     * (IKA-93). 저장 값은 입력한 주소 그대로 두고 비교할 때만 넓힌다.
+     * 실제로 비교할 대역. IPv6 주소 하나나 /64보다 좁은 대역을 막은 줄은 같은 /64 대역 전체에 적용한다. 주소 끝자리를 바꿔 가며 차단을 피하지 못하게 하려는
+     * 것이다 (IKA-93). 저장 값은 입력한 주소 그대로 두고 비교할 때만 넓힌다.
      */
     private static IpRange effectiveRange(IpRange range) {
         if (!range.isIpv6() || range.prefixLength() <= HOLD_SHORTCUT_IPV6_PREFIX) return range;
