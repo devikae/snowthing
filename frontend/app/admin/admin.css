@@ -779,3 +779,130 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* 게시판 관리 (IKA-114) */
+.admin-board-scroll {
+  overflow-x: auto;
+}
+
+.admin-board-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-board-table th,
+.admin-board-table td {
+  border-top: 1px solid var(--snow-border);
+  padding: 8px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-board-table thead th {
+  border-top: 0;
+  color: var(--snow-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-board-table code {
+  font-size: 12px;
+}
+
+.admin-board-closed td:not(:last-child) {
+  opacity: 0.5;
+}
+
+.admin-board-order {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-board-order span {
+  min-width: 18px;
+  color: var(--snow-muted);
+  text-align: center;
+}
+
+.admin-board-order .admin-button {
+  min-height: 26px;
+  padding: 0 7px;
+}
+
+.admin-board-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.admin-board-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 10px 12px;
+  white-space: normal;
+}
+
+.admin-board-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-board-form input,
+.admin-board-form select {
+  min-height: 34px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 6px;
+  background: var(--snow-canvas);
+  padding: 0 8px;
+  color: var(--snow-ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.admin-board-form input:disabled,
+.admin-board-form select:disabled {
+  background: var(--snow-surface-mid);
+  color: var(--snow-muted);
+  cursor: not-allowed;
+}
+
+.admin-board-form .admin-board-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+}
+
+.admin-board-form .admin-board-check input {
+  min-height: 0;
+}
+
+.admin-board-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-board-editing td {
+  background: var(--snow-surface-low);
+  padding: 12px;
+}
+
+.admin-section details summary {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.admin-board-deleted {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+@media (max-width: 700px) {
+  .admin-board-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -131,41 +131,23 @@ public class DataInitializer implements CommandLineRunner {
                                     .build()));
         }
 
+        // 064 마이그레이션과 같은 순서, 홈 탭, 짧은 이름. 글쓰기 규칙은 빌더가 코드로 같은 기본값을 정한다.
         for (PostCategory category :
                 List.of(
-                        PostCategory.builder().name("자유게시판").code("FREE").build(),
-                        PostCategory.builder().name("익명게시판").code("ANONYMOUS").build(),
-                        PostCategory.builder().name("질문게시판").code("QNA").build(),
-                        PostCategory.builder().name("장비VS").code("GEAR_VS").build(),
-                        PostCategory.builder().name("맛집게시판").code("FOOD").build(),
-                        PostCategory.builder().name("카풀·동행").code("CARPOOL").build())) {
-            if (categoryRepository.findByCode(category.getCode()).isEmpty())
+                        board("공지사항", "NOTICE", "공지", 10, true),
+                        board("자유게시판", "FREE", "자유", 20, true),
+                        board("익명게시판", "ANONYMOUS", "익명", 30, true),
+                        board("질문게시판", "QNA", "질문", 40, true),
+                        board("정보게시판", "INFO", "정보", 50, true),
+                        board("리조트 맛집", "FOOD", "맛집", 60, true),
+                        board("동호회 모집", "CREW", "동호회", 70, true),
+                        board("시즌방 모집", "SEASON_ROOM", "시즌방", 80, true),
+                        board("중고장터", "MARKET", "장터", 900, false),
+                        board("카풀·동행", "CARPOOL", "카풀", 910, false),
+                        board("1:1 문의", "INQUIRY", "문의", 920, false))) {
+            if (categoryRepository.findByCode(category.getCode()).isEmpty()) {
                 categoryRepository.save(category);
-        }
-
-        if (categoryRepository.findByCode("NOTICE").isEmpty()) {
-            categoryRepository.save(PostCategory.builder().name("공지사항").code("NOTICE").build());
-        }
-
-        if (categoryRepository.findByCode("CARPOOL").isEmpty()) {
-            categoryRepository.save(PostCategory.builder().name("카풀·동행").code("CARPOOL").build());
-        }
-
-        if (categoryRepository.findByCode("MARKET").isEmpty()) {
-            categoryRepository.save(PostCategory.builder().name("중고장터").code("MARKET").build());
-        }
-
-        if (categoryRepository.findByCode("CREW").isEmpty()) {
-            categoryRepository.save(PostCategory.builder().name("동호회 모집").code("CREW").build());
-        }
-
-        if (categoryRepository.findByCode("SEASON_ROOM").isEmpty()) {
-            categoryRepository.save(
-                    PostCategory.builder().name("시즌방 모집").code("SEASON_ROOM").build());
-        }
-
-        if (categoryRepository.findByCode("INQUIRY").isEmpty()) {
-            categoryRepository.save(PostCategory.builder().name("1:1 문의").code("INQUIRY").build());
+            }
         }
 
         if (marketCategoryRepository.count() == 0) {
@@ -216,6 +198,17 @@ public class DataInitializer implements CommandLineRunner {
                 }
             }
         }
+    }
+
+    private static PostCategory board(
+            String name, String code, String shortName, int sortOrder, boolean showOnHome) {
+        return PostCategory.builder()
+                .name(name)
+                .code(code)
+                .shortName(shortName)
+                .sortOrder(sortOrder)
+                .showOnHome(showOnHome)
+                .build();
     }
 
     private MarketCategory marketCategory(String code, String name, int sortOrder) {

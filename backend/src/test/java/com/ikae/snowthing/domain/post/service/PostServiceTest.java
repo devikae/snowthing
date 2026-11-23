@@ -121,6 +121,13 @@ class PostServiceTest {
                                                 .name("시즌방 모집")
                                                 .code("SEASON_ROOM")
                                                 .build()));
+
+        categoryRepository
+                .findByCode("INFO")
+                .orElseGet(
+                        () ->
+                                categoryRepository.save(
+                                        PostCategory.builder().name("정보게시판").code("INFO").build()));
     }
 
     @Nested
@@ -820,6 +827,123 @@ class PostServiceTest {
                     .isInstanceOf(CustomAuthException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("닫힌 게시판에는 새 글과 글 옮기기가 BOARD_CLOSED로 막히고, 이미 있던 글은 그 자리에서 고칠 수 있다 (IKA-114).")
+        void closedBoard_rejectsNewPosts_allowsEditInPlace() {
+            PostCategory board =
+                    categoryRepository.save(
+                            PostCategory.builder().name("닫을 게시판").code("TCLOSED_BOARD").build());
+            PostResponse existing =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("TCLOSED_BOARD")
+                                    .title("닫기 전에 쓴 글")
+                                    .content("내용")
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
+            board.changeStatus(BoardStatus.HIDDEN);
+
+            assertThatThrownBy(
+                            () ->
+                                    postService.createPost(
+                                            PostCreateRequest.builder()
+                                                    .categoryCode("TCLOSED_BOARD")
+                                                    .title("닫힌 뒤 새 글")
+                                                    .content("내용")
+                                                    .build(),
+                                            userDetails1,
+                                            "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.BOARD_CLOSED);
+
+            PostUpdateRequest moveIn =
+                    PostUpdateRequest.builder()
+                            .categoryCode("TCLOSED_BOARD")
+                            .title("옮기기 시도")
+                            .content("내용")
+                            .build();
+            assertThatThrownBy(
+                            () ->
+                                    postService.updatePost(
+                                            createdPost.publicId(), moveIn, userDetails1))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.BOARD_CLOSED);
+
+            PostResponse edited =
+                    postService.updatePost(
+                            existing.publicId(),
+                            PostUpdateRequest.builder()
+                                    .categoryCode("TCLOSED_BOARD")
+                                    .title("닫힌 뒤 고친 제목")
+                                    .content("고친 내용")
+                                    .build(),
+                            userDetails1);
+            assertThat(edited.title()).isEqualTo("닫힌 뒤 고친 제목");
+        }
+
+        @Test
+        @DisplayName(
+                "정보게시판에 회원은 글을 쓰고, 익명 작성을 시도하거나 익명 글을 정보게시판으로 옮기면 ANONYMOUS_POST_NOT_ALLOWED 예외가 발생한다.")
+        void infoBoard_anonymous_rejected() {
+            PostResponse infoPost =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("INFO")
+                                    .title("하이원 개장 소식")
+                                    .content("이번 주 금요일 개장")
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
+            assertThat(infoPost.categoryCode()).isEqualTo("INFO");
+
+            PostCreateRequest infoAnonRequest =
+                    PostCreateRequest.builder()
+                            .categoryCode("INFO")
+                            .title("익명 정보글")
+                            .content("익명 내용")
+                            .isAnonymous(true)
+                            .anonymousPassword("Pass1234!")
+                            .build();
+
+            assertThatThrownBy(
+                            () ->
+                                    postService.createPost(
+                                            infoAnonRequest, userDetails1, "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+
+            PostResponse anonPost =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("ANONYMOUS")
+                                    .title("익명 원본글")
+                                    .content("익명 내용")
+                                    .isAnonymous(true)
+                                    .anonymousPassword("Password123!")
+                                    .build(),
+                            null,
+                            "127.0.0.1");
+            PostUpdateRequest updateToInfoReq =
+                    PostUpdateRequest.builder()
+                            .categoryCode("INFO")
+                            .title("정보로 변경 시도")
+                            .content("변경 내용")
+                            .anonymousPassword("Password123!")
+                            .build();
+
+            assertThatThrownBy(
+                            () ->
+                                    postService.updatePost(
+                                            anonPost.publicId(), updateToInfoReq, null))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
         @Test

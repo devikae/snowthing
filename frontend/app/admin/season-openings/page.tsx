@@ -115,7 +115,7 @@ export default function AdminSeasonOpeningsPage() {
                   checked={current.showAfterOpening ?? false}
                   onChange={(event) => change({ ...current, showAfterOpening: event.target.checked })}
                 />
-                개장한 리조트도 &quot;개장 D+N&quot;으로 표시
+                개장한 리조트도 &quot;D+N&quot;으로 표시
               </label>
               <label className="admin-season-title">
                 배너 문구

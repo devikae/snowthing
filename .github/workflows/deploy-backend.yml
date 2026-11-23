@@ -40,12 +40,15 @@ jobs:
       SNOWTHING_TEST_DB_URL: jdbc:mysql://localhost:3306/snowthing_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&useAffectedRows=true
       SNOWTHING_TEST_DB_USERNAME: snowuser
       SNOWTHING_TEST_DB_PASSWORD: snowthing_pass_2026!
+      # 시험 DB라 마이그레이션 실패 원문을 로그에 그대로 보여 준다. 운영 배포(SSM)에서는 요약만 보인다.
+      SNOWTHING_MIGRATION_PRINT_FULL_ERROR: 'true'
     defaults:
       run:
         working-directory: ./backend
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
@@ -77,6 +80,18 @@ jobs:
         run: |
           chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-007-015.sh
           scripts/verify-production-migration-007-015.sh
+
+      - name: Verify production migration runner safety
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/run-production-migrations.sh scripts/verify-production-migration-runner.sh
+          scripts/verify-production-migration-runner.sh
+
+      - name: Verify new production migrations are safe to run twice
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/verify-production-migration-rerun.sh
+          scripts/verify-production-migration-rerun.sh
       # 마이그레이션 스키마에서 ddl-auto=validate로 기동해 엔티티와 대조한다. 일반 test는 create-drop이라 먼저 돌린다.
       - name: Validate JPA entities against migrated schema
         run: ./gradlew schemaValidate -x spotlessCheck
@@ -95,6 +110,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.stable_tag == '')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:

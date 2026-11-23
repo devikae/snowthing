@@ -147,6 +147,8 @@ html[data-theme="dark"] .tool-card { box-shadow: none; }
 .tool-bands li { display: grid; grid-template-columns: 64px auto minmax(0, 1fr); align-items: center; gap: 4px 12px; min-height: 60px; padding-block: 14px; border-bottom: 1px solid var(--snow-border); }
 .tool-bands .tool-band-focus { grid-column: 2 / -1; color: var(--snow-muted); font-size: 13px; line-height: 1.5; }
 .tool-bands li:last-child { border-bottom: 0; }
+/* 체격으로 먼저 볼 구간 (스키 계산기) */
+.rider-tools .tool-bands li.is-picked small, .tool-bands li.is-picked strong { color: var(--snow-accent); font-weight: 800; }
 .rider-tools .tool-bands small { color: var(--snow-muted); font-size: 13px; }
 .tool-bands strong { font-size: 19px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tool-bands b { color: var(--snow-ink); font-size: 15px; font-weight: 700; text-align: right; }
@@ -169,3 +171,8 @@ html[data-theme="dark"] .tool-card { box-shadow: none; }
   .tool-tiles { grid-template-columns: minmax(0, 1fr); }
   .tool-hero h1 br, .rider-tools .tool-hero h1 + p br { display: none; }
 }
+
+/* 결과 아래 안내: 문장마다 한 줄씩 */
+.tool-notes { display: grid; gap: 8px; margin: 0 0 20px; padding: 0 0 0 18px; list-style: disc; color: var(--snow-ink-soft); font-size: 14px; line-height: 1.65; }
+.tool-notes li { display: list-item; }
+.tool-notes li::marker { color: var(--snow-faint); }

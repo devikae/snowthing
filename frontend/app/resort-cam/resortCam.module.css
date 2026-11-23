@@ -442,6 +442,18 @@
   transform: scale(1.1);
 }
 
+/* 목록 미리보기가 끝난 뒤 마지막 화면 위에 얹는 커버. 화면이 비치도록 옅게 */
+.frozenCover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.15) 0%, rgba(15, 23, 42, 0.6) 100%);
+}
+
+.frozenCover:hover {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.45) 100%);
+}
+
 .playText {
   font-size: 14px;
   font-weight: 750;

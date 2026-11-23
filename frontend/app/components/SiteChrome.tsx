@@ -7,11 +7,13 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { API_ENDPOINTS } from "../lib/api";
 import { disablePushBeforeLogout } from "../lib/push";
 import { clearViewerCache, fetchViewer, peekViewer } from "../lib/viewer";
+import { readLocal, writeLocal } from "../lib/safeStorage";
 import { RotatingWordmark } from "./RotatingWordmark";
 import { SnowflakeMark } from "./SnowflakeMark";
 import { CommentProfileAvatar } from "./CommentProfileAvatar";
 import { MessageNavLink } from "./MessageNavLink";
 import { NotificationBell } from "./NotificationBell";
+import { useBoards } from "./BoardsProvider";
 
 type ThemeSetting = "light" | "dark";
 
@@ -29,7 +31,7 @@ function ThemeToggle() {
   const [setting, setSetting] = useState<ThemeSetting>("light");
 
   useEffect(() => {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    const saved = readLocal(THEME_STORAGE_KEY);
     const initialSetting: ThemeSetting = saved === "light" || saved === "dark"
       ? saved
       : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -42,7 +44,7 @@ function ThemeToggle() {
     const nextSetting: ThemeSetting = setting === "light" ? "dark" : "light";
     setSetting(nextSetting);
     applyTheme(nextSetting);
-    localStorage.setItem(THEME_STORAGE_KEY, nextSetting);
+    writeLocal(THEME_STORAGE_KEY, nextSetting);
   };
 
   const nextSetting: ThemeSetting = setting === "light" ? "dark" : "light";
@@ -75,7 +77,13 @@ function ChevronDownIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "inquiry";
+// 게시판 메뉴는 관리자가 추가한 게시판도 강조되도록 board:코드로 가리킨다 (IKA-114).
+export type BoardNav = `board:${string}`;
+export type ActiveNav = "home" | "posts" | "best" | BoardNav | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "inquiry";
+
+export function boardNav(code: string): BoardNav {
+  return `board:${code}`;
+}
 
 interface MemberUser {
   publicId: string;
@@ -90,16 +98,13 @@ interface NavItem {
   key: string;
 }
 
-const boardItems: NavItem[] = [
-  { href: "/posts?category=NOTICE", label: "공지사항", key: "notice" },
-  { href: "/posts", label: "전체글", key: "posts" },
-  { href: "/posts?category=FREE", label: "자유게시판", key: "free" },
-  { href: "/posts?category=ANONYMOUS", label: "익명게시판", key: "anonymous" },
-  { href: "/posts?category=QNA", label: "질문게시판", key: "gear" },
-  { href: "/posts?category=FOOD", label: "리조트 맛집", key: "food" },
-  { href: "/posts?category=CREW", label: "동호회 모집", key: "crew" },
-  { href: "/posts?category=SEASON_ROOM", label: "시즌방 모집", key: "seasonRoom" },
-];
+// 전체글을 맨 앞에 두고, 게시판은 관리자가 정한 순서를 따른다.
+function boardNavItems(boards: { code: string; name: string }[]): NavItem[] {
+  return [
+    { href: "/posts", label: "전체글", key: "posts" },
+    ...boards.map((board) => ({ href: `/posts?category=${encodeURIComponent(board.code)}`, label: board.name, key: boardNav(board.code) })),
+  ];
+}
 
 // 주소의 첫 경로로 강조할 메뉴를 고른다. 게시판 목록은 쿼리(category, view)에 따라 달라 화면이 직접 넘긴다.
 const SECTION_NAV: Record<string, ActiveNav> = {
@@ -181,7 +186,8 @@ export function TopNav({ active: activeOverride }: { active?: ActiveNav }) {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const boardActive = ["posts", "notice", "best", "free", "anonymous", "gear", "food", "crew", "seasonRoom"].includes(active);
+  const boardItems = boardNavItems(useBoards());
+  const boardActive = active === "posts" || active === "best" || active.startsWith("board:");
   const isBoardItemActive = (key: string) => active === key;
 
   useEffect(() => {

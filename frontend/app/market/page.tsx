@@ -9,6 +9,7 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
 import { formatKoreanDate } from "../lib/koreanDate";
 import { PRODUCT_CONDITION_LABELS } from "./marketOptions";
+import { readLocal, writeLocal } from "../lib/safeStorage";
 
 type ViewMode = "list" | "album";
 
@@ -62,7 +63,7 @@ function MarketPageContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState(keyword);
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    typeof window !== "undefined" && localStorage.getItem("snowthing:market:view") === "album"
+    typeof window !== "undefined" && readLocal("snowthing:market:view") === "album"
       ? "album"
       : "list",
   );
@@ -146,7 +147,7 @@ function MarketPageContent() {
 
   const changeView = (next: ViewMode) => {
     setViewMode(next);
-    localStorage.setItem("snowthing:market:view", next);
+    writeLocal("snowthing:market:view", next);
   };
 
   const visiblePages = useMemo(() => {
@@ -188,7 +189,7 @@ function MarketPageContent() {
             </Link>)}
         </section>
 
-        {!loading && !error && totalPages > 1 && <nav className="board-pagination market-pagination" aria-label="페이지 이동"><button disabled={page === 1} onClick={() => move({ page: page - 1 })} aria-label="이전 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_left</span></button>{visiblePages.map((number) => <button key={number} className={number === page ? "current" : ""} onClick={() => move({ page: number })}>{number}</button>)}<button disabled={page === totalPages} onClick={() => move({ page: page + 1 })} aria-label="다음 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></nav>}
+        {!loading && !error && totalPages > 1 && <nav className="board-pagination market-pagination" aria-label="페이지 이동"><button disabled={page === 1} onClick={() => move({ page: page - 1 })} aria-label="이전 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_left</span></button>{visiblePages.map((number) => <button key={number} className={number === page ? "current" : ""} aria-current={number === page ? "page" : undefined} onClick={() => move({ page: number })}>{number}</button>)}<button disabled={page === totalPages} onClick={() => move({ page: page + 1 })} aria-label="다음 페이지"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></nav>}
       </main>
       <Footer />
     </div>

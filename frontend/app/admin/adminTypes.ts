@@ -255,6 +255,12 @@ export const ACTION_LABEL: Record<string, string> = {
   MODERATION_PASS: "자동 검열 문제없음",
   MODERATION_KEEP: "자동 검열 숨김 유지",
   MODERATION_DELETE: "자동 검열 삭제",
+  BOARD_CREATE: "게시판 추가",
+  BOARD_UPDATE: "게시판 수정",
+  BOARD_STATUS: "게시판 열기, 닫기",
+  BOARD_MOVE: "게시판 순서 변경",
+  BOARD_DELETE: "게시판 삭제",
+  BOARD_RESTORE: "게시판 복구",
 };
 
 export const TARGET_LABEL: Record<string, string> = {
@@ -270,6 +276,7 @@ export const TARGET_LABEL: Record<string, string> = {
   SEASON_OPENING: "개장일",
   BANNED_WORD: "금칙어",
   CONTENT_MODERATION: "자동 검열",
+  BOARD: "게시판",
 };
 
 /** 자동 검열 검토 대기 항목 (IKA-80). 숨김(HIDE)과 검토 대기(REVIEW) 판정만 온다. */

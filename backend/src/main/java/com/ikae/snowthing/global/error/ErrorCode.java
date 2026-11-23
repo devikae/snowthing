@@ -109,6 +109,7 @@ public enum ErrorCode {
     INQUIRY_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "POST_007", "로그인 후 1:1 문의를 이용할 수 있습니다."),
     INQUIRY_CATEGORY_CHANGE_NOT_ALLOWED(
             HttpStatus.BAD_REQUEST, "POST_008", "1:1 문의와 다른 게시판 사이에서는 카테고리를 바꿀 수 없습니다."),
+    BOARD_CLOSED(HttpStatus.BAD_REQUEST, "POST_012", "지금은 이 게시판에 글을 쓸 수 없습니다."),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "존재하지 않거나 이미 삭제된 댓글입니다."),
     PARENT_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_002", "존재하지 않는 부모 댓글입니다."),
     INVALID_COMMENT_PARENT(HttpStatus.BAD_REQUEST, "COMMENT_003", "동일한 게시글의 댓글에만 대댓글을 달 수 있습니다."),
@@ -346,6 +347,13 @@ public enum ErrorCode {
     BANNED_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_011", "존재하지 않는 금칙어입니다."),
     FILTER_HOLD_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_012", "이미 처리했거나 존재하지 않는 보류 항목입니다."),
     MODERATION_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_013", "이미 처리했거나 존재하지 않는 검토 항목입니다."),
+
+    // 게시판 관리 (064, IKA-114)
+    BOARD_CODE_INVALID(
+            HttpStatus.BAD_REQUEST, "ADMIN_014", "게시판 코드는 영문 대문자로 시작하는 영문 대문자, 숫자, 밑줄 2~20자입니다."),
+    BOARD_CODE_DUPLICATED(HttpStatus.CONFLICT, "ADMIN_015", "이미 쓰였거나 쓸 수 없는 게시판 코드입니다."),
+    BOARD_RULE_INVALID(HttpStatus.BAD_REQUEST, "ADMIN_016", "비회원도 쓰는 게시판은 항상 익명이어야 합니다."),
+    BOARD_NOT_MANAGED(HttpStatus.NOT_FOUND, "ADMIN_017", "관리할 수 없는 게시판입니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SERVER_001", "서버 내부 오류가 발생했습니다.");
 

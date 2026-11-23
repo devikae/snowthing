@@ -18,7 +18,9 @@ import { readApiError } from "../../lib/http";
 import { LoginExpiredNotice } from "../../components/LoginExpiredNotice";
 import { CommentProfileAvatar } from "../../components/CommentProfileAvatar";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../lib/imageFile";
-import { COMPOSE_CATEGORIES } from "../composeCategories";
+import { useBoards } from "../../components/BoardsProvider";
+import { findBoard } from "../../lib/boards";
+import { composeBoards, guestBoardCode } from "../composeCategories";
 
 const ToastEditor = dynamic(() => import("../../components/ToastEditor"), {
   ssr: false,
@@ -40,6 +42,7 @@ function PostCreateForm() {
   const initialCat = searchParams.get("category") || "FREE";
 
   const [categoryCode, setCategoryCode] = useState(initialCat);
+  const boards = useBoards();
   const [toolDraft] = useState(() => readDeckQuestionDraft(searchParams.get("draft") === "deck" && initialCat === "QNA"));
   const [title, setTitle] = useState(toolDraft?.title ?? "");
   const [anonymousPassword, setAnonymousPassword] = useState("");
@@ -80,14 +83,15 @@ function PostCreateForm() {
       }
 
       const currentCategory = searchParams.get("category");
-      if (currentCategory === "NOTICE" && loggedInMember && loggedInMember.role !== "ROLE_ADMIN") {
-        router.replace("/posts?category=NOTICE");
+      const requested = currentCategory ? findBoard(boards, currentCategory) : undefined;
+      if (requested?.writePermission === "ADMIN" && loggedInMember && loggedInMember.role !== "ROLE_ADMIN") {
+        router.replace(`/posts?category=${encodeURIComponent(requested.code)}`);
         return;
       }
       if (!loggedInMember) {
         if (!currentCategory) {
-          setCategoryCode("ANONYMOUS");
-        } else if (currentCategory !== "ANONYMOUS") {
+          setCategoryCode(guestBoardCode(boards));
+        } else if (requested?.writePermission !== "ALL") {
           if (!hasAlertedRef.current) {
             hasAlertedRef.current = true;
             const destination = `/posts/create?category=${encodeURIComponent(currentCategory)}${searchParams.get("draft") === "deck" ? "&draft=deck" : ""}`;
@@ -101,14 +105,16 @@ function PostCreateForm() {
     return () => {
       isSubscribed = false;
     };
-  }, [searchParams, router]);
+  }, [searchParams, router, boards]);
 
-  const isAnonCategory = categoryCode === "ANONYMOUS";
+  const board = findBoard(boards, categoryCode);
+  // 항상 익명인 게시판(익명게시판 등)은 작성자를 숨기고, 비회원은 수정, 삭제 비밀번호를 받는다.
+  const isAnonCategory = board?.anonymousMode === "FORCED";
   // 1:1 문의는 다른 게시판으로 옮길 수 없으므로 카테고리 선택을 숨기고 고정한다.
   const isInquiry = categoryCode === "INQUIRY";
 
   const handleCategorySelect = (nextCode: string) => {
-    if (!userProfile && nextCode !== "ANONYMOUS") {
+    if (!userProfile && findBoard(boards, nextCode)?.writePermission !== "ALL") {
       router.push(`/login?returnUrl=${encodeURIComponent(`/posts/create?category=${nextCode}`)}`);
       return;
     }
@@ -252,7 +258,7 @@ function PostCreateForm() {
 
   const boardName = isInquiry
     ? "1:1 문의"
-    : (COMPOSE_CATEGORIES.find((item) => item.code === categoryCode)?.label ?? "자유게시판");
+    : (board?.name ?? "게시판");
   const writerName = isAnonCategory ? "익명의 사용자" : userProfile?.nickname || "로그인 사용자";
 
   return (
@@ -289,7 +295,7 @@ function PostCreateForm() {
       {!isInquiry && (
       <nav className="compose-category-bar" aria-label="작성할 게시판 선택">
         <div className="filter-pills">
-          {COMPOSE_CATEGORIES.filter((cat) => !cat.adminOnly || userProfile?.role === "ROLE_ADMIN").map((cat) => (
+          {composeBoards(boards, userProfile?.role === "ROLE_ADMIN").map((cat) => (
             <button
               key={cat.code}
               type="button"
