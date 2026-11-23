@@ -20,6 +20,7 @@ import com.ikae.snowthing.domain.post.dto.PostListResponse;
 import com.ikae.snowthing.domain.post.dto.PostSearchRequest;
 import com.ikae.snowthing.domain.post.dto.PostViewType;
 import com.ikae.snowthing.domain.post.dto.SearchType;
+import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostCategoryCodes;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse;
 import com.ikae.snowthing.global.common.dto.CursorPageResponse.PageInfo;
