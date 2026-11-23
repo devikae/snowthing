@@ -35,11 +35,27 @@ public class SignUpNotificationListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSignedUp(MemberSignedUpEvent event) {
         notifier.event(
-                "🎉 신규 가입: "
+                "🎉 신규 가입 "
+                        + ZonedDateTime.now(clock).withZoneSameInstant(KST).format(TIME)
+                        + "\n닉네임: "
                         + event.nickname()
-                        + " ("
-                        + event.method()
-                        + ") "
-                        + ZonedDateTime.now(clock).withZoneSameInstant(KST).format(TIME));
+                        + "\n이름: "
+                        + displayName(event.socialName())
+                        + "\n가입: "
+                        + methodLabel(event.method()));
+    }
+
+    private static String displayName(String socialName) {
+        return socialName == null || socialName.isBlank() ? "없음" : socialName.strip();
+    }
+
+    private static String methodLabel(String method) {
+        return switch (method) {
+            case "EMAIL" -> "이메일";
+            case "KAKAO" -> "카카오";
+            case "NAVER" -> "네이버";
+            case "GOOGLE" -> "구글";
+            default -> method;
+        };
     }
 }
