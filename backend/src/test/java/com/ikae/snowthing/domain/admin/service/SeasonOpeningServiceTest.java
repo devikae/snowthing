@@ -185,6 +185,8 @@ class SeasonOpeningServiceTest {
     @Test
     @DisplayName("개장 후 표시 설정 줄이 없으면 꺼진 것으로 본다")
     void missingShowAfterOpeningMeansOff() {
+        when(configRepository.findById(SeasonOpeningService.KEY_BANNER_ENABLED))
+                .thenReturn(Optional.of(bannerSwitch));
         when(configRepository.findById(SeasonOpeningService.KEY_SHOW_AFTER_OPENING))
                 .thenReturn(Optional.empty());
 
