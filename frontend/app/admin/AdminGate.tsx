@@ -35,6 +35,7 @@ const ADMIN_MENU: { title: string; items: { href: string; label: string }[] }[] 
   {
     title: "사이트",
     items: [
+      { href: "/admin/boards", label: "게시판" },
       { href: "/admin/banners", label: "배너" },
       { href: "/admin/season-openings", label: "개장일" },
     ],

@@ -10,51 +10,19 @@ import { API_ENDPOINTS } from "../lib/api";
 import { fetchViewer, isAdminViewer } from "../lib/viewer";
 import { hasRecentWrite } from "../lib/recentWrite";
 import { formatCompactTime } from "../lib/koreanDate";
+import { canWriteTo, categoryLabel, findBoard } from "../lib/boards";
+import { useBoards } from "../components/BoardsProvider";
 import {
   DEFAULT_SEARCH_TYPE,
   NOTICE_QUERY,
   SEARCH_TYPES,
-  boardConfigs,
+  boardActiveNav,
+  boardTitle,
   postListApiQuery,
   readPostListParams,
   type InitialPostList,
   type PostItem,
 } from "./postListQuery";
-
-const categories = [
-  { code: "", name: "전체글" },
-  { code: "NOTICE", name: "공지사항" },
-  { code: "FREE", name: "자유게시판" },
-  { code: "ANONYMOUS", name: "익명게시판" },
-  { code: "QNA", name: "질문게시판" },
-  { code: "INFO", name: "정보게시판" },
-  { code: "FOOD", name: "리조트 맛집" },
-  { code: "CREW", name: "동호회 모집" },
-  { code: "SEASON_ROOM", name: "시즌방 모집" },
-];
-
-function formatShortCategory(categoryCode: string, categoryName: string): string {
-  switch (categoryCode) {
-    case "NOTICE":
-      return "공지사항";
-    case "FREE":
-      return "자유";
-    case "ANONYMOUS":
-      return "익명";
-    case "QNA":
-      return "질문";
-    case "INFO":
-      return "정보";
-    case "FOOD":
-      return "맛집";
-    case "CREW":
-      return "동호회";
-    case "SEASON_ROOM":
-      return "시즌방";
-    default:
-      return categoryName.replace(/게시판|\s+/g, "");
-  }
-}
 
 function PostListContent({ initial }: { initial: InitialPostList | null }) {
   const router = useRouter();
@@ -72,12 +40,15 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
   );
   // 서버가 이 주소의 목록을 이미 받아 왔으면 브라우저는 다시 부르지 않는다.
   const serverList = initial?.query === listQuery ? initial : null;
-  const config = boardConfigs[currentCategory];
+  const boards = useBoards();
+  const boardName = boardTitle(boards, currentCategory);
   const isInquiry = currentCategory === "INQUIRY";
 
   const [posts, setPosts] = useState<PostItem[]>(serverList?.posts ?? []);
   const [notices, setNotices] = useState<PostItem[]>(initial?.notices ?? []);
   const [isAdmin, setIsAdmin] = useState(false);
+  // 전체글과 문의는 늘 글쓰기를 보인다. 게시판은 열려 있고(닫히면 목록에 없다) 관리자 전용이면 관리자일 때만 보인다.
+  const canWrite = !currentCategory || isInquiry || canWriteTo(findBoard(boards, currentCategory), isAdmin);
   const [searchKeyword, setSearchKeyword] = useState(keywordFromUrl);
   const [searchType, setSearchType] = useState(searchTypeFromUrl);
   const [totalPages, setTotalPages] = useState(serverList?.totalPages ?? 1);
@@ -207,9 +178,9 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
 
   return (
     <div className="community-page">
-      <TopNav active={currentView === "best" ? "best" : config.navKey} />
+      <TopNav active={currentView === "best" ? "best" : boardActiveNav(currentCategory)} />
       <main className="community-container board-page">
-        <h1 className="sr-only">{config.name}</h1>
+        <h1 className="sr-only">{boardName}</h1>
         <div className="board-layout">
           <section className="board-primary">
             {isInquiry ? (
@@ -220,7 +191,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
             ) : (
             <nav className="board-filter-panel" aria-label="게시판 선택">
               <div className="board-category-tabs filter-pills">
-                {categories.map((category) => (
+                {[{ code: "", name: "전체글" }, ...boards].map((category) => (
                   <button
                     key={category.code}
                     type="button"
@@ -287,7 +258,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                         ? isAdmin ? "들어온 문의가 없습니다." : "남긴 문의가 없습니다."
                         : "등록된 게시글이 없습니다."}
                   </strong>
-                  {!keywordFromUrl && (currentCategory !== "NOTICE" || isAdmin) && (
+                  {!keywordFromUrl && canWrite && (
                     <Link href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}>
                       {isInquiry ? "문의하기" : "첫 글 작성하기"}
                     </Link>
@@ -312,7 +283,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                       <div className="m-row-left">
                         {!currentCategory && (
                           <span className={`m-cat ${post.categoryCode === "NOTICE" ? "notice" : post.categoryCode === "QNA" ? "accent" : ""}`}>
-                            {formatShortCategory(post.categoryCode, post.categoryName)}
+                            {categoryLabel(boards, post.categoryCode, post.categoryName)}
                           </span>
                         )}
                         {post.answered != null && (
@@ -383,15 +354,15 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                   <input
                     value={searchKeyword}
                     onChange={(event) => setSearchKeyword(event.target.value)}
-                    placeholder={`${config.name} 내 검색`}
-                    aria-label={`${config.name} 내 검색`}
+                    placeholder={`${boardName} 내 검색`}
+                    aria-label={`${boardName} 내 검색`}
                     aria-describedby={keywordTooShort ? "board-search-hint" : undefined}
                     maxLength={50}
                   />
                   <button disabled={keywordTooShort}>검색</button>
                   {keywordTooShort && <p id="board-search-hint" className="board-search-hint" role="status">한 글자로는 검색할 수 없어요.</p>}
                 </form>
-                {(currentCategory !== "NOTICE" || isAdmin) && (
+                {canWrite && (
                   <Link
                     href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}
                     className="board-write-button"

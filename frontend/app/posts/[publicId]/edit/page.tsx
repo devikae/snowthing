@@ -16,7 +16,8 @@ import { CommentProfileAvatar } from "../../../components/CommentProfileAvatar";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 import { readErrorMessage } from "../../../lib/http";
-import { COMPOSE_CATEGORIES } from "../../composeCategories";
+import { useBoards } from "../../../components/BoardsProvider";
+import { composeBoards } from "../../composeCategories";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
   ssr: false,
@@ -26,6 +27,7 @@ const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), {
 interface PostDetail {
   publicId: string;
   categoryCode: string;
+  categoryName?: string;
   title: string;
   content: string;
   isAnonymous: boolean;
@@ -44,6 +46,9 @@ function PostEditForm({ publicId }: { publicId: string }) {
   useLeaveWarning();
   const editorRef = useRef<ToastEditorHandle>(null);
   const [categoryCode, setCategoryCode] = useState("FREE");
+  // 글이 원래 있던 게시판. 닫혀서 열린 목록에 없어도 선택지에 남겨 그 자리에서 고치게 한다.
+  const [originalCategory, setOriginalCategory] = useState<{ code: string; name: string } | null>(null);
+  const boards = useBoards();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [anonymousPassword, setAnonymousPassword] = useState("");
@@ -99,6 +104,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
             }
 
             setCategoryCode(data.categoryCode || "FREE");
+            if (data.categoryCode) setOriginalCategory({ code: data.categoryCode, name: data.categoryName ?? data.categoryCode });
             setTitle(data.title || "");
             setContent(data.content || "");
             setImages(Array.isArray(data.images) ? data.images : []);
@@ -225,8 +231,8 @@ function PostEditForm({ publicId }: { publicId: string }) {
       {categoryCode !== "INQUIRY" && (
       <nav className="compose-category-bar" aria-label="게시판 변경">
         <div className="filter-pills">
-          {/* 공지사항은 관리자만 고를 수 있다. 일반 회원에게 보이면 눌러도 서버가 403으로 거부한다. */}
-          {COMPOSE_CATEGORIES.filter((option) => option.code !== "NOTICE" || isAdmin || categoryCode === "NOTICE").map((option) => (
+          {/* 관리자 전용 게시판(공지 등)은 관리자만 고를 수 있다. 일반 회원에게 보이면 눌러도 서버가 403으로 거부한다. */}
+          {composeBoards(boards, isAdmin, originalCategory?.code, originalCategory?.name).map((option) => (
             <button
               key={option.code}
               type="button"

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { API_V1_URL } from "./lib/api";
+import { fetchBoards } from "./lib/boards";
 import { SITE_URL } from "./lib/siteMetadata";
 import { getResortCameras } from "./resort-cam/data";
 import { resortSlug } from "./resort-cam/types";
@@ -7,14 +8,13 @@ import { resortSlug } from "./resort-cam/types";
 // 검색엔진이 사이트맵을 부를 때마다 백엔드 목록을 다시 읽지 않게 한 시간 동안 같은 결과를 쓴다.
 export const revalidate = 3600;
 
+// 게시판 주소는 열린 게시판 목록(IKA-114)에서 만든다. 닫힌 게시판은 빠진다.
 // 1:1 문의는 본인만 보는 게시판이라 넣지 않는다. 전체 게시판(/posts)은 따로 넣는다.
 // 중고장터(/market)는 회원 전용이라 noindex다(market/layout.tsx). 목록과 판매글 주소 모두 넣지 않는다.
-const PUBLIC_BOARDS = ["NOTICE", "FREE", "ANONYMOUS", "QNA", "INFO", "FOOD", "CREW", "SEASON_ROOM"];
 
 const STATIC_PATHS = [
   "/",
   "/posts",
-  ...PUBLIC_BOARDS.map(code => `/posts?category=${code}`),
   "/carpool",
   "/resort-reports",
   "/resort-cam",
@@ -102,6 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [resorts, dynamic, slopePaths] = await Promise.all([getResortCameras(), dynamicEntries(), slopeSpecPaths()]);
   // IKA-107 리조트 한눈에 보기. 슬로프캠과 같은 리조트 목록, 같은 주소 표기를 쓴다.
   const landingPaths = ["/resorts", ...resorts.map(resort => `/resorts/${resortSlug(resort.code)}`)];
-  const paths = [...STATIC_PATHS, ...landingPaths, ...resorts.map(resort => `/resort-cam/${resortSlug(resort.code)}`), ...slopePaths];
+  const boardPaths = (await fetchBoards()).map(board => `/posts?category=${encodeURIComponent(board.code)}`);
+  const paths = [...STATIC_PATHS, ...boardPaths, ...landingPaths, ...resorts.map(resort => `/resort-cam/${resortSlug(resort.code)}`), ...slopePaths];
   return [...paths.map(path => ({ url: url(path) })), ...dynamic];
 }

@@ -830,6 +830,63 @@ class PostServiceTest {
         }
 
         @Test
+        @DisplayName("닫힌 게시판에는 새 글과 글 옮기기가 BOARD_CLOSED로 막히고, 이미 있던 글은 그 자리에서 고칠 수 있다 (IKA-114).")
+        void closedBoard_rejectsNewPosts_allowsEditInPlace() {
+            PostCategory board =
+                    categoryRepository.save(
+                            PostCategory.builder().name("닫을 게시판").code("TCLOSED_BOARD").build());
+            PostResponse existing =
+                    postService.createPost(
+                            PostCreateRequest.builder()
+                                    .categoryCode("TCLOSED_BOARD")
+                                    .title("닫기 전에 쓴 글")
+                                    .content("내용")
+                                    .build(),
+                            userDetails1,
+                            "127.0.0.1");
+            board.changeStatus(BoardStatus.HIDDEN);
+
+            assertThatThrownBy(
+                            () ->
+                                    postService.createPost(
+                                            PostCreateRequest.builder()
+                                                    .categoryCode("TCLOSED_BOARD")
+                                                    .title("닫힌 뒤 새 글")
+                                                    .content("내용")
+                                                    .build(),
+                                            userDetails1,
+                                            "127.0.0.1"))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.BOARD_CLOSED);
+
+            PostUpdateRequest moveIn =
+                    PostUpdateRequest.builder()
+                            .categoryCode("TCLOSED_BOARD")
+                            .title("옮기기 시도")
+                            .content("내용")
+                            .build();
+            assertThatThrownBy(
+                            () ->
+                                    postService.updatePost(
+                                            createdPost.publicId(), moveIn, userDetails1))
+                    .isInstanceOf(CustomAuthException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.BOARD_CLOSED);
+
+            PostResponse edited =
+                    postService.updatePost(
+                            existing.publicId(),
+                            PostUpdateRequest.builder()
+                                    .categoryCode("TCLOSED_BOARD")
+                                    .title("닫힌 뒤 고친 제목")
+                                    .content("고친 내용")
+                                    .build(),
+                            userDetails1);
+            assertThat(edited.title()).isEqualTo("닫힌 뒤 고친 제목");
+        }
+
+        @Test
         @DisplayName(
                 "정보게시판에 회원은 글을 쓰고, 익명 작성을 시도하거나 익명 글을 정보게시판으로 옮기면 ANONYMOUS_POST_NOT_ALLOWED 예외가 발생한다.")
         void infoBoard_anonymous_rejected() {
