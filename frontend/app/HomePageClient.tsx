@@ -20,7 +20,7 @@ import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 import { HOME_CARPOOL_SIZE, HOME_FEED_SIZE, HOME_MARKET_SIZE, type HomeCarpoolItem, type HomeInitialData, type HomePost, type MarketPreviewItem } from "./lib/homeFeed";
 import { readErrorMessage } from "./lib/http";
 
-type HomeFeedKey = "all" | "notice" | "free" | "anonymous" | "qna" | "food" | "crew" | "season_room";
+type HomeFeedKey = "all" | "notice" | "free" | "anonymous" | "qna" | "info" | "food" | "crew" | "season_room";
 
 interface HomeFeedTab {
   key: HomeFeedKey;
@@ -29,13 +29,14 @@ interface HomeFeedTab {
   query: Record<string, string>;
 }
 
-// PC 홈 왼쪽 칸에 탭 8개와 더보기, 글쓰기가 한 줄에 들어가도록 글 목록의 분류 표시와 같은 짧은 이름을 쓴다.
+// PC 홈 왼쪽 칸에 탭 9개와 더보기, 글쓰기가 한 줄에 들어가도록 글 목록의 분류 표시와 같은 짧은 이름을 쓴다.
 const HOME_FEED_TABS: HomeFeedTab[] = [
   { key: "all", label: "전체글", moreHref: "/posts", query: {} },
   { key: "notice", label: "공지", moreHref: "/posts?category=NOTICE", query: { categoryCode: "NOTICE" } },
   { key: "free", label: "자유", moreHref: "/posts?category=FREE", query: { categoryCode: "FREE" } },
   { key: "anonymous", label: "익명", moreHref: "/posts?category=ANONYMOUS", query: { categoryCode: "ANONYMOUS" } },
   { key: "qna", label: "질문", moreHref: "/posts?category=QNA", query: { categoryCode: "QNA" } },
+  { key: "info", label: "정보", moreHref: "/posts?category=INFO", query: { categoryCode: "INFO" } },
   { key: "food", label: "맛집", moreHref: "/posts?category=FOOD", query: { categoryCode: "FOOD" } },
   { key: "crew", label: "동호회", moreHref: "/posts?category=CREW", query: { categoryCode: "CREW" } },
   { key: "season_room", label: "시즌방", moreHref: "/posts?category=SEASON_ROOM", query: { categoryCode: "SEASON_ROOM" } },
@@ -47,6 +48,7 @@ const emptyFeeds: Record<HomeFeedKey, HomePost[]> = {
   free: [],
   anonymous: [],
   qna: [],
+  info: [],
   food: [],
   crew: [],
   season_room: [],
@@ -57,6 +59,7 @@ const emptyFeedErrors: Record<HomeFeedKey, boolean> = {
   free: false,
   anonymous: false,
   qna: false,
+  info: false,
   food: false,
   crew: false,
   season_room: false,
@@ -74,6 +77,8 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
       return "익명";
     case "QNA":
       return "질문";
+    case "INFO":
+      return "정보";
     case "FOOD":
       return "맛집";
     case "CREW":

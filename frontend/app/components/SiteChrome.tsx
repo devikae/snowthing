@@ -75,7 +75,7 @@ function ChevronDownIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "inquiry";
+export type ActiveNav = "home" | "posts" | "notice" | "best" | "free" | "anonymous" | "gear" | "info" | "food" | "crew" | "seasonRoom" | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "inquiry";
 
 interface MemberUser {
   publicId: string;
@@ -96,6 +96,7 @@ const boardItems: NavItem[] = [
   { href: "/posts?category=FREE", label: "자유게시판", key: "free" },
   { href: "/posts?category=ANONYMOUS", label: "익명게시판", key: "anonymous" },
   { href: "/posts?category=QNA", label: "질문게시판", key: "gear" },
+  { href: "/posts?category=INFO", label: "정보게시판", key: "info" },
   { href: "/posts?category=FOOD", label: "리조트 맛집", key: "food" },
   { href: "/posts?category=CREW", label: "동호회 모집", key: "crew" },
   { href: "/posts?category=SEASON_ROOM", label: "시즌방 모집", key: "seasonRoom" },
@@ -181,7 +182,7 @@ export function TopNav({ active: activeOverride }: { active?: ActiveNav }) {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const boardActive = ["posts", "notice", "best", "free", "anonymous", "gear", "food", "crew", "seasonRoom"].includes(active);
+  const boardActive = ["posts", "notice", "best", "free", "anonymous", "gear", "info", "food", "crew", "seasonRoom"].includes(active);
   const isBoardItemActive = (key: string) => active === key;
 
   useEffect(() => {

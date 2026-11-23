@@ -4,6 +4,7 @@ export const COMPOSE_CATEGORIES = [
   { code: "FREE", label: "자유게시판", adminOnly: false },
   { code: "ANONYMOUS", label: "익명게시판", adminOnly: false },
   { code: "QNA", label: "질문게시판", adminOnly: false },
+  { code: "INFO", label: "정보게시판", adminOnly: false },
   { code: "FOOD", label: "리조트 맛집", adminOnly: false },
   { code: "CREW", label: "동호회 모집", adminOnly: false },
   { code: "SEASON_ROOM", label: "시즌방 모집", adminOnly: false },
