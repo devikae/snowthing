@@ -864,6 +864,13 @@
   font-weight: 400;
 }
 
+.admin-board-form input:disabled,
+.admin-board-form select:disabled {
+  background: var(--snow-surface-mid);
+  color: var(--snow-muted);
+  cursor: not-allowed;
+}
+
 .admin-board-form .admin-board-check {
   display: flex;
   align-items: center;
