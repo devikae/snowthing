@@ -10,14 +10,9 @@
 .tools-community, .tool-explanation { margin-top: 48px; border-top: 1px solid var(--snow-border); padding-top: 32px; }
 .tools-community > div,.tools-related { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; font-size: 14px; }
 .tools-community a,.tools-related a { display: inline-flex; min-height: 36px; align-items: center; text-decoration: underline; text-underline-offset: 4px; }
-.tool-workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 32px; align-items: start; }
-.tool-form,.tool-result { min-width: 0; border: 1px solid var(--snow-border); border-radius: 12px; background: var(--snow-canvas); padding: 24px; }
-.tool-fields { display: grid; gap: 20px; }
 .rider-tools label { display: grid; min-width: 0; gap: 8px; font-size: 14px; font-weight: 500; }
 .rider-tools input,.rider-tools select,.rider-tools textarea { width: 100%; min-width: 0; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); padding: 12px; font: inherit; }
 .rider-tools :is(input,select,textarea,button,a,summary):focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
-.tool-unit-input { display: grid; grid-template-columns: minmax(0,1fr) 2.2em; align-items: center; gap: 8px; }
-.tool-unit-input > span { color: var(--snow-muted); font-size: 14px; }
 .rider-tools button { min-height: 44px; border: 1px solid var(--snow-border-strong); border-radius: 8px; background: var(--snow-canvas); color: var(--snow-ink); padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .rider-tools button:hover { background: var(--snow-surface-mid); }
 .rider-tools .tool-primary { width: 100%; margin-top: 16px; border-color: var(--snow-ink); background: var(--snow-ink); color: var(--snow-canvas); }
@@ -32,14 +27,6 @@
 .tool-metrics > div { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; }
 .tool-metrics dt { color: var(--snow-ink-soft); }
 .tool-metrics dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-.deck-length-guide { margin-top: 24px; }
-.deck-length-guide h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
-.deck-length-guide ol { list-style: none; padding: 0; margin: 0; }
-.deck-length-guide li { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(0, 2fr); align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--snow-border); }
-.deck-length-guide li > div { display: grid; gap: 4px; min-width: 0; }
-.deck-length-guide strong { font-size: 20px; line-height: 1.5; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.deck-length-guide b { font-size: 14px; font-weight: 600; }
-.deck-length-guide li span { color: var(--snow-ink-soft); font-size: 12px; line-height: 1.5; }
 .tool-table-wrap { overflow-x: auto; }
 .rider-tools table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .rider-tools caption { text-align: left; margin-bottom: 12px; color: var(--snow-muted); }
@@ -48,7 +35,6 @@
 .tool-share { margin-top: 24px; }
 .tool-share p { font-size: 12px; }
 .tool-share label { margin-top: 12px; }
-.tool-empty { display: grid; min-height: 240px; align-content: center; text-align: center; }
 .tool-explanation { max-width: 800px; }
 .tool-explanation details { border-bottom: 1px solid var(--snow-border); padding-block: 8px; }
 .tool-explanation summary { padding-block: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
@@ -82,8 +68,7 @@
 .rider-tools .pass-price-cta-link:hover { opacity: .85; }
 @media (max-width: 720px) {
   .rider-tools { padding-block: 24px 48px; }
-  .tool-workspace,.tools-directory,.tool-model-fields { grid-template-columns: minmax(0,1fr); gap: 24px; }
-  .tool-form,.tool-result { padding: 20px 16px; }
+  .tools-directory,.tool-model-fields { grid-template-columns: minmax(0,1fr); gap: 24px; }
   .tool-key-result > strong { font-size: 36px; }
   .pass-price-table th[scope="row"] { min-width: 96px; box-shadow: 1px 0 0 var(--snow-border); }
   .rider-tools .pass-price-scroll-hint { display: block; }
@@ -101,4 +86,85 @@
 .pass-price-chips li { border-radius: 999px; background: var(--snow-surface-mid); padding: 2px 10px; color: var(--snow-ink); font-size: 13px; font-weight: 600; }
 @media (max-width: 560px) {
   .pass-price-notes > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+
+/* 계산기 페이지: 질문형 제목 + 입력과 결과를 담은 카드 하나 (docs/specs 참고) */
+.tool-page { --tool-hero-bg: #0f172a; --tool-hero-ink: #ffffff; --tool-hero-soft: #cbd5e1; max-width: 600px; margin-inline: auto; }
+html[data-theme="dark"] .tool-page { --tool-hero-bg: var(--snow-surface-mid); --tool-hero-ink: var(--snow-ink); --tool-hero-soft: var(--snow-ink-soft); }
+.tool-hero { margin-bottom: 28px; }
+.rider-tools .tool-back { display: inline-flex; min-height: 32px; align-items: center; margin-bottom: 16px; color: var(--snow-muted); font-size: 14px; }
+.rider-tools .tool-back:hover { color: var(--snow-ink); }
+.rider-tools .tool-eyebrow { margin: 0 0 10px; color: var(--snow-accent); font-size: 15px; font-weight: 700; }
+.tool-hero h1 { margin: 0; color: var(--snow-ink); font-size: clamp(34px, 9vw, 48px); font-weight: 800; line-height: 1.18; letter-spacing: -.04em; word-break: keep-all; }
+.rider-tools .tool-hero h1 + p { margin: 16px 0 0; color: var(--snow-ink-soft); font-size: 16px; line-height: 1.6; word-break: keep-all; }
+
+.tool-card { border: 1px solid var(--snow-border); border-radius: 24px; background: var(--snow-canvas); padding: 8px 20px 24px; box-shadow: 0 12px 32px -16px rgba(15, 23, 42, .18); }
+html[data-theme="dark"] .tool-card { box-shadow: none; }
+
+/* 시즌권: 라벨 왼쪽, 큰 숫자 입력 오른쪽 */
+.rider-tools .tool-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; border-bottom: 1px solid var(--snow-border); font-weight: 400; }
+.tool-row > span:first-child { flex-shrink: 0; color: var(--snow-ink-soft); font-size: 15px; }
+.tool-row-value { display: flex; align-items: baseline; justify-content: flex-end; gap: 2px; min-width: 0; }
+.rider-tools .tool-row input { width: 100%; max-width: 170px; border: 0; border-radius: 6px; background: transparent; padding: 6px 2px; color: var(--snow-ink); font-size: 20px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.rider-tools .tool-row input::placeholder { color: var(--snow-faint); font-size: 16px; font-weight: 500; }
+.tool-row-value > b { color: var(--snow-ink); font-size: 18px; font-weight: 700; }
+.rider-tools .tool-row-select select { width: auto; max-width: 55%; border: 0; background-color: transparent; padding: 8px 2px; font-weight: 600; text-align: right; }
+.tool-card .tool-resort-note { display: block; padding: 10px 0 4px; }
+.rider-tools .tool-card .tool-primary { margin-top: 20px; min-height: 52px; border-radius: 14px; font-size: 16px; }
+
+/* 결과 영역 */
+.tool-answer { margin-top: 24px; border-top: 1px solid var(--snow-border); padding-top: 22px; }
+.rider-tools .tool-answer h2 { margin: 0 0 10px; color: var(--snow-ink-soft); font-size: 15px; font-weight: 700; }
+.rider-tools .tool-answer-head { margin: 0; color: var(--snow-ink); font-size: clamp(30px, 8.4vw, 42px); font-weight: 800; line-height: 1.2; letter-spacing: -.04em; word-break: keep-all; }
+.tool-answer-head em { color: var(--snow-accent); font-style: normal; }
+.rider-tools .tool-answer-note { margin: 14px 0 0; color: var(--snow-ink-soft); font-size: 15px; }
+.rider-tools .tool-answer-empty { margin: 0; padding: 20px 0 4px; color: var(--snow-muted); font-size: 15px; }
+
+.tool-visit-dots { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
+.tool-visit-dots li { display: grid; place-items: center; width: 44px; height: 44px; border: 1.5px solid var(--snow-border-strong); border-radius: 50%; color: var(--snow-faint); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tool-visit-dots li.is-done { border-color: var(--snow-ink); background: var(--snow-ink); color: var(--snow-canvas); }
+.tool-visit-dots li.is-goal { border: 2px solid var(--snow-accent); background: color-mix(in srgb, var(--snow-accent) 12%, transparent); color: var(--snow-accent); }
+.tool-visit-dots li.is-done.is-goal { background: var(--snow-accent); color: var(--snow-canvas); }
+.tool-visit-bar { height: 12px; margin-top: 22px; border-radius: 999px; background: var(--snow-surface-mid); overflow: hidden; }
+.tool-visit-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--snow-ink); }
+
+/* 데크: 입력 타일 두 칸, 검은 결과 블록, 길이 구간 줄 */
+.tool-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 16px; }
+.rider-tools .tool-tile { display: grid; gap: 4px; border: 1px solid var(--snow-border-strong); border-radius: 16px; padding: 14px 16px; cursor: text; }
+.rider-tools .tool-tile:focus-within { border-color: var(--snow-ink); }
+.tool-tile > span:first-child { color: var(--snow-ink-soft); font-size: 14px; font-weight: 600; }
+.tool-tile-value { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.rider-tools .tool-tile input { flex: 0 1 auto; width: 4ch; min-width: 1.5ch; max-width: 100%; field-sizing: content; border: 0; background: transparent; padding: 0; color: var(--snow-ink); font-size: 30px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; outline: none; }
+.rider-tools .tool-tile input::placeholder { color: var(--snow-faint); }
+.tool-tile-value > b { color: var(--snow-ink-soft); font-size: 17px; font-weight: 700; }
+.rider-tools .tool-tile-help { display: block; margin-top: 10px; }
+.tool-card form + .tool-answer:has(.tool-answer-block) { border-top: 0; padding-top: 0; }
+.tool-answer-block { border-radius: 18px; background: var(--tool-hero-bg); padding: 22px 22px 24px; }
+.rider-tools .tool-answer-block h2 { color: var(--tool-hero-soft); font-size: 14px; }
+.tool-answer-block > strong { display: block; color: var(--tool-hero-ink); font-size: clamp(40px, 12vw, 60px); font-weight: 800; line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.rider-tools .tool-answer-block p { margin: 10px 0 0; color: var(--tool-hero-soft); font-size: 13.5px; }
+.tool-bands { margin: 8px 0 0; padding: 0; list-style: none; }
+.tool-bands li { display: grid; grid-template-columns: 64px auto minmax(0, 1fr); align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid var(--snow-border); }
+.tool-bands li:last-child { border-bottom: 0; }
+.rider-tools .tool-bands small { color: var(--snow-muted); font-size: 13px; }
+.tool-bands strong { font-size: 19px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tool-bands b { color: var(--snow-ink); font-size: 15px; font-weight: 700; text-align: right; }
+
+/* 카드 아래: 가격표 안내, 자세히 보기, 공유 */
+.rider-tools .tool-plus-link { display: inline-flex; min-height: 44px; align-items: center; margin-top: 16px; color: var(--snow-accent); font-size: 15px; font-weight: 700; }
+.rider-tools .tool-plus-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.tool-more { margin-top: 20px; }
+.tool-more details { border: 1px solid var(--snow-border); border-radius: 16px; padding: 4px 16px; }
+.tool-more summary { min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600; cursor: pointer; }
+.tool-more .tool-metrics { margin-block: 8px 16px; }
+.tool-page .tool-explanation { max-width: none; }
+
+@media (max-width: 720px) {
+  .tool-card { padding: 4px 16px 20px; border-radius: 20px; }
+  .tool-visit-dots { gap: 6px; }
+  .tool-visit-dots li { width: 40px; height: 40px; font-size: 15px; }
+}
+@media (max-width: 380px) {
+  .tool-tiles { grid-template-columns: minmax(0, 1fr); }
+  .tool-hero h1 br, .rider-tools .tool-hero h1 + p br { display: none; }
 }
