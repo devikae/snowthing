@@ -2,11 +2,12 @@
 # 운영 마이그레이션을 한 번 더 실행해도 오류가 없고 데이터 행 수가 바뀌지 않는지 시험 DB에서 확인한다.
 # 실행기는 파일을 적용한 뒤 이력을 남긴다. 그 사이에 연결이 끊기거나 파일 중간에서 실패하면
 # 다음 배포가 같은 파일을 처음부터 다시 실행하므로, 새 마이그레이션은 두 번 실행해도 안전해야 한다.
-# 038 이하는 이미 운영에 적용됐고 재실행 안전하게 쓰이지 않은 파일이 있어 검사에서 뺀다.
+# 062 이하는 이미 운영에 적용돼 다시 실행될 일이 없고, 고치면 실행기의 체크섬 검사에 걸린다. 그래서 검사에서 뺀다.
+# 그중 057은 두 번 실행하면 실패한다(ADD COLUMN 중복). 063부터는 새 마이그레이션이 모두 이 검사를 통과해야 한다.
 # 앞 단계(verify-production-migration-007-015.sh)가 최신까지 적용한 시험 DB에서 돌린다.
 set -euo pipefail
 
-RERUN_SAFE_FROM=39
+RERUN_SAFE_FROM=63
 DB_HOST="${SNOWTHING_TEST_DB_HOST:-127.0.0.1}"
 DB_PORT="${SNOWTHING_TEST_DB_PORT:-3306}"
 DB_NAME="${SNOWTHING_TEST_DB_NAME:-snowthing_test}"
