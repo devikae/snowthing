@@ -210,7 +210,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
 
           {isAnonymous && !isAuthor && (
             <label className="compose-anon-pw-pill">
-              <span className="material-symbols-outlined" aria-hidden="true">lock</span>
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">lock</span>
               <input
                 type="password"
                 placeholder="작성 당시 익명 비밀번호"
@@ -243,7 +243,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
       <form onSubmit={handleSubmit} className="compose-editorial-form">
         {errorMsg && (
           <div className="compose-error" role="alert">
-            <span className="material-symbols-outlined" aria-hidden="true">error</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">error</span>
             {errorMsg}
           </div>
         )}
@@ -272,20 +272,20 @@ function PostEditForm({ publicId }: { publicId: string }) {
           </div>
           <div className="compose-sheet-attach">
             <div className="compose-attach-row">
-              <label htmlFor="post-edit-images" className={`compose-attach-btn ${!canUploadImages || uploadingImages || images.length >= 10 ? "disabled" : ""}`}><span className="material-symbols-outlined" aria-hidden="true">image</span><span>{uploadingImages ? "업로드 중" : "사진 첨부"}</span></label>
+              <label htmlFor="post-edit-images" className={`compose-attach-btn ${!canUploadImages || uploadingImages || images.length >= 10 ? "disabled" : ""}`}><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">image</span><span>{uploadingImages ? "업로드 중" : "사진 첨부"}</span></label>
               <input id="post-edit-images" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={!canUploadImages || uploadingImages || images.length >= 10} onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />
               <span className="compose-attach-hint">{canUploadImages ? `장당 최대 5MB, ${images.length}/10장` : "사진 첨부는 로그인한 회원만 가능합니다."}</span>
             </div>
-            <div className="compose-attach-grid">{images.map((url, index) => <div className="compose-attach-preview" key={`${url}-${index}`}><Image src={url} alt={`첨부 이미지 ${index + 1}`} width={320} height={180} unoptimized /><button type="button" className="compose-attach-remove" aria-label={`${index + 1}번째 사진 제거`} onClick={() => setImages((current) => current.filter((_, i) => i !== index))}><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div>)}</div>
+            <div className="compose-attach-grid">{images.map((url, index) => <div className="compose-attach-preview" key={`${url}-${index}`}><Image src={url} alt={`첨부 이미지 ${index + 1}`} width={320} height={180} unoptimized /><button type="button" className="compose-attach-remove" aria-label={`${index + 1}번째 사진 제거`} onClick={() => setImages((current) => current.filter((_, i) => i !== index))}><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">close</span></button></div>)}</div>
           </div>
         </div>
 
         <footer className="compose-footer-bar">
           <Link href={`/posts/${publicId}`} className="compose-cancel-pill">
-            <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 취소
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 취소
           </Link>
           <button type="submit" disabled={submitting || uploadingImages} className="compose-submit-pill">
-            <span className="material-symbols-outlined" aria-hidden="true">check</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">check</span>
             {submitting ? "수정 중" : "수정 완료"}
           </button>
         </footer>

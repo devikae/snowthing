@@ -184,7 +184,7 @@ export default function CarpoolDetailClient() {
         ) : (
           <>
             <div className="post-detail-toolbar">
-              <Link href="/carpool"><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
+              <Link href="/carpool"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
               <div>
                 <KakaoShareButton
                   title={item.title}

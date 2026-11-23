@@ -57,7 +57,7 @@ export function NicknameForm({ submitLabel, initialNickname = "", onSubmit, onCa
       <ul className="ct-join-notice" id={noticeId}>
         <li>이름, 스키나 보드, 답변이 지도를 보여 주려고 서버에 저장돼요.</li>
         <li>같은 모임 사람들은 이름과 캐릭터, 나와의 궁합 점수를 볼 수 있어요.</li>
-        <li><strong>나가기를 누르면 바로 지워져요.</strong></li>
+        <li><strong>들어간 뒤 지도 아래 &quot;모임 나가기&quot;를 누르면 바로 지워져요.</strong></li>
         <li><strong>30일 동안 새로 들어온 사람이 없으면 모임이 통째로 지워져요.</strong></li>
       </ul>
       <div className="ct-actions">

@@ -35,7 +35,7 @@ export function OpeningDdayBanner() {
       </ul>
       <span className="opening-dday-more">
         리조트별 보기
-        <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+        <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
       </span>
     </Link>
   );

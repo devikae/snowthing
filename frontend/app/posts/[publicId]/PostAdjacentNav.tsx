@@ -32,9 +32,9 @@ export function PostAdjacentNav({ publicId }: { publicId: string }) {
     item ? (
       <Link href={`/posts/${item.publicId}`} className={`post-adjacent-button ${kind}`}>
         <span className="post-adjacent-label">
-          {kind === "prev" && <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>}
+          {kind === "prev" && <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_back</span>}
           {kind === "prev" ? "이전글" : "다음글"}
-          {kind === "next" && <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>}
+          {kind === "next" && <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>}
         </span>
         <strong>{item.title}</strong>
       </Link>

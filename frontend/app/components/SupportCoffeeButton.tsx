@@ -14,7 +14,7 @@ export function SupportCoffeeButton() {
   return (
     <div className="support-coffee">
       <a className="support-coffee-button" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" aria-label={label} title={label}>
-        <span className="material-symbols-outlined" aria-hidden="true">coffee</span>
+        <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">coffee</span>
       </a>
     </div>
   );

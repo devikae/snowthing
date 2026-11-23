@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { CharacterResult } from "./api";
 import { renderCard } from "./cardImage";
-import { BADGES, QUESTIONS, characterName, descriptionSentences, type Sport } from "./data";
+import { QUESTIONS, characterName, descriptionSentences, type Sport } from "./data";
 import KakaoShareButton from "../components/KakaoShareButton";
 import { InAppSaveSheet } from "./InAppSaveSheet";
 import { resultFragment } from "./links";
@@ -86,9 +86,6 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
             const choice = answers[number - 1];
             return <li key={number}><span>{question.situation}</span><strong>{choice === "C" && question.c ? question.c : choice === "A" ? question.a : question.b}</strong></li>;
           })}
-          {(result.badges ?? []).filter((code) => BADGES[code]).map((code) => (
-            <li key={code} className="ct-evidence-badge"><span>{BADGES[code].label}</span><strong>{BADGES[code].note}</strong></li>
-          ))}
         </ul>
         <p className="ct-fineprint">재미로 보는 결과예요. 고른 답으로 정해질 뿐, 사람을 진단하지 않아요.</p>
       </div>}

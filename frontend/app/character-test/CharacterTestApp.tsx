@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { fetchResult, type CharacterResult } from "./api";
 import { CardPanel } from "./CardPanel";
-import { characterImage, type JobCode, type Sport } from "./data";
+import { characterImage, INTRO_CAST, type Sport } from "./data";
 import { InviteSection } from "./InviteSection";
 import { ClubLinkMaker } from "./ClubLinkMaker";
 import { MyGroups } from "./MyGroups";
@@ -14,7 +14,6 @@ import { RelationshipMap } from "./RelationshipMap";
 import { SiteLinks } from "./SiteLinks";
 
 // 캐릭터 여덟을 모두 같은 크기로 세운다.
-const INTRO_CAST: JobCode[] = ["CAPTAIN", "RESORT_INSIDER", "HYPE", "MOOD_MAKER", "GRINDER", "HOT_PACK", "GEAR_GEEK", "RESORT_OUTSIDER"];
 
 const EMPTY_LEVELS = (["BEST", "GOOD", "NEUTRAL", "BICKER", "APART"] as const).map((level) => ({ level, participants: [] }));
 const subscribeNothing = () => () => {};

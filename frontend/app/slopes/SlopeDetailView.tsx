@@ -71,7 +71,7 @@ export function SlopeDetailView({ detail, resortDetail, header }: Props) {
             {slope.checkedAt} 확인
           </p>
           <Link className={styles.compareLink} href={comparePath([slope.id])}>
-            <span className="material-symbols-outlined" aria-hidden="true">compare_arrows</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">compare_arrows</span>
             다른 슬로프와 비교하기
           </Link>
 

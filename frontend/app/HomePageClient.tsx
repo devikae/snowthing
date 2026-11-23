@@ -299,7 +299,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                     더보기 →
                   </Link>
                   <Link href={writeHref} className="board-tabs-write">
-                    <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+                    <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">edit</span>
                     글쓰기
                   </Link>
                 </div>
@@ -321,7 +321,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                       </span>
                       <span className="m-stats">
                         <span className="m-stat">
-                          <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
+                          <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">visibility</span>
                           {initial.latestNotice.viewCount.toLocaleString("ko-KR")}
                         </span>
                       </span>
@@ -334,12 +334,12 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
               <div className="compact-post-list">
                 {feedLoading[activeFeed] ? (
                   <div className="home-feed-state">
-                    <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
+                    <span data-nosnippet className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                     <strong>게시글을 불러오는 중입니다.</strong>
                   </div>
                 ) : feedErrors[activeFeed] ? (
                   <div className="home-feed-state error">
-                    <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                    <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                     <strong>게시글을 불러오지 못했습니다.</strong>
                     <button type="button" onClick={() => void loadFeed(activeFeedConfig)}>
                       다시 시도
@@ -347,7 +347,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                   </div>
                 ) : feeds[activeFeed].length === 0 ? (
                   <div className="home-feed-state">
-                    <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
+                    <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">edit_note</span>
                     <strong>등록된 게시글이 없습니다.</strong>
                   </div>
                 ) : (
@@ -368,7 +368,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                           <span className="m-stats">
                             {post.commentCount > 0 ? (
                               <span className="m-stat m-stat-comment hot" title={`댓글 ${post.commentCount}`}>
-                                <span className="material-symbols-outlined" aria-hidden="true">
+                                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
                                   chat_bubble
                                 </span>
                                 {post.commentCount}
@@ -377,7 +377,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                               <span className="m-stat m-stat-comment is-empty" aria-hidden="true" />
                             )}
                             <span className="m-stat m-stat-view" title={`조회 ${post.viewCount.toLocaleString("ko-KR")}`}>
-                              <span className="material-symbols-outlined" aria-hidden="true">
+                              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
                                 visibility
                               </span>
                               {post.viewCount.toLocaleString("ko-KR")}
@@ -463,7 +463,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
             {reportStatus === "loading" ? (
               <div className="snow-empty-state" role="status">
                 <span className="snow-empty-icon">
-                  <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
+                  <span data-nosnippet className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                 </span>
                 <div className="snow-empty-copy">
                   <strong>오늘의 설질 제보를 불러오는 중입니다.</strong>
@@ -472,7 +472,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
             ) : reportStatus === "error" ? (
               <div className="snow-empty-state">
                 <span className="snow-empty-icon">
-                  <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                 </span>
                 <div className="snow-empty-copy">
                   <strong>설질 제보를 불러오지 못했습니다.</strong>
@@ -528,14 +528,14 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
             <div className="carpool-compact-list">
               {carpoolStatus === "loading" ? (
                 <div className="carpool-widget-empty">
-                  <span className="material-symbols-outlined spin" aria-hidden="true">
+                  <span data-nosnippet className="material-symbols-outlined spin" aria-hidden="true">
                     progress_activity
                   </span>
                   <p>카풀 모집글을 불러오는 중입니다.</p>
                 </div>
               ) : carpoolStatus === "error" ? (
                 <div className="carpool-widget-empty">
-                  <span className="material-symbols-outlined" aria-hidden="true">
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
                     cloud_off
                   </span>
                   <p>카풀 모집글을 불러오지 못했습니다.</p>
@@ -545,7 +545,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                 </div>
               ) : carpools.length === 0 ? (
                 <div className="carpool-widget-empty">
-                  <span className="material-symbols-outlined" aria-hidden="true">
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
                     directions_car
                   </span>
                   <p>등록된 카풀 모집글이 없습니다.</p>
@@ -588,12 +588,12 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
 
             {marketStatus === "loading" ? (
               <div className="market-preview-empty">
-                <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
+                <span data-nosnippet className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                 <p>판매 상품을 불러오는 중입니다.</p>
               </div>
             ) : marketStatus === "error" ? (
               <div className="market-preview-empty">
-                <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                 <p>판매 상품을 불러오지 못했습니다.</p>
                 <button type="button" className="home-widget-retry" onClick={() => void loadMarketPreviews()}>
                   다시 시도
@@ -611,7 +611,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                         {item.thumbnailImageUrl ? (
                           <Image src={item.thumbnailImageUrl} alt="" width={240} height={192} unoptimized />
                         ) : (
-                          <span className="market-image-placeholder material-symbols-outlined" aria-hidden="true">inventory_2</span>
+                          <span data-nosnippet className="market-image-placeholder material-symbols-outlined" aria-hidden="true">inventory_2</span>
                         )}
                         <div className="lookbook-glass">
                           <span>매물 보기</span>
@@ -624,7 +624,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
               </div>
             ) : (
               <div className="market-preview-empty">
-                <span className="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">inventory_2</span>
                 <p>등록된 판매 상품이 없습니다.</p>
               </div>
             )}

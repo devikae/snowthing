@@ -720,14 +720,14 @@ export default function PostDetailClient({
       <TopNav />
       <main className="post-detail-page community-container content-detail-page">
         <div className="post-detail-toolbar">
-          <Link href={`/posts?category=${post.categoryCode}`}><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
+          <Link href={`/posts?category=${post.categoryCode}`}><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_back</span> 목록으로 돌아가기</Link>
         </div>
         <div className="post-detail-layout">
           <div className="post-detail-primary">
           <article className="post-detail-card">
             <div className="post-detail-meta-top">
               <span>#{post.categoryCode === "QNA" ? "질문게시판" : post.categoryName}</span>
-              <div><span className="material-symbols-outlined" aria-hidden="true">visibility</span><span className="sr-only">조회</span>{post.viewCount}<span className="material-symbols-outlined" aria-hidden="true">chat_bubble</span><span className="sr-only">댓글</span>{post.commentCount}<span className="material-symbols-outlined" aria-hidden="true">thumb_up</span><span className="sr-only">추천</span>{post.likeCount}</div>
+              <div><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">visibility</span><span className="sr-only">조회</span>{post.viewCount}<span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chat_bubble</span><span className="sr-only">댓글</span>{post.commentCount}<span data-nosnippet className="material-symbols-outlined" aria-hidden="true">thumb_up</span><span className="sr-only">추천</span>{post.likeCount}</div>
             </div>
 
             {isAdmin && post.status === "BLOCKED" && (
@@ -756,11 +756,11 @@ export default function PostDetailClient({
               {post.categoryCode !== "INQUIRY" && (
                 <div className="post-detail-tools">
                   <button type="button" onClick={() => void handleScrap()} disabled={scrapBusy} className={post.scrapped ? "active" : ""} aria-pressed={post.scrapped} title={post.scrapped ? "스크랩됨" : "스크랩"}>
-                    <span className="material-symbols-outlined" aria-hidden="true">bookmark</span>
+                    <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">bookmark</span>
                     <span className="sr-only">{post.scrapped ? "스크랩됨" : "스크랩"}</span>
                   </button>
                   <button type="button" onClick={() => void handleShare()} title="공유">
-                    <span className="material-symbols-outlined" aria-hidden="true">share</span>
+                    <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">share</span>
                     <span className="sr-only">공유</span>
                   </button>
                   <KakaoShareButton
@@ -832,12 +832,12 @@ export default function PostDetailClient({
               {/* 본문 아래에는 추천과 비추천만 둔다. 스크랩, 공유, 신고는 작성자 줄 오른쪽 도구에 있다. */}
               <div className="post-vote">
                 <button type="button" onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
-                  <span className="material-symbols-outlined" aria-hidden="true">thumb_up</span>
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">thumb_up</span>
                   <span>추천</span>
                   <strong>{post.likeCount}</strong>
                 </button>
                 <button type="button" onClick={() => handleReaction("DISLIKE")} className={post.activeReactionTypes.includes("DISLIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("DISLIKE")}>
-                  <span className="material-symbols-outlined" aria-hidden="true">thumb_down</span>
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">thumb_down</span>
                   <span>비추천</span>
                   <strong>{post.dislikeCount}</strong>
                 </button>
@@ -881,7 +881,7 @@ export default function PostDetailClient({
                 )}
                 {canWriteComment ? (
                   <button className="post-comment-submit-button" disabled={submittingComment} onClick={() => void handleCreateComment(null)}>
-                    댓글 등록 <span className="material-symbols-outlined" aria-hidden="true">send</span>
+                    댓글 등록 <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">send</span>
                   </button>
                 ) : (
                   <Link className="post-comment-submit-button" href={`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`}>
@@ -1269,7 +1269,7 @@ function ReplyRow({
   return (
     <div className="post-comment-reply">
       <div className={`comment-youtube-row ${isAnonymousPost ? "anonymous-comment-row" : ""}`}>
-        <span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>
+        <span data-nosnippet className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>
         {!isAnonymousPost && <CommentProfileAvatar nickname={getWriterName(item)} profileImageUrl={item.writer?.profileImageUrl} />}
         <div className="comment-youtube-body">
           <header>
@@ -1452,7 +1452,7 @@ function CommentDeleteInline({
         className={`comment-delete-toggle${isActive ? " active" : ""}`}
         title={isActive ? "취소" : "댓글 삭제"}
       >
-        <span className="material-symbols-outlined" aria-hidden="true">close</span>
+        <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
 
       {isActive && (
@@ -1497,7 +1497,7 @@ function CommentDeleteInline({
               className="comment-delete-close"
               title="취소"
             >
-              <span className="material-symbols-outlined" aria-hidden="true">close</span>
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">close</span>
             </button>
             {error && (
               <div className="comment-delete-error" role="alert">

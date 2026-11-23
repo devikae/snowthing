@@ -23,7 +23,6 @@ public class CharacterResultService {
                 CharacterLabel.of(type),
                 answers.stats(),
                 answers.highlightQuestions(),
-                compatibilityTable.bestMatchOf(type).map(CharacterLabel::of).orElse(null),
-                answers.badges());
+                compatibilityTable.bestMatchOf(type).map(CharacterLabel::of).orElse(null));
     }
 }

@@ -1,4 +1,4 @@
-import { BADGES, STAT_MAX, STATS, characterImage, characterName, descriptionSentences, gearBox, gearImage, type JobCode, type Sport } from "./data";
+import { STAT_MAX, STATS, characterImage, characterName, descriptionSentences, gearBox, gearImage, type JobCode, type Sport } from "./data";
 import type { CharacterResult } from "./api";
 import { canvasToBlob, loadImage, pageFontFamily } from "./shareFile";
 
@@ -113,24 +113,6 @@ export async function renderCard(result: CharacterResult, sport: Sport): Promise
   const box = gearBox(spriteX, spriteTop, SPRITE_SIZE);
   ctx.drawImage(gear, box.x, box.y, box.width, box.height);
   ctx.drawImage(sprite, spriteX, spriteTop, SPRITE_SIZE, SPRITE_SIZE);
-
-  // 재미 뱃지(웃참 실패 등)는 캐릭터 오른쪽 위에 스티커처럼 기울여 붙인다.
-  const badgeCodes = (result.badges ?? []).filter((code) => BADGES[code]);
-  badgeCodes.forEach((code, index) => {
-    const label = BADGES[code].label;
-    ctx.save();
-    ctx.translate(WIDTH - 210, spriteTop + 70 + index * 96);
-    ctx.rotate(-0.12);
-    ctx.font = font(800, 40);
-    const width = ctx.measureText(label).width + 56;
-    ctx.fillStyle = "#ffffff";
-    roundRect(ctx, -width / 2, -40, width, 80, 40);
-    ctx.fill();
-    ctx.fillStyle = theme.bottom;
-    ctx.textAlign = "center";
-    ctx.fillText(label, 0, 14);
-    ctx.restore();
-  });
 
   const panelX = (WIDTH - CONTENT_WIDTH) / 2;
   const cellGap = 16;

@@ -235,7 +235,7 @@ function ResortCard({ resort, hasSpec }: { resort: ResortSlopes; hasSpec: boolea
         {resort.sourceUrl && (
           <a href={resort.sourceUrl} target="_blank" rel="noopener noreferrer">
             공식 페이지
-            <span className="material-symbols-outlined" aria-hidden="true">
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
               open_in_new
             </span>
           </a>

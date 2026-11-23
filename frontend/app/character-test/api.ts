@@ -14,7 +14,6 @@ export interface CharacterResult {
   highlightQuestions: number[];
   bestMatch: CharacterLabel | null;
   // 예전에 저장한 결과에는 없을 수 있다.
-  badges?: string[];
 }
 
 export interface GroupPreview {

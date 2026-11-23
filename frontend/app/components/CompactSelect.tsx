@@ -89,7 +89,7 @@ export function CompactSelect({
         onKeyDown={handleKeyDown}
       >
         <span>{selectedOption?.label ?? "선택"}</span>
-        <span className="material-symbols-outlined" aria-hidden="true">expand_more</span>
+        <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">expand_more</span>
       </button>
       {open && (
         <div id={listboxId} className="compact-select-list" role="listbox" aria-label={ariaLabel}>
