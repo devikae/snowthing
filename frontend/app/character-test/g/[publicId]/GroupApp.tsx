@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { fetchMap, fetchPreview, joinGroup, leaveGroup, type CharacterMap, type GroupPreview } from "../../api";
 import { CardPanel } from "../../CardPanel";
-import { characterName, JOBS, LEVELS, SPORT_LABEL, type Sport } from "../../data";
+import { characterImage, characterName, INTRO_CAST, JOBS, LEVELS, SPORT_LABEL, type Sport } from "../../data";
 import { INVITE_LABEL, InviteSection } from "../../InviteSection";
 import { clearFragment, groupUrl, inviteText, readFragmentToken, restoreUrl } from "../../links";
 import { getMembership, getSavedAnswers, removeMembership, saveAnswers, saveMembership } from "../../localStore";
@@ -98,13 +98,23 @@ export function GroupApp({ publicId }: { publicId: string }) {
     const saved = getSavedAnswers();
     return (
       <section className="ct-panel ct-intro">
-        <p className="ct-eyebrow">초대받았어요</p>
-        <h2>{preview.name}</h2>
-        <p className="ct-lead">지금 {preview.participantCount}명이 있어요. 모임에서 보일 이름을 넣고 스키장 상황 15개를 고르면, 바로 모임에 들어가 나를 가운데 둔 관계 지도가 나와요.</p>
+        <div className="ct-intro-cast" aria-hidden="true">
+          {INTRO_CAST.map((job) => (
+            // eslint-disable-next-line @next/next/no-img-element -- 40칸 픽셀 그림이라 최적화 없이 그대로 키워 보여 준다.
+            <img key={job} src={characterImage(job)} width={80} height={80} alt="" />
+          ))}
+        </div>
+        <div className="ct-intro-copy">
+          <p className="ct-eyebrow">초대받았어요</p>
+          <h2>{preview.name}</h2>
+          <p className="ct-lead">{preview.participantCount > 0 ? `지금 ${preview.participantCount}명이 들어와 있어요. ` : "아직 아무도 없어요. 첫 번째로 들어가 보세요. "}이름을 넣고 스키장 상황 15개에 답하면, 모임 사람들과 나의 관계 지도가 나와요.</p>
+        </div>
         {notice && <p className="ct-error" role="status">{notice}</p>}
+        <div className="ct-intro-actions">
+          <button type="button" className="ct-primary" onClick={() => setView({ kind: "name", preview, memberNickname })}>시작하기</button>
+          {hasSaved && saved && <button type="button" className="ct-text-button" onClick={() => setView({ kind: "name", preview, memberNickname, done: saved })}>지난 답변으로 바로 들어가기</button>}
+        </div>
         <p className="ct-fineprint">가입 없이 할 수 있어요. 재미로 보는 테스트이고, 이름을 넣기 전까지 답변을 저장하지 않아요.</p>
-        <button type="button" className="ct-primary" onClick={() => setView({ kind: "name", preview, memberNickname })}>시작하기</button>
-        {hasSaved && saved && <button type="button" className="ct-text-button" onClick={() => setView({ kind: "name", preview, memberNickname, done: saved })}>지난 답변으로 바로 들어가기</button>}
       </section>
     );
   }

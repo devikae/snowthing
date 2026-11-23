@@ -3,7 +3,7 @@ import { API_BASE_URL } from "../../../lib/api";
 import { GroupApp } from "./GroupApp";
 
 const PREVIEW_TIMEOUT_MS = 2000;
-const DESCRIPTION = "테스트하고 들어오면 이 모임 사람들과 나는 어떤 사이인지 지도로 볼 수 있어요. 재미로 보는 궁합이에요.";
+const DESCRIPTION = "15개 질문에 답하면 모임 사람들과 나의 궁합 지도가 나와요. 가입 없이 1분.";
 
 async function fetchGroupName(publicId: string) {
   try {
@@ -20,7 +20,7 @@ async function fetchGroupName(publicId: string) {
 export async function generateMetadata({ params }: { params: Promise<{ publicId: string }> }): Promise<Metadata> {
   const { publicId } = await params;
   const name = await fetchGroupName(publicId);
-  const title = `${name ?? "우리 모임"} 관계 지도 | 눈팅 SnowThing`;
+  const title = `${name ?? "우리 모임"} 관계 지도`;
   return {
     title,
     description: DESCRIPTION,

@@ -153,6 +153,9 @@ export function characterName(label: CharacterLabel) {
   return label.planStyle === "PLANNED" ? job.planned : job.spontaneous;
 }
 
+// 시작 화면과 초대 화면 위 배너에 나란히 세우는 캐릭터 여덟.
+export const INTRO_CAST: JobCode[] = ["CAPTAIN", "RESORT_INSIDER", "HYPE", "MOOD_MAKER", "GRINDER", "HOT_PACK", "GEAR_GEEK", "RESORT_OUTSIDER"];
+
 export function characterImage(job: JobCode) {
   return `/character-test/${job}.png`;
 }
