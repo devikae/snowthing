@@ -39,7 +39,8 @@
 .ct-card-preview { display: block; width: min(320px, 100%); height: auto; aspect-ratio: 9 / 16; border-radius: 12px; border: 1px solid var(--snow-border); }
 .ct-card-evidence { display: grid; gap: 10px; width: 100%; border-top: 1px solid var(--snow-border); padding-top: 12px; }
 .ct-card-evidence h3 { margin: 0; font-size: 16px; }
-.ct-card-link { display: grid; gap: 8px; width: 100%; border-top: 1px solid var(--snow-border); padding-top: 12px; }
+.ct-group-share { display: grid; gap: 8px; width: 100%; }
+.ct-share-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
 .ct-card-loading { background: var(--snow-surface-mid); }
 
 .ct-map-wrap { display: grid; gap: 8px; min-width: 0; }
