@@ -11,9 +11,12 @@ interface CameraPlayerProps {
   focused?: boolean;
 }
 
-// 아무 조작 없이 영상을 계속 받으면 서버 송신량이 시청 시간만큼 늘어난다.
-const IDLE_STOP_MS = 20 * 60 * 1000;
-const ACTIVITY_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
+// 영상 송신량(CDN 전송량)은 시청 시간만큼 늘어난다. 오래 보는 사람은 드물어서
+// 직접 고른 캠(목록에서 누른 캠, 크게 보기)은 조작 여부와 상관없이 5분 재생하면 멈추고 계속 볼지 묻는다.
+const WATCH_LIMIT_MS = 5 * 60 * 1000;
+// 목록에서는 보이는 캠이 동시에 자동 재생된다. 10분 뒤 마지막 화면에서 멈추고,
+// 사용자가 고른 캠만 계속 받는다.
+const LIST_PREVIEW_MS = 10 * 60 * 1000;
 
 function subscribeVisibility(onChange: () => void) {
   document.addEventListener("visibilitychange", onChange);
@@ -34,10 +37,20 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
   const [failureReason, setFailureReason] = useState("");
 
   const [idleStopped, setIdleStopped] = useState(false);
+  // previewEnded: 목록 2분 미리보기가 끝남. frozen: HLS 영상을 지우지 않고 마지막 화면으로 남겨 둔 상태
+  const [previewEnded, setPreviewEnded] = useState(false);
+  const [frozen, setFrozen] = useState(false);
+  const hlsRef = useRef<{ stopLoad: () => void } | null>(null);
   const pageVisible = usePageVisible();
+  const previewMode = autoPlay && !focused && !manualPlay;
 
   // 탭이 가려지면 재생을 멈추고, 돌아오면 다시 연결한다.
-  const shouldLoad = (focused || manualPlay || autoPlay) && pageVisible && !idleStopped;
+  // 미리보기가 끝났으면 멈춘 화면(frozen)일 때만 플레이어를 남기고, 아니면 커버로 바꾼다.
+  const active = (focused || manualPlay || autoPlay) && pageVisible && !idleStopped;
+  // 멈춘 화면 상태에서 탭을 가리거나 카드가 화면 밖으로 나가면 플레이어가 정리된다.
+  // 다시 보여도 재연결하지 않도록 렌더 중에 커버 상태로 바꾼다(이전 렌더 기준 상태 조정 패턴).
+  if (!active && frozen) setFrozen(false);
+  const shouldLoad = active && !(previewEnded && !frozen);
   const officialUrl = camera.externalPageUrl || camera.sourceUrl || "";
 
   useEffect(() => {
@@ -77,7 +90,11 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
         if (Hls.isSupported()) {
           usingHls = true;
           const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-          destroy = () => hls.destroy();
+          hlsRef.current = hls;
+          destroy = () => {
+            hlsRef.current = null;
+            hls.destroy();
+          };
           let mediaRecoveries = 0;
           let nativeFallback = false;
           hls.loadSource(streamUrl);
@@ -123,19 +140,35 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
     };
   }, [camera.sourceType, camera.sourceUrl, manualPlay, shouldLoad, retryAttempt]);
 
+  // 목록 자동 재생(previewMode)은 아래 10분 미리보기 타이머가 맡는다.
   useEffect(() => {
-    if (!shouldLoad) return;
-    let timer = window.setTimeout(() => setIdleStopped(true), IDLE_STOP_MS);
-    const resetTimer = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => setIdleStopped(true), IDLE_STOP_MS);
-    };
-    ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
-    return () => {
-      window.clearTimeout(timer);
-      ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, resetTimer));
-    };
-  }, [shouldLoad]);
+    if (!shouldLoad || frozen || previewMode) return;
+    const timer = window.setTimeout(() => setIdleStopped(true), WATCH_LIMIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [shouldLoad, frozen, previewMode]);
+
+  // 목록 미리보기 10분이 지나면 HLS는 받기를 멈추고 마지막 화면을 남긴다. 다른 형식은 커버로 바꾼다.
+  useEffect(() => {
+    if (!previewMode || !shouldLoad || previewEnded) return;
+    const timer = window.setTimeout(() => {
+      const video = videoRef.current;
+      const canFreeze = camera.sourceType === "HLS" && !!video && video.readyState >= 2;
+      if (canFreeze) {
+        hlsRef.current?.stopLoad();
+        video.pause();
+      }
+      setFrozen(canFreeze);
+      setPreviewEnded(true);
+    }, LIST_PREVIEW_MS);
+    return () => window.clearTimeout(timer);
+  }, [previewMode, shouldLoad, previewEnded, camera.sourceType]);
+
+  const resumeLive = () => {
+    setIdleStopped(false);
+    setPreviewEnded(false);
+    setFrozen(false);
+    setManualPlay(true);
+  };
 
   // 비발디 플레이어(vivaldi.html)는 재생 시작과 실패를 postMessage로 알린다.
   // 신호가 없으면 영상 없이 검은 화면만 남으므로 시간 안에 재생되지 않으면 실패 안내로 바꾼다.
@@ -186,6 +219,17 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
               <span data-nosnippet className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
               <span>실시간 스트림 연결 중</span>
             </div>
+          )}
+          {frozen && (
+            <button
+              type="button"
+              className={`${styles.playCover} ${styles.frozenCover}`}
+              onClick={resumeLive}
+              aria-label={`${camera.name} 실시간 영상 계속 보기`}
+            >
+              <span data-nosnippet className="material-symbols-outlined playIcon" aria-hidden="true">play_circle</span>
+              <span className={styles.playText}>10분이 지나 잠시 멈췄어요. 실시간으로 보기</span>
+            </button>
           )}
         </>
       )}
@@ -251,14 +295,11 @@ export function CameraPlayer({ camera, autoPlay, focused = false }: CameraPlayer
         <button
           type="button"
           className={styles.playCover}
-          onClick={() => {
-            setIdleStopped(false);
-            setManualPlay(true);
-          }}
-          aria-label={`${camera.name} 라이브 영상 ${idleStopped ? "계속 보기" : "재생"}`}
+          onClick={resumeLive}
+          aria-label={`${camera.name} 라이브 영상 ${idleStopped || previewEnded ? "계속 보기" : "재생"}`}
         >
           <span data-nosnippet className="material-symbols-outlined playIcon" aria-hidden="true">play_circle</span>
-          <span className={styles.playText}>{idleStopped ? "오래 켜 둔 영상을 멈췄어요. 계속 보기" : "실시간 영상 재생"}</span>
+          <span className={styles.playText}>{idleStopped ? "5분이 지나 잠시 멈췄어요. 계속 볼까요?" : previewEnded ? "10분이 지나 잠시 멈췄어요. 실시간으로 보기" : "실시간 영상 재생"}</span>
         </button>
       )}
     </div>
