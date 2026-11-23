@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { DEFAULT_BANNER_TITLE, bannerOpenings, formatDday } from "../lib/seasonOpening";
+import { bannerOpenings, bannerTitle, formatDday } from "../lib/seasonOpening";
 import { useKstToday } from "../lib/useKstToday";
 import { useSeasonOpenings } from "../lib/useSeasonOpenings";
 
@@ -12,7 +12,8 @@ function formatMonthDay(date: string): string {
 
 /**
  * 메인 개장 D-DAY 배너. 관리자가 배너에 넣기로 한 리조트를 정한 순서대로 나열한다.
- * 스위치가 꺼졌거나, 넣은 리조트가 모두 개장했거나, 개장일을 받지 못하면 그리지 않는다.
+ * 개장한 리조트는 관리자가 "개장 D+N 표시"를 켰을 때만 남는다.
+ * 스위치가 꺼졌거나, 보일 리조트가 없거나, 개장일을 받지 못하면 그리지 않는다.
  */
 export function OpeningDdayBanner() {
   const today = useKstToday();
@@ -23,7 +24,7 @@ export function OpeningDdayBanner() {
 
   return (
     <Link href="/resorts" className="opening-dday-banner">
-      <strong>{data?.bannerTitle?.trim() || DEFAULT_BANNER_TITLE}</strong>
+      <strong>{data ? bannerTitle(data, openings) : ""}</strong>
       <ul className="opening-dday-list">
         {openings.map(({ opening, date, days }) => (
           <li key={opening.resortCode}>

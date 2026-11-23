@@ -19,6 +19,8 @@ public record SeasonOpeningUpdateRequest(
         @NotNull Boolean bannerEnabled,
         // 배너 맨 앞 문구. 비우거나 보내지 않으면 기본 문구("개장까지")로 둔다.
         @Size(max = SeasonOpeningUpdateRequest.BANNER_TITLE_MAX) String bannerTitle,
+        // 개장한 리조트도 "개장 D+N"으로 배너에 남길지. 보내지 않으면(예전 관리자 화면) 저장된 값을 그대로 둔다.
+        Boolean showAfterOpening,
         @NotEmpty @Size(max = 50) List<@NotNull @Valid Item> resorts) {
 
     public record Item(

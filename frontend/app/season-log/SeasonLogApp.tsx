@@ -251,6 +251,8 @@ export function SeasonLogApp() {
                 description="내 시즌 기록을 확인해 보세요."
                 url={`/season-log/s/${encodeURIComponent(log.shareToken)}`}
                 imageUrl={`/season-log/s/${encodeURIComponent(log.shareToken)}/opengraph-image`}
+                imageWidth={1200}
+                imageHeight={630}
                 buttonTitle="결산 보기"
                 onFallback={shareLink}
               />

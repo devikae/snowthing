@@ -5,11 +5,14 @@
 최종 그림이 정해지면 frontend/public/character-test/ 아래 파일만 바꾸면 된다.
 
 실행: python scripts/generate-character-test-images.py [확인용 모음 그림 경로]
+모임 링크 카톡 공유 그림만 다시 만들기: python scripts/generate-character-test-images.py --group-share
+  (이미 있는 캐릭터, 장비, 얼굴 그림을 읽어 합치므로 캐릭터 그림은 다시 그리지 않는다)
 필요: Pillow
 """
 
 import math
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -753,10 +756,102 @@ def draw_share_images():
     group.convert("RGB").save(OUT_DIR / "og-group.png", optimize=True)
 
 
+DATA_TS = OUT_DIR.parent.parent / "app" / "character-test" / "data.ts"
+SPORTS = ("SKI", "BOARD")
+PLAN_STYLES = ("PLANNED", "SPONTANEOUS")
+
+
+def character_names():
+    """화면과 같은 유형 이름을 data.ts의 JOBS에서 읽는다. 이름을 두 곳에 따로 적지 않기 위해서다."""
+    text = DATA_TS.read_text(encoding="utf-8")
+    names = {}
+    for job in JOBS:
+        match = re.search(job + r': \{ name: "[^"]*", planned: "([^"]*)", spontaneous: "([^"]*)" \}', text)
+        if not match:
+            raise SystemExit(f"data.ts에서 {job} 이름을 찾지 못했습니다.")
+        names[job] = {"PLANNED": match.group(1), "SPONTANEOUS": match.group(2)}
+    return names
+
+
+def name_lines(name):
+    """마지막 낱말(직업 이름)을 둘째 줄로 내린다. 예: 말만 앞선 / 바람잡이"""
+    head, _, last = name.rpartition(" ")
+    return [head, last] if head else [name]
+
+
+def load_art(name, size):
+    return Image.open(OUT_DIR / f"{name}.png").convert("RGBA").resize((size, size), Image.NEAREST)
+
+
+def sprite_with_gear(job, sport, size):
+    """캐릭터와 장비를 화면(gearBox)과 같은 자리로 겹친다. 장비는 캐릭터 왼쪽 8칸에서 시작하는 16칸 폭이다."""
+    cell = size / GRID
+    gear_name = "gear-SKI" if sport == "SKI" else f"gear-BOARD-{job}"
+    gear = Image.open(OUT_DIR / f"{gear_name}.png").convert("RGBA").resize((round(GEAR_WIDTH * cell), size), Image.NEAREST)
+    left = round(8 * cell)
+    canvas = Image.new("RGBA", (size + left, size), (0, 0, 0, 0))
+    canvas.alpha_composite(gear, (0, 0))
+    canvas.alpha_composite(load_art(job, size), (left, 0))
+    return canvas, left
+
+
+# 모임 지도처럼 보이게 둘레에 놓는 다른 유형 얼굴 자리 (각도, 반지름). 실제 모임 사람이 아니라 장식이다.
+GROUP_FACE_SLOTS = ((-2.4, 218), (-0.75, 218), (0.3, 222), (1.62, 226), (2.75, 222))
+
+
+def draw_group_share_images():
+    """모임 링크를 카톡 버튼으로 보낼 때 쓰는 그림. 보낸 사람 유형을 가운데 두고 다른 유형 얼굴을 둘레에 작게 놓는다.
+    종목 2 x 유형 8 x 계획 성향 2 = 32장. 모임 이름, 인원, 다른 참여자 정보는 넣지 않는다."""
+    names = character_names()
+    count = 0
+    for sport in SPORTS:
+        for job in JOBS:
+            others = [other for other in JOBS if other != job]
+            for plan in PLAN_STYLES:
+                image = Image.new("RGBA", (OG_WIDTH, OG_HEIGHT), SKY)
+                draw = ImageDraw.Draw(image)
+                for x, y, s in ((40, 70, 26), (110, 40, 18), (30, 560, 30), (120, 590, 20), (1150, 60, 26), (1090, 30, 16), (1160, 570, 30), (1090, 600, 18), (620, 30, 18), (640, 600, 22)):
+                    draw.polygon([(x, y - s), (x + s * 0.7, y + s * 0.6), (x - s * 0.7, y + s * 0.6)], fill=PINE)
+                    draw.polygon([(x, y - s), (x + s * 0.28, y - s * 0.45), (x - s * 0.28, y - s * 0.45)], fill=WHITE)
+                draw.text((72, 132), "보낸 사람 캐릭터", font=og_font(30), fill=MUTED)
+                y = 182
+                for line in name_lines(names[job][plan]):
+                    draw.text((68, y), line, font=og_font(72), fill=INK)
+                    y += 92
+                draw.text((72, y + 20), "나랑은 어떤 사이로 나올까?", font=og_font(30, bold=False), fill=MUTED)
+                draw.text((72, 520), "눈팅 snowthing.org", font=og_font(28), fill=INK)
+
+                cx, cy = 905, 315
+                for radius, alpha in ((290, 110), (215, 170), (140, 255)):
+                    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+                    ImageDraw.Draw(layer).ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=(255, 255, 255, alpha), outline=(169, 203, 224, 255), width=3)
+                    image.alpha_composite(layer)
+                draw = ImageDraw.Draw(image)
+                face_size = 104
+                for other, (angle, radius) in zip(others, GROUP_FACE_SLOTS):
+                    fx = round(cx + radius * math.cos(angle) - face_size / 2)
+                    fy = round(cy + radius * math.sin(angle) - face_size / 2)
+                    draw.ellipse((fx - 4, fy - 4, fx + face_size + 4, fy + face_size + 4), fill=WHITE, outline=(134, 171, 198, 255), width=4)
+                    image.alpha_composite(load_art(f"face-{other}", face_size), (fx, fy + 6))
+                draw.ellipse((cx - 128, cy - 128, cx + 128, cy + 128), fill=WHITE, outline=ACCENT, width=8)
+                sprite_size = 150
+                sprite, _ = sprite_with_gear(job, sport, sprite_size)
+                # 장비와 캐릭터를 합친 폭(48칸)이 원 가운데 오게 놓는다.
+                image.alpha_composite(sprite, (cx - sprite.width // 2, cy - sprite_size // 2 - 18))
+                draw.rounded_rectangle((cx - 34, cy + 100, cx + 34, cy + 140), radius=20, fill=ACCENT)
+                draw.text((cx, cy + 120), "나", font=og_font(28), fill=WHITE, anchor="mm")
+                image.convert("RGB").save(OUT_DIR / f"group-{sport}-{job}-{plan}.png", optimize=True)
+                count += 1
+    print(f"모임 공유 그림 {count}장 저장: {OUT_DIR}")
+
+
 def main():
     # 그림 일부만 새로 쓰고 멈추지 않도록 글꼴부터 확인한다.
     font_path(True)
     font_path(False)
+    if sys.argv[1:] == ["--group-share"]:
+        draw_group_share_images()
+        return
     for name, draw in {**JOBS, **GEARS}.items():
         canvas = draw()
         canvas.save(name)

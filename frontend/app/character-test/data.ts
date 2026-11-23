@@ -120,7 +120,10 @@ export const STATS: readonly { key: keyof CharacterStats; label: string }[] = [
   { key: "warmth", label: "다정함" },
   { key: "planning", label: "계획력" },
 ];
-export const STAT_MAX = 3;
+// 스탯은 축마다 그쪽을 고른 답의 수(0~3)다. 카드에는 1칸을 기본으로 채워 1~4칸으로 그린다.
+// 빈 줄이 나쁜 결과로 읽히지 않게 하면서 0~3의 차이는 그대로 남긴다.
+export const STAT_MAX = 4;
+export const statPips = (value: number) => value + 1;
 
 // 위에서 아래 순서. 맨 아래 칸 문구는 놀림이 아니라 농담으로 쓴다.
 export const LEVELS: readonly { code: LevelCode; label: string; note: string }[] = [

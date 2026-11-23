@@ -111,8 +111,13 @@ export function GroupApp({ publicId }: { publicId: string }) {
         </div>
         {notice && <p className="ct-error" role="status">{notice}</p>}
         <div className="ct-intro-actions">
-          <button type="button" className="ct-primary" onClick={() => setView({ kind: "name", preview, memberNickname })}>시작하기</button>
-          {hasSaved && saved && <button type="button" className="ct-text-button" onClick={() => setView({ kind: "name", preview, memberNickname, done: saved })}>지난 답변으로 바로 들어가기</button>}
+          {/* 이 브라우저에 지난 답변이 있으면 다시 풀지 않고 이름만 넣고 들어가는 쪽을 먼저 보인다. */}
+          {hasSaved && saved
+            ? <>
+                <button type="button" className="ct-primary" onClick={() => setView({ kind: "name", preview, memberNickname, done: saved })}>지난 답변으로 바로 들어가기</button>
+                <button type="button" onClick={() => setView({ kind: "name", preview, memberNickname })}>처음부터 새로 풀기</button>
+              </>
+            : <button type="button" className="ct-primary" onClick={() => setView({ kind: "name", preview, memberNickname })}>시작하기</button>}
         </div>
         <p className="ct-fineprint">가입 없이 할 수 있어요. 재미로 보는 테스트이고, 이름을 넣기 전까지 답변을 저장하지 않아요.</p>
       </section>
@@ -256,7 +261,7 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
       </section>
 
       <CardPanel result={me.result} sport={me.sport}>
-        <ShareGroupLink groupPublicId={groupPublicId} groupName={groupName} />
+        <ShareGroupLink groupPublicId={groupPublicId} groupName={groupName} sender={{ character: me.result.character, sport: me.sport }} />
       </CardPanel>
 
       <section className="ct-panel ct-account" aria-labelledby="ct-account-title">

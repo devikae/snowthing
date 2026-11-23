@@ -63,6 +63,7 @@ export default function AdminSeasonOpeningsPage() {
         body: JSON.stringify({
           bannerEnabled: current.bannerEnabled,
           bannerTitle: current.bannerTitle?.trim() || DEFAULT_BANNER_TITLE,
+          showAfterOpening: current.showAfterOpening ?? false,
           resorts: current.resorts.map((resort, index) => ({
             resortCode: resort.resortCode,
             openingDate: resort.openingDate || null,
@@ -107,6 +108,14 @@ export default function AdminSeasonOpeningsPage() {
                   onChange={(event) => change({ ...current, bannerEnabled: event.target.checked })}
                 />
                 메인 개장 배너 켜기
+              </label>
+              <label className="admin-season-switch">
+                <input
+                  type="checkbox"
+                  checked={current.showAfterOpening ?? false}
+                  onChange={(event) => change({ ...current, showAfterOpening: event.target.checked })}
+                />
+                개장한 리조트도 &quot;개장 D+N&quot;으로 표시
               </label>
               <label className="admin-season-title">
                 배너 문구

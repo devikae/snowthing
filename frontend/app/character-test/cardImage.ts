@@ -1,4 +1,4 @@
-import { STAT_MAX, STATS, characterImage, characterName, descriptionSentences, gearBox, gearImage, type JobCode, type Sport } from "./data";
+import { STAT_MAX, STATS, statPips, characterImage, characterName, descriptionSentences, gearBox, gearImage, type JobCode, type Sport } from "./data";
 import type { CharacterResult } from "./api";
 import { canvasToBlob, loadImage, pageFontFamily } from "./shareFile";
 
@@ -138,7 +138,7 @@ export async function renderCard(result: CharacterResult, sport: Sport): Promise
     ctx.font = font(800, 36);
     ctx.fillText(stat.label, cellX + 24, cellY + 59);
     for (let pip = 0; pip < STAT_MAX; pip += 1) {
-      ctx.fillStyle = pip < result.stats[stat.key] ? STAT_COLORS[index] : "#d3dee8";
+      ctx.fillStyle = pip < statPips(result.stats[stat.key]) ? STAT_COLORS[index] : "#d3dee8";
       ctx.fillRect(cellX + cellWidth - 22 - (STAT_MAX - pip) * (pipSize + pipGap) + pipGap, cellY + (cellHeight - pipSize) / 2, pipSize, pipSize);
     }
   });

@@ -27,13 +27,14 @@
 | created_at, updated_at | DATETIME(6) | |
 
 - 메인 배너 전체 스위치는 `system_config`의 `SEASON_OPENING_BANNER_ENABLED`(BOOLEAN) 한 줄에 둔다.
+- 개장 후 표시 스위치는 `SEASON_OPENING_SHOW_AFTER_OPENING`(BOOLEAN) 한 줄에 둔다(2026-11-23 추가). 줄이 없으면 꺼진 것으로 본다.
 - 초기값: 예전 상수 9곳. `show_on_banner`는 예전 `confirmed` 값, `banner_order`는 개장일 순, 같은 날이면 이름 순.
 
 ## API
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
-| GET | `/api/v1/public/season-openings` | 누구나 | `{ bannerEnabled, resorts: [{ resortCode, name, openingDate, confirmed, showOnBanner, bannerOrder }] }`. 배너 순서, 같으면 ID 순. `Cache-Control: no-cache` |
+| GET | `/api/v1/public/season-openings` | 누구나 | `{ bannerEnabled, bannerTitle, showAfterOpening, resorts: [{ resortCode, name, openingDate, confirmed, showOnBanner, bannerOrder }] }`. 배너 순서, 같으면 ID 순. `Cache-Control: no-cache` |
 | GET | `/api/v1/admin/season-openings` | 관리자 | 공개 조회와 같은 모양 |
 | PUT | `/api/v1/admin/season-openings` | 관리자 | 목록 전체와 스위치를 한 번에 저장하고 저장 뒤 목록을 돌려준다 |
 
@@ -51,6 +52,7 @@
 
 - 관리자 `/admin/season-openings`(메뉴 "개장일"): 배너 스위치, 리조트별 날짜 입력, "확정", "배너에 표시", 위아래 순서 버튼, 저장 버튼. 순서는 화면의 줄 순서대로 1부터 매겨 보낸다.
 - 메인 개장 배너: 스위치가 켜져 있고 "배너에 표시"를 고른 리조트 중 아직 개장 전인 곳을 관리자가 정한 순서대로. 모두 개장했거나 스위치가 꺼지면 그리지 않는다.
+- 개장 후 표시(2026-11-23 추가): 관리자가 "개장한 리조트도 개장 D+N으로 표시"를 켜면 개장일이 지난 리조트도 "개장 D+1"처럼 배너에 남긴다. 저장 요청에서 이 값을 빼면(예전 화면) 저장된 값을 그대로 둔다. 배너 문구가 기본값("개장까지")인데 개장한 리조트가 섞이면 화면은 "개장 소식"으로 바꿔 보인다. 리조트캠 상단과 슬로프 페이지의 D-DAY는 지금처럼 개장 전에만 쓴다.
 - 슬로프캠 D-DAY 배지, 슬로프 현황의 "시즌 개장 전", 시즌권 가격 표의 개장일 글자도 같은 API 값을 쓴다.
 - 네 곳 모두 `lib/useSeasonOpenings.ts`의 요청 하나를 나눠 쓴다. API가 실패하면 D-DAY 부분만 그리지 않고 나머지 화면은 그대로다.
 
