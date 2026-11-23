@@ -112,15 +112,13 @@ class CharacterAnswersTest {
     }
 
     @Test
-    void 일곱번_웃음은_유형에서_A와_같이_세고_웃참_실패_뱃지를_준다() {
+    void 일곱번_웃음은_유형에서_A와_같이_센다() {
         // 7번만 A에서 C로 바꿔도 유형, 스탯, 근거 질문은 같다.
         CharacterAnswers coach = new CharacterAnswers("AABAABABBBBBAAA");
         CharacterAnswers laugh = new CharacterAnswers("AABAABCBBBBBAAA");
         assertThat(laugh.type()).isEqualTo(coach.type());
         assertThat(laugh.stats()).isEqualTo(coach.stats());
         assertThat(laugh.highlightQuestions()).isEqualTo(coach.highlightQuestions());
-        assertThat(laugh.badges()).containsExactly(CharacterAnswers.BADGE_LAUGH_FIRST);
-        assertThat(coach.badges()).isEmpty();
 
         // T/F 축: 웃음(C) 하나와 A 하나면 T가 다수다.
         assertThat(new CharacterAnswers("AAAAAACABAAAAAA").type()).isEqualTo(CharacterType.ESTJ);
@@ -128,6 +126,28 @@ class CharacterAnswersTest {
         // 다수 쪽 근거가 웃음이면 7번이 근거 질문이 된다.
         assertThat(new CharacterAnswers("AAAAAACABAAAAAA").highlightQuestions().get(2))
                 .isEqualTo(7);
+    }
+
+    @Test
+    void 다섯번_C는_A_쪽_여섯번_C는_B_쪽으로_센다() {
+        // 5번 C(일단 해 본다)는 S로, 6번 C(별생각 없다)는 N으로 센다.
+        assertThat(new CharacterAnswers("AAABCAAAAAAAAAA").type()).isEqualTo(CharacterType.ESTJ);
+        assertThat(new CharacterAnswers("AAAABCAAAAAAAAA").type()).isEqualTo(CharacterType.ENTJ);
+        assertThat(new CharacterAnswers("AAAACCAAAAAAAAA").type()).isEqualTo(CharacterType.ESTJ);
+        assertThat(new CharacterAnswers("AAABACAAAAAAAAA").type()).isEqualTo(CharacterType.ENTJ);
+        // 같은 쪽으로 세도 A와 C는 다른 답이다.
+        CharacterAnswers doer = new CharacterAnswers("AAAACAAAAAAAAAA");
+        assertThat(doer.matchCount(new CharacterAnswers("AAAAAAAAAAAAAAA"))).isEqualTo(11);
+        assertThat(doer.stats()).isEqualTo(new CharacterAnswers("AAAAAAAAAAAAAAA").stats());
+    }
+
+    @Test
+    void C는_다섯_여섯_일곱번에만_받는다() {
+        assertThatThrownBy(() -> new CharacterAnswers("AAACAAAAAAAAAAA"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new CharacterAnswers("AAAAAAACAAAAAAA"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(new CharacterAnswers("AAAACCCAAAAAAAA").type()).isEqualTo(CharacterType.ESTJ);
     }
 
     @Test
