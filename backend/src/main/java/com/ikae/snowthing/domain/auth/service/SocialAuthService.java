@@ -95,7 +95,8 @@ public class SocialAuthService {
                         .connectedAt(now)
                         .build());
         eventPublisher.publishEvent(
-                new MemberSignedUpEvent(newMember.getNickname(), profile.provider().name()));
+                new MemberSignedUpEvent(
+                        newMember.getNickname(), profile.provider().name(), profile.nickname()));
         return newMember;
     }
 

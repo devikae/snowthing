@@ -220,7 +220,8 @@ class SocialAuthServiceTest {
         assertThat(socialCaptor.getValue().getProviderUserId()).isEqualTo("naver-1001");
         assertThat(socialCaptor.getValue().getProviderEmail()).isEqualTo("newrider@naver.com");
         verify(memberRepository, never()).findByEmail("newrider@naver.com");
-        verify(eventPublisher).publishEvent(new MemberSignedUpEvent(member.getNickname(), "NAVER"));
+        verify(eventPublisher)
+                .publishEvent(new MemberSignedUpEvent(member.getNickname(), "NAVER", "네이버보더"));
     }
 
     @Test
