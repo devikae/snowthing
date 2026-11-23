@@ -16,7 +16,7 @@ export type SeasonOpenings = {
   bannerEnabled: boolean;
   /** 배너 맨 앞 문구. 관리자가 정하고, 없으면 기본 문구를 쓴다. */
   bannerTitle?: string;
-  /** 켜면 개장한 리조트도 배너에 "개장 D+N"으로 남긴다. 예전 서버는 이 값을 주지 않으므로 없으면 끔. */
+  /** 켜면 개장한 리조트도 배너에 "D+N"으로 남긴다. 예전 서버는 이 값을 주지 않으므로 없으면 끔. */
   showAfterOpening?: boolean;
   /** 배너 순서, 같으면 등록 순. */
   resorts: SeasonOpening[];
@@ -40,10 +40,10 @@ export function daysUntil(date: string, today: string): number {
   return Math.round((dateKeyToUtc(date) - dateKeyToUtc(today)) / DAY_MILLIS);
 }
 
-/** 남은 일수를 D-DAY 표기로. 개장일이 지났으면(음수) "개장 D+N"이다. */
+/** 남은 일수를 D-DAY 표기로. 개장일이 지났으면(음수) "D+N"이다. */
 export function formatDday(days: number): string {
   if (days === 0) return "D-DAY";
-  return days > 0 ? `D-${days}` : `개장 D+${-days}`;
+  return days > 0 ? `D-${days}` : `D+${-days}`;
 }
 
 export type UpcomingOpening = { opening: SeasonOpening; date: string; days: number };
