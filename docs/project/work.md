@@ -30,6 +30,24 @@
   - 로컬(백엔드 8082, 프론트 3003): 첫 글(원문 15923)을 대기열에 넣고 스케줄러를 매분으로 돌려 PUBLISHED 확인. 사진은 로컬 S3 기본값이 운영 버킷이라 빼고 올렸다. Chrome 헤드리스로 상세 화면 확인: 문단, 유튜브 플레이어 3개(720x405, 썸네일 표시), 원문 순서. 앱 미리보기 창은 숨김 상태라 iframe 지연 로딩이 돌지 않아 Chrome으로 확인.
   - 운영 배포, 운영 마이그레이션, 실제 디스코드 전송, 게시 시 디시 사진 받아 S3 올리기는 아직 하지 않았다.
 
+## 11/20 점검 미반영 수정 20건 반영 (IKA-117, 2026-11-24)
+
+- 상태: 구현, 로컬 검증, PR 생성. 머지(운영 배포)는 사용자 확인 후.
+- 배경: 11/20 점검 수정이 audit-1120-backend, frontend, infra 브랜치에만 남아 있었다. 11/24에 현재 main과 커밋마다 대조하니 홈 탭 aria-pressed 하나만 이미 들어가 있고 나머지는 모두 유효했다. 운영 슬로프 현황 API에서 개장한 휘닉스파크도 수집 시각이 비어 있었는데, `compose.prod.yml`에 `SNOWTHING_SLOPE_STATUS_ENABLED_RESORTS`가 빠져 있어서였다.
+- 완료: 인프라 9건, 백엔드 3건, 프론트 8건을 main 위에 순서대로 다시 적용했다.
+- 결정 (현재 main에 맞추며 바꾼 점)
+  - 배포, 롤백 워크플로 checkout은 액션이 SHA로 고정돼 cherry-pick이 안 됐다. 같은 `persist-credentials: false`를 새 줄에 다시 넣었다.
+  - 게시글 목록 LOB 커밋: main에 생긴 이전글/다음글 조회와 같은 자리라 둘 다 남겼고, 빠진 `Post` import를 되살렸다. 새 `PostListResponse.of()`가 상태를 그대로 내보내 금칙어 보류 글이 목록에서 드러날 수 있어, `of()` 안에서 `publicView()`를 적용하고 단위 테스트를 더했다.
+  - 설질 삭제 실패 문구와 게시글 상세 오류는 main에서 `lib/http`로 옮겨진 `readErrorMessage`, `readApiError`를 쓴다.
+  - 홈 탭 aria-pressed는 main에 이미 있어 빠졌다.
+- 발견한 문제: 운영 슬로프 현황 수집이 꺼져 있다(위 배경). 머지 뒤 운영 prod.env에 리조트 값이 있어야 수집이 시작된다.
+- 남은 항목: PR CI(039번 이후 마이그레이션 재실행 검사 포함) 확인, 머지(사용자 확인 후), 운영 prod.env 값 확인(사용자).
+- 검증
+  - 백엔드 `./gradlew spotlessCheck test` 통과 (1701건, 실패 0). 새 테스트: 목록이 Post 엔티티를 읽지 않고 같은 응답을 만드는지, 고른 컬럼으로 만든 목록도 금칙어 보류를 NORMAL로 내보내는지.
+  - 프론트 `npm run lint`, `npm run build` 통과. `node --test scripts/frontend-audit.test.cjs scripts/compose-prod-env.test.cjs` 7건 통과.
+  - 가짜 API를 붙인 운영 빌드(`next start`)에 `scripts/frontend-audit-browser-check.cjs`를 돌려 통과: 설질 목록 실패 안내와 다시 시도, 삭제와 추천 두 번 눌러도 요청 1번, 삭제 확인 창 한국어 오류와 Esc 뒤 초점 복귀, 댓글 413 크기 안내, 게시판 탭 aria-pressed.
+  - 마이그레이션 실행기와 재실행 검사는 시험 DB가 필요해 로컬에서 돌리지 않았다. PR CI에서 확인한다.
+
 ## 어드민 게시판 관리 (IKA-114, 2026-11-24)
 
 - 상태: 구현, 로컬 검증 완료, 로컬 커밋. PR은 사용자 화면 확인 후. 머지(운영 배포와 064 마이그레이션)는 IKA-111 머지 다음에 사용자 확인 후. CodeRabbit은 사용자 지시로 돌리지 않는다.

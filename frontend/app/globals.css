@@ -3527,6 +3527,10 @@ html[data-theme="dark"] .snow-empty-copy strong {
   margin-left: auto;
 }
 
+.snow-empty-state.vertical .home-widget-retry {
+  margin-left: 0;
+}
+
 .carpool-compact-list:has(.carpool-widget-empty) {
   border-top: none;
 }

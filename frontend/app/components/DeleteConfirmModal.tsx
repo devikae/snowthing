@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { errorText } from "../lib/errorText";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -28,6 +29,17 @@ export function DeleteConfirmModal({
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // 창이 열리면 창 안으로 초점을 옮기고, 닫히면 창을 연 버튼으로 되돌린다.
+  // 그러지 않으면 키보드와 화면 읽기 프로그램 사용자는 뒤의 글 화면에 머문 채 창이 열린 줄 모른다.
+  useEffect(() => {
+    if (!isOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // 비밀번호 칸이 있으면 그 칸, 없으면 취소 버튼. 실수로 Enter를 눌러도 바로 지워지지 않게 삭제 버튼은 고르지 않는다.
+    dialogRef.current?.querySelector<HTMLElement>("input, .delete-modal-actions button")?.focus();
+    return () => opener?.focus();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -44,11 +56,7 @@ export function DeleteConfirmModal({
       await onConfirm(password.trim());
       setPassword("");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message);
-      } else {
-        setErrorMsg("삭제하지 못했습니다. 비밀번호를 확인한 뒤 다시 시도해 주세요.");
-      }
+      setErrorMsg(errorText(err, "삭제하지 못했습니다. 비밀번호를 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setSubmitting(false);
     }
@@ -62,8 +70,14 @@ export function DeleteConfirmModal({
   };
 
   return (
-    <div className="delete-modal-backdrop">
+    <div
+      className="delete-modal-backdrop"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") handleClose();
+      }}
+    >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -93,7 +107,6 @@ export function DeleteConfirmModal({
                 placeholder="작성할 때 입력한 비밀번호"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoFocus
               />
             </label>
           )}
