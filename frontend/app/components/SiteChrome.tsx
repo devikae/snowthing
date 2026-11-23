@@ -79,7 +79,7 @@ function ChevronDownIcon({ className = "" }: { className?: string }) {
 
 // 게시판 메뉴는 관리자가 추가한 게시판도 강조되도록 board:코드로 가리킨다 (IKA-114).
 export type BoardNav = `board:${string}`;
-export type ActiveNav = "home" | "posts" | "best" | BoardNav | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "inquiry";
+export type ActiveNav = "home" | "posts" | "best" | BoardNav | "carpool" | "market" | "resort" | "resorts" | "profile" | "login" | "signup" | "tools" | "catalog" | "inquiry";
 
 export function boardNav(code: string): BoardNav {
   return `board:${code}`;
@@ -123,6 +123,7 @@ const SECTION_NAV: Record<string, ActiveNav> = {
   tools: "tools",
   "character-test": "tools",
   "season-log": "tools",
+  catalog: "catalog",
 };
 
 export function activeNavFromPath(pathname: string | null): ActiveNav {
@@ -263,6 +264,7 @@ export function TopNav({ active: activeOverride }: { active?: ActiveNav }) {
                 카풀과 동행
               </Link>
               <Link href="/tools" className={active === "tools" ? "nav-active" : ""} aria-current={active === "tools" ? "page" : undefined}>라이더 도구</Link>
+              <Link href="/catalog" className={active === "catalog" ? "nav-active" : ""} aria-current={active === "catalog" ? "page" : undefined}>카탈로그</Link>
             </nav>
           </div>
 
@@ -345,6 +347,7 @@ export function TopNav({ active: activeOverride }: { active?: ActiveNav }) {
               <Link href="/market" className={active === "market" ? "active" : ""} onClick={() => setMobileOpen(false)}>중고장터</Link>
               <Link href="/carpool" className={active === "carpool" ? "active" : ""} onClick={() => setMobileOpen(false)}>카풀과 동행</Link>
               <Link href="/tools" className={active === "tools" ? "active" : ""} onClick={() => setMobileOpen(false)}>라이더 도구</Link>
+              <Link href="/catalog" className={active === "catalog" ? "active" : ""} onClick={() => setMobileOpen(false)}>카탈로그</Link>
               <Link href="/character-test" onClick={() => setMobileOpen(false)}>스키장 캐릭터 테스트</Link>
               {user && <Link href="/season-log" onClick={() => setMobileOpen(false)}>내 시즌 기록</Link>}
               {user && <Link href="/posts?category=INQUIRY" className={active === "inquiry" ? "active" : ""} onClick={() => setMobileOpen(false)}>1:1 문의</Link>}
