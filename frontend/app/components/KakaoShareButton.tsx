@@ -96,6 +96,15 @@ type Props = {
   onFallback?: () => void | Promise<void>;
 };
 
+// 사이트 기본 OG 이미지. 크기를 같이 넘겨야 카카오가 가운데만 잘라 보여 주지 않는다.
+const DEFAULT_IMAGE = { url: "/og-default.png", width: 1200, height: 630 };
+
+function imageSize(imageUrl: string | null | undefined, imageWidth?: number, imageHeight?: number) {
+  if (imageWidth && imageHeight) return { imageWidth, imageHeight };
+  if (!imageUrl) return { imageWidth: DEFAULT_IMAGE.width, imageHeight: DEFAULT_IMAGE.height };
+  return {};
+}
+
 const FALLBACK_NOTICE = { shared: "", cancelled: "", copied: "링크를 복사했어요.", failed: "링크를 복사하지 못했어요." } as const;
 
 export default function KakaoShareButton({ title, description, url, imageUrl, imageWidth, imageHeight, buttonTitle = "자세히 보기", label = "카카오톡 공유", iconOnly = false, onFallback }: Props) {
@@ -124,7 +133,7 @@ export default function KakaoShareButton({ title, description, url, imageUrl, im
     try {
       sdk.Share.sendDefault({
         objectType: "feed",
-        content: { title, description: description || title, imageUrl: new URL(imageUrl || "/og-default.png", origin).toString(), ...(imageWidth && imageHeight ? { imageWidth, imageHeight } : {}), link: linkObject },
+        content: { title, description: description || title, imageUrl: new URL(imageUrl || DEFAULT_IMAGE.url, origin).toString(), ...imageSize(imageUrl, imageWidth, imageHeight), link: linkObject },
         buttons: [{ title: buttonTitle, link: linkObject }],
       });
     } catch {
