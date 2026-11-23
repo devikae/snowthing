@@ -106,15 +106,16 @@ function RecentChatPanel({ onBanned }: { onBanned: () => void }) {
       </div>
       {error && <p role="alert" className="text-xs font-semibold text-rose-600">{error}</p>}
       {!loading && messages.length === 0 && <p className="py-6 text-center text-sm text-slate-500">최근 대화가 없습니다.</p>}
-      <ul className="divide-y divide-slate-100">
+      {/* 다크 모드 색은 globals.css가 바꿔 주는 slate-100, 500, 900만 쓴다. */}
+      <ul>
         {messages.map((message) => (
-          <li key={message.messageId} className="flex flex-wrap items-start gap-2 py-2">
+          <li key={message.messageId} className="flex flex-wrap items-start gap-2 border-b border-slate-100 py-2 last:border-b-0">
             <div className="min-w-0 flex-1">
               <p className="text-xs text-slate-500">
-                <strong className="text-slate-800">{message.sender.nickname}</strong>
+                <strong className="text-slate-900">{message.sender.nickname}</strong>
                 <span className="ml-2 font-mono">{message.sentAt.slice(5, 16).replace("T", " ")}</span>
               </p>
-              <p className="break-words text-sm text-slate-800">{message.content}</p>
+              <p className="break-words text-sm text-slate-900">{message.content}</p>
             </div>
             <div className="flex shrink-0 gap-1">
               <button

@@ -450,8 +450,9 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           {/* 비회원은 제목 바로 아래에 자기 닉네임을 작게 둔다 (IKA-115). 폰 폭에서도 잘리지 않고 화면마다 배치가 같다. */}
           {!currentMember && anonymousChatEnabled && chatEnabled && myGuestNickname && (
             <small className="text-xs text-slate-500">
-              내 닉네임 <strong className="font-bold text-slate-800">{myGuestNickname}</strong>
-              <span className="ml-1 text-slate-400">(접속한 인터넷이 바뀌면 이름도 바뀌어요)</span>
+              {/* 다크 모드 색은 globals.css가 바꿔 주는 slate-500, 900만 쓴다. */}
+              내 닉네임 <strong className="font-bold text-slate-900">{myGuestNickname}</strong>
+              <span className="ml-1 text-slate-500 opacity-80">(접속한 인터넷이 바뀌면 이름도 바뀌어요)</span>
             </small>
           )}
         </div>
