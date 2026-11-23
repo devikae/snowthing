@@ -6,9 +6,9 @@ import ShareResult from "../ShareResult";
 import { DECK_QUESTION_KEY } from "../../lib/toolQuestionDraft";
 
 const bandGuide = {
-  short: { label: "짧은 쪽", use: "그라운드 트릭" },
-  middle: { label: "중간", use: "올라운드, 파크" },
-  long: { label: "긴 쪽", use: "라이딩" },
+  short: { label: "Short", use: "그라운드 트릭", focus: "회전, 프레스 등, 반응성 중심" },
+  middle: { label: "Mid", use: "올라운드, 파크", focus: "슬로프, 킥커 등, 균형 중심" },
+  long: { label: "Long", use: "라이딩", focus: "카빙, 고속 라이딩 등, 안정성 중심" },
 };
 export default function DeckSizeCalculator() {
   const [weight, setWeight] = useState(""); const [boot, setBoot] = useState("");
@@ -81,14 +81,14 @@ export default function DeckSizeCalculator() {
           </div>
           {result.bands.length > 0 ? <ol className="tool-bands" aria-label="길이별 선택 방향">{result.bands.map(band => {
             const guide = bandGuide[band.position];
-            return <li key={band.position}><small>{guide.label}</small><strong>{band.minimum === band.maximum ? band.minimum : `${band.minimum}~${band.maximum}`}cm</strong><b>{guide.use}</b></li>;
+            return <li key={band.position}><small>{guide.label}</small><strong>{band.minimum === band.maximum ? band.minimum : `${band.minimum}~${band.maximum}`}cm</strong><b>{guide.use}</b><span className="tool-band-focus">{guide.focus}</span></li>;
           })}</ol> : <p className="tool-answer-note">참고표의 상한이 없거나 범위가 좁아 길이 구간을 나누지 않았어요.</p>}
         </> : <><h2>계산 결과</h2><p className="tool-answer-empty">체중과 부츠 사이즈를 넣으면 참고 길이가 여기에 나와요</p></>}
       </section>
     </div>
 
     {input && result?.valid && <section className="tool-more">
-      <p className="tool-help">짧을수록 조작성, 길수록 안정성에 무게를 둔 선택 방향이에요. 성향별 전용 규격은 아니고, 파크도 기물은 짧은 쪽, 큰 점프는 긴 쪽을 함께 비교해 보세요. 모델별 권장 체중을 먼저 확인해 주세요.</p>
+      <p className="tool-help">짧을수록 조작성, 길수록 안정성에 무게를 둔 선택 방향이에요. 성향별 전용 규격은 아니고, 파크도 기물은 Short, 큰 점프는 Long을 함께 비교해 보세요. 모델별 권장 체중을 먼저 확인해 주세요.</p>
       <ShareResult key={deckSearch(input)} path="/tools/deck-size" search={deckSearch(input)} text={`데크 참고 범위 ${range}. 내 조건으로 확인해 보세요.`} />
     </section>}
 
@@ -97,6 +97,6 @@ export default function DeckSizeCalculator() {
       <h2>라이더에게 물어보기</h2><p>질문에 필요한 조건을 정리해 드립니다. 초안을 공개하기 전에 포함된 체중, 부츠 정보와 내용을 확인하세요.</p><button type="button" onClick={() => setDraftVisible(value => !value)}>{draftVisible ? "초안 접기" : "질문 초안 확인"}</button>
       {draftVisible && <div className="tool-question-draft"><label>질문 초안<textarea readOnly value={draft} rows={12} onFocus={event => event.target.select()} /></label><div className="tools-related"><button type="button" onClick={() => void copyDraft()}>초안 복사</button><Link href="/posts/create?category=QNA&draft=deck" onClick={prepareQuestion}>이 초안으로 장비 질문 쓰기 →</Link></div>{draftNotice && <p role="status">{draftNotice}</p>}</div>}
     </section>}
-    <section className="tool-explanation"><h2>어떤 자료를 사용하나요?</h2><p>Jones의 성인 체중, 부츠 참고표를 바탕으로 계산합니다. 체중은 표 조회를 위해 가까운 정수 kg로 반올림하고, 키나 성별만으로 길이를 정하지 않아요. 짧은 쪽, 중간, 긴 쪽은 이 범위를 나눈 선택 가이드입니다. 제조사가 정한 성향별 길이 경계나 실제 판매 사이즈를 뜻하지 않습니다.</p><div className="tools-related"><a href={BOOT_SIZE_SOURCE} target="_blank" rel="noreferrer">Burton 공식 부츠 사이즈표 ↗</a><a href={DECK_SOURCE} target="_blank" rel="noreferrer">Jones 공식 사이징 가이드 ↗</a><a href="https://www.burton.com/en-us/blogs/the-burton-blog/snowboard-buying-guide" target="_blank" rel="noreferrer">Burton 공식 구매 가이드 ↗</a><a href="https://www.spreadboard.net/" target="_blank" rel="noreferrer">SPREAD 공식 모델, 보드 진단 ↗</a></div><p>자료 확인: {DECK_SOURCE_CHECKED}. 구매 전 해당 모델의 최신 권장 체중, 폭과 재고 사이즈를 확인해 주세요.</p></section>
+    <section className="tool-explanation"><h2>어떤 자료를 사용하나요?</h2><p>Jones의 성인 체중, 부츠 참고표를 바탕으로 계산합니다. 체중은 표 조회를 위해 가까운 정수 kg로 반올림하고, 키나 성별만으로 길이를 정하지 않아요. Short, Mid, Long은 이 범위를 셋으로 나눈 선택 가이드입니다. 제조사가 정한 성향별 길이 경계나 실제 판매 사이즈를 뜻하지 않습니다.</p><div className="tools-related"><a href={BOOT_SIZE_SOURCE} target="_blank" rel="noreferrer">Burton 공식 부츠 사이즈표 ↗</a><a href={DECK_SOURCE} target="_blank" rel="noreferrer">Jones 공식 사이징 가이드 ↗</a><a href="https://www.burton.com/en-us/blogs/the-burton-blog/snowboard-buying-guide" target="_blank" rel="noreferrer">Burton 공식 구매 가이드 ↗</a><a href="https://www.spreadboard.net/" target="_blank" rel="noreferrer">SPREAD 공식 모델, 보드 진단 ↗</a></div><p>자료 확인: {DECK_SOURCE_CHECKED}. 구매 전 해당 모델의 최신 권장 체중, 폭과 재고 사이즈를 확인해 주세요.</p></section>
   </div>;
 }
