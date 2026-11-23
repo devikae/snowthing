@@ -102,7 +102,7 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
               <p className={styles.listingDeleted}>삭제된 판매글</p>
             ) : (
               <Link href={`/market/${listing.publicId}`} className={styles.listingLink}>
-                <span className="material-symbols-outlined" aria-hidden="true">sell</span>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">sell</span>
                 {listing.title}
               </Link>
             ))}

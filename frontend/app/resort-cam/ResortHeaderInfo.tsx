@@ -102,7 +102,7 @@ export function ResortWeatherChip({ resortCode }: { resortCode: string }) {
       title={weather.stale ? "최근 갱신에 실패해 이전 값을 보여 줍니다." : undefined}
     >
       {icon && (
-        <span className={`material-symbols-outlined ${styles.skyIcon}`} data-tone={icon.tone} aria-hidden="true">
+        <span data-nosnippet className={`material-symbols-outlined ${styles.skyIcon}`} data-tone={icon.tone} aria-hidden="true">
           {icon.name}
         </span>
       )}

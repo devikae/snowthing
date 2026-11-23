@@ -55,7 +55,7 @@ function ThemeToggle() {
       aria-label={`현재 테마: ${themeMeta[setting].label}. ${themeMeta[nextSetting].label}로 변경`}
       title={`테마: ${themeMeta[setting].label}`}
     >
-      <span className="material-symbols-outlined" aria-hidden="true">{themeMeta[setting].icon}</span>
+      <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">{themeMeta[setting].icon}</span>
     </button>
   );
 }
@@ -264,7 +264,7 @@ export function TopNav({ active: activeOverride }: { active?: ActiveNav }) {
             <ThemeToggle />
             <form className={`header-search${searchOpen ? " open" : ""}`} onSubmit={handleSearch}>
               <button type="button" onClick={() => setSearchOpen((open) => !open)} aria-label={searchOpen ? "검색 닫기" : "검색 열기"} aria-expanded={searchOpen}>
-                <span className="material-symbols-outlined" aria-hidden="true">search</span>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">search</span>
               </button>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" maxLength={100} tabIndex={searchOpen ? 0 : -1} />
             </form>
@@ -315,17 +315,17 @@ export function TopNav({ active: activeOverride }: { active?: ActiveNav }) {
                 </details>
               </div>
             ) : (
-              <Link href="/login" className="header-login" aria-label="로그인" title="로그인"><span className="material-symbols-outlined" aria-hidden="true">person</span></Link>
+              <Link href="/login" className="header-login" aria-label="로그인" title="로그인"><span data-nosnippet className="material-symbols-outlined" aria-hidden="true">person</span></Link>
             ))}
             <button type="button" className="header-menu-button" onClick={() => setMobileOpen((open) => !open)} aria-label={mobileOpen ? "메뉴 닫기" : "메뉴 열기"} aria-expanded={mobileOpen}>
-              <span className="material-symbols-outlined" aria-hidden="true">{mobileOpen ? "close" : "menu"}</span>
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">{mobileOpen ? "close" : "menu"}</span>
             </button>
           </div>
         </div>
         <div className={`community-mobile-panel${mobileOpen ? " open" : ""}`}>
           <div className="community-container">
             <form className="mobile-header-search" onSubmit={handleSearch}>
-              <span className="material-symbols-outlined" aria-hidden="true">search</span>
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">search</span>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="통합 검색" aria-label="통합 검색" maxLength={100} />
               <button type="submit">검색</button>
             </form>

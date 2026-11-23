@@ -326,7 +326,7 @@ export default function KakaoMapPicker({
           className="carpool-gps-btn"
           title="현재 위치로 출발지 설정"
         >
-          <span className="material-symbols-outlined" style={{ fontSize: "16px", verticalAlign: "middle" }} aria-hidden="true">
+          <span data-nosnippet className="material-symbols-outlined" style={{ fontSize: "16px", verticalAlign: "middle" }} aria-hidden="true">
             my_location
           </span>
           {locating ? "위치 확인 중" : "현재 위치"}

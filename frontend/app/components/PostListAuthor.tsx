@@ -89,7 +89,7 @@ export function PostListAuthor({ nickname, profileImageUrl, publicId }: PostList
           <div className="author-zoom-backdrop" onClick={closeZoom}>
             <div role="dialog" aria-modal="true" aria-label={`${nickname} 프로필`} className="author-zoom-card">
               <button type="button" className="author-zoom-close" aria-label="닫기" autoFocus>
-                <span className="material-symbols-outlined" aria-hidden="true">close</span>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">close</span>
               </button>
               <CommentProfileAvatar
                 nickname={nickname}

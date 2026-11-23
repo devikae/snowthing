@@ -109,22 +109,22 @@ export function ResortCamView({
           <div className={styles.resortHeaderActions}>
             <ResortWeatherChip resortCode={selectedResort.code} />
             <Link className={styles.backLink} href={`/resorts/${resortSlug(selectedResort.code)}`}>
-              <span className="material-symbols-outlined" aria-hidden="true">info</span>
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">info</span>
               리조트 정보
             </Link>
             <Link className={styles.backLink} href={`/slopes#${resortSlug(selectedResort.code)}`}>
-              <span className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
               슬로프 현황
             </Link>
             {hasSlopeSpec && (
               <Link className={styles.backLink} href={`/slopes/${resortSlug(selectedResort.code)}`}>
-                <span className="material-symbols-outlined" aria-hidden="true">landscape</span>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">landscape</span>
                 슬로프맵
               </Link>
             )}
             {selectedCamera && (
               <Link className={styles.backLink} href={`/resort-cam/${resortSlug(selectedResort.code)}`}>
-                <span className="material-symbols-outlined" aria-hidden="true">grid_view</span>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">grid_view</span>
                 전체 보기
               </Link>
             )}
@@ -152,7 +152,7 @@ export function ResortCamView({
                       aria-label={`${camera.name} 크게 보기`}
                       title="크게 보기"
                     >
-                      <span className="material-symbols-outlined" aria-hidden="true">open_in_full</span>
+                      <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">open_in_full</span>
                     </Link>
                   )}
                 </div>
@@ -178,7 +178,7 @@ export function ResortCamView({
 function EmptyState({ message }: { message: string }) {
   return (
     <div className={styles.empty}>
-      <span className="material-symbols-outlined" aria-hidden="true">videocam_off</span>
+      <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">videocam_off</span>
       <p>{message}</p>
     </div>
   );

@@ -219,7 +219,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   const renderComment = (item: CommentItem, root: CommentItem | null = null) => (
     <article className={root ? "post-comment-reply" : "post-comment-item"} key={item.commentId}>
       <div className="comment-youtube-row">
-        {root && <span className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>}
+        {root && <span data-nosnippet className="material-symbols-outlined comment-reply-arrow" aria-hidden="true">subdirectory_arrow_right</span>}
         <ProfileAvatar writer={item.writer} />
         <div className="comment-youtube-body">
           <header><AuthorMenu publicId={item.isAnonymous || item.isDeleted ? null : item.writer?.publicId} nickname={item.writer?.nickname || "탈퇴한 회원"} /><time>{formatShortDateTime(item.createdAt)}</time></header>

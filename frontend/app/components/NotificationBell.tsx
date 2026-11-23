@@ -135,7 +135,7 @@ export function NotificationBell() {
         aria-label={count > 0 ? `알림 ${count}개 안 읽음` : "알림"}
         title="알림"
       >
-        <span className="material-symbols-outlined" aria-hidden="true">notifications</span>
+        <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">notifications</span>
         {count > 0 && <span className="header-notification-badge" aria-hidden="true">{badgeText(count)}</span>}
       </summary>
       <div className="header-notification-dropdown" role="dialog" aria-label="최근 알림">

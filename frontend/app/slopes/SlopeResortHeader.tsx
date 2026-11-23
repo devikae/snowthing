@@ -38,30 +38,30 @@ export function SlopeResortHeader({ resort, title, chips, hasCam, backToResort =
         {domestic && <ResortWeatherChip resortCode={resort.code} />}
         {backToResort && (
           <Link className={camStyles.backLink} href={`/slopes/${slug}`}>
-            <span className="material-symbols-outlined" aria-hidden="true">landscape</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">landscape</span>
             {resort.name} 전체
           </Link>
         )}
         {hasCam && (
           <Link className={camStyles.backLink} href={`/resorts/${slug}`}>
-            <span className="material-symbols-outlined" aria-hidden="true">info</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">info</span>
             리조트 정보
           </Link>
         )}
         {domestic && (
           <Link className={camStyles.backLink} href={`/slopes#${slug}`}>
-            <span className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
             슬로프 현황
           </Link>
         )}
         {hasCam && (
           <Link className={camStyles.backLink} href={`/resort-cam/${slug}`}>
-            <span className="material-symbols-outlined" aria-hidden="true">videocam</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">videocam</span>
             슬로프캠
           </Link>
         )}
         <Link className={camStyles.backLink} href="/slopes/compare">
-          <span className="material-symbols-outlined" aria-hidden="true">compare_arrows</span>
+          <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">compare_arrows</span>
           슬로프 비교
         </Link>
       </div>

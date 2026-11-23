@@ -77,7 +77,7 @@ export function DeleteConfirmModal({
             disabled={submitting}
             aria-label="삭제 확인 모달 닫기"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">close</span>
+            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">close</span>
           </button>
         </div>
 

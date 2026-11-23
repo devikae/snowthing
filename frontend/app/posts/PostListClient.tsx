@@ -247,7 +247,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                       </span>
                       <span className="m-stats">
                         <span className="m-stat">
-                          <span className="material-symbols-outlined" aria-hidden="true">
+                          <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
                             visibility
                           </span>
                           {notice.viewCount.toLocaleString("ko-KR")}
@@ -263,12 +263,12 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
             <section className="board-post-list" aria-live="polite">
               {loading ? (
                 <div className="board-state">
-                  <span className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
+                  <span data-nosnippet className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
                   <strong>게시글을 불러오는 중입니다.</strong>
                 </div>
               ) : error ? (
                 <div className="board-state error">
-                  <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
                   <strong>{error}</strong>
                   <button type="button" onClick={() => void fetchPosts()}>
                     다시 시도
@@ -276,7 +276,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                 </div>
               ) : posts.length === 0 ? (
                 <div className="board-state">
-                  <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">edit_note</span>
                   <strong>
                     {keywordFromUrl
                       ? "검색 결과가 없습니다."
@@ -326,14 +326,14 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                         <span className="m-stats">
                           {post.commentCount > 0 && (
                             <span className="m-stat hot" title={`댓글 ${post.commentCount}`}>
-                              <span className="material-symbols-outlined" aria-hidden="true">
+                              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
                                 chat_bubble
                               </span>
                               {post.commentCount}
                             </span>
                           )}
                           <span className="m-stat" title={`조회 ${post.viewCount.toLocaleString("ko-KR")}`}>
-                            <span className="material-symbols-outlined" aria-hidden="true">
+                            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">
                               visibility
                             </span>
                             {post.viewCount.toLocaleString("ko-KR")}
@@ -350,7 +350,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
             <div className="board-navigation">
               <nav className="board-pagination" aria-label="페이지 이동">
                 <button disabled={page === 0} onClick={() => moveTo({ page: page - 1 })} aria-label="이전 페이지">
-                  <span className="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_left</span>
                 </button>
                 {visiblePages.map((pageNumber) => (
                   <button
@@ -369,7 +369,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                   </>
                 )}
                 <button disabled={page + 1 >= totalPages} onClick={() => moveTo({ page: page + 1 })} aria-label="다음 페이지">
-                  <span className="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                  <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">chevron_right</span>
                 </button>
               </nav>
               <div className="board-navigation-actions">
@@ -393,7 +393,7 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
                     href={`/posts/create${currentCategory ? `?category=${currentCategory}` : ""}`}
                     className="board-write-button"
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+                    <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">edit</span>
                     {isInquiry ? "문의하기" : "글쓰기"}
                   </Link>
                 )}
