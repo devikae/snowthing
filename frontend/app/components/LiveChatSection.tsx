@@ -446,7 +446,16 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       {/* 상단 헤더 바 */}
       <div className="live-chat-head">
         <div className="section-head-title">
-          <h2>라이브톡</h2>
+          {/* 비회원은 제목 옆에 자기 닉네임을 작게 둔다 (IKA-115). 대화 칸과 입력칸 사이를 띄우지 않으려는 배치다. */}
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h2>라이브톡</h2>
+            {!currentMember && anonymousChatEnabled && chatEnabled && myGuestNickname && (
+              <small className="text-xs text-slate-500">
+                내 닉네임 <strong className="font-bold text-slate-800">{myGuestNickname}</strong>
+                <span className="ml-1 text-slate-400">(접속한 인터넷이 바뀌면 이름도 바뀌어요)</span>
+              </small>
+            )}
+          </div>
         </div>
       </div>
 
@@ -558,12 +567,6 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       {!chatEnabled && (
         <p role="status" className="mx-3 mb-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
           {isAdmin ? "라이브톡이 닫혀 있습니다. 관리자만 메시지를 보낼 수 있습니다." : "라이브톡이 잠시 닫혀 있어요. 잠시 후 다시 와 주세요."}
-        </p>
-      )}
-      {!currentMember && anonymousChatEnabled && chatEnabled && myGuestNickname && (
-        <p className="mx-3 mb-1 text-xs text-slate-500">
-          내 닉네임 <strong className="font-bold text-slate-800">{myGuestNickname}</strong>
-          <span className="ml-1 text-slate-400">(접속한 인터넷이 바뀌면 이름도 바뀌어요)</span>
         </p>
       )}
 
