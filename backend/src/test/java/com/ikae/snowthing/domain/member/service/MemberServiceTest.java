@@ -67,7 +67,7 @@ class MemberServiceTest {
         assertThat(response.getEmail()).isEqualTo("newuser@snowthing.com");
         assertThat(response.getNickname()).isEqualTo("신규보더");
         verify(memberRepository).saveAndFlush(any(Member.class));
-        verify(eventPublisher).publishEvent(new MemberSignedUpEvent("신규보더", "EMAIL"));
+        verify(eventPublisher).publishEvent(new MemberSignedUpEvent("신규보더", "EMAIL", null));
     }
 
     @Test
