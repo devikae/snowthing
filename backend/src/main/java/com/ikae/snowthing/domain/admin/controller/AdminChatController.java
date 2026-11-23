@@ -55,6 +55,13 @@ public class AdminChatController {
         return ResponseEntity.noContent().build();
     }
 
+    /** 메시지 한 줄 가리기 (IKA-115). 보낸 사람은 막지 않는다. */
+    @DeleteMapping("/messages/{messageId}")
+    public ResponseEntity<Void> hideMessage(@PathVariable("messageId") String messageId) {
+        chatIpBanService.hideMessage(messageId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/messages/{messageId}/ban-ip")
     public ResponseEntity<Void> banByMessageId(
             @PathVariable("messageId") String messageId,

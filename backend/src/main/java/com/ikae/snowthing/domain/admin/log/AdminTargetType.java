@@ -9,6 +9,7 @@ public enum AdminTargetType {
     CONTENT_REPORT,
     BANNER,
     CHAT_BAN,
+    CHAT_MESSAGE,
     CONFIG,
     SEASON_OPENING,
     BANNED_WORD,

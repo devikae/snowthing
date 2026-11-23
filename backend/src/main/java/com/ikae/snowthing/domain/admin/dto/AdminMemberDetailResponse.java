@@ -15,6 +15,8 @@ public record AdminMemberDetailResponse(
         String status,
         String role,
         LocalDateTime createdAt,
+        LocalDateTime suspendedUntil,
+        String suspendReason,
         boolean emailVerified,
         boolean hasPassword,
         List<String> socialProviders,

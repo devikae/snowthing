@@ -46,6 +46,8 @@ public class AdminMemberDetailService {
                 member.getStatus().name(),
                 member.getRole().name(),
                 member.getCreatedAt(),
+                member.getSuspendedUntil(),
+                member.getSuspendReason(),
                 member.getEmailVerifiedAt() != null,
                 member.getPassword() != null && !member.getPassword().isBlank(),
                 adminQueryRepository.findSocialProviders(memberId),

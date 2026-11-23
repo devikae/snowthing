@@ -30,6 +30,13 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   OAUTH_SIGNUP_EXPIRED: "소셜 가입 유효 시간이 지났습니다. 다시 로그인해 주세요.",
 };
 
+/** 정지 계정 안내 (IKA-115). 서버가 넘긴 해제 시각(KST, 예: 2026-12-01T15:00)이 있으면 함께 보여 준다. */
+function suspendedMessage(until: string | null): string {
+  const match = until?.match(/^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return OAUTH_ERROR_MESSAGES.ACCOUNT_SUSPENDED;
+  return `${OAUTH_ERROR_MESSAGES.ACCOUNT_SUSPENDED} ${Number(match[1])}월 ${Number(match[2])}일 ${match[3]}:${match[4]}에 풀립니다.`;
+}
+
 const LOGIN_FAILURE_MESSAGES: Record<number, string> = {
   401: "이메일 또는 비밀번호가 올바르지 않습니다.",
   429: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
@@ -66,10 +73,13 @@ export default function LoginPage() {
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
-    const oauthError = new URLSearchParams(window.location.search).get("error");
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
     if (!oauthError) return;
     const timer = window.setTimeout(() => setErrorMsg(
-      OAUTH_ERROR_MESSAGES[oauthError] || "소셜 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.",
+      oauthError === "ACCOUNT_SUSPENDED"
+        ? suspendedMessage(params.get("until"))
+        : OAUTH_ERROR_MESSAGES[oauthError] || "소셜 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.",
     ), 0);
     return () => window.clearTimeout(timer);
   }, []);

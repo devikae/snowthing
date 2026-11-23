@@ -160,17 +160,22 @@ class LoginAttemptLimitIntegrationTest {
     }
 
     @Test
-    @DisplayName("정지, 탈퇴 계정은 500이 아니라 없는 이메일과 같은 401을 받는다")
+    @DisplayName("탈퇴 계정과 비밀번호가 틀린 정지 계정은 없는 이메일과 같은 401을 받는다")
     void inactiveAccountsGetSameResponseAsUnknownEmail() throws Exception {
         MockHttpServletResponse unknown =
                 login("nobody-" + UUID.randomUUID() + "@example.com", WRONG_PASSWORD, IP);
         assertUnauthorized(unknown);
 
-        for (MemberStatus status : List.of(MemberStatus.SUSPENDED, MemberStatus.WITHDRAWN)) {
-            String inactive = saveMember(status).getEmail();
-            assertSameResponse(unknown, login(inactive, PASSWORD, IP));
-            assertSameResponse(unknown, login(inactive, WRONG_PASSWORD, IP));
-        }
+        String withdrawn = saveMember(MemberStatus.WITHDRAWN).getEmail();
+        assertSameResponse(unknown, login(withdrawn, PASSWORD, IP));
+        assertSameResponse(unknown, login(withdrawn, WRONG_PASSWORD, IP));
+
+        // 정지 계정은 비밀번호를 아는 본인에게만 정지 사실을 알린다 (IKA-115).
+        String suspended = saveMember(MemberStatus.SUSPENDED).getEmail();
+        assertSameResponse(unknown, login(suspended, WRONG_PASSWORD, IP));
+        MockHttpServletResponse owner = login(suspended, PASSWORD, IP);
+        assertThat(owner.getStatus()).isEqualTo(403);
+        assertThat(owner.getContentAsString()).contains("ACCOUNT_SUSPENDED");
     }
 
     @Test

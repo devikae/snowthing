@@ -72,6 +72,14 @@ public class Member extends BaseTimeEntity {
     @Column(name = "status", nullable = false, length = 20)
     private MemberStatus status;
 
+    /** 정지가 끝나는 시각(KST). null이면 해제할 때까지 무기한이다 (IKA-115). 정지 중일 때만 값이 있다. */
+    @Column(name = "suspended_until")
+    private LocalDateTime suspendedUntil;
+
+    /** 관리자가 남긴 정지 사유. 관리자 화면에만 보인다. */
+    @Column(name = "suspend_reason", length = 255)
+    private String suspendReason;
+
     @PrePersist
     public void prePersist() {
         if (this.publicId == null) {
@@ -175,11 +183,27 @@ public class Member extends BaseTimeEntity {
     }
 
     public void suspend() {
+        suspend(null, null);
+    }
+
+    /** 정지한다. until이 null이면 무기한이다. 이미 정지 중이면 기간과 사유를 새 값으로 바꾼다. */
+    public void suspend(LocalDateTime until, String reason) {
         this.status = MemberStatus.SUSPENDED;
+        this.suspendedUntil = until;
+        this.suspendReason = reason;
     }
 
     public void reinstate() {
         this.status = MemberStatus.ACTIVE;
+        this.suspendedUntil = null;
+        this.suspendReason = null;
+    }
+
+    /** 기간이 정해진 정지가 now에 끝났는지. 무기한 정지는 false다. */
+    public boolean isSuspensionExpired(LocalDateTime now) {
+        return status == MemberStatus.SUSPENDED
+                && suspendedUntil != null
+                && !suspendedUntil.isAfter(now);
     }
 
     public void changeRole(Role role) {

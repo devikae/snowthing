@@ -113,6 +113,9 @@ export interface AdminMember {
   status: AdminMemberStatus;
   role: "ROLE_USER" | "ROLE_ADMIN";
   createdAt: string;
+  /** 정지가 끝나는 시각(KST). 무기한 정지거나 정지가 아니면 null. */
+  suspendedUntil: string | null;
+  suspendReason: string | null;
 }
 
 export interface AdminMemberListResponse {
@@ -162,6 +165,8 @@ export interface AdminMemberDetail {
   status: AdminMemberStatus;
   role: AdminMember["role"];
   createdAt: string;
+  suspendedUntil: string | null;
+  suspendReason: string | null;
   emailVerified: boolean;
   hasPassword: boolean;
   socialProviders: string[];
@@ -240,6 +245,7 @@ export const ACTION_LABEL: Record<string, string> = {
   BANNER_DELETE: "배너 삭제",
   CHAT_IP_BAN: "IP 차단",
   CHAT_IP_UNBAN: "IP 차단 해제",
+  CHAT_MESSAGE_HIDE: "라이브톡 메시지 가리기",
   CONFIG_UPDATE: "운영 설정 변경",
   SEASON_OPENING_UPDATE: "개장일 변경",
   BANNED_WORD_CREATE: "금칙어 추가",
@@ -265,6 +271,7 @@ export const TARGET_LABEL: Record<string, string> = {
   CONTENT_REPORT: "신고",
   BANNER: "배너",
   CHAT_BAN: "IP 차단",
+  CHAT_MESSAGE: "라이브톡 메시지",
   CONFIG: "설정",
   SEASON_OPENING: "개장일",
   BANNED_WORD: "금칙어",

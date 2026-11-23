@@ -27,6 +27,7 @@ class StompDestinationGuardTest {
         assertThat(guard.preSend(frame(StompCommand.SEND, "/sub/chat/main"), null)).isNull();
         assertThat(guard.preSend(frame(StompCommand.SEND, "/queue/errors"), null)).isNull();
         assertThat(guard.preSend(frame(StompCommand.SEND, "/user/queue/errors"), null)).isNull();
+        assertThat(guard.preSend(frame(StompCommand.SEND, "/user/queue/chat"), null)).isNull();
         assertThat(guard.preSend(frame(StompCommand.SEND, "/pub/../sub/chat/main"), null)).isNull();
         assertThat(guard.preSend(frame(StompCommand.SEND, null), null)).isNull();
     }
@@ -39,6 +40,10 @@ class StompDestinationGuardTest {
 
         assertThat(guard.preSend(main, null)).isSameAs(main);
         assertThat(guard.preSend(errors, null)).isSameAs(errors);
+        Message<byte[]> heldEcho = frame(StompCommand.SUBSCRIBE, "/user/queue/chat");
+        assertThat(guard.preSend(heldEcho, null)).isSameAs(heldEcho);
+        assertThat(guard.preSend(frame(StompCommand.SUBSCRIBE, "/queue/chat-user1"), null))
+                .isNull();
         assertThat(guard.preSend(frame(StompCommand.SUBSCRIBE, "/queue/errors-user1"), null))
                 .isNull();
         assertThat(guard.preSend(frame(StompCommand.SUBSCRIBE, "/sub/chat/other"), null)).isNull();

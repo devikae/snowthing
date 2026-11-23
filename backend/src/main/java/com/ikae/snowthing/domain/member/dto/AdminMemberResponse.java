@@ -13,7 +13,9 @@ public record AdminMemberResponse(
         String nickname,
         MemberStatus status,
         Role role,
-        LocalDateTime createdAt) {
+        LocalDateTime createdAt,
+        LocalDateTime suspendedUntil,
+        String suspendReason) {
 
     public static AdminMemberResponse from(Member member) {
         return new AdminMemberResponse(
@@ -22,6 +24,8 @@ public record AdminMemberResponse(
                 member.getNickname(),
                 member.getStatus(),
                 member.getRole(),
-                member.getCreatedAt());
+                member.getCreatedAt(),
+                member.getSuspendedUntil(),
+                member.getSuspendReason());
     }
 }

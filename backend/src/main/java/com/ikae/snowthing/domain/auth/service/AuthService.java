@@ -4,10 +4,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ikae.snowthing.domain.auth.dto.MemberLoginResponse;
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.EmailNormalizer;
 import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.AccountSuspendedException;
 import com.ikae.snowthing.global.exception.CustomAuthException;
 import com.ikae.snowthing.global.exception.CustomException;
 
@@ -33,13 +35,13 @@ public class AuthService {
      * 등록 후 읽으면 둘 중 하나는 반드시 이 세션을 잡는다.
      */
     public void ensureStillActive(String publicId) {
-        MemberStatus status =
+        Member member =
                 memberRepository
                         .findByPublicId(publicId)
-                        .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND))
-                        .getStatus();
+                        .orElseThrow(() -> new CustomAuthException(ErrorCode.MEMBER_NOT_FOUND));
+        MemberStatus status = member.getStatus();
         if (status == MemberStatus.SUSPENDED) {
-            throw new CustomException(ErrorCode.ACCOUNT_SUSPENDED);
+            throw new AccountSuspendedException(member.getSuspendedUntil());
         }
         if (status == MemberStatus.WITHDRAWN) {
             throw new CustomException(ErrorCode.ACCOUNT_WITHDRAWN);

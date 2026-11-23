@@ -1,5 +1,8 @@
 package com.ikae.snowthing.domain.member.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +41,7 @@ public class AdminMemberService {
     private final AdminMemberRoleWriter roleWriter;
     private final MemberSessionRegistry memberSessionRegistry;
     private final ChatConnectionRegistry chatConnectionRegistry;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public AdminMemberListResponse search(String query, Integer page, Integer size) {
@@ -62,7 +66,19 @@ public class AdminMemberService {
     }
 
     public AdminMemberResponse suspend(String actorPublicId, String targetPublicId) {
-        AdminMemberStatusWriter.Change change = statusWriter.suspend(actorPublicId, targetPublicId);
+        return suspend(actorPublicId, targetPublicId, null, null);
+    }
+
+    /**
+     * 기간과 사유를 붙여 정지한다 (IKA-115). days가 null이면 무기한이다. 끝나는 시각은 지금부터 days일 뒤(KST)이고, 스케줄러가 그 뒤에 푼다.
+     */
+    public AdminMemberResponse suspend(
+            String actorPublicId, String targetPublicId, Integer days, String reason) {
+        LocalDateTime until = days == null ? null : LocalDateTime.now(clock).plusDays(days);
+        String label = days == null ? "무기한" : days + "일";
+        String note = reason == null || reason.isBlank() ? null : reason.strip();
+        AdminMemberStatusWriter.Change change =
+                statusWriter.suspend(actorPublicId, targetPublicId, until, note, label);
         memberSessionRegistry.invalidateAll(targetPublicId);
         chatConnectionRegistry.disconnectMember(change.memberId());
         audit("SUSPEND", actorPublicId, change);
@@ -73,6 +89,25 @@ public class AdminMemberService {
         AdminMemberStatusWriter.Change change = statusWriter.reinstate(targetPublicId);
         audit("REINSTATE", actorPublicId, change);
         return change.member();
+    }
+
+    /**
+     * 기간이 끝난 정지를 푼다 (IKA-115). 한 번에 최대 {@code limit}명이고 한 명씩 따로 커밋한다. 한 명이 실패해도 나머지는 푼다.
+     *
+     * @return 푼 회원 수
+     */
+    public int releaseExpiredSuspensions(int limit) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        int released = 0;
+        for (String publicId :
+                memberRepository.findExpiredSuspensionPublicIds(now, PageRequest.of(0, limit))) {
+            AdminMemberStatusWriter.Change change = statusWriter.releaseExpired(publicId, now);
+            if (change != null) {
+                released++;
+                audit("REINSTATE_EXPIRED", "SYSTEM", change);
+            }
+        }
+        return released;
     }
 
     /** 관리자로 지정한다. 세션 권한은 로그인 때 정해지므로 커밋 뒤 대상의 기존 세션을 끊어 다시 로그인하면 바로 관리자 화면을 쓰게 한다. */

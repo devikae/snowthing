@@ -24,7 +24,8 @@ public class StompDestinationGuard implements ChannelInterceptor {
 
     private static final String APPLICATION_PREFIX = "/pub/";
     private static final Set<String> ALLOWED_SUBSCRIPTIONS =
-            Set.of("/sub/chat/main", "/user/queue/errors");
+            // /user/queue/chat: 금칙어에 걸린 내 메시지를 나에게만 돌려주는 개인 큐 (IKA-115).
+            Set.of("/sub/chat/main", "/user/queue/errors", "/user/queue/chat");
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {

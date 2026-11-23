@@ -33,6 +33,7 @@ import com.ikae.snowthing.domain.member.service.RegistrationConsentService;
 import com.ikae.snowthing.domain.member.service.WithdrawnEmailService;
 import com.ikae.snowthing.domain.notification.service.NotificationSettingService;
 import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.AccountSuspendedException;
 import com.ikae.snowthing.global.exception.CustomException;
 
 import lombok.RequiredArgsConstructor;
@@ -257,7 +258,7 @@ public class SocialAuthService {
 
     private void validateActiveStatus(Member member) {
         if (member.getStatus() == MemberStatus.SUSPENDED) {
-            throw new CustomException(ErrorCode.ACCOUNT_SUSPENDED);
+            throw new AccountSuspendedException(member.getSuspendedUntil());
         }
         if (member.getStatus() == MemberStatus.WITHDRAWN) {
             throw new CustomException(ErrorCode.ACCOUNT_WITHDRAWN);

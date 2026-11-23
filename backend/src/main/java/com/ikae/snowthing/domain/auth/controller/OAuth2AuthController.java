@@ -9,6 +9,8 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -48,6 +50,7 @@ import com.ikae.snowthing.domain.auth.service.SocialLinkReauthService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.SocialProvider;
 import com.ikae.snowthing.global.error.ErrorCode;
+import com.ikae.snowthing.global.exception.AccountSuspendedException;
 import com.ikae.snowthing.global.exception.CustomException;
 import com.ikae.snowthing.global.security.BotDelegatedUserDetails;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -188,6 +191,9 @@ public class OAuth2AuthController {
 
             establishAuthenticatedSession(member.get(), httpRequest, httpResponse);
             return redirectToFrontend(savedState.returnUrl());
+        } catch (AccountSuspendedException exception) {
+            // 소셜 인증을 마친 본인에게만 오는 경로라 풀리는 시각을 함께 넘긴다 (IKA-115).
+            return redirectToLoginError(exception.getErrorCode(), exception.getSuspendedUntil());
         } catch (CustomException exception) {
             return redirectToLoginError(exception.getErrorCode());
         }
@@ -382,13 +388,19 @@ public class OAuth2AuthController {
     }
 
     private ResponseEntity<Void> redirectToLoginError(ErrorCode errorCode) {
-        URI loginErrorUri =
+        return redirectToLoginError(errorCode, null);
+    }
+
+    private ResponseEntity<Void> redirectToLoginError(
+            ErrorCode errorCode, LocalDateTime suspendedUntil) {
+        UriComponentsBuilder builder =
                 UriComponentsBuilder.fromUriString(
                                 oauth2Properties.effectiveFrontendBaseUrl() + "/login")
-                        .queryParam("error", errorCode.name())
-                        .encode()
-                        .build()
-                        .toUri();
+                        .queryParam("error", errorCode.name());
+        if (suspendedUntil != null) {
+            builder.queryParam("until", suspendedUntil.truncatedTo(ChronoUnit.MINUTES).toString());
+        }
+        URI loginErrorUri = builder.encode().build().toUri();
         return ResponseEntity.status(HttpStatus.FOUND).location(loginErrorUri).build();
     }
 

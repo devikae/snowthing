@@ -73,7 +73,7 @@ export default function AdminMembersPage() {
   const changeStatus = (member: AdminMember, action: "suspend" | "reinstate") => {
     const message =
       action === "suspend"
-        ? `${member.nickname} 회원을 정지할까요? 접속이 바로 끊기고 해제할 때까지 로그인할 수 없습니다.`
+        ? `${member.nickname} 회원을 무기한 정지할까요? 접속이 바로 끊기고 해제할 때까지 로그인할 수 없습니다. 기간과 사유를 정하려면 회원 상세에서 정지하세요.`
         : `${member.nickname} 회원의 정지를 해제할까요?`;
     return runAction(member, message, API_ENDPOINTS.admin.memberStatusAction(member.publicId, action), "회원 상태를 바꾸지 못했습니다.");
   };

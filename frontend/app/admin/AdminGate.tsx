@@ -28,7 +28,7 @@ const ADMIN_MENU: { title: string; items: { href: string; label: string }[] }[] 
       { href: "/admin/resort-reports", label: "설질 제보" },
       { href: "/admin/spam", label: "스팸 보류" },
       { href: "/admin/moderation", label: "자동 검열" },
-      { href: "/admin/chat", label: "IP 차단" },
+      { href: "/admin/chat", label: "라이브톡, IP 차단" },
     ],
   },
   { title: "회원", items: [{ href: "/admin/members", label: "회원" }] },
