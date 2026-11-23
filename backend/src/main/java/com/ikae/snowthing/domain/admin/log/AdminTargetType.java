@@ -12,5 +12,6 @@ public enum AdminTargetType {
     CONFIG,
     SEASON_OPENING,
     BANNED_WORD,
-    CONTENT_MODERATION
+    CONTENT_MODERATION,
+    BOARD
 }

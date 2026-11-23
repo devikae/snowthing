@@ -42,9 +42,6 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 public class PostService {
 
-    private static final String ANONYMOUS_CATEGORY_CODE = "ANONYMOUS";
-    private static final String CREW_CATEGORY_CODE = "CREW";
-    private static final String SEASON_ROOM_CATEGORY_CODE = "SEASON_ROOM";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
     private static final int MAX_OFFSET_PAGE = 100;
@@ -76,36 +73,26 @@ public class PostService {
                         .orElseThrow(
                                 () -> new CustomAuthException(ErrorCode.POST_CATEGORY_NOT_FOUND));
         rejectOwnScreenCategory(category);
-        requireNoticeAdmin(category, userDetails);
-        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode())
-                && request.isAnonymous()) {
-            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
-        }
+        requireOpenBoard(category);
+        requireAdminBoardWriter(category, userDetails);
         if (PostCategoryCodes.isInquiry(category.getCode())
                 && !InquiryAccess.isSessionUser(userDetails)) {
             throw new CustomAuthException(ErrorCode.INQUIRY_LOGIN_REQUIRED);
         }
 
-        // 비회원은 익명게시판에만 쓴다. isAnonymous=true로 다른 게시판에 쓰는 API 경로를 막는다.
-        if (userDetails == null && !ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+        // 비회원은 누구나 쓰는 게시판(익명게시판 등)에만 쓴다. isAnonymous=true로 다른 게시판에 쓰는 API 경로를 막는다.
+        if (userDetails == null && !category.allowsGuest()) {
             throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
         }
 
-        if (isAnonymousDisallowedCategory(category.getCode())) {
-            if (userDetails == null) {
-                throw new CustomAuthException(ErrorCode.LOGIN_REQUIRED);
-            }
-            if (request.isAnonymous()) {
-                throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
-            }
+        if (category.forbidsAnonymous() && request.isAnonymous()) {
+            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
         Member member = null;
         String encodedPassword = null;
 
-        boolean isAnon =
-                request.isAnonymous()
-                        || ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode());
+        boolean isAnon = request.isAnonymous() || category.isAlwaysAnonymous();
 
         if (isAnon) {
             if (userDetails != null) {
@@ -432,20 +419,20 @@ public class PostService {
         rejectOwnScreenPost(post);
         rejectOwnScreenCategory(category);
         rejectInquiryBoundaryChange(post.getCategory(), category);
-        requireNoticeAdmin(post.getCategory(), userDetails);
-        requireNoticeAdmin(category, userDetails);
-        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode()) && post.isAnonymous()) {
-            throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
+        boolean moving = !category.getCode().equalsIgnoreCase(post.getCategory().getCode());
+        // 닫히거나 삭제한 게시판의 글은 그 자리에서 고칠 수 있지만, 다른 글을 그리로 옮겨 올 수는 없다.
+        if (moving) {
+            requireOpenBoard(category);
         }
+        requireAdminBoardWriter(post.getCategory(), userDetails);
+        requireAdminBoardWriter(category, userDetails);
 
-        if (isAnonymousDisallowedCategory(category.getCode()) && post.isAnonymous()) {
+        if (category.forbidsAnonymous() && post.isAnonymous()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
         // 비회원 글을 수정으로 다른 게시판에 옮겨 작성 제한을 우회하지 못하게 한다.
-        if (post.getMember() == null
-                && !category.getCode().equalsIgnoreCase(post.getCategory().getCode())
-                && !ANONYMOUS_CATEGORY_CODE.equalsIgnoreCase(category.getCode())) {
+        if (post.getMember() == null && moving && !category.allowsGuest()) {
             throw new CustomAuthException(ErrorCode.ANONYMOUS_POST_NOT_ALLOWED);
         }
 
@@ -589,10 +576,16 @@ public class PostService {
         }
     }
 
-    private void requireNoticeAdmin(PostCategory category, CustomUserDetails userDetails) {
-        if (PostCategoryCodes.NOTICE.equalsIgnoreCase(category.getCode())
-                && !isAdmin(userDetails)) {
+    /** 관리자만 쓰는 게시판(공지 등)은 쓰기, 수정, 옮기기 모두 관리자만 한다. */
+    private void requireAdminBoardWriter(PostCategory category, CustomUserDetails userDetails) {
+        if (category.isAdminOnly() && !isAdmin(userDetails)) {
             throw new CustomAuthException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void requireOpenBoard(PostCategory category) {
+        if (!category.acceptsNewPosts()) {
+            throw new CustomAuthException(ErrorCode.BOARD_CLOSED);
         }
     }
 
@@ -602,12 +595,6 @@ public class PostService {
                 != PostCategoryCodes.isInquiry(requested.getCode())) {
             throw new CustomAuthException(ErrorCode.INQUIRY_CATEGORY_CHANGE_NOT_ALLOWED);
         }
-    }
-
-    private boolean isAnonymousDisallowedCategory(String categoryCode) {
-        return CREW_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
-                || SEASON_ROOM_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
-                || PostCategoryCodes.isInquiry(categoryCode);
     }
 
     private boolean isAdmin(CustomUserDetails userDetails) {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "./components/SiteChrome";
 import LiveChatSection, { MemberProfile } from "./components/LiveChatSection";
@@ -19,8 +19,11 @@ import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
 import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 import { HOME_CARPOOL_SIZE, HOME_FEED_SIZE, HOME_MARKET_SIZE, type HomeCarpoolItem, type HomeInitialData, type HomePost, type MarketPreviewItem } from "./lib/homeFeed";
 import { readErrorMessage } from "./lib/http";
+import { categoryLabel, findBoard, type Board } from "./lib/boards";
+import { useBoards } from "./components/BoardsProvider";
 
-type HomeFeedKey = "all" | "notice" | "free" | "anonymous" | "qna" | "food" | "crew" | "season_room";
+// 홈 탭 키는 "all" 또는 게시판 코드다 (IKA-114). 탭은 관리자가 홈 탭에 켠 게시판을 순서대로 보인다.
+type HomeFeedKey = string;
 
 interface HomeFeedTab {
   key: HomeFeedKey;
@@ -29,60 +32,28 @@ interface HomeFeedTab {
   query: Record<string, string>;
 }
 
-// PC 홈 왼쪽 칸에 탭 8개와 더보기, 글쓰기가 한 줄에 들어가도록 글 목록의 분류 표시와 같은 짧은 이름을 쓴다.
-const HOME_FEED_TABS: HomeFeedTab[] = [
-  { key: "all", label: "전체글", moreHref: "/posts", query: {} },
-  { key: "notice", label: "공지", moreHref: "/posts?category=NOTICE", query: { categoryCode: "NOTICE" } },
-  { key: "free", label: "자유", moreHref: "/posts?category=FREE", query: { categoryCode: "FREE" } },
-  { key: "anonymous", label: "익명", moreHref: "/posts?category=ANONYMOUS", query: { categoryCode: "ANONYMOUS" } },
-  { key: "qna", label: "질문", moreHref: "/posts?category=QNA", query: { categoryCode: "QNA" } },
-  { key: "food", label: "맛집", moreHref: "/posts?category=FOOD", query: { categoryCode: "FOOD" } },
-  { key: "crew", label: "동호회", moreHref: "/posts?category=CREW", query: { categoryCode: "CREW" } },
-  { key: "season_room", label: "시즌방", moreHref: "/posts?category=SEASON_ROOM", query: { categoryCode: "SEASON_ROOM" } },
-];
+const ALL_FEED_TAB: HomeFeedTab = { key: "all", label: "전체글", moreHref: "/posts", query: {} };
 
-const emptyFeeds: Record<HomeFeedKey, HomePost[]> = {
-  all: [],
-  notice: [],
-  free: [],
-  anonymous: [],
-  qna: [],
-  food: [],
-  crew: [],
-  season_room: [],
-};
-const emptyFeedErrors: Record<HomeFeedKey, boolean> = {
-  all: false,
-  notice: false,
-  free: false,
-  anonymous: false,
-  qna: false,
-  food: false,
-  crew: false,
-  season_room: false,
-};
+// PC 홈 왼쪽 칸에 탭과 더보기, 글쓰기가 한 줄에 들어가도록 글 목록의 분류 표시와 같은 짧은 이름을 쓴다.
+function homeFeedTabs(boards: Board[]): HomeFeedTab[] {
+  return [
+    ALL_FEED_TAB,
+    ...boards
+      .filter((board) => board.showOnHome)
+      .map((board) => ({
+        key: board.code,
+        label: board.shortName,
+        moreHref: `/posts?category=${encodeURIComponent(board.code)}`,
+        query: { categoryCode: board.code },
+      })),
+  ];
+}
 
+// 모바일 홈 탭 격자 칸 수. 탭을 2줄에 넣되 5칸을 넘기지 않는다. 한 줄에 밀어 넣으면 글자가 작고 칸 폭이 들쭉날쭉해 보인다.
 type WidgetStatus = "loading" | "error" | "ready";
 
-function formatShortCategory(categoryCode: string, categoryName: string): string {
-  switch (categoryCode) {
-    case "NOTICE":
-      return "공지사항";
-    case "FREE":
-      return "자유";
-    case "ANONYMOUS":
-      return "익명";
-    case "QNA":
-      return "질문";
-    case "FOOD":
-      return "맛집";
-    case "CREW":
-      return "동호회";
-    case "SEASON_ROOM":
-      return "시즌방";
-    default:
-      return categoryName.replace(/게시판|\s+/g, "");
-  }
+function mobileTabColumns(tabCount: number): number {
+  return Math.min(5, Math.max(1, Math.ceil(tabCount / 2)));
 }
 
 
@@ -90,10 +61,12 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
   const router = useRouter();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [activeFeed, setActiveFeed] = useState<HomeFeedKey>("all");
-  const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(() => (initial.posts ? { ...emptyFeeds, all: initial.posts } : emptyFeeds));
-  const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>(emptyFeedErrors);
+  const boards = useBoards();
+  const feedTabs = useMemo(() => homeFeedTabs(boards), [boards]);
+  const [feeds, setFeeds] = useState<Record<HomeFeedKey, HomePost[]>>(() => (initial.posts ? { all: initial.posts } : {}) as Record<HomeFeedKey, HomePost[]>);
+  const [feedErrors, setFeedErrors] = useState<Record<HomeFeedKey, boolean>>({});
   // 탭마다 처음 열 때 한 번만 요청한다. 홈 첫 화면은 "전체" 탭만 받고, 서버가 받아 왔으면 다시 부르지 않는다.
-  const [feedLoading, setFeedLoading] = useState<Record<HomeFeedKey, boolean>>(() => ({ ...emptyFeedErrors, all: !initial.posts }));
+  const [feedLoading, setFeedLoading] = useState<Record<HomeFeedKey, boolean>>(() => ({ all: !initial.posts }));
   const requestedFeeds = useRef(new Set<HomeFeedKey>(initial.posts ? ["all"] : []));
   const [marketPreviews, setMarketPreviews] = useState<MarketPreviewItem[]>(initial.marketPreviews ?? []);
   const [marketStatus, setMarketStatus] = useState<WidgetStatus>(initial.marketPreviews ? "ready" : "loading");
@@ -111,10 +84,11 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
   const reportIdempotencyKey = useIdempotencyKey();
   const [koreanToday, setKoreanToday] = useState(() => formatKoreanCalendarDate(new Date()));
   const reportSeasonOpen = isResortReportSeason(new Date());
-  const activeFeedConfig = HOME_FEED_TABS.find((tab) => tab.key === activeFeed) ?? HOME_FEED_TABS[0];
-  // 공지는 관리자만 쓰므로 일반 글쓰기로 보내고, 나머지 탭은 해당 게시판을 미리 골라 둔다.
+  const activeFeedConfig = feedTabs.find((tab) => tab.key === activeFeed) ?? ALL_FEED_TAB;
+  const activePosts = feeds[activeFeed] ?? [];
+  // 관리자 전용 게시판(공지 등)은 일반 글쓰기로 보내고, 나머지 탭은 해당 게시판을 미리 골라 둔다.
   const writeCategory = activeFeedConfig.query.categoryCode;
-  const writeHref = writeCategory && writeCategory !== "NOTICE" ? `/posts/create?category=${writeCategory}` : "/posts/create";
+  const writeHref = writeCategory && findBoard(boards, writeCategory)?.writePermission !== "ADMIN" ? `/posts/create?category=${encodeURIComponent(writeCategory)}` : "/posts/create";
 
   // 첫 로드와 다시 시도는 불러오는 중을 보여 준다. 제보 등록 뒤 새로 고칠 때는 목록을 둔 채 조용히 바꾸고,
   // 그 요청이 실패해도 이미 보이는 목록을 지우지 않는다.
@@ -260,7 +234,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
 
   useEffect(() => {
     if (requestedFeeds.current.has("all")) return;
-    const timer = window.setTimeout(() => void loadFeed(HOME_FEED_TABS[0]), 0);
+    const timer = window.setTimeout(() => void loadFeed(ALL_FEED_TAB), 0);
     return () => window.clearTimeout(timer);
   }, [loadFeed]);
 
@@ -281,8 +255,8 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
           <section className="home-feed tier-1-left">
             <div className="post-board">
               <nav className="board-tabs" aria-label="홈 게시판 선택">
-                <div className="filter-pills">
-                  {HOME_FEED_TABS.map((tab) => (
+                <div className="filter-pills" style={{ "--home-tab-cols": mobileTabColumns(feedTabs.length) } as CSSProperties}>
+                  {feedTabs.map((tab) => (
                     <button
                       key={tab.key}
                       type="button"
@@ -306,7 +280,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
               </nav>
 
               {/* 게시판 목록처럼 최신 공지 하나만 피드 위에 고정한다. 공지 탭에서는 목록과 겹치므로 숨긴다. */}
-              {initial.latestNotice && activeFeed !== "notice" && (
+              {initial.latestNotice && activeFeed !== "NOTICE" && (
                 <section className="board-notices home-latest-notice" aria-label="최신 공지">
                   <article className="m-row">
                     <div className="m-row-left">
@@ -345,19 +319,19 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                       다시 시도
                     </button>
                   </div>
-                ) : feeds[activeFeed].length === 0 ? (
+                ) : activePosts.length === 0 ? (
                   <div className="home-feed-state">
                     <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">edit_note</span>
                     <strong>등록된 게시글이 없습니다.</strong>
                   </div>
                 ) : (
-                  feeds[activeFeed].map((post) => {
+                  activePosts.map((post) => {
                     return (
                       <Link href={`/posts/${post.publicId}`} className="compact-post m-row" key={post.publicId}>
                         <div className="m-row-left">
                           {activeFeed === "all" && (
                             <span className={`m-cat ${post.categoryCode === "NOTICE" ? "notice" : post.categoryCode === "QNA" ? "accent" : ""}`}>
-                              {formatShortCategory(post.categoryCode, post.categoryName)}
+                              {categoryLabel(boards, post.categoryCode, post.categoryName)}
                             </span>
                           )}
                           <PostImageIcon hasImage={post.hasImage} />
