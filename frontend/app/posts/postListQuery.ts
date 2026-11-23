@@ -47,6 +47,7 @@ export const boardConfigs: Record<string, BoardConfig> = {
   FREE: { name: "자유게시판", navKey: "free" },
   ANONYMOUS: { name: "익명게시판", navKey: "anonymous" },
   QNA: { name: "질문게시판", navKey: "gear" },
+  INFO: { name: "정보게시판", navKey: "info" },
   FOOD: { name: "리조트 맛집", navKey: "food" },
   CREW: { name: "동호회 모집", navKey: "crew" },
   SEASON_ROOM: { name: "시즌방 모집", navKey: "seasonRoom" },

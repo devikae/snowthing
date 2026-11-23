@@ -9,7 +9,7 @@ export const revalidate = 3600;
 
 // 1:1 문의는 본인만 보는 게시판이라 넣지 않는다. 전체 게시판(/posts)은 따로 넣는다.
 // 중고장터(/market)는 회원 전용이라 noindex다(market/layout.tsx). 목록과 판매글 주소 모두 넣지 않는다.
-const PUBLIC_BOARDS = ["NOTICE", "FREE", "ANONYMOUS", "QNA", "FOOD", "CREW", "SEASON_ROOM"];
+const PUBLIC_BOARDS = ["NOTICE", "FREE", "ANONYMOUS", "QNA", "INFO", "FOOD", "CREW", "SEASON_ROOM"];
 
 const STATIC_PATHS = [
   "/",

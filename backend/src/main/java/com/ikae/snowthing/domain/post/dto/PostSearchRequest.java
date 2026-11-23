@@ -1,7 +1,7 @@
 package com.ikae.snowthing.domain.post.dto;
 
 public record PostSearchRequest(
-        String categoryCode, // 카테고리 코드 (FREE, ANONYMOUS, QNA, FOOD, BEST)
+        String categoryCode, // 카테고리 코드 (FREE, ANONYMOUS, QNA, INFO, FOOD, BEST)
         Long resortId, // 리조트 ID (null: 전체, 1: 휘닉스파크 등)
         SearchType searchType, // TITLE, WRITER, CONTENT, TITLE_CONTENT
         String keyword, // 검색 키워드

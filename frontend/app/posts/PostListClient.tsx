@@ -27,6 +27,7 @@ const categories = [
   { code: "FREE", name: "자유게시판" },
   { code: "ANONYMOUS", name: "익명게시판" },
   { code: "QNA", name: "질문게시판" },
+  { code: "INFO", name: "정보게시판" },
   { code: "FOOD", name: "리조트 맛집" },
   { code: "CREW", name: "동호회 모집" },
   { code: "SEASON_ROOM", name: "시즌방 모집" },
@@ -42,6 +43,8 @@ function formatShortCategory(categoryCode: string, categoryName: string): string
       return "익명";
     case "QNA":
       return "질문";
+    case "INFO":
+      return "정보";
     case "FOOD":
       return "맛집";
     case "CREW":

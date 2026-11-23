@@ -45,6 +45,7 @@ public class PostService {
     private static final String ANONYMOUS_CATEGORY_CODE = "ANONYMOUS";
     private static final String CREW_CATEGORY_CODE = "CREW";
     private static final String SEASON_ROOM_CATEGORY_CODE = "SEASON_ROOM";
+    private static final String INFO_CATEGORY_CODE = "INFO";
     private static final String DEFAULT_WRITER_IP = "127.0.0.1";
     private static final int FIRST_IMAGE_SORT_ORDER = 1;
     private static final int MAX_OFFSET_PAGE = 100;
@@ -607,6 +608,7 @@ public class PostService {
     private boolean isAnonymousDisallowedCategory(String categoryCode) {
         return CREW_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
                 || SEASON_ROOM_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
+                || INFO_CATEGORY_CODE.equalsIgnoreCase(categoryCode)
                 || PostCategoryCodes.isInquiry(categoryCode);
     }
 
