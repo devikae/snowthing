@@ -27,7 +27,7 @@ class ColumnRepostImagesTest {
 
     private static final String SOURCE =
             "https://gall.dcinside.com/mgallery/board/view/?id=snowboard&no=1";
-    private static final String OWNER = "tester3@snowthing.org";
+    private static final String OWNER = "column-writer@example.com";
     private static final String DC = "https://dcimg1.dcinside.com/viewimage.php?id=a&no=b";
     private static final byte[] JPG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1};
 
