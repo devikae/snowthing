@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.member.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,6 +44,13 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM Member m WHERE m.id = :memberId")
     Optional<Member> findByIdForUpdate(@Param("memberId") Long memberId);
+
+    /** 기간이 끝난 정지 회원 (IKA-115). 자동 해제 스케줄러가 한 번에 limit명씩 푼다. */
+    @Query(
+            "SELECT m.publicId FROM Member m"
+                    + " WHERE m.status = com.ikae.snowthing.domain.member.entity.MemberStatus.SUSPENDED"
+                    + " AND m.suspendedUntil <= :now ORDER BY m.suspendedUntil, m.id")
+    List<String> findExpiredSuspensionPublicIds(@Param("now") LocalDateTime now, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM Member m WHERE m.publicId = :publicId")

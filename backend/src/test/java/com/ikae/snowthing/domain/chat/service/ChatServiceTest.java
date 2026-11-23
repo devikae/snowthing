@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.chat.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -10,6 +11,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,6 +32,7 @@ import com.ikae.snowthing.domain.admin.service.SystemConfigService;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.model.ResortTag;
+import com.ikae.snowthing.domain.contentfilter.service.ContentFilterService;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.entity.Role;
@@ -51,6 +54,7 @@ class ChatServiceTest {
     private ChatRecentHistoryBuffer chatRecentHistoryBuffer;
     @Mock private ChatIpBanService chatIpBanService;
     @Mock private SystemConfigService systemConfigService;
+    @Mock private ContentFilterService contentFilterService;
     private MutableClock clock;
 
     private static final class MutableClock extends Clock {
@@ -94,7 +98,13 @@ class ChatServiceTest {
         clock = new MutableClock();
         chatService =
                 new ChatService(
-                        chatRecentHistoryBuffer, clock, chatIpBanService, systemConfigService);
+                        chatRecentHistoryBuffer,
+                        clock,
+                        chatIpBanService,
+                        systemConfigService,
+                        contentFilterService);
+        // 라이브톡은 평소 열려 있다. 닫힌 경우는 따로 검증한다.
+        lenient().when(systemConfigService.isChatEnabled()).thenReturn(true);
         testMember =
                 Member.builder()
                         .publicId("0191a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4")
@@ -105,6 +115,68 @@ class ChatServiceTest {
                         .build();
         ReflectionTestUtils.setField(testMember, "id", 100L);
         testUserDetails = new CustomUserDetails(testMember);
+    }
+
+    @Nested
+    @DisplayName("운영 도구 (IKA-115)")
+    class OperationCases {
+
+        @Test
+        @DisplayName("라이브톡을 닫으면 일반 회원은 보낼 수 없다")
+        void closedChatRejectsMember() {
+            given(systemConfigService.isChatEnabled()).willReturn(false);
+
+            assertRejected("지금 보내지나요", ErrorCode.CHAT_KILL_SWITCH_ACTIVE);
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("라이브톡을 닫아도 관리자는 안내를 보낼 수 있다")
+        void closedChatAllowsAdmin() {
+            lenient().when(systemConfigService.isChatEnabled()).thenReturn(false);
+            ReflectionTestUtils.setField(testMember, "role", Role.ROLE_ADMIN);
+
+            ChatService.SendResult result =
+                    chatService.send(
+                            new ChatMessageRequest(null, "잠시 라이브톡을 닫습니다"),
+                            testUserDetails,
+                            "127.0.0.1");
+
+            assertThat(result.held()).isFalse();
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("금칙어에 걸린 메시지는 보류로 돌려주고 최근 대화에 넣지 않는다")
+        void bannedWordMessageIsHeld() {
+            given(contentFilterService.inspect(testUserDetails, "금칙어 들어간 말"))
+                    .willReturn(Optional.of("금칙어"));
+
+            ChatService.SendResult result =
+                    chatService.send(
+                            new ChatMessageRequest(null, "금칙어 들어간 말"),
+                            testUserDetails,
+                            "127.0.0.1");
+
+            assertThat(result.held()).isTrue();
+            assertThat(result.message().content()).isEqualTo("금칙어 들어간 말");
+            assertThat(chatRecentHistoryBuffer.getRecentMessages()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("비회원 미리보기 닉네임은 같은 IP로 보낸 메시지의 닉네임과 같다")
+        void guestNicknameMatchesSentNickname() {
+            given(systemConfigService.isAnonymousChatEnabled()).willReturn(true);
+
+            ChatMessageResponse sent =
+                    chatService.processMessage(
+                            new ChatMessageRequest(null, "비회원 인사"), null, "198.51.100.7");
+
+            assertThat(chatService.guestNickname("198.51.100.7"))
+                    .isEqualTo(sent.sender().nickname());
+            assertThat(chatService.guestNickname("198.51.100.8"))
+                    .isNotEqualTo(sent.sender().nickname());
+        }
     }
 
     @Nested

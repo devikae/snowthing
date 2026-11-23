@@ -3,6 +3,7 @@ package com.ikae.snowthing.domain.chat.service;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Predicate;
 
@@ -85,6 +86,12 @@ public class ChatRecentHistoryBuffer {
                     return false;
                 });
         return List.copyOf(removed);
+    }
+
+    /** 최근 대화에 남아 있는 메시지. 밀려났거나 지워졌으면 빈 값이다. */
+    public synchronized Optional<ChatMessageResponse> findMessage(String messageId) {
+        if (messageId == null) return Optional.empty();
+        return buffer.stream().filter(m -> messageId.equals(m.messageId())).findFirst();
     }
 
     public synchronized List<ChatMessageResponse> getRecentMessages() {

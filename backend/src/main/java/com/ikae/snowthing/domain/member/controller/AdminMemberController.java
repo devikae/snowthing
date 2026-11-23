@@ -1,11 +1,14 @@
 package com.ikae.snowthing.domain.member.controller;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +17,7 @@ import com.ikae.snowthing.domain.admin.dto.AdminMemberDetailResponse;
 import com.ikae.snowthing.domain.admin.service.AdminMemberDetailService;
 import com.ikae.snowthing.domain.member.dto.AdminMemberListResponse;
 import com.ikae.snowthing.domain.member.dto.AdminMemberResponse;
+import com.ikae.snowthing.domain.member.dto.AdminMemberSuspendRequest;
 import com.ikae.snowthing.domain.member.service.AdminMemberService;
 import com.ikae.snowthing.global.error.ErrorCode;
 import com.ikae.snowthing.global.exception.CustomException;
@@ -56,10 +60,15 @@ public class AdminMemberController {
 
     @PostMapping("/{publicId}/suspend")
     public ResponseEntity<AdminMemberResponse> suspend(
-            @PathVariable String publicId, @AuthenticationPrincipal CustomUserDetails admin) {
+            @PathVariable String publicId,
+            @Valid @RequestBody(required = false) AdminMemberSuspendRequest request,
+            @AuthenticationPrincipal CustomUserDetails admin) {
+        // 본문 없이 부르던 예전 화면은 지금처럼 무기한 정지가 된다 (IKA-115).
+        Integer days = request != null ? request.days() : null;
+        String reason = request != null ? request.reason() : null;
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(adminMemberService.suspend(admin.getPublicId(), publicId));
+                .body(adminMemberService.suspend(admin.getPublicId(), publicId, days, reason));
     }
 
     @PostMapping("/{publicId}/reinstate")

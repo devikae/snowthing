@@ -27,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 public class SystemConfigService {
 
     public static final String KEY_CHAT_ANONYMOUS_ENABLED = "CHAT_ANONYMOUS_ENABLED";
+    // 라이브톡 비상 닫기 (IKA-115). 끄면 관리자 말고는 보낼 수 없다.
+    public static final String KEY_CHAT_ENABLED = "CHAT_ENABLED";
     public static final String KEY_MARKET_GUEST_ACCESS_ENABLED = "MARKET_GUEST_ACCESS_ENABLED";
     // AI 회원 활동 스위치(IKA-108). 관리자 화면 전용이라 공개 설정에는 넣지 않는다.
     public static final String KEY_AI_MEMBER_POST_ENABLED = "AI_MEMBER_POST_ENABLED";
@@ -53,6 +55,11 @@ public class SystemConfigService {
 
     public boolean isAnonymousChatEnabled() {
         return readBoolean(KEY_CHAT_ANONYMOUS_ENABLED, false);
+    }
+
+    /** 라이브톡 발신. 설정 행이 없으면 열린 것으로 본다. */
+    public boolean isChatEnabled() {
+        return readBoolean(KEY_CHAT_ENABLED, true);
     }
 
     /** 중고장터 목록과 상세를 비회원도 볼 수 있는지. 설정 행이 없으면 허용으로 본다. */
@@ -105,6 +112,8 @@ public class SystemConfigService {
     @Transactional(readOnly = true)
     public Map<String, Object> getPublicConfigs() {
         return Map.of(
+                "chatEnabled",
+                isChatEnabled(),
                 "anonymousChatEnabled",
                 isAnonymousChatEnabled(),
                 "marketGuestAccessEnabled",
@@ -123,7 +132,7 @@ public class SystemConfigService {
         cache.put(key, value);
         log.info("System config updated: key={}, value={}, by={}", key, value, updatedBy);
 
-        if (KEY_CHAT_ANONYMOUS_ENABLED.equals(key)) {
+        if (KEY_CHAT_ANONYMOUS_ENABLED.equals(key) || KEY_CHAT_ENABLED.equals(key)) {
             try {
                 messagingTemplate.convertAndSend(
                         "/sub/chat/main",

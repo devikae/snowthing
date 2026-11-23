@@ -12,11 +12,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -44,6 +46,7 @@ import com.ikae.snowthing.global.security.BotDelegationAuthenticationFilter;
 import com.ikae.snowthing.global.security.BotDelegationTokenService;
 import com.ikae.snowthing.global.security.CustomUserDetails;
 import com.ikae.snowthing.global.security.MemberSessionRegistry;
+import com.ikae.snowthing.global.security.PasswordLoginStatusChecks;
 import com.ikae.snowthing.global.security.RememberMeSessionRegistrationFilter;
 import com.ikae.snowthing.global.security.SnowthingRememberMeServices;
 
@@ -79,6 +82,20 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * 이메일 로그인 인증 (IKA-115). 기본 설정과 같되 정지 확인을 비밀번호 검사 뒤로 옮긴다. 이유는 {@link PasswordLoginStatusChecks}
+     * 참고. 이 빈이 하나뿐이라 전역 인증 관리자가 이것을 쓴다.
+     */
+    @Bean
+    public DaoAuthenticationProvider daoAuthenticationProvider(
+            UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        provider.setPreAuthenticationChecks(PasswordLoginStatusChecks::beforePassword);
+        provider.setPostAuthenticationChecks(PasswordLoginStatusChecks::afterPassword);
+        return provider;
     }
 
     @Bean

@@ -4,6 +4,7 @@ package com.ikae.snowthing.domain.admin.dto;
 public record AdminDashboardStatsResponse(
         long totalMembers,
         long todayNewMembers,
+        boolean chatEnabled,
         boolean anonymousChatEnabled,
         boolean marketGuestAccessEnabled,
         AiMemberSwitches aiMembers) {

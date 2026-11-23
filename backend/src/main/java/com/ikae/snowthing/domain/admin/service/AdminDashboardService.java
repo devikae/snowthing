@@ -41,6 +41,7 @@ public class AdminDashboardService {
         return new AdminDashboardStatsResponse(
                 memberRepository.count(),
                 memberRepository.countByCreatedAtAfter(today.atStartOfDay()),
+                systemConfigService.isChatEnabled(),
                 systemConfigService.isAnonymousChatEnabled(),
                 systemConfigService.isMarketGuestAccessEnabled(),
                 new AiMemberSwitches(

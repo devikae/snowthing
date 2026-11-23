@@ -1,8 +1,10 @@
 package com.ikae.snowthing.domain.chat.controller;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -35,11 +38,13 @@ import com.ikae.snowthing.global.security.CustomUserDetails;
 class ChatControllerMemberStatusTest {
 
     private static final long MEMBER_ID = 7L;
+    private static final String WS_SESSION_ID = "ws-session-1";
     private static final ChatMessageRequest REQUEST = new ChatMessageRequest(null, "안녕하세요");
 
     private ChatService chatService;
     private BotMentionService botMentionService;
     private MemberRepository memberRepository;
+    private SimpMessageSendingOperations messagingTemplate;
     private ChatController controller;
     private UsernamePasswordAuthenticationToken principal;
 
@@ -48,12 +53,14 @@ class ChatControllerMemberStatusTest {
         chatService = mock(ChatService.class);
         botMentionService = mock(BotMentionService.class);
         memberRepository = mock(MemberRepository.class);
+        messagingTemplate = mock(SimpMessageSendingOperations.class);
         controller =
                 new ChatController(
                         chatService,
                         botMentionService,
                         new ChatSessionRevocationRegistry(),
-                        memberRepository);
+                        memberRepository,
+                        messagingTemplate);
         // 접속 시점의 스냅샷은 활성이다. 정지 뒤에도 이 값은 바뀌지 않는다.
         Member snapshot =
                 Member.builder().email("a@snowthing.com").nickname("보더").password("x").build();
@@ -73,18 +80,43 @@ class ChatControllerMemberStatusTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(thrown -> ((CustomException) thrown).getErrorCode())
                 .isEqualTo(ErrorCode.CHAT_UNAUTHORIZED);
-        verify(chatService, never()).processMessage(any(), any(), any());
+        verify(chatService, never()).send(any(), any(), any());
     }
 
     @Test
-    @DisplayName("현재 상태가 활성이면 메시지를 처리한다")
+    @DisplayName("현재 상태가 활성이면 메시지를 모두에게 방송하고 봇에 넘긴다")
     void activeMemberCanSend() {
         ChatMessageResponse response = mock(ChatMessageResponse.class);
         given(memberRepository.findById(MEMBER_ID))
                 .willReturn(Optional.of(member("보더", MemberStatus.ACTIVE)));
-        given(chatService.processMessage(any(), any(), any())).willReturn(response);
+        given(chatService.send(any(), any(), any()))
+                .willReturn(new ChatService.SendResult(response, false));
 
-        assertThat(controller.handleChatMessage(REQUEST, principal, headers())).isSameAs(response);
+        controller.handleChatMessage(REQUEST, principal, headers());
+
+        verify(messagingTemplate).convertAndSend(ChatController.MAIN_DESTINATION, response);
+        verify(botMentionService).submit(eq(response), any());
+    }
+
+    @Test
+    @DisplayName("금칙어에 걸린 메시지는 보낸 연결에만 돌려주고 방송하지 않으며 봇에도 넘기지 않는다")
+    void heldMessageGoesOnlyToSenderSession() {
+        ChatMessageResponse response = mock(ChatMessageResponse.class);
+        given(memberRepository.findById(MEMBER_ID))
+                .willReturn(Optional.of(member("보더", MemberStatus.ACTIVE)));
+        given(chatService.send(any(), any(), any()))
+                .willReturn(new ChatService.SendResult(response, true));
+
+        controller.handleChatMessage(REQUEST, principal, headers());
+
+        verify(messagingTemplate)
+                .convertAndSendToUser(
+                        eq(WS_SESSION_ID),
+                        eq(ChatController.HELD_ECHO_DESTINATION),
+                        eq(response),
+                        anyMap());
+        verify(messagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
+        verify(botMentionService, never()).submit(any(), any());
     }
 
     @Test
@@ -92,13 +124,13 @@ class ChatControllerMemberStatusTest {
     void usesCurrentNickname() {
         given(memberRepository.findById(MEMBER_ID))
                 .willReturn(Optional.of(member("새닉네임", MemberStatus.ACTIVE)));
-        given(chatService.processMessage(any(), any(), any()))
-                .willReturn(mock(ChatMessageResponse.class));
+        given(chatService.send(any(), any(), any()))
+                .willReturn(new ChatService.SendResult(mock(ChatMessageResponse.class), false));
 
         controller.handleChatMessage(REQUEST, principal, headers());
 
         verify(chatService)
-                .processMessage(
+                .send(
                         any(),
                         org.mockito.ArgumentMatchers.argThat(
                                 details -> "새닉네임".equals(details.getMember().getNickname())),
@@ -119,6 +151,7 @@ class ChatControllerMemberStatusTest {
 
     private static SimpMessageHeaderAccessor headers() {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create();
+        accessor.setSessionId(WS_SESSION_ID);
         Map<String, Object> attributes = new HashMap<>();
         attributes.put(ChatHandshakeInterceptor.ATTR_HTTP_SESSION_ID, "http-session");
         attributes.put(ChatHandshakeInterceptor.ATTR_CLIENT_IP, "203.0.113.10");

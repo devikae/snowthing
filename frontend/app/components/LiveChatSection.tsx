@@ -114,17 +114,22 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
   const [localHelp, setLocalHelp] = useState<LocalChatCommand | null>(null);
   // 관리자가 비회원 발신을 켜면 로그인 없이도 보낼 수 있다. 서버가 같은 설정으로 다시 확인한다.
   const [anonymousChatEnabled, setAnonymousChatEnabled] = useState(false);
+  // 관리자가 라이브톡을 닫으면 false다 (IKA-115). 관리자는 닫힌 동안에도 안내를 보낼 수 있다.
+  const [chatEnabled, setChatEnabled] = useState(true);
   const [myGuestMessageIds, setMyGuestMessageIds] = useState<Set<string>>(() => new Set());
   // 비회원 닉네임은 서버가 IP로 정한다. 내가 보낸 메시지가 돌아왔을 때 그 이름을 받아 둬야 본인이 자기 이름을 안다.
   const [myGuestNickname, setMyGuestNickname] = useState<string | null>(null);
   const pendingGuestSendsRef = useRef<{ content: string; time: number }[]>([]);
   const memberPublicId = currentMember?.publicId;
-  const canSend = Boolean(currentMember) || anonymousChatEnabled;
   const isAdmin = currentMember?.role === "ROLE_ADMIN";
+  const chatClosed = !chatEnabled && !isAdmin;
+  const needsLogin = !currentMember && !anonymousChatEnabled;
+  const canSend = !needsLogin && !chatClosed;
   const [banTargetId, setBanTargetId] = useState<string | null>(null);
   const [banDays, setBanDays] = useState<BanDays>(7);
   const [banSuspend, setBanSuspend] = useState(false);
   const [banBusy, setBanBusy] = useState(false);
+  const [hidingId, setHidingId] = useState<string | null>(null);
 
   const stompClientRef = useRef<Client | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -170,14 +175,32 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     let cancelled = false;
     fetch(API_ENDPOINTS.public.configs)
       .then((response) => (response.ok ? response.json() : null))
-      .then((config: { anonymousChatEnabled?: boolean } | null) => {
-        if (!cancelled && config) setAnonymousChatEnabled(config.anonymousChatEnabled === true);
+      .then((config: { anonymousChatEnabled?: boolean; chatEnabled?: boolean } | null) => {
+        if (!cancelled && config) {
+          setAnonymousChatEnabled(config.anonymousChatEnabled === true);
+          setChatEnabled(config.chatEnabled !== false);
+        }
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // 비회원 닉네임은 서버가 IP로 정한다. 보내기 전에 미리 받아 두면 처음부터 내 이름을 알고, 새로고침해도 내 메시지를 알아본다 (IKA-115).
+  useEffect(() => {
+    if (memberPublicId) return;
+    let cancelled = false;
+    fetch(API_ENDPOINTS.chat.me, { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((me: { guestNickname?: string | null } | null) => {
+        if (!cancelled && me?.guestNickname) setMyGuestNickname(me.guestNickname);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [memberPublicId]);
 
   useEffect(() => {
     const wsUrl = API_BASE_URL.replace(/^http/, "ws") + "/ws-chat";
@@ -203,41 +226,54 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             }
             if (payload.type === "CONFIG_UPDATED") {
               if (payload.key === "CHAT_ANONYMOUS_ENABLED") setAnonymousChatEnabled(payload.value === true);
+              if (payload.key === "CHAT_ENABLED") setChatEnabled(payload.value === true);
               return;
             }
-            const newMsg: ChatMessage = payload;
-            // 비회원 메시지는 매번 새 ID로 오므로 방금 보낸 내용과 맞춰 내 메시지로 표시한다.
-            const pendingIndex = pendingGuestSendsRef.current.findIndex(
-              (pending) => pending.content === newMsg.content && Date.now() - pending.time < GUEST_ECHO_WINDOW_MILLIS,
-            );
-            const mine =
-              (memberPublicId !== undefined && newMsg.sender.publicId === memberPublicId) ||
-              (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-"));
-            // 새 메시지를 그리기 전에 바닥 근처였는지 본다. 그린 뒤에는 메시지 높이만큼 멀어져 있다.
-            const feed = scrollContainerRef.current;
-            const stick =
-              mine || !feed || feed.scrollHeight - feed.scrollTop - feed.clientHeight < BOTTOM_STICK_PX;
-            if (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-")) {
-              pendingGuestSendsRef.current.splice(pendingIndex, 1);
-              setMyGuestMessageIds((previous) => new Set(previous).add(newMsg.messageId));
-              // IP가 바뀌면(휴대폰 등) 이름도 바뀌므로 가장 최근 이름으로 둔다.
-              setMyGuestNickname(newMsg.sender.nickname);
-            }
-            setMessages((previous) => mergeMessages(previous, [newMsg]));
-
-            // 바닥 근처였거나 내가 보낸 메시지면 바로 내린다. 부드러운 스크롤은 움직이는 중에 다음 메시지가 오면
-            // 바닥이 아니라고 판단해 멈췄다. 그래서 새 메시지는 즉시 내린다.
-            setTimeout(() => {
-              if (stick) {
-                scrollToBottom("auto");
-              } else {
-                setShowScrollBottom(true);
-              }
-            }, 50);
+            receiveMessage(payload as ChatMessage);
           } catch {
             // ignore parse error
           }
         });
+
+        // 금칙어에 걸린 내 메시지는 나에게만 이 큐로 온다. 다른 사람에게는 가지 않지만 내 화면에는 평소처럼 그린다 (IKA-115).
+        client.subscribe("/user/queue/chat", (frame) => {
+          try {
+            receiveMessage(JSON.parse(frame.body) as ChatMessage);
+          } catch {
+            // ignore parse error
+          }
+        });
+
+        function receiveMessage(newMsg: ChatMessage) {
+          // 비회원 메시지는 매번 새 ID로 오므로 방금 보낸 내용과 맞춰 내 메시지로 표시한다.
+          const pendingIndex = pendingGuestSendsRef.current.findIndex(
+            (pending) => pending.content === newMsg.content && Date.now() - pending.time < GUEST_ECHO_WINDOW_MILLIS,
+          );
+          const mine =
+            (memberPublicId !== undefined && newMsg.sender.publicId === memberPublicId) ||
+            (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-"));
+          // 새 메시지를 그리기 전에 바닥 근처였는지 본다. 그린 뒤에는 메시지 높이만큼 멀어져 있다.
+          const feed = scrollContainerRef.current;
+          const stick =
+            mine || !feed || feed.scrollHeight - feed.scrollTop - feed.clientHeight < BOTTOM_STICK_PX;
+          if (pendingIndex !== -1 && newMsg.sender.publicId.startsWith("anon-")) {
+            pendingGuestSendsRef.current.splice(pendingIndex, 1);
+            setMyGuestMessageIds((previous) => new Set(previous).add(newMsg.messageId));
+            // IP가 바뀌면(휴대폰 등) 이름도 바뀌므로 가장 최근 이름으로 둔다.
+            setMyGuestNickname(newMsg.sender.nickname);
+          }
+          setMessages((previous) => mergeMessages(previous, [newMsg]));
+
+          // 바닥 근처였거나 내가 보낸 메시지면 바로 내린다. 부드러운 스크롤은 움직이는 중에 다음 메시지가 오면
+          // 바닥이 아니라고 판단해 멈췄다. 그래서 새 메시지는 즉시 내린다.
+          setTimeout(() => {
+            if (stick) {
+              scrollToBottom("auto");
+            } else {
+              setShowScrollBottom(true);
+            }
+          }, 50);
+        }
 
         // 개인 에러 큐 구독 (도배/외부링크/금칙어 차단)
         client.subscribe("/user/queue/errors", (frame) => {
@@ -305,7 +341,8 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       setInputContent("");
       return;
     }
-    if (!canSend) {
+    if (chatClosed) return;
+    if (needsLogin) {
       router.push("/login");
       return;
     }
@@ -351,6 +388,25 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
     if (!banBusy) setBanTargetId(null);
   };
 
+  // 한 줄만 가린다 (IKA-115). 보낸 사람은 막지 않는다. 서버가 모든 화면에 지우라고 방송하므로 내 화면도 같은 방송으로 지워진다.
+  const hideMessage = async (message: ChatMessage) => {
+    if (hidingId) return;
+    setHidingId(message.messageId);
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.admin.hideChatMessage(message.messageId), { method: "DELETE" });
+      if (!response.ok) {
+        setToastError("메시지를 가리지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      setMessages((previous) => previous.filter((item) => item.messageId !== message.messageId));
+      if (banTargetId === message.messageId) setBanTargetId(null);
+    } catch {
+      setToastError("서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setHidingId(null);
+    }
+  };
+
   // IP 차단(최근 메시지 삭제 포함)을 먼저 하고, 고른 경우에만 회원 정지를 이어서 한다. 둘 다 서버 관리자 API가 권한을 다시 확인한다.
   const banMessageSender = async (message: ChatMessage) => {
     if (banBusy) return;
@@ -367,7 +423,11 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       }
       setMessages((previous) => previous.filter((item) => item.messageId !== message.messageId));
       if (banSuspend && isMemberSender(message.sender)) {
-        const suspend = await csrfFetch(API_ENDPOINTS.admin.memberStatusAction(message.sender.publicId, "suspend"), { method: "POST" });
+        const suspend = await csrfFetch(API_ENDPOINTS.admin.memberStatusAction(message.sender.publicId, "suspend"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ days: banDays, reason: "라이브톡 차단과 함께 정지" }),
+        });
         if (!suspend.ok) {
           const data = await suspend.json().catch(() => null);
           setToastError(`IP는 차단했지만 회원을 정지하지 못했습니다. ${data?.message ?? ""}`.trim());
@@ -414,9 +474,11 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
             </div>
           ) : (
             messages.map((msg) => {
+              // 비회원은 같은 IP면 늘 같은 닉네임이라 닉네임으로 내 메시지를 알아본다. 같은 와이파이를 쓰는 사람과는 원래 이름이 같다.
               const isMine = currentMember
                 ? msg.sender.publicId === currentMember.publicId
-                : myGuestMessageIds.has(msg.messageId);
+                : myGuestMessageIds.has(msg.messageId) ||
+                  (myGuestNickname !== null && msg.sender.publicId.startsWith("anon-") && msg.sender.nickname === myGuestNickname);
               const resort = msg.resortTag ? RESORT_MAP[msg.resortTag] : null;
               return (
                 <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
@@ -429,6 +491,17 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
                       {resort ? resort.koreanName : "일반"}
                     </span>
                     <time>{formatRelativeTime(msg.sentAt)}</time>
+                    {isAdmin && !isMine && (
+                      <button
+                        type="button"
+                        onClick={() => void hideMessage(msg)}
+                        disabled={hidingId === msg.messageId}
+                        title="이 메시지만 모든 화면에서 지웁니다. 보낸 사람은 막지 않습니다."
+                        className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-60"
+                      >
+                        {hidingId === msg.messageId ? "가리는 중" : "가리기"}
+                      </button>
+                    )}
                     {isAdmin && !isMine && (
                       <button
                         type="button"
@@ -482,6 +555,18 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         )}
       </div>
 
+      {!chatEnabled && (
+        <p role="status" className="mx-3 mb-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+          {isAdmin ? "라이브톡이 닫혀 있습니다. 관리자만 메시지를 보낼 수 있습니다." : "라이브톡이 잠시 닫혀 있어요. 잠시 후 다시 와 주세요."}
+        </p>
+      )}
+      {!currentMember && anonymousChatEnabled && chatEnabled && myGuestNickname && (
+        <p className="mx-3 mb-1 text-xs text-slate-500">
+          내 닉네임 <strong className="font-bold text-slate-800">{myGuestNickname}</strong>
+          <span className="ml-1 text-slate-400">(접속한 인터넷이 바뀌면 이름도 바뀌어요)</span>
+        </p>
+      )}
+
       {/* 하단 일체형 캡슐 입력 폼 바 */}
       <form onSubmit={handleSubmit} className="live-chat-compose unified-capsule-form">
         <div className="capsule-select-wrap">
@@ -506,17 +591,20 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           value={inputContent}
           onChange={(e) => setInputContent(e.target.value)}
           onClick={() => {
-            if (!canSend) {
+            if (needsLogin) {
               router.push("/login");
             }
           }}
           onFocus={() => {
-            if (!canSend) {
+            if (needsLogin) {
               router.push("/login");
             }
           }}
+          disabled={chatClosed}
           placeholder={
-            currentMember
+            chatClosed
+              ? "라이브톡이 잠시 닫혀 있어요"
+              : currentMember
               ? "메시지를 입력하세요"
               : anonymousChatEnabled
                 ? myGuestNickname
@@ -530,11 +618,11 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
 
         <button
           type="submit"
-          disabled={Boolean(canSend && !inputContent.trim())}
-          aria-label={!canSend ? "로그인" : "메시지 전송"}
+          disabled={chatClosed || Boolean(canSend && !inputContent.trim())}
+          aria-label={needsLogin ? "로그인" : "메시지 전송"}
           className="live-chat-compose-submit capsule-send-btn"
         >
-          {!canSend ? (
+          {needsLogin ? (
             <span>로그인</span>
           ) : (
             <>

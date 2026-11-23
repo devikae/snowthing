@@ -49,6 +49,9 @@ public class ChatIpBanService {
     /** 보류 글에서 바로 막을 때 쓰는 대역. IPv6은 가정 하나가 받는 /64, IPv4는 공유 IP가 많아 주소 하나만 막는다. */
     static final int HOLD_SHORTCUT_IPV6_PREFIX = 64;
 
+    /** 메시지 ID는 UUID(36자)다. 조치 기록 target_id 칸(64자)을 넘는 값은 받지 않는다. */
+    static final int MAX_MESSAGE_ID_LENGTH = 64;
+
     private final ChatBannedIpRepository repository;
     private final ChatRecentHistoryBuffer historyBuffer;
     private final SimpMessagingTemplate messagingTemplate;
@@ -214,6 +217,43 @@ public class ChatIpBanService {
                 "관리자 메시지 신고 차단 " + days + "일 (" + messageId + ")",
                 LocalDateTime.now().plusDays(days),
                 createdBy);
+    }
+
+    /**
+     * 메시지 한 줄만 가린다 (IKA-115). 차단까지는 과한 한 번의 실수를 지울 때 쓴다.
+     *
+     * <ul>
+     *   <li>최근 대화에서 밀려난 메시지도 접속 중인 화면에는 남아 있을 수 있어, 버퍼에 없어도 지우라는 방송은 보낸다.
+     *   <li>라이브톡은 본문을 저장하지 않으므로 조치 기록에는 메시지 ID와 닉네임만 남긴다. 가린 메시지는 되돌릴 수 없다.
+     * </ul>
+     */
+    @Transactional
+    public void hideMessage(String messageId) {
+        if (messageId == null
+                || messageId.isBlank()
+                || messageId.length() > MAX_MESSAGE_ID_LENGTH) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        String nickname =
+                historyBuffer
+                        .findMessage(messageId)
+                        .map(
+                                message ->
+                                        message.sender() != null
+                                                ? message.sender().nickname()
+                                                : null)
+                        .orElse(null);
+        actionLogger.record(
+                AdminActionType.CHAT_MESSAGE_HIDE,
+                AdminTargetType.CHAT_MESSAGE,
+                messageId,
+                nickname != null ? nickname : "최근 대화에 없는 메시지");
+        afterCommit(
+                () -> {
+                    historyBuffer.removeByMessageId(messageId);
+                    broadcastPurge(List.of(messageId));
+                });
+        log.info("Chat message hidden: messageId={}", messageId);
     }
 
     private static IpRange validRange(String value) {

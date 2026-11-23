@@ -20,6 +20,15 @@ import { useAdminFetch } from "../../useAdminFetch";
 
 const PROVIDER_LABEL: Record<string, string> = { GOOGLE: "구글", NAVER: "네이버", KAKAO: "카카오" };
 
+/** 정지 기간 (IKA-115). 빈 값은 해제할 때까지 무기한이다. 기간이 끝나면 서버가 5분 안에 자동으로 푼다. */
+const SUSPEND_DAY_OPTIONS = [
+  { value: "1", label: "1일" },
+  { value: "3", label: "3일" },
+  { value: "7", label: "7일" },
+  { value: "30", label: "30일" },
+  { value: "", label: "무기한" },
+];
+
 /** 관리자 회원 상세 (IKA-78). 이메일은 가려서 받고, 비밀번호는 있는지만 보여 준다. */
 export default function AdminMemberDetailPage() {
   const params = useParams<{ publicId: string }>();
@@ -31,6 +40,8 @@ export default function AdminMemberDetailPage() {
   const [myPublicId, setMyPublicId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [suspendDays, setSuspendDays] = useState("7");
+  const [suspendReason, setSuspendReason] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -49,12 +60,17 @@ export default function AdminMemberDetailPage() {
   const isSelf = member?.publicId === myPublicId;
   const isAdmin = member?.role === "ROLE_ADMIN";
 
-  const run = async (message: string, url: string, failure: string) => {
+  const run = async (message: string, url: string, failure: string, body?: unknown) => {
     if (!window.confirm(message)) return;
     setBusy(true);
     setActionError(null);
     try {
-      const response = await csrfFetch(url, { method: "POST" });
+      const response = await csrfFetch(
+        url,
+        body === undefined
+          ? { method: "POST" }
+          : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      );
       if (!response.ok) throw new Error(await readErrorMessage(response, failure));
       detail.reload();
     } catch (cause) {
@@ -119,6 +135,18 @@ export default function AdminMemberDetailPage() {
             <dt>로그인 방법</dt>
             <dd>{loginMethods.length > 0 ? loginMethods.join(", ") : "없음"}</dd>
           </div>
+          {member.status === "SUSPENDED" && (
+            <>
+              <div>
+                <dt>정지 끝나는 시각</dt>
+                <dd>{member.suspendedUntil ? formatDateTime(member.suspendedUntil) : "해제할 때까지"}</dd>
+              </div>
+              <div>
+                <dt>정지 사유</dt>
+                <dd>{member.suspendReason ?? "없음"}</dd>
+              </div>
+            </>
+          )}
           <div>
             <dt>작성한 글, 댓글</dt>
             <dd>
@@ -148,20 +176,48 @@ export default function AdminMemberDetailPage() {
               정지 해제
             </button>
           ) : (
-            <button
-              className="admin-button danger"
-              type="button"
-              disabled={busy || member.status === "WITHDRAWN" || isAdmin}
-              onClick={() =>
-                void run(
-                  `${member.nickname} 회원을 정지할까요? 접속이 바로 끊기고 해제할 때까지 로그인할 수 없습니다.`,
-                  API_ENDPOINTS.admin.memberStatusAction(member.publicId, "suspend"),
-                  "회원 상태를 바꾸지 못했습니다.",
-                )
-              }
-            >
-              정지
-            </button>
+            <span style={{ display: "inline-flex", flex: "1 1 320px", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <label style={{ fontSize: 13 }}>
+                정지 기간{" "}
+                <select
+                  value={suspendDays}
+                  disabled={busy || member.status === "WITHDRAWN" || isAdmin}
+                  onChange={(event) => setSuspendDays(event.target.value)}
+                >
+                  {SUSPEND_DAY_OPTIONS.map((option) => (
+                    <option key={option.label} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <input
+                type="text"
+                maxLength={200}
+                placeholder="정지 사유 (관리자만 봅니다)"
+                aria-label="정지 사유"
+                value={suspendReason}
+                disabled={busy || member.status === "WITHDRAWN" || isAdmin}
+                onChange={(event) => setSuspendReason(event.target.value)}
+              />
+              <button
+                className="admin-button danger"
+                type="button"
+                disabled={busy || member.status === "WITHDRAWN" || isAdmin}
+                onClick={() =>
+                  void run(
+                    `${member.nickname} 회원을 ${suspendDays ? `${suspendDays}일` : "무기한"} 정지할까요? 접속이 바로 끊기고 ${
+                      suspendDays ? "기간이 끝날" : "해제할"
+                    } 때까지 로그인할 수 없습니다.`,
+                    API_ENDPOINTS.admin.memberStatusAction(member.publicId, "suspend"),
+                    "회원 상태를 바꾸지 못했습니다.",
+                    { days: suspendDays ? Number(suspendDays) : null, reason: suspendReason.trim() || null },
+                  )
+                }
+              >
+                정지
+              </button>
+            </span>
           )}
           {isAdmin ? (
             <button

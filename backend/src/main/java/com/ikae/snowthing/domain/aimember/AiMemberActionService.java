@@ -249,10 +249,13 @@ public class AiMemberActionService {
             if (!isActive(member)) {
                 return;
             }
-            ChatMessageResponse message =
-                    chatService.processMessage(
-                            new ChatMessageRequest(null, text), userDetails(member), null);
-            messagingTemplate.convertAndSend(CHAT_DESTINATION, message);
+            ChatService.SendResult result =
+                    chatService.send(new ChatMessageRequest(null, text), userDetails(member), null);
+            // 금칙어에 걸린 AI 회원 메시지는 사람과 똑같이 다른 사람에게 보내지 않는다 (IKA-115).
+            if (result.held()) {
+                return;
+            }
+            messagingTemplate.convertAndSend(CHAT_DESTINATION, result.message());
         } catch (Exception exception) {
             log.warn(
                     "AI member chat failed: key={}, type={}",

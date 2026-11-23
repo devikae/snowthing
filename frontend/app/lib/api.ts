@@ -66,6 +66,7 @@ export const API_ENDPOINTS = {
   },
   chat: {
     recent: `${API_V1_URL}/chat/recent`,
+    me: `${API_V1_URL}/chat/me`,
   },
   resortCams: {
     list: `${API_V1_URL}/resort-cams`,
@@ -177,6 +178,7 @@ export const API_ENDPOINTS = {
     bannedIps: `${API_V1_URL}/admin/chat/banned-ips`,
     unbanIp: (id: number) => `${API_V1_URL}/admin/chat/banned-ips/${id}`,
     banMessageIp: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${encodeURIComponent(messageId)}/ban-ip`,
+    hideChatMessage: (messageId: string) => `${API_V1_URL}/admin/chat/messages/${encodeURIComponent(messageId)}`,
     banners: `${API_V1_URL}/admin/banners`,
     bannerDetail: (id: number) => `${API_V1_URL}/admin/banners/${id}`,
     seasonOpenings: `${API_V1_URL}/admin/season-openings`,
@@ -224,6 +226,8 @@ export interface OffsetPage<T> {
 export interface AdminDashboardStats {
   totalMembers: number;
   todayNewMembers: number;
+  /** 라이브톡 비상 닫기 스위치. false면 관리자만 보낼 수 있다. */
+  chatEnabled: boolean;
   anonymousChatEnabled: boolean;
   marketGuestAccessEnabled: boolean;
   /** AI 회원 활동 스위치. installed가 false면 서버 설정으로 기능 전체가 꺼져 있어 스위치가 효과가 없다. */

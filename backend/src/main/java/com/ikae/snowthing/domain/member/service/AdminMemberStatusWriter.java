@@ -1,5 +1,8 @@
 package com.ikae.snowthing.domain.member.service;
 
+import java.time.LocalDateTime;
+import java.util.Objects;
+
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +35,22 @@ public class AdminMemberStatusWriter {
 
     @Transactional
     public Change suspend(String actorPublicId, String targetPublicId) {
+        return suspend(actorPublicId, targetPublicId, null, null, null);
+    }
+
+    /**
+     * 정지한다 (IKA-115). until이 null이면 무기한이다. 이미 정지 중인 회원도 기간과 사유를 새로 쓰고, 상태나 기간, 사유가 바뀌었을 때만 조치 기록을
+     * 남긴다.
+     *
+     * @param logLabel 조치 기록에 남길 기간 설명 (예: "7일"). null이면 기간을 적지 않는다.
+     */
+    @Transactional
+    public Change suspend(
+            String actorPublicId,
+            String targetPublicId,
+            LocalDateTime until,
+            String reason,
+            String logLabel) {
         Member target = requireForUpdate(targetPublicId);
         if (target.getPublicId().equals(actorPublicId)) {
             throw new CustomException(ErrorCode.MEMBER_SELF_SUSPEND_NOT_ALLOWED);
@@ -41,10 +60,17 @@ public class AdminMemberStatusWriter {
         }
         rejectWithdrawn(target);
         MemberStatus previous = target.getStatus();
-        target.suspend();
-        if (previous != MemberStatus.SUSPENDED) {
+        boolean sameTerms =
+                previous == MemberStatus.SUSPENDED
+                        && Objects.equals(target.getSuspendedUntil(), until)
+                        && Objects.equals(target.getSuspendReason(), reason);
+        target.suspend(until, reason);
+        if (!sameTerms) {
             actionLogger.record(
-                    AdminActionType.MEMBER_SUSPEND, AdminTargetType.MEMBER, targetPublicId, null);
+                    AdminActionType.MEMBER_SUSPEND,
+                    AdminTargetType.MEMBER,
+                    targetPublicId,
+                    suspendLogReason(logLabel, reason));
         }
         return new Change(target.getId(), previous, AdminMemberResponse.from(target));
     }
@@ -60,6 +86,33 @@ public class AdminMemberStatusWriter {
                     AdminActionType.MEMBER_REINSTATE, AdminTargetType.MEMBER, targetPublicId, null);
         }
         return new Change(target.getId(), previous, AdminMemberResponse.from(target));
+    }
+
+    /**
+     * 기간이 끝난 정지를 푼다 (IKA-115). 잠금을 잡은 뒤 다시 확인하므로 그 사이 관리자가 기간을 늘렸으면 풀지 않는다.
+     *
+     * @return 실제로 풀었으면 바뀐 내용, 아니면 null
+     */
+    @Transactional
+    public Change releaseExpired(String targetPublicId, LocalDateTime now) {
+        Member target = memberRepository.findByPublicIdForUpdate(targetPublicId).orElse(null);
+        if (target == null || !target.isSuspensionExpired(now)) {
+            return null;
+        }
+        MemberStatus previous = target.getStatus();
+        target.reinstate();
+        actionLogger.record(
+                AdminActionType.MEMBER_REINSTATE,
+                AdminTargetType.MEMBER,
+                targetPublicId,
+                "정지 기간 만료");
+        return new Change(target.getId(), previous, AdminMemberResponse.from(target));
+    }
+
+    private static String suspendLogReason(String logLabel, String reason) {
+        String note = reason != null && !reason.isBlank() ? reason.strip() : null;
+        if (logLabel == null) return note;
+        return note == null ? logLabel : logLabel + ": " + note;
     }
 
     private Member requireForUpdate(String publicId) {

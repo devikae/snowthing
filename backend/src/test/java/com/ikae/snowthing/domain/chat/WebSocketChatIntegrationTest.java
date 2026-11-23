@@ -43,6 +43,7 @@ import com.ikae.snowthing.domain.chat.dto.ChatMessageRequest;
 import com.ikae.snowthing.domain.chat.dto.ChatMessageResponse;
 import com.ikae.snowthing.domain.chat.model.ResortTag;
 import com.ikae.snowthing.domain.chat.service.ChatService;
+import com.ikae.snowthing.domain.contentfilter.service.BannedWordService;
 import com.ikae.snowthing.domain.member.dto.MemberSignUpRequest;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.member.service.MemberService;
@@ -88,6 +89,8 @@ class WebSocketChatIntegrationTest {
     @Autowired private MemberRepository memberRepository;
 
     @Autowired private ChatService chatService;
+
+    @Autowired private BannedWordService bannedWordService;
 
     private WebSocketStompClient stompClient;
     private String sessionCookie;
@@ -310,5 +313,72 @@ class WebSocketChatIntegrationTest {
         assertThat(response).isNotNull();
         assertThat(response.content()).isEqualTo("정상 메시지입니다");
         assertThat(response.sender().nickname()).isEqualTo("슬로프장인");
+    }
+
+    @Test
+    @DisplayName("금칙어에 걸린 메시지는 보낸 연결의 /user/queue/chat으로만 가고 다른 접속자에게는 방송되지 않는다 (IKA-115)")
+    void bannedWordMessage_reachesOnlySender() throws Exception {
+        Long wordId = bannedWordService.create("웹소켓금칙어").id();
+        try {
+            WebSocketHttpHeaders senderHeaders = new WebSocketHttpHeaders();
+            senderHeaders.add(HttpHeaders.COOKIE, sessionCookie);
+            String wsUrl = "http://localhost:" + port + "/ws-chat";
+            StompSession sender =
+                    stompClient
+                            .connectAsync(wsUrl, senderHeaders, new StompSessionHandlerAdapter() {})
+                            .get(5, TimeUnit.SECONDS);
+            StompSession observer =
+                    stompClient
+                            .connectAsync(
+                                    wsUrl,
+                                    new WebSocketHttpHeaders(),
+                                    new StompSessionHandlerAdapter() {})
+                            .get(5, TimeUnit.SECONDS);
+
+            BlockingQueue<ChatMessageResponse> senderEcho = new LinkedBlockingQueue<>();
+            BlockingQueue<ChatMessageResponse> senderMain = new LinkedBlockingQueue<>();
+            BlockingQueue<ChatMessageResponse> observerMain = new LinkedBlockingQueue<>();
+            BlockingQueue<ChatMessageResponse> observerEcho = new LinkedBlockingQueue<>();
+            sender.subscribe("/user/queue/chat", collect(senderEcho));
+            sender.subscribe("/sub/chat/main", collect(senderMain));
+            observer.subscribe("/sub/chat/main", collect(observerMain));
+            observer.subscribe("/user/queue/chat", collect(observerEcho));
+            // 구독이 브로커에 등록될 시간을 둔다.
+            Thread.sleep(300);
+
+            sender.send("/pub/chat/messages", new ChatMessageRequest(null, "이건 웹소켓금칙어 들어간 말"));
+
+            ChatMessageResponse echo = senderEcho.poll(5, TimeUnit.SECONDS);
+            assertThat(echo).isNotNull();
+            assertThat(echo.content()).isEqualTo("이건 웹소켓금칙어 들어간 말");
+            assertThat(observerMain.poll(1500, TimeUnit.MILLISECONDS)).isNull();
+            assertThat(observerEcho.poll()).isNull();
+            assertThat(senderMain.poll()).isNull();
+            assertThat(chatService.getRecentMessages())
+                    .extracting(ChatMessageResponse::content)
+                    .doesNotContain("이건 웹소켓금칙어 들어간 말");
+
+            // 걸리지 않은 메시지는 지금처럼 모두에게 간다.
+            sender.send("/pub/chat/messages", new ChatMessageRequest(null, "평범한 인사"));
+            ChatMessageResponse broadcast = observerMain.poll(5, TimeUnit.SECONDS);
+            assertThat(broadcast).isNotNull();
+            assertThat(broadcast.content()).isEqualTo("평범한 인사");
+        } finally {
+            bannedWordService.delete(wordId);
+        }
+    }
+
+    private static StompFrameHandler collect(BlockingQueue<ChatMessageResponse> queue) {
+        return new StompFrameHandler() {
+            @Override
+            public Type getPayloadType(StompHeaders headers) {
+                return ChatMessageResponse.class;
+            }
+
+            @Override
+            public void handleFrame(StompHeaders headers, Object payload) {
+                queue.add((ChatMessageResponse) payload);
+            }
+        };
     }
 }

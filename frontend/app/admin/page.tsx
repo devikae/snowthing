@@ -49,9 +49,34 @@ export default function AdminDashboardPage() {
   const [days, setDays] = useState<7 | 30>(7);
   const [metric, setMetric] = useState<Metric>("signups");
   const [updatingChat, setUpdatingChat] = useState(false);
+  const [updatingChatOpen, setUpdatingChatOpen] = useState(false);
   const [updatingMarket, setUpdatingMarket] = useState(false);
   const overview = useAdminFetch<AdminOverview>(API_ENDPOINTS.admin.overview(days), "운영 현황을 불러오지 못했습니다.");
   const stats = useAdminFetch<AdminDashboardStats>(API_ENDPOINTS.admin.stats, "회원 현황을 불러오지 못했습니다.");
+
+  // 비상 닫기 (IKA-115). 닫으면 관리자 말고는 보낼 수 없고, 접속 중인 화면에 바로 안내가 뜬다.
+  const toggleChatOpen = async () => {
+    if (!stats.data || updatingChatOpen) return;
+    const next = !stats.data.chatEnabled;
+    const message = next
+      ? "라이브톡을 다시 열까요? 모든 사용자가 다시 메시지를 보낼 수 있습니다."
+      : "라이브톡을 닫을까요? 관리자 말고는 아무도 메시지를 보낼 수 없고, 접속 중인 화면에 바로 안내가 뜹니다.";
+    if (!window.confirm(message)) return;
+    setUpdatingChatOpen(true);
+    try {
+      const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig("CHAT_ENABLED"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: String(next) }),
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, "설정을 바꾸지 못했습니다."));
+      stats.reload();
+    } catch (cause) {
+      stats.setError((cause as Error).message);
+    } finally {
+      setUpdatingChatOpen(false);
+    }
+  };
 
   const toggleAnonymousChat = async () => {
     if (!stats.data || updatingChat) return;
@@ -167,6 +192,26 @@ export default function AdminDashboardPage() {
         </div>
         {overview.loading && !overview.data && <p className="admin-meta">불러오는 중...</p>}
         {overview.data && <DailyBars series={overview.data.series} metric={metric} label={metricLabel} />}
+      </section>
+      <section className="panel admin-section" aria-label="라이브톡 열고 닫기">
+        <div className="admin-toolbar">
+          <span>
+            <h2>라이브톡 {stats.data && !stats.data.chatEnabled ? "닫힘" : "열림"}</h2>
+            <small className="admin-meta">
+              {stats.data && !stats.data.chatEnabled
+                ? "관리자만 메시지를 보낼 수 있습니다. 다른 사람에게는 잠시 닫혔다는 안내가 보입니다."
+                : "도배나 사고가 났을 때 라이브톡 전체를 잠시 닫을 수 있습니다."}
+            </small>
+          </span>
+          <button
+            className={`admin-button${stats.data?.chatEnabled ? " danger" : ""}`}
+            type="button"
+            disabled={!stats.data || updatingChatOpen}
+            onClick={() => void toggleChatOpen()}
+          >
+            {stats.data && !stats.data.chatEnabled ? "다시 열기" : "라이브톡 닫기"}
+          </button>
+        </div>
       </section>
       <section className="panel admin-section" aria-label="비로그인 라이브톡">
         <div className="admin-toolbar">

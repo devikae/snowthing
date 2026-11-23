@@ -174,7 +174,7 @@ class AdminMemberIntegrationTest {
     }
 
     @Test
-    @DisplayName("정지하면 모든 기존 세션이 끊기고, 쪽지도 못 보내고, 새 로그인은 계정 상태를 드러내지 않고 거부된다")
+    @DisplayName("정지하면 모든 기존 세션이 끊기고, 쪽지도 못 보내고, 새 로그인은 비밀번호가 맞을 때만 정지 사실을 알린다")
     void suspendInvalidatesSessionsAndRejectsLogin() throws Exception {
         MockHttpSession firstDevice = login(target);
         MockHttpSession secondDevice = login(target);
@@ -201,10 +201,23 @@ class AdminMemberIntegrationTest {
                                                 + admin.getPublicId()
                                                 + "\",\"content\":\"정지 중 쪽지\"}"))
                 .andExpect(status().isUnauthorized());
-        // 잠김 검사는 비밀번호 검사보다 먼저라 계정 상태를 드러내지 않는다 (IKA-40).
-        loginRequest(target)
+        // 비밀번호가 틀리면 계정 상태를 드러내지 않는다 (IKA-40). 비밀번호가 맞은 본인에게만 정지를 알린다 (IKA-115).
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                java.util.Map.of(
+                                                        "email",
+                                                        target.getEmail(),
+                                                        "password",
+                                                        "Wrong-password1!"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
+        loginRequest(target)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("ACCOUNT_SUSPENDED"));
     }
 
     @Test
