@@ -44,7 +44,7 @@
 | `SNOWTHING_BOT_INTERNAL_SECRET` (봇을 켜면 32바이트 이상) | 백엔드와 mcp-bot이 서로를 확인하는 공유 비밀 | 컨테이너 네트워크 안에서 봇 내부 API를 부를 수 있다. 포트를 밖으로 열지 않아 서버 안에 들어와야 쓸 수 있다 | 새 임의 문자열로 바꾸고 backend와 mcp-bot을 함께 다시 만든다(`scripts/compose-prod.sh up -d backend mcp-bot`). 한쪽만 바뀐 동안 봇 호출 실패 | 포트를 밖으로 열지 않는 현재 구성 유지 |
 | `SNOWTHING_BOT_DELEGATION_SECRET` (봇을 켜면 32바이트 이상) | 봇이 회원 대신 행동할 때 쓰는 위임 토큰 서명(수명 60초) | 회원 대신 행동하는 토큰을 만들 수 있다 | 새 임의 문자열로 바꾸고 백엔드를 다시 만든다. 발급된 토큰(60초)만 무효 | 토큰 수명을 짧게 유지 |
 | `SNOWTHING_OPENAI_API_KEY` (IKA-80, 선택) | AI 자동 검열 2단계(OpenAI Moderation API) 호출. `SNOWTHING_MODERATION_API_ENABLED`가 true일 때만 쓴다 | Moderation API 자체는 무료지만 키 권한이 넓으면 우리 계정으로 다른 모델을 불러 요금이 나간다 | OpenAI 대시보드에서 새 키 발급, 값 교체, `scripts/compose-prod.sh up -d backend`, 옛 키 폐기. 그 사이 2단계 판정만 실패하고 1단계 규칙은 계속 돈다 | 백엔드 전용 키를 mcp-bot의 `OPENAI_API_KEY`와 따로 두고, 허용 엔드포인트를 moderation으로 제한, 월 지출 한도 |
-| `DISCORD_WEBHOOK_ALERT`, `DISCORD_WEBHOOK_EVENT` | 운영 알림 채널 웹훅 주소. 주소 자체가 권한이다 | 채널에 아무 메시지나 올릴 수 있다(가짜 경보, 피싱 링크) | Discord에서 웹훅을 지우고 새로 만든 뒤 값 교체, 백엔드 재생성. 사용자 영향 없음 | 알림 전용 채널에만 연결 |
+| `DISCORD_WEBHOOK_ALERT`, `DISCORD_WEBHOOK_EVENT`, `DISCORD_WEBHOOK_COLUMN`(IKA-112) | 운영 알림 채널 웹훅 주소. 주소 자체가 권한이다 | 채널에 아무 메시지나 올릴 수 있다(가짜 경보, 피싱 링크) | Discord에서 웹훅을 지우고 새로 만든 뒤 값 교체, 백엔드 재생성. 사용자 영향 없음 | 알림 전용 채널에만 연결 |
 | `WEB_PUSH_VAPID_PRIVATE_KEY` | 웹 푸시 서명 | 구독 주소(DB)까지 알면 우리 이름으로 푸시를 보낼 수 있다 | 키 쌍을 새로 만들고 공개키, 비밀키를 함께 교체. 기존 구독이 모두 무효가 되어 사용자가 알림을 다시 켜야 한다. 영향이 커서 유출이 확실할 때만 | 없음(키 쌍 단위) |
 
 ### 3.2 설정값 중 공개 저장소에 적으면 안 되는 것
