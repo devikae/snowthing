@@ -9,15 +9,17 @@ import type { CharacterLabel, Sport } from "./data";
 export const SEND_LINK_LABEL = "모임 링크도 같이 보내기";
 
 // 카드는 사진만 전달되어 받은 사람이 눌러서 들어올 곳이 없다. 이미 모임이 있으면 링크를 바로 보낸다.
-// 카톡 공유 그림은 1200x630 가로형이다. 크기를 넘기지 않으면 카카오가 가운데만 정사각형에 가깝게 잘라 보여 준다.
-// 보낸 사람 유형이 있으면 그 유형을 가운데 둔 그림(scripts/generate-character-test-images.py --group-share)을, 없으면 공통 그림을 쓴다.
+// 카톡 공유 그림 크기를 같이 넘겨야 카카오가 가운데만 잘라 보여 주지 않는다.
+// 보낸 사람 유형이 있으면 그 유형을 가운데 둔 정사각형 그림(scripts/generate-character-test-images.py --group-share)을 쓴다.
+// 말풍선 폭은 카카오가 정하므로 정사각형이 가로 그림보다 두 배쯤 크게 보인다. 유형이 없으면(운영자가 만든 링크) 공통 가로 그림이다.
 function shareImage(sender?: { character: CharacterLabel; sport: Sport }) {
-  if (!sender) return "/character-test/og-group.png";
-  return `/character-test/group-${sender.sport}-${sender.character.job}-${sender.character.planStyle}.png`;
+  if (!sender) return { url: "/character-test/og-group.png", width: 1200, height: 630 };
+  return { url: `/character-test/group-share-${sender.sport}-${sender.character.job}-${sender.character.planStyle}.png`, width: 800, height: 800 };
 }
 
 export function ShareGroupLink({ groupPublicId, groupName, sender }: { groupPublicId: string; groupName: string; sender?: { character: CharacterLabel; sport: Sport } }) {
   const [notice, setNotice] = useState("");
+  const image = shareImage(sender);
   const [fallbackUrl, setFallbackUrl] = useState("");
 
   const send = async () => {
@@ -36,9 +38,9 @@ export function ShareGroupLink({ groupPublicId, groupName, sender }: { groupPubl
         title={groupName}
         description={inviteText(groupName)}
         url={`/character-test/g/${encodeURIComponent(groupPublicId)}`}
-        imageUrl={shareImage(sender)}
-        imageWidth={1200}
-        imageHeight={630}
+        imageUrl={image.url}
+        imageWidth={image.width}
+        imageHeight={image.height}
         buttonTitle="모임 들어가기"
         label="카카오톡으로 모임 링크 보내기"
         onFallback={send}
