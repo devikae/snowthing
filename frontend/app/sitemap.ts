@@ -24,6 +24,7 @@ const STATIC_PATHS = [
   "/tools/season-pass",
   "/tools/season-pass-prices",
   "/tools/deck-size",
+  "/tools/ski-size",
   "/character-test",
   "/terms",
   "/privacy",

@@ -12,7 +12,7 @@ function formatMonthDay(date: string): string {
 
 /**
  * 메인 개장 D-DAY 배너. 관리자가 배너에 넣기로 한 리조트를 정한 순서대로 나열한다.
- * 개장한 리조트는 관리자가 "개장 D+N 표시"를 켰을 때만 남는다.
+ * 개장한 리조트는 관리자가 "D+N 표시"를 켰을 때만 남는다.
  * 스위치가 꺼졌거나, 보일 리조트가 없거나, 개장일을 받지 못하면 그리지 않는다.
  */
 export function OpeningDdayBanner() {
