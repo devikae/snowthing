@@ -57,6 +57,24 @@ class DiscordNotifierTest {
     }
 
     @Test
+    @DisplayName("칼럼 게시 알림은 칼럼 웹훅으로만 보내고, 비어 있으면 보내지 않는다")
+    void sendsColumnToColumnWebhook() {
+        String column = "https://discord.com/api/webhooks/3/column";
+        server.expect(requestTo(column))
+                .andExpect(jsonPath("$.content").value("📚 휘구리 칼럼"))
+                .andRespond(withSuccess());
+
+        new DiscordNotifier(
+                        builder.build(),
+                        new DiscordProperties(ALERT, EVENT, column, Duration.ofSeconds(3)),
+                        Runnable::run)
+                .column("📚 휘구리 칼럼");
+        notifier(ALERT, EVENT).column("웹훅 없음");
+
+        server.verify();
+    }
+
+    @Test
     @DisplayName("웹훅 URL이 비어 있으면 아무 요청도 보내지 않는다")
     void skipsWhenWebhookBlank() {
         DiscordNotifier notifier = notifier(" ", null);

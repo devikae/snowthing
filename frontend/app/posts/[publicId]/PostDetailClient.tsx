@@ -24,7 +24,7 @@ import { markdownToPlainText } from "../../lib/markdownText";
 import { mentionPrefix, mergeReplies, replyCursor } from "../../lib/commentReplies";
 // 서버가 넣은 본문 HTML이 첫 화면부터 뷰어와 같은 모양이 되도록 뷰어 스타일을 이 화면 첫 CSS에 싣는다.
 import "@toast-ui/editor/dist/toastui-editor-viewer.css";
-import { getJson, readErrorMessage } from "../../lib/http";
+import { getJson, readApiError, readErrorMessage } from "../../lib/http";
 
 // 뷰어 코드를 받는 동안에는 서버가 만든 본문 HTML(없으면 평문 본문)이 자리를 채운다.
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
@@ -139,6 +139,7 @@ export default function PostDetailClient({
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
   const [scrapBusy, setScrapBusy] = useState(false);
+  const reactionBusyRef = useRef(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -205,8 +206,7 @@ export default function PostDetailClient({
       alert("글을 삭제했습니다.");
       router.push(post?.categoryCode ? `/posts?category=${encodeURIComponent(post.categoryCode)}` : "/posts");
     } else {
-      const data = await res.json();
-      throw new Error(data.message || "글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      throw new Error((await readApiError(res, "글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
     }
   };
 
@@ -405,6 +405,9 @@ export default function PostDetailClient({
       askLoginForReaction();
       return;
     }
+    // 응답 전에 다시 누르면 같은 상태(isActive)로 요청이 한 번 더 나간다. 응답이 올 때까지 받지 않는다.
+    if (reactionBusyRef.current) return;
+    reactionBusyRef.current = true;
     try {
       const isActive = post?.activeReactionTypes.includes(type) ?? false;
       const res = await csrfFetch(API_ENDPOINTS.posts.reaction(publicId, type), {
@@ -428,14 +431,16 @@ export default function PostDetailClient({
         return;
       }
 
-      const errorData = await res.json();
+      const errorData = await readApiError(res, "반응을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       if (errorData.code === "AUTH_020") {
         askLoginForReaction();
         return;
       }
-      setReactionMsg(errorData.message || "반응을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setReactionMsg(errorData.message);
     } catch {
       setReactionMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
+    } finally {
+      reactionBusyRef.current = false;
     }
   };
 
@@ -574,8 +579,7 @@ export default function PostDetailClient({
         return;
       }
 
-      const errorData = await res.json();
-      alert(errorData.message || "댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      alert((await readApiError(res, "댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
     } catch {
       alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
@@ -632,8 +636,7 @@ export default function PostDetailClient({
         }),
       });
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "댓글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error((await readApiError(res, "댓글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
       }
 
       const updated: CommentUpdateResponse = await res.json();
@@ -677,8 +680,7 @@ export default function PostDetailClient({
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error((await readApiError(res, "댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
       }
 
       handleCancelDeleteComment();
