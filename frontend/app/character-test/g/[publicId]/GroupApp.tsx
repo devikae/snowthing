@@ -5,14 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchMap, fetchPreview, joinGroup, leaveGroup, type CharacterMap, type GroupPreview } from "../../api";
 import { CardPanel } from "../../CardPanel";
 import { characterImage, characterName, INTRO_CAST, JOBS, LEVELS, SPORT_LABEL, type Sport } from "../../data";
-import { INVITE_LABEL, InviteSection } from "../../InviteSection";
-import { clearFragment, groupUrl, inviteText, readFragmentToken, restoreUrl } from "../../links";
+import { InviteSection } from "../../InviteSection";
+import { clearFragment, groupUrl, readFragmentToken, restoreUrl } from "../../links";
 import { getMembership, getSavedAnswers, removeMembership, saveAnswers, saveMembership } from "../../localStore";
 import { renderMapImage } from "../../mapImage";
 import { NicknameForm } from "../../NicknameForm";
 import { QuizFlow } from "../../QuizFlow";
 import { RelationshipMap } from "../../RelationshipMap";
-import { SAVED_NOTICE, blobToDataUrl, shareLink, shareOrSaveImage } from "../../shareFile";
+import { SAVED_NOTICE, blobToDataUrl, shareOrSaveImage } from "../../shareFile";
 import { InAppSaveSheet } from "../../InAppSaveSheet";
 import { ShareGroupLink } from "../../ShareGroupLink";
 import { fetchViewer } from "../../../lib/viewer";
@@ -157,14 +157,6 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
   const { me, groupPublicId, groupName } = map;
   const character = me.result.character;
 
-  const shareGroup = async () => {
-    const url = groupUrl(groupPublicId);
-    setFallbackUrl("");
-    const outcome = await shareLink(url, groupName, inviteText(groupName));
-    if (outcome === "failed") setFallbackUrl(url);
-    setNotice(outcome === "shared" ? "공유 창을 열었어요." : outcome === "copied" ? "모임 링크를 복사했어요." : outcome === "cancelled" ? "공유를 취소했어요." : "아래 링크를 선택해서 복사해 주세요.");
-  };
-
   const copyRestore = async () => {
     const url = restoreUrl(groupPublicId, token);
     setFallbackUrl("");
@@ -225,11 +217,14 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
         </div>
         <RelationshipMap levels={map.levels} me={{ character }} hideNames={hideNames} />
         <label className="ct-check"><input type="checkbox" checked={hideNames} onChange={(event) => setHideNames(event.target.checked)} /> 이름 가리기</label>
-        <div className="ct-actions">
-          <button type="button" onClick={() => void saveMap()} disabled={busy}>지도 이미지 저장</button>
-          <button type="button" onClick={() => void onReload()} disabled={busy}>지도 새로고침</button>
-        </div>
-        <button type="button" className="ct-primary" onClick={() => void shareGroup()}>{map.owner ? INVITE_LABEL : "이 모임 링크 보내기"}</button>
+        {/* 사람을 부르는 버튼은 지도 바로 아래 한 곳에만 둔다. 카톡 초대가 크게, 링크 복사와 지도 저장이 작게. */}
+        <ShareGroupLink
+          groupPublicId={groupPublicId}
+          groupName={groupName}
+          sender={{ character, sport: me.sport }}
+          extra={<button type="button" onClick={() => void saveMap()} disabled={busy}>지도 이미지 저장</button>}
+        />
+        <button type="button" className="ct-text-button" onClick={() => void onReload()} disabled={busy}>지도 새로고침</button>
         <div className="ct-new-group">
           <p className="ct-lead">다른 사람들이랑도 해 보고 싶다면 새 모임을 만들어 보세요. 테스트를 다시 하지 않아도 돼요.</p>
           <InviteSection answers={me.answers} sport={me.sport} initialNickname={me.nickname} label="새 모임 만들기" primary={false} />
@@ -260,9 +255,12 @@ function MapView({ map, token, onReload, onLeft }: { map: CharacterMap; token: s
         })}
       </section>
 
-      <CardPanel result={me.result} sport={me.sport}>
-        <ShareGroupLink groupPublicId={groupPublicId} groupName={groupName} sender={{ character: me.result.character, sport: me.sport }} />
-      </CardPanel>
+      <CardPanel
+        result={me.result}
+        sport={me.sport}
+        groupShare={(shareCardButton) => shareCardButton}
+        shareTo={{ url: groupUrl(groupPublicId), text: `나는 스키장에서 ${characterName(character)}. 너는 어떤 캐릭터야? ${groupName} 모임 지도에 들어와 봐.` }}
+      />
 
       <section className="ct-panel ct-account" aria-labelledby="ct-account-title">
         <h2 id="ct-account-title">내 정보 관리</h2>

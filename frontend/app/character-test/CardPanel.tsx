@@ -11,7 +11,10 @@ import { SAVED_NOTICE, blobToDataUrl, shareOrSaveImage } from "./shareFile";
 
 // 결과는 카드 한 장으로 보여 준다. 카드에 이름, 스탯, 설명, 찰떡 타입이 다 들어 있어 따로 그리지 않는다.
 // 공유 창은 클릭 직후에만 열리는 브라우저가 있어 카드를 미리 그려 둔다.
-export function CardPanel({ result, sport, answers, children }: { result: CharacterResult; sport: Sport; answers?: string; children?: ReactNode }) {
+// groupShare를 주면(모임 화면) 카드 공유 버튼 하나만 groupShare가 정한 자리에 그린다. 모임 초대 버튼은 지도 아래에 있다.
+// 모임 화면에서 테스트 링크 공유까지 같이 보이면 어느 버튼이 모임에 부르는 건지 헷갈린다.
+// shareTo를 주면(모임 화면) 카드와 같이 보내는 링크와 글을 그 모임으로 바꾼다. 테스트 링크가 가면 받은 사람이 모임에 안 들어온다.
+export function CardPanel({ result, sport, answers, groupShare, shareTo }: { result: CharacterResult; sport: Sport; answers?: string; groupShare?: (shareCardButton: ReactNode) => ReactNode; shareTo?: { url: string; text: string } }) {
   const [card, setCard] = useState<{ blob: Blob; url: string } | null>(null);
   const [notice, setNotice] = useState("");
   const [sheetImage, setSheetImage] = useState("");
@@ -38,8 +41,8 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
   const share = async () => {
     if (!card) return;
     const outcome = await shareOrSaveImage(card.blob, `snowthing-character-${result.character.job}.png`, "내 스키장 캐릭터", {
-      text: `나는 스키장에서 ${name}. 너는 어떤 캐릭터야?`,
-      url: new URL("/character-test", window.location.origin).toString(),
+      text: shareTo?.text ?? `나는 스키장에서 ${name}. 너는 어떤 캐릭터야?`,
+      url: shareTo?.url ?? new URL("/character-test", window.location.origin).toString(),
     });
     if (outcome === "inapp") {
       setSheetImage(await blobToDataUrl(card.blob));
@@ -65,6 +68,12 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
         // eslint-disable-next-line @next/next/no-img-element -- 브라우저에서 만든 blob 주소라 이미지 최적화를 거칠 수 없다.
         ? <img className="ct-card-preview" src={card.url} width={270} height={480} alt={alt} />
         : <div className="ct-card-preview ct-card-loading" role="img" aria-label={`${name} 카드를 만드는 중`} />}
+      {groupShare
+        ? <div className="ct-group-share">
+            {groupShare(<button type="button" onClick={() => void share()} disabled={!card}>카드 공유 또는 저장</button>)}
+            {notice && <p className="ct-fineprint" role="status">{notice}</p>}
+          </div>
+        : <>
       <button type="button" className="ct-primary" onClick={() => void share()} disabled={!card}>카드 공유 또는 저장</button>
       <div className="ct-kakao-share">
         <KakaoShareButton
@@ -78,6 +87,7 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
         />
       </div>
       <p className="ct-fineprint" role="status">{notice || "지원되는 폰은 공유 창이 열리고, 아니면 이미지로 저장돼요."}</p>
+        </>}
       {answers && <div className="ct-card-evidence">
         <h3>이렇게 골랐어요</h3>
         <ul className="ct-evidence">
@@ -89,12 +99,6 @@ export function CardPanel({ result, sport, answers, children }: { result: Charac
         </ul>
         <p className="ct-fineprint">재미로 보는 결과예요. 고른 답으로 정해질 뿐, 사람을 진단하지 않아요.</p>
       </div>}
-      {children && (
-        <div className="ct-card-link">
-          <p className="ct-fineprint">카드와 함께 테스트 링크가 가요. 인스타그램처럼 사진만 받는 앱이면 모임 링크를 따로 보내 주세요.</p>
-          {children}
-        </div>
-      )}
     </section>
   );
 }
