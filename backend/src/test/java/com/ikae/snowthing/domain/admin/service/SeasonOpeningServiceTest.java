@@ -167,6 +167,7 @@ class SeasonOpeningServiceTest {
                         new SeasonOpeningUpdateRequest(
                                 true,
                                 "  개장   임박 ",
+                                null,
                                 List.of(
                                         new Item("YONGPYONG", NOV_22, true, true, 1),
                                         new Item("HIGH1", NOV_24, true, true, 2))),
@@ -179,6 +180,79 @@ class SeasonOpeningServiceTest {
                         eq(AdminTargetType.SEASON_OPENING),
                         eq("ALL"),
                         eq("배너 켬, 문구 \"개장 임박\""));
+    }
+
+    @Test
+    @DisplayName("개장 후 표시 설정 줄이 없으면 꺼진 것으로 본다")
+    void missingShowAfterOpeningMeansOff() {
+        when(configRepository.findById(SeasonOpeningService.KEY_SHOW_AFTER_OPENING))
+                .thenReturn(Optional.empty());
+
+        assertThat(service.getSeasonOpenings().showAfterOpening()).isFalse();
+    }
+
+    @Test
+    @DisplayName("개장 후 표시를 켜면 설정 줄을 만들고 조치 기록에 남긴다")
+    void turnsOnShowAfterOpening() {
+        when(configRepository.findById(SeasonOpeningService.KEY_BANNER_ENABLED))
+                .thenReturn(Optional.of(bannerSwitch));
+        SystemConfig[] stored = new SystemConfig[1];
+        when(configRepository.findById(SeasonOpeningService.KEY_SHOW_AFTER_OPENING))
+                .thenAnswer(invocation -> Optional.ofNullable(stored[0]));
+        when(configRepository.save(any(SystemConfig.class)))
+                .thenAnswer(
+                        invocation -> {
+                            stored[0] = invocation.getArgument(0);
+                            return stored[0];
+                        });
+
+        SeasonOpeningResponse response =
+                service.update(
+                        new SeasonOpeningUpdateRequest(
+                                true,
+                                null,
+                                true,
+                                List.of(
+                                        new Item("YONGPYONG", NOV_22, true, true, 1),
+                                        new Item("HIGH1", NOV_24, true, true, 2))),
+                        "admin");
+
+        assertThat(stored[0].getValue()).isEqualTo("true");
+        assertThat(response.showAfterOpening()).isTrue();
+        verify(actionLogger)
+                .record(
+                        AdminActionType.SEASON_OPENING_UPDATE,
+                        AdminTargetType.SEASON_OPENING,
+                        "ALL",
+                        "배너 켬, 개장 후 D+N 표시 켬");
+    }
+
+    @Test
+    @DisplayName("개장 후 표시 값을 보내지 않으면(예전 관리자 화면) 저장된 값을 바꾸지 않는다")
+    void keepsShowAfterOpeningWhenOmitted() {
+        when(configRepository.findById(SeasonOpeningService.KEY_BANNER_ENABLED))
+                .thenReturn(Optional.of(bannerSwitch));
+        SystemConfig afterOpening =
+                new SystemConfig(
+                        SeasonOpeningService.KEY_SHOW_AFTER_OPENING,
+                        "true",
+                        "BOOLEAN",
+                        "개장한 리조트도 개장 D+N으로 배너에 표시",
+                        "SYSTEM");
+        when(configRepository.findById(SeasonOpeningService.KEY_SHOW_AFTER_OPENING))
+                .thenReturn(Optional.of(afterOpening));
+
+        SeasonOpeningResponse response =
+                service.update(
+                        request(
+                                true,
+                                new Item("YONGPYONG", NOV_22, true, true, 1),
+                                new Item("HIGH1", NOV_24, true, true, 2)),
+                        "admin");
+
+        assertThat(afterOpening.getValue()).isEqualTo("true");
+        assertThat(response.showAfterOpening()).isTrue();
+        verify(actionLogger, never()).record(any(), any(), any(), anyString());
     }
 
     @Test
@@ -274,7 +348,7 @@ class SeasonOpeningServiceTest {
     }
 
     private static SeasonOpeningUpdateRequest request(boolean enabled, Item... items) {
-        return new SeasonOpeningUpdateRequest(enabled, null, List.of(items));
+        return new SeasonOpeningUpdateRequest(enabled, null, null, List.of(items));
     }
 
     private static SeasonOpening opening(

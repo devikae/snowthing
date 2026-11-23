@@ -49,6 +49,7 @@ class SeasonOpeningControllerTest {
                         new SeasonOpeningResponse(
                                 true,
                                 "개장까지",
+                                true,
                                 List.of(
                                         new SeasonOpeningItem(
                                                 "YONGPYONG",
@@ -65,6 +66,7 @@ class SeasonOpeningControllerTest {
                 .andExpect(header().string("Cache-Control", "no-cache"))
                 .andExpect(jsonPath("$.bannerEnabled").value(true))
                 .andExpect(jsonPath("$.bannerTitle").value("개장까지"))
+                .andExpect(jsonPath("$.showAfterOpening").value(true))
                 .andExpect(jsonPath("$.resorts[0].resortCode").value("YONGPYONG"))
                 .andExpect(jsonPath("$.resorts[0].name").value("모나용평"))
                 .andExpect(jsonPath("$.resorts[0].openingDate").value("2026-11-22"))

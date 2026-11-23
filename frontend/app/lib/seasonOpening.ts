@@ -16,6 +16,8 @@ export type SeasonOpenings = {
   bannerEnabled: boolean;
   /** 배너 맨 앞 문구. 관리자가 정하고, 없으면 기본 문구를 쓴다. */
   bannerTitle?: string;
+  /** 켜면 개장한 리조트도 배너에 "개장 D+N"으로 남긴다. 예전 서버는 이 값을 주지 않으므로 없으면 끔. */
+  showAfterOpening?: boolean;
   /** 배너 순서, 같으면 등록 순. */
   resorts: SeasonOpening[];
 };
@@ -38,8 +40,10 @@ export function daysUntil(date: string, today: string): number {
   return Math.round((dateKeyToUtc(date) - dateKeyToUtc(today)) / DAY_MILLIS);
 }
 
+/** 남은 일수를 D-DAY 표기로. 개장일이 지났으면(음수) "개장 D+N"이다. */
 export function formatDday(days: number): string {
-  return days === 0 ? "D-DAY" : `D-${days}`;
+  if (days === 0) return "D-DAY";
+  return days > 0 ? `D-${days}` : `개장 D+${-days}`;
 }
 
 export type UpcomingOpening = { opening: SeasonOpening; date: string; days: number };
@@ -60,14 +64,25 @@ export function upcomingOpening(
   return opening ? toUpcoming(opening, today) : null;
 }
 
-/** 메인 배너에 걸 리조트. 스위치가 꺼졌으면 빈 목록, 켜졌으면 배너에 넣기로 한 리조트 중 아직 개장 전인 것을 관리자가 정한 순서대로. */
 export const DEFAULT_BANNER_TITLE = "개장까지";
+/** 개장한 리조트가 섞여 있는데 문구가 기본값이면 "개장까지"가 어색해서 대신 쓰는 문구. */
+export const OPENED_BANNER_TITLE = "개장 소식";
 export const BANNER_TITLE_MAX = 12;
 
+/**
+ * 메인 배너에 걸 리조트. 스위치가 꺼졌으면 빈 목록, 켜졌으면 배너에 넣기로 한 리조트를 관리자가 정한 순서대로.
+ * 개장한 리조트는 showAfterOpening이 켜져 있을 때만 남는다(days가 음수).
+ */
 export function bannerOpenings(data: SeasonOpenings, today: string): UpcomingOpening[] {
   if (!data.bannerEnabled) return [];
   return data.resorts
-    .filter((opening) => opening.showOnBanner)
-    .map((opening) => toUpcoming(opening, today))
-    .filter((item): item is UpcomingOpening => item !== null);
+    .filter((opening) => opening.showOnBanner && opening.openingDate)
+    .map((opening) => ({ opening, date: opening.openingDate as string, days: daysUntil(opening.openingDate as string, today) }))
+    .filter((item) => item.days >= 0 || data.showAfterOpening === true);
+}
+
+/** 배너 맨 앞 문구. 관리자가 정한 문구를 쓰되, 기본 문구인데 개장한 리조트가 있으면 "개장 소식"으로 바꾼다. */
+export function bannerTitle(data: SeasonOpenings, items: UpcomingOpening[]): string {
+  const title = data.bannerTitle?.trim() || DEFAULT_BANNER_TITLE;
+  return title === DEFAULT_BANNER_TITLE && items.some((item) => item.days < 0) ? OPENED_BANNER_TITLE : title;
 }

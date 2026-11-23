@@ -34,6 +34,8 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <ul>
  *   <li>스위치는 system_config의 {@link #KEY_BANNER_ENABLED} 한 줄에 둔다. 줄이 없으면 켜진 것으로 본다. 예전 상수 배너는 늘 보였다.
+ *   <li>개장 후 표시 스위치는 {@link #KEY_SHOW_AFTER_OPENING} 한 줄에 둔다. 줄이 없으면 꺼진 것으로 본다. 켜면 개장한 리조트를 "개장
+ *       D+N"으로 배너에 남긴다.
  *   <li>조회는 캐시 없이 DB에서 읽는다. 줄 수가 리조트 수(10개 안팎)라 가볍고, 관리자가 바꾼 값이 새로고침에 바로 보여야 한다.
  *   <li>저장은 목록 전체를 한 번에 받는다. 화면이 순서를 맞바꾸므로 한 줄씩 저장하면 중간에 순서가 겹친다.
  * </ul>
@@ -45,6 +47,7 @@ public class SeasonOpeningService {
 
     public static final String KEY_BANNER_ENABLED = "SEASON_OPENING_BANNER_ENABLED";
     public static final String KEY_BANNER_TITLE = "SEASON_OPENING_BANNER_TITLE";
+    public static final String KEY_SHOW_AFTER_OPENING = "SEASON_OPENING_SHOW_AFTER_OPENING";
     public static final String DEFAULT_BANNER_TITLE = "개장까지";
     static final String TARGET_ID = "ALL";
     private static final LocalDate MIN_DATE = LocalDate.of(2020, 1, 1);
@@ -89,13 +92,25 @@ public class SeasonOpeningService {
         String title = bannerTitle(request.bannerTitle());
         boolean titleChanged =
                 updateConfig(KEY_BANNER_TITLE, title, "STRING", "메인 개장 D-DAY 배너 맨 앞 문구", updatedBy);
+        boolean afterOpeningChanged =
+                request.showAfterOpening() != null
+                        && updateConfig(
+                                KEY_SHOW_AFTER_OPENING,
+                                String.valueOf(request.showAfterOpening()),
+                                "BOOLEAN",
+                                "개장한 리조트도 개장 D+N으로 배너에 표시",
+                                updatedBy);
 
-        if (switchChanged || titleChanged || !changed.isEmpty()) {
+        if (switchChanged || titleChanged || afterOpeningChanged || !changed.isEmpty()) {
             actionLogger.record(
                     AdminActionType.SEASON_OPENING_UPDATE,
                     AdminTargetType.SEASON_OPENING,
                     TARGET_ID,
-                    reason(request.bannerEnabled(), changed, titleChanged ? title : null));
+                    reason(
+                            request.bannerEnabled(),
+                            changed,
+                            titleChanged ? title : null,
+                            afterOpeningChanged ? request.showAfterOpening() : null));
         }
         log.info(
                 "Season openings updated: bannerEnabled={}, changed={}, by={}",
@@ -113,6 +128,7 @@ public class SeasonOpeningService {
                         .findById(KEY_BANNER_TITLE)
                         .map(SystemConfig::getValue)
                         .orElse(DEFAULT_BANNER_TITLE),
+                isShowAfterOpening(),
                 List.copyOf(openings.stream().map(SeasonOpeningItem::from).toList()));
     }
 
@@ -121,6 +137,13 @@ public class SeasonOpeningService {
                 .findById(KEY_BANNER_ENABLED)
                 .map(config -> Boolean.parseBoolean(config.getValue()))
                 .orElse(true);
+    }
+
+    private boolean isShowAfterOpening() {
+        return configRepository
+                .findById(KEY_SHOW_AFTER_OPENING)
+                .map(config -> Boolean.parseBoolean(config.getValue()))
+                .orElse(false);
     }
 
     /** 앞뒤 공백과 겹친 공백을 정리한다. 비어 있으면 기본 문구다. */
@@ -188,10 +211,17 @@ public class SeasonOpeningService {
         }
     }
 
-    private static String reason(boolean bannerEnabled, List<String> changed, String newTitle) {
+    private static String reason(
+            boolean bannerEnabled,
+            List<String> changed,
+            String newTitle,
+            Boolean newShowAfterOpening) {
         StringBuilder reason = new StringBuilder(bannerEnabled ? "배너 켬" : "배너 끔");
         if (newTitle != null) {
             reason.append(", 문구 \"").append(newTitle).append('"');
+        }
+        if (newShowAfterOpening != null) {
+            reason.append(newShowAfterOpening ? ", 개장 후 D+N 표시 켬" : ", 개장 후 D+N 표시 끔");
         }
         if (!changed.isEmpty()) {
             reason.append(", 바뀐 리조트 ").append(String.join(", ", changed));
