@@ -158,13 +158,19 @@ class CharacterAnswersTest {
     }
 
     @Test
-    void 일곱번에_웃음이_있어도_모든_답이_동점_없이_16유형_중_하나로_판정된다() {
+    void 다섯_여섯_일곱번에_C가_있어도_모든_답이_동점_없이_16유형_중_하나로_판정된다() {
         Set<CharacterType> reached = EnumSet.noneOf(CharacterType.class);
+        char[] choices = {'A', 'B', 'C'};
         for (int bits = 0; bits < 4096; bits++) {
-            for (char seventh : new char[] {'A', 'B', 'C'}) {
+            for (int extra = 0; extra < 27; extra++) {
                 StringBuilder value = new StringBuilder(12);
                 for (int index = 0; index < 12; index++) {
-                    value.append(index == 6 ? seventh : (bits >> index & 1) == 0 ? 'A' : 'B');
+                    if (index >= 4 && index <= 6) {
+                        int digit = index == 4 ? extra % 3 : index == 5 ? extra / 3 % 3 : extra / 9;
+                        value.append(choices[digit]);
+                    } else {
+                        value.append((bits >> index & 1) == 0 ? 'A' : 'B');
+                    }
                 }
                 reached.add(new CharacterAnswers(value + "CBA").type());
             }
@@ -179,7 +185,7 @@ class CharacterAnswersTest {
                 "AAAAAAAAAAAA",
                 "AAAAAAAAAAAAAAAA",
                 "CAAAAAAAAAAAAAA",
-                "AAAAACAAAAAAAAA",
+                "AAACAAAAAAAAAAA",
                 "AAAAAAACAAAAAAA",
                 "AAAAAAAAAAAAAAD",
                 "aaaaaaaaaaaaaaa"
