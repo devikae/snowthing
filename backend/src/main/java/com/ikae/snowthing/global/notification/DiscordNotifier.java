@@ -49,6 +49,11 @@ public class DiscordNotifier {
         send(properties.eventWebhook(), content);
     }
 
+    /** 휘구리 칼럼 게시 채널(IKA-112) */
+    public void column(String content) {
+        send(properties.columnWebhook(), content);
+    }
+
     public boolean eventEnabled() {
         return !properties.eventWebhook().isEmpty();
     }

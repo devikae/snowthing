@@ -181,7 +181,17 @@ snowthing:
     # IKA-18. 비어 있으면 그 채널 알림은 꺼진다. 웹훅 URL은 비밀값이라 운영 prod.env에만 둔다.
     alert-webhook: ${DISCORD_WEBHOOK_ALERT:}
     event-webhook: ${DISCORD_WEBHOOK_EVENT:}
+    # IKA-112. 휘구리 칼럼 게시 알림 채널.
+    column-webhook: ${DISCORD_WEBHOOK_COLUMN:}
     timeout: 3s
+  column-repost:
+    # IKA-112. 휘구리 칼럼을 매일 KST 10시, 15시에 하나씩 올린다. 기본 꺼짐. 대기열이 비면 아무것도 하지 않는다.
+    enabled: ${SNOWTHING_COLUMN_REPOST_ENABLED:false}
+    member-email: ${SNOWTHING_COLUMN_REPOST_MEMBER_EMAIL:}
+    category-code: INFO
+    max-attempts: 3
+    link-base-url: ${SNOWTHING_FRONTEND_BASE_URL:http://localhost:3000}
+    image-timeout: 10s
   web-push:
     # IKA-65. VAPID 키(base64url)와 연락처(mailto: 또는 https:). 하나라도 비어 있으면 휴대폰 알림이 꺼진다.
     # 비밀키는 비밀값이라 운영 prod.env에만 둔다.
