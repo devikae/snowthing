@@ -753,7 +753,8 @@ def draw_share_images():
     draw.ellipse((cx - 78, cy - 78, cx + 78, cy + 78), fill=WHITE, outline=ACCENT, width=7)
     paste_character(group, "CAPTAIN", cx - 52, cy - 76, 104)
     draw.text((cx, cy + 50), "나", font=og_font(28), fill=ACCENT, anchor="mm")
-    group.convert("RGB").save(OUT_DIR / "og-group.png", optimize=True)
+    # og-group.png는 draw_group_link_image()가 그린다. 여기서 그린 예전 그림은 저장하지 않는다.
+    del group
 
 
 DATA_TS = OUT_DIR.parent.parent / "app" / "character-test" / "data.ts"
@@ -795,54 +796,84 @@ def sprite_with_gear(job, sport, size):
     return canvas, left
 
 
-# 모임 지도처럼 보이게 둘레에 놓는 다른 유형 얼굴 자리 (각도, 반지름). 실제 모임 사람이 아니라 장식이다.
-GROUP_FACE_SLOTS = ((-2.4, 218), (-0.75, 218), (0.3, 222), (1.62, 226), (2.75, 222))
+def draw_trees(draw, spots):
+    for x, y, s in spots:
+        draw.polygon([(x, y - s), (x + s * 0.7, y + s * 0.6), (x - s * 0.7, y + s * 0.6)], fill=PINE)
+        draw.polygon([(x, y - s), (x + s * 0.28, y - s * 0.45), (x - s * 0.28, y - s * 0.45)], fill=WHITE)
+
+
+def draw_rings(image, cx, cy, radii):
+    for radius, alpha in radii:
+        layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        ImageDraw.Draw(layer).ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=(255, 255, 255, alpha), outline=(169, 203, 224, 255), width=4)
+        image.alpha_composite(layer)
+
+
+def draw_face(image, draw, job, x, y, size):
+    draw.ellipse((x - 5, y - 5, x + size + 5, y + size + 5), fill=WHITE, outline=(134, 171, 198, 255), width=5)
+    image.alpha_composite(load_art(f"face-{job}", size), (x, y + 6))
+
+
+def draw_me(image, draw, job, sport, cx, cy, radius, sprite_size, label_size):
+    """가운데 "나" 원. sport가 있으면 장비를 같이 그린다."""
+    draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=WHITE, outline=ACCENT, width=10)
+    sprite = sprite_with_gear(job, sport, sprite_size)[0] if sport else load_art(job, sprite_size)
+    image.alpha_composite(sprite, (cx - sprite.width // 2, cy - sprite_size // 2 - round(radius * 0.12)))
+    half = label_size * 1.3
+    draw.rounded_rectangle((cx - half, cy + radius - label_size * 0.9, cx + half, cy + radius + label_size * 0.75), radius=label_size, fill=ACCENT)
+    draw.text((cx, cy + radius - label_size * 0.07), "나", font=og_font(label_size), fill=WHITE, anchor="mm")
+
+
+def faces_around(image, draw, jobs, cx, cy, slots, size):
+    """모임 지도처럼 보이게 둘레에 다른 유형 얼굴을 놓는다. 실제 모임 사람이 아니라 장식이다."""
+    for job, (angle, radius) in zip(jobs, slots):
+        draw_face(image, draw, job, round(cx + radius * math.cos(angle) - size / 2), round(cy + radius * math.sin(angle) - size / 2), size)
+
+
+def draw_group_link_image():
+    """모임 링크를 붙여 넣었을 때의 미리보기(og-group.png, 1200x630). 카톡 말풍선에서 작아 보이지 않게 글자와 지도를 크게 둔다."""
+    image = Image.new("RGBA", (OG_WIDTH, OG_HEIGHT), SKY)
+    draw = ImageDraw.Draw(image)
+    draw_trees(draw, ((40, 60, 26), (30, 585, 30), (560, 600, 22), (1160, 590, 26)))
+    draw.text((56, 150), "나랑 제일", font=og_font(76), fill=INK)
+    draw.text((56, 250), "잘 맞는 사람은?", font=og_font(76), fill=INK)
+    draw.text((60, 392), "눈팅 snowthing.org", font=og_font(34), fill=MUTED)
+    cx, cy = 930, 315
+    draw_rings(image, cx, cy, ((295, 110), (220, 170), (145, 255)))
+    draw = ImageDraw.Draw(image)
+    faces_around(image, draw, ["HOT_PACK", "RESORT_INSIDER", "GRINDER", "HYPE", "GEAR_GEEK"], cx, cy, ((-2.3, 228), (-0.75, 228), (0.3, 222), (1.62, 226), (2.6, 226)), 132)
+    draw_me(image, draw, "CAPTAIN", None, cx, cy, 135, 200, 32)
+    image.convert("RGB").save(OUT_DIR / "og-group.png", optimize=True)
+
+
+GROUP_SHARE_SIZE = 800
 
 
 def draw_group_share_images():
-    """모임 링크를 카톡 버튼으로 보낼 때 쓰는 그림. 보낸 사람 유형을 가운데 두고 다른 유형 얼굴을 둘레에 작게 놓는다.
-    종목 2 x 유형 8 x 계획 성향 2 = 32장. 모임 이름, 인원, 다른 참여자 정보는 넣지 않는다."""
+    """모임 링크를 카톡 버튼으로 보낼 때 쓰는 정사각형 그림(800x800). 말풍선에서 가로 그림보다 두 배쯤 크게 보인다.
+    보낸 사람 유형을 가운데 두고 다른 유형 얼굴을 둘레에 놓는다. 종목 2 x 유형 8 x 계획 성향 2 = 32장.
+    모임 이름, 인원, 다른 참여자 정보는 넣지 않는다."""
     names = character_names()
+    size = GROUP_SHARE_SIZE
     count = 0
     for sport in SPORTS:
         for job in JOBS:
             others = [other for other in JOBS if other != job]
             for plan in PLAN_STYLES:
-                image = Image.new("RGBA", (OG_WIDTH, OG_HEIGHT), SKY)
+                image = Image.new("RGBA", (size, size), SKY)
                 draw = ImageDraw.Draw(image)
-                for x, y, s in ((40, 70, 26), (110, 40, 18), (30, 560, 30), (120, 590, 20), (1150, 60, 26), (1090, 30, 16), (1160, 570, 30), (1090, 600, 18), (620, 30, 18), (640, 600, 22)):
-                    draw.polygon([(x, y - s), (x + s * 0.7, y + s * 0.6), (x - s * 0.7, y + s * 0.6)], fill=PINE)
-                    draw.polygon([(x, y - s), (x + s * 0.28, y - s * 0.45), (x - s * 0.28, y - s * 0.45)], fill=WHITE)
-                draw.text((72, 132), "보낸 사람 캐릭터", font=og_font(30), fill=MUTED)
-                y = 182
-                for line in name_lines(names[job][plan]):
-                    draw.text((68, y), line, font=og_font(72), fill=INK)
-                    y += 92
-                draw.text((72, y + 20), "나랑은 어떤 사이로 나올까?", font=og_font(30, bold=False), fill=MUTED)
-                draw.text((72, 520), "눈팅 snowthing.org", font=og_font(28), fill=INK)
-
-                cx, cy = 905, 315
-                for radius, alpha in ((290, 110), (215, 170), (140, 255)):
-                    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
-                    ImageDraw.Draw(layer).ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=(255, 255, 255, alpha), outline=(169, 203, 224, 255), width=3)
-                    image.alpha_composite(layer)
+                draw_trees(draw, ((40, 50, 24), (760, 50, 24), (36, 760, 28), (764, 760, 28)))
+                draw.text((400, 58), "보낸 사람 캐릭터", font=og_font(30), fill=MUTED, anchor="mm")
+                draw.text((400, 122), names[job][plan], font=og_font(64), fill=INK, anchor="mm")
+                cx, cy = 400, 450
+                draw_rings(image, cx, cy, ((280, 110), (215, 170), (150, 255)))
                 draw = ImageDraw.Draw(image)
-                face_size = 104
-                for other, (angle, radius) in zip(others, GROUP_FACE_SLOTS):
-                    fx = round(cx + radius * math.cos(angle) - face_size / 2)
-                    fy = round(cy + radius * math.sin(angle) - face_size / 2)
-                    draw.ellipse((fx - 4, fy - 4, fx + face_size + 4, fy + face_size + 4), fill=WHITE, outline=(134, 171, 198, 255), width=4)
-                    image.alpha_composite(load_art(f"face-{other}", face_size), (fx, fy + 6))
-                draw.ellipse((cx - 128, cy - 128, cx + 128, cy + 128), fill=WHITE, outline=ACCENT, width=8)
-                sprite_size = 150
-                sprite, _ = sprite_with_gear(job, sport, sprite_size)
-                # 장비와 캐릭터를 합친 폭(48칸)이 원 가운데 오게 놓는다.
-                image.alpha_composite(sprite, (cx - sprite.width // 2, cy - sprite_size // 2 - 18))
-                draw.rounded_rectangle((cx - 34, cy + 100, cx + 34, cy + 140), radius=20, fill=ACCENT)
-                draw.text((cx, cy + 120), "나", font=og_font(28), fill=WHITE, anchor="mm")
-                image.convert("RGB").save(OUT_DIR / f"group-{sport}-{job}-{plan}.png", optimize=True)
+                faces_around(image, draw, others, cx, cy, ((-2.5, 222), (-0.65, 222), (0.25, 225), (1.57, 218), (2.85, 225)), 120)
+                draw_me(image, draw, job, sport, cx, cy, 150, 200, 32)
+                draw.text((400, 776), "눈팅 snowthing.org", font=og_font(24), fill=INK, anchor="mm")
+                image.convert("RGB").save(OUT_DIR / f"group-share-{sport}-{job}-{plan}.png", optimize=True)
                 count += 1
-    print(f"모임 공유 그림 {count}장 저장: {OUT_DIR}")
+    print(f"모임 공유 그림 {count}장과 og-group.png 저장: {OUT_DIR}")
 
 
 def main():
@@ -850,6 +881,7 @@ def main():
     font_path(True)
     font_path(False)
     if sys.argv[1:] == ["--group-share"]:
+        draw_group_link_image()
         draw_group_share_images()
         return
     for name, draw in {**JOBS, **GEARS}.items():
@@ -871,6 +903,8 @@ def main():
             sheet.alpha_composite(sprite, ((index % 4) * cell, (index // 4) * cell))
         sheet.save(sys.argv[1])
     draw_share_images()
+    draw_group_link_image()
+    draw_group_share_images()
     print(f"{len(JOBS) + len(GEARS) + 2}장 저장: {OUT_DIR}")
 
 
