@@ -67,9 +67,9 @@ class DiscordNotificationIntegrationTest {
     @DisplayName("가입 트랜잭션이 커밋되면 알림을 보낸다")
     void notifiesAfterCommit() {
         transactionTemplate.executeWithoutResult(
-                status -> eventPublisher.publishEvent(new MemberSignedUpEvent("커밋보더", "EMAIL")));
+                status -> eventPublisher.publishEvent(new MemberSignedUpEvent("커밋보더", "EMAIL", null)));
 
-        verify(notifier).event(startsWith("🎉 신규 가입: 커밋보더 (EMAIL) "));
+        verify(notifier).event(startsWith("🎉 신규 가입 "));
     }
 
     @Test
@@ -77,7 +77,7 @@ class DiscordNotificationIntegrationTest {
     void skipsOnRollback() {
         transactionTemplate.executeWithoutResult(
                 status -> {
-                    eventPublisher.publishEvent(new MemberSignedUpEvent("롤백보더", "EMAIL"));
+                    eventPublisher.publishEvent(new MemberSignedUpEvent("롤백보더", "EMAIL", null));
                     status.setRollbackOnly();
                 });
 

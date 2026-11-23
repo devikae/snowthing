@@ -172,7 +172,7 @@ public class MemberService {
             memberRidingStyleRepository.saveAll(memberRidingStyles);
         }
 
-        eventPublisher.publishEvent(new MemberSignedUpEvent(savedMember.getNickname(), "EMAIL"));
+        eventPublisher.publishEvent(new MemberSignedUpEvent(savedMember.getNickname(), "EMAIL", null));
         return MemberSignUpResponse.from(savedMember);
     }
 
