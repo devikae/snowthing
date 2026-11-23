@@ -16,8 +16,8 @@ WHERE NOT EXISTS (
 
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS `apply_065_member_column`$$
-CREATE PROCEDURE `apply_065_member_column`(IN p_column VARCHAR(64), IN p_definition VARCHAR(255))
+DROP PROCEDURE IF EXISTS `apply_066_member_column`$$
+CREATE PROCEDURE `apply_066_member_column`(IN p_column VARCHAR(64), IN p_definition VARCHAR(255))
 BEGIN
     IF NOT EXISTS (
         SELECT 1
@@ -35,6 +35,6 @@ END$$
 
 DELIMITER ;
 
-CALL `apply_065_member_column`('suspended_until', 'DATETIME(6) NULL COMMENT ''정지 종료 시각(KST). NULL이면 무기한''');
-CALL `apply_065_member_column`('suspend_reason', 'VARCHAR(255) NULL COMMENT ''관리자가 남긴 정지 사유''');
-DROP PROCEDURE IF EXISTS `apply_065_member_column`;
+CALL `apply_066_member_column`('suspended_until', 'DATETIME(6) NULL COMMENT ''정지 종료 시각(KST). NULL이면 무기한''');
+CALL `apply_066_member_column`('suspend_reason', 'VARCHAR(255) NULL COMMENT ''관리자가 남긴 정지 사유''');
+DROP PROCEDURE IF EXISTS `apply_066_member_column`;

@@ -78,4 +78,4 @@
 
 ## 마이그레이션
 
-- `database/production/065_migration_live_chat_ops.sql`: `CHAT_ENABLED` 설정 행, `member` 컬럼 두 개(ALGORITHM=INSTANT). 추가만 하므로 마이그레이션 뒤 배포, 옛 애플리케이션과도 호환된다. 여러 번 실행해도 안전하다.
+- `database/production/066_migration_live_chat_ops.sql`: `CHAT_ENABLED` 설정 행, `member` 컬럼 두 개(ALGORITHM=INSTANT). 추가만 하므로 마이그레이션 뒤 배포, 옛 애플리케이션과도 호환된다. 여러 번 실행해도 안전하다.
