@@ -446,16 +446,14 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
       {/* 상단 헤더 바 */}
       <div className="live-chat-head">
         <div className="section-head-title">
-          {/* 비회원은 제목 옆에 자기 닉네임을 작게 둔다 (IKA-115). 대화 칸과 입력칸 사이를 띄우지 않으려는 배치다. */}
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h2>라이브톡</h2>
-            {!currentMember && anonymousChatEnabled && chatEnabled && myGuestNickname && (
-              <small className="text-xs text-slate-500">
-                내 닉네임 <strong className="font-bold text-slate-800">{myGuestNickname}</strong>
-                <span className="ml-1 text-slate-400">(접속한 인터넷이 바뀌면 이름도 바뀌어요)</span>
-              </small>
-            )}
-          </div>
+          <h2>라이브톡</h2>
+          {/* 비회원은 제목 바로 아래에 자기 닉네임을 작게 둔다 (IKA-115). 폰 폭에서도 잘리지 않고 화면마다 배치가 같다. */}
+          {!currentMember && anonymousChatEnabled && chatEnabled && myGuestNickname && (
+            <small className="text-xs text-slate-500">
+              내 닉네임 <strong className="font-bold text-slate-800">{myGuestNickname}</strong>
+              <span className="ml-1 text-slate-400">(접속한 인터넷이 바뀌면 이름도 바뀌어요)</span>
+            </small>
+          )}
         </div>
       </div>
 
