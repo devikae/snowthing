@@ -36,8 +36,13 @@ public final class PostCategoryCodes {
         return isInquiry(post.getCategory().getCode());
     }
 
-    /** 익명게시판 글. 비회원 추천과 비추천은 이 게시판에서만 받는다. */
+    /** 관리자 게시판 화면에서 다루는 게시판인가. 중고장터, 카풀, 1:1 문의는 전용 화면과 규칙이 있어 빠진다 (IKA-114). */
+    public static boolean isManagedBoard(String categoryCode) {
+        return !hasOwnScreen(categoryCode) && !isInquiry(categoryCode);
+    }
+
+    /** 항상 익명인 게시판(익명게시판 등)의 글. 비회원 추천과 비추천은 이런 게시판에서만 받는다. */
     public static boolean isAnonymousBoard(Post post) {
-        return ANONYMOUS.equalsIgnoreCase(post.getCategory().getCode());
+        return post.getCategory().isAlwaysAnonymous();
     }
 }

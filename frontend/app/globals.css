@@ -3713,10 +3713,10 @@ html[data-theme="dark"] .snow-empty-copy strong {
   .filter-pills button,
   .home-tier-1 .board-tabs button,
   html[data-theme="dark"] .home-tier-1 .board-tabs button { height: 36px; }
-  /* 홈 탭 9개는 5칸 2줄 격자로 둔다. 한 줄에 밀어 넣으면 글자가 작고 칸 폭이 들쭉날쭉해 보인다. 4칸이면 마지막 탭 하나만 셋째 줄에 남는다. */
+  /* 홈 탭은 2줄 격자로 둔다. 칸 수(--home-tab-cols)는 탭 개수에 맞춰 화면이 정하고 5칸을 넘지 않는다. */
   .home-tier-1 .board-tabs > .filter-pills {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--home-tab-cols, 5), minmax(0, 1fr));
     gap: 3px;
     overflow: visible;
     background: var(--snow-surface-low);

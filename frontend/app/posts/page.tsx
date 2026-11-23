@@ -2,21 +2,12 @@ import type { Metadata } from "next";
 import { fetchPublicJson } from "../lib/publicApi";
 import { POSTS_DESCRIPTION, PRIVATE_PAGE_ROBOTS, publicPageMetadata, sectionOpenGraph } from "../lib/siteMetadata";
 import PostListClient from "./PostListClient";
-import { NOTICE_QUERY, boardConfigs, postListApiQuery, readPostListParams, type InitialPostList, type PostListPage } from "./postListQuery";
+import { fetchBoards, findBoard } from "../lib/boards";
+import { NOTICE_QUERY, postListApiQuery, readPostListParams, type InitialPostList, type PostListPage } from "./postListQuery";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-const BOARD_DESCRIPTIONS: Record<string, string> = {
-  NOTICE: "눈팅 SnowThing 운영 소식과 이용 안내를 알려 드립니다.",
-  FREE: "설질, 장비, 시즌 이야기를 자유롭게 나누는 게시판입니다.",
-  ANONYMOUS: "닉네임 없이 편하게 이야기를 나누는 익명게시판입니다.",
-  QNA: "장비, 리조트, 기술에 대해 묻고 라이더에게 답을 듣는 질문게시판입니다.",
-  INFO: "보드, 스키 잘 타는 방법과 리조트 개장 같은 소식을 나누는 정보게시판입니다.",
-  FOOD: "리조트 근처 맛집과 식당 정보를 나누는 게시판입니다.",
-  CREW: "함께 탈 스키, 보드 동호회 회원을 모집하는 게시판입니다.",
-  SEASON_ROOM: "시즌 동안 함께 지낼 시즌방 멤버를 모집하는 게시판입니다.",
-  INQUIRY: "운영진에게 1:1로 문의하고 답변을 확인합니다.",
-};
+const INQUIRY_DESCRIPTION = "운영진에게 1:1로 문의하고 답변을 확인합니다.";
 
 // 게시판마다 탭 제목, 설명, canonical을 따로 둔다. canonical은 게시판 주소(/posts?category=코드)로 고정해
 // 쪽 번호나 검색어가 붙은 주소가 따로 색인되지 않게 한다. 레이아웃에 두지 않는 이유는 posts/layout.tsx 주석 참고.
@@ -24,11 +15,13 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const raw = await searchParams;
   const value = raw.category;
   const category = (Array.isArray(value) ? value[0] : value) ?? "";
-  const board = boardConfigs[category];
-  if (!category || !board) return publicPageMetadata("게시판", POSTS_DESCRIPTION, "/posts");
+  if (!category) return publicPageMetadata("게시판", POSTS_DESCRIPTION, "/posts");
   // 1:1 문의는 noindex라 canonical을 두지 않는다.
-  if (category === "INQUIRY") return { ...sectionOpenGraph(`${board.name} | 눈팅 SnowThing`, BOARD_DESCRIPTIONS[category] ?? ""), robots: PRIVATE_PAGE_ROBOTS };
-  return publicPageMetadata(board.name, BOARD_DESCRIPTIONS[category] ?? "", `/posts?category=${encodeURIComponent(category)}`);
+  if (category === "INQUIRY") return { ...sectionOpenGraph("1:1 문의 | 눈팅 SnowThing", INQUIRY_DESCRIPTION), robots: PRIVATE_PAGE_ROBOTS };
+  // 닫힌 게시판이나 없는 코드는 열린 목록에 없어 전체 게시판 정보를 쓴다.
+  const board = findBoard(await fetchBoards(), category);
+  if (!board) return publicPageMetadata("게시판", POSTS_DESCRIPTION, "/posts");
+  return publicPageMetadata(board.name, board.description ?? "", `/posts?category=${encodeURIComponent(category)}`);
 }
 
 // 검색엔진과 JS를 끈 방문자도 목록을 볼 수 있게 첫 목록과 공지를 서버에서 받아 HTML에 넣는다.

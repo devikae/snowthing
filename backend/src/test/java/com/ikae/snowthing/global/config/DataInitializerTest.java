@@ -54,7 +54,7 @@ class DataInitializerTest {
             initializer.run();
             initializer.run();
             assertThat(categories.keySet())
-                    .contains("FREE", "ANONYMOUS", "QNA", "GEAR_VS", "FOOD", "CARPOOL", "NOTICE");
+                    .contains("FREE", "ANONYMOUS", "QNA", "INFO", "FOOD", "CARPOOL", "NOTICE");
         }
     }
 }

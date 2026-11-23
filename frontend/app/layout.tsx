@@ -4,6 +4,8 @@ import "./globals.css";
 import "./detailForms.css";
 import "./motion.css";
 import { SupportCoffeeButton } from "./components/SupportCoffeeButton";
+import { BoardsProvider } from "./components/BoardsProvider";
+import { fetchBoards } from "./lib/boards";
 
 /* eslint-disable @next/next/no-page-custom-font -- App Router의 최상위 레이아웃에서 모든 화면에 공통 폰트를 로드합니다. */
 
@@ -40,11 +42,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 메뉴, 홈 탭, 글쓰기가 쓰는 게시판 목록 (IKA-114). 60초 캐시라 정적 페이지도 60초마다 다시 만들어진다.
+  const boards = await fetchBoards();
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
@@ -68,7 +72,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body suppressHydrationWarning>{children}<SupportCoffeeButton /></body>
+      <body suppressHydrationWarning>
+        <BoardsProvider boards={boards}>{children}</BoardsProvider>
+        <SupportCoffeeButton />
+      </body>
     </html>
   );
 }
