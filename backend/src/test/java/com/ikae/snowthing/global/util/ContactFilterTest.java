@@ -35,6 +35,9 @@ class ContactFilterTest {
         assertThat(ContactFilter.findPostingContact("상담 t.me/someone")).contains("메신저 링크");
         assertThat(ContactFilter.findPostingContact("open.kakao.com/o/abc 로")).contains("메신저 링크");
         assertThat(ContactFilter.findPostingContact("연락 010-1234-5678")).contains("전화번호");
+        // 점이 든 아이디의 앞부분을 주소로 지워 놓치지 않는다.
+        assertThat(ContactFilter.findPostingContact("카톡: rider.id_123")).contains("메신저 ID");
+        assertThat(ContactFilter.findPostingContact("Telegram: someuser")).contains("메신저 ID");
     }
 
     @Test
@@ -51,6 +54,9 @@ class ContactFilterTest {
         assertThat(ContactFilter.findPostingContact("문의는 help@snowthing.com 으로")).isEmpty();
         assertThat(ContactFilter.findPostingContact("리프트 라인 100m 줄 섰음")).isEmpty();
         assertThat(ContactFilter.findPostingContact("카톡 ok 하면 갈게요")).isEmpty();
+        // 아이디 없이 메신저 이름만 나오는 질문은 연락처가 아니다. 라이브톡은 그대로 막는다.
+        assertThat(ContactFilter.findPostingContact("Telegram 알림 설정 방법 알려 주세요")).isEmpty();
+        assertThat(ContactFilter.containsLinkOrMessenger("Telegram 알림 설정 방법 알려 주세요")).isTrue();
         assertThat(ContactFilter.findPostingContact("오늘 설질 좋음. 바인딩 +15/-15")).isEmpty();
     }
 }

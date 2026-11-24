@@ -29,9 +29,26 @@ public final class ContactFilter {
      */
     private static final Pattern MESSENGER_LABEL_PATTERN =
             Pattern.compile(
-                    "(?i)(?:카카오톡|카톡|카카오|텔레그램|텔레|라인|위챗|왓츠앱|kakaotalk|kakao|wechat|whatsapp)"
+                    "(?i)(?:카카오톡|카톡|카카오|텔레그램|텔레|라인|위챗|왓츠앱|kakaotalk|kakao|telegram|wechat|whatsapp)"
                             + "[\\s:：=@]*(?:아이디|id)?[\\s:：=@은는]*"
                             + "[a-z][a-z0-9_.-]{3,}");
+
+    /**
+     * 글과 댓글용 {@code @아이디}. 라이브톡용 {@link #MESSENGER_IDENTIFIER_PATTERN}과 달리 "telegram" 단어만으로는 걸지
+     * 않는다. 메신저 이름은 아이디가 함께 있을 때만 {@link #MESSENGER_LABEL_PATTERN}이 잡는다.
+     */
+    private static final Pattern POSTING_IDENTIFIER_PATTERN =
+            Pattern.compile("(?i)(?<![\\w.])@[a-z0-9_]{3,}");
+
+    /**
+     * 글과 댓글 검사 전에 지울 주소. 라이브톡용 {@link #URL_PATTERN}과 같지만 도메인 바로 뒤에 글자나 밑줄이 이어지면 주소로 보지 않는다.
+     * "rider.id_123" 같은 아이디의 앞부분만 주소로 지워 아이디를 놓치지 않게 하려는 경계다.
+     */
+    private static final Pattern POSTING_URL_PATTERN =
+            Pattern.compile(
+                    "(?i)(?:https?://|www\\.)\\S+"
+                            + "|\\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+"
+                            + "(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})(?![\\w-])(?::\\d{1,5})?(?:/\\S*)?");
 
     private static final Pattern TAG = Pattern.compile("<[^>]*>");
     private static final Pattern ENTITY = Pattern.compile("&(#[0-9]+|#x[0-9a-fA-F]+|[a-zA-Z]+);");
@@ -48,11 +65,11 @@ public final class ContactFilter {
         if (text == null || text.isBlank()) return Optional.empty();
         if (MESSENGER_LINK_PATTERN.matcher(text).find()) return Optional.of("메신저 링크");
         String plain =
-                URL_PATTERN
+                POSTING_URL_PATTERN
                         .matcher(ENTITY.matcher(TAG.matcher(text).replaceAll(" ")).replaceAll(" "))
                         .replaceAll(" ");
         if (MESSENGER_LABEL_PATTERN.matcher(plain).find()
-                || MESSENGER_IDENTIFIER_PATTERN.matcher(plain).find()) {
+                || POSTING_IDENTIFIER_PATTERN.matcher(plain).find()) {
             return Optional.of("메신저 ID");
         }
         if (PHONE_PATTERN.matcher(plain).find()) {
