@@ -126,7 +126,7 @@ button:disabled {
   min-height: 40px;
   padding: 0 18px;
   text-transform: none;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease, var(--press);
 }
 
 .snow-btn-primary:hover {
@@ -150,7 +150,7 @@ button:disabled {
   min-height: 40px;
   padding: 0 18px;
   text-transform: none;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition: border-color 160ms ease, background 160ms ease, var(--press);
 }
 
 .snow-btn-secondary:hover {
@@ -233,7 +233,7 @@ html[data-theme="dark"] :is(.toast-editor-image-status.error, .delete-modal-erro
 .header-profile:focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: 3px; }
 .header-profile-dropdown :is(a, button):focus-visible { outline: 2px solid var(--snow-ink-soft); outline-offset: -2px; }
 .header-profile-avatar, .header-profile img, .header-profile svg { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: block; }
-.header-login { display: grid; width: 36px; height: 36px; place-items: center; color: #64748b; transition: color .16s ease; }
+.header-login { display: grid; width: 36px; height: 36px; place-items: center; color: #64748b; transition: color .16s ease, var(--press); }
 .header-login .material-symbols-outlined { font-size: 19px; line-height: 1; }.header-login:hover { color: #0369a1; }
 .header-menu-button,.community-mobile-panel { display: none; }
 
@@ -519,7 +519,7 @@ html[data-theme="dark"] {
   border: 0;
   background: transparent;
   color: #64748b;
-  transition: color .16s ease;
+  transition: color .16s ease, var(--press);
 }
 
 .header-theme-toggle:hover {
@@ -808,7 +808,7 @@ html[data-theme="dark"] .resort-report-board article { border-color: var(--snow-
 .live-chat-compose-input { width: 100%; padding: 0 13px; }
 .live-chat-compose-input::placeholder { color: var(--snow-muted); }
 .live-chat-compose-select:focus,.live-chat-compose-input:focus { border-color: #0275b3; background: white; box-shadow: 0 0 0 3px rgba(2,132,199,.1); }
-.live-chat-compose-submit { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: #0f2942; padding: 0 16px; color: white; font-weight: 750; transition: background .16s ease,opacity .16s ease; cursor: pointer; }
+.live-chat-compose-submit { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: #0f2942; padding: 0 16px; color: white; font-weight: 750; transition: background .16s ease,opacity .16s ease, var(--press); cursor: pointer; }
 .live-chat-compose-submit:hover { background: #075985; }
 .live-chat-compose-submit:disabled { cursor: not-allowed; opacity: .45; }
 
@@ -1439,7 +1439,7 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
   color: var(--snow-muted);
   font-size: 12.5px;
   font-weight: 600;
-  transition: color 0.14s ease;
+  transition: color 0.14s ease, var(--press);
 }
 
 .board-tabs-more:hover {
@@ -1472,7 +1472,7 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
   font-size: 12.5px;
   font-weight: 700;
   line-height: 1;
-  transition: border-color 0.14s ease, color 0.14s ease;
+  transition: border-color 0.14s ease, color 0.14s ease, var(--press);
 }
 
 .board-tabs-write .material-symbols-outlined { font-size: 15px; line-height: 1; }
@@ -1491,7 +1491,7 @@ html[data-theme="dark"] .header-board-menu > summary.nav-active {
   color: var(--snow-ink);
   font-size: 12px;
   font-weight: 650;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, var(--press);
 }
 
 .btn-outline-pill:hover {
@@ -2069,7 +2069,7 @@ html[data-theme="dark"] .live-chat-message.mine .live-chat-message-bubble {
   color: var(--snow-canvas);
   font-size: 12.5px;
   font-weight: 700;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, var(--press);
 }
 
 .home-live-chat .live-chat-compose.unified-capsule-form .capsule-send-btn span {
@@ -2985,7 +2985,7 @@ html[data-theme="dark"] .compose-sheet-editor .toastui-editor-mode-switch .tab-i
   font-size: 12.5px;
   font-weight: 650;
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease;
+  transition: background 0.14s ease, border-color 0.14s ease, var(--press);
 }
 
 .compose-attach-btn:hover:not(.disabled) {
@@ -3070,7 +3070,7 @@ html[data-theme="dark"] .compose-sheet-editor .toastui-editor-mode-switch .tab-i
   color: var(--snow-ink-soft);
   font-size: 13px;
   font-weight: 650;
-  transition: background 0.14s ease, border-color 0.14s ease;
+  transition: background 0.14s ease, border-color 0.14s ease, var(--press);
 }
 
 .compose-cancel-pill:hover {
@@ -3097,7 +3097,7 @@ html[data-theme="dark"] .compose-sheet-editor .toastui-editor-mode-switch .tab-i
   font-size: 13.5px;
   font-weight: 750;
   cursor: pointer;
-  transition: opacity 0.14s ease;
+  transition: opacity 0.14s ease, var(--press);
 }
 
 .compose-submit-pill:hover:not(:disabled) {
@@ -3551,7 +3551,7 @@ html[data-theme="dark"] .snow-empty-copy strong {
   padding: 12px 16px;
   color: var(--snow-ink);
   text-decoration: none;
-  transition: border-color 0.16s ease;
+  transition: border-color 0.16s ease, var(--press);
 }
 
 .opening-dday-banner:hover {

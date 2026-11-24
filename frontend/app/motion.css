@@ -45,6 +45,42 @@
 @keyframes motion-check-draw { from { background-size: 100% 100%, 100% 100%; } }
 @keyframes motion-spin { to { transform: rotate(360deg); } }
 
+/*
+ * 누름 반응: 버튼과 버튼처럼 생긴 링크는 누르는 동안 살짝 작아진다.
+ * transform 대신 scale 속성을 써서 요소가 이미 가진 transform과 겹치지 않는다.
+ * 목록 행, 메뉴 항목, 스위치, 편집기 도구는 뺀다(넓은 요소는 3%만 줄어도 크게 흔들려 보인다).
+ * 인라인 글자 링크에는 scale이 적용되지 않으므로 본문 링크는 영향이 없다.
+ */
+:where(
+  button, [role="button"], input[type="submit"],
+  a[class*="button" i], a[class*="btn" i],
+  .board-tabs-more, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
+  .ct-primary, .pass-price-cta-link, .profile-file-label, .opening-dday-banner,
+  .header-profile-menu > summary, .header-notification-menu > summary
+) {
+  transition: var(--press);
+}
+:where(
+  button, [role="button"], input[type="submit"],
+  a[class*="button" i], a[class*="btn" i],
+  .board-tabs-more, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
+  .ct-primary, .pass-price-cta-link, .profile-file-label, .opening-dday-banner,
+  .header-profile-menu > summary, .header-notification-menu > summary
+):active:not(
+  :disabled, [aria-disabled="true"], [role="switch"], [role="menuitem"], [role="option"],
+  .notification-item, .header-dropdown-logout, .compact-select-list button,
+  .toastui-editor-defaultUI *, [class*="playCover"], .rider-tools *
+) {
+  scale: var(--press-scale);
+}
+/* 카드형 링크: 넓어서 1%만 줄인다 */
+:where(.lookbook-item, .market-result-card, .market-grid > a, .carpool-card, a[class*="card" i], a[class*="listCard"]) {
+  transition: var(--press);
+}
+:where(.lookbook-item, .market-result-card, .market-grid > a, .carpool-card, a[class*="card" i], a[class*="listCard"]):active {
+  scale: .99;
+}
+
 /* 스낵바: 저장, 복사, 스크랩 같은 결과 문구 */
 [role="status"]:not(.sr-only):not(:empty) {
   animation: motion-slide-up var(--motion-base) var(--ease-out) both;
@@ -162,8 +198,8 @@ main h1:not(.sr-only):not([class*="titleRow"] h1),
 .ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 2); }
 .ct-step-line + .ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 3); }
 .ct-progress span { transition: width var(--motion-slow) var(--ease-out); }
-.character-test .ct-choices button { transition: transform var(--motion-fast) var(--ease-out), background-color var(--motion-fast) ease, border-color var(--motion-fast) ease; }
-.character-test .ct-choices button:active { transform: scale(.98); }
+.character-test .ct-choices button { transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, var(--press); }
+.character-test .ct-choices button:active { scale: .98; }
 /* 결과 카드: 카드가 커지며 튕기듯 나타난다 */
 .ct-card img.ct-card-preview {
   animation: motion-card-reveal var(--motion-spring) var(--ease-spring) both;
@@ -189,4 +225,7 @@ main h1:not(.sr-only):not([class*="titleRow"] h1),
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
+  /* 누름 반응은 크기 대신 투명도로만 알린다 */
+  :is(button, [role="button"], a):active { scale: none !important; }
+  :is(button, [role="button"]):active:not(:disabled) { opacity: .85; }
 }
