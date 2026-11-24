@@ -126,6 +126,34 @@
   animation: motion-slide-down var(--motion-base) var(--ease-out) both;
 }
 
+/* 모바일 메뉴 닫힘: 열림보다 빠르게 위로 사라진다. display 전환을 지원하지 않는 브라우저는 바로 닫힌다 */
+.community-mobile-panel {
+  opacity: 0;
+  translate: 0 -8px;
+  transition: opacity var(--motion-exit) var(--ease-out), translate var(--motion-exit) var(--ease-out), display var(--motion-exit) allow-discrete;
+}
+.community-mobile-panel.open { opacity: 1; translate: 0 0; }
+
+/*
+ * 드롭다운(details) 닫힘: 내용이 열림보다 빠르게 사라진다.
+ * ::details-content를 지원하지 않는 브라우저는 지금처럼 바로 닫힌다.
+ */
+@supports selector(::details-content) {
+  :is(.header-board-menu, .header-profile-menu, .header-notification-menu, [class*="authorMenu"])::details-content {
+    opacity: 0;
+    transition: opacity var(--motion-exit) var(--ease-out), content-visibility var(--motion-exit) allow-discrete;
+  }
+  :is(.header-board-menu, .header-profile-menu, .header-notification-menu, [class*="authorMenu"])[open]::details-content {
+    opacity: 1;
+  }
+}
+
+/* 탭과 목록: 탭을 바꾸거나 불러오기가 끝나면 목록이 짧게 나타난다. 한 줄씩 차례로 넣지 않는다(자주 보는 목록) */
+.compact-post-list,
+.board-post-list > :not(.board-state) {
+  animation: motion-fade var(--motion-fast) var(--ease-out);
+}
+
 /* 바텀시트: 모바일에서 확인 창은 아래에서 올라온다 */
 @media (max-width: 640px) {
   .delete-modal-backdrop {

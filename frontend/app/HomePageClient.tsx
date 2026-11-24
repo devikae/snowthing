@@ -306,7 +306,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
                 </section>
               )}
 
-              <div className="compact-post-list">
+              <div className="compact-post-list" key={activeFeed}>
                 {feedLoading[activeFeed] ? (
                   <div className="home-feed-state">
                     <span data-nosnippet className="material-symbols-outlined spin" aria-hidden="true">progress_activity</span>
