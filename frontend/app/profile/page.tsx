@@ -16,6 +16,7 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { errorText } from "../lib/errorText";
 import "./profile.css";
 import { readErrorMessage } from "../lib/http";
+import { confirm, toast } from "../lib/feedback";
 
 interface Preference { id: number; name: string; }
 interface Settings {
@@ -88,8 +89,16 @@ export default function ProfilePage() {
     if (!dirty && !currentPassword && !newPassword && !confirmPassword) return;
     const beforeUnload = (event: BeforeUnloadEvent) => { if (!allowNavigation.current) event.preventDefault(); };
     const beforeLink = (event: MouseEvent) => {
-      const link = (event.target as HTMLElement).closest("a[href]");
-      if (link && !allowNavigation.current && !window.confirm("저장하지 않은 변경 사항이 있습니다. 페이지를 이동할까요?")) event.preventDefault();
+      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
+      if (!link || allowNavigation.current) return;
+      // 확인 창은 답을 기다려야 해서 일단 이동을 막고, 이동하기로 하면 같은 링크를 다시 누른다.
+      event.preventDefault();
+      event.stopPropagation();
+      void confirm({ title: "페이지를 이동할까요?", description: "저장하지 않은 변경 사항이 사라집니다.", confirmLabel: "이동", danger: true }).then((ok) => {
+        if (!ok) return;
+        allowNavigation.current = true;
+        link.click();
+      });
     };
     window.addEventListener("beforeunload", beforeUnload);
     document.addEventListener("click", beforeLink, true);
@@ -132,7 +141,7 @@ export default function ProfilePage() {
       const data = new FormData(); if (photo) data.append("file", photo);
       const response = await csrfFetch(reset ? API_ENDPOINTS.members.resetProfileImage : API_ENDPOINTS.images.profileUpload, { method: reset ? "DELETE" : "POST", ...(!reset ? { body: data } : {}) });
       if (response.status === 429) {
-        window.alert("사진 변경 횟수를 넘었습니다. 잠시 후 다시 시도해 주세요.");
+        toast.error("사진 변경 횟수를 넘었습니다. 잠시 후 다시 시도해 주세요.");
         setPhoto(null); setPreview(null);
         if (fileRef.current) fileRef.current.value = "";
         return;
@@ -150,7 +159,7 @@ export default function ProfilePage() {
     event.preventDefault(); if (busy) return;
     if (newPassword.length < 8 || newPassword.length > 20 || !newPassword.trim()) { setError("새 비밀번호는 8~20자로 입력해 주세요."); return; }
     if (newPassword !== confirmPassword) { setError("새 비밀번호 확인이 일치하지 않습니다."); return; }
-    if (dirty && !window.confirm("저장하지 않은 프로필 변경이 있습니다. 비밀번호를 변경하면 로그아웃됩니다. 계속할까요?")) return;
+    if (dirty && !(await confirm({ title: "비밀번호를 변경할까요?", description: "저장하지 않은 프로필 변경이 있습니다. 비밀번호를 변경하면 로그아웃되어 그 변경은 사라집니다.", confirmLabel: "변경" }))) return;
     setBusy("password"); setError(""); setNotice("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.changePassword, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
@@ -162,7 +171,7 @@ export default function ProfilePage() {
   };
   const withdraw = async (event: React.FormEvent) => {
     event.preventDefault(); if (!profile || busy) return;
-    if (!window.confirm("정말 탈퇴할까요? 되돌릴 수 없습니다.")) return;
+    if (!(await confirm({ title: "정말 탈퇴할까요?", description: "탈퇴하면 되돌릴 수 없습니다.", confirmLabel: "탈퇴", danger: true }))) return;
     setBusy("withdraw"); setError(""); setNotice("");
     try {
       const body = profile.passwordChangeAvailable ? { password: withdrawInput } : { confirmation: withdrawInput };
@@ -208,7 +217,7 @@ export default function ProfilePage() {
         <label>출발 지역<input value={form.departureRegion} maxLength={100} placeholder="예: 서울 송파구" onChange={event => setForm({ ...form, departureRegion: event.target.value })} /></label>
         <fieldset className="profile-preferences"><legend>선호 리조트 <small>최대 2개</small></legend><p className="profile-saved-preferences">저장된 리조트: {profile.resorts.map(x => x.name).join(", ") || "선택한 리조트가 없습니다."}</p><div>{resorts.map(x => <label key={x.id}><input type="checkbox" checked={form.resortIds.includes(x.id)} onChange={() => toggle("resortIds", x.id)} />{x.name}</label>)}</div></fieldset>
         <fieldset className="profile-preferences"><legend>라이딩 스타일</legend><p className="profile-saved-preferences">저장된 스타일: {profile.ridingStyles.map(x => x.name).join(", ") || "선택한 스타일이 없습니다."}</p><div>{styles.map(x => <label key={x.id}><input type="checkbox" checked={form.ridingStyleIds.includes(x.id)} onChange={() => toggle("ridingStyleIds", x.id)} />{x.name}</label>)}</div></fieldset>
-        <div className="profile-actions"><button className="profile-button-cancel" type="button" onClick={() => { if (!profileDirty || window.confirm("수정한 정보를 취소할까요?")) { setForm(toForm(profile)); setCheckedNickname(null); setNicknameMessage(""); } }}>수정 취소</button><button type="submit" className="profile-button-primary" disabled={!profileDirty || (form.nickname !== profile.nickname && checkedNickname !== form.nickname)}>{busy === "save" ? "저장 중" : "정보 저장"}</button></div>
+        <div className="profile-actions"><button className="profile-button-cancel" type="button" onClick={async () => { if (!profileDirty || await confirm({ title: "수정한 정보를 취소할까요?", description: "저장하지 않은 변경이 사라집니다.", confirmLabel: "수정 취소", cancelLabel: "계속 수정" })) { setForm(toForm(profile)); setCheckedNickname(null); setNicknameMessage(""); } }}>수정 취소</button><button type="submit" className="profile-button-primary" disabled={!profileDirty || (form.nickname !== profile.nickname && checkedNickname !== form.nickname)}>{busy === "save" ? "저장 중" : "정보 저장"}</button></div>
       </div></fieldset></form>
       <ScrappedPostsSection />
       <MarketingConsentSection />

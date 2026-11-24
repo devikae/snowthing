@@ -19,6 +19,7 @@ import { IDEMPOTENCY_HEADER, useIdempotencyKey } from "./lib/idempotencyKey";
 import { formatCompactTime, formatShortDateTime } from "./lib/koreanDate";
 import { HOME_CARPOOL_SIZE, HOME_FEED_SIZE, HOME_MARKET_SIZE, type HomeCarpoolItem, type HomeInitialData, type HomePost, type MarketPreviewItem } from "./lib/homeFeed";
 import { readErrorMessage } from "./lib/http";
+import { toast } from "./lib/feedback";
 import { categoryLabel, findBoard, type Board } from "./lib/boards";
 import { useBoards } from "./components/BoardsProvider";
 
@@ -129,7 +130,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
     event.preventDefault();
     if (!snowReportContent.trim() || submittingReport || isSubmittingReportRef.current) return;
     if (!reportSeasonOpen) {
-      alert("설질 제보는 10월부터 다음 해 4월까지만 등록할 수 있습니다.");
+      toast.info("설질 제보는 10월부터 다음 해 4월까지만 등록할 수 있습니다.");
       return;
     }
     if (!profile) {
@@ -138,7 +139,7 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
     }
     const resortId = Number(snowReportResort);
     if (!resortId) {
-      alert("리조트를 선택해 주세요.");
+      toast.error("리조트를 선택해 주세요.");
       return;
     }
 
@@ -159,10 +160,10 @@ export default function HomePageClient({ initial }: { initial: HomeInitialData }
         setSnowReportContent("");
         await loadTodayReports({ quiet: true });
       } else {
-        alert(await readErrorMessage(res, "설질 제보를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+        toast.error(await readErrorMessage(res, "설질 제보를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       }
     } catch {
-      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
+      toast.error("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       isSubmittingReportRef.current = false;
       setSubmittingReport(false);

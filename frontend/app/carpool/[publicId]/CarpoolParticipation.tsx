@@ -9,6 +9,7 @@ import { fetchViewer, type Viewer } from "../../lib/viewer";
 import { CARPOOL_REVIEW_TAGS, type CarpoolReviewRating, type CarpoolReviewTag } from "../review";
 import "../review.css";
 import { readErrorMessage } from "../../lib/http";
+import { confirm } from "../../lib/feedback";
 
 interface Participant {
   publicId: string | null;
@@ -139,8 +140,8 @@ export function CarpoolParticipation({ publicId }: { publicId: string }) {
                             type="button"
                             className="carpool-ride-button"
                             disabled={busy}
-                            onClick={() => {
-                              if (window.confirm(`${member.nickname}님의 탑승 확인 요청을 거절할까요? 거절하면 다시 요청할 수 없어요.`)) {
+                            onClick={async () => {
+                              if (await confirm({ title: `${member.nickname}님의 탑승 확인 요청을 거절할까요?`, description: "거절하면 다시 요청할 수 없어요.", confirmLabel: "거절", danger: true })) {
                                 void send(API_ENDPOINTS.carpool.decideRide(publicId, member.publicId!, "reject"), "요청을 거절하지 못했습니다.");
                               }
                             }}

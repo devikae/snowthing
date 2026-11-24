@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { PageHeading } from "../components/PageHeading";
 import { csrfFetch } from "../lib/csrfFetch";
+import { confirm } from "../lib/feedback";
+import { ask } from "./adminConfirm";
 import { API_ENDPOINTS, type AdminDashboardStats } from "../lib/api";
 import { type AdminDailyCount, type AdminOverview, readErrorMessage } from "./adminTypes";
 import { useAdminFetch } from "./useAdminFetch";
@@ -61,7 +63,7 @@ export default function AdminDashboardPage() {
     const message = next
       ? "라이브톡을 다시 열까요? 모든 사용자가 다시 메시지를 보낼 수 있습니다."
       : "라이브톡을 닫을까요? 관리자 말고는 아무도 메시지를 보낼 수 없고, 접속 중인 화면에 바로 안내가 뜹니다.";
-    if (!window.confirm(message)) return;
+    if (!(await confirm(ask(message, next ? "열기" : "닫기", !next)))) return;
     setUpdatingChatOpen(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig("CHAT_ENABLED"), {
@@ -84,7 +86,7 @@ export default function AdminDashboardPage() {
     const message = next
       ? "로그인하지 않은 사용자도 라이브톡에 메시지를 보낼 수 있게 할까요?"
       : "로그인하지 않은 사용자의 라이브톡 전송을 막고 로그인 회원만 보낼 수 있게 할까요?";
-    if (!window.confirm(message)) return;
+    if (!(await confirm(ask(message, next ? "허용" : "막기", !next)))) return;
     setUpdatingChat(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig("CHAT_ANONYMOUS_ENABLED"), {
@@ -107,7 +109,7 @@ export default function AdminDashboardPage() {
     const message = next
       ? "로그인하지 않은 사람도 중고장터 목록과 판매글을 볼 수 있게 할까요?"
       : "중고장터를 로그인한 회원만 볼 수 있게 막을까요?";
-    if (!window.confirm(message)) return;
+    if (!(await confirm(ask(message, next ? "공개" : "막기", !next)))) return;
     setUpdatingMarket(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig("MARKET_GUEST_ACCESS_ENABLED"), {

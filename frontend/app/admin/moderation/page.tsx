@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm, type ConfirmOptions } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { type AdminPage, type ModerationItem, formatDateTime, postHref, readErrorMessage } from "../adminTypes";
 import { AdminPager as Pager } from "../AdminPager";
 import { useAdminFetch } from "../useAdminFetch";
@@ -34,8 +36,8 @@ export default function AdminModerationPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const list = useAdminFetch<AdminPage<ModerationItem>>(API_ENDPOINTS.admin.moderations(page), "검토 목록을 불러오지 못했습니다.");
 
-  const run = async (item: ModerationItem, message: string, request: () => Promise<Response>, done: string) => {
-    if (!window.confirm(message)) return;
+  const run = async (item: ModerationItem, question: ConfirmOptions, request: () => Promise<Response>, done: string) => {
+    if (!(await confirm(question))) return;
     setBusyId(item.id);
     setNotice(null);
     list.setError(null);
@@ -54,21 +56,21 @@ export default function AdminModerationPage() {
   const pass = (item: ModerationItem) =>
     run(
       item,
-      item.verdict === "HIDE" ? "숨김을 풀까요? 같은 내용은 다시 숨기지 않습니다." : "문제없음으로 처리할까요?",
+      item.verdict === "HIDE" ? ask("숨김을 풀까요? 같은 내용은 다시 숨기지 않습니다.", "숨김 풀기") : ask("문제없음으로 처리할까요?", "문제없음"),
       () => csrfFetch(API_ENDPOINTS.admin.moderationAction(item.id, "pass"), { method: "POST", credentials: "include" }),
       "문제없음으로 처리했습니다.",
     );
   const keep = (item: ModerationItem) =>
     run(
       item,
-      item.verdict === "HIDE" ? "숨김을 그대로 둘까요?" : "이 항목을 숨길까요?",
+      item.verdict === "HIDE" ? ask("숨김을 그대로 둘까요?", "숨김 유지") : ask("이 항목을 숨길까요?", "숨기기", true),
       () => csrfFetch(API_ENDPOINTS.admin.moderationAction(item.id, "keep"), { method: "POST", credentials: "include" }),
       item.verdict === "HIDE" ? "숨김을 유지합니다." : "숨겼습니다.",
     );
   const remove = (item: ModerationItem) =>
     run(
       item,
-      "이 항목을 삭제할까요?",
+      ask("이 항목을 삭제할까요?", "삭제", true),
       () => csrfFetch(API_ENDPOINTS.admin.moderation(item.id), { method: "DELETE", credentials: "include" }),
       "삭제했습니다.",
     );

@@ -16,6 +16,8 @@ import { CommentProfileAvatar } from "../../../components/CommentProfileAvatar";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 import { readErrorMessage } from "../../../lib/http";
+import { toast } from "../../../lib/feedback";
+import { LoginExpiredNotice } from "../../../components/LoginExpiredNotice";
 import { useBoards } from "../../../components/BoardsProvider";
 import { composeBoards } from "../../composeCategories";
 
@@ -57,6 +59,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const [writerNickname, setWriterNickname] = useState("");
   const [writerProfileImageUrl, setWriterProfileImageUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [loginExpired, setLoginExpired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -97,7 +100,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
 
             if (!data.isAnonymous) {
               if (!isWriter) {
-                alert("본인이 작성한 글만 수정할 수 있습니다.");
+                toast.error("본인이 작성한 글만 수정할 수 있습니다.");
                 router.replace(`/posts/${publicId}`);
                 return;
               }
@@ -154,6 +157,7 @@ function PostEditForm({ publicId }: { publicId: string }) {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMsg("");
+    setLoginExpired(false);
     const editorContent = editorRef.current?.getInstance().getMarkdown() || content;
 
     if (!title.trim()) {
@@ -186,8 +190,12 @@ function PostEditForm({ publicId }: { publicId: string }) {
         return;
       }
 
-      const errorData = await res.json();
-      setErrorMsg(errorData.message || "글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      // 글쓰기와 같은 원칙이다. 로그인이 풀려도 고친 내용은 그대로 두고 새 창 로그인을 안내한다.
+      if (res.status === 401) {
+        setLoginExpired(true);
+        return;
+      }
+      setErrorMsg(await readErrorMessage(res, "글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } catch {
       setErrorMsg("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
@@ -247,10 +255,10 @@ function PostEditForm({ publicId }: { publicId: string }) {
       )}
 
       <form onSubmit={handleSubmit} className="compose-editorial-form">
-        {errorMsg && (
+        {(errorMsg || loginExpired) && (
           <div className="compose-error" role="alert">
             <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">error</span>
-            {errorMsg}
+            {errorMsg || <LoginExpiredNotice returnUrl={`/posts/${publicId}/edit`} action="수정" />}
           </div>
         )}
 

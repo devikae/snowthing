@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { API_ENDPOINTS } from "../../lib/api";
+import { readErrorMessage } from "../../lib/http";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { safeReturnUrl } from "../../lib/safeReturnUrl";
 import { consentPayload, EMPTY_CONSENT, hasRequiredConsent, RegistrationConsentForm } from "../RegistrationConsentForm";
@@ -31,8 +32,8 @@ export default function SocialSignUpPage() {
     try {
       const response = await csrfFetch(API_ENDPOINTS.auth.oauth2SignUp, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(consentPayload(consent)) });
       if (response.status === 410) { router.replace("/login?error=OAUTH_SIGNUP_EXPIRED"); return; }
+      if (!response.ok) throw new Error(await readErrorMessage(response, "가입을 처리하지 못했습니다."));
       const body = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(body?.message || "가입을 처리하지 못했습니다.");
       window.location.assign(safeReturnUrl(body?.returnUrl ?? null));
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "가입을 처리하지 못했습니다.");

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { PageHeading } from "../../components/PageHeading";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { API_ENDPOINTS, type AdminDashboardStats } from "../../lib/api";
 import { readErrorMessage } from "../adminTypes";
 import { useAdminFetch } from "../useAdminFetch";
@@ -44,7 +46,7 @@ export default function AdminAiMembersPage() {
     if (!aiMembers || updating) return;
     const next = !aiMembers[field];
     const message = next ? `AI 회원 ${object} 다시 켤까요?` : `AI 회원 ${object} 멈출까요? 다음 예약 활동부터 건너뜁니다.`;
-    if (!window.confirm(message)) return;
+    if (!(await confirm(ask(message, next ? "켜기" : "멈추기", !next)))) return;
     setUpdating(field);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig(configKey), {

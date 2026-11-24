@@ -5,6 +5,7 @@ import { BlockedMember, MESSAGE_ENDPOINTS, formatMessageDate, unblockMember } fr
 import styles from "./messages.module.css";
 import { errorText } from "../lib/errorText";
 import { readErrorMessage } from "../lib/http";
+import { confirm } from "../lib/feedback";
 
 /** 설정 화면의 차단 목록. 차단한 회원과는 서로 쪽지를 보낼 수 없다. */
 export function BlockedMembersSection() {
@@ -30,7 +31,7 @@ export function BlockedMembersSection() {
 
   const unblock = async (member: BlockedMember) => {
     if (busyId) return;
-    if (!window.confirm(`${member.nickname}님의 차단을 해제할까요?`)) return;
+    if (!(await confirm({ title: `${member.nickname}님의 차단을 해제할까요?`, confirmLabel: "해제" }))) return;
     setBusyId(member.publicId);
     setError("");
     try {

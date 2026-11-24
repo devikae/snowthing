@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm, type ConfirmOptions } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import {
   type AdminPage,
   type BannedWordItem,
@@ -40,8 +42,8 @@ function HoldReview() {
   const [notice, setNotice] = useState<string | null>(null);
   const list = useAdminFetch<AdminPage<FilterHoldItem>>(API_ENDPOINTS.admin.filterHolds(page), "보류 목록을 불러오지 못했습니다.");
 
-  const run = async (item: FilterHoldItem, message: string, request: () => Promise<Response>, done: string) => {
-    if (!window.confirm(message)) return;
+  const run = async (item: FilterHoldItem, question: ConfirmOptions, request: () => Promise<Response>, done: string) => {
+    if (!(await confirm(question))) return;
     setBusyId(item.id);
     setNotice(null);
     list.setError(null);
@@ -60,21 +62,21 @@ function HoldReview() {
   const release = (item: FilterHoldItem) =>
     run(
       item,
-      "이 항목을 모두에게 공개할까요?",
+      ask("이 항목을 모두에게 공개할까요?", "공개"),
       () => csrfFetch(API_ENDPOINTS.admin.filterHoldAction(item.id, "release"), { method: "POST", credentials: "include" }),
       "공개로 바꿨습니다.",
     );
   const remove = (item: FilterHoldItem) =>
     run(
       item,
-      "이 항목을 삭제할까요? 작성자에게도 보이지 않게 됩니다.",
+      ask("이 항목을 삭제할까요? 작성자에게도 보이지 않게 됩니다.", "삭제", true),
       () => csrfFetch(API_ENDPOINTS.admin.filterHold(item.id), { method: "DELETE", credentials: "include" }),
       "삭제했습니다.",
     );
   const ban = (item: FilterHoldItem) =>
     run(
       item,
-      `${item.writerIp} 대역을 30일 동안 막을까요?\nIPv6은 /64 대역, IPv4는 주소 하나를 막습니다. 글, 댓글, 라이브톡 작성이 막힙니다.`,
+      ask(`${item.writerIp} 대역을 30일 동안 막을까요?\nIPv6은 /64 대역, IPv4는 주소 하나를 막습니다. 글, 댓글, 라이브톡 작성이 막힙니다.`, "차단", true),
       () => csrfFetch(API_ENDPOINTS.admin.filterHoldAction(item.id, "ban-ip"), { method: "POST", credentials: "include" }),
       "IP 대역을 막았습니다. 보류 항목은 따로 삭제해 주세요.",
     );
@@ -171,7 +173,7 @@ function BannedWords() {
   };
 
   const remove = async (item: BannedWordItem) => {
-    if (!window.confirm(`"${item.word}"를 금칙어에서 뺄까요?`)) return;
+    if (!(await confirm(ask(`"${item.word}"를 금칙어에서 뺄까요?`, "빼기")))) return;
     setBusy(true);
     words.setError(null);
     try {
