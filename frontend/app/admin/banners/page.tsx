@@ -5,6 +5,11 @@ import Image from "next/image";
 import { csrfFetch } from "../../lib/csrfFetch";
 import { API_ENDPOINTS, BannerItem } from "../../lib/api";
 
+// 웹 주소(http, https)나 사이트 안 경로(/로 시작, //는 제외)만 받는다.
+// 브라우저는 pattern을 v 플래그 정규식으로 읽는다. 문자 클래스 안에 /를 그대로 쓰면 식 전체가 무시되므로 부정 전방 탐색으로 쓴다.
+const BANNER_URL_PATTERN = "(https?://|/(?!/|\\\\))[^\\s\\\\]*";
+const BANNER_URL_HINT = "https://로 시작하는 주소나 /로 시작하는 사이트 안 경로를 넣어 주세요.";
+
 export default function AdminBannersPage() {
   const [banners, setBanners] = useState<BannerItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -306,8 +311,12 @@ export default function AdminBannersPage() {
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
                   이미지 URL
                 </label>
+                {/* type="url"은 /로 시작하는 사이트 안 경로를 브라우저가 막는다. 형식은 pattern으로 본다. */}
                 <input
-                  type="url"
+                  type="text"
+                  inputMode="url"
+                  pattern={BANNER_URL_PATTERN}
+                  title={BANNER_URL_HINT}
                   required
                   placeholder="https://... 또는 /images/..."
                   value={imageUrl}
@@ -321,8 +330,11 @@ export default function AdminBannersPage() {
                   클릭 이동 링크 URL (선택사항)
                 </label>
                 <input
-                  type="url"
-                  placeholder="https://... (없으면 클릭 불가)"
+                  type="text"
+                  inputMode="url"
+                  pattern={BANNER_URL_PATTERN}
+                  title={BANNER_URL_HINT}
+                  placeholder="https://... 또는 /tools 같은 사이트 안 경로 (없으면 클릭 불가)"
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"

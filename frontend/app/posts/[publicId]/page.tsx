@@ -43,7 +43,7 @@ export default async function PostDetailPage({ params }: Props) {
   if (missing && !(await hasSessionCookie()) && !(await wroteRecently(publicId))) notFound();
   if (initialPost?.categoryCode === "CARPOOL") redirect(`/carpool/${publicId}`);
   // 본문도 첫 HTML에 넣는다. 브라우저 뷰어가 준비되면 같은 자리를 이어 받는다.
-  const initialBodyHtml = initialPost ? renderMarkdownHtml(initialPost.content) : null;
+  const initialBodyHtml = initialPost ? await renderMarkdownHtml(initialPost.content) : null;
   return <PostDetailClient params={params} initialPost={initialPost} initialBodyHtml={initialBodyHtml} />;
 }
 

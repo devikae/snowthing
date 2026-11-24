@@ -41,7 +41,16 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --legacy-peer-deps
+      # 이 빌드는 검증용이다. 배포 이미지는 아래 작업이 저장소 변수로 따로 빌드한다.
+      # 주소는 본문 서버 렌더링 점검(scripts/check-body-ssr.mjs)이 띄우는 가짜 백엔드다.
       - run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:18080
+      # 서버 렌더링에 필요한 파일이 standalone 출력에서 빠지면 배포 전에 멈춘다(빌드만으로는 드러나지 않는다).
+      - name: Check post body server rendering (standalone output)
+        run: node scripts/check-body-ssr.mjs
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:18080
 
   deploy-frontend:
     name: Build, Push and Deploy Frontend Digest
