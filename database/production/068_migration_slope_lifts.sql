@@ -1,0 +1,112 @@
+-- 슬로프맵 리프트 안내. 1) 웰리힐리 스타익스프레스 S1, S2 추가 2) 국내 리조트 슬로프의 이용 리프트(lift_name) 채우기.
+-- 1) S1, S2는 055를 만들 때 제원 목록에 빠져 있었다. 제원은 웰리힐리 공식 슬로프 안내(source_url)의 스타 익스프레스 안내표다.
+--    osm_way_ids는 OpenStreetMap에 이미 있는 선이다. slope_connection은 build_slope_data.py가 계산한 S1, S2 관계다.
+-- 2) 슬로프를 누르면 맵에 타는 리프트를 보여 준다. 리조트 공식 리프트 안내에 이용 슬로프가 있으면 그것을, 없으면 공식 슬로프맵에서
+--    슬로프 출발점에 닿는 리프트를 읽어 넣었다(근거는 scripts/slope-data/specs의 note). 리프트 이름은 맵 파일의 공식 리프트 이름과 같게 쓴다.
+--    지산은 영문(LEMON 등)을 공식 한글 이름으로, 곤지암은 슬로프 이름이 아니라 리프트 이름으로 바꿨다.
+-- 055는 운영에 적용돼 고칠 수 없어서, 스크립트가 055에 만든 차이를 이 파일로 옮겼다(새 슬로프는 INSERT, 바뀐 리프트는 UPDATE).
+-- 실행 순서: 앱 배포와 상관없다. 슬로프와 관계 줄을 넣고 lift_name 칸만 바꾼다.
+-- 여러 번 실행해도 안전하다 (INSERT IGNORE, 같은 값 UPDATE).
+SET NAMES utf8mb4;
+
+INSERT IGNORE INTO `slope` (`resort_id`, `name`, `name_local`, `official_difficulty`, `difficulty`, `length_m`, `avg_gradient`, `max_gradient`, `width_m`, `lift_name`, `osm_way_ids`, `source_url`, `checked_at`, `display_order`, `created_at`, `updated_at`) SELECT r.`resort_id`, '스타익스프레스 S1', NULL, '중급코스', 'INTERMEDIATE', 1786, NULL, 9.9, NULL, '곤도라', '-1036266350', 'https://www.wellihillipark.com/snowpark/snowpark/slope-guide', '2026-11-24', 18, NOW(6), NOW(6) FROM `resort` r WHERE r.`code` = 'WELLI_HILLI';
+INSERT IGNORE INTO `slope` (`resort_id`, `name`, `name_local`, `official_difficulty`, `difficulty`, `length_m`, `avg_gradient`, `max_gradient`, `width_m`, `lift_name`, `osm_way_ids`, `source_url`, `checked_at`, `display_order`, `created_at`, `updated_at`) SELECT r.`resort_id`, '스타익스프레스 S2', NULL, '초급코스', 'BEGINNER', 814, NULL, 11.7, NULL, '패밀리', '-1036266354', 'https://www.wellihillipark.com/snowpark/snowpark/slope-guide', '2026-11-24', 19, NOW(6), NOW(6) FROM `resort` r WHERE r.`code` = 'WELLI_HILLI';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 60, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '델타 D+' AND b.`name` = '스타익스프레스 S2';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 60, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '스타익스프레스 S2' AND b.`name` = '델타 D+';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 40, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '에코 E2 (기문코스)' AND b.`name` = '스타익스프레스 S1';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 40, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '스타익스프레스 S1' AND b.`name` = '에코 E2 (기문코스)';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 50, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '에코 E2 (기문코스)' AND b.`name` = '스타익스프레스 S2';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 50, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '스타익스프레스 S2' AND b.`name` = '에코 E2 (기문코스)';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 30, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '에코 E3' AND b.`name` = '스타익스프레스 S1';
+INSERT IGNORE INTO `slope_connection` (`slope_id`, `related_slope_id`, `relation`, `distance_m`, `created_at`, `updated_at`) SELECT a.`slope_id`, b.`slope_id`, 'PARALLEL', 30, NOW(6), NOW(6) FROM `slope` a JOIN `slope` b ON b.`resort_id` = a.`resort_id` JOIN `resort` r ON r.`resort_id` = a.`resort_id` WHERE r.`code` = 'WELLI_HILLI' AND a.`name` = '스타익스프레스 S1' AND b.`name` = '에코 E3';
+
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '빅토리아', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '제우스 Ⅰ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '헤라, 운탄고도케이블카 마운틴, 운탄고도케이블카 팰리스', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '제우스 Ⅱ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '제우스, 주피터', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '제우스 Ⅲ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '제우스, 주피터', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '제우스 Ⅲ-1';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '빅토리아', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '빅토리아 Ⅰ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '빅토리아', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '빅토리아 Ⅱ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '빅토리아', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '빅토리아 Ⅲ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '헤라, 운탄고도케이블카 마운틴, 운탄고도케이블카 팰리스', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '헤라 Ⅰ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '헤라, 운탄고도케이블카 마운틴, 운탄고도케이블카 팰리스', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '헤라 Ⅱ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '헤라, 운탄고도케이블카 마운틴, 운탄고도케이블카 팰리스', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '헤라 Ⅲ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '헤라, 운탄고도케이블카 마운틴, 운탄고도케이블카 팰리스', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아폴로 Ⅰ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아폴로, 아테나, 운탄고도케이블카 마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아폴로 Ⅱ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아폴로, 아테나, 운탄고도케이블카 마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아폴로 Ⅲ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아폴로, 아테나, 운탄고도케이블카 마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아폴로 Ⅳ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아폴로, 아테나, 운탄고도케이블카 마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아폴로 Ⅴ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아폴로, 아테나, 운탄고도케이블카 마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아폴로 Ⅵ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아폴로, 아테나, 운탄고도케이블카 마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아테나 Ⅱ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아테나', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아테나 Ⅲ';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '아테나', s.`updated_at` = NOW(6) WHERE r.`code` = 'HIGH1' AND s.`name` = '아테나 Ⅲ-1';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '레드, 뉴레드, 블루', s.`updated_at` = NOW(6) WHERE r.`code` = 'YONGPYONG' AND s.`name` = '레드파라다이스';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '발왕산 관광케이블카, 레인보우', s.`updated_at` = NOW(6) WHERE r.`code` = 'YONGPYONG' AND s.`name` = '레인보우4';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '골드, 레드, 뉴레드', s.`updated_at` = NOW(6) WHERE r.`code` = 'YONGPYONG' AND s.`name` = '레드';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '발왕산 관광케이블카, 레인보우', s.`updated_at` = NOW(6) WHERE r.`code` = 'YONGPYONG' AND s.`name` = '레인보우 1';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '발왕산 관광케이블카, 레인보우', s.`updated_at` = NOW(6) WHERE r.`code` = 'YONGPYONG' AND s.`name` = '레인보우 2';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '발왕산 관광케이블카, 레인보우', s.`updated_at` = NOW(6) WHERE r.`code` = 'YONGPYONG' AND s.`name` = '레인보우 3';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '스패로우', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '스패로우';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '펭귄', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '펭귄';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '팔콘', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '키위';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤돌라, 이글, 콘돌', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '파노라마';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '호크', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '호크';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤돌라, 이글, 콘돌', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '밸리';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '팔콘', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '듀크';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '팔콘', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '슬로프스타일(SS/SBS)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤돌라, 이글, 콘돌', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '챔피온';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤돌라, 이글, 콘돌', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '환타지';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤돌라, 이글, 콘돌', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '디지';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '팔콘', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '모글(MO)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤돌라, 이글, 콘돌', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '파라다이스';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '호크', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '익스트림 파크(킥커 존)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '호크', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '익스트림 파크(파크 존)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '호크', s.`updated_at` = NOW(6) WHERE r.`code` = 'PHOENIX' AND s.`name` = '하프파이프(HP)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '그램 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = '그램(구 하늬)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '익시오 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = '익시오(구 휘슬)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '씽큐 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = '씽큐 1 (구 제타)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '씽큐 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = '씽큐 2 (구 제타)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '홈봇 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = '홈봇 1/2(구 윈디)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '홈봇 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = '홈봇 3(구 윈디)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '홈봇 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = '홈봇 4(구 윈디)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = 'CNP 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = 'CNP 1(구 게일)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = 'CNP 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'KONJIAM' AND s.`name` = 'CNP 2(구 게일)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '서역기행';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '요트, 쌍쌍', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '이스턴';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '요트', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '루키힐';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '웨스턴';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '터보';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '썬다운';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '무주 익스프레스', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '프리웨이';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '파노라마';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '크루저', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '레이더스 하단';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '야마가';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '무주 익스프레스', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '레이더스 상단';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '에코', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '스피츠 하단';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '코러스', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '실크로드 하단';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '실크로드 상단';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '쌍쌍, 요트', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '커넥션';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '미뉴에트';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '모차르트';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '알레그로';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '왈츠';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '카덴자';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '폴카';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '레몬 리프트, 썬키드', s.`updated_at` = NOW(6) WHERE r.`code` = 'JISAN' AND s.`name` = '1-1 슬로프';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '레몬 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'JISAN' AND s.`name` = '1 슬로프';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '오렌지 리프트, 뉴오렌지 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'JISAN' AND s.`name` = '2 슬로프';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '오렌지 리프트, 뉴오렌지 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'JISAN' AND s.`name` = '3 슬로프';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '블루 리프트, 실버 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'JISAN' AND s.`name` = '5 슬로프';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '블루 리프트, 실버 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'JISAN' AND s.`name` = '6 슬로프';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '블루 리프트, 실버 리프트', s.`updated_at` = NOW(6) WHERE r.`code` = 'JISAN' AND s.`name` = '7 슬로프';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '오렌지', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '드림1 (DREAM1)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '토마토', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '드림2 (DREAM2)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '스위트셔틀, 키위', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '헤드 (HEAD)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '체리', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '해피 (HAPPY)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '애플', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '글로리1 (GLORY1)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '애플', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '글로리2 (GLORY2)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '스위트셔틀, 키위', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '글로리3 (GLORY3)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '스위트셔틀, 키위', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '패션1 (PASSION1)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '체리', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '패션2 (PASSION2)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '체리', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '첼린지1 (CHALLENGE1)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '체리', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '첼린지2 (CHALLENGE2)';
+UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '체리', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '첼린지3 (CHALLENGE3)';

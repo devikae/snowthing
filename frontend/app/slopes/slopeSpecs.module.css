@@ -8,7 +8,6 @@
   --slope-context: #d3d7de;
   --slope-lift: #9ca3af;
   --slope-lift-strong: #1e293b;
-  --slope-on-pill: #ffffff;
 }
 
 :global(html[data-theme="dark"]) {
@@ -19,7 +18,6 @@
   --slope-context: #3f4652;
   --slope-lift: #6b7280;
   --slope-lift-strong: #e5e7eb;
-  --slope-on-pill: #0f172a;
 }
 
 .section {
@@ -94,15 +92,168 @@
   opacity: 0.85;
 }
 
-/* 전체 맵 이름표. 바탕은 선과 같은 난이도 색이라 이름과 선을 색으로 바로 짝지을 수 있다. */
-.mapPillText {
-  fill: var(--slope-on-pill);
-  font-weight: 700;
+/* 전체 맵 이름표. 글자를 선과 같은 난이도 색으로 쓰고, 바깥을 배경색으로 둘러 선 위에서도 읽히게 한다. */
+.mapLabel {
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: var(--snow-canvas, #fff);
+  stroke-linejoin: round;
+  cursor: pointer;
+}
+
+.liftLabel,
+.liftLabelStrong {
+  paint-order: stroke;
+  stroke: var(--snow-canvas, #fff);
+  stroke-linejoin: round;
   pointer-events: none;
 }
 
-.mapSvg a:focus-visible rect {
-  stroke: var(--snow-ink, #1e293b);
+.liftLabel {
+  fill: var(--snow-muted, #64748b);
+  font-weight: 600;
+}
+
+.liftLabelStrong {
+  fill: var(--snow-ink, #1e293b);
+  font-weight: 800;
+}
+
+.liftBoard {
+  pointer-events: none;
+}
+
+.mapSlope {
+  cursor: pointer;
+  outline: none;
+}
+
+.mapSlope:focus-visible path:first-child {
+  filter: drop-shadow(0 0 3px var(--snow-ink, #1e293b));
+}
+
+.mapChips {
+  margin: 4px 0 10px;
+}
+
+.mapStage {
+  position: relative;
+}
+
+.expandButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--snow-canvas, #fff);
+  padding: 0 10px;
+  color: var(--snow-ink, #1e293b);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 12%);
+}
+
+.expandButton span {
+  font-size: 16px;
+}
+
+.focusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  border-top: 1px solid var(--snow-border, #e2e8f0);
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.focusBar > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.focusBar strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--snow-ink, #1e293b);
+}
+
+.focusBar small {
+  color: var(--snow-muted, #64748b);
+  font-size: 12px;
+}
+
+.focusBar a {
+  flex: 0 0 auto;
+  color: var(--community-accent, #0369a1);
+  font-weight: 700;
+}
+
+/* 크게 보기: 화면 가득 맵을 띄우고 확대, 이동한다. */
+.zoomOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: var(--snow-canvas, #fff);
+}
+
+.zoomStage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+.zoomSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.zoomClose,
+.zoomButtons button {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--snow-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--snow-canvas, #fff);
+  color: var(--snow-ink, #1e293b);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 15%);
+}
+
+.zoomClose {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+}
+
+.zoomButtons {
+  position: absolute;
+  right: 12px;
+  bottom: 84px;
+  display: grid;
+  gap: 8px;
+}
+
+.zoomBottom {
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--snow-canvas, #fff);
 }
 
 .attribution {

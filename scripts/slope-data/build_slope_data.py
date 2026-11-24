@@ -76,7 +76,8 @@ ALIASES = {
 }
 
 # 리프트가 공식으로 명시되지 않고 이름으로만 추정한 리조트는 리프트를 비운다.
-LIFT_NOT_STATED = {"KONJIAM"}
+# 곤지암은 2026-11-24에 공식 리프트 안내(liFt.dev)와 슬로프맵으로 확인해 뺐다.
+LIFT_NOT_STATED: set[str] = set()
 
 DIFFICULTY = [
     ("최상급", "EXPERT"),
@@ -305,6 +306,19 @@ def load_manual(code):
     return result
 
 
+def load_lift_names(code):
+    """manual/{CODE}.json의 "_lifts": {"OSM 리프트 way ID": "공식 리프트 이름" 또는 null}.
+
+    OSM 리프트 이름이 없거나 공식 이름과 다를 때 공식 슬로프맵, 리프트 안내를 보고 적는다.
+    null은 리프트가 아닌 선(탑승장 면, 역 건물)이라 맵에 넣지 않는다.
+    """
+    path = HERE / "manual" / f"{code}.json"
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {int(k): v for k, v in data.get("_lifts", {}).items()}
+
+
 def fit_anchors(anchors):
     """공식 슬로프맵 픽셀과 위도, 경도를 잇는 1차 변환(어파인)을 최소제곱으로 맞춘다.
 
@@ -472,14 +486,24 @@ def build_map(code, slopes):
             e["id"]: [(x - min_x, y - min_y) for x, y in shifted[e["id"]]] for e in elements
         }
 
+    lift_names = load_lift_names(code)
+    unknown = [i for i in lift_names if i not in {e["id"] for e in lifts}]
+    if unknown:
+        raise ValueError(f"{code}: _lifts에 OSM 리프트가 아닌 way ID {unknown}")
     ways_out = []
     for e in elements:
         tags = e["tags"]
+        is_lift = tags.get("piste:type") != "downhill"
+        if is_lift and e["id"] in lift_names and lift_names[e["id"]] is None:
+            continue
+        name = tags.get("name") or tags.get("piste:name") or None
+        if is_lift and e["id"] in lift_names:
+            name = lift_names[e["id"]]
         ways_out.append(
             {
                 "id": e["id"],
-                "kind": "piste" if tags.get("piste:type") == "downhill" else "lift",
-                "name": tags.get("name") or tags.get("piste:name") or None,
+                "kind": "lift" if is_lift else "piste",
+                "name": name,
                 "difficulty": tags.get("piste:difficulty"),
                 "liftType": tags.get("aerialway"),
                 **({"drawn": True} if e.get("drawn") else {}),

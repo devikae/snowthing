@@ -1,5 +1,18 @@
 {
   "_source": "https://phoenixhnr.co.kr/images/ko/snowpark/bg-slope-map.jpg with overlay https://phoenixhnr.co.kr/images/ko/snowpark/slope-intermediate.png (page https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift)",
   "_unresolved": {},
-  "키위": [334275683]
+  "키위": [
+    334275683
+  ],
+  "_lifts": {
+    "535362938": "펭귄",
+    "535362939": "이글",
+    "535362940": "콘돌",
+    "535362941": "스패로우",
+    "535362943": "곤돌라",
+    "535363647": "팔콘",
+    "535363648": "호크",
+    "535362942": null
+  },
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift, https://phoenixhnr.co.kr/images/ko/snowpark/bg-slope-map.jpg, https://phoenixhnr.co.kr/images/ko/snowpark/slope-intermediate.png (and slope-beginning/upper-Intermediate/slope-expert/slope-superlative/slope-park overlays)"
 }

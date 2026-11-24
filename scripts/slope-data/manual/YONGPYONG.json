@@ -58,5 +58,27 @@
         428
       ]
     ]
-  }
+  },
+  "_lifts": {
+    "376364815": "발왕산 관광케이블카",
+    "477491147": "골드",
+    "533419419": "뉴골드",
+    "1464511412": "브릿지",
+    "533419417": "레드",
+    "1562973114": "뉴레드",
+    "1457094310": "블루",
+    "533426025": "실버",
+    "477491151": "메가그린",
+    "1457094309": "그린",
+    "533413168": "레인보우",
+    "1562973111": "옐로우",
+    "477491148": null,
+    "533419418": null,
+    "1562973113": null,
+    "1562973116": null,
+    "1562973117": null,
+    "1562973110": null,
+    "1562973115": null
+  },
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.yongpyong.co.kr/kor/skiNboard/introduce.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/tourInfo.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/openStatusBoard.do, https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png"
 }

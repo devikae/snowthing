@@ -163,5 +163,13 @@
         127.2925
       ]
     ]
-  }
+  },
+  "_lifts": {
+    "486063094": "그램 리프트",
+    "945151678": "익시오 리프트",
+    "945151681": "씽큐 리프트",
+    "945151680": "홈봇 리프트",
+    "945151682": "CNP 리프트"
+  },
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.konjiamresort.co.kr/ski/liFt.dev, https://www.konjiamresort.co.kr/common/images/ski/img-slope3.jpg, https://www.konjiamresort.co.kr/ski/sloPe.dev"
 }

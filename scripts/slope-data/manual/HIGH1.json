@@ -250,5 +250,17 @@
       ]
     ],
     "_how": "Official overlay line_at3_1 follows line_at3 and stops about 0.69 of the way (before the last leg to the Valley base). Reused OSM Athena3 way 535760419 points 0 to 28 (about 1149 m, official 1162 m)."
-  }
+  },
+  "_lifts": {
+    "535760430": "헤라",
+    "535760431": "빅토리아",
+    "535760433": "아폴로",
+    "535760435": "제우스",
+    "535760436": "주피터",
+    "535760437": "운탄고도케이블카 마운틴",
+    "535760438": "아테나",
+    "535760439": "운탄고도케이블카 팰리스",
+    "632081931": "운탄고도케이블카 밸리"
+  },
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.high1.com/ski/slopeView.do?key=749&mode=g, https://www.high1.com/ski/slopeView.do?key=748&mode=p, https://www.high1.com/site/ski/images/contents/ski_map.jpg with lift overlays line_hera/line_victoria/line_zeus/line_jupiter/line_apollo/line_athena/line_mountain/line_valley/line_high1.png and slope overlays line_z1..line_at3_1.png"
 }

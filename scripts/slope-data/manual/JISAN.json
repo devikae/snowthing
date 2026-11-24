@@ -223,5 +223,13 @@
         400
       ]
     ]
-  }
+  },
+  "_lifts": {
+    "535718871": "레몬 리프트",
+    "535718870": "오렌지 리프트",
+    "535718869": "뉴오렌지 리프트",
+    "535718868": "블루 리프트",
+    "535718867": "실버 리프트"
+  },
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.jisanresort.co.kr/w/ski/slopes/map.asp, https://www.jisanresort.co.kr/w/asset/images/sub/ski/slopes_map.jpg"
 }

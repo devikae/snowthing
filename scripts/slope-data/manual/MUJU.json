@@ -1,7 +1,31 @@
 {
   "_source": "https://www.mdysresort.com/images/contents/ski/map.jpg (map download on https://www.mdysresort.com/ski/slope.asp)",
   "_unresolved": {},
-  "서역기행": [975335045, 975335076],
-  "이스턴": [293598174, 1554524582],
-  "카덴자": [975335051]
+  "서역기행": [
+    975335045,
+    975335076
+  ],
+  "이스턴": [
+    293598174,
+    1554524582
+  ],
+  "카덴자": [
+    975335051
+  ],
+  "_lifts": {
+    "27909068": "곤도라",
+    "293598170": "무주 익스프레스",
+    "293598171": "크루저",
+    "293598172": "멜로디",
+    "293598175": "코러스",
+    "293598177": "스쿨버스",
+    "293598179": "보트",
+    "293598181": "쌍쌍",
+    "293598182": "카누",
+    "293598183": "요트",
+    "293598184": "에코",
+    "293598186": "라이너",
+    "293598187": "하모니"
+  },
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.mdysresort.com/ski/slope_lift.asp (리프트 표: 이름, 베이스, 선로길이), https://www.mdysresort.com/images/contents/ski/map.jpg (official slope map, linked from https://www.mdysresort.com/ski/slope.asp)"
 }
