@@ -8,6 +8,7 @@
   --slope-context: #d3d7de;
   --slope-lift: #9ca3af;
   --slope-lift-strong: #1e293b;
+  --slope-on-pill: #ffffff;
 }
 
 :global(html[data-theme="dark"]) {
@@ -18,6 +19,7 @@
   --slope-context: #3f4652;
   --slope-lift: #6b7280;
   --slope-lift-strong: #e5e7eb;
+  --slope-on-pill: #0f172a;
 }
 
 .section {
@@ -92,12 +94,15 @@
   opacity: 0.85;
 }
 
-.mapLabel {
-  fill: var(--snow-ink, #1e293b);
-  font-weight: 600;
-  paint-order: stroke;
-  stroke: var(--snow-canvas, #fff);
+/* 전체 맵 이름표. 바탕은 선과 같은 난이도 색이라 이름과 선을 색으로 바로 짝지을 수 있다. */
+.mapPillText {
+  fill: var(--slope-on-pill);
+  font-weight: 700;
   pointer-events: none;
+}
+
+.mapSvg a:focus-visible rect {
+  stroke: var(--snow-ink, #1e293b);
 }
 
 .attribution {
@@ -505,6 +510,12 @@
   margin: 0;
   color: var(--snow-muted, #64748b);
   font-size: 13px;
+}
+
+/* 슬로프맵 입구(/slopes): 나라별 리조트 줄을 위아래로 쌓는다. */
+.specIndex {
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .specLinks {

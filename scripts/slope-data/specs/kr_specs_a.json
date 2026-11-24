@@ -496,5 +496,29 @@
     "liftName": "에코, 곤도라",
     "sourceUrl": "https://www.wellihillipark.com/snowpark/snowpark/slope-guide",
     "note": "경사도(도) 최고/최저만 공시, 평균 없음. 최저 8.2도. 거리 컬럼을 lengthM으로 사용. 이용리프트는 슬로프별 안내표 기준. 수치는 페이지가 불러오는 공식 번들 https://www.wellihillipark.com/_nuxt/8bcab33.js에 포함."
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "name": "스타익스프레스 S1",
+    "officialDifficulty": "중급코스",
+    "lengthM": 1786,
+    "avgGradient": null,
+    "maxGradient": 9.9,
+    "widthM": null,
+    "liftName": "곤도라",
+    "sourceUrl": "https://www.wellihillipark.com/snowpark/snowpark/slope-guide",
+    "note": "2026-11-24 추가. 경사도(도) 최고/최저만 공시, 평균 없음. 최저 3.3도. 스타 익스프레스 슬로프 안내표 기준(이용리프트 S1 곤도라, S2 패밀리). 정상에서 S1을 지나 S2로 이어지는 2.6km 최장 코스. 수치는 slope-guide 페이지가 불러오는 공식 _nuxt 번들에 포함."
+  },
+  {
+    "resortCode": "WELLI_HILLI",
+    "name": "스타익스프레스 S2",
+    "officialDifficulty": "초급코스",
+    "lengthM": 814,
+    "avgGradient": null,
+    "maxGradient": 11.7,
+    "widthM": null,
+    "liftName": "패밀리",
+    "sourceUrl": "https://www.wellihillipark.com/snowpark/snowpark/slope-guide",
+    "note": "2026-11-24 추가. 경사도(도) 최고/최저만 공시, 평균 없음. 최저 3.5도. 스타 익스프레스 슬로프 안내표 기준. 끝이 D+와 이어진다. 수치는 slope-guide 페이지가 불러오는 공식 _nuxt 번들에 포함."
   }
 ]

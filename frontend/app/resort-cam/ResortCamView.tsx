@@ -108,20 +108,17 @@ export function ResortCamView({
           </div>
           <div className={styles.resortHeaderActions}>
             <ResortWeatherChip resortCode={selectedResort.code} />
+            {/* 슬로프맵은 처음 온 사람도 찾도록 맨 앞에 채운 버튼으로 둔다. */}
+            {hasSlopeSpec && (
+              <Link className={styles.mapLink} href={`/slopes/${resortSlug(selectedResort.code)}`}>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">map</span>
+                슬로프맵 보기
+              </Link>
+            )}
             <Link className={styles.backLink} href={`/resorts/${resortSlug(selectedResort.code)}`}>
               <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">info</span>
               리조트 정보
             </Link>
-            <Link className={styles.backLink} href={`/slopes#${resortSlug(selectedResort.code)}`}>
-              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
-              슬로프 현황
-            </Link>
-            {hasSlopeSpec && (
-              <Link className={styles.backLink} href={`/slopes/${resortSlug(selectedResort.code)}`}>
-                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">landscape</span>
-                슬로프맵
-              </Link>
-            )}
             {selectedCamera && (
               <Link className={styles.backLink} href={`/resort-cam/${resortSlug(selectedResort.code)}`}>
                 <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">grid_view</span>
