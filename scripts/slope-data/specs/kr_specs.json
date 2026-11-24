@@ -772,12 +772,13 @@
   "name": "CNP 1(구 게일)",
   "officialDifficulty": "초/중급",
   "lengthM": 204,
-  "avgGradient": 10.9,
+  "avgGradient": null,
   "maxGradient": null,
   "widthM": 31,
   "liftName": "CNP 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"11.3%(10.9°)\". 면적 6,454m2, 고저차 23m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 CNP(구 게일))."
+  "note": "평균경사 원문 \"11.3%(10.9°)\". 면적 6,454m2, 고저차 23m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 CNP(구 게일)). 2026-11-24 평균 경사: 공식 표 '11.3%(10.9°)'에서 11.3%(=6.4°)를 쓴다. 표고차 23m / 204m도 6.4°이고, 10.9°는 표 페이지에 주석으로 숨긴 549m 행의 값이다. 공식 맵의 CNP①은 549m라 선(OSM 469518152)과 길이가 다르다(사용자 결정으로 표 기준).",
+  "avgGradientPercent": 11.3
  },
  {
   "resortCode": "KONJIAM",
