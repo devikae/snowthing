@@ -35,6 +35,8 @@ import com.ikae.snowthing.domain.moderation.api.ModerationApiException;
         properties = {
             "snowthing.moderation.api.enabled=true",
             "snowthing.moderation.api.api-key=test-key",
+            // 새 회원의 연락처 글을 자동 검열이 판정하는지 보려고 IKA-122 연락처 보류를 회원에게는 끈다.
+            "snowthing.content-filter.contact-new-member-age=0s",
             // 클래스가 끝나면 컨텍스트를 닫는다. create-drop이면 닫힐 때 공유 테스트 스키마를 지워 다른 컨텍스트가 깨진다.
             "spring.jpa.hibernate.ddl-auto=update"
         })

@@ -100,9 +100,10 @@ class CommentCommandService {
                         clientIp != null ? clientIp : "127.0.0.1",
                         request.isAnonymous(),
                         encodedPassword);
-        // 금칙어가 걸리면 저장과 응답은 평소와 같고, 다른 사람에게 보이지 않게 보류한다 (IKA-96).
+        // 금칙어나 연락처가 걸리면 저장과 응답은 평소와 같고, 다른 사람에게 보이지 않게 보류한다 (IKA-96, IKA-122).
         // 보류 댓글은 검색 색인, 알림, 댓글 수에 넣지 않는다. 관리자가 공개하면 그때 넣는다.
-        Optional<String> matched = contentFilter.inspect(userDetails, request.content());
+        Optional<String> matched =
+                contentFilter.inspectPosting(userDetails, member, request.content());
         matched.ifPresent(ignored -> comment.holdByFilter(contentFilter.now()));
         Comment saved = commentRepository.save(comment);
         moderation.commentWritten(saved);

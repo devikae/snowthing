@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,10 +16,12 @@ import com.ikae.snowthing.domain.comment.entity.Comment;
 import com.ikae.snowthing.domain.contentfilter.entity.ContentFilterHold;
 import com.ikae.snowthing.domain.contentfilter.entity.FilterTargetType;
 import com.ikae.snowthing.domain.contentfilter.repository.ContentFilterHoldRepository;
+import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.service.InquiryAccess;
 import com.ikae.snowthing.global.security.CustomUserDetails;
+import com.ikae.snowthing.global.util.ContactFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -39,9 +42,18 @@ public class ContentFilterService {
 
     public static final Duration ANONYMOUS_AUTHOR_WINDOW = Duration.ofHours(1);
 
+    /** 연락처로 보류한 항목의 걸린 말 앞에 붙인다. 관리자 보류 목록에서 금칙어와 구분한다. */
+    public static final String CONTACT_REASON_PREFIX = "연락처: ";
+
     private final BannedWordService bannedWords;
     private final ContentFilterHoldRepository holds;
     private final Clock clock;
+
+    /**
+     * 가입한 지 이 시간이 안 된 회원은 비회원처럼 연락처를 검사한다 (IKA-122). 기본 24시간은 자동 검열의 새 계정 기준과 같다. 0이면 회원은 검사하지 않는다.
+     */
+    @Value("${snowthing.content-filter.contact-new-member-age:24h}")
+    private Duration contactNewMemberAge;
 
     /** 걸린 금칙어. 관리자이거나 걸린 말이 없으면 빈 값. */
     public Optional<String> inspect(CustomUserDetails writer, String... texts) {
@@ -49,6 +61,37 @@ public class ContentFilterService {
             return Optional.empty();
         }
         return bannedWords.findMatch(texts);
+    }
+
+    /**
+     * 글과 댓글 검사 (IKA-122). 금칙어에 더해, 비회원이나 가입한 지 얼마 안 된 회원이면 연락처도 본다. 광고는 업체 이름이 바뀌어도 메신저 아이디나 전화번호를
+     * 꼭 남기기 때문이다. 오래된 회원은 카풀, 장터, 모임 글에 연락처를 쓰는 게 정상이라 보지 않는다.
+     *
+     * @param author 글이나 댓글의 회원. 비회원이면 null
+     * @return 걸린 금칙어, 또는 "연락처: 메신저 ID" 같은 걸린 이유. 관리자이거나 걸린 게 없으면 빈 값
+     */
+    public Optional<String> inspectPosting(
+            CustomUserDetails writer, Member author, String... texts) {
+        if (InquiryAccess.isAdmin(writer)) {
+            return Optional.empty();
+        }
+        Optional<String> word = bannedWords.findMatch(texts);
+        if (word.isPresent() || !isUnprovenAuthor(author)) {
+            return word;
+        }
+        for (String text : texts) {
+            Optional<String> contact = ContactFilter.findPostingContact(text);
+            if (contact.isPresent()) {
+                return Optional.of(CONTACT_REASON_PREFIX + contact.get());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean isUnprovenAuthor(Member author) {
+        return author == null
+                || author.getCreatedAt() == null
+                || author.getCreatedAt().isAfter(now().minus(contactNewMemberAge));
     }
 
     /** 보류 기록을 남기거나, 이미 있으면 걸린 말과 시각을 새로 쓴다. */
