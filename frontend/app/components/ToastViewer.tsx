@@ -6,6 +6,7 @@ import Viewer from "@toast-ui/editor/dist/toastui-editor-viewer";
 // 에디터 스타일은 이 컴포넌트를 쓰는 화면에서만 받는다. 루트 레이아웃에 두면 홈을 포함한 모든 화면 첫 CSS에 실린다.
 import "@toast-ui/editor/dist/toastui-editor-viewer.css";
 import { sanitizeHtml } from "../lib/sanitizeHtml";
+import { embedClips } from "../lib/clipEmbed";
 import { embedYoutubeLinks } from "../lib/youtubeEmbed";
 
 interface ToastViewerProps {
@@ -29,6 +30,7 @@ export function ToastViewer({ content, onRendered }: ToastViewerProps) {
     });
     // 정화가 끝난 본문에서 유튜브 주소 한 줄을 플레이어로 바꾼다. 서버가 먼저 넣는 본문에는 링크 글자로 남는다.
     embedYoutubeLinks(containerRef.current);
+    embedClips(containerRef.current);
     onRendered?.();
 
     return () => {

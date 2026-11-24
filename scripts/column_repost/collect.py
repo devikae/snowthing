@@ -133,6 +133,24 @@ def youtube_watch_url(src: str) -> str | None:
     return url
 
 
+def https_url(src: str) -> str | None:
+    if src.startswith("//"):
+        src = "https:" + src
+    if src.startswith("http://"):
+        src = "https://" + src[len("http://"):]
+    return src if src.startswith("https://") else None
+
+
+def dc_movie_page_url(src: str) -> str | None:
+    """디시 동영상 플레이어 주소를 한 가지 모양으로 맞춘다. 아니면 None."""
+    src = https_url(src) or ""
+    parsed = urlparse(src)
+    if parsed.hostname != "gall.dcinside.com" or parsed.path != "/board/movie/movie_view":
+        return None
+    no = (parse_qs(parsed.query).get("no") or [""])[0]
+    return f"https://gall.dcinside.com/board/movie/movie_view?no={no}" if no.isdigit() else None
+
+
 def escape_markdown(text: str) -> str:
     """글자 안의 마크다운 기호를 글자로 둔다. 줄 맨 앞 기호(제목, 인용, 목록)는 줄을 만들 때 따로 막는다."""
     return re.sub(r"([\\`*_\[\]<~|])", r"\\\1", text)
@@ -156,6 +174,8 @@ class _BodyConverter(HTMLParser):
         self._skip = 0
         self._link: dict | None = None
         self._video_link = video_link
+        self._in_video = False
+        self._video_source_taken = False
 
     def _flush(self) -> None:
         line = re.sub(r" {2,}", " ", "".join(self._current)).strip()
@@ -177,24 +197,39 @@ class _BodyConverter(HTMLParser):
         if tag in BLOCK_TAGS or tag == "br":
             self._flush()
         elif tag == "img":
-            src = a.get("data-original") or a.get("src") or ""
-            if src.startswith("//"):
-                src = "https:" + src
-            if src.startswith("http://"):
-                src = "https://" + src[len("http://"):]
-            if src.startswith("https://"):
+            src = https_url(a.get("data-original") or a.get("src") or "")
+            if src:
                 self._block(f"![]({src})")
-        elif tag in {"iframe", "embed", "video"}:
+        elif tag == "video":
+            # 디시가 GIF를 바꿔 둔 짧은 반복 mp4. 주소는 안쪽 <source>에 있다. data-src는 GIF 원본이라 쓰지 않는다.
+            src = https_url(a.get("src") or "")
+            if src:
+                self._block(f"![]({src})")
+            self._in_video = True
+        elif tag == "source" and self._in_video:
+            src = https_url(a.get("src") or "")
+            if src and not self._video_source_taken:
+                self._block(f"![]({src})")
+                self._video_source_taken = True
+        elif tag in {"iframe", "embed"}:
             src = a.get("src") or a.get("data-src") or ""
             youtube = youtube_watch_url(src)
+            movie = dc_movie_page_url(src)
             if youtube:
                 self._block(youtube)
-            elif "movie" in src or tag == "video" or "dcinside" in src:
+            elif movie:
+                # 디시 동영상 플레이어. 게시할 때 백엔드가 이 페이지에서 실제 mp4를 찾아 옮긴다.
+                self._block(f"![]({movie})")
+            elif "movie" in src or "dcinside" in src:
                 self._block(f"[{VIDEO_LINK_TEXT}]({self._video_link})")
         elif tag == "a":
             self._link = {"href": a.get("href") or "", "text": []}
 
     def handle_endtag(self, tag):
+        if tag == "video":
+            self._in_video = False
+            self._video_source_taken = False
+            return
         if tag in SKIP_TAGS:
             self._skip = max(0, self._skip - 1)
             return
@@ -294,6 +329,17 @@ def build_sql(items: list[tuple[int, str, str]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def build_update_sql(items: list[tuple[int, str, str]]) -> str:
+    """이미 넣은 대기열 줄의 본문만 새 변환 결과로 바꾼다. 게시된 줄은 표만 바뀌고 글은 관리자 갱신 API로 바꾼다."""
+    lines = [
+        "-- IKA-112 휘구리 칼럼 대기열 본문 갱신. 원작자 글이라 저장소에 커밋하지 않는다.",
+        "SET NAMES utf8mb4;",
+    ]
+    for no, _title, content in sorted(items):
+        lines.append(f"UPDATE `column_repost_queue` SET `content` = {sql_string(content)} WHERE `source_no` = {no};")
+    return "\n".join(lines) + "\n"
+
+
 # ---------------------------------------------------------------- 네트워크
 
 
@@ -356,6 +402,7 @@ def main(argv: list[str]) -> int:
         items.append((no, title, to_markdown(body or "", source_url(args.gallery, no))))
 
     (work / "queue.sql").write_text(build_sql(items), encoding="utf-8")
+    (work / "queue-update.sql").write_text(build_update_sql(items), encoding="utf-8")
     preview = [f"# {seq}. {title} (원문 {no}, {listed[no].date})\n\n{content}" for seq, (no, title, content) in enumerate(items, 1)]
     (work / "preview.md").write_text("\n---\n\n".join(preview), encoding="utf-8")
     print(f"완료: {work / 'queue.sql'}, {work / 'preview.md'}", flush=True)
