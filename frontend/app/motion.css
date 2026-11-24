@@ -81,6 +81,13 @@
   scale: .99;
 }
 
+/*
+ * 화면 전환: 새 화면의 본문(main)이 짧게 나타난다. 헤더는 움직이지 않는다.
+ * 투명도만 바꾼다. transform을 쓰면 본문 안의 고정 위치 요소(확인 창 등)의 기준이 바뀐다.
+ * fill-mode를 두지 않아 끝난 뒤에는 쌓임 맥락이 남지 않는다.
+ */
+:where(main) { animation: motion-fade var(--motion-page) var(--ease-out); }
+
 /* 스낵바: 저장, 복사, 스크랩 같은 결과 문구 */
 [role="status"]:not(.sr-only):not(:empty) {
   animation: motion-slide-up var(--motion-base) var(--ease-out) both;
