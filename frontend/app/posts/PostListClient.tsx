@@ -7,6 +7,8 @@ import { Footer, TopNav } from "../components/SiteChrome";
 import { PostImageIcon } from "../components/PostImageIcon";
 import { PostListAuthor } from "../components/PostListAuthor";
 import { API_ENDPOINTS } from "../lib/api";
+import { toast } from "../lib/feedback";
+import { readErrorMessage } from "../lib/http";
 import { fetchViewer, isAdminViewer } from "../lib/viewer";
 import { hasRecentWrite } from "../lib/recentWrite";
 import { formatCompactTime } from "../lib/koreanDate";
@@ -88,10 +90,10 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
           return;
         }
         if (response.status === 400 || response.status === 429) {
-          const body = await response.json().catch(() => null);
+          const message = await readErrorMessage(response, "게시글을 불러오지 못했습니다.");
           if (signal?.aborted) return;
           setPosts([]);
-          setError(typeof body?.message === "string" ? body.message : "게시글을 불러오지 못했습니다.");
+          setError(message);
           return;
         }
         if (!response.ok) throw new Error(`게시글 목록 응답 오류: ${response.status}`);
@@ -169,10 +171,10 @@ function PostListContent({ initial }: { initial: InitialPostList | null }) {
   const handlePostClick = (event: React.MouseEvent, post: PostItem) => {
     if (post.isDeleted || post.status === "DELETED") {
       event.preventDefault();
-      alert("삭제된 게시글입니다.");
+      toast.info("삭제된 게시글입니다.");
     } else if (post.status === "BLOCKED") {
       event.preventDefault();
-      alert("관리자에 의해 차단된 게시글입니다.");
+      toast.info("관리자가 가린 게시글입니다.");
     }
   };
 

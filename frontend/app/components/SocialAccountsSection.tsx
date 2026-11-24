@@ -5,6 +5,7 @@ import { API_ENDPOINTS, SocialLoginProvider } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { errorText } from "../lib/errorText";
 import { readErrorMessage } from "../lib/http";
+import { confirm } from "../lib/feedback";
 
 type Provider = "KAKAO" | "NAVER" | "GOOGLE";
 interface SocialAccounts { passwordLogin: boolean; accounts: { provider: Provider; connectedAt: string }[]; }
@@ -99,7 +100,7 @@ export function SocialAccountsSection() {
   const cancelConfirm = () => { setConfirming(null); setCurrentPassword(""); setError(""); };
 
   const unlink = async (provider: (typeof PROVIDERS)[number]) => {
-    if (busy || !window.confirm(`${provider.label} 로그인 연결을 해제할까요?`)) return;
+    if (busy || !(await confirm({ title: `${provider.label} 로그인 연결을 해제할까요?`, description: "해제한 뒤에는 이 소셜 계정으로 로그인할 수 없습니다. 다시 연결할 수 있습니다.", confirmLabel: "해제", danger: true }))) return;
     setBusy(provider.key); setNotice(""); setError("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.members.socialAccount(provider.path), { method: "DELETE" });
