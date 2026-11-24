@@ -1,3 +1,34 @@
+## 글 상세 본문 서버 렌더링이 운영 이미지에서 실패하던 문제 (티켓 없음, 후속 버그 수정, 2026-11-25)
+
+- 상태: 수정, 로컬 검증 완료, PR 생성. 머지(운영 배포)는 사용자 확인 후.
+- 배경: 운영 글 상세의 첫 HTML에 렌더된 본문이 없었다(본문 글자는 RSC 데이터에만 있었다). IKA-104에서 넣은 본문 서버 렌더링이 IKA-105(standalone 실행 이미지) 뒤로 매 요청 실패하고 평문 본문으로 나가고 있었다.
+- 원인: `markdownHtml.server.ts`가 jsdom을 실행 시점 `require`로 불렀다. standalone 출력은 빌드가 추적한 파일만 담아서 jsdom과 그 의존성, Toast UI 뷰어 배포 파일이 이미지에 없었다. origin/main 이미지에서 `Cannot find module 'jsdom'` 로그와 `/app/frontend/node_modules`에 jsdom, @toast-ui, dompurify가 없는 것을 확인했다.
+- 완료
+  - jsdom을 준비 함수 안의 `import("jsdom")`로 바꿔 빌드가 jsdom과 전이 의존성을 추적하게 했다.
+  - 뷰어 배포 파일은 글자로 읽는 파일이라 `next.config.ts`의 `outputFileTracingIncludes`에 경로를 적었다.
+  - 실패 로그: 준비 실패(파일 누락)는 한 번만 시도하고 한 번만 남긴다. 특정 글의 렌더 실패는 처음과 그 뒤 10분에 한 번, 오류 종류와 건수만 남긴다(본문은 넣지 않는다).
+  - `frontend/scripts/check-body-ssr.mjs`: 가짜 백엔드를 띄우고 빌드 결과물로 글 상세를 요청해 첫 HTML에 문단, 사진, 링크가 있고 정화가 동작하는지 본다.
+  - CI: PR 검사에 standalone 출력 점검과 실행 이미지 점검(새 작업 `image-body-ssr`)을, 배포 워크플로의 `ci-frontend`에 standalone 출력 점검을 넣었다.
+- 결정
+  - 고른 안: import로 추적시키기. 전이 의존성을 사람이 적지 않아도 되고 jsdom 버전이 바뀌어도 따라간다. 예전에 import를 피한 이유(Turbopack이 `.next/node_modules`에 만드는 상대 링크가 이미지에서 깨짐)는 standalone이 폴더 구조를 그대로 옮기므로 재발하지 않는다. 실제 이미지에서 링크(`jsdom-<해시> -> ../../../frontend/node_modules/jsdom`)가 살아 있는 것을 확인했다.
+  - 버린 안: `outputFileTracingIncludes`에 jsdom 의존성을 전부 적기(하나라도 빠지면 다시 조용히 실패), Dockerfile에서 패키지를 따로 설치해 복사(잠금 파일과 버전이 어긋날 수 있고 이미지가 더 커짐).
+  - 맨 위 import가 아니라 함수 안 `import()`로 했다. jsdom을 못 불러도 글 상세가 500이 되지 않고 평문 본문으로 나가게 하기 위해서다. 그래서 `renderMarkdownHtml`이 비동기가 됐다.
+  - 점검 스크립트는 standalone 출력을 임시 폴더로 옮겨서 띄운다. 빌드 폴더 안에서 띄우면 node가 위쪽의 전체 `node_modules`를 찾아 올라가 빠진 패키지가 있어도 통과한다.
+  - 검증용 빌드의 `NEXT_PUBLIC_API_BASE_URL`을 `http://127.0.0.1:18080`(점검이 띄우는 가짜 백엔드)으로 바꿨다. 배포 이미지는 다른 작업이 저장소 변수로 따로 빌드하므로 영향이 없다.
+- 발견된 이슈
+  - 유튜브 주소만 있는 문단은 서버 HTML에서는 주소 글자이고, 브라우저 뷰어가 이어받은 뒤 영상으로 바뀐다. 그런 글은 이어받을 때 본문 높이가 늘어난다(확인한 글: 모바일 6431px에서 6810px). IKA-104 설계 범위 밖이라 이번에는 건드리지 않았다.
+  - 다른 서버 전용 모듈에는 실행 시점 require나 fs로 node_modules를 읽는 곳이 없다(grep 확인). `opengraph-image.tsx`는 글꼴을 fetch로 받는다.
+- 검증
+  - 고치기 전 이미지(3295): 글 5개 모두 첫 HTML에 본문 영역 없음, 요청마다 실패 로그.
+  - 고친 이미지(3296): 글 5개(사진 2, 링크 1, 원시 HTML 2) 첫 HTML에 본문 영역 있음. 문단 13, 42, 15, 7, 3개, img 3, 5개, a 2개, br 15, 2개. 실패 로그 0건.
+  - 브라우저(headless Chrome): 글 5개를 모바일 375, PC 1280, 라이트와 다크로 열어 콘솔 예외와 하이드레이션 오류 전후 모두 0건(로컬 주소라서 나는 CORS 차단 로그 제외). 뷰어가 이어받은 뒤 본문 HTML이 전후 같음. 서버 HTML과 뷰어 HTML은 4개가 같고 1개는 위 유튜브 차이.
+  - 정화 단위 확인 13개 통과(렌더 결과가 null이면 실패로 치도록 고쳐서 다시 실행).
+  - 점검 스크립트: Linux 빌드 단계 컨테이너에서 통과. jsdom, whatwg-url, tough-cookie, @toast-ui를 하나씩 빼면 실패하는 것을 확인.
+  - `npm run lint`, `npm run build` 통과.
+  - 이미지 크기: 343MB에서 353MB(+10MB).
+- 남은 항목: 머지 후 운영 글 상세 첫 HTML에 본문이 있는지 확인.
+- 사용자 결정 필요: 머지 시점.
+
 ## 라이브톡 운영 도구와 회원 정지 기간 (IKA-115, 2026-11-24)
 
 - 상태: 구현, 로컬 검증 완료, PR #194. 머지(운영 배포, 마이그레이션 066)는 사용자 지시로 진행.
