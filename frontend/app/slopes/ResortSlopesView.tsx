@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import camStyles from "../resort-cam/resortCam.module.css";
-import { CourseCard, ResortMap } from "./SlopeMapViews";
+import { ResortMap } from "./ResortMap";
+import { CourseCard } from "./SlopeMapViews";
 import styles from "./slopeSpecs.module.css";
 import {
   DIFFICULTY_LABEL,
@@ -59,22 +60,23 @@ export function ResortSlopesView({ detail, header }: { detail: ResortDetail; hea
     <>
       <section className={camStyles.resortSection}>
         {header}
-        <ResortMap resortCode={resort.code} slopes={slopes} />
+        {/* 난이도 칩은 맵과 아래 카드 목록을 함께 거른다. 맵 바로 위에 둔다. */}
+        <div className={`${styles.chips} ${styles.mapChips}`} role="group" aria-label="난이도">
+          <button type="button" aria-pressed={difficulty === null} onClick={() => setDifficulty(null)}>
+            전체 {slopes.length}
+          </button>
+          {DIFFICULTY_ORDER.filter((key) => counts.has(key)).map((key) => (
+            <button key={key} type="button" aria-pressed={difficulty === key} onClick={() => setDifficulty(key)}>
+              <i className={styles.dot} data-difficulty={key} aria-hidden="true" />
+              {DIFFICULTY_LABEL[key]} {counts.get(key)}
+            </button>
+          ))}
+        </div>
+        <ResortMap resortCode={resort.code} slopes={slopes} difficulty={difficulty} />
       </section>
 
       <section className={styles.section}>
         <div className={styles.toolbar}>
-          <div className={styles.chips} role="group" aria-label="난이도">
-            <button type="button" aria-pressed={difficulty === null} onClick={() => setDifficulty(null)}>
-              전체 {slopes.length}
-            </button>
-            {DIFFICULTY_ORDER.filter((key) => counts.has(key)).map((key) => (
-              <button key={key} type="button" aria-pressed={difficulty === key} onClick={() => setDifficulty(key)}>
-                <i className={styles.dot} data-difficulty={key} aria-hidden="true" />
-                {DIFFICULTY_LABEL[key]} {counts.get(key)}
-              </button>
-            ))}
-          </div>
           <label className={styles.sort}>
             정렬
             <select value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>

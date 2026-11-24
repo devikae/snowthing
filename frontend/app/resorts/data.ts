@@ -59,18 +59,6 @@ export type ResortWeather = {
   stale: boolean;
 };
 
-export type SlopeBoardResort = {
-  resortCode: string;
-  supported: boolean;
-  sourceUrl: string | null;
-  collectedAt: string | null;
-  stale: boolean;
-  openSlopeCount: number | null;
-  totalSlopeCount: number | null;
-  operatingNote: string | null;
-  slopes: unknown[];
-};
-
 export type SlopeSpecSummary = {
   code: string;
   slopeCount: number;
@@ -97,11 +85,6 @@ export const getOpenings = () => cachedJson<SeasonOpenings>("/public/season-open
 
 export const getWeather = (resortCode: string) =>
   cachedJson<ResortWeather>(`/resort-cams/${encodeURIComponent(resortCode)}/weather`, 2 * MINUTE);
-
-export async function getSlopeBoard(): Promise<SlopeBoardResort[] | null> {
-  const board = await cachedJson<{ resorts?: SlopeBoardResort[] }>("/slope-status", 5 * MINUTE);
-  return Array.isArray(board?.resorts) ? board.resorts : null;
-}
 
 export async function getSlopeSpecs(): Promise<SlopeSpecSummary[] | null> {
   const list = await cachedJson<{ resorts?: SlopeSpecSummary[] }>("/slopes/resorts", 30 * MINUTE);

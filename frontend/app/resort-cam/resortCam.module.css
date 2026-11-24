@@ -270,6 +270,31 @@
   font-size: 18px;
 }
 
+/* 슬로프맵 버튼. 다른 버튼보다 먼저 눈에 들어오도록 강조색으로 채운다. */
+.mapLink {
+  display: inline-flex;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--community-accent, #2563eb);
+  border-radius: 8px;
+  background: var(--community-accent, #2563eb);
+  padding: 0 15px;
+  color: var(--snow-canvas, #fff);
+  font-size: 13px;
+  font-weight: 800;
+  transition: filter 0.16s ease;
+}
+
+.mapLink:hover {
+  filter: brightness(1.08);
+}
+
+.mapLink span {
+  font-size: 18px;
+}
+
 /* 카메라 그리드 레이아웃 */
 .cameraGrid {
   display: grid;
@@ -706,6 +731,17 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+  .resortHeaderActions {
+    width: 100%;
+  }
+  /* 휴대폰에서는 슬로프맵 버튼을 버튼 줄 맨 위에 한 줄로 둔다. */
+  .mapLink {
+    order: -1;
+    flex-basis: 100%;
+    justify-content: center;
+    min-height: 44px;
+    font-size: 14px;
   }
   .resortNavTrack {
     grid-template-columns: repeat(7, minmax(0, 1fr));
