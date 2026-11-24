@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { PageHeading } from "../../../components/PageHeading";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { confirm } from "../../../lib/feedback";
 import {
   ANSWER_DRAFT_STATUS_LABEL,
   type AnswerDraftDetail,
@@ -169,8 +170,8 @@ export default function AnswerDraftDetailPage() {
             type="button"
             disabled={!canPublish || busy}
             title={draft.publishEnabled ? undefined : "게시 기능이 꺼져 있습니다"}
-            onClick={() => {
-              if (window.confirm("승인자 이름으로 댓글을 게시합니다. 계속할까요?")) {
+            onClick={async () => {
+              if (await confirm({ title: "댓글로 게시할까요?", description: "승인자 이름으로 댓글이 올라갑니다.", confirmLabel: "게시" })) {
                 void runAction("publish", "댓글로 게시했습니다.");
               }
             }}

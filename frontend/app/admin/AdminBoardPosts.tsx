@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeading } from "../components/PageHeading";
 import { API_ENDPOINTS, type AdminPostFilter, type AdminPostItem } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
+import { confirm, type ConfirmOptions } from "../lib/feedback";
+import { ask } from "./adminConfirm";
 import { AdminPager } from "./AdminPager";
 import { formatDateTime, postHref, readErrorMessage } from "./adminTypes";
 import { useAdminFetch } from "./useAdminFetch";
@@ -55,8 +57,8 @@ export function AdminBoardPosts({ board, title, description }: { board: Board; t
     "글 목록을 불러오지 못했습니다.",
   );
 
-  const run = async (post: AdminPostItem, message: string, request: () => Promise<Response>, failure: string) => {
-    if (!window.confirm(message)) return;
+  const run = async (post: AdminPostItem, question: ConfirmOptions, request: () => Promise<Response>, failure: string) => {
+    if (!(await confirm(question))) return;
     setBusyId(post.publicId);
     list.setError(null);
     try {
@@ -73,7 +75,7 @@ export function AdminBoardPosts({ board, title, description }: { board: Board; t
   const changeMarketStatus = (post: AdminPostItem, status: MarketStatus) =>
     void run(
       post,
-      `"${post.title}" 글을 ${STATUS_LABEL[status]} 상태로 바꿀까요?`,
+      ask(`"${post.title}" 글을 ${STATUS_LABEL[status]} 상태로 바꿀까요?`, "변경", status !== "NORMAL"),
       () =>
         csrfFetch(API_ENDPOINTS.admin.marketModeration(post.publicId), {
           method: "PATCH",
@@ -87,7 +89,7 @@ export function AdminBoardPosts({ board, title, description }: { board: Board; t
     const blinded = !post.isBlinded;
     void run(
       post,
-      blinded ? `"${post.title}" 글을 블라인드할까요? 목록과 상세 화면에서 보이지 않게 됩니다.` : `"${post.title}" 글의 블라인드를 해제할까요?`,
+      blinded ? ask(`"${post.title}" 글을 블라인드할까요? 목록과 상세 화면에서 보이지 않게 됩니다.`, "블라인드", true) : ask(`"${post.title}" 글의 블라인드를 해제할까요?`, "해제"),
       () =>
         csrfFetch(API_ENDPOINTS.admin.blindPost(post.publicId), {
           method: "PATCH",
@@ -101,7 +103,7 @@ export function AdminBoardPosts({ board, title, description }: { board: Board; t
   const remove = (post: AdminPostItem) =>
     void run(
       post,
-      `"${post.title}" 글을 삭제할까요? 첨부 사진도 정리되어 되돌릴 수 없습니다.`,
+      ask(`"${post.title}" 글을 삭제할까요? 첨부 사진도 정리되어 되돌릴 수 없습니다.`, "삭제", true),
       () => csrfFetch(API_ENDPOINTS.admin.deletePost(post.publicId), { method: "DELETE" }),
       "글을 삭제하지 못했습니다.",
     );

@@ -5,6 +5,8 @@ import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import type { AnonymousMode, WritePermission } from "../../lib/boards";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { readErrorMessage } from "../adminTypes";
 import { useAdminFetch } from "../useAdminFetch";
 
@@ -139,14 +141,14 @@ export default function AdminBoardsPage() {
     void run(API_ENDPOINTS.admin.board(editing.code), { ...body(editing), method: "PATCH" }, "게시판을 수정하지 못했습니다.", () => setEditing(null));
   }
 
-  function toggleStatus(board: AdminBoard) {
+  async function toggleStatus(board: AdminBoard) {
     const next = board.status === "OPEN" ? "HIDDEN" : "OPEN";
-    if (next === "HIDDEN" && !window.confirm(`${board.name}을(를) 닫을까요? 메뉴와 글쓰기에서 빠지고 새 글을 쓸 수 없습니다. 기존 글은 그대로 보입니다.`)) return;
+    if (next === "HIDDEN" && !(await confirm(ask(`${board.name}을(를) 닫을까요? 메뉴와 글쓰기에서 빠지고 새 글을 쓸 수 없습니다. 기존 글은 그대로 보입니다.`, "닫기", true)))) return;
     void run(API_ENDPOINTS.admin.boardStatus(board.code, next), { method: "PATCH" }, "상태를 바꾸지 못했습니다.");
   }
 
-  function remove(board: AdminBoard) {
-    if (!window.confirm(`${board.name}을(를) 삭제할까요? 아래 "삭제한 게시판"에서 복구할 수 있습니다. 기존 글은 그대로 보입니다.`)) return;
+  async function remove(board: AdminBoard) {
+    if (!(await confirm(ask(`${board.name}을(를) 삭제할까요? 아래 "삭제한 게시판"에서 복구할 수 있습니다. 기존 글은 그대로 보입니다.`, "삭제", true)))) return;
     void run(API_ENDPOINTS.admin.board(board.code), { method: "DELETE" }, "게시판을 삭제하지 못했습니다.");
   }
 

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm, toast } from "../../lib/feedback";
 import { API_ENDPOINTS, BannerItem } from "../../lib/api";
 
 export default function AdminBannersPage() {
@@ -34,7 +35,7 @@ export default function AdminBannersPage() {
       })
       .catch((err: unknown) => {
         if (signal?.aborted) return;
-      alert((err instanceof Error ? err.message : "오류가 발생했습니다."));
+      toast.error((err instanceof Error ? err.message : "오류가 발생했습니다."));
       })
       .finally(() => { if (!signal?.aborted) setLoading(false); });
   }, []);
@@ -96,9 +97,9 @@ export default function AdminBannersPage() {
       if (!res.ok) throw new Error("배너를 저장하지 못했습니다.");
       setShowModal(false);
       fetchBanners();
-      alert("배너가 성공적으로 저장되었습니다.");
+      toast.success("배너를 저장했습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      toast.error((err instanceof Error ? err.message : "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -121,14 +122,14 @@ export default function AdminBannersPage() {
         )
       );
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "상태를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      toast.error((err instanceof Error ? err.message : "상태를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
   }
 
   async function handleDelete(b: BannerItem) {
-    if (!window.confirm(`[${b.title}] 배너를 삭제할까요?`)) return;
+    if (!(await confirm({ title: `[${b.title}] 배너를 삭제할까요?`, confirmLabel: "삭제", danger: true }))) return;
 
     try {
       setActionLoading(true);
@@ -138,9 +139,9 @@ export default function AdminBannersPage() {
       });
       if (!res.ok) throw new Error("배너를 삭제하지 못했습니다.");
       setBanners((prev) => prev.filter((item) => item.id !== b.id));
-      alert("배너가 삭제되었습니다.");
+      toast.success("배너를 삭제했습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      toast.error((err instanceof Error ? err.message : "삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
