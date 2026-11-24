@@ -2,7 +2,7 @@
 .header-notification-menu { position: relative; display: flex; align-items: center; }
 .header-notification-menu summary { list-style: none; }
 .header-notification-menu summary::-webkit-details-marker { display: none; }
-.header-notification-button { position: relative; display: grid; width: 36px; height: 36px; place-items: center; color: #64748b; cursor: pointer; transition: color .16s ease; }
+.header-notification-button { position: relative; display: grid; width: 36px; height: 36px; place-items: center; color: #64748b; cursor: pointer; transition: color .16s ease, var(--press); }
 .header-notification-button:hover, .header-notification-button:focus-visible { color: #0369a1; }
 .header-notification-button .material-symbols-outlined { font-size: 20px; line-height: 1; }
 .header-notification-badge { position: absolute; top: 3px; right: 1px; min-width: 16px; height: 16px; border-radius: 999px; background: #ef4444; padding: 0 4px; color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-sizing: border-box; }

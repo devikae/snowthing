@@ -23,7 +23,8 @@ jobs:
         working-directory: ./frontend
     env:
       # 빌드 검증용 더미 공개값이다. 실제 값은 배포 워크플로가 저장소 변수에서 넣는다.
-      NEXT_PUBLIC_API_BASE_URL: https://example.invalid
+      # 주소는 본문 서버 렌더링 점검(scripts/check-body-ssr.mjs)이 띄우는 가짜 백엔드다. 바깥으로 나가는 요청은 없다.
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:18080
       NEXT_PUBLIC_KAKAO_MAP_APP_KEY: ci-dummy-kakao-key
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -38,3 +39,30 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run lint
       - run: npm run build
+      # standalone 출력에서 서버 렌더링에 필요한 파일이 빠지면 빌드는 통과하고 화면만 평문 본문으로 바뀐다. 실제로 띄워서 확인한다.
+      - name: Check post body server rendering (standalone output)
+        run: node scripts/check-body-ssr.mjs
+
+  # 운영과 같은 Dockerfile로 만든 실행 이미지에서도 본문이 서버에서 그려지는지 확인한다.
+  # Dockerfile의 복사 단계가 바뀌어 파일이나 링크가 빠지는 경우는 위 점검으로 잡히지 않는다.
+  image-body-ssr:
+    name: Frontend Image Body SSR Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:18080
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Build runtime image
+        run: docker build -f frontend/Dockerfile --build-arg NEXT_PUBLIC_API_BASE_URL="$NEXT_PUBLIC_API_BASE_URL" --build-arg NEXT_PUBLIC_KAKAO_MAP_APP_KEY=ci-dummy-kakao-key --tag snowthing-frontend:ci .
+      - name: Check post body server rendering (runtime image)
+        run: |
+          set -euo pipefail
+          # 호스트 네트워크로 띄워 컨테이너가 러너의 가짜 백엔드(127.0.0.1:18080)에 닿게 한다.
+          docker run -d --name frontend-ci --network host -e PORT=3199 snowthing-frontend:ci
+          BODY_SSR_TARGET_URL=http://127.0.0.1:3199 node frontend/scripts/check-body-ssr.mjs || { docker logs frontend-ci; exit 1; }

@@ -10,6 +10,7 @@ import { getResortReportDisplayName } from "../lib/resortReports";
 import { fetchViewer } from "../lib/viewer";
 import { SeasonLog, SeasonVisit, shareUrl } from "./types";
 import { readErrorMessage } from "../lib/http";
+import { confirm } from "../lib/feedback";
 
 interface ResortMaster {
   id: number;
@@ -138,7 +139,7 @@ export function SeasonLogApp() {
   };
 
   const deleteVisit = async (visit: SeasonVisit) => {
-    if (!window.confirm(`${koreanDate(visit.visitDate)} ${visit.resortName} 기록을 지울까요?`)) return;
+    if (!(await confirm({ title: `${koreanDate(visit.visitDate)} ${visit.resortName} 기록을 지울까요?`, confirmLabel: "지우기", danger: true }))) return;
     setBusy(true);
     setNotice("");
     try {
@@ -157,7 +158,7 @@ export function SeasonLogApp() {
 
   const setShare = async (enabled: boolean) => {
     if (!log) return;
-    if (!enabled && !window.confirm("공유를 끄면 지금 링크는 다시 열리지 않아요. 끌까요?")) return;
+    if (!enabled && !(await confirm({ title: "공유를 끌까요?", description: "지금 링크는 다시 열리지 않아요.", confirmLabel: "끄기", danger: true }))) return;
     setBusy(true);
     setNotice("");
     try {

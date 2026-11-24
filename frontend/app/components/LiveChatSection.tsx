@@ -9,6 +9,7 @@ import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
 import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
 import { csrfFetch } from "../lib/csrfFetch";
+import { readErrorMessage } from "../lib/http";
 import { formatKoreanDate, toDate } from "../lib/koreanDate";
 
 export interface MemberProfile {
@@ -429,8 +430,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           body: JSON.stringify({ days: banDays, reason: "라이브톡 차단과 함께 정지" }),
         });
         if (!suspend.ok) {
-          const data = await suspend.json().catch(() => null);
-          setToastError(`IP는 차단했지만 회원을 정지하지 못했습니다. ${data?.message ?? ""}`.trim());
+          setToastError(`IP는 차단했지만 회원을 정지하지 못했습니다. ${await readErrorMessage(suspend, "")}`.trim());
         }
       }
       setBanTargetId(null);
@@ -468,172 +468,174 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
         <small>일반 대화와 봇 질문은 공개되므로 연락처, 개인정보를 적지 마세요.</small>
       </aside>}
 
-      {/* 실시간 말풍선 피드 영역 */}
-      <div className="live-chat-body relative">
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          className="live-chat-feed"
-        >
-          {messages.length === 0 ? (
-            <div className="live-chat-empty">
-              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">forum</span>
-              <p>실시간 슬로프 현황이나 오늘의 라이딩 잡담을 나눠보세요!</p>
-            </div>
-          ) : (
-            messages.map((msg) => {
-              // 비회원은 같은 IP면 늘 같은 닉네임이라 닉네임으로 내 메시지를 알아본다. 같은 와이파이를 쓰는 사람과는 원래 이름이 같다.
-              const isMine = currentMember
-                ? msg.sender.publicId === currentMember.publicId
-                : myGuestMessageIds.has(msg.messageId) ||
-                  (myGuestNickname !== null && msg.sender.publicId.startsWith("anon-") && msg.sender.nickname === myGuestNickname);
-              const resort = msg.resortTag ? RESORT_MAP[msg.resortTag] : null;
-              return (
-                <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
-                  <div className="live-chat-message-meta">
-                    {!isMine && <CommentProfileAvatar nickname={msg.sender.nickname} profileImageUrl={msg.sender.profileImageUrl} className="live-chat-avatar" size={24} />}
-                    {!isMine && <strong>{msg.sender.nickname}</strong>}
-                    {isMine && !currentMember && <strong>{msg.sender.nickname} (나)</strong>}
-                    <span className="live-chat-message-tag">
-                      <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
-                      {resort ? resort.koreanName : "일반"}
-                    </span>
-                    <time>{formatRelativeTime(msg.sentAt)}</time>
-                    {isAdmin && !isMine && (
-                      <button
-                        type="button"
-                        onClick={() => void hideMessage(msg)}
-                        disabled={hidingId === msg.messageId}
-                        title="이 메시지만 모든 화면에서 지웁니다. 보낸 사람은 막지 않습니다."
-                        className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-60"
-                      >
-                        {hidingId === msg.messageId ? "가리는 중" : "가리기"}
-                      </button>
-                    )}
-                    {isAdmin && !isMine && (
-                      <button
-                        type="button"
-                        onClick={() => (banTargetId === msg.messageId ? closeBanPanel() : openBanPanel(msg))}
-                        title="이 사용자 IP 차단 및 최근 메시지 삭제"
-                        aria-expanded={banTargetId === msg.messageId}
-                        className="ml-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-100"
-                      >
-                        차단
-                      </button>
+      <div className="live-chat-shell">
+        {/* 실시간 말풍선 피드 영역 */}
+        <div className="live-chat-body relative">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="live-chat-feed"
+          >
+            {messages.length === 0 ? (
+              <div className="live-chat-empty">
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">forum</span>
+                <p>실시간 슬로프 현황이나 오늘의 라이딩 잡담을 나눠보세요!</p>
+              </div>
+            ) : (
+              messages.map((msg) => {
+                // 비회원은 같은 IP면 늘 같은 닉네임이라 닉네임으로 내 메시지를 알아본다. 같은 와이파이를 쓰는 사람과는 원래 이름이 같다.
+                const isMine = currentMember
+                  ? msg.sender.publicId === currentMember.publicId
+                  : myGuestMessageIds.has(msg.messageId) ||
+                    (myGuestNickname !== null && msg.sender.publicId.startsWith("anon-") && msg.sender.nickname === myGuestNickname);
+                const resort = msg.resortTag ? RESORT_MAP[msg.resortTag] : null;
+                return (
+                  <div key={msg.messageId} className={`live-chat-message ${isMine ? "mine" : "other"}`}>
+                    <div className="live-chat-message-meta">
+                      {!isMine && <CommentProfileAvatar nickname={msg.sender.nickname} profileImageUrl={msg.sender.profileImageUrl} className="live-chat-avatar" size={24} />}
+                      {!isMine && <strong>{msg.sender.nickname}</strong>}
+                      {isMine && !currentMember && <strong>{msg.sender.nickname} (나)</strong>}
+                      <span className="live-chat-message-tag">
+                        <i className={`rounded-full ${resort ? resort.markerClass : "bg-slate-400"}`} />
+                        {resort ? resort.koreanName : "일반"}
+                      </span>
+                      <time>{formatRelativeTime(msg.sentAt)}</time>
+                      {isAdmin && !isMine && (
+                        <button
+                          type="button"
+                          onClick={() => void hideMessage(msg)}
+                          disabled={hidingId === msg.messageId}
+                          title="이 메시지만 모든 화면에서 지웁니다. 보낸 사람은 막지 않습니다."
+                          className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-60"
+                        >
+                          {hidingId === msg.messageId ? "가리는 중" : "가리기"}
+                        </button>
+                      )}
+                      {isAdmin && !isMine && (
+                        <button
+                          type="button"
+                          onClick={() => (banTargetId === msg.messageId ? closeBanPanel() : openBanPanel(msg))}
+                          title="이 사용자 IP 차단 및 최근 메시지 삭제"
+                          aria-expanded={banTargetId === msg.messageId}
+                          className="ml-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-100"
+                        >
+                          차단
+                        </button>
+                      )}
+                    </div>
+                    <div className="live-chat-message-bubble">{msg.content}</div>
+                    {isAdmin && banTargetId === msg.messageId && (
+                      <ChatBanPanel
+                        nickname={msg.sender.nickname}
+                        canSuspend={isMemberSender(msg.sender)}
+                        days={banDays}
+                        setDays={setBanDays}
+                        suspend={banSuspend}
+                        setSuspend={setBanSuspend}
+                        busy={banBusy}
+                        onConfirm={() => void banMessageSender(msg)}
+                        onClose={closeBanPanel}
+                      />
                     )}
                   </div>
-                  <div className="live-chat-message-bubble">{msg.content}</div>
-                  {isAdmin && banTargetId === msg.messageId && (
-                    <ChatBanPanel
-                      nickname={msg.sender.nickname}
-                      canSuspend={isMemberSender(msg.sender)}
-                      days={banDays}
-                      setDays={setBanDays}
-                      suspend={banSuspend}
-                      setSuspend={setBanSuspend}
-                      busy={banBusy}
-                      onConfirm={() => void banMessageSender(msg)}
-                      onClose={closeBanPanel}
-                    />
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* 스크롤 앵커링: 새 메시지 알림 버튼 */}
-        {showScrollBottom && (
-          <button
-            type="button"
-            onClick={() => scrollToBottom("smooth")}
-            className="live-chat-scroll-btn"
-          >
-            <span>새 메시지 수신</span>
-            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">south</span>
-          </button>
-        )}
-
-        {/* 도배/링크 차단 개인 에러 토스트 */}
-        {toastError && (
-          <div className="live-chat-toast-error">
-            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">warning</span>
-            <span>{toastError}</span>
+                );
+              })
+            )}
           </div>
-        )}
-      </div>
 
-      {!chatEnabled && (
-        <p role="status" className="mx-3 mb-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
-          {isAdmin ? "라이브톡이 닫혀 있습니다. 관리자만 메시지를 보낼 수 있습니다." : "라이브톡이 잠시 닫혀 있어요. 잠시 후 다시 와 주세요."}
-        </p>
-      )}
+          {/* 스크롤 앵커링: 새 메시지 알림 버튼 */}
+          {showScrollBottom && (
+            <button
+              type="button"
+              onClick={() => scrollToBottom("smooth")}
+              className="live-chat-scroll-btn"
+            >
+              <span>새 메시지 수신</span>
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">south</span>
+            </button>
+          )}
 
-      {/* 하단 일체형 캡슐 입력 폼 바 */}
-      <form onSubmit={handleSubmit} className="live-chat-compose unified-capsule-form">
-        <div className="capsule-select-wrap">
-          <select
-            value={canSend ? selectedResort : ""}
-            onChange={handleResortChange}
-            disabled={!canSend}
-            aria-label="리조트 태그"
-            className="live-chat-compose-select capsule-select"
-          >
-            {RESORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          {/* 도배/링크 차단 개인 에러 토스트 */}
+          {toastError && (
+            <div className="live-chat-toast-error">
+              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">warning</span>
+              <span>{toastError}</span>
+            </div>
+          )}
         </div>
 
-        <input
-          type="text"
-          maxLength={100}
-          value={inputContent}
-          onChange={(e) => setInputContent(e.target.value)}
-          onClick={() => {
-            if (needsLogin) {
-              router.push("/login");
-            }
-          }}
-          onFocus={() => {
-            if (needsLogin) {
-              router.push("/login");
-            }
-          }}
-          disabled={chatClosed}
-          placeholder={
-            chatClosed
-              ? "라이브톡이 잠시 닫혀 있어요"
-              : currentMember
-              ? "메시지를 입력하세요"
-              : anonymousChatEnabled
-                ? myGuestNickname
-                  ? `${myGuestNickname}(으)로 대화 중이에요`
-                  : "로그인 없이 대화할 수 있어요 (닉네임 자동)"
-                : "로그인하고 라이브톡에 참여해 보세요"
-          }
-          className="live-chat-compose-input capsule-input"
-          aria-label="라이브톡 메시지"
-        />
+        {!chatEnabled && (
+          <p role="status" className="mx-3 mb-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+            {isAdmin ? "라이브톡이 닫혀 있습니다. 관리자만 메시지를 보낼 수 있습니다." : "라이브톡이 잠시 닫혀 있어요. 잠시 후 다시 와 주세요."}
+          </p>
+        )}
 
-        <button
-          type="submit"
-          disabled={chatClosed || Boolean(canSend && !inputContent.trim())}
-          aria-label={needsLogin ? "로그인" : "메시지 전송"}
-          className="live-chat-compose-submit capsule-send-btn"
-        >
-          {needsLogin ? (
-            <span>로그인</span>
-          ) : (
-            <>
-              <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_upward</span>
-              <span>전송</span>
-            </>
-          )}
-        </button>
-      </form>
+        {/* 하단 일체형 입력 폼 바 */}
+        <form onSubmit={handleSubmit} className="live-chat-compose unified-capsule-form">
+          <div className="capsule-select-wrap">
+            <select
+              value={canSend ? selectedResort : ""}
+              onChange={handleResortChange}
+              disabled={!canSend}
+              aria-label="리조트 태그"
+              className="live-chat-compose-select capsule-select"
+            >
+              {RESORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <input
+            type="text"
+            maxLength={100}
+            value={inputContent}
+            onChange={(e) => setInputContent(e.target.value)}
+            onClick={() => {
+              if (needsLogin) {
+                router.push("/login");
+              }
+            }}
+            onFocus={() => {
+              if (needsLogin) {
+                router.push("/login");
+              }
+            }}
+            disabled={chatClosed}
+            placeholder={
+              chatClosed
+                ? "라이브톡이 잠시 닫혀 있어요"
+                : currentMember
+                ? "메시지를 입력하세요"
+                : anonymousChatEnabled
+                  ? myGuestNickname
+                    ? `${myGuestNickname}(으)로 대화 중이에요`
+                    : "로그인 없이 대화할 수 있어요 (닉네임 자동)"
+                  : "로그인하고 라이브톡에 참여해 보세요"
+            }
+            className="live-chat-compose-input capsule-input"
+            aria-label="라이브톡 메시지"
+          />
+
+          <button
+            type="submit"
+            disabled={chatClosed || Boolean(canSend && !inputContent.trim())}
+            aria-label={needsLogin ? "로그인" : "메시지 전송"}
+            className="live-chat-compose-submit capsule-send-btn"
+          >
+            {needsLogin ? (
+              <span>로그인</span>
+            ) : (
+              <>
+                <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">arrow_upward</span>
+                <span>전송</span>
+              </>
+            )}
+          </button>
+        </form>
+      </div>
     </section>
   );
 }

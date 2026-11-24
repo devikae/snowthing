@@ -25,6 +25,7 @@ import { mentionPrefix, mergeReplies, replyCursor } from "../../lib/commentRepli
 // 서버가 넣은 본문 HTML이 첫 화면부터 뷰어와 같은 모양이 되도록 뷰어 스타일을 이 화면 첫 CSS에 싣는다.
 import "@toast-ui/editor/dist/toastui-editor-viewer.css";
 import { getJson, readApiError, readErrorMessage } from "../../lib/http";
+import { confirm, toast } from "../../lib/feedback";
 
 // 뷰어 코드를 받는 동안에는 서버가 만든 본문 HTML(없으면 평문 본문)이 자리를 채운다.
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
@@ -139,6 +140,8 @@ export default function PostDetailClient({
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
   const [scrapBusy, setScrapBusy] = useState(false);
+  // 추천 아이콘이 튕기는 움직임은 직접 누른 뒤에만 보인다. 이미 추천한 글을 열 때는 움직이지 않는다.
+  const [reactionTouched, setReactionTouched] = useState(false);
   const reactionBusyRef = useRef(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
@@ -203,7 +206,7 @@ export default function PostDetailClient({
 
     if (res.ok) {
       setIsDeleteModalOpen(false);
-      alert("글을 삭제했습니다.");
+      toast.success("글을 삭제했습니다.");
       router.push(post?.categoryCode ? `/posts?category=${encodeURIComponent(post.categoryCode)}` : "/posts");
     } else {
       throw new Error((await readApiError(res, "글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
@@ -336,7 +339,7 @@ export default function PostDetailClient({
           } else if (initialPost && res.status >= 500) {
             // 일시 장애면 서버가 그린 글을 그대로 둔다. 삭제(404)와 임시조치(403)는 아래처럼 안내로 바꾼다.
           } else {
-            const body = res.status === 403 ? await res.json().catch(() => null) : null;
+            const body = res.status === 403 ? await readApiError(res, "") : null;
             setErrorMsg(body?.code === "POST_009" ? body.message : res.status === 404 ? "게시글을 찾을 수 없거나 삭제되었습니다." : "게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
           }
         } catch {
@@ -355,7 +358,7 @@ export default function PostDetailClient({
   const handleTogglePostBlind = async () => {
     if (!post || blindBusy) return;
     const blinded = post.status !== "BLOCKED";
-    if (!confirm(blinded ? "이 글을 가릴까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." : "이 글의 가리기를 해제할까요?")) return;
+    if (!(await confirm(blinded ? { title: "이 글을 가릴까요?", description: "일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다.", confirmLabel: "가리기", danger: true } : { title: "이 글의 가리기를 해제할까요?", confirmLabel: "해제" }))) return;
     setBlindBusy(true);
     try {
       const res = await csrfFetch(API_ENDPOINTS.admin.blindPost(post.publicId), {
@@ -368,7 +371,7 @@ export default function PostDetailClient({
       }
       setPost((current) => (current ? { ...current, status: blinded ? "BLOCKED" : "NORMAL" } : current));
     } catch (error) {
-      alert(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+      toast.error(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setBlindBusy(false);
     }
@@ -376,7 +379,7 @@ export default function PostDetailClient({
 
   const handleToggleCommentBlind = async (comment: CommentItem) => {
     const blinded = !comment.blinded;
-    if (!confirm(blinded ? "이 댓글을 가릴까요? 일반 사용자에게는 내용이 보이지 않게 됩니다." : "이 댓글의 가리기를 해제할까요? 신고로 가린 댓글이면 신고 처리 화면에서 해제해야 합니다.")) return;
+    if (!(await confirm(blinded ? { title: "이 댓글을 가릴까요?", description: "일반 사용자에게는 내용이 보이지 않게 됩니다.", confirmLabel: "가리기", danger: true } : { title: "이 댓글의 가리기를 해제할까요?", description: "신고로 가린 댓글이면 신고 처리 화면에서 해제해야 합니다.", confirmLabel: "해제" }))) return;
     try {
       const res = await csrfFetch(API_ENDPOINTS.admin.blindComment(comment.commentId), {
         method: "PATCH",
@@ -389,12 +392,12 @@ export default function PostDetailClient({
       setReplyPagingByRootId({});
       await fetchComments();
     } catch (error) {
-      alert(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+      toast.error(errorText(error, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
     }
   };
 
-  const askLoginForReaction = () => {
-    if (confirm("추천과 비추천은 로그인해야 할 수 있어요. 로그인 화면으로 이동할까요?")) {
+  const askLoginForReaction = async () => {
+    if (await confirm({ title: "로그인이 필요합니다", description: "추천과 비추천은 로그인해야 할 수 있어요. 로그인 화면으로 이동할까요?", confirmLabel: "로그인" })) {
       router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
     }
   };
@@ -402,9 +405,10 @@ export default function PostDetailClient({
   const handleReaction = async (type: "LIKE" | "DISLIKE") => {
     // 비회원 추천과 비추천은 익명게시판에서만 받는다(서버도 같은 규칙으로 AUTH_020을 준다).
     if (!currentUserPublicId && post?.categoryCode !== "ANONYMOUS") {
-      askLoginForReaction();
+      void askLoginForReaction();
       return;
     }
+    setReactionTouched(true);
     // 응답 전에 다시 누르면 같은 상태(isActive)로 요청이 한 번 더 나간다. 응답이 올 때까지 받지 않는다.
     if (reactionBusyRef.current) return;
     reactionBusyRef.current = true;
@@ -433,7 +437,7 @@ export default function PostDetailClient({
 
       const errorData = await readApiError(res, "반응을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       if (errorData.code === "AUTH_020") {
-        askLoginForReaction();
+        void askLoginForReaction();
         return;
       }
       setReactionMsg(errorData.message);
@@ -459,7 +463,7 @@ export default function PostDetailClient({
         return;
       }
       if (res.status === 401) {
-        if (confirm("스크랩하려면 로그인이 필요해요. 로그인 화면으로 이동할까요?")) {
+        if (await confirm({ title: "로그인이 필요합니다", description: "스크랩하려면 로그인이 필요해요. 로그인 화면으로 이동할까요?", confirmLabel: "로그인" })) {
           router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
         }
         return;
@@ -498,7 +502,7 @@ export default function PostDetailClient({
     if (isSubmittingCommentRef.current || submittingComment) return;
     const text = parentId ? replyText : newCommentText;
     if (!text.trim()) {
-      alert("댓글 내용을 입력해 주세요.");
+      toast.error("댓글 내용을 입력해 주세요.");
       return;
     }
 
@@ -510,18 +514,18 @@ export default function PostDetailClient({
       if (!currentUserPublicId) {
         const pwd = parentId ? replyAnonPassword : commentAnonPassword;
         if (!pwd.trim()) {
-          alert("비밀번호를 입력해 주세요.");
+          toast.error("비밀번호를 입력해 주세요.");
           return;
         }
         if (pwd.trim().length < 4 || pwd.trim().length > 20) {
-          alert("비밀번호는 4~20자로 입력해 주세요.");
+          toast.error("비밀번호는 4~20자로 입력해 주세요.");
           return;
         }
         anonymousPassword = pwd.trim();
       }
     } else {
       if (!currentUserPublicId) {
-        if (confirm("댓글을 작성하려면 로그인이 필요합니다. 로그인 화면으로 이동할까요?")) {
+        if (await confirm({ title: "로그인이 필요합니다", description: "댓글을 작성하려면 로그인이 필요합니다. 로그인 화면으로 이동할까요?", confirmLabel: "로그인" })) {
           router.push(`/login?returnUrl=${encodeURIComponent(`/posts/${publicId}`)}`);
         }
         return;
@@ -579,9 +583,9 @@ export default function PostDetailClient({
         return;
       }
 
-      alert((await readApiError(res, "댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
+      toast.error((await readApiError(res, "댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.")).message);
     } catch {
-      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
+      toast.error("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       isSubmittingCommentRef.current = false;
       setSubmittingComment(false);
@@ -830,7 +834,7 @@ export default function PostDetailClient({
             )}
 
             {post.categoryCode !== "INQUIRY" && (
-            <div className="post-detail-reactions">
+            <div className="post-detail-reactions" data-touched={reactionTouched || undefined}>
               {/* 본문 아래에는 추천과 비추천만 둔다. 스크랩, 공유, 신고는 작성자 줄 오른쪽 도구에 있다. */}
               <div className="post-vote">
                 <button type="button" onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>

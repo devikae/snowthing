@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm, type ConfirmOptions } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import {
   type AdminMember,
   type AdminMemberListResponse,
@@ -75,7 +77,7 @@ export default function AdminMembersPage() {
       action === "suspend"
         ? `${member.nickname} 회원을 무기한 정지할까요? 접속이 바로 끊기고 해제할 때까지 로그인할 수 없습니다. 기간과 사유를 정하려면 회원 상세에서 정지하세요.`
         : `${member.nickname} 회원의 정지를 해제할까요?`;
-    return runAction(member, message, API_ENDPOINTS.admin.memberStatusAction(member.publicId, action), "회원 상태를 바꾸지 못했습니다.");
+    return runAction(member, ask(message, action === "suspend" ? "정지" : "정지 해제", action === "suspend"), API_ENDPOINTS.admin.memberStatusAction(member.publicId, action), "회원 상태를 바꾸지 못했습니다.");
   };
 
   const changeRole = (member: AdminMember, action: "grant-admin" | "revoke-admin") => {
@@ -83,11 +85,11 @@ export default function AdminMembersPage() {
       action === "grant-admin"
         ? `${member.nickname} 회원을 운영자로 지정할까요? 관리자 화면의 모든 기능을 쓸 수 있게 되고, 지금 접속은 끊겨 다시 로그인해야 합니다.`
         : `${member.nickname} 회원의 운영자 권한을 해제할까요? 관리자 화면에서 바로 로그아웃됩니다.`;
-    return runAction(member, message, API_ENDPOINTS.admin.memberRoleAction(member.publicId, action), "운영자 권한을 바꾸지 못했습니다.");
+    return runAction(member, ask(message, action === "grant-admin" ? "운영자 지정" : "권한 해제", true), API_ENDPOINTS.admin.memberRoleAction(member.publicId, action), "운영자 권한을 바꾸지 못했습니다.");
   };
 
-  const runAction = async (member: AdminMember, message: string, url: string, failure: string) => {
-    if (!window.confirm(message)) return;
+  const runAction = async (member: AdminMember, question: ConfirmOptions, url: string, failure: string) => {
+    if (!(await confirm(question))) return;
     setBusyId(member.publicId);
     setError(null);
     try {

@@ -37,7 +37,6 @@ function ComposeMessage() {
         listing={listingPublicId ? { publicId: listingPublicId, title: listingTitle || "판매글" } : null}
         // 주소로 바로 들어와 이전 화면이 없으면 사이트 밖으로 나가지 않게 쪽지함으로 보낸다.
         onCancel={() => (window.history.length > 1 ? router.back() : router.push("/messages"))}
-        onUnauthorized={redirectToLogin}
         onSent={() => {
           notifyMessagesUpdated();
           router.replace("/messages?box=sent");
