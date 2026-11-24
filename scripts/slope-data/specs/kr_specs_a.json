@@ -91,9 +91,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": "무주 익스프레스",
+    "liftName": null,
     "sourceUrl": "https://www.mdysresort.com/ski/slope_lift.asp",
-    "note": "만선 베이스. 경사도는 %로만 공시: 최고 35%, 최저 9.3%, 평균 23.1% (도 환산 안 함). 표고차 199m, 면적 38,032. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
+    "note": "만선 베이스. 경사도는 %로만 공시: 최고 35%, 최저 9.3%, 평균 23.1% (도 환산 안 함). 표고차 199m, 면적 38,032. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 2026-11-25 이용 리프트에서 무주 익스프레스를 뺐다(공식 운행 리프트가 아님).",
     "maxGradientPercent": 35.0,
     "avgGradientPercent": 23.1
   },
@@ -147,9 +147,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": "무주 익스프레스",
+    "liftName": null,
     "sourceUrl": "https://www.mdysresort.com/ski/slope_lift.asp",
-    "note": "만선 베이스. 경사도는 %로만 공시: 최고 76%, 최저 28%, 평균 39% (도 환산 안 함). 표고차 250m, 면적 21,360. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
+    "note": "만선 베이스. 경사도는 %로만 공시: 최고 76%, 최저 28%, 평균 39% (도 환산 안 함). 표고차 250m, 면적 21,360. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 2026-11-25 이용 리프트에서 무주 익스프레스를 뺐다(공식 운행 리프트가 아님).",
     "maxGradientPercent": 76.0,
     "avgGradientPercent": 39.0
   },

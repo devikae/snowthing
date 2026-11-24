@@ -56,7 +56,8 @@
   "_lifts": {
     "1554480096": "플라워",
     "1554480097": "버드",
-    "1554480098": "마운틴"
+    "1554480098": null
   },
-  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.oakvalley.co.kr/ski/introduction/slope, https://oakvalley.co.kr/assets/index-9ab30d3c.js, https://oakvalley.co.kr/assets/ski_rest_map-a380f8a9.png, https://api.oakvalley.co.kr/api/v1/skis/slopes"
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.oakvalley.co.kr/ski/introduction/slope, https://oakvalley.co.kr/assets/index-9ab30d3c.js, https://oakvalley.co.kr/assets/ski_rest_map-a380f8a9.png, https://api.oakvalley.co.kr/api/v1/skis/slopes",
+  "_lifts_removed_note": "마운틴: 공식 사이트(슬로프 3면, 플라워와 버드 2기 운영)와 공식 맵 어디에도 없고 OSM에만 이름이 있다. 공식 자료 기준(2026-11-25 사용자 결정)이라 맵에서 뺐다."
 }

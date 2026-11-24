@@ -6,6 +6,8 @@
 --    경사는 NULL로 바꿨다. 근거는 scripts/slope-data/specs의 note와 manual 파일에 있다.
 --    곤지암은 공식 슬로프 안내 표(사용자 결정)에 맞춰 홈봇 1/2, 3, 4 선을 나누고 CNP 1 평균 경사를 표의 11.3%(6.4°)로 바꿨다.
 -- 3) 관계(slope_connection): 선이 바뀐 리조트는 관계를 지우고 build_slope_data.py가 다시 계산한 줄로 넣는다.
+-- 4) 2026-11-25 국내 리조트는 공식 자료 기준(사용자 결정): 운행하지 않는 리프트(무주 익스프레스 25/26 운휴, 오크밸리 마운틴 공식 자료에 없음)를
+--    이용 리프트에서 뺐다.
 -- 055는 운영에 적용돼 고칠 수 없어서, 스크립트가 055에 만든 차이를 이 파일로 옮겼다. 직접 고치지 말고 스크립트로 다시 만든다.
 -- 실행 순서: 앱 배포와 상관없다. 화면은 slope, slope_connection 조회만 하므로 적용 중에 관계가 잠깐 비어도 비슷한 슬로프 추천만 잠깐 빈다.
 -- 여러 번 실행해도 안전하다 (INSERT IGNORE, 같은 값 UPDATE, 리조트별 관계 지우고 다시 넣기).
@@ -78,11 +80,9 @@ UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_na
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`osm_way_ids` = '293598169,975335062', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '웨스턴';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '터보';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '썬다운';
-UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '무주 익스프레스', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '프리웨이';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '파노라마';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '크루저', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '레이더스 하단';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '라이너', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '야마가';
-UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '무주 익스프레스', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '레이더스 상단';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '에코', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '스피츠 하단';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '코러스', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '실크로드 하단';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '곤도라, 하모니', s.`updated_at` = NOW(6) WHERE r.`code` = 'MUJU' AND s.`name` = '실크로드 상단';
@@ -127,9 +127,6 @@ UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_na
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '체리', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '첼린지2 (CHALLENGE2)';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '체리', s.`updated_at` = NOW(6) WHERE r.`code` = 'O2_RESORT' AND s.`name` = '첼린지3 (CHALLENGE3)';
 UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`osm_way_ids` = '-1000071837198', s.`updated_at` = NOW(6) WHERE r.`code` = 'OAK_VALLEY' AND s.`name` = 'F';
-UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'OAK_VALLEY' AND s.`name` = 'A';
-UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'OAK_VALLEY' AND s.`name` = 'D';
-UPDATE `slope` s JOIN `resort` r ON r.`resort_id` = s.`resort_id` SET s.`lift_name` = '마운틴', s.`updated_at` = NOW(6) WHERE r.`code` = 'OAK_VALLEY' AND s.`name` = 'B';
 
 -- ALPENSIA 관계: 선이 바뀌어 다시 계산한 줄로 바꾼다
 DELETE c FROM `slope_connection` c JOIN `slope` s ON s.`slope_id` = c.`slope_id` JOIN `resort` r ON r.`resort_id` = s.`resort_id` WHERE r.`code` = 'ALPENSIA';

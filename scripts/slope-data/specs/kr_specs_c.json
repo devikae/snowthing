@@ -211,9 +211,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": "마운틴",
+    "liftName": null,
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
-    "note": "listed only in official open-status API; no spec numbers published on official site"
+    "note": "listed only in official open-status API; no spec numbers published on official site 2026-11-25 이용 리프트에서 마운틴를 뺐다(공식 운행 리프트가 아님)."
   },
   {
     "resortCode": "OAK_VALLEY",
@@ -223,9 +223,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": "마운틴",
+    "liftName": null,
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
-    "note": "listed only in official open-status API; no spec numbers published on official site"
+    "note": "listed only in official open-status API; no spec numbers published on official site 2026-11-25 이용 리프트에서 마운틴를 뺐다(공식 운행 리프트가 아님)."
   },
   {
     "resortCode": "OAK_VALLEY",
@@ -235,8 +235,8 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": "마운틴",
+    "liftName": null,
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
-    "note": "listed only in official open-status API; no spec numbers published on official site"
+    "note": "listed only in official open-status API; no spec numbers published on official site 2026-11-25 이용 리프트에서 마운틴를 뺐다(공식 운행 리프트가 아님)."
   }
 ]

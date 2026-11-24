@@ -350,7 +350,7 @@ def fit_anchors(anchors):
     return lambda x, y: (la[0] * x + la[1] * y + la[2], lo[0] * x + lo[1] * y + lo[2])
 
 
-def build_map(code, slopes):
+def build_map(code, slopes, official_only=False):
     path = HERE / "osm" / f"{code}.json"
     if not path.exists():
         return None, {}
@@ -524,10 +524,15 @@ def build_map(code, slopes):
                     cnt += 1
         return cnt > 0 and score > 0.25 * cnt
 
+    # 국내 리조트는 리조트 공식 자료에 있는 것만 맵에 그린다(2026-11-25 사용자 결정).
+    # 슬로프는 공식 슬로프와 짝지어진 선만, 리프트는 공식 이름이 있는 선만 남긴다. 운행하지 않는 리프트는 _lifts에서 null로 뺀다.
+    official_ways = {w for ways in matched.values() for w in ways}
     ways_out = []
     for e in elements:
         tags = e["tags"]
         is_lift = tags.get("piste:type") != "downhill"
+        if official_only and not is_lift and e["id"] not in official_ways:
+            continue
         if is_lift and e["id"] in lift_names and lift_names[e["id"]] is None:
             continue
         if is_lift and tags.get("aerialway") in ("zip_line", "station"):
@@ -535,6 +540,8 @@ def build_map(code, slopes):
         name = tags.get("name") or tags.get("piste:name") or None
         if is_lift and e["id"] in lift_names:
             name = lift_names[e["id"]]
+        if official_only and is_lift and not name:
+            continue
         pts = shifted[e["id"]]
         if is_lift and lift_is_reversed(pts):
             pts = list(reversed(pts))
@@ -549,8 +556,17 @@ def build_map(code, slopes):
                 "pts": [[round(x, 1), round(y, 1)] for x, y in pts],
             }
         )
-    width = max(p[0] for pts in shifted.values() for p in pts)  # noqa: E501
-    height = max(p[1] for pts in shifted.values() for p in pts)
+    if official_only and ways_out:
+        # 뺀 선이 차지하던 빈 자리를 없애고 남은 선에 맞춰 맵 범위를 다시 잡는다.
+        ox = min(p[0] for w in ways_out for p in w["pts"])
+        oy = min(p[1] for w in ways_out for p in w["pts"])
+        for w in ways_out:
+            w["pts"] = [[round(x - ox, 1), round(y - oy, 1)] for x, y in w["pts"]]
+        width = max(p[0] for w in ways_out for p in w["pts"])
+        height = max(p[1] for w in ways_out for p in w["pts"])
+    else:
+        width = max(p[0] for pts in shifted.values() for p in pts)  # noqa: E501
+        height = max(p[1] for pts in shifted.values() for p in pts)
     map_json = {
         "resortCode": code,
         "attribution": "© OpenStreetMap contributors (ODbL)"
@@ -573,14 +589,14 @@ def sql_str(value):
 
 
 def main():
-    specs, _ = load_specs()
+    specs, jp_codes = load_specs()
     # 모든 리조트를 다 만든 뒤에만 파일을 쓴다. 중간에 실패하면 기존 맵과 SQL을 그대로 둔다.
     staged_maps: dict[str, str] = {}
     slope_rows = []
     connection_rows = []
     report = []
     for code, slopes in specs.items():
-        map_json, match = build_map(code, slopes)
+        map_json, match = build_map(code, slopes, official_only=code not in jp_codes)
         matched, slope_lines = match if match else ({}, {})
         if map_json:
             staged_maps[f"{code.lower().replace('_', '-')}.json"] = json.dumps(
