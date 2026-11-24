@@ -9,6 +9,34 @@ html .content-compose-page .toast-editor-wrapper :is(.toastui-editor-toolbar,.to
 html .content-compose-page .toast-editor-wrapper .tab-item { border-color: var(--snow-border); background: var(--snow-surface-low); color: var(--snow-muted); }
 html .content-compose-page .toast-editor-wrapper .tab-item.active { border-color: var(--snow-border); background: var(--snow-canvas); color: var(--snow-ink); }
 html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-defaultUI-toolbar button { filter: invert(1); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper :is(.toastui-editor-md-splitter,.toastui-editor-toolbar-divider) { background-color: var(--snow-border); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-md-tab-container { border-bottom-color: var(--snow-border); background-color: var(--snow-surface-low); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-defaultUI-toolbar .scroll-sync::before { color: var(--snow-muted); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-defaultUI-toolbar .scroll-sync.active::before { color: var(--alpine-sky); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-dropdown-toolbar { border-color: var(--snow-border-strong); background-color: var(--snow-surface-mid); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-md-table .toastui-editor-md-table-cell { color: var(--snow-ink); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-md-code-block-line-background { background-color: var(--snow-surface-mid); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-md-code { background-color: #35262a; }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-md-code.toastui-editor-md-marked-text { color: #f4a4b8; }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper :is(.toastui-editor-md-block-quote .toastui-editor-md-marked-text,.toastui-editor-md-list-item .toastui-editor-md-meta,.toastui-editor-md-meta,.toastui-editor-md-html,.toastui-editor-md-link.toastui-editor-md-link-url.toastui-editor-md-marked-text) { color: var(--snow-muted); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper :is(.toastui-editor-md-delimiter,.toastui-editor-md-code.toastui-editor-md-delimiter,.toastui-editor-md-thematic-break,.toastui-editor-md-link,.toastui-editor-md-table,.toastui-editor-md-block-quote) { color: var(--snow-faint); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper :is(.toastui-editor-md-list-item-style.toastui-editor-md-list-item-odd,.toastui-editor-md-link.toastui-editor-md-link-desc.toastui-editor-md-marked-text) { color: var(--alpine-sky); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-md-list-item-style.toastui-editor-md-list-item-even { color: #f87171; }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper :is(.toastui-editor-popup,.toastui-editor-context-menu) { border-color: var(--snow-border-strong); background-color: var(--snow-canvas); color: var(--snow-ink); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper :is(.toastui-editor-popup-add-heading ul li:hover,.toastui-editor-context-menu li:not(.disabled):hover) { background-color: var(--snow-surface-mid); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-popup-body label { color: var(--snow-ink-soft); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-popup-add-image .toastui-editor-tabs .tab-item { border-bottom-color: var(--snow-border); color: var(--snow-muted); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-popup-add-image .toastui-editor-tabs .tab-item.active { border-bottom-color: var(--alpine-sky); color: var(--alpine-sky); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-popup-add-image .toastui-editor-file-name { border-color: var(--snow-border-strong); color: var(--snow-ink-soft); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper :is(.toastui-editor-popup-add-image .toastui-editor-file-select-button,.toastui-editor-defaultUI .toastui-editor-close-button) { border-color: var(--snow-border-strong); background-color: var(--snow-surface-mid); color: var(--snow-ink); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-defaultUI .toastui-editor-ok-button { background-color: var(--alpine-sky); color: #09090b; }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-popup-add-table .toastui-editor-table-cell { border-color: var(--snow-border); background-color: var(--snow-canvas); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-popup-add-table .toastui-editor-table-cell.header { background-color: var(--snow-surface-mid); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-popup-add-table .toastui-editor-table-description { color: var(--snow-ink-soft); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-context-menu .menu-group { border-bottom-color: var(--snow-border); color: var(--snow-ink); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-context-menu li.disabled { color: var(--snow-muted); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-ww-code-block-language { border-color: var(--snow-border-strong); background-color: var(--snow-canvas); }
+html[data-theme="dark"] .content-compose-page .toast-editor-wrapper .toastui-editor-ww-code-block-language input { color: var(--snow-ink); }
 html .content-compose-page {
   width: min(100% - 48px, 960px);
   max-width: 960px;
@@ -230,8 +258,37 @@ html .reply-composer-submit:disabled { border-color: var(--snow-border-strong); 
   html .reply-composer { margin-left: 45px; }
   html .reply-composer.nested { margin-left: 34px; }
 }
+/* Toast UI 기본 CSS는 #222 등 라이트 전용 색상을 요소마다 직접 지정한다. 에디터(WYSIWYG·미리보기)와 상세 뷰어 모두 사이트 토큰으로 맞춘다. */
 html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents { color: var(--snow-ink-soft); font: 400 16px/1.8 var(--font-hanken); }
-html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(p,li) { color: inherit; font-size: 16px; line-height: 1.8; }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(p,ul,ol,menu,dir,li,div) { color: var(--snow-ink-soft); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(p,li) { font-size: 16px; line-height: 1.8; }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(h1,h2,h3,h4,h5,h6) { color: var(--snow-ink); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents h1 { border-bottom-color: var(--snow-border-strong); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents h2 { border-bottom-color: var(--snow-border); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents ul > li:not(.task-list-item)::before { background-color: var(--snow-muted); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents ol > li::before { color: var(--snow-muted); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents blockquote { border-left-color: var(--snow-border-strong); color: var(--snow-muted); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents blockquote :is(p,ul,ol,li,div) { color: var(--snow-muted); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents del { color: var(--snow-muted); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents hr { border-top-color: var(--snow-border); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents a { color: var(--alpine-sky); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents pre { background-color: var(--snow-surface-mid); color: var(--snow-ink); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents pre code { background-color: transparent; color: var(--snow-ink); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :not(pre) > code { background-color: #35262a; color: #f4a4b8; }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents table { border-color: var(--snow-border-strong); color: var(--snow-ink-soft); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(th,td) { border-color: var(--snow-border-strong); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents th { background-color: var(--snow-surface-mid); color: var(--snow-ink); font-weight: 600; }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents th p { color: var(--snow-ink); }
+html :is(.content-compose-page,.content-detail-page) .toastui-editor-contents td p { color: var(--snow-ink-soft); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents td.toastui-editor-cell-selected { background-color: rgba(96, 165, 250, 0.25); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents th.toastui-editor-cell-selected { background-color: rgba(96, 165, 250, 0.35); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents .toastui-editor-md-preview-highlight::after,
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents :is(th,td).toastui-editor-md-preview-highlight { background-color: rgba(250, 204, 21, 0.14); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents th.toastui-editor-md-preview-highlight { color: var(--snow-ink); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents .task-list-item:not(.checked)::before { background-color: transparent; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Crect x='0.5' y='0.5' width='17' height='17' rx='2' fill='none' stroke='%23a1a1aa'/%3E%3C/svg%3E"); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents .toastui-editor-ww-code-block:after { border: 1px solid var(--snow-border-strong); background-color: var(--snow-surface-low); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23fafafa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-size: 14px 14px; color: var(--snow-ink); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents .toastui-editor-custom-block-editor { border-color: var(--snow-border-strong); background: var(--snow-surface-mid); color: var(--snow-ink); }
+html[data-theme="dark"] :is(.content-compose-page,.content-detail-page) .toastui-editor-contents .toastui-editor-custom-block-view .info { color: var(--alpine-sky); }
 
 /* 게시글 상세는 오른쪽 사이드바가 없으므로 빈 256px 칸을 두지 않고 본문을 가운데에 둔다. */
 @media(min-width:901px) {

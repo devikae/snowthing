@@ -171,8 +171,11 @@ export default function ResortReportsPage() {
                 </span>
                 <div className="snow-empty-copy">
                   <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>
-                  <span>첫 번째 현장 설질, 슬로프 대기열 소식을 남겨 보세요.</span>
+                  <span>제보는 홈 화면의 오늘의 설질 칸에서 남길 수 있어요.</span>
                 </div>
+                <Link href="/" className="home-widget-retry">
+                  홈에서 제보 남기기
+                </Link>
               </div>
             ) : (
               reports.map((report) => {
