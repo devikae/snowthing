@@ -33,7 +33,7 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 33,
-    "liftName": "스위트셔틀, 키위",
+    "liftName": "스위트셔틀",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
     "note": "평균경사 15% only (no degrees published); 표고차 178m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 15.0
@@ -85,7 +85,7 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 39,
-    "liftName": "스위트셔틀, 키위",
+    "liftName": "스위트셔틀",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
     "note": "평균경사 19% only (no degrees published); 표고차 526m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 19.0
@@ -98,7 +98,7 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 37,
-    "liftName": "스위트셔틀, 키위",
+    "liftName": "스위트셔틀",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
     "note": "평균경사 36% only (no degrees published); 표고차 380m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 36.0
@@ -211,7 +211,7 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": null,
+    "liftName": "마운틴",
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
     "note": "listed only in official open-status API; no spec numbers published on official site"
   },
@@ -223,7 +223,7 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": null,
+    "liftName": "마운틴",
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
     "note": "listed only in official open-status API; no spec numbers published on official site"
   },
@@ -235,7 +235,7 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": null,
-    "liftName": null,
+    "liftName": "마운틴",
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
     "note": "listed only in official open-status API; no spec numbers published on official site"
   }

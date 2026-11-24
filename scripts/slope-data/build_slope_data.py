@@ -490,15 +490,54 @@ def build_map(code, slopes):
     unknown = [i for i in lift_names if i not in {e["id"] for e in lifts}]
     if unknown:
         raise ValueError(f"{code}: _lifts에 OSM 리프트가 아닌 way ID {unknown}")
+    piste_segs = [
+        shifted[e["id"]]
+        for e in elements
+        if e["tags"].get("piste:type") == "downhill" and len(shifted[e["id"]]) >= 2
+    ]
+
+    def lift_is_reversed(pts):
+        if len(pts) < 2:
+            return False
+        p0, p1 = pts[0], pts[-1]
+        lx, ly = p1[0] - p0[0], p1[1] - p0[1]
+        llen = math.hypot(lx, ly)
+        if llen < 10:
+            return False
+        lm = ((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2)
+        score = 0.0
+        cnt = 0
+        for pi in piste_segs:
+            q0, q1 = pi[0], pi[-1]
+            qm = ((q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2)
+            if min(
+                math.dist(lm, qm),
+                math.dist(p0, q0),
+                math.dist(p0, q1),
+                math.dist(p1, q0),
+                math.dist(p1, q1),
+            ) <= 300:
+                px, py = q1[0] - q0[0], q1[1] - q0[1]
+                plen = math.hypot(px, py)
+                if plen > 20:
+                    score += (lx * px + ly * py) / (llen * plen)
+                    cnt += 1
+        return cnt > 0 and score > 0.25 * cnt
+
     ways_out = []
     for e in elements:
         tags = e["tags"]
         is_lift = tags.get("piste:type") != "downhill"
         if is_lift and e["id"] in lift_names and lift_names[e["id"]] is None:
             continue
+        if is_lift and tags.get("aerialway") in ("zip_line", "station"):
+            continue
         name = tags.get("name") or tags.get("piste:name") or None
         if is_lift and e["id"] in lift_names:
             name = lift_names[e["id"]]
+        pts = shifted[e["id"]]
+        if is_lift and lift_is_reversed(pts):
+            pts = list(reversed(pts))
         ways_out.append(
             {
                 "id": e["id"],
@@ -507,7 +546,7 @@ def build_map(code, slopes):
                 "difficulty": tags.get("piste:difficulty"),
                 "liftType": tags.get("aerialway"),
                 **({"drawn": True} if e.get("drawn") else {}),
-                "pts": [[round(x, 1), round(y, 1)] for x, y in shifted[e["id"]]],
+                "pts": [[round(x, 1), round(y, 1)] for x, y in pts],
             }
         )
     width = max(p[0] for pts in shifted.values() for p in pts)  # noqa: E501

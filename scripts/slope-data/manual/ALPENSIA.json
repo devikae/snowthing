@@ -5,7 +5,9 @@
     478695577
   ],
   "_lifts": {
-    "477491141": "1호기"
+    "477491141": "1호기",
+    "477491142": "2호기",
+    "477491143": "3호기"
   },
   "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.alpensia.com/ski/introduction-slope.do (ALPHA 설명: 'ALPHA 코스로 올라가는 1호기 리프트'), https://www.alpensia.com/ski/introduction.do ('초심자 전용 슬로프(Alpha)와 리프트(1호기)'), https://www.alpensia.com/images/ski/place_slope.jpg (official slope map)"
 }
