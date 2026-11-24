@@ -8,8 +8,8 @@ import { SEASON_PASS_PRICE_CHECKED_AT, currentPass } from "../../lib/seasonPassP
 import { SITE_URL, publicPageMetadata } from "../../lib/siteMetadata";
 import { cameraSlug, resortSlug } from "../../resort-cam/types";
 import { formatGradient, formatLength } from "../../slopes/specs";
-import { findResort, getOpenCarpools, getOpenings, getSlopeBoard, getSlopeSpecs, getTodayReports, getWeather } from "../data";
-import { formatKstStamp, formatKstTime, formatOpeningDate, openingSummary, openingView, passPriceFor, won } from "../format";
+import { findResort, getOpenCarpools, getOpenings, getSlopeSpecs, getTodayReports, getWeather } from "../data";
+import { formatKstTime, formatOpeningDate, openingSummary, openingView, passPriceFor, won } from "../format";
 import { JoinPrompt } from "../JoinPrompt";
 import styles from "../resorts.module.css";
 
@@ -31,8 +31,8 @@ export async function generateMetadata({ params }: Params) {
     openingView(openings?.resorts.find((item) => item.resortCode === resort.code), kstDateKey(new Date())),
   );
   return publicPageMetadata(
-    `${resort.name} 개장일, 날씨, 슬로프 현황, 시즌권 가격`,
-    `${resort.regionName} ${resort.name}${opening ? `(${opening})` : ""}의 개장일, 기온, 슬로프캠 ${resort.cameras.length}개, 슬로프 운영 현황, 오늘의 설질 제보, 카풀, 시즌권과 리프트권 가격을 한 화면에서 확인하세요.`,
+    `${resort.name} 개장일, 날씨, 슬로프맵, 시즌권 가격`,
+    `${resort.regionName} ${resort.name}${opening ? `(${opening})` : ""}의 개장일, 날씨, 슬로프캠, 슬로프맵, 오늘의 설질, 카풀, 시즌권 가격을 한 페이지에 모았습니다.`,
     `/resorts/${resortSlug(resort.code)}`,
   );
 }
@@ -42,10 +42,9 @@ export default async function ResortLandingPage({ params }: Params) {
   const { resort, resorts } = await findResort((await params).resortCode);
   if (!resort) notFound();
 
-  const [openings, weather, board, specs, reports, carpools] = await Promise.all([
+  const [openings, weather, specs, reports, carpools] = await Promise.all([
     getOpenings(),
     getWeather(resort.code),
-    getSlopeBoard(),
     getSlopeSpecs(),
     getTodayReports(),
     getOpenCarpools(),
@@ -56,7 +55,6 @@ export default async function ResortLandingPage({ params }: Params) {
   const slug = resortSlug(resort.code);
   const path = `/resorts/${slug}`;
   const opening = openingView(openings?.resorts.find((item) => item.resortCode === resort.code), today);
-  const slopeStatus = board?.find((item) => item.resortCode === resort.code);
   const spec = specs?.find((item) => item.code === resort.code);
   const resortReports = reports?.filter((item) => item.resortCode === resort.code) ?? null;
   // 출발이 가까운 순, 같은 시각이면 ID 순으로 고정한다.
@@ -72,7 +70,7 @@ export default async function ResortLandingPage({ params }: Params) {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: `${resort.name} 개장일, 날씨, 슬로프 현황, 시즌권 가격`,
+    name: `${resort.name} 개장일, 날씨, 슬로프맵, 시즌권 가격`,
     url: `${SITE_URL}${path}`,
     inLanguage: "ko-KR",
     isPartOf: { "@id": `${SITE_URL}/#website` },
@@ -106,7 +104,7 @@ export default async function ResortLandingPage({ params }: Params) {
             )}
           </div>
           <p className={styles.lead}>
-            개장일, 기온, 슬로프캠, 슬로프 운영 현황, 오늘의 설질 제보, 카풀, 시즌권과 리프트권 가격을 한 화면에 모았습니다.
+            {resort.name}의 개장일, 날씨, 슬로프, 설질, 카풀, 시즌권 가격을 한 페이지에 모았습니다.
           </p>
         </header>
 
@@ -157,44 +155,21 @@ export default async function ResortLandingPage({ params }: Params) {
           </section>
 
           <section className={styles.card} aria-labelledby="slope-title">
-            <h2 id="slope-title">슬로프 운영 현황</h2>
-            {!board ? (
-              <p className={styles.empty}>운영 현황을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.</p>
-            ) : !slopeStatus?.supported ? (
-              <p className={styles.empty}>공식 사이트에서 현황을 받을 수 없어 아직 보여 드리지 못합니다.</p>
-            ) : !slopeStatus.collectedAt ? (
-              <p className={styles.empty}>
-                {opening.kind === "upcoming" ? "시즌 개장 전입니다. " : ""}아직 받은 현황이 없습니다.
-              </p>
-            ) : (
-              <>
-                <p className={styles.figure}>
-                  <strong data-open={(slopeStatus.openSlopeCount ?? 0) > 0}>{slopeStatus.openSlopeCount ?? 0}</strong>
-                  <span className={styles.figureSub}>
-                    / {slopeStatus.totalSlopeCount ?? slopeStatus.slopes.length}면 운영
-                  </span>
-                </p>
-                <p className={styles.note}>
-                  {slopeStatus.operatingNote ? `운영 시간: ${slopeStatus.operatingNote}. ` : ""}
-                  {formatKstStamp(slopeStatus.collectedAt)} 갱신
-                  {slopeStatus.stale && ". 최근 갱신에 실패해 이전 값을 보여 줍니다"}
-                </p>
-              </>
-            )}
-            {spec && (
+            <h2 id="slope-title">슬로프</h2>
+            {spec ? (
               <dl className={styles.facts}>
                 <div><dt>슬로프</dt><dd>{spec.slopeCount}개</dd></div>
                 <div><dt>가장 긴 슬로프</dt><dd>{formatLength(spec.longestLengthM)}</dd></div>
                 <div><dt>최대 경사</dt><dd>{formatGradient(spec.steepestMaxGradient)}</dd></div>
               </dl>
+            ) : (
+              <p className={styles.empty}>{specs ? "이 리조트는 아직 슬로프맵이 없습니다." : "슬로프 정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요."}</p>
             )}
-            <div className={styles.links}>
-              <Link href={`/slopes#${slug}`}>슬로프 현황 보기</Link>
-              {spec && <Link href={`/slopes/${slug}`}>슬로프 제원과 코스 맵</Link>}
-              {slopeStatus?.sourceUrl && (
-                <a href={slopeStatus.sourceUrl} target="_blank" rel="noopener noreferrer">공식 페이지</a>
-              )}
-            </div>
+            {spec && (
+              <div className={styles.links}>
+                <Link href={`/slopes/${slug}`}>슬로프맵과 제원 보기</Link>
+              </div>
+            )}
           </section>
 
           <section className={styles.card} aria-labelledby="cam-title">
@@ -203,7 +178,6 @@ export default async function ResortLandingPage({ params }: Params) {
               <p className={styles.empty}>등록된 슬로프캠이 없습니다.</p>
             ) : (
               <>
-                <p className={styles.note}>리조트가 제공하는 카메라 {resort.cameras.length}개를 연결해 두었습니다.</p>
                 <ul className={styles.chips}>
                   {resort.cameras.slice(0, CAMERA_LINKS).map((camera) => (
                     <li key={camera.code}>

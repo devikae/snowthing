@@ -581,6 +581,32 @@ class DmMailOutboxIntegrationTest {
         }
 
         @Test
+        @DisplayName("새 받는 사람을 워커 두 개가 동시에 잠가도 교착 상태 없이 한쪽만 잡는다")
+        void twoWorkersLockNewRecipientWithoutDeadlock() throws Exception {
+            // 예전에는 잠그는 트랜잭션 안에서 없는 상태 행을 FOR UPDATE로 찾은 뒤 INSERT해, 두 트랜잭션의 빈 자리 잠금이 서로를 막았다.
+            long recipientId = receiver.getId();
+
+            List<Boolean> locked =
+                    runConcurrently(
+                            2,
+                            () -> {
+                                transactions.executeWithoutResult(
+                                        status -> outbox.ensureRecipientState(recipientId));
+                                return transactions.execute(
+                                        status -> {
+                                            boolean got =
+                                                    outbox.lockRecipient(recipientId).isPresent();
+                                            sleep(Duration.ofMillis(200));
+                                            return got;
+                                        });
+                            });
+
+            assertThat(locked).containsExactlyInAnyOrder(true, false);
+            assertThat(count("dm_mail_recipient_state", "recipient_member_id", recipientId))
+                    .isEqualTo(1);
+        }
+
+        @Test
         @DisplayName("워커 두 개가 동시에 폴링해도 받는 사람마다 메일은 정확히 한 통이다")
         void twoWorkersManyRecipients() throws Exception {
             List<Member> receivers = new ArrayList<>();
@@ -703,6 +729,15 @@ class DmMailOutboxIntegrationTest {
                 "SELECT COUNT(*) FROM direct_message WHERE receiver_id = ?",
                 Integer.class,
                 to.getId());
+    }
+
+    private static void sleep(Duration duration) {
+        try {
+            Thread.sleep(duration.toMillis());
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(interrupted);
+        }
     }
 
     private int count(String table, String column, long id) {

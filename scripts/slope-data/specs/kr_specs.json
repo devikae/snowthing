@@ -7,9 +7,9 @@
   "avgGradient": 9.48,
   "maxGradient": 13.6,
   "widthM": 41.3,
-  "liftName": null,
+  "liftName": "빅토리아",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅰ\". 표고차 370.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅰ\". 표고차 370.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 리프트 안내 기준."
  },
  {
   "resortCode": "HIGH1",
@@ -19,9 +19,9 @@
   "avgGradient": 7.49,
   "maxGradient": 13.5,
   "widthM": 19.9,
-  "liftName": null,
+  "liftName": "헤라, 마운틴 케이블카, 팰리스 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅱ\". 표고차 95.61m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅱ\". 표고차 95.61m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -31,9 +31,9 @@
   "avgGradient": 8.73,
   "maxGradient": 13.8,
   "widthM": 71.2,
-  "liftName": null,
+  "liftName": "제우스, 주피터",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅲ\". 표고차 273.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅲ\". 표고차 273.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 맵 선은 공식 오버레이대로 밸리 허브에서 밸리 베이스까지 2095 m로 공식 1835 m보다 길다(공식 표의 표고차, 경사, 길이도 서로 맞지 않는다)."
  },
  {
   "resortCode": "HIGH1",
@@ -43,9 +43,9 @@
   "avgGradient": 6.8,
   "maxGradient": 10.8,
   "widthM": 71.2,
-  "liftName": null,
+  "liftName": "제우스, 주피터",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅲ-1\". 표고차 121.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅲ-1\". 표고차 121.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -55,9 +55,9 @@
   "avgGradient": 15.58,
   "maxGradient": 27.7,
   "widthM": 49.1,
-  "liftName": null,
+  "liftName": "빅토리아",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"빅토리아\" + 번호 \"Ⅰ\". 표고차 379.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"빅토리아\" + 번호 \"Ⅰ\". 표고차 379.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 리프트 안내 기준."
  },
  {
   "resortCode": "HIGH1",
@@ -67,9 +67,9 @@
   "avgGradient": 18.72,
   "maxGradient": 25.8,
   "widthM": 36.1,
-  "liftName": null,
+  "liftName": "빅토리아",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"빅토리아\" + 번호 \"Ⅱ\". 표고차 269.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"빅토리아\" + 번호 \"Ⅱ\". 표고차 269.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 리프트 안내 기준."
  },
  {
   "resortCode": "HIGH1",
@@ -79,9 +79,9 @@
   "avgGradient": 17.01,
   "maxGradient": 35.4,
   "widthM": 34.1,
-  "liftName": null,
+  "liftName": "빅토리아",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"빅토리아\" + 번호 \"Ⅲ\". 표고차 376.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"빅토리아\" + 번호 \"Ⅲ\". 표고차 376.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 리프트 안내 기준."
  },
  {
   "resortCode": "HIGH1",
@@ -91,9 +91,9 @@
   "avgGradient": 14.86,
   "maxGradient": 21.8,
   "widthM": 39.4,
-  "liftName": null,
+  "liftName": "헤라, 마운틴 케이블카, 팰리스 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"헤라\" + 번호 \"Ⅰ\". 표고차 197.03m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"헤라\" + 번호 \"Ⅰ\". 표고차 197.03m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -103,9 +103,9 @@
   "avgGradient": 17.4,
   "maxGradient": 24.2,
   "widthM": 38.8,
-  "liftName": null,
+  "liftName": "헤라, 마운틴 케이블카, 팰리스 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"헤라\" + 번호 \"Ⅱ\". 표고차 294.73m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"헤라\" + 번호 \"Ⅱ\". 표고차 294.73m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -115,9 +115,9 @@
   "avgGradient": 19.75,
   "maxGradient": 25.8,
   "widthM": 36.6,
-  "liftName": null,
+  "liftName": "헤라, 마운틴 케이블카, 팰리스 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"헤라\" + 번호 \"Ⅲ\". 표고차 262.12m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"헤라\" + 번호 \"Ⅲ\". 표고차 262.12m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -127,9 +127,9 @@
   "avgGradient": 11.35,
   "maxGradient": 25.4,
   "widthM": 35.0,
-  "liftName": null,
+  "liftName": "헤라, 마운틴 케이블카, 팰리스 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅰ\". 표고차 349.48m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅰ\". 표고차 349.48m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -139,9 +139,9 @@
   "avgGradient": 20.32,
   "maxGradient": 24.2,
   "widthM": 33.1,
-  "liftName": null,
+  "liftName": "아폴로, 아테나, 마운틴 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅱ\". 표고차 161.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅱ\". 표고차 161.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -151,9 +151,9 @@
   "avgGradient": 15.85,
   "maxGradient": 26.3,
   "widthM": 33.7,
-  "liftName": null,
+  "liftName": "아폴로, 아테나, 마운틴 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅲ\". 표고차 121.39m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅲ\". 표고차 121.39m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -163,9 +163,9 @@
   "avgGradient": 15.45,
   "maxGradient": 24.2,
   "widthM": 54.7,
-  "liftName": null,
+  "liftName": "아폴로, 아테나, 마운틴 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅳ\". 표고차 409.63m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅳ\". 표고차 409.63m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -175,9 +175,9 @@
   "avgGradient": 22.13,
   "maxGradient": 33.0,
   "widthM": 40.8,
-  "liftName": null,
+  "liftName": "아폴로, 아테나, 마운틴 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅴ\". 표고차 266.33m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅴ\". 표고차 266.33m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -187,9 +187,9 @@
   "avgGradient": 18.03,
   "maxGradient": 24.3,
   "widthM": 44.3,
-  "liftName": null,
+  "liftName": "아폴로, 아테나, 마운틴 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅵ\". 표고차 193.37m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아폴로\" + 번호 \"Ⅵ\". 표고차 193.37m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -199,9 +199,9 @@
   "avgGradient": 10.7,
   "maxGradient": 15.2,
   "widthM": 42.0,
-  "liftName": null,
+  "liftName": "아폴로, 아테나, 마운틴 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아테나\" + 번호 \"Ⅱ\". 표고차 312.00m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아테나\" + 번호 \"Ⅱ\". 표고차 312.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "HIGH1",
@@ -211,9 +211,9 @@
   "avgGradient": 7.28,
   "maxGradient": 11.3,
   "widthM": 19.2,
-  "liftName": null,
+  "liftName": "밸리 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아테나\" + 번호 \"Ⅲ\". 표고차 228.30m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아테나\" + 번호 \"Ⅲ\". 표고차 228.30m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(마운틴 베이스->밸리 방면, 밸리 케이블카)."
  },
  {
   "resortCode": "HIGH1",
@@ -223,9 +223,9 @@
   "avgGradient": 6.8,
   "maxGradient": 10.0,
   "widthM": 19.2,
-  "liftName": null,
+  "liftName": "밸리 케이블카",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"아테나\" + 번호 \"Ⅲ-1\". 표고차 138.30m. 리프트별 담당 슬로프는 공식 표에 없음"
+  "note": "공식 표기는 슬로프군 \"아테나\" + 번호 \"Ⅲ-1\". 표고차 138.30m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(마운틴 베이스->밸리 방면, 밸리 케이블카)."
  },
  {
   "resortCode": "YONGPYONG",
@@ -283,9 +283,9 @@
   "avgGradient": 12.4,
   "maxGradient": 20.3,
   "widthM": null,
-  "liftName": "레드, 뉴레드 블루",
+  "liftName": "레드, 뉴레드, 블루",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 레드파라다이스 Red Paradise. 표고차 150m. 최저경사 7.4°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대37%, 평균17.2%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 레드파라다이스 Red Paradise. 표고차 150m. 최저경사 7.4°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대37%, 평균17.2%. 리프트 칸 원문 그대로 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 레드, 뉴레드 블루)."
  },
  {
   "resortCode": "YONGPYONG",
@@ -379,9 +379,9 @@
   "avgGradient": 15.6,
   "maxGradient": 24.7,
   "widthM": null,
-  "liftName": "발왕산 관광케이블카",
+  "liftName": "발왕산 관광케이블카, 레인보우",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 레인보우4 Rainbow4. 표고차 180m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대46%, 평균28%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 레인보우4 Rainbow4. 표고차 180m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대46%, 평균28%. 리프트 칸 원문 그대로 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 발왕산 관광케이블카)."
  },
  {
   "resortCode": "YONGPYONG",
@@ -391,9 +391,9 @@
   "avgGradient": 11.9,
   "maxGradient": 26.6,
   "widthM": null,
-  "liftName": "골드, 뉴레드",
+  "liftName": "골드, 레드, 뉴레드",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 레드 Red. 표고차 194m. 최저경사 5.1°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대50%, 평균19.4%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 레드 Red. 표고차 194m. 최저경사 5.1°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대50%, 평균19.4%. 리프트 칸 원문 그대로 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 골드, 뉴레드)."
  },
  {
   "resortCode": "YONGPYONG",
@@ -427,9 +427,9 @@
   "avgGradient": 17.2,
   "maxGradient": 29.7,
   "widthM": null,
-  "liftName": "발왕산 관광케이블카",
+  "liftName": "발왕산 관광케이블카, 레인보우",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 레인보우1,2,3 Rainbow1,2,3. 표고차 500m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대57%, 평균40%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 레인보우1,2,3 Rainbow1,2,3. 표고차 500m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대57%, 평균40%. 리프트 칸 원문 그대로 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 발왕산 관광케이블카)."
  },
  {
   "resortCode": "YONGPYONG",
@@ -439,9 +439,9 @@
   "avgGradient": 21.3,
   "maxGradient": 29.2,
   "widthM": null,
-  "liftName": "발왕산 관광케이블카",
+  "liftName": "발왕산 관광케이블카, 레인보우",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 레인보우1,2,3 Rainbow1,2,3. 표고차 500m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대56%, 평균38%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 레인보우1,2,3 Rainbow1,2,3. 표고차 500m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대56%, 평균38%. 리프트 칸 원문 그대로 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 발왕산 관광케이블카)."
  },
  {
   "resortCode": "YONGPYONG",
@@ -451,21 +451,33 @@
   "avgGradient": 18.3,
   "maxGradient": 26.1,
   "widthM": null,
-  "liftName": "발왕산 관광케이블카",
+  "liftName": "발왕산 관광케이블카, 레인보우",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 레인보우1,2,3 Rainbow1,2,3. 표고차 500m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대49%, 평균36%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 레인보우1,2,3 Rainbow1,2,3. 표고차 500m. 최저경사 8.5°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대49%, 평균36%. 리프트 칸 원문 그대로 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 발왕산 관광케이블카)."
  },
  {
   "resortCode": "YONGPYONG",
   "name": "드래곤파크",
   "officialDifficulty": "익스트림파크",
   "lengthM": 500,
-  "avgGradient": 11.9,
-  "maxGradient": 26.6,
+  "avgGradient": null,
+  "maxGradient": null,
   "widthM": null,
-  "liftName": "골드, 뉴레드",
+  "liftName": "메가그린",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 드래곤파크 Dragon Park(터레인파크). 표고차 108m. 최저경사 5.1°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대26%, 평균10.4%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 드래곤파크 Dragon Park(터레인파크). 공식 슬로프 소개 표의 이 줄은 다른 줄을 옮겨 붙인 것으로 보여 경사와 리프트를 비웠다: 리프트 칸 '골드, 뉴레드'와 도(°) 경사 최대 26.6°, 최저 5.1°, 평균 11.9°는 레드 줄과 같고, % 경사(최대26%, 평균10.4%)와 표고차 108m는 메가그린 줄과 같다. 길이 500m는 표 값 그대로. 이용 리프트는 2026-11-24 공식 슬로프맵 기준(https://www.yongpyong.co.kr/upload/kor/슬로프맵.pdf, https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png): 파크가 10번 실버 리프트와 11번 메가그린(뉴그린) 리프트 사이에 그려지고 메가그린 리프트 하단에서 끝난다. 골드, 뉴레드 리프트는 리조트 반대편이라 닿지 않는다."
+ },
+ {
+  "resortCode": "YONGPYONG",
+  "name": "레드골드브릿지",
+  "officialDifficulty": "중급",
+  "lengthM": null,
+  "avgGradient": null,
+  "maxGradient": null,
+  "widthM": null,
+  "liftName": null,
+  "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/openStatusBoard.do",
+  "note": "공식 표기 레드골드브릿지. 2026-11-24 공식 슬로프 오픈현황(openStatusBoard.do)에 중급 줄로 올라 있다. 제원(거리, 표고차, 경사)과 리프트는 슬로프 소개(https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do)와 리프트 안내 페이지의 HTML 주석 안에만 있어(화면에 나오지 않음) 넣지 않았다. 소개 주석 문구는 '레드 상단부에서 골드지역으로 이동할 수 있는 슬로프', 코스 안내(https://www.yongpyong.co.kr/kor/skiNboard/slope/tourInfo.do)는 '레드 리프트(또는 블루 리프트) → 레드 정상 → 레드 파라다이스 → 레드골드 사잇길 → 골드 베이스존'으로 안내한다. 공식 슬로프맵에 이름이 없고 이용 리프트를 밝힌 공식 표가 없어 리프트는 비웠다."
  },
  {
   "resortCode": "PHOENIX",
@@ -475,9 +487,9 @@
   "avgGradient": 6.98,
   "maxGradient": 11.5,
   "widthM": null,
-  "liftName": null,
+  "liftName": "스패로우",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 120m; 평균경사 원문 6° 59'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 120m; 평균경사 원문 6° 59'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -487,9 +499,9 @@
   "avgGradient": 8.33,
   "maxGradient": 13.5,
   "widthM": null,
-  "liftName": null,
+  "liftName": "펭귄",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 94m; 평균경사 원문 8° 20'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 94m; 평균경사 원문 8° 20'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -499,7 +511,7 @@
   "avgGradient": 6.68,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "도도",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
   "note": "표고차 41m; 평균경사 원문 6° 41'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
  },
@@ -511,9 +523,9 @@
   "avgGradient": 13.0,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "팔콘",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 127.5m; 평균경사 원문 13° 00'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 127.5m; 평균경사 원문 13° 00'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -523,9 +535,9 @@
   "avgGradient": 9.97,
   "maxGradient": 14.0,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 390m; 평균경사 원문 9° 58'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 390m; 평균경사 원문 9° 58'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -535,9 +547,9 @@
   "avgGradient": 11.28,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "호크",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 128.35m; 평균경사 원문 11° 17'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 128.35m; 평균경사 원문 11° 17'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -547,9 +559,9 @@
   "avgGradient": null,
   "maxGradient": 25.0,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 294m; 평균경사 원문 14° 84'; 분 값이 60 이상이라 변환 불가, null 처리; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 294m; 평균경사 원문 14° 84'; 분 값이 60 이상이라 변환 불가, null 처리; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -559,9 +571,9 @@
   "avgGradient": 13.75,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "팔콘",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 216m; 평균경사 원문 13° 45'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 216m; 평균경사 원문 13° 45'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -571,9 +583,9 @@
   "avgGradient": 14.93,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "팔콘",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 160.6m; 평균경사 원문 14° 56'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 160.6m; 평균경사 원문 14° 56'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -583,9 +595,9 @@
   "avgGradient": 16.08,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 277m; 평균경사 원문 16° 05'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 277m; 평균경사 원문 16° 05'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -595,9 +607,9 @@
   "avgGradient": 10.08,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 89.5m; 평균경사 원문 10° 05'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 89.5m; 평균경사 원문 10° 05'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -607,9 +619,9 @@
   "avgGradient": 15.4,
   "maxGradient": 36.0,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 238.7m; 평균경사 원문 15° 24'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 238.7m; 평균경사 원문 15° 24'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -619,9 +631,9 @@
   "avgGradient": 19.0,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "팔콘",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 109.85m; 평균경사 원문 19° 00'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 109.85m; 평균경사 원문 19° 00'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -631,9 +643,9 @@
   "avgGradient": 15.65,
   "maxGradient": 28.2,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 255.5m; 평균경사 원문 15° 39'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 255.5m; 평균경사 원문 15° 39'; 도, 분을 십진 도로 변환; maxGrdnt는 API 필드에만 있고 화면에는 표시 안 됨. 단위 미표기(평균경사보다 커서 도로 판단). 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
  },
  {
   "resortCode": "PHOENIX",
@@ -643,9 +655,9 @@
   "avgGradient": 9.35,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 공식 맵의 익스트림파크 코스(빨간 테두리)는 환타지 중턱의 파란 게이트에서 시작해 호크 리프트 상단보다 위라 정상 리프트(곤돌라, 이글, 콘돌)로 간다. 맵 선은 OSM 보드크로스 선 1420121130에서 환타지 진입로 174 m를 뺀 796 m."
  },
  {
   "resortCode": "PHOENIX",
@@ -655,9 +667,9 @@
   "avgGradient": 9.35,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 공식 맵의 익스트림파크 코스(빨간 테두리)는 환타지 중턱의 파란 게이트에서 시작해 호크 리프트 상단보다 위라 정상 리프트(곤돌라, 이글, 콘돌)로 간다. 맵 선은 OSM 보드크로스 선 1420121130에서 환타지 진입로 174 m를 뺀 796 m."
  },
  {
   "resortCode": "PHOENIX",
@@ -667,9 +679,9 @@
   "avgGradient": 16.73,
   "maxGradient": null,
   "widthM": null,
-  "liftName": null,
+  "liftName": "호크",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 50.56m; 평균경사 원문 16° 44'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift"
+  "note": "표고차 50.56m; 평균경사 원문 16° 44'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 맵 선(OSM 1420120608, 438 m)은 호크 리프트 상단 옆 진입로부터 베이스까지라 공식 길이 168 m보다 길다. 공식 맵에 파이프 구간 경계가 없어 선을 자르지 않았다."
  },
  {
   "resortCode": "KONJIAM",
@@ -679,9 +691,9 @@
   "avgGradient": 7.0,
   "maxGradient": null,
   "widthM": 74,
-  "liftName": "그램(구 하늬)",
+  "liftName": "그램 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"12.3%(7.0°)\". 면적 29,743m2, 고저차 60m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"12.3%(7.0°)\". 면적 29,743m2, 고저차 60m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 그램(구 하늬))."
  },
  {
   "resortCode": "KONJIAM",
@@ -691,9 +703,9 @@
   "avgGradient": 10.4,
   "maxGradient": null,
   "widthM": 76,
-  "liftName": "익시오(구 휘슬)",
+  "liftName": "익시오 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"18.3%(10.4°)\". 면적 72,539m2, 고저차 119m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"18.3%(10.4°)\". 면적 72,539m2, 고저차 119m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 익시오(구 휘슬))."
  },
  {
   "resortCode": "KONJIAM",
@@ -703,9 +715,9 @@
   "avgGradient": 17.3,
   "maxGradient": null,
   "widthM": 61,
-  "liftName": "씽큐 (구 제타)",
+  "liftName": "씽큐 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"31.2 (17.3°)\". 면적 33,712m2, 고저차 171m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"31.2 (17.3°)\". 면적 33,712m2, 고저차 171m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 씽큐 (구 제타))."
  },
  {
   "resortCode": "KONJIAM",
@@ -715,9 +727,9 @@
   "avgGradient": 13.6,
   "maxGradient": null,
   "widthM": 54,
-  "liftName": "씽큐 (구 제타)",
+  "liftName": "씽큐 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"24.2%(13.6°)\". 면적 45,190m2, 고저차 200m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"24.2%(13.6°)\". 면적 45,190m2, 고저차 200m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 씽큐 (구 제타))."
  },
  {
   "resortCode": "KONJIAM",
@@ -727,9 +739,9 @@
   "avgGradient": 14.2,
   "maxGradient": null,
   "widthM": 55,
-  "liftName": "홈봇(구 윈디)",
+  "liftName": "홈봇 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"25.3%(14.2°)\". 면적 21,646m2, 고저차 104m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"25.3%(14.2°)\". 면적 21,646m2, 고저차 104m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 홈봇(구 윈디))."
  },
  {
   "resortCode": "KONJIAM",
@@ -739,9 +751,9 @@
   "avgGradient": 12.9,
   "maxGradient": null,
   "widthM": 55,
-  "liftName": "홈봇(구 윈디)",
+  "liftName": "홈봇 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"22.5%(12.9°)\". 면적 54,859m2, 고저차 215m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"22.5%(12.9°)\". 면적 54,859m2, 고저차 215m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 홈봇(구 윈디))."
  },
  {
   "resortCode": "KONJIAM",
@@ -751,21 +763,22 @@
   "avgGradient": 14.2,
   "maxGradient": null,
   "widthM": 68,
-  "liftName": "홈봇(구 윈디)",
+  "liftName": "홈봇 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"25.3%(14.2°)\". 면적 25,894m2, 고저차 117m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"25.3%(14.2°)\". 면적 25,894m2, 고저차 117m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 홈봇(구 윈디))."
  },
  {
   "resortCode": "KONJIAM",
   "name": "CNP 1(구 게일)",
   "officialDifficulty": "초/중급",
   "lengthM": 204,
-  "avgGradient": 10.9,
+  "avgGradient": null,
   "maxGradient": null,
   "widthM": 31,
-  "liftName": "CNP(구 게일)",
+  "liftName": "CNP 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"11.3%(10.9°)\". 면적 6,454m2, 고저차 23m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"11.3%(10.9°)\". 면적 6,454m2, 고저차 23m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 CNP(구 게일)). 2026-11-24 평균 경사: 공식 표 '11.3%(10.9°)'에서 11.3%(=6.4°)를 쓴다. 표고차 23m / 204m도 6.4°이고, 10.9°는 표 페이지에 주석으로 숨긴 549m 행의 값이다. 공식 맵의 CNP①은 549m라 선(OSM 469518152)과 길이가 다르다(사용자 결정으로 표 기준).",
+  "avgGradientPercent": 11.3
  },
  {
   "resortCode": "KONJIAM",
@@ -775,8 +788,8 @@
   "avgGradient": 14.0,
   "maxGradient": null,
   "widthM": 66,
-  "liftName": "CNP(구 게일)",
+  "liftName": "CNP 리프트",
   "sourceUrl": "https://www.konjiamresort.co.kr/ski/sloPe.dev",
-  "note": "평균경사 원문 \"25%(14.0°)\". 면적 52,870m2, 고저차 239m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트"
+  "note": "평균경사 원문 \"25%(14.0°)\". 면적 52,870m2, 고저차 239m. 최대경사 미공개. liftName은 리프트 안내(https://www.konjiamresort.co.kr/ski/liFt.dev) 표의 같은 이름 리프트 이용 리프트 2026-11-24 공식 리프트 안내 기준(이전 값 CNP(구 게일))."
  }
 ]

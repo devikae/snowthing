@@ -158,6 +158,51 @@ class ColumnRepostIntegrationTest {
     }
 
     @Test
+    @DisplayName("게시된 글을 갱신하면 같은 글의 본문만 대기열의 지금 본문으로 바뀐다")
+    void refreshRewritesPublishedPostInPlace() throws IOException {
+        save(1, 100L, "첫 번째");
+        service.publishNext();
+        Map<String, Object> before =
+                jdbc.queryForMap(
+                        "SELECT post_id, public_id, created_at FROM post WHERE member_id = ?",
+                        writer.getId());
+        jdbc.update(
+                "UPDATE column_repost_queue SET content = ? WHERE source_no = 100",
+                "새 본문 ![](https://images.snowthing.org/public/posts/clips/clip-a.mp4)");
+
+        assertThat(service.refresh(1)).contains((String) before.get("public_id"));
+
+        Map<String, Object> after =
+                jdbc.queryForMap(
+                        "SELECT post_id, content, created_at FROM post WHERE member_id = ?",
+                        writer.getId());
+        assertThat(after.get("post_id")).isEqualTo(before.get("post_id"));
+        assertThat(after.get("created_at")).isEqualTo(before.get("created_at"));
+        assertThat((String) after.get("content")).contains("새 본문").contains("clip-a.mp4");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM post WHERE member_id = ?",
+                                Integer.class,
+                                writer.getId()))
+                .isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("아직 게시되지 않았거나 없는 순번은 갱신하지 않는다")
+    void refreshIgnoresPendingAndMissing() throws IOException {
+        save(1, 100L, "첫 번째");
+
+        assertThat(service.refresh(1)).isEmpty();
+        assertThat(service.refresh(99)).isEmpty();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM post WHERE member_id = ?",
+                                Integer.class,
+                                writer.getId()))
+                .isZero();
+    }
+
+    @Test
     @DisplayName("이미 게시된 줄은 다시 고르지 않는다")
     void skipsPublishedRows() {
         save(1, 100L, "첫 번째");

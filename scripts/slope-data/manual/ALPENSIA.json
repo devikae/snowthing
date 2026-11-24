@@ -1,5 +1,86 @@
 {
   "_source": "https://www.alpensia.com/images/ski/place_slope.jpg (https://www.alpensia.com/ski/introduction-slope.do, slope number positions from page CSS)",
   "_unresolved": {},
-  "ECHO(에코)": [478695577]
+  "ECHO(에코)": [
+    478695577
+  ],
+  "BRAVO(브라보)": {
+    "draw": [
+      [
+        37.6500732,
+        128.6726537
+      ],
+      [
+        37.6502091,
+        128.6724821
+      ],
+      [
+        37.6501752,
+        128.6721924
+      ],
+      [
+        37.6498014,
+        128.6715916
+      ],
+      [
+        37.6493597,
+        128.6712268
+      ],
+      [
+        37.6490879,
+        128.6706582
+      ],
+      [
+        37.6491218,
+        128.6699286
+      ],
+      [
+        37.6494276,
+        128.6697784
+      ],
+      [
+        37.6498354,
+        128.6699072
+      ],
+      [
+        37.6505065,
+        128.6696819
+      ],
+      [
+        37.6509991,
+        128.6698857
+      ],
+      [
+        37.6515173,
+        128.6704114
+      ],
+      [
+        37.6524432,
+        128.6708298
+      ],
+      [
+        37.6532502,
+        128.6713126
+      ],
+      [
+        37.6543034,
+        128.6727396
+      ],
+      [
+        37.6546177,
+        128.6733189
+      ],
+      [
+        37.6560447,
+        128.6739197
+      ]
+    ],
+    "_how": "OSM 478695573(Bravo) 전체 좌표에 CHARLIE(478695575) 합류점 아래 마지막 구간(37.6546177,128.6733189 -> 37.6560447,128.6739197)을 이어 베이스까지 그림. 공식 강조선 slope_line_02.png와 slope_line_03.png의 끝점이 같고, 설명문이 CHARLIE 중하단부가 BRAVO와 연결된다고 씀(https://www.alpensia.com/ski/introduction-slope.do)."
+  },
+  "_lifts": {
+    "477491141": "1호기",
+    "477491142": "2호기",
+    "477491143": "3호기"
+  },
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.alpensia.com/ski/introduction-slope.do (ALPHA 설명: 'ALPHA 코스로 올라가는 1호기 리프트'), https://www.alpensia.com/ski/introduction.do ('초심자 전용 슬로프(Alpha)와 리프트(1호기)'), https://www.alpensia.com/images/ski/place_slope.jpg (official slope map)"
 }

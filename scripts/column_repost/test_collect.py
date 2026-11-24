@@ -66,13 +66,32 @@ class BodyTest(unittest.TestCase):
             "참고 이 영상\n\nhttps://www.youtube.com/watch?v=g7JDKJCsrZA\n\nhttps://www.youtube.com/watch?v=abcdefghijk\n",
         )
 
-    def test_dc_video_becomes_source_link_once(self):
+    def test_dc_movie_player_becomes_media_marker(self):
         body = (
-            '<iframe src="https://gall.dcinside.com/board/movie/movie_view?no=1"></iframe>'
-            '<iframe src="https://gall.dcinside.com/board/movie/movie_view?no=2"></iframe>'
+            '<iframe src="https://gall.dcinside.com/board/movie/movie_view?no=1&amp;x=y"></iframe>'
+            '<iframe src="//gall.dcinside.com/board/movie/movie_view?no=2"></iframe>'
             "<p>설명</p>"
         )
-        self.assertEqual(self.convert(body), f"[▶ 영상은 원문에서 보기]({SOURCE})\n\n설명\n")
+        self.assertEqual(
+            self.convert(body),
+            "![](https://gall.dcinside.com/board/movie/movie_view?no=1)\n\n"
+            "![](https://gall.dcinside.com/board/movie/movie_view?no=2)\n\n설명\n",
+        )
+
+    def test_unknown_dc_iframe_becomes_source_link(self):
+        body = '<iframe src="https://gall.dcinside.com/board/other?no=1"></iframe>'
+        self.assertEqual(self.convert(body), f"[▶ 영상은 원문에서 보기]({SOURCE})\n")
+
+    def test_gif_clip_video_uses_mp4_source_once(self):
+        body = (
+            '<video autoplay loop muted data-src="https://dcimg1.dcinside.com/viewimage.php?id=a&amp;no=gif">'
+            '<source src="https://dcimg1.dcinside.com/viewimage.php?id=a&amp;no=mp4" type="video/mp4"/>'
+            '<source src="https://dcimg1.dcinside.com/viewimage.php?id=a&amp;no=other" type="video/mp4"/>'
+            "</video><p>다음</p>"
+        )
+        self.assertEqual(
+            self.convert(body), "![](https://dcimg1.dcinside.com/viewimage.php?id=a&no=mp4)\n\n다음\n"
+        )
 
     def test_markdown_characters_are_escaped(self):
         body = "<p># 제목 아님</p><p>*강조 아님* [링크 아님] &lt;b&gt;</p><p>- 목록 아님</p>"
@@ -130,6 +149,10 @@ class SqlTest(unittest.TestCase):
         self.assertLess(first, second)
         self.assertIn("'옛 글''s \\\\'", sql)
         self.assertIn("INSERT IGNORE INTO `column_repost_queue`", sql)
+
+    def test_update_sql_changes_content_by_source(self):
+        sql = collect.build_update_sql([(100, "제목", "본문's")])
+        self.assertIn("UPDATE `column_repost_queue` SET `content` = '본문''s' WHERE `source_no` = 100;", sql)
 
 
 if __name__ == "__main__":

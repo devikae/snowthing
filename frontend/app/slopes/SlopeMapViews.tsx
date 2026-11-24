@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./slopeSpecs.module.css";
 import {
   osmDifficulty,
   resortSlug,
-  slopePath,
   type Connection,
   type Difficulty,
   type MapWay,
@@ -48,7 +46,7 @@ export function useSlopeMap(resortCode: string): MapState {
 
 // ---------- 기하 ----------
 
-type Pt = [number, number];
+export type Pt = [number, number];
 
 function segNearest(p: Pt, a: Pt, b: Pt): [number, Pt] {
   const dx = b[0] - a[0];
@@ -89,15 +87,15 @@ function slopeEnds(lines: Pt[][]): [Pt, Pt] {
   return [start, end];
 }
 
-const path = (pts: Pt[]) => "M" + pts.map((p) => `${p[0]},${p[1]}`).join("L");
+export const path = (pts: Pt[]) => "M" + pts.map((p) => `${p[0]},${p[1]}`).join("L");
 
-const colorVar = (difficulty: Difficulty | null) => `var(--slope-${(difficulty ?? "NONE").toLowerCase()})`;
+export const colorVar = (difficulty: Difficulty | null) => `var(--slope-${(difficulty ?? "NONE").toLowerCase()})`;
 
-function wayColor(way: MapWay, slopeByWay: Map<number, SlopeItem>) {
+export function wayColor(way: MapWay, slopeByWay: Map<number, SlopeItem>) {
   return colorVar(slopeByWay.get(way.id)?.difficulty ?? osmDifficulty(way.difficulty));
 }
 
-function indexWays(slopes: SlopeItem[]) {
+export function indexWays(slopes: SlopeItem[]) {
   const slopeByWay = new Map<number, SlopeItem>();
   for (const slope of slopes) for (const id of slope.osmWayIds) slopeByWay.set(id, slope);
   return slopeByWay;
@@ -105,113 +103,6 @@ function indexWays(slopes: SlopeItem[]) {
 
 function normName(value: string | null) {
   return (value ?? "").toLowerCase().replace(/\(.*?\)/g, "").replace(/[\s\-_.]/g, "");
-}
-
-// ---------- 리조트 전체 맵 ----------
-
-export function ResortMap({ resortCode, slopes }: { resortCode: string; slopes: SlopeItem[] }) {
-  const state = useSlopeMap(resortCode);
-  const slopeByWay = useMemo(() => indexWays(slopes), [slopes]);
-
-  if (state.status === "loading") return <div className={styles.mapEmpty}>코스 맵을 불러오는 중입니다.</div>;
-  if (state.status === "missing") return <div className={styles.mapEmpty}>이 리조트는 아직 코스 맵이 없습니다.</div>;
-  const { map } = state;
-  const pad = Math.max(map.width, map.height) * 0.04;
-  const unit = Math.max(map.width, map.height) / 900;
-
-  return (
-    <figure className={styles.mapFrame}>
-      <svg
-        className={styles.mapSvg}
-        viewBox={`${-pad} ${-pad} ${map.width + pad * 2} ${map.height + pad * 2}`}
-        role="img"
-        aria-label="리조트 전체 코스 맵"
-      >
-        {map.ways
-          .filter((way) => way.kind === "lift")
-          .map((way) => (
-            <path
-              key={way.id}
-              d={path(way.pts)}
-              fill="none"
-              stroke="var(--slope-lift)"
-              strokeWidth={1.4 * unit}
-              strokeDasharray={`${6 * unit} ${5 * unit}`}
-            />
-          ))}
-        {map.ways
-          .filter((way) => way.kind === "piste")
-          .map((way) => {
-            const slope = slopeByWay.get(way.id);
-            const line = (
-              <path
-                key={way.id}
-                d={path(way.pts)}
-                fill="none"
-                stroke={wayColor(way, slopeByWay)}
-                strokeWidth={(slope ? 4.5 : 2.5) * unit}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={slope ? 1 : 0.55}
-              />
-            );
-            return slope ? (
-              <Link key={way.id} href={slopePath(resortCode, slope.id)} aria-label={`${slope.name} 코스 보기`}>
-                {line}
-                <path d={path(way.pts)} fill="none" stroke="transparent" strokeWidth={16 * unit} />
-              </Link>
-            ) : (
-              line
-            );
-          })}
-        {placeMapLabels(map, slopeByWay, unit).map((label) => (
-          <text
-            key={label.key}
-            x={label.x}
-            y={label.y}
-            className={styles.mapLabel}
-            fontSize={15 * unit}
-            strokeWidth={3.5 * unit}
-          >
-            {label.text}
-          </text>
-        ))}
-      </svg>
-      <figcaption className={styles.attribution}>{map.attribution}</figcaption>
-    </figure>
-  );
-}
-
-// 슬로프 이름을 선 위 여러 자리에 놓아 보고, 다른 이름과 겹치지 않는 첫 자리에 둔다. 자리가 없으면 이름을 생략한다.
-function placeMapLabels(map: SlopeMap, slopeByWay: Map<number, SlopeItem>, unit: number) {
-  const fs = 15 * unit;
-  const boxes: [number, number, number, number][] = [];
-  const labels: { key: string; x: number; y: number; text: string }[] = [];
-  const seen = new Set<number>();
-  const textWidth = (text: string) =>
-    Array.from(text).reduce((sum, ch) => sum + (/[\u0000-ÿ]/.test(ch) ? 0.6 : 1) * fs, 0);
-  const pistes = map.ways.filter((way) => way.kind === "piste" && slopeByWay.has(way.id));
-  // 긴 선을 가진 슬로프부터 자리를 잡는다.
-  pistes.sort((a, b) => b.pts.length - a.pts.length);
-  for (const way of pistes) {
-    const slope = slopeByWay.get(way.id)!;
-    if (seen.has(slope.id)) continue;
-    const w = textWidth(slope.name);
-    const h = fs * 1.1;
-    for (const t of [0.5, 0.35, 0.65, 0.2, 0.8]) {
-      const p = way.pts[Math.floor((way.pts.length - 1) * t)];
-      const x = p[0] + 5 * unit;
-      const y = p[1] - h / 2;
-      const hit = boxes.some(([bx, by, bw, bh]) => x < bx + bw && x + w > bx && y < by + bh && y + h > by);
-      if (!hit) {
-        boxes.push([x, y, w, h]);
-        labels.push({ key: `label-${way.id}`, x, y: y + fs * 0.85, text: slope.name });
-        seen.add(slope.id);
-        break;
-      }
-    }
-  }
-  return labels;
 }
 
 // ---------- 슬로프 코스 카드 ----------

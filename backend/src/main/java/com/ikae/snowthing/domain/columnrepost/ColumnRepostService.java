@@ -1,5 +1,6 @@
 package com.ikae.snowthing.domain.columnrepost;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -15,6 +16,7 @@ import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
 import com.ikae.snowthing.domain.post.dto.PostCreateRequest;
 import com.ikae.snowthing.domain.post.dto.PostResponse;
+import com.ikae.snowthing.domain.post.dto.PostUpdateRequest;
 import com.ikae.snowthing.domain.post.service.PostService;
 import com.ikae.snowthing.global.notification.DiscordNotifier;
 import com.ikae.snowthing.global.security.CustomUserDetails;
@@ -108,6 +110,39 @@ public class ColumnRepostService {
             recordFailure(item, failure);
             return Result.FAILED;
         }
+    }
+
+    /**
+     * 이미 게시된 칼럼의 본문을 대기열의 지금 본문으로 다시 만든다. 미디어 옮기기 규칙이 바뀐 뒤 앞서 올라간 글에 쓴다. 글 주소, 댓글, 작성 시각은 그대로다.
+     *
+     * @return 바꾼 글의 공개 ID. 순번이 없거나 아직 게시되지 않았으면 빈 값
+     * @throws IOException 미디어를 받지 못했을 때(글은 바뀌지 않는다)
+     */
+    public Optional<String> refresh(int sequenceNo) throws IOException {
+        ColumnRepostItem item = repository.findBySequenceNo(sequenceNo).orElse(null);
+        if (item == null || item.isPending() || item.getPostPublicId() == null) {
+            return Optional.empty();
+        }
+        Member member =
+                memberRepository
+                        .findByEmail(properties.memberEmail())
+                        .orElseThrow(() -> new IllegalStateException("휘구리 계정을 찾지 못함"));
+        String content =
+                images.replace(
+                        item.getContent(), SOURCE_URL + item.getSourceNo(), member.getEmail());
+        tx.executeWithoutResult(
+                status ->
+                        postService.updatePost(
+                                item.getPostPublicId(),
+                                new PostUpdateRequest(
+                                        properties.categoryCode(),
+                                        item.getTitle(),
+                                        content,
+                                        null,
+                                        null),
+                                new CustomUserDetails(member)));
+        log.info("Column refreshed: sequence={}, post={}", sequenceNo, item.getPostPublicId());
+        return Optional.of(item.getPostPublicId());
     }
 
     private Result publish(Long id, String content, Member member) {

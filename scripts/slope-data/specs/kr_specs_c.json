@@ -7,9 +7,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 92,
-    "liftName": null,
+    "liftName": "오렌지",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 9% only (no degrees published); 표고차 51m; widthM is 평균폭원",
+    "note": "평균경사 9% only (no degrees published); 표고차 51m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 9.0
   },
   {
@@ -20,9 +20,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 48,
-    "liftName": null,
+    "liftName": "토마토",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 12% only (no degrees published); 표고차 112m; widthM is 평균폭원",
+    "note": "평균경사 12% only (no degrees published); 표고차 112m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 12.0
   },
   {
@@ -33,9 +33,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 33,
-    "liftName": null,
+    "liftName": "스위트셔틀",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 15% only (no degrees published); 표고차 178m; widthM is 평균폭원",
+    "note": "평균경사 15% only (no degrees published); 표고차 178m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 15.0
   },
   {
@@ -46,9 +46,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 31,
-    "liftName": null,
+    "liftName": "체리",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 18% only (no degrees published); 표고차 388m; widthM is 평균폭원",
+    "note": "평균경사 18% only (no degrees published); 표고차 388m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 18.0
   },
   {
@@ -59,9 +59,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 33,
-    "liftName": null,
+    "liftName": "애플",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 31% only (no degrees published); 표고차 172m; widthM is 평균폭원",
+    "note": "평균경사 31% only (no degrees published); 표고차 172m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 31.0
   },
   {
@@ -72,9 +72,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 83,
-    "liftName": null,
+    "liftName": "애플",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 27% only (no degrees published); 표고차 172m; widthM is 평균폭원",
+    "note": "평균경사 27% only (no degrees published); 표고차 172m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 27.0
   },
   {
@@ -85,9 +85,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 39,
-    "liftName": null,
+    "liftName": "스위트셔틀",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 19% only (no degrees published); 표고차 526m; widthM is 평균폭원",
+    "note": "평균경사 19% only (no degrees published); 표고차 526m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 공식 슬로프맵(slope_img02.jpg)은 글로리3가 패션 아래 끝을 지나 드림 띠에 합쳐지는 곳까지만 그려서 맵 선도 거기서 끝난다(약 2.2km). 공식 연장 3,256m와 표고차 526m는 드림 쪽을 거쳐 메인 베이스까지 내려가는 거리로 보이며, 공식 맵에 그 구간이 따로 그려져 있지 않아 선을 늘리지 않았다.",
     "avgGradientPercent": 19.0
   },
   {
@@ -98,9 +98,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 37,
-    "liftName": null,
+    "liftName": "스위트셔틀",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 36% only (no degrees published); 표고차 380m; widthM is 평균폭원",
+    "note": "평균경사 36% only (no degrees published); 표고차 380m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 36.0
   },
   {
@@ -111,9 +111,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 37,
-    "liftName": null,
+    "liftName": "체리",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 32% only (no degrees published); 표고차 234m; widthM is 평균폭원",
+    "note": "평균경사 32% only (no degrees published); 표고차 234m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 32.0
   },
   {
@@ -124,9 +124,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 41,
-    "liftName": null,
+    "liftName": "체리",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 32% only (no degrees published); 표고차 225m; widthM is 평균폭원",
+    "note": "평균경사 32% only (no degrees published); 표고차 225m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 32.0
   },
   {
@@ -137,9 +137,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 39,
-    "liftName": null,
+    "liftName": "체리",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 41% only (no degrees published); 표고차 369m; widthM is 평균폭원",
+    "note": "평균경사 41% only (no degrees published); 표고차 369m; widthM is 평균폭원 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "avgGradientPercent": 41.0
   },
   {
@@ -150,9 +150,9 @@
     "avgGradient": null,
     "maxGradient": null,
     "widthM": 51,
-    "liftName": null,
+    "liftName": "체리",
     "sourceUrl": "https://www.o2resort.com/SKI/slopeOpen.jsp",
-    "note": "평균경사 40% only (no degrees published); 표고차 37m; widthM is 평균폭원; 표고차 37m is inconsistent with 753m length and 40% gradient (likely site typo)"
+    "note": "평균경사 40% only (no degrees published); 표고차 37m; widthM is 평균폭원; 표고차 37m is inconsistent with 753m length and 40% gradient (likely site typo) 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
   },
   {
     "resortCode": "O2_RESORT",
@@ -189,7 +189,7 @@
     "widthM": 35,
     "liftName": "버드",
     "sourceUrl": "https://www.oakvalley.co.kr/assets/index-9ab30d3c.js",
-    "note": "spec table hardcoded in official SPA bundle (/ski/introduction/slope); 평균경사도 written '22% / 13˚'; width max 50/min 32/avg 35m; 면적 15,769㎡"
+    "note": "spec table hardcoded in official SPA bundle (/ski/introduction/slope); 평균경사도 written '22% / 13˚'; width max 50/min 32/avg 35m; 면적 15,769㎡ 맵 선은 공식 지도대로 I 코스에 닿는 곳(D 합류점)에서 끝내 523 m. 공식 448 m보다 긴 것은 OSM 상단 선 모양 차이로 보인다."
   },
   {
     "resortCode": "OAK_VALLEY",
@@ -213,7 +213,7 @@
     "widthM": null,
     "liftName": null,
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
-    "note": "listed only in official open-status API; no spec numbers published on official site"
+    "note": "listed only in official open-status API; no spec numbers published on official site 2026-11-25 이용 리프트에서 마운틴를 뺐다(공식 운행 리프트가 아님)."
   },
   {
     "resortCode": "OAK_VALLEY",
@@ -225,7 +225,7 @@
     "widthM": null,
     "liftName": null,
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
-    "note": "listed only in official open-status API; no spec numbers published on official site"
+    "note": "listed only in official open-status API; no spec numbers published on official site 2026-11-25 이용 리프트에서 마운틴를 뺐다(공식 운행 리프트가 아님)."
   },
   {
     "resortCode": "OAK_VALLEY",
@@ -237,6 +237,6 @@
     "widthM": null,
     "liftName": null,
     "sourceUrl": "https://api.oakvalley.co.kr/api/v1/skis/slopes",
-    "note": "listed only in official open-status API; no spec numbers published on official site"
+    "note": "listed only in official open-status API; no spec numbers published on official site 2026-11-25 이용 리프트에서 마운틴를 뺐다(공식 운행 리프트가 아님)."
   }
 ]

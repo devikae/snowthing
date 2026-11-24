@@ -63,14 +63,4 @@ export function resortPathForPassCode(passCode: string): string {
 export const won = (value: number) => `${value.toLocaleString("ko-KR")}원`;
 
 const KST_TIME = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const KST_STAMP = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
 export const formatKstTime = (value: string) => KST_TIME.format(new Date(value));
-export const formatKstStamp = (value: string) => KST_STAMP.format(new Date(value));

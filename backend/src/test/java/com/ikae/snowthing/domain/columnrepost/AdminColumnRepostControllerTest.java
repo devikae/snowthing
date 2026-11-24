@@ -47,4 +47,28 @@ class AdminColumnRepostControllerTest {
 
         verify(service, never()).publishNext();
     }
+
+    @Test
+    @DisplayName("관리자는 게시된 칼럼을 갱신하고, 게시 전이면 404, 일반 회원은 403이다")
+    void refreshIsAdminOnly() throws Exception {
+        given(service.refresh(3)).willReturn(java.util.Optional.of("post-3"));
+        given(service.refresh(4)).willReturn(java.util.Optional.empty());
+
+        mockMvc.perform(
+                        post("/api/v1/admin/column-repost/3/refresh")
+                                .with(user("admin").roles("ADMIN"))
+                                .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.postPublicId").value("post-3"));
+        mockMvc.perform(
+                        post("/api/v1/admin/column-repost/4/refresh")
+                                .with(user("admin").roles("ADMIN"))
+                                .with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(
+                        post("/api/v1/admin/column-repost/3/refresh")
+                                .with(user("member").roles("USER"))
+                                .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
 }

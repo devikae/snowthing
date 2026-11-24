@@ -83,26 +83,30 @@ public class DmMailOutboxRepository {
     }
 
     /**
-     * 받는 사람 상태 행을 잠근다. 다른 워커가 잡고 있으면 기다리지 않고 비어 있는 값을 돌려준다. 호출하는 쪽 트랜잭션 안에서 실행해야 한다.
+     * 받는 사람 상태 행이 없으면 만든다. 잠그는 트랜잭션과 따로, 짧은 트랜잭션에서 먼저 부른다.
      *
-     * <p>상태 행이 아직 없으면 만든 뒤 잠근다. 두 워커가 동시에 만들려 하면 한쪽의 INSERT IGNORE는 무시되고 다시 SKIP LOCKED로 확인해 건너뛴다.
+     * <p>예전에는 잠그는 트랜잭션 안에서 없는 행을 {@code FOR UPDATE}로 찾은 뒤 INSERT했다. 없는 행을 찾는 잠금은 빈 자리(gap)를 잠그므로, 두
+     * 워커가 같은 새 받는 사람을 동시에 처리하면 서로의 빈 자리 잠금 때문에 INSERT가 막혀 교착 상태(deadlock)가 났다. 행을 먼저 만들어 두면 잠그는 쪽은
+     * 있는 행 하나만 잠근다. 두 워커가 동시에 만들려 해도 한 문장짜리 트랜잭션이라 한쪽이 기다렸다가 무시될 뿐이다.
      */
-    public Optional<RecipientLock> lockRecipient(long recipientId) {
-        Optional<RecipientLock> locked = selectForUpdateSkipLocked(recipientId);
-        if (locked.isPresent()) {
-            return locked;
-        }
+    public void ensureRecipientState(long recipientId) {
         Integer exists =
                 jdbc.queryForObject(
                         "SELECT COUNT(*) FROM dm_mail_recipient_state WHERE recipient_member_id = ?",
                         Integer.class,
                         recipientId);
-        if (exists != null && exists > 0) {
-            return Optional.empty();
+        if (exists == null || exists == 0) {
+            jdbc.update(
+                    "INSERT IGNORE INTO dm_mail_recipient_state (recipient_member_id) VALUES (?)",
+                    recipientId);
         }
-        jdbc.update(
-                "INSERT IGNORE INTO dm_mail_recipient_state (recipient_member_id) VALUES (?)",
-                recipientId);
+    }
+
+    /**
+     * 받는 사람 상태 행을 잠근다. 다른 워커가 잡고 있거나 상태 행이 아직 없으면 기다리지 않고 비어 있는 값을 돌려준다. 호출하는 쪽 트랜잭션 안에서 실행해야 하고, 그
+     * 전에 {@link #ensureRecipientState(long)}로 상태 행을 만들어 둔다.
+     */
+    public Optional<RecipientLock> lockRecipient(long recipientId) {
         return selectForUpdateSkipLocked(recipientId);
     }
 
