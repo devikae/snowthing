@@ -1951,6 +1951,27 @@ html[data-theme="dark"] .home-live-chat .live-chat-card {
   gap: 14px;
 }
 
+.home-live-chat .live-chat-shell {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--snow-border);
+  border-radius: 16px;
+  background: var(--snow-surface-low);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-live-chat .live-chat-shell:focus-within {
+  border-color: var(--snow-ink);
+  box-shadow: 0 0 0 3px var(--community-accent-soft);
+}
+
+.home-live-chat .live-chat-shell > p[role="status"] {
+  margin: 0;
+  border-top: 1px solid var(--snow-border);
+  border-radius: 0;
+}
+
 .home-live-chat .live-chat-feed {
   height: 660px;
   max-height: 660px;
@@ -1959,20 +1980,22 @@ html[data-theme="dark"] .home-live-chat .live-chat-card {
   scrollbar-width: thin;
   scrollbar-color: var(--snow-border) transparent;
   gap: 16px;
-  border: 1px solid var(--snow-border);
-  border-radius: 16px;
-  background: var(--snow-surface-low);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   padding: 18px 18px;
+}
+
+html[data-theme="dark"] .home-live-chat .live-chat-feed {
+  border: 0;
+  background: transparent;
 }
 
 /* PC 두 칸 화면: 채팅 목록을 고정 높이 대신 남는 높이만큼 늘려, 왼쪽 글 목록이 길어도 입력칸과 사이가 비지 않게 한다 */
 @media (min-width: 1025px) {
   .home-live-chat .live-chat-card { flex: 1; height: auto; min-height: 0; }
+  .home-live-chat .live-chat-shell { flex: 1 1 0; min-height: 0; }
   .home-live-chat .live-chat-feed { flex: 1 1 0; height: auto; max-height: none; min-height: 420px; }
-}
-
-.home-live-chat .live-chat-compose.unified-capsule-form {
-  margin-top: 4px;
 }
 
 .live-chat-message-bubble {
@@ -2001,7 +2024,6 @@ html[data-theme="dark"] .live-chat-message.mine .live-chat-message-bubble {
 
 /* Unified Capsule Compose Bar (ChatGPT / Linear Style) */
 .unified-capsule-form,
-.home-live-chat .live-chat-compose.unified-capsule-form,
 .snow-report-compose.unified-capsule-form {
   display: flex;
   height: 46px;
@@ -2015,7 +2037,6 @@ html[data-theme="dark"] .live-chat-message.mine .live-chat-message-bubble {
 }
 
 .unified-capsule-form:focus-within,
-.home-live-chat .live-chat-compose.unified-capsule-form:focus-within,
 .snow-report-compose.unified-capsule-form:focus-within {
   border-color: var(--snow-ink);
   background: var(--snow-canvas);
@@ -2070,6 +2091,75 @@ html[data-theme="dark"] .live-chat-message.mine .live-chat-message-bubble {
   font-size: 12.5px;
   font-weight: 700;
   transition: opacity 0.15s ease, var(--press);
+}
+
+/* 라이브톡: 입력 줄을 대화 상자 안쪽 하단에 구분선으로 붙여 한 덩어리로 정리한다 */
+.home-live-chat .live-chat-compose.unified-capsule-form {
+  display: flex;
+  height: auto;
+  align-items: center;
+  margin-top: 0;
+  gap: 6px;
+  border: 0;
+  border-top: 1px solid var(--snow-border);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 10px;
+  box-shadow: none;
+}
+
+.home-live-chat .live-chat-compose.unified-capsule-form:focus-within {
+  border-color: var(--snow-border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.home-live-chat .live-chat-compose.unified-capsule-form .capsule-select,
+html[data-theme="dark"] .home-live-chat .live-chat-compose.unified-capsule-form .capsule-select {
+  width: auto;
+  min-width: 72px;
+  max-width: 108px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background-color: transparent;
+  padding: 0 8px;
+  color: var(--snow-ink);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.home-live-chat .live-chat-compose.unified-capsule-form .capsule-select:hover:not(:disabled),
+html[data-theme="dark"] .home-live-chat .live-chat-compose.unified-capsule-form .capsule-select:hover:not(:disabled) {
+  background-color: var(--snow-surface-mid);
+}
+
+.home-live-chat .live-chat-compose.unified-capsule-form .capsule-select:focus,
+html[data-theme="dark"] .home-live-chat .live-chat-compose.unified-capsule-form .capsule-select:focus {
+  border: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.home-live-chat .live-chat-compose.unified-capsule-form .capsule-select:focus-visible {
+  outline: 2px solid var(--snow-ink);
+  outline-offset: -2px;
+}
+
+.home-live-chat .live-chat-compose.unified-capsule-form .capsule-input {
+  height: 36px;
+  padding: 0 6px;
+  font-size: 13.5px;
+}
+
+.home-live-chat .live-chat-compose.unified-capsule-form .capsule-send-btn {
+  width: auto;
+  height: 36px;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .home-live-chat .live-chat-compose.unified-capsule-form .capsule-send-btn span {
