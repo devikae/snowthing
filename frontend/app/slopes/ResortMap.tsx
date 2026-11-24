@@ -259,6 +259,7 @@ function MapCanvas({ map, slopes, difficulty, focused, onSlope, view, zoomed = f
   const slopeByWay = useMemo(() => indexWays(slopes), [slopes]);
   const lifts = useMemo(() => map.ways.filter((way) => way.kind === "lift"), [map]);
   const served = useMemo(() => servedLifts(focused, lifts), [focused, lifts]);
+  const boardLifts = useMemo(() => lifts.filter((lift) => served.has(lift.id) && lift.pts.length > 0), [lifts, served]);
   const active = useCallback(
     (slope: SlopeItem) => (!difficulty || slope.difficulty === difficulty) && (!focused || slope.id === focused.id),
     [difficulty, focused],
@@ -279,8 +280,8 @@ function MapCanvas({ map, slopes, difficulty, focused, onSlope, view, zoomed = f
         return item;
       })
       .filter((item): item is LabelItem => item !== null);
-    // 리프트 타는 곳 표시(▲) 자리는 이름표가 피한다.
-    const marks: Label[] = lifts.map((lift) => {
+    // 눌렀을 때 표시되는 리프트 타는 곳(▲) 자리는 이름표가 피한다.
+    const marks: Label[] = boardLifts.map((lift) => {
       const [x, y] = lift.pts[0];
       const r = 8 * px;
       return { key: `m-${lift.id}`, text: "", main: lift.pts, color: "", anchor: [x, y], leader: null, x: x - r, y: y - r, w: r * 2, h: r * 2, fs: 0, crowded: false };
@@ -292,7 +293,7 @@ function MapCanvas({ map, slopes, difficulty, focused, onSlope, view, zoomed = f
       .map((lift) => ({ key: `l-${lift.id}`, text: liftLabel(lift.name!), main: lift.pts, color: "", ts: [0], liftId: lift.id }));
     const liftLabels = placeShrinking(liftItems, px, bounds, [...marks, ...slopeLabels]);
     return { slopes: slopeLabels, lifts: liftLabels };
-  }, [px, map, slopes, lifts, served, zoomed, active, shownView[0], shownView[1], shownView[2], shownView[3]]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [px, map, slopes, lifts, served, boardLifts, zoomed, active, shownView[0], shownView[1], shownView[2], shownView[3]]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const unit = Math.max(map.width, map.height) / 900;
   const k = px ?? unit;
@@ -374,14 +375,13 @@ function MapCanvas({ map, slopes, difficulty, focused, onSlope, view, zoomed = f
       {labels.slopes.map((label) => (
         <circle key={`dot-${label.key}`} cx={label.anchor[0]} cy={label.anchor[1]} r={3.2 * k} fill={label.color} stroke="var(--snow-canvas, #fff)" strokeWidth={1.2 * k} />
       ))}
-      {lifts.map((lift) => {
+      {boardLifts.map((lift) => {
         const [x, y] = lift.pts[0];
-        const on = served.has(lift.id);
-        const r = (on ? 7.5 : 5.5) * k;
+        const r = 7.5 * k;
         return (
           <g key={`board-${lift.id}`} className={styles.liftBoard} aria-hidden="true">
-            <circle cx={x} cy={y} r={r} fill={on ? "var(--snow-ink, #1e293b)" : "var(--snow-canvas, #fff)"} stroke="var(--snow-ink, #1e293b)" strokeWidth={1.5 * k} />
-            <path d={`M${x - r * 0.45},${y + r * 0.3}L${x},${y - r * 0.4}L${x + r * 0.45},${y + r * 0.3}Z`} fill={on ? "var(--snow-canvas, #fff)" : "var(--snow-ink, #1e293b)"} />
+            <circle cx={x} cy={y} r={r} fill="var(--snow-ink, #1e293b)" stroke="var(--snow-ink, #1e293b)" strokeWidth={1.5 * k} />
+            <path d={`M${x - r * 0.45},${y + r * 0.3}L${x},${y - r * 0.4}L${x + r * 0.45},${y + r * 0.3}Z`} fill="var(--snow-canvas, #fff)" />
           </g>
         );
       })}
