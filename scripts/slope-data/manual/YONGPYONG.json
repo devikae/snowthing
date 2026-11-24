@@ -1,16 +1,16 @@
 {
   "_source": "https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png (page https://www.yongpyong.co.kr/kor/skiNboard/slope/slopeMap.do)",
   "_drawn_source": "https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png",
-  "_anchors_note": "Only 3 local anchors (exact affine). The stylized map does not fit a 4-anchor affine: adding Silver peak left 90-120 m residuals at the base. The 3 points sit right around Dragon Park.",
+  "_anchors_note": "Only 3 local anchors (exact affine). Anchor 1 was the cable-car cabin icon at px (505,445); corrected on 2026-11-24 to the real base station at px (510,535). Even with the fix the stylized map does not fit around Dragon Park: the map puts the Silver slope end 130 px right of the gondola, while in OSM it ends at the Silver lift bottom next to the gondola, so any drawPx for the park lands near the base. No slope uses drawPx now; the anchors are kept for reference.",
   "_anchors": [
     {
       "px": [
-        505,
-        445
+        510,
+        535
       ],
       "lat": 37.64398,
       "lon": 128.67877,
-      "what": "Rainbow gondola bottom station"
+      "what": "Rainbow gondola (발왕산 관광케이블카) bottom station (base building below 서밋랜드 더 그린, not the cabin icon)"
     },
     {
       "px": [
@@ -32,32 +32,25 @@
     }
   ],
   "드래곤파크": {
-    "drawPx": [
+    "draw": [
       [
-        626,
-        379
+        37.638077,
+        128.675878
       ],
       [
-        617,
-        384
+        37.638575,
+        128.676672
       ],
       [
-        596,
-        395
+        37.638982,
+        128.677353
       ],
       [
-        574,
-        406
-      ],
-      [
-        552,
-        417
-      ],
-      [
-        530,
-        428
+        37.639179,
+        128.678063
       ]
-    ]
+    ],
+    "_how": "2026-11-24 다시 그림. 공식 슬로프맵 PDF(https://www.yongpyong.co.kr/upload/kor/슬로프맵.pdf)와 img_slope01.png 모두 드래곤파크를 10번 실버 리프트와 11번 메가그린(뉴그린) 리프트 사이, 실버 슬로프 화살표 끝 아래에서 시작해 실버/메가그린 리프트 하단에서 끝나게 그린다. 기준점 변환은 이 구역에서 맞지 않아(_anchors_note) 위경도로 직접 적었다: 메가그린 리프트(477491151)와 실버 슬로프 아랫부분(533239979) 사이 통로를 메가그린 리프트와 나란히 내려와 실버 리프트(533426025) 하단 37.639179,128.678063에서 끝난다. 이전 선은 기준점 1이 케이블카 객차 그림이라 약 400 m 아래 베이스까지 내려가 있었다."
   },
   "_lifts": {
     "376364815": "발왕산 관광케이블카",
@@ -80,5 +73,255 @@
     "1562973110": null,
     "1562973115": null
   },
-  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.yongpyong.co.kr/kor/skiNboard/introduce.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/tourInfo.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/openStatusBoard.do, https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png"
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.yongpyong.co.kr/kor/skiNboard/introduce.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/tourInfo.do, https://www.yongpyong.co.kr/kor/skiNboard/slope/openStatusBoard.do, https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png",
+  "실버파라다이스": {
+    "draw": [
+      [
+        37.6331023,
+        128.6752027
+      ],
+      [
+        37.6329846,
+        128.6753034
+      ],
+      [
+        37.6328869,
+        128.6753436
+      ],
+      [
+        37.6327475,
+        128.6753395
+      ],
+      [
+        37.6325757,
+        128.6752781
+      ],
+      [
+        37.6323422,
+        128.6751983
+      ],
+      [
+        37.6322028,
+        128.6751614
+      ],
+      [
+        37.6321072,
+        128.6751881
+      ],
+      [
+        37.6320602,
+        128.6752986
+      ],
+      [
+        37.6320942,
+        128.6754112
+      ],
+      [
+        37.632151,
+        128.6754992
+      ],
+      [
+        37.6323909,
+        128.6757775
+      ],
+      [
+        37.6326502,
+        128.6762278
+      ],
+      [
+        37.6328253,
+        128.6764857
+      ],
+      [
+        37.6329874,
+        128.6766249
+      ],
+      [
+        37.6331365,
+        128.6766577
+      ],
+      [
+        37.6332889,
+        128.6766413
+      ],
+      [
+        37.6334899,
+        128.6765062
+      ],
+      [
+        37.6338108,
+        128.6762606
+      ],
+      [
+        37.6339536,
+        128.6761793
+      ],
+      [
+        37.6340437,
+        128.6761793
+      ],
+      [
+        37.6341294,
+        128.6762211
+      ],
+      [
+        37.6341604,
+        128.6763703
+      ],
+      [
+        37.6341195,
+        128.6765088
+      ],
+      [
+        37.6339512,
+        128.6767945
+      ],
+      [
+        37.6335366,
+        128.6774289
+      ],
+      [
+        37.6333309,
+        128.6777026
+      ],
+      [
+        37.6332037,
+        128.6778286
+      ],
+      [
+        37.6330689,
+        128.6778983
+      ],
+      [
+        37.632975,
+        128.6779112
+      ],
+      [
+        37.632879,
+        128.6778751
+      ],
+      [
+        37.6327605,
+        128.6777874
+      ],
+      [
+        37.63254,
+        128.6775708
+      ],
+      [
+        37.6323357,
+        128.6774238
+      ],
+      [
+        37.6322028,
+        128.6773413
+      ],
+      [
+        37.6320813,
+        128.6772738
+      ],
+      [
+        37.6319564,
+        128.6772472
+      ],
+      [
+        37.6318527,
+        128.6772594
+      ],
+      [
+        37.6317684,
+        128.6772942
+      ],
+      [
+        37.6318668,
+        128.6774302
+      ],
+      [
+        37.6320135,
+        128.6776511
+      ],
+      [
+        37.632173,
+        128.6779468
+      ],
+      [
+        37.6323737,
+        128.6782977
+      ],
+      [
+        37.6325307,
+        128.6785511
+      ],
+      [
+        37.6326697,
+        128.6786876
+      ],
+      [
+        37.6328266,
+        128.6787656
+      ],
+      [
+        37.6329836,
+        128.6787916
+      ],
+      [
+        37.6331586,
+        128.6787916
+      ],
+      [
+        37.6337504,
+        128.6787201
+      ],
+      [
+        37.6341235,
+        128.6786681
+      ],
+      [
+        37.6343962,
+        128.6786194
+      ],
+      [
+        37.6346947,
+        128.6785414
+      ],
+      [
+        37.6349057,
+        128.6784991
+      ],
+      [
+        37.6352453,
+        128.6784699
+      ],
+      [
+        37.6354949,
+        128.6784991
+      ],
+      [
+        37.6357625,
+        128.6785479
+      ],
+      [
+        37.6360378,
+        128.6785251
+      ],
+      [
+        37.6381356,
+        128.6783444
+      ],
+      [
+        37.6388706,
+        128.6783334
+      ]
+    ],
+    "_how": "OSM 533239980(실버 파라다이스, 레인보우파라다이스와 만나는 삼거리까지) 전체 점 + 533233476(레인보우 파라다이스)의 143번 점(삼거리, 37.6317684,128.6772942) 다음부터 끝까지의 점. 공식 설명(https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do)이 삼거리에서 레인보우파라다이스와 만나 베이스까지 이어진다고 하고, 1,460 m / 표고차 269 m는 실버 정상에서 베이스까지라 아랫부분이 필요하다. OSM 선은 통째로만 쓸 수 있어 점을 옮겨 적었다."
+  },
+  "레인보우 1": [
+    533259303,
+    533259771
+  ],
+  "_레인보우 1_note": "533259303(OSM 이름 레인보우)은 레인보우 정상에서 Ⅰ, Ⅱ, Ⅲ이 갈라지는 지점까지의 공통 구간. 25/26 공식 슬로프맵 PDF가 이 구간을 '레인보우'로 표기하고 레인보우Ⅰ이 그 끝에서 이어진다. Ⅱ, Ⅲ에 붙이면 공식 길이를 크게 넘어(752→1,185 m, 1,046→1,326 m) 붙이지 않았다.",
+  "레드골드브릿지": [
+    533196095
+  ],
+  "_레드골드브릿지_note": "OSM 533196095 'Red to Gold'(중급, 313 m). 레드파라다이스 위쪽에서 갈라져 뉴골드 선(533196096)에 닿는다. 공식 설명(주석 처리된 introduce.do 문구) '레드 상단부에서 골드지역으로 이동할 수 있는 슬로프', 코스 안내(tourInfo.do) '레드 정상 → 레드 파라다이스 → 레드골드 사잇길 → 골드 베이스존'과 같은 위치."
 }

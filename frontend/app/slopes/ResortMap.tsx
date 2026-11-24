@@ -286,6 +286,12 @@ function MapCanvas({ map, slopes, difficulty, focused, onSlope, view, zoomed = f
       const r = 8 * px;
       return { key: `m-${lift.id}`, text: "", main: lift.pts, color: "", anchor: [x, y], leader: null, x: x - r, y: y - r, w: r * 2, h: r * 2, fs: 0, crowded: false };
     });
+    // 작은 맵에서는 오른쪽 위 "크게 보기" 버튼(약 120x46px) 아래에 이름표를 두지 않는다.
+    if (!zoomed && box) {
+      const right = shownView[0] + shownView[2] / 2 + (box.width / 2) * px;
+      const top = shownView[1] + shownView[3] / 2 - (box.height / 2) * px;
+      marks.push({ key: "expand", text: "", main: [], color: "", anchor: [right, top], leader: null, x: right - 124 * px, y: top, w: 124 * px, h: 48 * px, fs: 0, crowded: false });
+    }
     const slopeLabels = placeShrinking(slopeItems, px, bounds, marks);
     // 리프트 이름은 누른 슬로프의 리프트, 크게 보기에서는 모든 리프트. 슬로프 이름표를 피해 놓는다.
     const liftItems: LabelItem[] = lifts
@@ -293,7 +299,7 @@ function MapCanvas({ map, slopes, difficulty, focused, onSlope, view, zoomed = f
       .map((lift) => ({ key: `l-${lift.id}`, text: liftLabel(lift.name!), main: lift.pts, color: "", ts: [0], liftId: lift.id }));
     const liftLabels = placeShrinking(liftItems, px, bounds, [...marks, ...slopeLabels]);
     return { slopes: slopeLabels, lifts: liftLabels };
-  }, [px, map, slopes, lifts, served, boardLifts, zoomed, active, shownView[0], shownView[1], shownView[2], shownView[3]]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [px, box, map, slopes, lifts, served, boardLifts, zoomed, active, shownView[0], shownView[1], shownView[2], shownView[3]]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const unit = Math.max(map.width, map.height) / 900;
   const k = px ?? unit;

@@ -12,6 +12,15 @@
   "카덴자": [
     975335051
   ],
+  "웨스턴": [
+    293598169,
+    975335062
+  ],
+  "_웨스턴_note": "2026-11-24: 공식 슬로프맵(map.jpg)의 웨스턴은 하이디하우스 아래에서 동쪽으로 돌아 썬다운, 터보와 만나는 사각형(분기점)에서 끝난다. 그 아래로 이어지는 짧은 선은 이름이 없고 썬다운 선과 일직선이라 웨스턴으로 보지 않았다. OSM 이름이 웨스턴인 975335075(분기점에서 서역기행 하단 시작점까지 191m)는 빼고 293598169(본선)와 975335062(가운데 연결선)만 쓴다.",
+  "안단테": [
+    1324578757
+  ],
+  "_안단테_note": "OSM 1324578757 '안단테'(expert, 424m): 다운힐 스타트 지점(곤도라, 하모니 상단 부근)에서 서쪽으로 미뉴에트 선(975335052 3번 점)에 닿는다. 공식 슬로프맵의 '안단테 Andante' 띠(◆◆, 스키 전용)와 같은 위치.",
   "_lifts": {
     "27909068": "곤도라",
     "293598170": "무주 익스프레스",
@@ -27,5 +36,6 @@
     "293598186": "라이너",
     "293598187": "하모니"
   },
-  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.mdysresort.com/ski/slope_lift.asp (리프트 표: 이름, 베이스, 선로길이), https://www.mdysresort.com/images/contents/ski/map.jpg (official slope map, linked from https://www.mdysresort.com/ski/slope.asp)"
+  "_lifts_source": "2026-11-24 공식 리프트 안내와 슬로프맵으로 확인: https://www.mdysresort.com/ski/slope_lift.asp (리프트 표: 이름, 베이스, 선로길이), https://www.mdysresort.com/images/contents/ski/map.jpg (official slope map, linked from https://www.mdysresort.com/ski/slope.asp)",
+  "_lifts_note": "293598172(OSM 멜로디)와 293598182(OSM 카누)는 null로 맵에서 뺀다(사용자 결정). 공식 리프트 표(https://www.mdysresort.com/ski/slope_lift.asp)에는 멜로디(설천, 1,086m)와 카누(만선, 595m)가 있지만, 공식 슬로프맵(https://www.mdysresort.com/images/contents/ski/map.jpg)에는 두 리프트가 그려져 있지 않고 OSM에서도 운행하지 않는(disused) 리프트로 되어 있다. 이 두 리프트를 이용 리프트로 쓰는 슬로프는 없다."
 }

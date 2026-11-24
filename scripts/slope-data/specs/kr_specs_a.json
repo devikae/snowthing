@@ -51,7 +51,7 @@
     "widthM": null,
     "liftName": "라이너",
     "sourceUrl": "https://www.mdysresort.com/ski/slope_lift.asp",
-    "note": "만선 베이스. 경사도는 %로만 공시: 최고 25%, 최저 10%, 평균 16.7% (도 환산 안 함). 표고차 50m, 면적 4,790. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
+    "note": "만선 베이스. 경사도는 %로만 공시: 최고 25%, 최저 10%, 평균 16.7% (도 환산 안 함). 표고차 50m, 면적 4,790. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 맵 선은 공식 슬로프맵대로 하이디하우스 아래에서 썬다운, 터보 분기점까지(가운데 연결선 포함, 약 730m)라 공식 길이 305m보다 길다. 공식 305m, 표고차 50m는 코스 일부 구간 값으로 보인다.",
     "maxGradientPercent": 25.0,
     "avgGradientPercent": 16.7
   },
@@ -292,6 +292,20 @@
     "note": "설천 베이스. 경사도는 %로만 공시: 최고 50%, 최저 22.5%, 평균 38.3% (도 환산 안 함). 표고차 158m, 면적 24,899. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음).",
     "maxGradientPercent": 50.0,
     "avgGradientPercent": 38.3
+  },
+  {
+    "resortCode": "MUJU",
+    "name": "안단테",
+    "officialDifficulty": "최상급자",
+    "lengthM": null,
+    "avgGradient": null,
+    "maxGradient": null,
+    "widthM": null,
+    "liftName": "곤도라, 하모니",
+    "sourceUrl": "https://www.mdysresort.com/images/contents/ski/map.jpg",
+    "note": "설천 베이스. 공식 제원표(https://www.mdysresort.com/ski/slope_lift.asp)에 없고 공식 슬로프맵(https://www.mdysresort.com/images/contents/ski/map.jpg, https://www.mdysresort.com/ski/slope.asp에서 연결)에만 '안단테 Andante'로 표기돼 길이, 경사, 표고차는 비웠다. 난이도는 공식 슬로프맵 범례 ◆◆ '최상급자용 코스(EXPERT ONLY)', 띠 색은 스키 전용. 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음): 다운힐 스타트 지점에서 출발하며 곤도라와 하모니 리프트 상단이 그곳에 닿는다(미뉴에트와 같음).",
+    "maxGradientPercent": null,
+    "avgGradientPercent": null
   },
   {
     "resortCode": "WELLI_HILLI",

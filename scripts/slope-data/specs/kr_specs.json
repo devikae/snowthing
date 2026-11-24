@@ -33,7 +33,7 @@
   "widthM": 71.2,
   "liftName": "제우스, 주피터",
   "sourceUrl": "https://www.high1.com/ski/slopeView.do?key=748&mode=p",
-  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅲ\". 표고차 273.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
+  "note": "공식 표기는 슬로프군 \"제우스\" + 번호 \"Ⅲ\". 표고차 273.00m. 리프트별 담당 슬로프는 공식 표에 없음 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 맵 선은 공식 오버레이대로 밸리 허브에서 밸리 베이스까지 2095 m로 공식 1835 m보다 길다(공식 표의 표고차, 경사, 길이도 서로 맞지 않는다)."
  },
  {
   "resortCode": "HIGH1",
@@ -460,12 +460,24 @@
   "name": "드래곤파크",
   "officialDifficulty": "익스트림파크",
   "lengthM": 500,
-  "avgGradient": 11.9,
-  "maxGradient": 26.6,
+  "avgGradient": null,
+  "maxGradient": null,
   "widthM": null,
-  "liftName": "골드, 뉴레드",
+  "liftName": "메가그린",
   "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do",
-  "note": "공식 표기 드래곤파크 Dragon Park(터레인파크). 표고차 108m. 최저경사 5.1°. 같은 칸 % 표기(참고, 도 환산과 불일치하는 경우 있음): 최대26%, 평균10.4%. 리프트 칸 원문 그대로"
+  "note": "공식 표기 드래곤파크 Dragon Park(터레인파크). 공식 슬로프 소개 표의 이 줄은 다른 줄을 옮겨 붙인 것으로 보여 경사와 리프트를 비웠다: 리프트 칸 '골드, 뉴레드'와 도(°) 경사 최대 26.6°, 최저 5.1°, 평균 11.9°는 레드 줄과 같고, % 경사(최대26%, 평균10.4%)와 표고차 108m는 메가그린 줄과 같다. 길이 500m는 표 값 그대로. 이용 리프트는 2026-11-24 공식 슬로프맵 기준(https://www.yongpyong.co.kr/upload/kor/슬로프맵.pdf, https://www.yongpyong.co.kr/images/kor/skiNboard/img_slope01.png): 파크가 10번 실버 리프트와 11번 메가그린(뉴그린) 리프트 사이에 그려지고 메가그린 리프트 하단에서 끝난다. 골드, 뉴레드 리프트는 리조트 반대편이라 닿지 않는다."
+ },
+ {
+  "resortCode": "YONGPYONG",
+  "name": "레드골드브릿지",
+  "officialDifficulty": "중급",
+  "lengthM": null,
+  "avgGradient": null,
+  "maxGradient": null,
+  "widthM": null,
+  "liftName": null,
+  "sourceUrl": "https://www.yongpyong.co.kr/kor/skiNboard/slope/openStatusBoard.do",
+  "note": "공식 표기 레드골드브릿지. 2026-11-24 공식 슬로프 오픈현황(openStatusBoard.do)에 중급 줄로 올라 있다. 제원(거리, 표고차, 경사)과 리프트는 슬로프 소개(https://www.yongpyong.co.kr/kor/skiNboard/slope/introduce.do)와 리프트 안내 페이지의 HTML 주석 안에만 있어(화면에 나오지 않음) 넣지 않았다. 소개 주석 문구는 '레드 상단부에서 골드지역으로 이동할 수 있는 슬로프', 코스 안내(https://www.yongpyong.co.kr/kor/skiNboard/slope/tourInfo.do)는 '레드 리프트(또는 블루 리프트) → 레드 정상 → 레드 파라다이스 → 레드골드 사잇길 → 골드 베이스존'으로 안내한다. 공식 슬로프맵에 이름이 없고 이용 리프트를 밝힌 공식 표가 없어 리프트는 비웠다."
  },
  {
   "resortCode": "PHOENIX",
@@ -643,9 +655,9 @@
   "avgGradient": 9.35,
   "maxGradient": null,
   "widthM": null,
-  "liftName": "호크",
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
+  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 공식 맵의 익스트림파크 코스(빨간 테두리)는 환타지 중턱의 파란 게이트에서 시작해 호크 리프트 상단보다 위라 정상 리프트(곤돌라, 이글, 콘돌)로 간다. 맵 선은 OSM 보드크로스 선 1420121130에서 환타지 진입로 174 m를 뺀 796 m."
  },
  {
   "resortCode": "PHOENIX",
@@ -655,9 +667,9 @@
   "avgGradient": 9.35,
   "maxGradient": null,
   "widthM": null,
-  "liftName": "호크",
+  "liftName": "곤돌라, 이글, 콘돌",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
+  "note": "표고차 126m; 평균경사 원문 9° 21'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 공식 맵의 익스트림파크 코스(빨간 테두리)는 환타지 중턱의 파란 게이트에서 시작해 호크 리프트 상단보다 위라 정상 리프트(곤돌라, 이글, 콘돌)로 간다. 맵 선은 OSM 보드크로스 선 1420121130에서 환타지 진입로 174 m를 뺀 796 m."
  },
  {
   "resortCode": "PHOENIX",
@@ -669,7 +681,7 @@
   "widthM": null,
   "liftName": "호크",
   "sourceUrl": "https://phoenixhnr.co.kr/api/snowpark/slope",
-  "note": "표고차 50.56m; 평균경사 원문 16° 44'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음)."
+  "note": "표고차 50.56m; 평균경사 원문 16° 44'; 도, 분을 십진 도로 변환; maxGrdnt 원문 '1'은 자리표시값으로 보여 null. 화면: https://phoenixhnr.co.kr/static/pyeongchang/snowpark/slope-lift 이용 리프트 2026-11-24 공식 슬로프맵 기준(공식 안내표 없음). 맵 선(OSM 1420120608, 438 m)은 호크 리프트 상단 옆 진입로부터 베이스까지라 공식 길이 168 m보다 길다. 공식 맵에 파이프 구간 경계가 없어 선을 자르지 않았다."
  },
  {
   "resortCode": "KONJIAM",
