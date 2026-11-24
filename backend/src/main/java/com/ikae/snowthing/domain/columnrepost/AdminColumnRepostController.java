@@ -1,6 +1,9 @@
 package com.ikae.snowthing.domain.columnrepost;
 
+import java.io.IOException;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,5 +29,22 @@ public class AdminColumnRepostController {
     public ResponseEntity<PublishResponse> publishNext() {
         ColumnRepostService.Result result = service.publishNext();
         return ResponseEntity.ok(new PublishResponse(result, service.pendingCount()));
+    }
+
+    public record RefreshResponse(String postPublicId) {}
+
+    /**
+     * 이미 게시된 칼럼의 본문을 대기열의 지금 본문으로 다시 만든다(미디어 옮기기 규칙이 바뀐 뒤). 게시 전이거나 없는 순번이면 404, 미디어를 받지 못하면 503이고
+     * 글은 그대로다.
+     */
+    @PostMapping("/{sequenceNo}/refresh")
+    public ResponseEntity<RefreshResponse> refresh(@PathVariable("sequenceNo") int sequenceNo) {
+        try {
+            return service.refresh(sequenceNo)
+                    .map(publicId -> ResponseEntity.ok(new RefreshResponse(publicId)))
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (IOException unavailable) {
+            return ResponseEntity.status(503).build();
+        }
     }
 }

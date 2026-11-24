@@ -19,4 +19,6 @@ public interface ColumnRepostRepository extends JpaRepository<ColumnRepostItem, 
     Optional<ColumnRepostItem> findByIdForUpdate(@Param("id") Long id);
 
     long countByStatus(String status);
+
+    Optional<ColumnRepostItem> findBySequenceNo(Integer sequenceNo);
 }
