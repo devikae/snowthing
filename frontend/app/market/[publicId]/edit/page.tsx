@@ -15,6 +15,7 @@ import { useImageUploadLease } from "../../../lib/useImageUploadLease";
 import { errorText } from "../../../lib/errorText";
 import { OVERSIZED_IMAGE_MESSAGE, isOversizedImage, prepareImagesForUpload } from "../../../lib/imageFile";
 import { readErrorMessage } from "../../../lib/http";
+import { LoginExpiredNotice } from "../../../components/LoginExpiredNotice";
 import { PRODUCT_CONDITION_OPTIONS, TRANSACTION_METHOD_OPTIONS } from "../../marketOptions";
 
 const ToastEditor = dynamic(() => import("../../../components/ToastEditor"), { ssr: false });
@@ -56,6 +57,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loginExpired, setLoginExpired] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -144,6 +146,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
     }
     setSubmitting(true);
     setError("");
+    setLoginExpired(false);
     try {
       const response = await csrfFetch(API_ENDPOINTS.market.update(publicId), {
         method: "PUT",
@@ -166,6 +169,11 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
         router.replace(`/market/${publicId}`);
         return;
       }
+      // 판매글 등록과 같은 원칙이다. 로그인이 풀려도 고친 내용은 그대로 두고 새 창 로그인을 안내한다.
+      if (response.status === 401) {
+        setLoginExpired(true);
+        return;
+      }
       setError(await readErrorMessage(response, "판매글을 수정하지 못했습니다. 다른 곳에서 수정되었는지 확인해 주세요."));
     } catch {
       setError("판매글을 수정하지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요.");
@@ -179,7 +187,7 @@ export default function MarketEditPage({ params }: { params: Promise<{ publicId:
       <main className="community-container market-compose-page content-compose-page">
         <PageHeading title="판매글 수정" breadcrumb={<Link href="/market">중고장터</Link>} description="상품 정보와 거래 조건을 수정해 주세요." />
         {!detail ? <div className="market-state">{error || "판매글을 불러오는 중입니다."}</div> : <form className="market-compose-card" onSubmit={(event) => void submit(event)}>
-          {error && <div className="compose-error" role="alert">{error}</div>}
+          {(error || loginExpired) && <div className="compose-error" role="alert">{error || <LoginExpiredNotice returnUrl={`/market/${publicId}/edit`} action="수정" />}</div>}
           <div className="market-form-grid">
             <label><span>상품 분류 *</span><select value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)}>{categories.map((category) => <option key={category.code} value={category.code}>{category.name}</option>)}</select></label>
             <label><span>상품 상태 *</span><select value={productCondition} onChange={(event) => setProductCondition(event.target.value)}>{PRODUCT_CONDITION_OPTIONS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>

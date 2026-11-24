@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { formatDateTime, readErrorMessage } from "../adminTypes";
 
 type Action = "TEMPORARY_HOLD" | "RESTORE" | "DELETE" | "DISMISS";
@@ -45,6 +47,7 @@ export default function AdminReportsPage() {
   }, [load]);
 
   const apply = async (reportId: number, action: Action) => {
+    // eslint-disable-next-line no-alert -- 조치 메모 입력 창은 공통 확인 창이 입력칸을 지원하지 않아 남긴다(IKA-119).
     const memo = window.prompt("조치 메모 (관리자 기록, 선택)") ;
     if (memo === null) return;
     setBusy(true); setError(null);
@@ -82,7 +85,7 @@ export default function AdminReportsPage() {
                 <span className="admin-actions">
                   {item.targetState === "NORMAL" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "TEMPORARY_HOLD")}>임시조치</button>}
                   {item.targetState === "HELD" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "RESTORE")}>복구</button>}
-                  {item.targetState !== "DELETED" && <button className="admin-button danger" type="button" disabled={busy} onClick={() => { if (window.confirm("삭제할까요? 되돌릴 수 없습니다.")) void apply(item.reportId, "DELETE"); }}>삭제</button>}
+                  {item.targetState !== "DELETED" && <button className="admin-button danger" type="button" disabled={busy} onClick={async () => { if (await confirm(ask("삭제할까요? 되돌릴 수 없습니다.", "삭제", true))) void apply(item.reportId, "DELETE"); }}>삭제</button>}
                   {item.status === "PENDING" && item.targetState !== "HELD" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "DISMISS")}>기각</button>}
                 </span>
               </div>

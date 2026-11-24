@@ -21,11 +21,13 @@ import tools.jackson.databind.json.JsonMapper;
  * docs/conception/030_slope_status/01_design.md.
  *
  * <p>공통 규칙: 칸 글자가 정확히 OPEN이면 열림, 비었거나 "-"면 정보 없음(null), 그 밖의 글자(CLOSE, 정설 등)는 닫힘으로 본다. 출처가 새 표기를 쓰기
- * 시작해도 열린 슬로프를 잘못 세지 않도록 열림은 좁게 판단한다. 슬로프가 하나도 읽히지 않으면 구조가 바뀐 것으로 보고 실패로 처리한다.
+ * 시작해도 열린 슬로프를 잘못 세지 않도록 열림은 좁게 판단한다. 슬로프가 하나도 읽히지 않거나, 운영 상태를 하나도 읽지 못했거나, 글자가 깨져 있으면 구조나 인코딩이 바뀐
+ * 것으로 보고 실패로 처리한다.
  */
 public final class SlopeStatusParsers {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final char REPLACEMENT_CHARACTER = (char) 0xFFFD;
 
     private SlopeStatusParsers() {}
 
@@ -296,7 +298,27 @@ public final class SlopeStatusParsers {
         if (slopes.isEmpty()) {
             throw new SlopeFetchException(resortName + " 현황에서 슬로프를 하나도 읽지 못했습니다.");
         }
+        // 모든 슬로프의 모든 시간대가 정보 없음이면 상태 칸을 읽지 못한 것이다. 그대로 저장하면 "열린 슬로프 0개"로 보인다.
+        if (slopes.stream().noneMatch(SlopeStatusParsers::hasKnownSession)) {
+            throw new SlopeFetchException(resortName + " 현황에서 운영 상태를 하나도 읽지 못했습니다.");
+        }
+        // 응답 인코딩이 UTF-8이 아니면 표는 읽혀도 이름이 깨진다. 깨진 이름을 저장하지 않는다.
+        if (slopes.stream().anyMatch(SlopeStatusParsers::hasBrokenText)) {
+            throw new SlopeFetchException(resortName + " 현황의 글자가 깨져 있습니다.");
+        }
         return new SlopeSnapshot(slopes, operatingNote);
+    }
+
+    private static boolean hasKnownSession(SlopeEntry slope) {
+        return slope.day() != null || slope.night() != null || slope.lateNight() != null;
+    }
+
+    private static boolean hasBrokenText(SlopeEntry slope) {
+        return isBroken(slope.name()) || isBroken(slope.difficulty()) || isBroken(slope.note());
+    }
+
+    private static boolean isBroken(String value) {
+        return value != null && value.indexOf(REPLACEMENT_CHARACTER) >= 0;
     }
 
     private static Document parse(byte[] body) {

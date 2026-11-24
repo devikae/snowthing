@@ -5,6 +5,7 @@ import "./detailForms.css";
 import "./motion.css";
 import { SupportCoffeeButton } from "./components/SupportCoffeeButton";
 import { BoardsProvider } from "./components/BoardsProvider";
+import { FeedbackHost } from "./components/FeedbackHost";
 import { fetchBoards } from "./lib/boards";
 
 /* eslint-disable @next/next/no-page-custom-font -- App Router의 최상위 레이아웃에서 모든 화면에 공통 폰트를 로드합니다. */
@@ -75,6 +76,7 @@ export default async function RootLayout({
       <body suppressHydrationWarning>
         <BoardsProvider boards={boards}>{children}</BoardsProvider>
         <SupportCoffeeButton />
+        <FeedbackHost />
       </body>
     </html>
   );

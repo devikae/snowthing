@@ -10,6 +10,7 @@ import { API_ENDPOINTS, OffsetPage, ResortReportItem } from "../lib/api";
 import { csrfFetch } from "../lib/csrfFetch";
 import { CompactSelect } from "../components/CompactSelect";
 import { readErrorMessage } from "../lib/http";
+import { confirm, toast } from "../lib/feedback";
 
 interface ResortMaster {
   id: number;
@@ -87,7 +88,7 @@ export default function ResortReportsPage() {
 
   const deleteReport = async (reportId: number) => {
     if (deletingId !== null) return;
-    if (!window.confirm("이 설질 제보를 삭제할까요?")) return;
+    if (!(await confirm({ title: "이 설질 제보를 삭제할까요?", description: "삭제하면 되돌릴 수 없습니다.", confirmLabel: "삭제", danger: true }))) return;
     setDeletingId(reportId);
     try {
       const response = await csrfFetch(API_ENDPOINTS.resortReports.delete(reportId), { method: "DELETE" });
@@ -95,9 +96,9 @@ export default function ResortReportsPage() {
         await loadReports();
         return;
       }
-      alert(await readErrorMessage(response, "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      toast.error(await readErrorMessage(response, "설질 제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } catch {
-      alert("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
+      toast.error("서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       setDeletingId(null);
     }
@@ -170,8 +171,11 @@ export default function ResortReportsPage() {
                 </span>
                 <div className="snow-empty-copy">
                   <strong>오늘 등록된 설질 제보가 아직 없습니다</strong>
-                  <span>첫 번째 현장 설질, 슬로프 대기열 소식을 남겨 보세요.</span>
+                  <span>제보는 홈 화면의 오늘의 설질 칸에서 남길 수 있어요.</span>
                 </div>
+                <Link href="/" className="home-widget-retry">
+                  홈에서 제보 남기기
+                </Link>
               </div>
             ) : (
               reports.map((report) => {

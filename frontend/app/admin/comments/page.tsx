@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm, type ConfirmOptions } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { type AdminCommentItem, type AdminPage, formatDateTime, postHref, readErrorMessage } from "../adminTypes";
 import { AdminPager as Pager } from "../AdminPager";
 import { useAdminFetch } from "../useAdminFetch";
@@ -44,8 +46,8 @@ export default function AdminCommentsPage() {
     setSearch(next);
   };
 
-  const run = async (comment: AdminCommentItem, message: string, request: () => Promise<Response>, failure: string) => {
-    if (!window.confirm(message)) return;
+  const run = async (comment: AdminCommentItem, question: ConfirmOptions, request: () => Promise<Response>, failure: string) => {
+    if (!(await confirm(question))) return;
     setBusyId(comment.commentId);
     list.setError(null);
     try {
@@ -64,8 +66,8 @@ export default function AdminCommentsPage() {
     void run(
       comment,
       blinded
-        ? "이 댓글을 블라인드할까요? 글 화면과 검색에서 보이지 않게 됩니다."
-        : "이 댓글의 블라인드를 해제할까요? 신고로 가린 댓글이면 신고 처리 화면에서 해제해야 합니다.",
+        ? ask("이 댓글을 블라인드할까요? 글 화면과 검색에서 보이지 않게 됩니다.", "블라인드", true)
+        : ask("이 댓글의 블라인드를 해제할까요? 신고로 가린 댓글이면 신고 처리 화면에서 해제해야 합니다.", "해제"),
       () =>
         csrfFetch(API_ENDPOINTS.admin.blindComment(comment.commentId), {
           method: "PATCH",
@@ -79,7 +81,7 @@ export default function AdminCommentsPage() {
   const remove = (comment: AdminCommentItem) =>
     void run(
       comment,
-      "이 댓글을 삭제할까요? 되돌릴 수 없습니다.",
+      ask("이 댓글을 삭제할까요? 되돌릴 수 없습니다.", "삭제", true),
       () => csrfFetch(API_ENDPOINTS.admin.deleteComment(comment.commentId), { method: "DELETE" }),
       "댓글을 삭제하지 못했습니다.",
     );

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { PageHeading } from "../../components/PageHeading";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { API_ENDPOINTS, type AdminDmMailOutboxSummary, type AdminDmMailSwitches } from "../../lib/api";
 import { formatDateTime, readErrorMessage } from "../adminTypes";
 import { useAdminFetch } from "../useAdminFetch";
@@ -66,7 +68,7 @@ export default function AdminDmMailPage() {
   const toggle = async (field: SwitchField) => {
     if (!data || updating) return;
     const next = !data[field].switchOn;
-    if (!window.confirm(confirmMessage(field, next))) return;
+    if (!(await confirm(ask(confirmMessage(field, next), next ? "켜기" : "끄기", next && field === "send")))) return;
     setUpdating(field);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.updateConfig(data[field].configKey), {

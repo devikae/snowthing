@@ -4,6 +4,8 @@ import { useState } from "react";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { AdminPager } from "../AdminPager";
 import { type AdminPage, type AdminResortReportItem, formatDateTime, readErrorMessage } from "../adminTypes";
 import { useAdminFetch } from "../useAdminFetch";
@@ -34,7 +36,7 @@ export default function AdminResortReportsPage() {
   );
 
   const changeStatus = async (report: AdminResortReportItem, status: "NORMAL" | "HIDDEN" | "BLOCKED") => {
-    if (!window.confirm(`${report.resortName} 제보를 ${STATUS_LABEL[status]} 상태로 바꿀까요?`)) return;
+    if (!(await confirm(ask(`${report.resortName} 제보를 ${STATUS_LABEL[status]} 상태로 바꿀까요?`, "변경", status !== "NORMAL")))) return;
     setBusyId(report.reportId);
     list.setError(null);
     try {

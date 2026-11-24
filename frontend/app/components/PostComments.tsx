@@ -15,6 +15,7 @@ import { mergeReplies, replyCursor } from "../lib/commentReplies";
 import { useReplyTarget } from "./useReplyTarget";
 import { ReplyComposer } from "./ReplyComposer";
 import { getJson, readErrorMessage } from "../lib/http";
+import { confirm } from "../lib/feedback";
 
 interface WriterInfo {
   publicId: string | null;
@@ -187,7 +188,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
   };
 
   const deleteComment = async (commentId: string) => {
-    if (working || !window.confirm("댓글을 삭제할까요?")) return;
+    if (working || !(await confirm({ title: "댓글을 삭제할까요?", description: "삭제하면 되돌릴 수 없습니다.", confirmLabel: "삭제", danger: true }))) return;
     setWorking(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.comments.delete(commentId), {
@@ -195,7 +196,7 @@ export default function PostComments({ postPublicId }: { postPublicId: string })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ anonymousPassword: null }),
       });
-      if (!response.ok) throw new Error("댓글을 삭제하지 못했습니다.");
+      if (!response.ok) throw new Error(await readErrorMessage(response, "댓글을 삭제하지 못했습니다."));
       await loadComments();
     } catch (deleteError) {
       setError(errorText(deleteError, "댓글을 삭제하지 못했습니다."));

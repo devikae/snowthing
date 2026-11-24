@@ -9,6 +9,7 @@ import { API_BASE_URL, API_ENDPOINTS } from "../lib/api";
 import { RESORT_MAP, RESORT_OPTIONS } from "../lib/resortTags";
 import { localChatCommand, type LocalChatCommand } from "../lib/chatCommands";
 import { csrfFetch } from "../lib/csrfFetch";
+import { readErrorMessage } from "../lib/http";
 import { formatKoreanDate, toDate } from "../lib/koreanDate";
 
 export interface MemberProfile {
@@ -429,8 +430,7 @@ export default function LiveChatSection({ currentMember }: LiveChatSectionProps)
           body: JSON.stringify({ days: banDays, reason: "라이브톡 차단과 함께 정지" }),
         });
         if (!suspend.ok) {
-          const data = await suspend.json().catch(() => null);
-          setToastError(`IP는 차단했지만 회원을 정지하지 못했습니다. ${data?.message ?? ""}`.trim());
+          setToastError(`IP는 차단했지만 회원을 정지하지 못했습니다. ${await readErrorMessage(suspend, "")}`.trim());
         }
       }
       setBanTargetId(null);

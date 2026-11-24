@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
   output: "standalone",
   turbopack: { root: repositoryRoot },
   outputFileTracingRoot: repositoryRoot,
+  // 글 상세는 본문을 서버에서 그릴 때 Toast UI 뷰어 배포 파일을 글자로 읽는다(app/lib/markdownHtml.server.ts).
+  // import가 아니라서 빌드가 추적하지 못하므로 standalone 출력에 담기게 경로를 적는다. jsdom은 import라 스스로 추적된다.
+  outputFileTracingIncludes: {
+    "/posts/[publicId]": ["./node_modules/@toast-ui/editor/dist/toastui-editor-viewer.js"],
+  },
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

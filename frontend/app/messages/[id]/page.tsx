@@ -10,6 +10,7 @@ import { MESSAGE_ENDPOINTS, MessageDetail, formatMessageDate, notifyMessagesUpda
 import styles from "../../components/messages.module.css";
 import { errorText } from "../../lib/errorText";
 import { readErrorMessage } from "../../lib/http";
+import { confirm, toast } from "../../lib/feedback";
 
 export default function MessageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -54,7 +55,7 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
 
   const remove = async () => {
     if (!message || deleting) return;
-    if (!window.confirm("이 쪽지를 내 쪽지함에서 삭제할까요? 상대 쪽지함에는 남습니다.")) return;
+    if (!(await confirm({ title: "이 쪽지를 내 쪽지함에서 삭제할까요?", description: "상대 쪽지함에는 남습니다.", confirmLabel: "삭제", danger: true }))) return;
     setDeleting(true);
     setError("");
     try {
@@ -65,6 +66,7 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
       }
       if (!response.ok) throw new Error(await readErrorMessage(response, "쪽지를 삭제하지 못했습니다."));
       notifyMessagesUpdated();
+      toast.success("쪽지를 삭제했습니다.");
       router.replace(message.box === "SENT" ? "/messages?box=sent" : "/messages");
     } catch (deleteError) {
       setError(errorText(deleteError, "쪽지를 삭제하지 못했습니다."));
@@ -121,7 +123,6 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
                 // 답장은 판매글을 다시 참조하지 않는다. 판매자가 구매자에게 답장하면 받는 회원이 판매글 작성자가 아니라서 서버가 거부한다.
                 quote={message.content}
                 onCancel={() => setReplying(false)}
-                onUnauthorized={redirectToLogin}
                 onSent={() => {
                   setReplying(false);
                   setNotice("답장을 보냈습니다.");
