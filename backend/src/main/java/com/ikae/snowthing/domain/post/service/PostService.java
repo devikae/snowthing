@@ -118,8 +118,9 @@ public class PostService {
 
         // 본문은 화면에서 HTML로 그려진다. 저장 전에 위험한 태그와 주소를 글자로 바꾼다.
         String content = MarkdownBodySanitizer.sanitize(request.content());
-        // 금칙어가 걸리면 저장과 응답은 평소와 같고 상태만 FILTER_HOLD로 둔다 (IKA-96).
-        Optional<String> matched = contentFilter.inspect(userDetails, request.title(), content);
+        // 금칙어나 연락처가 걸리면 저장과 응답은 평소와 같고 상태만 FILTER_HOLD로 둔다 (IKA-96, IKA-122).
+        Optional<String> matched =
+                contentFilter.inspectPosting(userDetails, member, request.title(), content);
         Post post =
                 Post.builder()
                         .member(member)
@@ -489,7 +490,8 @@ public class PostService {
      */
     private void applyFilterAfterEdit(Post post, CustomUserDetails editor) {
         Optional<String> matched =
-                contentFilter.inspect(editor, post.getTitle(), post.getContent());
+                contentFilter.inspectPosting(
+                        editor, post.getMember(), post.getTitle(), post.getContent());
         if (matched.isPresent()) {
             post.changeStatus(PostStatus.FILTER_HOLD);
             contentFilter.recordPostHold(post, matched.get());

@@ -62,6 +62,11 @@ class SpamFilterIntegrationTest {
     private static final String OTHER_IP = "198.51.100.77";
     private static final String BANNED = "테스트광고어";
 
+    /** 2026-11-24 운영에 올라온 광고 글. 등록된 금칙어는 하나도 없고 연락처만 있다. */
+    private static final String CASINO_AD =
+            "카카오톡: TAM999\n텔레그램: @Rtam999\n세부 누스타 카지노, 호텔 무료 객실 혜택도 함께 알아보세요!\n"
+                    + "로얄탐에서 상담해 드립니다.\n#세부누스타 #누스타카지노 #세부카지노 #로얄탐";
+
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbc;
@@ -168,6 +173,79 @@ class SpamFilterIntegrationTest {
                 .andExpect(jsonPath("$.items[0].targetType").value("POST"))
                 .andExpect(jsonPath("$.items[0].matchedWord").value(BANNED))
                 .andExpect(jsonPath("$.items[0].writerIp").value(WRITER_IP));
+    }
+
+    @Test
+    @DisplayName("연락처: 금칙어가 없어도 비회원 광고 글은 보류하고 걸린 이유를 연락처로 남긴다 (IKA-122)")
+    void anonymousContactPostIsHeld() throws Exception {
+        String publicId =
+                json(mockMvc.perform(
+                                        anonymousPost(marker + " 세부 누스타", CASINO_AD)
+                                                .with(ip(WRITER_IP)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.status").value("NORMAL"))
+                                .andReturn())
+                        .get("publicId")
+                        .asText();
+
+        mockMvc.perform(get(POSTS + "/" + publicId).with(ip(OTHER_IP)))
+                .andExpect(status().isNotFound());
+        assertThat(listIds("ANONYMOUS", OTHER_IP, null)).doesNotContain(publicId);
+        mockMvc.perform(get("/api/v1/admin/filter-holds").session(adminSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].postPublicId").value(publicId))
+                .andExpect(jsonPath("$.items[0].matchedWord").value("연락처: 메신저 ID"));
+    }
+
+    @Test
+    @DisplayName("연락처: 새 회원 글과 비회원 댓글은 보류하고, 가입 하루가 지난 회원과 관리자는 그대로다 (IKA-122)")
+    void contactCheckAppliesOnlyToUnprovenWriters() throws Exception {
+        String newMemberPost =
+                createdStatusAndId(
+                        memberPost(marker + " 새", "연락 010-1234-5678").session(writerSession));
+        assertThat(postStatus(newMemberPost)).isEqualTo("FILTER_HOLD");
+
+        jdbc.update(
+                "UPDATE member SET created_at = DATE_SUB(NOW(6), INTERVAL 2 DAY) WHERE member_id = ?",
+                writer.getId());
+        String oldMemberPost =
+                createdStatusAndId(
+                        memberPost(marker + " 카풀", "카풀 연락 010-1234-5678").session(writerSession));
+        assertThat(postStatus(oldMemberPost)).isEqualTo("NORMAL");
+
+        String adminPost =
+                createdStatusAndId(
+                        memberPost(marker + " 공지", "문의 카카오톡: snowadmin").session(adminSession));
+        assertThat(postStatus(adminPost)).isEqualTo("NORMAL");
+
+        String plainAnonymous =
+                createdStatusAndId(
+                        anonymousPost(marker + " 후기", "공지 https://www.konjiamresort.co.kr 참고")
+                                .with(ip(WRITER_IP)));
+        assertThat(postStatus(plainAnonymous)).isEqualTo("NORMAL");
+
+        mockMvc.perform(
+                        post(POSTS + "/" + oldMemberPost + "/comments")
+                                .with(csrf())
+                                .with(ip(OTHER_IP))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                Map.of(
+                                                        "content",
+                                                        "텔레그램 @Rtam999 상담",
+                                                        "isAnonymous",
+                                                        true,
+                                                        "anonymousPassword",
+                                                        "pass1234"))))
+                .andExpect(status().isCreated());
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT c.filter_state FROM comment c JOIN post p ON p.post_id = c.post_id"
+                                        + " WHERE p.public_id = ?",
+                                String.class,
+                                oldMemberPost))
+                .isEqualTo("HELD");
     }
 
     @Test
@@ -517,6 +595,17 @@ class SpamFilterIntegrationTest {
 
     private JsonNode json(MvcResult result) throws Exception {
         return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    private String createdStatusAndId(MockHttpServletRequestBuilder request) throws Exception {
+        return json(mockMvc.perform(request).andExpect(status().isCreated()).andReturn())
+                .get("publicId")
+                .asText();
+    }
+
+    private String postStatus(String publicId) {
+        return jdbc.queryForObject(
+                "SELECT status FROM post WHERE public_id = ?", String.class, publicId);
     }
 
     private int holdCount() {

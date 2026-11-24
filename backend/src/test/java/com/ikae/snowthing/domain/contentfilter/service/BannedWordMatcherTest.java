@@ -91,4 +91,21 @@ class BannedWordMatcherTest {
     void normalize() {
         assertThat(BannedWordMatcher.normalize("<b>AB</b> c-1!")).isEqualTo("abc1");
     }
+
+    @Test
+    @DisplayName("068 마이그레이션 금칙어: 저장한 정리 값이 normalize와 같고, 업체 광고의 여러 표기를 잡는다 (IKA-122)")
+    void casinoVendorWords() {
+        List<String> words = List.of("누스타", "세부카지노", "로얄탐", "tam999");
+        words.forEach(word -> assertThat(BannedWordMatcher.normalize(word)).isEqualTo(word));
+        BannedWordMatcher matcher =
+                new BannedWordMatcher(
+                        words.stream().map(w -> new BannedWordMatcher.Entry(w, w)).toList());
+
+        assertThat(matcher.findMatch("세부 누스타 카지노, 호텔 무료 객실")).contains("누스타");
+        assertThat(matcher.findMatch("#누스타호텔무료객실")).contains("누스타");
+        assertThat(matcher.findMatch("#세부카지노여행")).contains("세부카지노");
+        assertThat(matcher.findMatch("로얄 탐에서 상담")).contains("로얄탐");
+        assertThat(matcher.findMatch("텔레그램: @Rtam999")).contains("tam999");
+        assertThat(matcher.findMatch("오늘 하이원 설질 좋음")).isEmpty();
+    }
 }
