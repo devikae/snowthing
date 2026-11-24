@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { API_BASE_URL } from "../../../lib/api";
+import { isPublicId } from "../../../lib/publicApi";
 import { GroupApp } from "./GroupApp";
 
 const PREVIEW_TIMEOUT_MS = 2000;
 const DESCRIPTION = "15개 질문에 답하면 모임 사람들과 나의 궁합 지도가 나와요. 가입 없이 1분.";
 
 async function fetchGroupName(publicId: string) {
+  // 주소의 값은 형식이 맞을 때만 백엔드 주소에 넣는다.
+  if (!isPublicId(publicId)) return null;
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/character-groups/${encodeURIComponent(publicId)}`, { cache: "no-store", signal: AbortSignal.timeout(PREVIEW_TIMEOUT_MS) });
     if (!response.ok) return null;

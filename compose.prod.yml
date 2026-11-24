@@ -110,6 +110,11 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+    # 화면 서버는 비root 사용자로 3000번만 듣는다. 커널 권한을 모두 빼고, 실행 중 권한을 다시 얻지 못하게 한다(IKA-120).
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
   mcp-bot:
     image: ${MCP_BOT_IMAGE_URI:-snowthing-mcp-bot:not-recorded-pass-etc-snowthing-images-env}

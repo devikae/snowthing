@@ -11,6 +11,8 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  // 쓰지 않는 브라우저 기능은 꺼 둔다. 위치(카풀 지도), 전체 화면(영상), 클립보드와 공유는 쓰므로 여기서 막지 않는다.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), payment=(), usb=(), serial=(), bluetooth=(), midi=()" },
 ];
 
 const nextConfig: NextConfig = {

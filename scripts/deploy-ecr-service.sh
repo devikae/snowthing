@@ -213,11 +213,17 @@ configure_nginx_cam_origin() {
 }
 
 configure_nginx_request_limits() {
-  local config_path backup_path real_ip_header_exists real_ip_recursive_exists
+  local config_path backup_path real_ip_header_exists real_ip_recursive_exists server_tokens_exists
   config_path="$NGINX_MANAGED_CONFIG_PATH"
   backup_path=""
   real_ip_header_exists=false
   real_ip_recursive_exists=false
+  server_tokens_exists=false
+
+  # 서버에 이미 같은 지시어가 있으면 중복 오류가 나므로 그때는 쓰지 않는다.
+  if nginx_directive_exists_outside_managed_file 'server_tokens'; then
+    server_tokens_exists=true
+  fi
 
   if nginx_directive_exists_outside_managed_file 'real_ip_header'; then
     real_ip_header_exists=true
@@ -233,6 +239,10 @@ configure_nginx_request_limits() {
 
   {
     printf '%s\n' 'client_max_body_size 6m;'
+    # Nginx가 직접 만드는 응답(301, 4xx, 5xx)에 버전을 싣지 않는다(IKA-120).
+    if [[ "$server_tokens_exists" == false ]]; then
+      printf '%s\n' 'server_tokens off;'
+    fi
     for cloudflare_range in "${CLOUDFLARE_IPV4_RANGES[@]}" "${CLOUDFLARE_IPV6_RANGES[@]}"; do
       printf 'set_real_ip_from %s;\n' "$cloudflare_range"
     done
