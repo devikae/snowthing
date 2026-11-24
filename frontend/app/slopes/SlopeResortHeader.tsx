@@ -48,12 +48,6 @@ export function SlopeResortHeader({ resort, title, chips, hasCam, backToResort =
             리조트 정보
           </Link>
         )}
-        {domestic && (
-          <Link className={camStyles.backLink} href={`/slopes#${slug}`}>
-            <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">downhill_skiing</span>
-            슬로프 현황
-          </Link>
-        )}
         {hasCam && (
           <Link className={camStyles.backLink} href={`/resort-cam/${slug}`}>
             <span data-nosnippet className="material-symbols-outlined" aria-hidden="true">videocam</span>
