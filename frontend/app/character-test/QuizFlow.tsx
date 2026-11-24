@@ -70,7 +70,7 @@ export function QuizFlow({ resume = false, onComplete }: { resume?: boolean; onC
 
   return (
     <section className="ct-panel ct-question">
-      <div className="ct-progress" role="progressbar" aria-valuemin={0} aria-valuemax={order.length} aria-valuenow={step + 1} aria-label={`${order.length}개 중 ${step + 1}번째 질문`}><span style={{ width: `${((step + 1) / order.length) * 100}%` }} /></div>
+      <div className="ct-progress" role="progressbar" aria-valuemin={0} aria-valuemax={order.length} aria-valuenow={step + 1} aria-label={`${order.length}개 중 ${step + 1}번째 질문`}><span style={{ transform: `scaleX(${((step + 1) / order.length)})` }} /></div>
       {/* 질문이 바뀔 때마다 key로 새로 그려 한 줄씩 나타나는 움직임을 다시 보여 준다 */}
       <p key={`n${step}`} className="ct-eyebrow ct-step-line">{step + 1} / {order.length}</p>
       <h2 key={`q${step}`} className="ct-step-line">{question.situation}</h2>
