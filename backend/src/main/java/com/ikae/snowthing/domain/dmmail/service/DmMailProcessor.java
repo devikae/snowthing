@@ -101,6 +101,8 @@ public class DmMailProcessor {
 
     /** 받는 사람 한 명을 처리한다. 다른 워커가 잡고 있거나 쿨다운 안이면 false. */
     public boolean processRecipient(long recipientId, LocalDateTime now) {
+        // 상태 행은 잠그기 전에 따로 만든다. 같은 트랜잭션에서 만들면 두 워커가 교착 상태에 빠질 수 있다.
+        tx.executeWithoutResult(status -> outbox.ensureRecipientState(recipientId));
         Claim claim = tx.execute(status -> claim(recipientId, now));
         if (claim == null) {
             return false;
