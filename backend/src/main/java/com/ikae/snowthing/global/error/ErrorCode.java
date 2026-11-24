@@ -124,8 +124,8 @@ public enum ErrorCode {
     POST_SEARCH_RATE_LIMIT(
             HttpStatus.TOO_MANY_REQUESTS, "POST_011", "검색이 너무 잦습니다. 잠시 후 다시 시도해 주세요."),
     CONTENT_REPORT_TARGET_NOT_FOUND(
-            HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 게시물을 찾을 수 없습니다."),
-    CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고한 게시물입니다."),
+            HttpStatus.NOT_FOUND, "CONTENT_REPORT_001", "신고할 대상을 찾을 수 없습니다."),
+    CONTENT_REPORT_DUPLICATE(HttpStatus.CONFLICT, "CONTENT_REPORT_002", "이미 신고했습니다."),
     CONTENT_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_REPORT_003", "존재하지 않는 신고입니다."),
     CONTENT_REPORT_ACTION_INVALID(
             HttpStatus.CONFLICT, "CONTENT_REPORT_004", "현재 상태에서는 할 수 없는 조치입니다."),

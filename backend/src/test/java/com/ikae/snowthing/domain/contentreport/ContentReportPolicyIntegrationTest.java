@@ -111,8 +111,8 @@ class ContentReportPolicyIntegrationTest {
             for (Map<String, Object> body : invalid) {
                 report(reporter, body).andExpect(status().isBadRequest());
             }
-            // 모르는 대상 종류와 사유는 본문 해석 단계에서 막힌다.
-            report(reporter, reportBody("MESSAGE", postPublicId, "SPAM", null))
+            // 모르는 대상 종류와 사유는 본문 해석 단계에서 막힌다. MESSAGE는 IKA-123부터 받는 종류라 쓰지 않는다.
+            report(reporter, reportBody("PROFILE", postPublicId, "SPAM", null))
                     .andExpect(status().isBadRequest());
             report(reporter, reportBody("POST", postPublicId, "BORING", null))
                     .andExpect(status().isBadRequest());

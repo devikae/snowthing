@@ -11,14 +11,17 @@ import { formatDateTime, readErrorMessage } from "../adminTypes";
 
 type Action = "TEMPORARY_HOLD" | "RESTORE" | "DELETE" | "DISMISS";
 interface ReportItem {
-  reportId: number; targetType: "POST" | "COMMENT"; targetState: "NORMAL" | "HELD" | "HIDDEN" | "DELETED";
+  reportId: number; targetType: "POST" | "COMMENT" | "MESSAGE"; targetState: "NORMAL" | "HELD" | "HIDDEN" | "DELETED";
   targetPreview: string | null; targetContent: string | null; postPublicId: string | null; postCategoryCode: string | null;
   reason: string; detail: string | null; reporterNickname: string; status: "PENDING" | "RESOLVED"; createdAt: string; resolvedAt: string | null;
+  // 쪽지 신고일 때만 온다. 탈퇴한 회원이면 senderPublicId가 null이다 (IKA-123).
+  senderPublicId: string | null; senderNickname: string | null; messageSentAt: string | null;
 }
 interface ReportPage { reports: ReportItem[]; page: number; totalPages: number; totalElements: number; }
 
 const REASON_LABEL: Record<string, string> = { RIGHTS_INFRINGEMENT: "권리 침해", ILLEGAL_CONTENT: "불법 정보", FRAUD: "사기", SPAM: "도배, 광고", OTHER: "기타" };
 const STATE_LABEL: Record<ReportItem["targetState"], string> = { NORMAL: "게시 중", HELD: "임시조치 중", HIDDEN: "숨김", DELETED: "삭제됨" };
+const TARGET_LABEL: Record<ReportItem["targetType"], string> = { POST: "[글] ", COMMENT: "[댓글] ", MESSAGE: "[쪽지] " };
 const STATE_STATUS: Record<ReportItem["targetState"], string> = { NORMAL: "DRAFT", HELD: "REVIEW_REQUIRED", HIDDEN: "REVIEW_REQUIRED", DELETED: "REJECTED" };
 
 function targetHref(item: ReportItem) {
@@ -61,7 +64,7 @@ export default function AdminReportsPage() {
 
   return (
     <>
-      <PageHeading title="신고 처리" description="권리 침해 요청은 지체 없이 처리하고 결과는 신고자와 작성자에게 자동으로 알립니다." />
+      <PageHeading title="신고 처리" description="권리 침해 요청은 지체 없이 처리하고 결과는 신고자와 작성자에게 자동으로 알립니다. 쪽지 신고는 본문을 확인하고 처리 완료로 닫으며 알림은 보내지 않습니다." />
       {error && <p className="admin-meta" role="alert">{error}</p>}
       <section className="panel admin-section" aria-label="신고 목록">
         <div className="admin-actions">
@@ -73,20 +76,32 @@ export default function AdminReportsPage() {
           {data?.reports.length === 0 && <p className="admin-meta">신고가 없습니다.</p>}
           {data?.reports.map((item) => {
             const href = targetHref(item);
+            // 쪽지는 공개 대상이 아니라 가리거나 지울 것이 없다. 본문을 보고 필요하면 회원 상세에서 정지한다.
+            const isMessage = item.targetType === "MESSAGE";
             return (
               <div className="admin-row" key={item.reportId}>
-                <span className="admin-status" data-status={STATE_STATUS[item.targetState]}>{STATE_LABEL[item.targetState]}</span>
+                <span className="admin-status" data-status={STATE_STATUS[item.targetState]}>{isMessage ? (item.targetState === "DELETED" ? "대상 없음" : "쪽지") : STATE_LABEL[item.targetState]}</span>
                 <span style={{ minWidth: 0 }}>
-                  <p>{item.targetType === "COMMENT" ? "[댓글] " : "[글] "}{href ? <Link href={href} target="_blank">{item.targetPreview}</Link> : item.targetPreview ?? "대상 없음"}</p>
+                  <p>{TARGET_LABEL[item.targetType]}{href ? <Link href={href} target="_blank">{item.targetPreview}</Link> : item.targetPreview ?? "대상 없음"}</p>
                   <small>{REASON_LABEL[item.reason] ?? item.reason}, 신고자 {item.reporterNickname}, {formatDateTime(item.createdAt)}{item.resolvedAt ? `, 처리 ${formatDateTime(item.resolvedAt)}` : ""}</small>
+                  {isMessage && (
+                    <small style={{ display: "block" }}>
+                      보낸 회원 {item.senderPublicId ? <Link href={`/admin/members/${encodeURIComponent(item.senderPublicId)}`}>{item.senderNickname}</Link> : item.senderNickname ?? "알 수 없음"}
+                      {item.messageSentAt ? `, 보낸 시각 ${formatDateTime(item.messageSentAt)}` : ""}
+                    </small>
+                  )}
                   {item.detail && <small style={{ display: "block" }}>신고 내용: {item.detail}</small>}
                   {item.targetContent && <details><summary className="admin-meta">본문 보기</summary><small style={{ display: "block", whiteSpace: "pre-wrap" }}>{item.targetContent}</small></details>}
                 </span>
                 <span className="admin-actions">
+                  {isMessage ? (
+                    item.status === "PENDING" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "DISMISS")}>처리 완료</button>
+                  ) : (<>
                   {item.targetState === "NORMAL" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "TEMPORARY_HOLD")}>임시조치</button>}
                   {item.targetState === "HELD" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "RESTORE")}>복구</button>}
                   {item.targetState !== "DELETED" && <button className="admin-button danger" type="button" disabled={busy} onClick={async () => { if (await confirm(ask("삭제할까요? 되돌릴 수 없습니다.", "삭제", true))) void apply(item.reportId, "DELETE"); }}>삭제</button>}
                   {item.status === "PENDING" && item.targetState !== "HELD" && <button className="admin-button" type="button" disabled={busy} onClick={() => void apply(item.reportId, "DISMISS")}>기각</button>}
+                  </>)}
                 </span>
               </div>
             );

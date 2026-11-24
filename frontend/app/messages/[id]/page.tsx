@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Footer, TopNav } from "../../components/SiteChrome";
 import { MessageComposeForm } from "../../components/MessageComposeForm";
 import { csrfFetch } from "../../lib/csrfFetch";
-import { MESSAGE_ENDPOINTS, MessageDetail, formatMessageDate, notifyMessagesUpdated } from "../../lib/messageApi";
+import { BlockedMember, MESSAGE_ENDPOINTS, MessageDetail, blockMember, formatMessageDate, notifyMessagesUpdated, unblockMember } from "../../lib/messageApi";
+import { ReportButton } from "../../components/ReportButton";
 import styles from "../../components/messages.module.css";
 import { errorText } from "../../lib/errorText";
 import { readErrorMessage } from "../../lib/http";
@@ -21,6 +22,9 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
   const [notice, setNotice] = useState("");
   const [replying, setReplying] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // null이면 아직 차단 목록을 읽지 못했다. 그동안 차단 버튼을 숨긴다.
+  const [blocked, setBlocked] = useState<boolean | null>(null);
+  const [blocking, setBlocking] = useState(false);
 
   const redirectToLogin = useCallback(() => {
     router.replace(`/login?returnUrl=${encodeURIComponent(`/messages/${id}`)}`);
@@ -52,6 +56,57 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
       window.clearTimeout(timer);
     };
   }, [id, redirectToLogin]);
+
+  // 받은 쪽지에서만 차단과 신고를 보인다. 탈퇴한 회원은 publicId가 없다.
+  const sender = message?.box === "RECEIVED" && message.counterpart.publicId
+    ? { publicId: message.counterpart.publicId, nickname: message.counterpart.nickname }
+    : null;
+  const senderPublicId = sender?.publicId ?? null;
+
+  useEffect(() => {
+    if (!senderPublicId) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(MESSAGE_ENDPOINTS.blocks, { credentials: "include", cache: "no-store" });
+        if (!response.ok) return;
+        const blocks: BlockedMember[] = await response.json();
+        if (!cancelled) setBlocked(blocks.some((member) => member.publicId === senderPublicId));
+      } catch {
+        // 차단 목록을 못 읽으면 차단 버튼만 숨긴다. 신고는 그대로 할 수 있다.
+      }
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [senderPublicId]);
+
+  const toggleBlock = async () => {
+    if (!sender || blocking || blocked === null) return;
+    const confirmed = blocked
+      ? await confirm({ title: `${sender.nickname}님의 차단을 해제할까요?`, confirmLabel: "해제" })
+      : await confirm({ title: `${sender.nickname}님을 차단할까요?`, description: "서로 쪽지를 보낼 수 없게 됩니다. 이미 받은 쪽지는 그대로 남습니다.", confirmLabel: "차단", danger: true });
+    if (!confirmed) return;
+    setBlocking(true);
+    setError("");
+    try {
+      if (blocked) {
+        await unblockMember(sender.publicId);
+        setBlocked(false);
+        toast.success(`${sender.nickname}님의 차단을 해제했습니다.`);
+      } else {
+        await blockMember(sender.publicId);
+        setBlocked(true);
+        setReplying(false);
+        toast.success(`${sender.nickname}님을 차단했습니다.`);
+      }
+    } catch (blockError) {
+      setError(errorText(blockError, blocked ? "차단을 해제하지 못했습니다." : "차단하지 못했습니다."));
+    } finally {
+      setBlocking(false);
+    }
+  };
 
   const remove = async () => {
     if (!message || deleting) return;
@@ -113,7 +168,21 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
               <button type="button" className={styles.button} onClick={() => void remove()} disabled={deleting}>
                 {deleting ? "삭제 중" : "삭제"}
               </button>
-              {message.canReply && message.counterpart.publicId && !replying && (
+              {sender && blocked !== null && (
+                <button type="button" className={styles.button} onClick={() => void toggleBlock()} disabled={blocking}>
+                  {blocking ? "처리 중" : blocked ? "차단 해제" : "차단"}
+                </button>
+              )}
+              {sender && (
+                <ReportButton
+                  targetType="MESSAGE"
+                  targetId={message.id}
+                  className={styles.button}
+                  blockTarget={blocked ? undefined : sender}
+                  onBlocked={() => { setBlocked(true); setReplying(false); }}
+                />
+              )}
+              {message.canReply && message.counterpart.publicId && !blocked && !replying && (
                 <button type="button" className={styles.buttonPrimary} onClick={() => { setReplying(true); setNotice(""); }}>답장</button>
               )}
             </div>

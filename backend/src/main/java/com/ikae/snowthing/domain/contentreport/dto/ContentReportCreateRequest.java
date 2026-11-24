@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 import com.ikae.snowthing.domain.contentreport.entity.ReportReason;
 import com.ikae.snowthing.domain.contentreport.entity.ReportTargetType;
 
-/** {@code targetId}는 게시글이면 publicId, 댓글이면 댓글 ID다. */
+/** {@code targetId}는 게시글이면 publicId, 댓글이면 댓글 ID, 쪽지면 쪽지 ID다. */
 public record ContentReportCreateRequest(
         @NotNull ReportTargetType targetType,
         @NotBlank @Size(max = 36) String targetId,
