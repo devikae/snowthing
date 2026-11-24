@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -41,8 +42,16 @@ import com.ikae.snowthing.domain.post.repository.PostRepository;
  *
  * <p>대기열 적재(같은 트랜잭션), 규칙 판정, 자동 숨김, 묶음 처리와 재시작 뒤 이어 처리, 관리자 검토 API를 실제 MySQL로 확인한다.
  */
-@SpringBootTest
+@SpringBootTest(
+        properties = {
+            // 새 회원의 연락처 글을 자동 검열이 판정하는지 보려고 IKA-122 연락처 보류를 회원에게는 끈다.
+            "snowthing.content-filter.contact-new-member-age=0s",
+            // 클래스가 끝나면 컨텍스트를 닫는다. create-drop이면 닫힐 때 공유 테스트 스키마를 지워 다른 컨텍스트가 깨진다.
+            "spring.jpa.hibernate.ddl-auto=update"
+        })
 @AutoConfigureMockMvc
+// 이 설정은 이 클래스만 쓴다. 캐시에 남기면 전체 테스트에서 테스트 JVM 힙이 모자란다.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ModerationIntegrationTest extends ModerationTestSupport {
 
     private static final String ADMIN_API = "/api/v1/admin/moderations";

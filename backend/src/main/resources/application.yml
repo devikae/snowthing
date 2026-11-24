@@ -149,6 +149,9 @@ snowthing:
         read-timeout-millis: 10000
   # IKA-80 AI 자동 검열. 기본 꺼짐. 켜면 글, 댓글, 장터, 카풀, 설질 제보를 쓰고 고칠 때 대기열에 넣고 1분마다 판정한다.
   # 2단계(OpenAI Moderation API)는 따로 켠다. 이용자 글이 국외(미국)로 가므로 개인정보처리방침을 고친 뒤 켠다. 키가 비어 있으면 규칙만 돈다.
+  # IKA-122 비회원과 이 시간 안의 새 회원이 쓴 글, 댓글에 연락처가 있으면 금칙어처럼 보류한다.
+  content-filter:
+    contact-new-member-age: 24h
   moderation:
     enabled: ${SNOWTHING_MODERATION_ENABLED:false}
     poll-interval-ms: 60000

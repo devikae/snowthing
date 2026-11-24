@@ -287,7 +287,8 @@ public class CommentService {
      * 하나 올린다.
      */
     private void applyFilterAfterEdit(Comment comment, CustomUserDetails editor) {
-        Optional<String> matched = contentFilter.inspect(editor, comment.getContent());
+        Optional<String> matched =
+                contentFilter.inspectPosting(editor, comment.getMember(), comment.getContent());
         if (matched.isPresent()) {
             boolean newlyHeld = !comment.isFilterHeld();
             if (newlyHeld) {
