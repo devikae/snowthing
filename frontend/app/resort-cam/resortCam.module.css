@@ -37,7 +37,7 @@
   font-weight: 700;
   white-space: nowrap;
   text-align: center;
-  transition: all 0.16s ease;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, var(--press);
 }
 
 .resortTab:hover {
@@ -257,7 +257,7 @@
   color: var(--snow-ink-soft, #475569);
   font-size: 12px;
   font-weight: 700;
-  transition: all 0.16s ease;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, var(--press);
 }
 
 .backLink:hover {
@@ -352,7 +352,7 @@
   place-items: center;
   border-radius: 6px;
   color: var(--snow-muted, #64748b);
-  transition: all 0.16s ease;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, var(--press);
 }
 
 .expandButton:hover {
@@ -406,6 +406,14 @@
   animation: spin 1s linear infinite;
 }
 
+/* 동작 줄이기에서도 로딩 회전은 남긴다(motion.css의 전체 끄기 규칙보다 우선) */
+@media (prefers-reduced-motion: reduce) {
+  .loadingOverlay.loadingOverlay span:first-child {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -438,8 +446,10 @@
   transition: transform 0.16s ease;
 }
 
+@media (hover: hover) {
 .playCover:hover span:first-child {
   transform: scale(1.1);
+}
 }
 
 /* 목록 미리보기가 끝난 뒤 마지막 화면 위에 얹는 커버. 화면이 비치도록 옅게 */
@@ -530,7 +540,7 @@
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
-  transition: all 0.16s ease;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, var(--press);
 }
 
 .officialSiteBtn:hover {

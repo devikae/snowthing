@@ -19,10 +19,16 @@
   --motion-base: .24s;
   --motion-slow: .32s;
   --motion-spring: .42s;
+  --motion-press: .12s;
+  --motion-exit: .12s;
+  --motion-page: .2s;
   --motion-stagger: 70ms;
   --ease-out: cubic-bezier(.22, 1, .36, 1);
   --ease-in-out: cubic-bezier(.65, 0, .35, 1);
   --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --press-scale: .97;
+  /* 누름 반응용 transition 항목. 자기 transition 목록이 있는 버튼은 목록 끝에 이것을 붙인다 */
+  --press: scale var(--motion-press) var(--ease-out);
 }
 
 @keyframes motion-slide-up { from { opacity: 0; transform: translateY(8px); } }
@@ -38,6 +44,49 @@
 }
 @keyframes motion-check-draw { from { background-size: 100% 100%, 100% 100%; } }
 @keyframes motion-spin { to { transform: rotate(360deg); } }
+
+/*
+ * 누름 반응: 버튼과 버튼처럼 생긴 링크는 누르는 동안 살짝 작아진다.
+ * transform 대신 scale 속성을 써서 요소가 이미 가진 transform과 겹치지 않는다.
+ * 목록 행, 메뉴 항목, 스위치, 편집기 도구는 뺀다(넓은 요소는 3%만 줄어도 크게 흔들려 보인다).
+ * 인라인 글자 링크에는 scale이 적용되지 않으므로 본문 링크는 영향이 없다.
+ */
+:where(
+  button, [role="button"], input[type="submit"],
+  a[class*="button" i], a[class*="btn" i],
+  .board-tabs-more, .board-tabs-write, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
+  .ct-primary, .pass-price-cta-link, .profile-file-label, .opening-dday-banner,
+  .header-profile-menu > summary, .header-notification-menu > summary
+) {
+  transition: var(--press);
+}
+:where(
+  button, [role="button"], input[type="submit"],
+  a[class*="button" i], a[class*="btn" i],
+  .board-tabs-more, .board-tabs-write, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
+  .ct-primary, .pass-price-cta-link, .profile-file-label, .opening-dday-banner,
+  .header-profile-menu > summary, .header-notification-menu > summary
+):active:not(
+  :disabled, [aria-disabled="true"], [role="switch"], [role="menuitem"], [role="option"],
+  .notification-item, .header-dropdown-logout, .compact-select-list button,
+  .toastui-editor-defaultUI *, [class*="playCover"], .rider-tools *
+) {
+  scale: var(--press-scale);
+}
+/* 카드형 링크: 넓어서 1%만 줄인다 */
+:where(.lookbook-item, .market-result-card, .market-grid > a, .carpool-card, a[class*="card" i], a[class*="listCard"]) {
+  transition: var(--press);
+}
+:where(.lookbook-item, .market-result-card, .market-grid > a, .carpool-card, a[class*="card" i], a[class*="listCard"]):active {
+  scale: .99;
+}
+
+/*
+ * 화면 전환: 새 화면의 본문(main)이 짧게 나타난다. 헤더는 움직이지 않는다.
+ * 투명도만 바꾼다. transform을 쓰면 본문 안의 고정 위치 요소(확인 창 등)의 기준이 바뀐다.
+ * fill-mode를 두지 않아 끝난 뒤에는 쌓임 맥락이 남지 않는다.
+ */
+:where(main) { animation: motion-fade var(--motion-page) var(--ease-out); }
 
 /* 스낵바: 저장, 복사, 스크랩 같은 결과 문구 */
 [role="status"]:not(.sr-only):not(:empty) {
@@ -77,6 +126,34 @@
   animation: motion-slide-down var(--motion-base) var(--ease-out) both;
 }
 
+/* 모바일 메뉴 닫힘: 열림보다 빠르게 위로 사라진다. display 전환을 지원하지 않는 브라우저는 바로 닫힌다 */
+.community-mobile-panel {
+  opacity: 0;
+  translate: 0 -8px;
+  transition: opacity var(--motion-exit) var(--ease-out), translate var(--motion-exit) var(--ease-out), display var(--motion-exit) allow-discrete;
+}
+.community-mobile-panel.open { opacity: 1; translate: 0 0; }
+
+/*
+ * 드롭다운(details) 닫힘: 내용이 열림보다 빠르게 사라진다.
+ * ::details-content를 지원하지 않는 브라우저는 지금처럼 바로 닫힌다.
+ */
+@supports selector(::details-content) {
+  :is(.header-board-menu, .header-profile-menu, .header-notification-menu, [class*="authorMenu"])::details-content {
+    opacity: 0;
+    transition: opacity var(--motion-exit) var(--ease-out), content-visibility var(--motion-exit) allow-discrete;
+  }
+  :is(.header-board-menu, .header-profile-menu, .header-notification-menu, [class*="authorMenu"])[open]::details-content {
+    opacity: 1;
+  }
+}
+
+/* 탭과 목록: 탭을 바꾸거나 불러오기가 끝나면 목록이 짧게 나타난다. 한 줄씩 차례로 넣지 않는다(자주 보는 목록) */
+.compact-post-list,
+.board-post-list > :not(.board-state) {
+  animation: motion-fade var(--motion-fast) var(--ease-out);
+}
+
 /* 바텀시트: 모바일에서 확인 창은 아래에서 올라온다 */
 @media (max-width: 640px) {
   .delete-modal-backdrop {
@@ -93,8 +170,20 @@
   .delete-modal-actions button { flex: 1; }
 }
 
-/* 좋아요: 누른 순간 아이콘이 튕긴다 */
-.post-detail-reactions button[aria-pressed="true"] .material-symbols-outlined {
+/* 라이브톡: 새로 붙은 마지막 메시지만 아래에서 올라온다 */
+.live-chat-feed > .live-chat-message:last-of-type {
+  animation: motion-slide-up var(--motion-fast) var(--ease-out);
+}
+
+/* 테마 전환: 밝은 화면과 어두운 화면이 겹쳐 바뀐다(SiteChrome의 startViewTransition). 지원하지 않는 브라우저는 바로 바뀐다 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--ease-out);
+}
+
+/* 좋아요: 직접 누른 순간에만 아이콘이 튕긴다 */
+.post-detail-reactions[data-touched] button[aria-pressed="true"] .material-symbols-outlined {
   animation: motion-like var(--motion-spring) var(--ease-spring);
 }
 
@@ -155,9 +244,9 @@ main h1:not(.sr-only):not([class*="titleRow"] h1),
 .ct-step-line + .ct-step-line { animation-delay: var(--motion-stagger); }
 .ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 2); }
 .ct-step-line + .ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 3); }
-.ct-progress span { transition: width var(--motion-slow) var(--ease-out); }
-.character-test .ct-choices button { transition: transform var(--motion-fast) var(--ease-out), background-color var(--motion-fast) ease, border-color var(--motion-fast) ease; }
-.character-test .ct-choices button:active { transform: scale(.98); }
+.ct-progress span { transition: transform var(--motion-slow) var(--ease-out); }
+.character-test .ct-choices button { transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, var(--press); }
+.character-test .ct-choices button:active { scale: .98; }
 /* 결과 카드: 카드가 커지며 튕기듯 나타난다 */
 .ct-card img.ct-card-preview {
   animation: motion-card-reveal var(--motion-spring) var(--ease-spring) both;
@@ -183,4 +272,8 @@ main h1:not(.sr-only):not([class*="titleRow"] h1),
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
+  /* 누름 반응은 크기 대신 투명도로만 알린다 */
+  :is(button, [role="button"], a):active { scale: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  :is(button, [role="button"]):active:not(:disabled) { opacity: .85; }
 }

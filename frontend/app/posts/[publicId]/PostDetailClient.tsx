@@ -140,6 +140,8 @@ export default function PostDetailClient({
   const [errorMsg, setErrorMsg] = useState("");
   const [reactionMsg, setReactionMsg] = useState("");
   const [scrapBusy, setScrapBusy] = useState(false);
+  // 추천 아이콘이 튕기는 움직임은 직접 누른 뒤에만 보인다. 이미 추천한 글을 열 때는 움직이지 않는다.
+  const [reactionTouched, setReactionTouched] = useState(false);
   const reactionBusyRef = useRef(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [commentAnonPassword, setCommentAnonPassword] = useState("");
@@ -406,6 +408,7 @@ export default function PostDetailClient({
       void askLoginForReaction();
       return;
     }
+    setReactionTouched(true);
     // 응답 전에 다시 누르면 같은 상태(isActive)로 요청이 한 번 더 나간다. 응답이 올 때까지 받지 않는다.
     if (reactionBusyRef.current) return;
     reactionBusyRef.current = true;
@@ -831,7 +834,7 @@ export default function PostDetailClient({
             )}
 
             {post.categoryCode !== "INQUIRY" && (
-            <div className="post-detail-reactions">
+            <div className="post-detail-reactions" data-touched={reactionTouched || undefined}>
               {/* 본문 아래에는 추천과 비추천만 둔다. 스크랩, 공유, 신고는 작성자 줄 오른쪽 도구에 있다. */}
               <div className="post-vote">
                 <button type="button" onClick={() => handleReaction("LIKE")} className={post.activeReactionTypes.includes("LIKE") ? "active" : ""} aria-pressed={post.activeReactionTypes.includes("LIKE")}>
