@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { PageHeading } from "../../../components/PageHeading";
 import { API_ENDPOINTS } from "../../../lib/api";
 import { csrfFetch } from "../../../lib/csrfFetch";
+import { confirm, type ConfirmOptions } from "../../../lib/feedback";
+import { ask } from "../../adminConfirm";
 import {
   ACTION_LABEL,
   type AdminMemberDetail,
@@ -60,8 +62,8 @@ export default function AdminMemberDetailPage() {
   const isSelf = member?.publicId === myPublicId;
   const isAdmin = member?.role === "ROLE_ADMIN";
 
-  const run = async (message: string, url: string, failure: string, body?: unknown) => {
-    if (!window.confirm(message)) return;
+  const run = async (question: ConfirmOptions, url: string, failure: string, body?: unknown) => {
+    if (!(await confirm(question))) return;
     setBusy(true);
     setActionError(null);
     try {
@@ -167,7 +169,7 @@ export default function AdminMemberDetailPage() {
               disabled={busy}
               onClick={() =>
                 void run(
-                  `${member.nickname} 회원의 정지를 해제할까요?`,
+                  ask(`${member.nickname} 회원의 정지를 해제할까요?`, "정지 해제"),
                   API_ENDPOINTS.admin.memberStatusAction(member.publicId, "reinstate"),
                   "회원 상태를 바꾸지 못했습니다.",
                 )
@@ -206,9 +208,9 @@ export default function AdminMemberDetailPage() {
                 disabled={busy || member.status === "WITHDRAWN" || isAdmin}
                 onClick={() =>
                   void run(
-                    `${member.nickname} 회원을 ${suspendDays ? `${suspendDays}일` : "무기한"} 정지할까요? 접속이 바로 끊기고 ${
+                    ask(`${member.nickname} 회원을 ${suspendDays ? `${suspendDays}일` : "무기한"} 정지할까요? 접속이 바로 끊기고 ${
                       suspendDays ? "기간이 끝날" : "해제할"
-                    } 때까지 로그인할 수 없습니다.`,
+                    } 때까지 로그인할 수 없습니다.`, "정지", true),
                     API_ENDPOINTS.admin.memberStatusAction(member.publicId, "suspend"),
                     "회원 상태를 바꾸지 못했습니다.",
                     { days: suspendDays ? Number(suspendDays) : null, reason: suspendReason.trim() || null },
@@ -227,7 +229,7 @@ export default function AdminMemberDetailPage() {
               title={isSelf ? "본인의 운영자 권한은 해제할 수 없습니다." : undefined}
               onClick={() =>
                 void run(
-                  `${member.nickname} 회원의 운영자 권한을 해제할까요? 관리자 화면에서 바로 로그아웃됩니다.`,
+                  ask(`${member.nickname} 회원의 운영자 권한을 해제할까요? 관리자 화면에서 바로 로그아웃됩니다.`, "권한 해제", true),
                   API_ENDPOINTS.admin.memberRoleAction(member.publicId, "revoke-admin"),
                   "운영자 권한을 바꾸지 못했습니다.",
                 )
@@ -243,7 +245,7 @@ export default function AdminMemberDetailPage() {
               title={member.status !== "ACTIVE" ? "활동 중인 회원만 운영자로 지정할 수 있습니다." : undefined}
               onClick={() =>
                 void run(
-                  `${member.nickname} 회원을 운영자로 지정할까요? 관리자 화면의 모든 기능을 쓸 수 있게 되고, 지금 접속은 끊겨 다시 로그인해야 합니다.`,
+                  ask(`${member.nickname} 회원을 운영자로 지정할까요? 관리자 화면의 모든 기능을 쓸 수 있게 되고, 지금 접속은 끊겨 다시 로그인해야 합니다.`, "운영자 지정", true),
                   API_ENDPOINTS.admin.memberRoleAction(member.publicId, "grant-admin"),
                   "운영자 권한을 바꾸지 못했습니다.",
                 )

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { blockMember, composeMessageHref, fetchViewerPublicId } from "../lib/messageApi";
 import styles from "./messages.module.css";
 import { errorText } from "../lib/errorText";
+import { confirm, toast } from "../lib/feedback";
 
 interface AuthorMenuProps {
   publicId: string | null | undefined;
@@ -50,12 +51,13 @@ export function AuthorMenu({ publicId, nickname, className }: AuthorMenuProps) {
 
   const handleBlock = async () => {
     if (busy || blocked) return;
-    if (!window.confirm(`${nickname}님을 차단할까요? 서로 쪽지를 보낼 수 없게 됩니다. 차단은 내 정보 수정 화면에서 풀 수 있습니다.`)) return;
+    if (!(await confirm({ title: `${nickname}님을 차단할까요?`, description: "서로 쪽지를 보낼 수 없게 됩니다. 차단은 내 정보 수정 화면에서 풀 수 있습니다.", confirmLabel: "차단", danger: true }))) return;
     setBusy(true);
     setError("");
     try {
       await blockMember(publicId);
       setBlocked(true);
+      toast.success(`${nickname}님을 차단했습니다.`);
     } catch (blockError) {
       setError(errorText(blockError, "차단하지 못했습니다."));
     } finally {

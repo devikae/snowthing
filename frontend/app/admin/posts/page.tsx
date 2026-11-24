@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS, type AdminPostFilter, type AdminPostItem } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { formatDateTime, readErrorMessage } from "../adminTypes";
 
 interface AdminPostPage {
@@ -94,12 +96,12 @@ export default function AdminPostsPage() {
     }
   };
 
-  const toggleBlind = (post: AdminPostItem) => {
+  const toggleBlind = async (post: AdminPostItem) => {
     const blinded = !post.isBlinded;
     const message = blinded
       ? `"${post.title}" 글을 블라인드할까요? 목록과 상세 화면, 검색에서 보이지 않게 됩니다.`
       : `"${post.title}" 글의 블라인드를 해제할까요?`;
-    if (!window.confirm(message)) return;
+    if (!(await confirm(ask(message, blinded ? "블라인드" : "해제", blinded)))) return;
     void run(
       post,
       () =>
@@ -112,8 +114,8 @@ export default function AdminPostsPage() {
     );
   };
 
-  const remove = (post: AdminPostItem) => {
-    if (!window.confirm(`"${post.title}" 글을 삭제할까요? 첨부 사진도 정리되어 되돌릴 수 없습니다.`)) return;
+  const remove = async (post: AdminPostItem) => {
+    if (!(await confirm(ask(`"${post.title}" 글을 삭제할까요? 첨부 사진도 정리되어 되돌릴 수 없습니다.`, "삭제", true)))) return;
     void run(
       post,
       () => csrfFetch(API_ENDPOINTS.admin.deletePost(post.publicId), { method: "DELETE" }),

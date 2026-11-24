@@ -10,6 +10,8 @@ import { csrfFetch } from "../lib/csrfFetch";
 import { clearViewerCache } from "../lib/viewer";
 import styles from "./login.module.css";
 import { errorText } from "../lib/errorText";
+import { toast } from "../lib/feedback";
+import { readApiError } from "../lib/http";
 import { detectInAppBrowser, externalBrowserUrl, type InAppBrowser } from "../lib/inAppBrowser";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
@@ -100,7 +102,7 @@ export default function LoginPage() {
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
     } catch {
-      window.prompt("이 주소를 복사해 주세요.", window.location.href);
+      toast.info("주소를 복사하지 못했습니다. 주소창의 주소를 직접 복사해 주세요.");
     }
   };
 
@@ -134,8 +136,7 @@ export default function LoginPage() {
 
       if (!response.ok) {
         // 프록시가 HTML로 답해도 JSON 파싱 오류가 화면에 나오지 않게 상태 코드별 기본 문구를 둔다.
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || errorData?.error || LOGIN_FAILURE_MESSAGES[response.status] || "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error((await readApiError(response, "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.", LOGIN_FAILURE_MESSAGES)).message);
       }
 
       const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");

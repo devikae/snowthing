@@ -82,8 +82,13 @@
 }
 
 .card:hover {
-  transform: translateY(-2px);
   border-color: var(--snow-border-strong);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .cover {

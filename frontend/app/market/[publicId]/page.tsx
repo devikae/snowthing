@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasSessionCookie } from "../../lib/sessionCookie.server";
+import { isPublicId } from "../../lib/publicApi";
 import { detailMetadata, fetchPreviewResult } from "../../lib/sharePreview";
 import MarketDetailClient from "./MarketDetailClient";
 
@@ -24,6 +25,8 @@ function priceText({ price, negotiable, free }: MarketPreview) {
 }
 
 function loadPreview(publicId: string) {
+  // 주소의 값은 형식이 맞을 때만 백엔드 주소에 넣는다. 아니면 없는 글로 본다.
+  if (!isPublicId(publicId)) return Promise.resolve({ value: null, missing: true });
   return fetchPreviewResult(
     `/market-listings/${encodeURIComponent(publicId)}/share-preview`,
     (listing: MarketPreview) => {

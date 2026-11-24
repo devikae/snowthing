@@ -3,6 +3,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { API_ENDPOINTS, ChatBannedIpItem } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm, toast } from "../../lib/feedback";
+import { readErrorMessage } from "../adminTypes";
+import { ask } from "../adminConfirm";
 import { useAdminFetch } from "../useAdminFetch";
 
 interface RecentChatMessage {
@@ -51,7 +54,7 @@ function RecentChatPanel({ onBanned }: { onBanned: () => void }) {
 
   const ban = async (message: RecentChatMessage) => {
     if (busyId) return;
-    if (!window.confirm(`${message.sender.nickname}의 IP를 ${banDays}일 막고 최근 메시지를 모두 지울까요?`)) return;
+    if (!(await confirm({ title: `${message.sender.nickname}의 IP를 ${banDays}일 막고 최근 메시지를 모두 지울까요?`, confirmLabel: "차단", danger: true }))) return;
     setBusyId(message.messageId);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.banMessageIp(message.messageId), {
@@ -170,7 +173,7 @@ export default function AdminChatPage() {
       })
       .catch((err: unknown) => {
         if (signal?.aborted) return;
-      alert((err instanceof Error ? err.message : "오류가 발생했습니다."));
+      toast.error((err instanceof Error ? err.message : "오류가 발생했습니다."));
       })
       .finally(() => { if (!signal?.aborted) setLoading(false); });
   }, []);
@@ -183,9 +186,9 @@ export default function AdminChatPage() {
 
   async function handleUnban(item: ChatBannedIpItem) {
     if (
-      !window.confirm(
-        `[${item.bannedIp}] IP 차단을 해제할까요?\n이 IP(대역)에서 다시 글, 댓글, 라이브톡을 쓸 수 있게 됩니다.`
-      )
+      !(await confirm(
+        ask(`[${item.bannedIp}] IP 차단을 해제할까요?\n이 IP(대역)에서 다시 글, 댓글, 라이브톡을 쓸 수 있게 됩니다.`, "해제")
+      ))
     )
       return;
 
@@ -197,9 +200,9 @@ export default function AdminChatPage() {
       });
       if (!res.ok) throw new Error("차단을 해제하지 못했습니다.");
       setBannedIps((prev) => prev.filter((b) => b.id !== item.id));
-      alert("차단이 해제되었습니다.");
+      toast.success("차단을 해제했습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "차단을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      toast.error((err instanceof Error ? err.message : "차단을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }
@@ -226,18 +229,15 @@ export default function AdminChatPage() {
         }),
       });
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.message || "IP 차단을 등록하지 못했습니다.");
-      }
+      if (!res.ok) throw new Error(await readErrorMessage(res, "IP 차단을 등록하지 못했습니다."));
 
       setShowBanModal(false);
       setIpInput("");
       setReasonInput("");
       fetchBannedIps();
-      alert("IP가 성공적으로 차단 목록에 등록되었습니다.");
+      toast.success("IP를 차단 목록에 등록했습니다.");
     } catch (err: unknown) {
-      alert((err instanceof Error ? err.message : "IP 차단을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      toast.error((err instanceof Error ? err.message : "IP 차단을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setActionLoading(false);
     }

@@ -19,7 +19,8 @@ import { ReportButton } from "../../components/ReportButton";
 import { errorText } from "../../lib/errorText";
 import { KOREAN_DATE_TIME, formatKoreanDate } from "../../lib/koreanDate";
 import { fetchViewer, isAdminViewer } from "../../lib/viewer";
-import { readErrorMessage } from "../../lib/http";
+import { readErrorMessage, readApiError } from "../../lib/http";
+import { confirm, toast } from "../../lib/feedback";
 import { PRODUCT_CONDITION_LABELS } from "../marketOptions";
 
 const ToastViewer = dynamic(() => import("../../components/ToastViewer"), { ssr: false });
@@ -76,9 +77,9 @@ const transactionLabels: Record<string, string> = {
 
 type ModerationStatus = "NORMAL" | "HIDDEN" | "BLOCKED";
 
-const moderationActions: { status: ModerationStatus; label: string; confirm: string }[] = [
-  { status: "HIDDEN", label: "숨기기", confirm: "이 판매글을 숨길까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." },
-  { status: "BLOCKED", label: "차단", confirm: "이 판매글을 차단할까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." },
+const moderationActions: { status: ModerationStatus; label: string; confirm: string; description?: string }[] = [
+  { status: "HIDDEN", label: "숨기기", confirm: "이 판매글을 숨길까요?", description: "일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." },
+  { status: "BLOCKED", label: "차단", confirm: "이 판매글을 차단할까요?", description: "일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." },
 ];
 
 const restoreAction = { status: "NORMAL" as const, label: "공개로 되돌리기", confirm: "이 판매글을 다시 공개할까요?" };
@@ -172,7 +173,7 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         return;
       }
       if (!response.ok) {
-        const body = response.status === 403 ? await response.json().catch(() => null) : null;
+        const body = response.status === 403 ? await readApiError(response, "") : null;
         if (body?.code === "POST_009") throw new Error(body.message);
         throw new Error(response.status === 404 ? "판매글을 찾을 수 없거나 숨김 처리되었습니다." : "판매글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
@@ -219,8 +220,9 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
         headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: commentIdempotencyKey.keyFor(body) },
         body,
       });
+      // 로그인 화면으로 옮기면 쓰던 댓글이 사라진다. 이 화면에 남겨 두고 안내만 한다.
       if (response.status === 401) {
-        redirectToLogin();
+        toast.error("로그인이 풀렸습니다. 쓰던 댓글은 그대로 있습니다. 새 창에서 로그인한 뒤 다시 등록해 주세요.");
         return;
       }
       if (!response.ok) {
@@ -274,8 +276,8 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   };
 
   // 관리자가 판매글 화면에서 바로 숨기거나 다시 공개한다. 권한은 서버의 관리자 API가 다시 확인한다.
-  const changeModeration = async (action: { status: ModerationStatus; confirm: string }) => {
-    if (!listing || moderating || !window.confirm(action.confirm)) return;
+  const changeModeration = async (action: { status: ModerationStatus; label: string; confirm: string; description?: string }) => {
+    if (!listing || moderating || !(await confirm({ title: action.confirm, description: action.description, confirmLabel: action.label, danger: action.status !== "NORMAL" }))) return;
     setModerating(true);
     setError("");
     try {
@@ -297,12 +299,13 @@ export default function MarketDetailClient({ params }: { params: Promise<{ publi
   };
 
   const deleteListing = async () => {
-    if (!listing || !listing.canDelete || deleting || !window.confirm("이 판매글을 삭제할까요?")) return;
+    if (!listing || !listing.canDelete || deleting || !(await confirm({ title: "이 판매글을 삭제할까요?", description: "삭제하면 되돌릴 수 없습니다.", confirmLabel: "삭제", danger: true }))) return;
     setDeleting(true);
     setError("");
     try {
       const response = await csrfFetch(API_ENDPOINTS.market.delete(publicId), { method: "DELETE" });
       if (response.ok) {
+        toast.success("판매글을 삭제했습니다.");
         router.replace("/market");
         return;
       }

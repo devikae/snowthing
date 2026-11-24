@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasSessionCookie } from "../../lib/sessionCookie.server";
+import { isPublicId } from "../../lib/publicApi";
 import { detailMetadata, fetchPreviewResult, plainTextSummary } from "../../lib/sharePreview";
 import CarpoolDetailClient from "./CarpoolDetailClient";
 
@@ -22,6 +23,8 @@ function parseKst(value: string) {
 }
 
 function loadPreview(publicId: string) {
+  // 주소의 값은 형식이 맞을 때만 백엔드 주소에 넣는다. 아니면 없는 글로 본다.
+  if (!isPublicId(publicId)) return Promise.resolve({ value: null, missing: true });
   return fetchPreviewResult(`/carpools/${encodeURIComponent(publicId)}`, (carpool: CarpoolPreview) => {
     const route = `${carpool.departureRegion} 출발, ${carpool.destinationResortName}, ${KST_DATE.format(parseKst(carpool.departureAt))}`;
     const body = plainTextSummary(carpool.content, 80);

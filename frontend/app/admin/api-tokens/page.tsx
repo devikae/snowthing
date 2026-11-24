@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeading } from "../../components/PageHeading";
 import { API_ENDPOINTS } from "../../lib/api";
 import { csrfFetch } from "../../lib/csrfFetch";
+import { confirm } from "../../lib/feedback";
+import { ask } from "../adminConfirm";
 import { type ApiTokenItem, formatDateTime, readErrorMessage } from "../adminTypes";
 
 export default function ApiTokenPage() {
@@ -68,7 +70,7 @@ export default function ApiTokenPage() {
   };
 
   const revoke = async (tokenId: string) => {
-    if (!window.confirm("이 토큰을 폐기할까요? 되돌릴 수 없습니다.")) return;
+    if (!(await confirm(ask("이 토큰을 폐기할까요? 되돌릴 수 없습니다.", "폐기", true)))) return;
     setError(null);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.revokeApiToken(tokenId), { method: "POST" });

@@ -7,6 +7,7 @@ import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "
 import { useRouter, useSearchParams } from "next/navigation";
 import { Footer, TopNav } from "../components/SiteChrome";
 import { API_ENDPOINTS } from "../lib/api";
+import { readErrorMessage } from "../lib/http";
 import { formatKoreanDate } from "../lib/koreanDate";
 import { PRODUCT_CONDITION_LABELS } from "./marketOptions";
 import { readLocal, writeLocal } from "../lib/safeStorage";
@@ -97,11 +98,11 @@ function MarketPageContent() {
         return;
       }
       if (categoryResponse.ok && (listResponse.status === 400 || listResponse.status === 429)) {
-        const body = await listResponse.json().catch(() => null);
+        const rejected = await readErrorMessage(listResponse, "중고장터를 불러오지 못했습니다.");
         const categoryData: { categories?: MarketCategory[] } = await categoryResponse.json();
         setCategories(Array.isArray(categoryData.categories) ? categoryData.categories : []);
         setItems([]);
-        setRejectedMessage(typeof body?.message === "string" ? body.message : "중고장터를 불러오지 못했습니다.");
+        setRejectedMessage(rejected);
         return;
       }
       if (!categoryResponse.ok || !listResponse.ok) throw new Error("중고장터를 불러오지 못했습니다.");

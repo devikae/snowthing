@@ -25,7 +25,7 @@
 .ct-question { gap: 16px; }
 .ct-question h2 { min-height: 56px; }
 .ct-progress { height: 6px; overflow: hidden; border-radius: 3px; background: var(--snow-surface-mid); }
-.ct-progress span { display: block; height: 100%; background: var(--alpine-sky); transition: width .15s ease; }
+.ct-progress span { display: block; height: 100%; background: var(--alpine-sky); width: 100%; transform-origin: left center; transition: transform .15s ease; }
 .ct-choices { display: grid; gap: 10px; }
 .character-test .ct-choices button { min-height: 64px; padding: 14px 16px; font-size: 15px; font-weight: 500; text-align: left; overflow-wrap: anywhere; }
 

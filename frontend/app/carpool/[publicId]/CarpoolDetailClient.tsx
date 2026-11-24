@@ -16,7 +16,8 @@ import KakaoShareButton from "../../components/KakaoShareButton";
 import { carpoolCostLabel, formatCarpoolDateTime } from "../format";
 import { carpoolSummaryText, type CarpoolReviewSummary } from "../review";
 import { CarpoolParticipation } from "./CarpoolParticipation";
-import { readErrorMessage } from "../../lib/http";
+import { readErrorMessage, readApiError } from "../../lib/http";
+import { confirm, toast } from "../../lib/feedback";
 
 interface CarpoolDetail {
   publicId: string;
@@ -108,7 +109,7 @@ export default function CarpoolDetailClient() {
   const toggleBlind = async () => {
     if (!item || blindBusy) return;
     const blinded = item.status !== "BLOCKED";
-    if (!window.confirm(blinded ? "이 글을 가릴까요? 일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다." : "이 글의 가리기를 해제할까요?")) return;
+    if (!(await confirm(blinded ? { title: "이 글을 가릴까요?", description: "일반 사용자는 목록과 상세 화면에서 볼 수 없게 됩니다.", confirmLabel: "가리기", danger: true } : { title: "이 글의 가리기를 해제할까요?", confirmLabel: "해제" }))) return;
     setBlindBusy(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.admin.blindPost(item.publicId), {
@@ -121,23 +122,24 @@ export default function CarpoolDetailClient() {
       }
       setItem((current) => (current ? { ...current, status: blinded ? "BLOCKED" : "NORMAL" } : current));
     } catch (blindError) {
-      window.alert(errorText(blindError, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
+      toast.error(errorText(blindError, "서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."));
     } finally {
       setBlindBusy(false);
     }
   };
 
   const deleteCarpool = async () => {
-    if (!window.confirm("이 카풀 모집글을 삭제할까요?")) return;
+    if (deleting || !(await confirm({ title: "이 카풀 모집글을 삭제할까요?", description: "삭제하면 되돌릴 수 없습니다.", confirmLabel: "삭제", danger: true }))) return;
     setDeleting(true);
     try {
       const response = await csrfFetch(API_ENDPOINTS.carpool.delete(publicId), {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error();
+      if (!response.ok) throw new Error(await readErrorMessage(response, "모집글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      toast.success("모집글을 삭제했습니다.");
       router.replace("/carpool");
-    } catch {
-      window.alert("모집글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } catch (deleteError) {
+      toast.error(errorText(deleteError, "모집글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
       setDeleting(false);
     }
   };
@@ -150,7 +152,7 @@ export default function CarpoolDetailClient() {
           return null;
         }
         if (!response.ok) {
-          const body = response.status === 403 ? await response.json().catch(() => null) : null;
+          const body = response.status === 403 ? await readApiError(response, "") : null;
           if (body?.code === "POST_009") setHeldMessage(body.message);
           throw new Error();
         }
