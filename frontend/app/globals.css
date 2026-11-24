@@ -201,7 +201,7 @@ button:disabled {
 .community-header-actions { flex: none; gap: 10px; }
 .alpine-logo { flex: none; }
 .community-main-nav { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.community-main-nav > a,.header-board-menu > summary { display: flex; align-items: center; gap: 4px; transition: .16s ease; }
+.community-main-nav > a,.header-board-menu > summary { display: flex; align-items: center; gap: 4px; transition: color .16s ease, background-color .16s ease, border-color .16s ease; }
 .header-board-menu { position: relative; }
 .header-board-menu > summary { cursor: pointer; list-style: none; }
 .header-board-menu > summary::-webkit-details-marker { display: none; }
@@ -1077,7 +1077,7 @@ html[data-theme="dark"] .market-compose-card { border-color: var(--snow-border);
 .comment-profile-avatar { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 50%; object-fit: cover; }.comment-youtube-body { min-width: 0; flex: 1; }.comment-youtube-body header { display: flex; align-items: center; gap: 8px; }.comment-youtube-body time { color: var(--snow-muted); font-size: 11px; }.comment-youtube-body p { margin: 6px 0 0; color: #334155; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }.comment-youtube-body p.deleted { color: var(--snow-muted); font-style: italic; }.comment-youtube-actions button,.comment-inline-editor button { border: 0; background: transparent; padding: 0; color: #475569; font-size: 11px; font-weight: 750; }.comment-reply-arrow { margin-top: 7px; color: var(--snow-muted); }.comment-inline-editor textarea { display: block; width: 100%; min-height: 70px; margin: 8px 0; border: 1px solid #dbe3ed; border-radius: 8px; padding: 9px; }.comment-inline-editor { display: flex; flex-wrap: wrap; gap: 10px; }.comment-inline-editor textarea { flex-basis: 100%; }.reply-more { margin: 10px 0 0 50px; }.comment-login-guide { display: flex; align-items: center; gap: 10px; border-radius: 9px; background: #f8fafc; padding: 13px 15px; }.comment-login-guide p { flex: 1; margin: 0; color: #64748b; font-size: 12px; }.comment-login-guide a { color: #0369a1; font-size: 12px; font-weight: 800; }
 .carpool-widget-empty { margin: 0; text-align: center; }
 
-.carpool-gps-btn { display: inline-flex; align-items: center; gap: 5px; height: 38px; border: 1px solid #bae6fd; border-radius: 8px; background: #f0f9ff; padding: 0 12px; color: #0275b3; font-size: 13px; font-weight: 750; cursor: pointer; white-space: nowrap; transition: all .15s ease; }
+.carpool-gps-btn { display: inline-flex; align-items: center; gap: 5px; height: 38px; border: 1px solid #bae6fd; border-radius: 8px; background: #f0f9ff; padding: 0 12px; color: #0275b3; font-size: 13px; font-weight: 750; cursor: pointer; white-space: nowrap; transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, var(--press); }
 .carpool-gps-btn:hover:not(:disabled) { background: #e0f2fe; border-color: #7dd3fc; }
 .carpool-gps-btn:disabled { opacity: .6; cursor: wait; }
 
@@ -1580,7 +1580,7 @@ html[data-theme="dark"] .home-tier-1 .board-tabs button {
   font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, var(--press);
 }
 
 .filter-pills button:hover,
@@ -2329,11 +2329,13 @@ html[data-theme="dark"] .cp-equip.ok {
   height: 100%;
   aspect-ratio: auto;
   object-fit: cover;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--motion-slow) var(--ease-out);
 }
 
-.lookbook-item:hover .lookbook-media img {
-  transform: scale(1.06);
+@media (hover: hover) {
+  .lookbook-item:hover .lookbook-media img {
+    transform: scale(1.06);
+  }
 }
 
 .lookbook-glass {
@@ -3764,8 +3766,8 @@ html[data-theme="dark"] .snow-empty-copy strong {
 
 /* 커피 후원 플로팅 버튼. 모바일 하단 안전 영역을 피한다. */
 .support-coffee { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
-.support-coffee-button { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid var(--snow-border); border-radius: 999px; background: var(--snow-panel); color: var(--snow-ink); box-shadow: 0 4px 14px rgba(15, 23, 42, .12); cursor: pointer; transition: transform .15s ease; }
-.support-coffee-button:hover, .support-coffee-button:focus-visible { transform: translateY(-2px); }
+.support-coffee-button { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid var(--snow-border); border-radius: 999px; background: var(--snow-panel); color: var(--snow-ink); box-shadow: 0 4px 14px rgba(15, 23, 42, .12); cursor: pointer; transition: transform .15s ease, var(--press); }
+@media (hover: hover) { .support-coffee-button:hover { transform: translateY(-2px); } }
 .support-coffee-button .material-symbols-outlined { font-size: 24px; }
 @media (prefers-reduced-motion: reduce) { .support-coffee-button { transition: none; } }
 /* 게시판 한 글자 검색 안내. 입력칸 아래에 띄워 목록 배치를 밀지 않는다. */

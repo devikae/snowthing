@@ -19,10 +19,16 @@
   --motion-base: .24s;
   --motion-slow: .32s;
   --motion-spring: .42s;
+  --motion-press: .12s;
+  --motion-exit: .12s;
+  --motion-page: .2s;
   --motion-stagger: 70ms;
   --ease-out: cubic-bezier(.22, 1, .36, 1);
   --ease-in-out: cubic-bezier(.65, 0, .35, 1);
   --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --press-scale: .97;
+  /* 누름 반응용 transition 항목. 자기 transition 목록이 있는 버튼은 목록 끝에 이것을 붙인다 */
+  --press: scale var(--motion-press) var(--ease-out);
 }
 
 @keyframes motion-slide-up { from { opacity: 0; transform: translateY(8px); } }

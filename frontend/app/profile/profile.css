@@ -42,7 +42,7 @@
   font-weight: 500;
   line-height: 20px;
   letter-spacing: inherit;
-  transition: background-color 300ms cubic-bezier(0.22,1,0.36,1), border-color 300ms cubic-bezier(0.22,1,0.36,1), color 300ms cubic-bezier(0.22,1,0.36,1), opacity 300ms cubic-bezier(0.22,1,0.36,1), transform 500ms cubic-bezier(0.22,1,0.36,1);
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease, opacity var(--motion-fast) ease, var(--press);
 }
 .profile-settings button:hover:not(:disabled),
 .profile-settings .profile-file-label:hover:not(:has(input:disabled)) { background: var(--snow-surface-mid); }
@@ -52,12 +52,10 @@
 .profile-settings .profile-button-primary:hover:not(:disabled) { background: var(--snow-ink-soft); border-color: var(--snow-ink-soft); }
 .profile-settings button:disabled,
 .profile-settings .profile-file-label:has(input:disabled) { cursor: not-allowed; opacity: .5; }
-.profile-settings button:active:not(:disabled),
-.profile-settings .profile-file-label:active:not(:has(input:disabled)) { transform: scale(.98); }
 .profile-settings button:focus-visible,
 .profile-settings .profile-file-label:has(input:focus-visible) { outline: 2px solid var(--snow-ink); outline-offset: 4px; }
 @media (prefers-reduced-motion: reduce) {
-  .profile-settings button, .profile-settings .profile-file-label { transition: opacity 300ms cubic-bezier(0.22,1,0.36,1); }
+  .profile-settings button, .profile-settings .profile-file-label { transition: opacity var(--motion-fast) ease; }
   .profile-settings button:active:not(:disabled), .profile-settings .profile-file-label:active:not(:has(input:disabled)) { transform: none; opacity: .85; }
 }
 .profile-preferences label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--snow-border); border-radius: 8px; padding: 8px 12px; color: var(--snow-ink-soft); font-size: 14px; cursor: pointer; }
