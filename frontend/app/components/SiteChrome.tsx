@@ -43,7 +43,12 @@ function ThemeToggle() {
   const handleToggle = () => {
     const nextSetting: ThemeSetting = setting === "light" ? "dark" : "light";
     setSetting(nextSetting);
-    applyTheme(nextSetting);
+    // 화면 전체가 겹쳐 바뀐다. 지원하지 않는 브라우저와 동작 줄이기 설정에서는 바로 바꾼다.
+    if (typeof document.startViewTransition === "function" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.startViewTransition(() => applyTheme(nextSetting));
+    } else {
+      applyTheme(nextSetting);
+    }
     writeLocal(THEME_STORAGE_KEY, nextSetting);
   };
 

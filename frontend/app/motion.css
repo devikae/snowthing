@@ -54,7 +54,7 @@
 :where(
   button, [role="button"], input[type="submit"],
   a[class*="button" i], a[class*="btn" i],
-  .board-tabs-more, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
+  .board-tabs-more, .board-tabs-write, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
   .ct-primary, .pass-price-cta-link, .profile-file-label, .opening-dday-banner,
   .header-profile-menu > summary, .header-notification-menu > summary
 ) {
@@ -63,7 +63,7 @@
 :where(
   button, [role="button"], input[type="submit"],
   a[class*="button" i], a[class*="btn" i],
-  .board-tabs-more, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
+  .board-tabs-more, .board-tabs-write, .compose-cancel-pill, .compose-submit-pill, .tool-back, .header-login,
   .ct-primary, .pass-price-cta-link, .profile-file-label, .opening-dday-banner,
   .header-profile-menu > summary, .header-notification-menu > summary
 ):active:not(
@@ -170,8 +170,20 @@
   .delete-modal-actions button { flex: 1; }
 }
 
-/* 좋아요: 누른 순간 아이콘이 튕긴다 */
-.post-detail-reactions button[aria-pressed="true"] .material-symbols-outlined {
+/* 라이브톡: 새로 붙은 마지막 메시지만 아래에서 올라온다 */
+.live-chat-feed > .live-chat-message:last-of-type {
+  animation: motion-slide-up var(--motion-fast) var(--ease-out);
+}
+
+/* 테마 전환: 밝은 화면과 어두운 화면이 겹쳐 바뀐다(SiteChrome의 startViewTransition). 지원하지 않는 브라우저는 바로 바뀐다 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--ease-out);
+}
+
+/* 좋아요: 직접 누른 순간에만 아이콘이 튕긴다 */
+.post-detail-reactions[data-touched] button[aria-pressed="true"] .material-symbols-outlined {
   animation: motion-like var(--motion-spring) var(--ease-spring);
 }
 
@@ -232,7 +244,7 @@ main h1:not(.sr-only):not([class*="titleRow"] h1),
 .ct-step-line + .ct-step-line { animation-delay: var(--motion-stagger); }
 .ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 2); }
 .ct-step-line + .ct-step-line + .ct-step-line + .ct-step-line { animation-delay: calc(var(--motion-stagger) * 3); }
-.ct-progress span { transition: width var(--motion-slow) var(--ease-out); }
+.ct-progress span { transition: transform var(--motion-slow) var(--ease-out); }
 .character-test .ct-choices button { transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, var(--press); }
 .character-test .ct-choices button:active { scale: .98; }
 /* 결과 카드: 카드가 커지며 튕기듯 나타난다 */
@@ -262,5 +274,6 @@ main h1:not(.sr-only):not([class*="titleRow"] h1),
   }
   /* 누름 반응은 크기 대신 투명도로만 알린다 */
   :is(button, [role="button"], a):active { scale: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   :is(button, [role="button"]):active:not(:disabled) { opacity: .85; }
 }
