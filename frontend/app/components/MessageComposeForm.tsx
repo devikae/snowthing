@@ -6,20 +6,21 @@ import { MESSAGE_ENDPOINTS, MESSAGE_MAX_LENGTH } from "../lib/messageApi";
 import styles from "./messages.module.css";
 import { errorText } from "../lib/errorText";
 import { readErrorMessage } from "../lib/http";
+import { LoginExpiredNotice } from "./LoginExpiredNotice";
 
 interface MessageComposeFormProps {
   receiver: { publicId: string; nickname: string };
   listing?: { publicId: string; title: string } | null;
   quote?: string | null;
   onSent: () => void;
-  onUnauthorized: () => void;
   onCancel?: () => void;
 }
 
 /** 쪽지 작성. 보내기는 연타를 막고, 서버가 거부한 이유(차단, 보낼 수 없는 회원 등)는 그대로 보여 준다. */
-export function MessageComposeForm({ receiver, listing, quote, onSent, onUnauthorized, onCancel }: MessageComposeFormProps) {
+export function MessageComposeForm({ receiver, listing, quote, onSent, onCancel }: MessageComposeFormProps) {
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
+  const [loginExpired, setLoginExpired] = useState(false);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
 
@@ -34,14 +35,16 @@ export function MessageComposeForm({ receiver, listing, quote, onSent, onUnautho
     sendingRef.current = true;
     setSending(true);
     setError("");
+    setLoginExpired(false);
     try {
       const response = await csrfFetch(MESSAGE_ENDPOINTS.send, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ receiverPublicId: receiver.publicId, content: body, marketListingPublicId: listing?.publicId ?? null }),
       });
+      // 로그인 화면으로 옮기면 쓰던 쪽지가 사라진다. 이 화면에 남아 새 창 로그인을 안내한다.
       if (response.status === 401) {
-        onUnauthorized();
+        setLoginExpired(true);
         return;
       }
       if (!response.ok) throw new Error(await readErrorMessage(response, "쪽지를 보내지 못했습니다."));
@@ -57,7 +60,7 @@ export function MessageComposeForm({ receiver, listing, quote, onSent, onUnautho
 
   return (
     <form className={styles.compose} onSubmit={submit}>
-      {error && <p className={styles.error} role="alert">{error}</p>}
+      {(error || loginExpired) && <p className={styles.error} role="alert">{error || <LoginExpiredNotice returnUrl="/messages" action="전송" />}</p>}
       <p className={styles.meta}>
         받는 회원 <strong>{receiver.nickname}</strong>
         {listing && <> 판매글 <strong>{listing.title}</strong></>}

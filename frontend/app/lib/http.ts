@@ -34,10 +34,11 @@ function retryAfterMessage(response: Response) {
  * 1. 본문이 JSON이고 message가 있으면 서버 문구(429에 Retry-After가 있으면 기다릴 시간 안내).
  * 2. 본문이 HTML이거나 비어 있으면 상태 코드 안내(401, 403, 413, 429, 5xx).
  * 3. 그 밖에는 화면이 준 fallback.
+ * statusMessages: 로그인 화면의 401처럼 화면에서 뜻이 다른 상태 코드의 안내를 바꿀 때 준다.
  */
-export async function readApiError(response: Response, fallback: string) {
+export async function readApiError(response: Response, fallback: string, statusMessages: Record<number, string> = {}) {
   const status = response.status;
-  const statusMessage = retryAfterMessage(response) ?? STATUS_MESSAGES[status] ?? (status >= 500 ? SERVER_ERROR_MESSAGE : fallback);
+  const statusMessage = retryAfterMessage(response) ?? statusMessages[status] ?? STATUS_MESSAGES[status] ?? (status >= 500 ? SERVER_ERROR_MESSAGE : fallback);
   const body = await readJsonOrNull(response);
   // JSON이 아니거나(null) 배열, 글자처럼 객체가 아닌 값이면 서버 문구가 없는 것으로 본다.
   if (!body || typeof body !== "object") return { status, code: undefined, message: statusMessage };
