@@ -7,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -33,6 +35,9 @@ import com.ikae.snowthing.domain.contentreport.repository.ContentReportRepositor
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.entity.MemberStatus;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.message.dto.MessageMemberResponse;
+import com.ikae.snowthing.domain.message.entity.DirectMessage;
+import com.ikae.snowthing.domain.message.repository.DirectMessageRepository;
 import com.ikae.snowthing.domain.notification.entity.Notification;
 import com.ikae.snowthing.domain.notification.entity.NotificationType;
 import com.ikae.snowthing.domain.notification.event.NotificationsCreatedEvent;
@@ -65,6 +70,7 @@ public class ContentModerationService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final MemberRepository memberRepository;
+    private final DirectMessageRepository directMessageRepository;
     private final NotificationRepository notificationRepository;
     private final SearchOutboxWriter searchOutbox;
     private final ApplicationEventPublisher eventPublisher;
@@ -83,8 +89,24 @@ public class ContentModerationService {
         // 미리 읽어 영속성 컨텍스트에 올려 두면 행마다 다시 조회하지 않는다.
         postRepository.findAllById(targetIds(reports.getContent(), ReportTargetType.POST));
         commentRepository.findAllById(targetIds(reports.getContent(), ReportTargetType.COMMENT));
+        // 쪽지 본문은 신고된 쪽지만 관리자에게 보인다 (022 설계, IKA-123).
+        List<Long> messageIds = targetIds(reports.getContent(), ReportTargetType.MESSAGE);
+        Map<Long, DirectMessage> messages =
+                messageIds.isEmpty()
+                        ? Map.of()
+                        : directMessageRepository.findAllWithSenderByIdIn(messageIds).stream()
+                                .collect(
+                                        Collectors.toMap(
+                                                DirectMessage::getId, Function.identity()));
         return new AdminContentReportPageResponse(
-                reports.getContent().stream().map(this::toResponse).toList(),
+                reports.getContent().stream()
+                        .map(
+                                report ->
+                                        report.getTargetType() == ReportTargetType.MESSAGE
+                                                ? toMessageResponse(
+                                                        report, messages.get(report.getTargetId()))
+                                                : toResponse(report))
+                        .toList(),
                 page,
                 reports.getTotalPages(),
                 reports.getTotalElements());
@@ -97,6 +119,10 @@ public class ContentModerationService {
                 reportRepository
                         .findById(reportId)
                         .orElseThrow(() -> new CustomException(ErrorCode.CONTENT_REPORT_NOT_FOUND));
+        if (report.getTargetType() == ReportTargetType.MESSAGE) {
+            closeMessageReports(report, request, adminEmail);
+            return;
+        }
         Optional<ModerationTarget> found = loadTarget(report.getTargetType(), report.getTargetId());
         Member admin =
                 memberRepository
@@ -159,6 +185,42 @@ public class ContentModerationService {
                             : reportRepository.findByTargetTypeAndTargetId(
                                     report.getTargetType(), report.getTargetId()));
         }
+    }
+
+    /**
+     * 쪽지는 공개 대상이 아니라 가리거나 지울 것이 없다. 관리자는 본문을 보고 필요하면 회원 상세에서 직접 정지하고, 여기서는 처리 완료(DISMISS)로 대기 신고를
+     * 닫기만 한다. 신고자와 보낸 회원에게 알리지 않는다 (IKA-123).
+     */
+    private void closeMessageReports(
+            ContentReport report, ModerationActionRequest request, String adminEmail) {
+        requireState(request.action() == ModerationActionType.DISMISS);
+        Member admin =
+                memberRepository
+                        .findByEmail(adminEmail)
+                        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+        LocalDateTime now = LocalDateTime.now(clock);
+        actionRepository.save(
+                new ContentModerationAction(
+                        report.getTargetType(),
+                        report.getTargetId(),
+                        ModerationActionType.DISMISS,
+                        request.memo(),
+                        admin,
+                        null,
+                        now));
+        actionLogger.record(
+                AdminActionType.CONTENT_REPORT_ACTION,
+                AdminTargetType.CONTENT_REPORT,
+                report.getId(),
+                ModerationActionType.DISMISS
+                        + " "
+                        + report.getTargetType()
+                        + ":"
+                        + report.getTargetId());
+        reportRepository
+                .findByTargetTypeAndTargetIdAndStatus(
+                        report.getTargetType(), report.getTargetId(), ReportStatus.PENDING)
+                .forEach(item -> item.resolve(now));
     }
 
     /** 기간이 지난 임시조치를 복구하고 복구한 건수를 돌려준다. 그 사이 삭제된 대상은 해제 시각만 기록한다. */
@@ -244,6 +306,9 @@ public class ContentModerationService {
      * 조회는 쿼리를 만들지 않는다.
      */
     private Optional<ModerationTarget> loadTarget(ReportTargetType type, Long targetId) {
+        if (type == ReportTargetType.MESSAGE) {
+            return Optional.empty();
+        }
         if (type == ReportTargetType.COMMENT) {
             return commentRepository
                     .findById(targetId)
@@ -344,7 +409,40 @@ public class ContentModerationService {
                         : "비회원 (" + WriterDisplayFormatter.maskIp(report.getReporterIp()) + ")",
                 report.getStatus(),
                 report.getCreatedAt(),
-                report.getResolvedAt());
+                report.getResolvedAt(),
+                null,
+                null,
+                null);
+    }
+
+    /** 쪽지는 지워도 상대 쪽 행이 남아 있어 받은 회원이 지운 뒤에도 본문을 볼 수 있다. */
+    private AdminContentReportResponse toMessageResponse(
+            ContentReport report, DirectMessage message) {
+        MessageMemberResponse sender =
+                message == null ? null : MessageMemberResponse.from(message.getSender());
+        return new AdminContentReportResponse(
+                report.getId(),
+                report.getTargetType(),
+                message == null ? TargetState.DELETED : TargetState.NORMAL,
+                message == null ? null : truncate(message.getContent(), PREVIEW_LENGTH),
+                message == null ? null : truncate(message.getContent(), CONTENT_LENGTH),
+                null,
+                null,
+                report.getReason(),
+                report.getDetail(),
+                report.getReporter() != null
+                        ? report.getReporter().getNickname()
+                        : "비회원 (" + WriterDisplayFormatter.maskIp(report.getReporterIp()) + ")",
+                report.getStatus(),
+                report.getCreatedAt(),
+                report.getResolvedAt(),
+                sender == null ? null : sender.publicId(),
+                sender == null ? null : sender.nickname(),
+                message == null ? null : message.getCreatedAt());
+    }
+
+    private static String truncate(String text, int length) {
+        return text.length() <= length ? text : text.substring(0, length);
     }
 
     private TargetState targetState(ModerationTarget target) {

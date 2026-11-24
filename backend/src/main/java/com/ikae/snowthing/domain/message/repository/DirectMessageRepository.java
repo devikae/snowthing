@@ -54,6 +54,10 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
                     + " WHERE dm.id = :id")
     Optional<DirectMessage> findWithMembersById(@Param("id") Long id);
 
+    /** 관리자 신고 목록 한 페이지의 쪽지를 보낸 회원과 함께 한 번에 읽는다 (IKA-123). */
+    @Query("SELECT dm FROM DirectMessage dm JOIN FETCH dm.sender WHERE dm.id IN :ids")
+    List<DirectMessage> findAllWithSenderByIdIn(@Param("ids") Collection<Long> ids);
+
     /** 화면에 보여 줄 판매글. 게시글이 삭제됐거나 정상 상태가 아니면 결과에서 빠지고 화면은 "삭제된 판매글"로 표시한다. */
     @Query(
             "SELECT new com.ikae.snowthing.domain.message.repository.MessageListingRef("

@@ -16,6 +16,8 @@ import com.ikae.snowthing.domain.contentreport.entity.ReportStatus;
 import com.ikae.snowthing.domain.contentreport.repository.ContentReportRepository;
 import com.ikae.snowthing.domain.member.entity.Member;
 import com.ikae.snowthing.domain.member.repository.MemberRepository;
+import com.ikae.snowthing.domain.message.entity.DirectMessage;
+import com.ikae.snowthing.domain.message.repository.DirectMessageRepository;
 import com.ikae.snowthing.domain.post.entity.Post;
 import com.ikae.snowthing.domain.post.entity.PostStatus;
 import com.ikae.snowthing.domain.post.repository.PostRepository;
@@ -34,6 +36,7 @@ public class ContentReportService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final MemberRepository memberRepository;
+    private final DirectMessageRepository directMessageRepository;
     private final Clock clock;
 
     @Transactional
@@ -50,6 +53,7 @@ public class ContentReportService {
                 switch (request.targetType()) {
                     case POST -> visiblePost(request.targetId(), user).getId();
                     case COMMENT -> visibleComment(request.targetId(), user).getId();
+                    case MESSAGE -> receivedMessage(request.targetId(), reporter).getId();
                 };
         String detail =
                 request.detail() == null || request.detail().isBlank()
@@ -83,6 +87,29 @@ public class ContentReportService {
         } catch (DataIntegrityViolationException exception) {
             throw new CustomException(ErrorCode.CONTENT_REPORT_DUPLICATE, exception);
         }
+    }
+
+    /**
+     * 쪽지는 받은 회원만 신고한다. 쪽지는 비공개라 비회원은 볼 수 없으므로 로그인을 요구한다. 보낸 회원, 제3자, 내 쪽에서 지운 쪽지는 쪽지 상세와 같이 404로 답해
+     * 존재 여부를 숨긴다 (IKA-123).
+     */
+    private DirectMessage receivedMessage(String rawMessageId, Member reporter) {
+        if (reporter == null) {
+            throw new CustomException(ErrorCode.LOGIN_REQUIRED);
+        }
+        long messageId;
+        try {
+            messageId = Long.parseLong(rawMessageId);
+        } catch (NumberFormatException exception) {
+            throw new CustomException(ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND, exception);
+        }
+        return directMessageRepository
+                .findById(messageId)
+                .filter(
+                        message ->
+                                message.isReceiver(reporter.getId())
+                                        && message.isVisibleTo(reporter.getId()))
+                .orElseThrow(() -> new CustomException(ErrorCode.CONTENT_REPORT_TARGET_NOT_FOUND));
     }
 
     private Post visiblePost(String publicId, CustomUserDetails user) {
