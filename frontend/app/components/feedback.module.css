@@ -1,0 +1,105 @@
+/* 공통 토스트와 확인 창(FeedbackHost). 색은 globals.css의 토큰만 쓴다. 다크 모드는 토큰이 바뀌어 따라온다. */
+
+/* 토스트: PC는 아래 가운데. 모바일은 헤더 바로 아래에 둬 화면 키보드와 아래쪽 버튼에 가리지 않게 한다. */
+.stack {
+  position: fixed;
+  right: 16px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: 16px;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+.stack > div { display: flex; width: 100%; flex-direction: column; align-items: center; }
+
+.toast {
+  display: flex;
+  width: fit-content;
+  max-width: min(440px, 100%);
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 12px;
+  background: var(--snow-canvas);
+  padding: 11px 8px 11px 12px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .16);
+  color: var(--snow-ink);
+  pointer-events: auto;
+  animation: motion-slide-up var(--motion-base) var(--ease-out) both;
+}
+.toast p { min-width: 0; margin: 0; padding-top: 1px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.icon { flex: none; font-size: 20px; line-height: 1.1; }
+.success .icon { color: var(--snow-success); }
+.error .icon { color: var(--snow-error); }
+.error { border-color: var(--snow-error); }
+.info .icon { color: var(--snow-accent); }
+.close { display: grid; flex: none; width: 24px; height: 24px; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--snow-muted); cursor: pointer; }
+.close :global(.material-symbols-outlined) { font-size: 16px; }
+.close:hover { color: var(--snow-ink); }
+.close:focus-visible { outline: 2px solid var(--snow-accent); outline-offset: 1px; }
+
+@media (max-width: 640px) {
+  .stack {
+    /* --viewport-top: 화면 키보드가 올라와 보이는 영역이 밀렸을 때의 보정값(FeedbackHost가 넣는다). */
+    top: calc(var(--viewport-top, 0px) + 66px + env(safe-area-inset-top));
+    bottom: auto;
+  }
+  .toast { width: 100%; max-width: none; animation-name: motion-slide-down; }
+}
+
+/* 확인 창 */
+.dialog {
+  width: calc(100% - 32px);
+  max-width: 400px;
+  margin: auto;
+  border: 1px solid var(--snow-border);
+  border-radius: 16px;
+  background: var(--snow-canvas);
+  padding: 0;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, .18);
+  color: var(--snow-ink);
+  animation: motion-scale-in var(--motion-fast) var(--ease-out) both;
+}
+.dialog::backdrop { background: rgba(15, 23, 42, .5); animation: motion-fade var(--motion-base) ease-out both; }
+.panel { padding: 24px; }
+.panel h2 { margin: 0; color: var(--snow-ink); font-size: 17px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.panel p { margin: 8px 0 0; color: var(--snow-ink-soft); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.actions button {
+  min-height: 42px;
+  border: 1px solid var(--snow-border-strong);
+  border-radius: 999px;
+  background: var(--snow-canvas);
+  padding: 0 20px;
+  color: var(--snow-ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.actions button:hover { background: var(--snow-surface-mid); }
+.actions button:focus-visible { outline: 2px solid var(--snow-accent); outline-offset: 2px; }
+.actions .primary { border-color: var(--snow-ink); background: var(--snow-ink); color: var(--snow-canvas); }
+.actions .primary:hover { background: var(--snow-ink); filter: brightness(1.15); }
+.actions .danger { border-color: var(--snow-error); background: var(--snow-error); color: #fff; }
+.actions .danger:hover { background: var(--snow-error); filter: brightness(.92); }
+
+/* 모바일에서는 기존 삭제 확인 창처럼 아래에서 올라오는 시트로 보인다. */
+@media (max-width: 640px) {
+  .dialog {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    border-radius: 16px 16px 0 0;
+    animation: motion-sheet-up var(--motion-slow) var(--ease-out) both;
+  }
+  .panel { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .actions button { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast, .dialog, .dialog::backdrop { animation: none; }
+}
