@@ -81,6 +81,18 @@
 - 임시조치 만료 작업은 임시조치 행만 읽는다. 쪽지 신고에는 임시조치가 생기지 않아 영향이 없다.
 - 신고 접수 제한(`ContentWriteRateLimiter.Action.CONTENT_REPORT`)은 쪽지 신고에도 그대로 적용된다.
 
+## 되돌릴 때 주의
+
+070 머리말의 "이전 애플리케이션과도 호환된다"는 스키마만 놓고 보면 맞지만, 쪽지 신고가 한 건이라도 저장된 뒤에는 맞지 않는다. 이전 백엔드의 `ReportTargetType`에는 `MESSAGE`가 없어 `content_report`를 읽을 때 enum 변환에 실패하고, 상태로만 거르는 관리자 신고 목록(`findByStatus`)이 그 상태 전체에서 실패한다. 070은 운영 적용 뒤 내용을 고치면 체크섬 불일치로 다음 배포가 멈추므로 파일은 두고 여기에 적는다 (CodeRabbit 지적, PR #210).
+
+백엔드 이미지를 IKA-123 이전으로 되돌려야 하면 먼저 쪽지 신고 행을 치운다.
+
+1. 대기 중인 쪽지 신고가 있으면 관리자 화면에서 본문을 확인해 둔다.
+2. `content_report`와 `content_moderation_action`에서 `target_type = 'MESSAGE'` 행을 백업한 뒤 지운다. 운영 데이터 삭제라 사용자 확인을 받는다.
+3. 이미지를 되돌린다. 다시 올릴 때 백업한 행을 넣는다.
+
+`content_moderation_action`의 `MESSAGE` 행은 처리 완료(DISMISS)뿐이다. 이전 백엔드는 이 표를 대상 종류와 ID로 찾거나(`findActiveHolds`) 임시조치 행만 읽어서(`findExpiredHolds`) 이 행을 읽을 일이 없지만, 같은 enum으로 매핑되므로 함께 치우는 편이 안전하다.
+
 ## 테스트
 
 `MessageReportIntegrationTest`
